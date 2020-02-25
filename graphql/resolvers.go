@@ -378,17 +378,23 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
-	if err != nil || t == nil {
+	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	p, err := model.FindOneProjectRef(t.Project)
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	p, err := r.sc.FindProjectById(t.Project)
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	authName := gimlet.GetUser(ctx).DisplayName()
+	authName := ""
+	if authUser := gimlet.GetUser(ctx); authUser != nil {
+		authName = authUser.DisplayName()
+	}
 	if err := model.AbortTask(taskID, authName); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
@@ -398,12 +404,12 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}
 	}
-	t, err = task.FindOneId(taskID)
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
+	t, err = r.sc.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)
