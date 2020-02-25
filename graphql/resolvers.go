@@ -391,6 +391,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	fmt.Println("GOT HERE ATLEAST")
 	authName := ""
 	if authUser := gimlet.GetUser(ctx); authUser != nil {
 		authName = authUser.DisplayName()
@@ -399,7 +400,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItem(p.Identifier, p.CommitQueue.PatchType, t.Version, true)
+		_, err = commitqueue.RemoveCommitQueueItem(t.Project, p.CommitQueue.PatchType, t.Version, true)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}
