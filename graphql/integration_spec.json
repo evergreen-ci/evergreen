@@ -2479,7 +2479,7 @@
     {
       "query_file": "set_priority-success.graphql",
       "result": {
-        "data": { "setPriority": { "id": "wuzzup", "priority": 33 } }
+        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
       }
     },
     {
@@ -2488,7 +2488,7 @@
         "errors": [
           {
             "message": "unable to find task WRONG-TASK-ID",
-            "path": ["setPriority"]
+            "path": ["setTaskPriority"]
           }
         ],
         "data": null
@@ -2500,7 +2500,7 @@
         "errors": [
           {
             "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
-            "path": ["setPriority"],
+            "path": ["setTaskPriority"],
             "extensions": { "code": "FORBIDDEN" }
           }
         ],
@@ -2510,7 +2510,9 @@
     {
       "query_file": "set_priority-has-permission.graphql",
       "result": {
-        "data": { "setPriority": { "priority": 101, "id": "wuzzup-activated" } }
+        "data": {
+          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
+        }
       }
     }
   ]
