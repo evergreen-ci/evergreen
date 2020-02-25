@@ -365,7 +365,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, errors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	authUser := gimlet.GetUser(ctx)
 	if priority > evergreen.MaxTaskPriority {
@@ -375,20 +375,20 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}
-		taskAdmin := authUser.HasPermission(requiredPermission)
-		if !taskAdmin {
+		isTaskAdmin := authUser.HasPermission(requiredPermission)
+		if !isTaskAdmin {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
 	}
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
 	t, err = task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, errors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)

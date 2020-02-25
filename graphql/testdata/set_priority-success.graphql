@@ -1,5 +1,5 @@
 mutation {
-  setPriority(taskId: "wuzzup", priority: 33) {
+  setTaskPriority(taskId: "wuzzup", priority: 33) {
     priority
     id
   }
