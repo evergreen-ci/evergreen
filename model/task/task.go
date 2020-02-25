@@ -1988,6 +1988,43 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+// GetTaskResultsByVersion gets all tasks for a specific version
+// Query results can be filtered by task name, variant name and status in addition to being paginated and limited
+func GetTaskResultsByVersion(versionID, taskName, variantName, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
+	tasks := []Task{}
+	match := bson.M{
+		VersionKey: versionID,
+	}
+	if len(statuses) > 0 {
+		for _, status := range statuses {
+			match[StatusKey] = status
+		}
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+	}
+	if len(taskName) > 0 || len(variantName) > 0 {
+		matchTaskOrVariantName := bson.M{"$or": bson.A{
+			bson.M{"$match": bson.M{DisplayNameKey: bson.M{"$regex": taskName, "$options": "i"}}},
+			bson.M{"$match": bson.M{DisplayNameKey: bson.M{"$regex": variantName, "$options": "i"}}},
+		}}
+		pipeline = append(pipeline, matchTaskOrVariantName)
+	}
+	pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
+
+	if page > 0 {
+		pipeline = append(pipeline, bson.M{"$skip": page * limit})
+	}
+	if limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": limit})
+	}
+	err := db.Aggregate(Collection, pipeline, &tasks)
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
 // UpdateDependsOn appends new dependnecies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
