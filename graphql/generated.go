@@ -65,7 +65,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
 		ScheduleTask          func(childComplexity int, taskID string) int
-		SetPriority           func(childComplexity int, taskID string, priority int) int
+		SetTaskPriority       func(childComplexity int, taskID string, priority int) int
 		UnscheduleTask        func(childComplexity int, taskID string) int
 	}
 
@@ -204,7 +204,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
-	SetPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
+	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -320,17 +320,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
 
-	case "Mutation.setPriority":
-		if e.complexity.Mutation.SetPriority == nil {
+	case "Mutation.setTaskPriority":
+		if e.complexity.Mutation.SetTaskPriority == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_setPriority_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setTaskPriority_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPriority(childComplexity, args["taskId"].(string), args["priority"].(int)), true
+		return e.complexity.Mutation.SetTaskPriority(childComplexity, args["taskId"].(string), args["priority"].(int)), true
 
 	case "Mutation.unscheduleTask":
 		if e.complexity.Mutation.UnscheduleTask == nil {
@@ -1082,7 +1082,7 @@ type Mutation {
 	removeFavoriteProject(identifier: String!): Project!
 	scheduleTask(taskId: String!): Task!
 	unscheduleTask(taskId: String!): Task!
-	setPriority(taskId: String!, priority: Int!): Task!
+	setTaskPriority(taskId: String!, priority: Int!): Task!
 }
 type Patch {
 	id: ID!
@@ -1259,7 +1259,7 @@ func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_setPriority_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_setTaskPriority_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -1859,7 +1859,7 @@ func (ec *executionContext) _Mutation_unscheduleTask(ctx context.Context, field 
 	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_setPriority(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_setTaskPriority(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1875,7 +1875,7 @@ func (ec *executionContext) _Mutation_setPriority(ctx context.Context, field gra
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_setPriority_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_setTaskPriority_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1883,7 +1883,7 @@ func (ec *executionContext) _Mutation_setPriority(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPriority(rctx, args["taskId"].(string), args["priority"].(int))
+		return ec.resolvers.Mutation().SetTaskPriority(rctx, args["taskId"].(string), args["priority"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6122,8 +6122,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "setPriority":
-			out.Values[i] = ec._Mutation_setPriority(ctx, field)
+		case "setTaskPriority":
+			out.Values[i] = ec._Mutation_setTaskPriority(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

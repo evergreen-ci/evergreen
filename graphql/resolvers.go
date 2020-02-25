@@ -359,7 +359,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 	return groupedFilesList, nil
 }
 
-func (r *mutationResolver) SetPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
+func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
