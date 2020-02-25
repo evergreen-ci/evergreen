@@ -122,6 +122,7 @@ type ComplexityRoot struct {
 	}
 
 	Task struct {
+		Aborted           func(childComplexity int) int
 		Activated         func(childComplexity int) int
 		ActivatedBy       func(childComplexity int) int
 		ActivatedTime     func(childComplexity int) int
@@ -606,6 +607,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.UserPatches(childComplexity, args["userId"].(string)), true
+
+	case "Task.aborted":
+		if e.complexity.Task.Aborted == nil {
+			break
+		}
+
+		return e.complexity.Task.Aborted(childComplexity), true
 
 	case "Task.activated":
 		if e.complexity.Task.Activated == nil {
@@ -1170,6 +1178,7 @@ type Task {
 	executionTasks: [String!]
 	generateTask: Boolean
 	generatedBy: String
+	aborted: Boolean
 }
 type TaskEndDetail {
 	status: String!
@@ -4243,6 +4252,37 @@ func (ec *executionContext) _Task_generatedBy(ctx context.Context, field graphql
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Aborted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6608,6 +6648,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_generateTask(ctx, field, obj)
 		case "generatedBy":
 			out.Values[i] = ec._Task_generatedBy(ctx, field, obj)
+		case "aborted":
+			out.Values[i] = ec._Task_aborted(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

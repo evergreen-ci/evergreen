@@ -61,6 +61,7 @@ type APITask struct {
 	Blocked            bool             `json:"blocked"`
 	Requester          *string          `json:"requester"`
 	TestResults        []APITest        `json:"test_results"`
+	Aborted            bool             `json:"aborted"`
 }
 
 type LogLinks struct {
@@ -134,6 +135,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
+			Aborted:           v.Aborted,
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}

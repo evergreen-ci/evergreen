@@ -141,6 +141,7 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+  aborted: Boolean
 }
 
 type Projects {
