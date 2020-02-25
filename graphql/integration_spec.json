@@ -1,5 +1,23 @@
 {
   "setupData": {
+    "roles": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted_task_access",
+        "scope": "unrestrictedTaskAccess",
+        "permissions": {
+          "project_tasks": 55
+        }
+      }
+    ],
+    "scopes": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted access",
+        "type": "project",
+        "resources": ["5723cdaa7bd5c9f79a7fc666"]
+      }
+    ],
     "builds": [
       {
         "_id": "some_thang",
@@ -252,7 +270,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "5723cdaa7bd5c9f79a7fc666",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -2455,6 +2473,46 @@
               "timeTaken": null
             }
           }
+        }
+      }
+    },
+    {
+      "query_file": "set_priority-success.graphql",
+      "result": {
+        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
+      }
+    },
+    {
+      "query_file": "set_priority-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-no-permission.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "FORBIDDEN" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-has-permission.graphql",
+      "result": {
+        "data": {
+          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
         }
       }
     }

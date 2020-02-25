@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -14,6 +15,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/gqlerror"
 )
@@ -355,6 +357,42 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
 	return groupedFilesList, nil
+}
+
+func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	authUser := gimlet.GetUser(ctx)
+	if priority > evergreen.MaxTaskPriority {
+		requiredPermission := gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  "project",
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		}
+		isTaskAdmin := authUser.HasPermission(requiredPermission)
+		if !isTaskAdmin {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
+		}
+	}
+	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
+	}
+	apiTask := restModel.APITask{}
+	err = apiTask.BuildFromService(t)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", taskID, err.Error()))
+	}
+	err = apiTask.BuildFromService(r.sc.GetURL())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", taskID, err.Error()))
+	}
+	return &apiTask, nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
