@@ -424,3 +424,8 @@ func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifes
 	}
 	return nil, errors.Errorf("task '%s' not found", taskId)
 }
+
+func (tc *MockTaskConnector) FindTaskResultsByVersion(versionID, taskName, variantName, sortBy string, statuses []string, sortDir, page, limit int) ([]task.Task, error) {
+	// todo
+	return nil, nil
+}

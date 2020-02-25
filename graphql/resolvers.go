@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -243,7 +244,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, taskName *string, variantName *string, statuses []*string) ([]*restModel.APITask, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, taskName *string, variantName *string, statuses []*string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -294,20 +295,42 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		variantNameParam = *variantName
 	}
 
+	patch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting patch: ", err.Error()))
+	}
+	if patch == nil {
+		return nil, ResourceNotFound.Send(ctx, "Patch is nil")
+	}
+	baseBuilds, err := build.Find(build.ByVersion(*patch.Version))
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting base builds: ", err.Error()))
+	}
+
+	baseTaskStatuses := map[string]string{}
+	for _, build := range baseBuilds {
+		for _, task := range build.Tasks {
+			baseTaskStatuses[task.Id] = task.Status
+		}
+	}
+
 	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskNameParam, variantNameParam, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks: ", err.Error()))
 	}
-	var taskPointers []*restModel.APITask
+	var taskResults []*TaskResult
 	for _, task := range tasks {
-		t := restModel.APITask{}
-		err := t.BuildFromService(task)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		t := TaskResult{
+			ID:           task.Id,
+			DisplayName:  task.DisplayName,
+			Version:      task.Version,
+			Status:       task.Status,
+			BuildVariant: task.BuildVariant,
+			BaseStatus:   baseTaskStatuses[task.Id],
 		}
-		taskPointers = append(taskPointers, &t)
+		taskResults = append(taskResults, &t)
 	}
-	return taskPointers, nil
+	return taskResults, nil
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {

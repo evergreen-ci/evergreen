@@ -79,7 +79,7 @@ type TaskResult {
   displayName: String!
   version: String!
   status: String!
-  baesStatus: String!
+  baseStatus: String!
   buildVariant: String!
 }
 
