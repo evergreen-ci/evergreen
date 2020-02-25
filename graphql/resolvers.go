@@ -385,18 +385,20 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	p, err := model.FindOneProjectRef(t.Project)
-	if err != nil || p == nil {
+	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	authName := gimlet.GetUser(ctx).DisplayName()
 	if err := model.AbortTask(taskID, authName); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %v", taskID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItem(p.Identifier,
-			p.CommitQueue.PatchType, t.Version, true)
+		_, err = commitqueue.RemoveCommitQueueItem(p.Identifier, p.CommitQueue.PatchType, t.Version, true)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %v", taskID, t.Version, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}
 	}
 	t, err = task.FindOneId(taskID)
@@ -411,6 +413,11 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	err = apiTask.BuildFromService(r.sc.GetURL())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
 	return &apiTask, nil
 }
 
