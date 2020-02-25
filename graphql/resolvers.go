@@ -362,7 +362,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -383,21 +383,14 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
-	t, err = r.sc.FindTaskById(taskID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", taskID, err.Error()))
 	}
 	err = apiTask.BuildFromService(r.sc.GetURL())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", taskID, err.Error()))
 	}
 	return &apiTask, nil
 }

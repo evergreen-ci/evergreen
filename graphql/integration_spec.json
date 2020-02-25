@@ -2487,7 +2487,7 @@
       "result": {
         "errors": [
           {
-            "message": "404 (Not Found): task with id WRONG-TASK-ID not found",
+            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
             "path": ["setTaskPriority"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
