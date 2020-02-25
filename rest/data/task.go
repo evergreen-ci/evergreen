@@ -208,6 +208,19 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 	return mfest, nil
 }
 
+// FindTaskResultsByVersion gets all tasks for a specific version
+// Results can be filtered by task name, variant name and status in addition to being paginated and limited
+func (tc *DBTaskConnector) FindTaskResultsByVersion(versionID, taskName, variantName, sortBy string, statuses []string, sortDir, page, limit int) ([]task.Task, error) {
+	tasks, err := task.GetTaskResultsByVersion(versionID, taskName, variantName, sortBy, statuses, sortDir, page, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(tasks) == 0 {
+		return []task.Task{}, nil
+	}
+	return tasks, nil
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
