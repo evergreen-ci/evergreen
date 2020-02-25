@@ -38,8 +38,9 @@ func (s *TestArtifactFileSuite) SetupTest() {
 					FileKey:        "filekey",
 				},
 				{
-					Name:           "fast_download",
-					Link:           "https://fastdl.mongodb.org",
+					Name: "fast_download",
+					Link: "https://fastdl.mongodb.org",
+					// Visibility:     "signed",
 					IgnoreForFetch: false,
 				},
 			},
@@ -205,7 +206,6 @@ func (s *TestArtifactFileSuite) TestFindByIds() {
 }
 
 func (s *TestArtifactFileSuite) TestGetAllArtifacts() {
-	s.testEntries[0].Files[1].Visibility = ""
 	tasks := []TaskIDAndExecution{
 		{TaskID: "task1", Execution: 1},
 		{TaskID: "task2", Execution: 5},
@@ -215,5 +215,6 @@ func (s *TestArtifactFileSuite) TestGetAllArtifacts() {
 		if files[i].Visibility == "signed" {
 			s.Contains(files[i].Link, "Signature")
 		}
+
 	}
 }

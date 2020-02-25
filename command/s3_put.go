@@ -138,8 +138,8 @@ func (s3pc *s3put) validate() error {
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
 	}
-	if s3pc.Visibility == "signed" && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
-		catcher.Add(errors.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write"))
+	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
+		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
 	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
@@ -313,7 +313,6 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
-
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -381,7 +380,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
 		var key, secret, bucket, fileKey string
-		if s3pc.Visibility == "signed" {
+		if s3pc.Visibility == artifact.Signed {
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
 			bucket = s3pc.Bucket
