@@ -1429,7 +1429,6 @@ type APIServiceFlags struct {
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
-	ParserProjectDisabled      bool `json:"parser_project_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
 	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 
@@ -1692,7 +1691,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
-		as.ParserProjectDisabled = v.ParserProjectDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
@@ -1728,7 +1726,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
-		ParserProjectDisabled:        as.ParserProjectDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
 		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil

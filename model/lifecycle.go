@@ -473,7 +473,6 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-
 	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)

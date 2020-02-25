@@ -91,7 +91,7 @@ func TestListHostsForTask(t *testing.T) {
 
 func TestCreateHostsFromTask(t *testing.T) {
 	// Setup tests
-	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 	providerSettings := map[string]interface{}{
 		"ami":                "ami-1234",
 		"vpc_name":           "my_vpc",
@@ -325,10 +325,8 @@ buildvariants:
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 
-	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
-	assert.NoError(evergreen.SetServiceFlags(flags))
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",
