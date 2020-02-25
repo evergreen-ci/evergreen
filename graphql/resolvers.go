@@ -377,11 +377,8 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
-	if err != nil {
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil || t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	p, err := model.FindOneProjectRef(t.Project)
