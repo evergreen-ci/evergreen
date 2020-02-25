@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,6 +17,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 type projectValidator func(*model.Project) ValidationErrors
