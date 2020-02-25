@@ -368,6 +368,9 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	authUser := gimlet.GetUser(ctx)
+	if authUser == nil {
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("No user attached to request"))
+	}
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
