@@ -5,7 +5,6 @@ package cloud
 import (
 	"context"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -29,25 +28,25 @@ type gceManager struct {
 
 // GCESettings specifies the settings used to configure a host instance.
 type GCESettings struct {
-	Project string `mapstructure:"project_id"`
-	Zone    string `mapstructure:"zone"`
+	Project string `mapstructure:"project_id" json:"project_id" bson:"project_id"`
+	Zone    string `mapstructure:"zone" json:"zone" bson:"zone"`
 
-	ImageName   string `mapstructure:"image_name"`
-	ImageFamily string `mapstructure:"image_family"`
+	ImageName   string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	ImageFamily string `mapstructure:"image_family" json:"image_family" bson:"image_family"`
 
-	MachineName string `mapstructure:"instance_type"`
-	NumCPUs     int64  `mapstructure:"num_cpus"`
-	MemoryMB    int64  `mapstructure:"memory_mb"`
+	MachineName string `mapstructure:"instance_type" json:"instance_type" bson:"instance_type"`
+	NumCPUs     int64  `mapstructure:"num_cpus" json:"num_cpus" bson:"num_cpus"`
+	MemoryMB    int64  `mapstructure:"memory_mb" json:"memory_mb" bson:"memory_mb"`
 
-	DiskType   string `mapstructure:"disk_type"`
-	DiskSizeGB int64  `mapstructure:"disk_size_gb"`
+	DiskType   string `mapstructure:"disk_type" json:"disk_type" bson:"disk_type"`
+	DiskSizeGB int64  `mapstructure:"disk_size_gb" json:"disk_size_gb" bson:"disk_size_gb"`
 
 	// Network tags are used to configure network firewalls.
-	NetworkTags []string `mapstructure:"network_tags"`
+	NetworkTags []string `mapstructure:"network_tags" json:"network_tags" bson:"network_tags"`
 
 	// By default, GCE uses project-wide SSH keys. Project-wide keys should be manually
 	// added to the project metadata. These SSH keys are optional instance-wide keys.
-	SSHKeys sshKeyGroup `mapstructure:"ssh_keys"`
+	SSHKeys sshKeyGroup `mapstructure:"ssh_keys" json:"ssh_keys" bson:"ssh_keys"`
 }
 
 // Validate verifies a set of GCESettings.
@@ -74,24 +73,6 @@ func (opts *GCESettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-		bytes, err := bson.Marshal(opts)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()

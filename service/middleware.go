@@ -155,6 +155,55 @@ func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
 	})
 }
 
+func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := gimlet.GetUser(r.Context())
+		hostID := gimlet.GetVars(r)["host_id"]
+
+		h, err := uis.getHostFromCache(hostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
+			return
+		}
+		if h.owner != user.Username() {
+			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+func (uis *UIServer) vsCodeRunning(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hostID := gimlet.GetVars(r)["host_id"]
+		h, err := uis.getHostFromCache(hostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
+			return
+		}
+
+		if !h.isVirtualWorkstation {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not a virtual workstation", hostID))
+			return
+		}
+
+		if !h.isRunning {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not running", hostID))
+		}
+
+		next(w, r)
+	}
+}
+
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
 // so that the user will be returned to the original page after they login.
 func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +212,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 		querySep = "?"
 	}
 	path := "/login#?"
-	if uis.UserManager.IsRedirect() {
+	if uis.env.UserManager().IsRedirect() {
 		path = "/login/redirect?"
 	}
 	location := fmt.Sprintf("%sredirect=%s%s%s",
@@ -284,7 +333,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
-	pc := projectContext{AuthRedirect: uis.UserManager.IsRedirect()}
+	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
 	err := pc.populateProjectRefs(dbUser != nil, dbUser)
 	if err != nil {
 		return pc, err

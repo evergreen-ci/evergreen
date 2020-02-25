@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -25,10 +24,10 @@ type openStackManager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type openStackSettings struct {
-	ImageName     string `mapstructure:"image_name"`
-	FlavorName    string `mapstructure:"flavor_name"`
-	KeyName       string `mapstructure:"key_name"`
-	SecurityGroup string `mapstructure:"security_group"`
+	ImageName     string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	FlavorName    string `mapstructure:"flavor_name" json:"flavor_name" bson:"flavor_name"`
+	KeyName       string `mapstructure:"key_name" json:"key_name" bson:"key_name"`
+	SecurityGroup string `mapstructure:"security_group" json:"security_group" bson:"security_group"`
 }
 
 // Validate verifies a set of ProviderSettings.
@@ -56,24 +55,6 @@ func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) err
 	if d.ProviderSettings != nil {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-		bytes, err := bson.Marshal(opts)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -96,10 +97,11 @@ func (s *UserTestSuite) SetupTest() {
 			Id:     "Test6",
 			APIKey: "api",
 			LoginCache: LoginCache{
-				Token:        "token6",
-				AccessToken:  "access6",
-				RefreshToken: "refresh6",
-				TTL:          time.Now().Add(-time.Hour),
+				Token:          "token6",
+				AccessToken:    "access6",
+				RefreshToken:   "refresh6",
+				TTL:            time.Now().Add(-time.Hour),
+				ReauthAttempts: 5,
 			},
 		},
 	}
@@ -504,4 +506,36 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.NoError(u.AddRole("r1234p2"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
+}
+
+func (s *UserTestSuite) TestFindNeedsReauthorization() {
+	containsUsers := func(users []DBUser, names ...string) bool {
+		foundNames := make([]string, 0, len(users))
+		for _, u := range users {
+			foundNames = append(foundNames, u.Username())
+		}
+		left, right := util.StringSliceSymmetricDifference(foundNames, names)
+		return len(left) == 0 && len(right) == 0
+	}
+
+	users, err := FindNeedsReauthorization(0, 100)
+	s.NoError(err)
+	s.Len(users, 5)
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5", "Test6"), "should find all logged in users")
+	s.False(containsUsers(users, "Test3"), "should not find logged out users")
+
+	users, err = FindNeedsReauthorization(0, 1)
+	s.NoError(err)
+	s.Len(users, 4)
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find logged in users who have not exceeded max reauth attempts")
+	s.False(containsUsers(users, "Test3", "Test6"), "should not find logged out users or users who have exceeded max reauth attempts")
+
+	users, err = FindNeedsReauthorization(30*time.Minute, 100)
+	s.NoError(err)
+	s.Len(users, 2)
+	s.True(containsUsers(users, "Test2", "Test6"), "should find logged in users who have exceeded the reauth limit")
+
+	users, err = FindNeedsReauthorization(24*time.Hour, 1)
+	s.NoError(err)
+	s.Empty(users, "should not find users who have not exceeded the reauth limit")
 }

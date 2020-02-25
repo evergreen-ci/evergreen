@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -150,7 +149,7 @@ type Host struct {
 	// to this host.
 	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 
-	AttachVolume bool `bson:"attach_volume" json:"attach_volume"`
+	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }
@@ -222,24 +221,6 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
 		}
-		bytes, err := bson.Marshal(opts)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if len(d.ProviderSettingsList) == 0 {
-			if err := d.UpdateProviderSettings(doc); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   d.Id,
-					"provider": d.Provider,
-					"settings": d.ProviderSettings,
-				}))
-				return errors.Wrapf(err, "error updating provider settings")
-			}
-		}
 	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
@@ -305,8 +286,8 @@ type newParentsNeededParams struct {
 }
 
 type ContainersOnParents struct {
-	ParentHost    Host
-	NumContainers int
+	ParentHost Host
+	Containers []Host
 }
 
 type HostModifyOptions struct {
@@ -343,6 +324,8 @@ const (
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
+
+	ErrorParentNotFound = "Parent not found"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -1524,6 +1507,26 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
+func (h *Host) GetActiveContainers() ([]Host, error) {
+	if !h.HasContainers {
+		return nil, errors.New("Host does not host containers")
+	}
+	query := db.Query(bson.M{
+		StatusKey: bson.M{
+			"$in": evergreen.UpHostStatus,
+		},
+		"$or": []bson.M{
+			{ParentIDKey: h.Id},
+			{ParentIDKey: h.Tag},
+		}})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
 // GetParent finds the parent of this container
 // errors if host is not a container or if parent cannot be found
 func (h *Host) GetParent() (*Host, error) {
@@ -1535,7 +1538,7 @@ func (h *Host) GetParent() (*Host, error) {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		return nil, errors.New("Parent not found")
+		return nil, errors.New(ErrorParentNotFound)
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
@@ -1789,30 +1792,28 @@ func (hosts HostGroup) Uphosts() HostGroup {
 // getNumContainersOnParents returns a slice of uphost parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
-func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
+func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	allParents, err := findUphostParentsByContainerPool(d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find running parent hosts")
 	}
 
-	numContainersOnParents := make([]ContainersOnParents, 0)
+	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers, err := parent.GetContainers()
+		currentContainers, err := parent.GetActiveContainers()
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
-		if len(currentContainers) < parent.ContainerPoolSettings.MaxContainers {
-			numContainersOnParents = append(numContainersOnParents,
-				ContainersOnParents{
-					ParentHost:    parent,
-					NumContainers: len(currentContainers),
-				})
-		}
+		containersOnParents = append(containersOnParents,
+			ContainersOnParents{
+				ParentHost: parent,
+				Containers: currentContainers,
+			})
 	}
 
-	return numContainersOnParents, nil
+	return containersOnParents, nil
 }
 
 func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {

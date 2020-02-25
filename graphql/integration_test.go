@@ -47,15 +47,16 @@ func (s *graphQLSuite) SetupSuite() {
 	const apiKey = "testapikey"
 	const apiUser = "testuser"
 
-	server, err := service.CreateTestServer(testutil.TestConfig(), nil)
+	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
 	s.Require().NoError(err)
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	s.Require().NoError(env.DB().Drop(ctx))
-	testUser := user.DBUser{Id: apiUser, APIKey: apiKey}
+	testUser := user.DBUser{Id: apiUser, APIKey: apiKey, Settings: user.UserSettings{Timezone: "America/New_York"}}
 	s.Require().NoError(testUser.Insert())
 	s.url = server.URL
 	s.apiKey = apiKey
+	s.apiUser = apiUser
 }
 
 func (s *graphQLSuite) TestQueries() {

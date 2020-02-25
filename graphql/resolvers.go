@@ -25,6 +25,9 @@ type Resolver struct {
 func (r *Resolver) Mutation() MutationResolver {
 	return &mutationResolver{r}
 }
+func (r *Resolver) Patch() PatchResolver {
+	return &patchResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
@@ -87,6 +90,58 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
+
+func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
+	// excludes display tasks
+	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+
+	// return nil if rounded timeTaken/makespan == 0s
+	t := timeTaken.Round(time.Second).String()
+	var tPointer *string
+	if t != "0s" {
+		tPointer = &t
+	}
+	m := makespan.Round(time.Second).String()
+	var mPointer *string
+	if m != "0s" {
+		tPointer = &m
+	}
+
+	return &PatchDuration{
+		Makespan:  tPointer,
+		TimeTaken: mPointer,
+	}, nil
+}
+
+func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
+	usr := route.MustHaveUser(ctx)
+
+	started, err := GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	finished, err := GetFormattedDate(obj.FinishTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	submittedAt, err := GetFormattedDate(obj.CreateTime, usr.Settings.Timezone)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	return &PatchTime{
+		Started:     started,
+		Finished:    finished,
+		SubmittedAt: *submittedAt,
+	}, nil
+}
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
@@ -190,8 +245,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
 	task, err := task.FindOneId(taskID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	if task == nil || err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 
 	sortBy := ""
@@ -248,6 +303,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+			apiTest.Logs.HTMLDisplayURL = &formattedURL
+		}
+		if apiTest.Logs.RawDisplayURL != nil && IsURL(*apiTest.Logs.RawDisplayURL) == false {
+			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
@@ -308,6 +371,15 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 		return nil, err
 	}
 	return task, nil
+}
+
+func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
+	usr := route.MustHaveUser(ctx)
+	displayName := usr.DisplayName()
+	user := restModel.APIUser{
+		DisplayName: &displayName,
+	}
+	return &user, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

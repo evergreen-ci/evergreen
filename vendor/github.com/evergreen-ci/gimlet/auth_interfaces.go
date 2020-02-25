@@ -62,6 +62,9 @@ type UserManager interface {
 	// TODO: should add a "do redirect if needed".
 	IsRedirect() bool
 
+	// ReauthorizeUser reauthorizes a user that is already logged in.
+	ReauthorizeUser(User) error
+
 	// These methods are simple wrappers around the user
 	// persistence layer. May consider moving them to the
 	// authenticator.
@@ -125,6 +128,9 @@ type RoleManager interface {
 
 	// Clear deletes all roles and scopes. This should only be used in tests
 	Clear() error
+
+	// IsValidPermissions checks if the passed permissions are registered
+	IsValidPermissions(Permissions) error
 }
 
 func HasPermission(rm RoleManager, opts PermissionOpts, roles []Role) bool {

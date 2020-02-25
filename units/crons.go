@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -1168,9 +1169,14 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(TSFormat))))
+			for _, definition := range project.PeriodicBuilds {
+				// schedule the job if we want it to start before the next time this cron runs
+				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
+					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, definition.ID, definition.NextRunTime)))
+				}
+			}
 		}
-		return nil
+		return catcher.Resolve()
 	}
 }
 
@@ -1225,6 +1231,44 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		}
 		for _, h := range hosts {
 			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		if !env.UserManagerInfo().CanReauthorize {
+			return nil
+		}
+
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.BackgroundReauthDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background reauth is disabled",
+				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		reauthAfter := time.Duration(env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
+		if reauthAfter == 0 {
+			reauthAfter = defaultBackgroundReauth
+		}
+		users, err := user.FindNeedsReauthorization(reauthAfter, maxReauthAttempts)
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		for _, user := range users {
+			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()

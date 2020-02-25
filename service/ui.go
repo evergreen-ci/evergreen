@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -37,15 +36,14 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	//authManager
-	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umCanClearTokens   bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
 	jiraHandler        thirdparty.JiraHandler
 	buildBaronProjects map[string]evergreen.BuildBaronProject
+
+	hostCache map[string]hostCacheItem
 
 	queue amboy.Queue
 	env   evergreen.Environment
@@ -69,12 +67,18 @@ type ViewData struct {
 	ValidDefaultLoggers []string
 }
 
+const hostCacheTTL = 30 * time.Second
+
+type hostCacheItem struct {
+	dnsName              string
+	inserted             time.Time
+	owner                string
+	isVirtualWorkstation bool
+	isRunning            bool
+}
+
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, canClearTokens, err := auth.LoadUserManager(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -87,8 +91,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		env:                env,
 		queue:              queue,
 		Home:               home,
-		UserManager:        userManager,
-		umCanClearTokens:   canClearTokens,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -106,6 +108,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 			CookiePath:     "/",
 			CookieDomain:   settings.Ui.LoginDomain,
 		},
+		hostCache: make(map[string]hostCacheItem),
 	}
 
 	if err := uis.umconf.Validate(); err != nil {
@@ -222,6 +225,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
+	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
+	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
@@ -256,10 +261,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		}
 	})
 
-	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}
-	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
 		app.AddRoute("/login/redirect/callback").Handler(h).Get()
 	}
 
@@ -331,6 +336,16 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+		FindTarget:        uis.getHostDNS,
+		StripSourcePrefix: true,
+		RemoteScheme:      "http",
+	}).AllMethods()
+	// Prefix routes not ending in a '/' are not automatically redirected by gimlet's underlying library.
+	// Add another route to match when there's no trailing slash and redirect
+	app.AddRoute("/host/{host_id}/ide").Handler(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+	}).Get()
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()

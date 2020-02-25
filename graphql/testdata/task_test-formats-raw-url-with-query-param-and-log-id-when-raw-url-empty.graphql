@@ -1,0 +1,8 @@
+{
+  taskTests(taskId: "wuzzup", page: 3, limit: 1) {
+    logs {
+      rawDisplayURL
+    }
+    id
+  }
+}

@@ -28,18 +28,18 @@ const (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	DistroId       string
-	Userdata       string
-	UserName       string
-	PublicKey      string
-	TaskId         string
-	Owner          *user.DBUser
-	InstanceTags   []host.Tag
-	InstanceType   string
-	Region         string
-	NoExpiration   bool
-	AttachVolume   bool
-	HomeVolumeSize int
+	DistroId             string
+	Userdata             string
+	UserName             string
+	PublicKey            string
+	TaskId               string
+	Owner                *user.DBUser
+	InstanceTags         []host.Tag
+	InstanceType         string
+	Region               string
+	NoExpiration         bool
+	IsVirtualWorkstation bool
+	HomeVolumeSize       int
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -158,16 +158,16 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		expiration = SpawnHostNoExpirationDuration
 	}
 	hostOptions := host.CreateOptions{
-		ProvisionOptions:   provisionOptions,
-		UserName:           so.UserName,
-		ExpirationDuration: &expiration,
-		UserHost:           true,
-		InstanceTags:       so.InstanceTags,
-		InstanceType:       so.InstanceType,
-		NoExpiration:       so.NoExpiration,
-		AttachVolume:       so.AttachVolume,
-		HomeVolumeSize:     so.HomeVolumeSize,
-		Region:             so.Region,
+		ProvisionOptions:     provisionOptions,
+		UserName:             so.UserName,
+		ExpirationDuration:   &expiration,
+		UserHost:             true,
+		InstanceTags:         so.InstanceTags,
+		InstanceType:         so.InstanceType,
+		NoExpiration:         so.NoExpiration,
+		IsVirtualWorkstation: so.IsVirtualWorkstation,
+		HomeVolumeSize:       so.HomeVolumeSize,
+		Region:               so.Region,
 	}
 
 	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)

@@ -388,11 +388,12 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP          *APILDAPConfig       `json:"ldap"`
-	Okta          *APIOktaConfig       `json:"okta"`
-	Naive         *APINaiveAuthConfig  `json:"naive"`
-	Github        *APIGithubAuthConfig `json:"github"`
-	PreferredType *string              `json:"preferred_type"`
+	LDAP                    *APILDAPConfig       `json:"ldap"`
+	Okta                    *APIOktaConfig       `json:"okta"`
+	Naive                   *APINaiveAuthConfig  `json:"naive"`
+	Github                  *APIGithubAuthConfig `json:"github"`
+	PreferredType           *string              `json:"preferred_type"`
+	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -429,6 +430,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 			}
 		}
 		a.PreferredType = ToStringPtr(v.PreferredType)
+		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -489,11 +491,12 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 	return evergreen.AuthConfig{
-		LDAP:          ldap,
-		Okta:          okta,
-		Naive:         naive,
-		Github:        github,
-		PreferredType: FromStringPtr(a.PreferredType),
+		LDAP:                    ldap,
+		Okta:                    okta,
+		Naive:                   naive,
+		Github:                  github,
+		PreferredType:           FromStringPtr(a.PreferredType),
+		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 	}, nil
 }
 
@@ -1428,6 +1431,7 @@ type APIServiceFlags struct {
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	ParserProjectDisabled      bool `json:"parser_project_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1690,6 +1694,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.ParserProjectDisabled = v.ParserProjectDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
+		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1725,6 +1730,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		ParserProjectDisabled:        as.ParserProjectDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
+		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil
 }
 

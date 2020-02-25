@@ -56,7 +56,7 @@ type cliTestHarness struct {
 
 func setupCLITestHarness() cliTestHarness {
 	// create a test API server
-	testServer, err := service.CreateTestServer(testConfig, nil)
+	testServer, err := service.CreateTestServer(testConfig, nil, false)
 	So(err, ShouldBeNil)
 	So(
 		db.ClearCollections(

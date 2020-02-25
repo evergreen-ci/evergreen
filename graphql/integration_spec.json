@@ -106,6 +106,18 @@
           }
         ],
         "activated": false
+      },
+      {
+        "_id": { "$oid": "9a1f8ab8834b87d7b5d251a5" },
+        "desc": "patch-to-duration-time-resolver",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" }
+      },
+      {
+        "_id": { "$oid": "9e1f8ab8834b87d7b5d251a5" },
+        "desc": "patch-to-test-time-resolver",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-13T17:42:19Z" },
+        "finish_time": { "$date": "2020-02-14T18:03:19Z" }
       }
     ],
     "artifact_files": [
@@ -385,6 +397,80 @@
         "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
+      },
+      {
+        "id": "adlkasdkd;slfkjak;dlsfj;aklfd",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T19:10:02Z",
+        "scheduledTime": "2020-02-12T19:10:01Z",
+        "activatedTime": "2020-02-12T19:10:01Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 218556,
+        "startTime": "2020-02-12T19:10:02Z",
+        "finishTime": "2020-02-12T19:13:41Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 11,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "akdjfjodej47565jhflkld",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T18:27:02Z",
+        "scheduledTime": "2020-02-12T18:27:02Z",
+        "activatedTime": "2020-02-12T18:26:36Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 159811,
+        "startTime": "2020-02-12T18:27:02Z",
+        "finishTime": "2020-02-12T18:29:42Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 0,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "task-for-testing-duration-resolver-1",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:13Z" },
+        "finish_time": { "$date": "2020-02-14T22:23:59Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 166715
+      },
+      {
+        "id": "task-for-testing-duration-resolver-2",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:14Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:26Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 72328
+      },
+      {
+        "id": "task-for-testing-duration-resolver-3",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:11Z" },
+        "finish_time": { "$date": "2020-02-14T22:24:50Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 219230
+      },
+      {
+        "id": "task-for-testing-duration-resolver-4",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:13Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:19Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 65589
+      },
+      {
+        "id": "task-for-testing-duration-resolver-5",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:15Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:24Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 69532
       }
     ],
     "testresults": [
@@ -399,22 +485,22 @@
         "end": 10,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "https://original-url.com",
+        "url_raw": "https://original-raw-url.com"
       },
       {
         "_id": { "$oid": "29ef7a20a7798219e191d00e" },
         "status": "c",
         "test_file": "apple",
-        "log_id": "59ef7a2097b1d3148d0004f1",
+        "log_id": "",
         "line_num": 126,
         "exit_code": 0,
         "start": 0,
         "end": 20,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "",
+        "url_raw": ""
       },
       {
         "_id": { "$oid": "39ef7a20a7798219e191d00e" },
@@ -427,8 +513,8 @@
         "end": 40,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "",
+        "url_raw": ""
       },
       {
         "_id": { "$oid": "49ef7a20a7798219e191d00e" },
@@ -441,8 +527,8 @@
         "end": 30,
         "task_id": "exec1",
         "task_execution": 5,
-        "url": "a url",
-        "url_raw": "a raw url"
+        "url": "/url/without/scheme/host",
+        "url_raw": "/raw/url/without/scheme/host"
       }
     ],
     "project_ref": [
@@ -1542,9 +1628,6 @@
               "author": "testuser",
               "version": "",
               "status": "created",
-              "createTime": "2018-01-10T19:01:36-05:00",
-              "startTime": null,
-              "finishTime": null,
               "tasks": ["test-auth"],
               "activated": false,
               "alias": "",
@@ -1570,9 +1653,6 @@
             "author": "testuser",
             "version": "",
             "status": "created",
-            "createTime": "2018-01-10T19:01:36-05:00",
-            "startTime": null,
-            "finishTime": null,
             "tasks": ["test-auth"],
             "activated": false,
             "alias": "",
@@ -2189,6 +2269,34 @@
       }
     },
     {
+      "query_file": "patch-time-1.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": null,
+              "finished": null,
+              "submittedAt": "January 10, 2018, 7:01PM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-2.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "February 13, 2020, 12:42PM",
+              "finished": "February 14, 2020, 1:03PM",
+              "submittedAt": "February 12, 2020, 11:58AM"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "task-files-query-exec.graphql",
       "result": {
         "data": {
@@ -2237,6 +2345,117 @@
       "query_file": "task-files-query-empty.graphql",
       "result": {
         "data": { "taskFiles": [] }
+      }
+    },
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-empty-str.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
+              "id": "29ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-use-original-url-when-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://original-url.com",
+                "rawDisplayURL": "https://original-raw-url.com"
+              },
+              "id": "19ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-prepend-api_url-when-scheme-and-host-not-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
+                "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
+              },
+              "id": "49ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-html-url-with-line-num-and-log-id-when-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-raw-url-with-query-param-and-log-id-when-raw-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=1"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
+            "path": ["taskTests"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "taskTests": null }
+      }
+    },
+    {
+      "query_file": "patch-duration-query.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "makespan": "3m39s",
+              "timeTaken": null
+            }
+          }
+        }
       }
     }
   ]
