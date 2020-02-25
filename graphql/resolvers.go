@@ -243,7 +243,75 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, taskName *string, variantName *string, statuses []*string) ([]*restModel.APITask, error) {
+	sorter := ""
+	if sortBy != nil {
+		switch *sortBy {
+		case TaskSortCategoryStatus:
+			sorter = task.StatusKey
+			break
+		case TaskSortCategoryName:
+			sorter = task.DisplayNameKey
+			break
+		case TaskSortCategoryBaseStatus:
+			break
+		case TaskSortCategoryVariant:
+			sorter = task.BuildVariantKey
+			break
+		}
+	}
+	sortDir := 1
+	if sortDirection != nil {
+		switch *sortDirection {
+		case SortDirectionDesc:
+			sortDir = -1
+			break
+		}
+	}
+	if *sortDirection == SortDirectionDesc {
+		sortDir = -1
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	statusesParam := []string{}
+	if statuses != nil {
+		for _, status := range statuses {
+			statusesParam = append(statusesParam, *status)
+		}
+	}
+	taskNameParam := ""
+	if taskName != nil {
+		taskNameParam = *taskName
+	}
+	variantNameParam := ""
+	if taskName != nil {
+		variantNameParam = *variantName
+	}
+
+	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskNameParam, variantNameParam, sorter, statusesParam, sortDir, pageParam, limitParam)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	var taskPointers []*restModel.APITask
+	for _, task := range tasks {
+		t := restModel.APITask{}
+		err := t.BuildFromService(task)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		taskPointers = append(taskPointers, &t)
+	}
+	return taskPointers, nil
+}
+
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -252,13 +320,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
-		case TaskSortCategoryStatus:
+		case TestSortCategoryStatus:
 			sortBy = testresult.StatusKey
 			break
-		case TaskSortCategoryDuration:
+		case TestSortCategoryDuration:
 			sortBy = "duration"
 			break
-		case TaskSortCategoryTestName:
+		case TestSortCategoryTestName:
 			sortBy = testresult.TestFileKey
 		}
 	}

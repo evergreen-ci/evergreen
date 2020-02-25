@@ -1,9 +1,18 @@
 type Query {
   userPatches(userId: String!): [Patch!]!
   patch(id: String!): Patch!
-  patchTasks(patchId: String!, sortBy: TaskSortCategory, sortDirection: SortDirection ): [TaskResult!]!
   task(taskId: String!): Task
   projects: Projects!
+  patchTasks(
+    patchId: String!
+    sortBy: TaskSortCategory = NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    taskName: String = ""
+    variantName: String = ""
+    statuses: [String] = []
+  ): [TaskResult!]!
   taskTests(
     taskId: String!
     sortCategory: TestSortCategory = TEST_NAME
