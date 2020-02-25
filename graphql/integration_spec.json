@@ -1,5 +1,23 @@
 {
   "setupData": {
+    "roles": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted_task_access",
+        "scope": "unrestrictedTaskAccess",
+        "permissions": {
+          "project_tasks": 55
+        }
+      }
+    ],
+    "scopes": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted access",
+        "type": "project",
+        "resources": ["curator"]
+      }
+    ],
     "builds": [
       {
         "_id": "some_thang",
@@ -267,7 +285,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "mci",
+        "branch": "curator",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -1714,7 +1732,7 @@
             "finishTime": "2018-01-10T19:01:36-05:00",
             "activatedTime": "2018-01-10T19:01:36-05:00",
             "version": "version",
-            "projectId": "id",
+            "projectId": "mci",
             "revision": "revise",
             "priority": 5,
             "taskGroup": "grp",
@@ -1730,8 +1748,8 @@
             "restarts": 5,
             "execution": 5,
             "order": 5,
-            "requester": "something",
-            "status": "pass",
+            "requester": "merge_test",
+            "status": "started",
             "details": {
               "status": "status",
               "type": "type",
