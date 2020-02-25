@@ -329,10 +329,10 @@ $http.get(templateUrl).success(function(template) {
   }
 
   $scope.comparisonPct = function (compareSample, testName) {
-    let threadLevel = _.max($scope.selectedThreads[testName]);
-    if (threadLevel < 0) { // if the toggle is set to max only
-      threadLevel = _.max($scope.hoverSamples[testName].threadResults, (result) => result.threadLevel).threadLevel
-    }
+    const maxThreadLevel = "MAX";
+    let threadLevel = _.contains($scope.selectedThreads[testName], maxThreadLevel) ?
+      _.max($scope.hoverSamples[testName].threadResults, (result) => result.threadLevel).threadLevel :
+      _.max($scope.selectedThreads[testName]);
     let hoverResults = _.findWhere($scope.hoverSamples[testName].threadResults, {
       threadLevel: threadLevel
     });
