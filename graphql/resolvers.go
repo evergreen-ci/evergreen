@@ -360,12 +360,9 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
-	if err != nil {
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil || t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	authUser := gimlet.GetUser(ctx)
 	if authUser == nil {
@@ -386,12 +383,9 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
-	t, err = task.FindOneId(taskID)
-	if err != nil {
+	t, err = r.sc.FindTaskById(taskID)
+	if err != nil || t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task %s", taskID))
 	}
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)
