@@ -1714,7 +1714,7 @@
             "finishTime": "2018-01-10T19:01:36-05:00",
             "activatedTime": "2018-01-10T19:01:36-05:00",
             "version": "version",
-            "projectId": "mci",
+            "projectId": "id",
             "revision": "revise",
             "priority": 5,
             "taskGroup": "grp",
@@ -1730,8 +1730,8 @@
             "restarts": 5,
             "execution": 5,
             "order": 5,
-            "requester": "merge_test",
-            "status": "started",
+            "requester": "something",
+            "status": "pass",
             "details": {
               "status": "status",
               "type": "type",
@@ -2470,6 +2470,46 @@
               "timeTaken": null
             }
           }
+        }
+      }
+    },
+    {
+      "query_file": "set_priority-success.graphql",
+      "result": {
+        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
+      }
+    },
+    {
+      "query_file": "set_priority-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-no-permission.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "FORBIDDEN" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-has-permission.graphql",
+      "result": {
+        "data": {
+          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
         }
       }
     },
