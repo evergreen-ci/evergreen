@@ -2488,7 +2488,8 @@
         "errors": [
           {
             "message": "unable to find task WRONG-TASK-ID",
-            "path": ["setTaskPriority"]
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
