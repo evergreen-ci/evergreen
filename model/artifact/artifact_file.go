@@ -65,7 +65,7 @@ func StripHiddenFiles(files []File, hasUser bool) []File {
 		switch {
 		case file.Visibility == None:
 			continue
-		case file.Visibility == Private && hasUser == false:
+		case (file.Visibility == Private || file.Visibility == Signed) && hasUser == false:
 			continue
 		default:
 			publicFiles = append(publicFiles, file)
