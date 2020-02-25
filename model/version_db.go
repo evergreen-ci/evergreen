@@ -295,11 +295,12 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func VersionUpdateConfig(id, config string, configUpdateNumber int, shouldEqual bool) error {
-	query := bson.M{VersionIdKey: id}
-	if shouldEqual {
-		query[VersionConfigNumberKey] = configUpdateNumber
+func VersionUpdateConfig(id, config string, configUpdateNumber int) error {
+	query := bson.M{
+		VersionIdKey:           id,
+		VersionConfigNumberKey: configUpdateNumber,
 	}
+
 	update := bson.M{
 		"$set": bson.M{
 			VersionConfigKey:       config,

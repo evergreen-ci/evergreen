@@ -89,12 +89,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		ec2Settings.KeyName = k
 	}
 
-	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
-	if err != nil {
-		return nil, errors.Wrap(err, "error making block device mappings")
-	}
-
-	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings, blockDevices); err != nil {
+	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings); err != nil {
 		msg := "error spawning spot host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
@@ -286,36 +281,8 @@ func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) 
 	return false, nil
 }
 
-// OnUp sets tags on the instance created by Fleet
+// OnUp is a noop for Fleet
 func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	resources := []string{h.Id}
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	resources = append(resources, volumeIDs...)
-
-	if err := m.client.SetTags(ctx, resources, h); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-	}
-	grip.Debug(message.Fields{
-		"message":       "attached tags for host",
-		"host_id":       h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
-
 	return nil
 }
 
@@ -376,7 +343,7 @@ func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, sta
 	return total, nil
 }
 
-func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) error {
+func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	// Cleanup
 	var templateID *string
 	defer func() {
@@ -393,7 +360,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 
 	var err error
 	var templateVersion *int64
-	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings, blockDevices)
+	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings)
 	if err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
 	}
@@ -407,12 +374,18 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	return nil
 }
 
-func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) (*string, *int64, error) {
+func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (*string, *int64, error) {
+	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error making block device mappings")
+	}
+
 	launchTemplate := &ec2.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		KeyName:             aws.String(ec2Settings.KeyName),
 		InstanceType:        aws.String(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
+		TagSpecifications:   makeTagTemplate(makeTags(h)),
 	}
 
 	if ec2Settings.IsVpc {
