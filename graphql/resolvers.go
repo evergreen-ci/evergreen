@@ -295,18 +295,18 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		variantNameParam = *variantName
 	}
 
-	patch, err := r.sc.FindPatchById(patchID)
+	// for getting base statuses of tasks
+	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting patch: ", err.Error()))
 	}
-	if patch == nil {
+	if version == nil {
 		return nil, ResourceNotFound.Send(ctx, "Patch is nil")
 	}
-	baseBuilds, err := build.Find(build.ByVersion(*patch.Version))
+	baseBuilds, err := build.Find(build.ByVersion(version.Id))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting base builds: ", err.Error()))
 	}
-
 	baseTaskStatuses := map[string]string{}
 	for _, build := range baseBuilds {
 		for _, task := range build.Tasks {
