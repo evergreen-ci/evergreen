@@ -71,7 +71,6 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(true, ec2Settings.IsVpc)
 
 	// test roundtripping
-	assert.NoError(h.Insert())
 	h, err = host.FindOneByIdOrTag(h.Id)
 	assert.NoError(err)
 	require.NotNil(h)
@@ -139,7 +138,6 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 
-	assert.NoError(h.Insert())
 	h, err = host.FindOneByIdOrTag(h.Id)
 	assert.NoError(err)
 	require.NotNil(h)
@@ -284,18 +282,15 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
-	hosts, err := host.Find(db.Q{})
-	assert.NoError(err)
-	require.Len(hosts, 1)
 
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
 	assert.NoError(evergreen.UpdateConfig(&settings))
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
-	hosts, err = host.Find(db.Q{})
+	hosts, err := host.Find(db.Q{})
 	assert.NoError(err)
-	require.Len(hosts, 2)
+	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
 }
 
@@ -346,7 +341,6 @@ func TestGetDockerLogs(t *testing.T) {
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
-	require.NoError(h.Insert())
 
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
@@ -451,7 +445,6 @@ func TestGetDockerStatus(t *testing.T) {
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
-	require.NoError(h.Insert())
 
 	url := fmt.Sprintf("/hosts/%s/logs/status", h.Id)
 	options := map[string]string{"host_id": h.Id}
