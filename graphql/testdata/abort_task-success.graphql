@@ -1,0 +1,5 @@
+mutation {
+  abortTask(taskId: "wuzzup-activated") {
+    status
+  }
+}
