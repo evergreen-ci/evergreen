@@ -379,7 +379,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -389,7 +389,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id: %s: %s", t.Project, err.Error()))
 	}
 	if err := model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
@@ -402,7 +402,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	}
 	t, err = r.sc.FindTaskById(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -410,11 +410,11 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(t)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
 	}
 	err = apiTask.BuildFromService(r.sc.GetURL())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
 	}
 
 	return &apiTask, nil

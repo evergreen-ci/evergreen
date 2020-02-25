@@ -2516,7 +2516,7 @@
       "result": {
         "errors": [
           {
-            "message": "404 (Not Found): task with id not-for-real-task-id not found",
+            "message": "error finding task by id not-for-real-task-id: 404 (Not Found): task with id not-for-real-task-id not found",
             "path": ["abortTask"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
