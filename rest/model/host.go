@@ -27,16 +27,16 @@ type APIHost struct {
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
 type HostRequestOptions struct {
-	DistroID       string     `json:"distro"`
-	TaskID         string     `json:"task"`
-	Region         string     `json:"region"`
-	KeyName        string     `json:"keyname"`
-	UserData       string     `json:"userdata"`
-	InstanceTags   []host.Tag `json:"instance_tags"`
-	InstanceType   string     `json:"instance_type"`
-	NoExpiration   bool       `json:"no_expiration"`
-	AttachVolume   bool       `json:"attach_volume"`
-	HomeVolumeSize int        `json:"home_volume_size"`
+	DistroID             string     `json:"distro"`
+	TaskID               string     `json:"task"`
+	Region               string     `json:"region"`
+	KeyName              string     `json:"keyname"`
+	UserData             string     `json:"userdata"`
+	InstanceTags         []host.Tag `json:"instance_tags"`
+	InstanceType         string     `json:"instance_type"`
+	NoExpiration         bool       `json:"no_expiration"`
+	IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+	HomeVolumeSize       int        `json:"home_volume_size"`
 }
 
 type DistroInfo struct {

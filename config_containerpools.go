@@ -17,6 +17,8 @@ type ContainerPool struct {
 	MaxContainers int `bson:"max_containers" json:"max_containers" yaml:"max_containers"`
 	// Port number to start at for SSH connections
 	Port uint16 `bson:"port" json:"port" yaml:"port"`
+	// # of images that can be on a single host, defaults to 3 if not set
+	MaxImages int
 }
 
 type ContainerPoolsConfig struct {

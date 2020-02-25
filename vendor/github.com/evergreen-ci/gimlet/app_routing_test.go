@@ -54,6 +54,12 @@ func (s *RoutingSuite) TestPutMethod() {
 	s.Equal(r.methods[0].String(), "PUT")
 }
 
+func (s *RoutingSuite) TestAddPrefixRoute() {
+	r := s.app.AddPrefixRoute("/work").Get()
+	s.Len(s.app.routes, 1)
+	s.True(r.isPrefix)
+}
+
 func (s *RoutingSuite) TestPrefixMethod() {
 	r := s.app.AddRoute("/work").Prefix("foo")
 	s.Len(s.app.routes, 1)

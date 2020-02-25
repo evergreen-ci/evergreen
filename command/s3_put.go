@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -136,6 +137,9 @@ func (s3pc *s3put) validate() error {
 	}
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
+	}
+	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
+		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
 	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
@@ -375,10 +379,12 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.isMulti() || displayName == "" {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
-		var key, secret string
-		if s3pc.Visibility == "signed" {
+		var key, secret, bucket, fileKey string
+		if s3pc.Visibility == artifact.Signed {
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
+			bucket = s3pc.Bucket
+			fileKey = remoteFileName
 		}
 
 		files = append(files, &artifact.File{
@@ -387,6 +393,8 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			Visibility: s3pc.Visibility,
 			AwsKey:     key,
 			AwsSecret:  secret,
+			Bucket:     bucket,
+			FileKey:    fileKey,
 		})
 	}
 

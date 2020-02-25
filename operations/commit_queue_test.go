@@ -40,7 +40,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 	testutil.DisablePermissionsForTests()
 
 	var err error
-	s.server, err = service.CreateTestServer(testConfig, nil)
+	s.server, err = service.CreateTestServer(testConfig, nil, false)
 	s.Require().NoError(err)
 
 	settings := ClientSettings{

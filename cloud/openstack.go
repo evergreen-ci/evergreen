@@ -24,10 +24,10 @@ type openStackManager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type openStackSettings struct {
-	ImageName     string `mapstructure:"image_name"`
-	FlavorName    string `mapstructure:"flavor_name"`
-	KeyName       string `mapstructure:"key_name"`
-	SecurityGroup string `mapstructure:"security_group"`
+	ImageName     string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	FlavorName    string `mapstructure:"flavor_name" json:"flavor_name" bson:"flavor_name"`
+	KeyName       string `mapstructure:"key_name" json:"key_name" bson:"key_name"`
+	SecurityGroup string `mapstructure:"security_group" json:"security_group" bson:"security_group"`
 }
 
 // Validate verifies a set of ProviderSettings.

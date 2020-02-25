@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const defaultMaxImagesPerParent = 3
+
 // CreateOptions is a struct of options that are commonly passed around when creating a
 // new cloud host.
 type CreateOptions struct {
@@ -26,7 +28,7 @@ type CreateOptions struct {
 	InstanceTags          []Tag
 	InstanceType          string
 	NoExpiration          bool
-	AttachVolume          bool
+	IsVirtualWorkstation  bool
 	HomeVolumeSize        int
 }
 
@@ -63,7 +65,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		DockerOptions:         options.DockerOptions,
 		InstanceTags:          options.InstanceTags,
 		InstanceType:          options.InstanceType,
-		AttachVolume:          options.AttachVolume,
+		IsVirtualWorkstation:  options.IsVirtualWorkstation,
 		HomeVolumeSize:        options.HomeVolumeSize,
 	}
 
@@ -76,61 +78,28 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 	return intentHost
 }
 
-// GenerateContainerHostIntents generates container intent documents by going
-// through available parents and packing on the parents with longest expected
-// finish time
-func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, hostOptions CreateOptions) ([]Host, error) {
-	parents, err := GetNumContainersOnParents(d)
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
-	}
-	image, err := d.GetImageID()
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting image for distro %s", d.Id)
-	}
-	parents = partitionParents(parents, image)
-	containerHostIntents := make([]Host, 0)
-	for _, parent := range parents {
-		// find out how many more containers this parent can fit
-		containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - parent.NumContainers
-		containersToCreate := containerSpace
-		// only create containers as many as we need
-		if newContainersNeeded < containerSpace {
-			containersToCreate = newContainersNeeded
-		}
-		for i := 0; i < containersToCreate; i++ {
-			hostOptions.ParentID = parent.ParentHost.Id
-			containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
-		}
-		newContainersNeeded -= containersToCreate
-		if newContainersNeeded == 0 {
-			return containerHostIntents, nil
-		}
-	}
-	return containerHostIntents, nil
-}
-
-func partitionParents(parents []ContainersOnParents, image string) []ContainersOnParents {
+// partitionParents will split parent hosts based on those that already have/will have the image for this distro
+// it does not handle scenarios where the image for a distro has changed recently or multiple app servers calling this
+// and racing each other, on the assumption that having to download a small number of extra images is not a big deal
+func partitionParents(parents []ContainersOnParents, distro string, maxImages int) ([]ContainersOnParents, []ContainersOnParents) {
 	matched := []ContainersOnParents{}
 	notMatched := []ContainersOnParents{}
-	for _, h := range parents {
-		if h.ParentHost.ContainerImages[image] {
-			matched = append(matched, h)
-		} else {
-			notMatched = append(notMatched, h)
+parentLoop:
+	for _, parent := range parents {
+		currentImages := map[string]bool{}
+		for _, c := range parent.Containers {
+			currentImages[c.Distro.Id] = true
+			if c.Distro.Id == distro {
+				matched = append(matched, parent)
+				continue parentLoop
+			}
+		}
+		// only return parent hosts that would be below the max if they downloaded another image
+		if len(currentImages) < maxImages {
+			notMatched = append(notMatched, parent)
 		}
 	}
-	return append(matched, notMatched...)
-}
-
-// createParents creates host intent documents for each parent
-func createParents(parent distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []Host {
-	hostsSpawned := make([]Host, numNewParents)
-
-	for idx := range hostsSpawned {
-		hostsSpawned[idx] = *NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentCreateOptions(pool))
-	}
-	return hostsSpawned
+	return matched, notMatched
 }
 
 // generateParentCreateOptions generates host options for a parent host
@@ -143,24 +112,68 @@ func generateParentCreateOptions(pool *evergreen.ContainerPool) CreateOptions {
 	return options
 }
 
-func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) ([]Host, int, error) {
-	// find all running parents with the specified container pool
-	numNewParentsToSpawn, newHostsNeeded, err := getNumNewParentsAndHostsToSpawn(pool, newHostsNeeded, ignoreMaxHosts)
+func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, newContainersNeeded int, hostOptions CreateOptions) ([]Host, []Host, error) {
+	// get the parents that are up and split into ones that already have a contaienr from this distro
+	currentHosts, err := GetContainersOnParents(d)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "error getting number of parents to spawn")
+		return nil, nil, errors.Wrap(err, "Could not find number of containers on parents")
 	}
-	if numNewParentsToSpawn <= 0 {
-		return nil, newHostsNeeded, nil
+	maxImages := defaultMaxImagesPerParent
+	if pool != nil && pool.MaxImages > 0 {
+		maxImages = pool.MaxImages
+	}
+	matched, notMatched := partitionParents(currentHosts, d.Id, maxImages)
+	existingHosts := append(matched, notMatched...)
+
+	// add containers to existing parents
+	containersToInsert := []Host{}
+	parentsToInsert := []Host{}
+	containersLeftToCreate := newContainersNeeded
+	for _, parent := range existingHosts {
+		intents := makeContainerIntentsForParent(parent, containersLeftToCreate, d, hostOptions)
+		containersToInsert = append(containersToInsert, intents...)
+		containersLeftToCreate -= len(intents)
+		if containersLeftToCreate <= 0 {
+			return containersToInsert, parentsToInsert, nil
+		}
 	}
 
-	// get parent distro from pool
-	parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
+	// create new parents and add containers to them
+	numNewParents, _, err := getNumNewParentsAndHostsToSpawn(pool, containersLeftToCreate, false)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "error find parent distro")
+		return nil, nil, err
 	}
-	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
-	if err = InsertMany(newParentHosts); err != nil {
-		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
+	parentDistro, err := distro.FindByID(pool.Distro)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding distro")
 	}
-	return newParentHosts, newHostsNeeded, nil
+	if parentDistro == nil {
+		return nil, nil, errors.Errorf("distro %s not found", pool.Distro)
+	}
+	for i := 0; i < numNewParents; i++ {
+		newParent := NewIntent(*parentDistro, parentDistro.GenerateName(), parentDistro.Provider, generateParentCreateOptions(pool))
+		parentsToInsert = append(parentsToInsert, *newParent)
+		parentInfo := ContainersOnParents{ParentHost: *newParent}
+		intents := makeContainerIntentsForParent(parentInfo, containersLeftToCreate, d, hostOptions)
+		containersToInsert = append(containersToInsert, intents...)
+		containersLeftToCreate -= len(intents)
+	}
+
+	return containersToInsert, parentsToInsert, nil
+}
+
+func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeeded int, d distro.Distro, hostOptions CreateOptions) []Host {
+	// find out how many more containers this parent can fit
+	containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - len(parent.Containers)
+	containersToCreate := containerSpace
+	// only create containers as many as we need
+	if newContainersNeeded < containerSpace {
+		containersToCreate = newContainersNeeded
+	}
+	containerHostIntents := []Host{}
+	for i := 0; i < containersToCreate; i++ {
+		hostOptions.ParentID = parent.ParentHost.Id
+		containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
+	}
+	return containerHostIntents
 }

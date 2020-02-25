@@ -87,14 +87,14 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
 		"SpawnFleetSpotHost": func(*testing.T) {
-			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}, []*ec2.LaunchTemplateBlockDeviceMappingRequest{}))
+			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Equal(t, "templateID", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateId)
 		},
 		"UploadLaunchTemplate": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{AMI: "ami"}
-			templateID, templateVersion, err := m.uploadLaunchTemplate(context.Background(), &host.Host{}, ec2Settings, []*ec2.LaunchTemplateBlockDeviceMappingRequest{})
+			templateID, templateVersion, err := m.uploadLaunchTemplate(context.Background(), &host.Host{}, ec2Settings)
 			assert.NoError(t, err)
 			assert.Equal(t, "templateID", *templateID)
 			assert.Equal(t, int64(1), *templateVersion)

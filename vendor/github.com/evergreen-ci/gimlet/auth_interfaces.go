@@ -128,6 +128,9 @@ type RoleManager interface {
 
 	// Clear deletes all roles and scopes. This should only be used in tests
 	Clear() error
+
+	// IsValidPermissions checks if the passed permissions are registered
+	IsValidPermissions(Permissions) error
 }
 
 func HasPermission(rm RoleManager, opts PermissionOpts, roles []Role) bool {

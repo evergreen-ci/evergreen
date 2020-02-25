@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -237,4 +238,35 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
+}
+
+func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
+	hostID := gimlet.GetVars(r)["host_id"]
+	h, err := uis.getHostFromCache(hostID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get host '%s'", hostID)
+	}
+	if h == nil {
+		return nil, errors.Wrapf(err, "host '%s' does not exist", hostID)
+	}
+
+	return []string{fmt.Sprintf("%s:%d", h.dnsName, evergreen.VSCodePort)}, nil
+}
+
+func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
+	h, ok := uis.hostCache[hostID]
+	if !ok || time.Since(h.inserted) > hostCacheTTL {
+		hDb, err := host.FindOneId(hostID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get host id '%s'", hostID)
+		}
+		if hDb == nil {
+			return nil, nil
+		}
+
+		h = hostCacheItem{dnsName: hDb.Host, owner: hDb.StartedBy, isVirtualWorkstation: hDb.IsVirtualWorkstation, isRunning: hDb.Status == evergreen.HostRunning, inserted: time.Now()}
+		uis.hostCache[hostID] = h
+	}
+
+	return &h, nil
 }

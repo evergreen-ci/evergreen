@@ -3,10 +3,12 @@ package artifact
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
 const Collection = "artifact_files"
+const PresignExpireTime = 24 * time.Hour
 
 const (
 	// strings for setting visibility
@@ -50,9 +52,13 @@ type File struct {
 	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
 	//AwsSercret is the secret with which the file was uploaded to s3
 	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	//Bucket is the aws bucket in which the file is stored
+	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
+	//FileKey is the path to the file in the bucket
+	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 }
 
-// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
+// StripHiddenFiles is a helper for only showing users the files they are allowed to see.
 func StripHiddenFiles(files []File, hasUser bool) []File {
 	publicFiles := []File{}
 	for _, file := range files {
@@ -66,6 +72,12 @@ func StripHiddenFiles(files []File, hasUser bool) []File {
 		}
 	}
 	return publicFiles
+}
+
+//ContainsSigningParams returns true if all the params needed for
+//presigning a url are present
+func (f *File) ContainsSigningParams() bool {
+	return !(f.AwsSecret == "" || f.AwsKey == "" || f.Bucket == "" || f.FileKey == "")
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
@@ -88,6 +100,24 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 	}
 	files := []File{}
 	for _, artifact := range artifacts {
+		for i := range artifact.Files {
+			if artifact.Files[i].Visibility == Signed {
+				if !artifact.Files[i].ContainsSigningParams() {
+					return nil, errors.Errorf("error presigning the url for %s, awsSecret, awsKey, bucket, or filekey missing", artifact.Files[i].Name)
+				}
+				requestParams := thirdparty.RequestParams{
+					Bucket:    artifact.Files[i].Bucket,
+					FileKey:   artifact.Files[i].FileKey,
+					AwsKey:    artifact.Files[i].AwsKey,
+					AwsSecret: artifact.Files[i].AwsSecret,
+				}
+				urlStr, err := thirdparty.PreSign(requestParams)
+				if err != nil {
+					return nil, errors.Wrap(err, "problem presigning url")
+				}
+				artifact.Files[i].Link = urlStr
+			}
+		}
 		files = append(files, artifact.Files...)
 	}
 	return files, nil

@@ -523,3 +523,16 @@ func (s *RoleManagerSuite) TestFindRolesWithResources() {
 	s.NoError(err)
 	s.Len(roles, 0)
 }
+
+func (s *RoleManagerSuite) TestValidPermissions() {
+	permissions := gimlet.Permissions{
+		"edit":          10,
+		"notvalid":      20,
+		"stillnotvalid": 30,
+	}
+	err := s.m.IsValidPermissions(permissions)
+	s.Error(err)
+	s.Contains(err.Error(), "'notvalid' is not a valid permission")
+	s.Contains(err.Error(), "'stillnotvalid' is not a valid permission")
+	s.NotContains(err.Error(), "edit")
+}
