@@ -1850,6 +1850,41 @@ buildvariants:
 	assert.Len(syntaxErrs, 0)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
+	strictErrs := CheckYamlStrict([]byte(exampleYml))
+	assert.Len(strictErrs, 0)
+}
+
+func TestYamlStrict(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: task1
+  commands:
+  - command: shell.exec
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  not_a_field: true
+  tasks:
+  - name: task1
+`
+	proj := model.Project{}
+	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.NotNil(pp)
+	assert.NoError(err)
+	syntaxErrs := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 0)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.Len(semanticErrs, 0)
+	strictErrs := CheckYamlStrict([]byte(exampleYml))
+	assert.Len(strictErrs, 1)
+	assert.Contains(strictErrs[0].Message, "field not_a_field not found")
+	assert.Equal(strictErrs[0].Level, Warning)
 }
 
 func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
@@ -1894,6 +1929,8 @@ buildvariants:
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
+	strictErrs := CheckYamlStrict([]byte(exampleYml))
+	assert.Len(strictErrs, 0)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
@@ -1941,6 +1978,8 @@ buildvariants:
 		syntaxErrs[0].Message)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
+	strictErrs := CheckYamlStrict([]byte(exampleYml))
+	assert.Len(strictErrs, 0)
 }
 
 func TestValidateCreateHosts(t *testing.T) {
