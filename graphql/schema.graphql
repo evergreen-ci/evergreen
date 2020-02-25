@@ -1,12 +1,12 @@
 type Query {
   userPatches(userId: String!): [Patch!]!
   patch(id: String!): Patch!
-  patchTasks(patchId: String!): [TaskResult!]!
+  patchTasks(patchId: String!, sortBy: TaskSortCategory, sortDirection: SortDirection ): [TaskResult!]!
   task(taskId: String!): Task
   projects: Projects!
   taskTests(
     taskId: String!
-    sortCategory: TaskSortCategory = TEST_NAME
+    sortCategory: TestSortCategory = TEST_NAME
     sortDirection: SortDirection = ASC
     page: Int = 0
     limit: Int = 0
@@ -25,6 +25,13 @@ type Mutation {
 }
 
 enum TaskSortCategory {
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
+}
+
+enum TestSortCategory {
   STATUS
   DURATION
   TEST_NAME
@@ -64,7 +71,7 @@ type TaskResult {
   version: String!
   status: String!
   baesStatus: String!
-  variant: String!
+  buildVariant: String!
 }
 
 type PatchDuration {
