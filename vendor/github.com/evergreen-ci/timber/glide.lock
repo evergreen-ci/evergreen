@@ -7,6 +7,8 @@ imports:
   version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+- name: github.com/evergreen-ci/utility
+  version: 29e693dadcd3a5df21206a8fbdecf061b726d008
 
 - name: github.com/pkg/errors
   version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
@@ -14,6 +16,10 @@ imports:
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 - name: gopkg.in/yaml.v2
   version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
+- name: github.com/PuerkitoBio/rehttp
+  version: 11cf6ea5d3e9afda34846e1db511aa218049471c
+- name: github.com/peterhellberg/link
+  version: 7d8125c3085c14bd320d898c73b78ef2c5320f31
 
 # grpc and dependencies
 - name: google.golang.org/grpc
