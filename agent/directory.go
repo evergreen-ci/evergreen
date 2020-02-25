@@ -73,13 +73,13 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 
 // removeAll is the same as os.RemoveAll, but recursively changes permissions for subdirectories and contents before removing
 func (a *Agent) removeAll(dir string) error {
-	filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+	grip.Error(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 		grip.Error(os.Chmod(path, 0777))
 		return nil
-	})
+	}))
 	return os.RemoveAll(dir)
 }
 
