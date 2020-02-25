@@ -66,6 +66,30 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	return job
 }
 
+func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
+	//unstuck the queue if the patch is done.
+	nextItem := cq.Next()
+
+	done, err := IsPatchDone(nextItem.Issue)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
+		return
+	}
+	if done {
+		j.dequeue(cq, nextItem)
+	}
+	//log that the queue needed to be unstuck
+	grip.Info(message.Fields{
+		"source":             "commit queue",
+		"job_id":             j.ID(),
+		"item_id":            nextItem.Issue,
+		"project_id":         cq.ProjectID,
+		"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+		"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
+	})
+	return
+}
+
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
@@ -114,13 +138,17 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	if cq.Processing {
+		processingSeconds := time.Since(cq.ProcessingUpdatedTime).Seconds()
 		grip.Info(message.Fields{
 			"source":             "commit queue",
 			"job_id":             j.ID(),
 			"item_id":            nextItem.Issue,
 			"project_id":         cq.ProjectID,
-			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"processing_seconds": processingSeconds,
 		})
+		if processingSeconds > 3600 {
+			j.TryUnstick(cq)
+		}
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
@@ -159,6 +187,22 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"item":    nextItem,
 		"message": "finished processing item",
 	})
+}
+
+func IsPatchDone(patch_id string) (bool, error) {
+	patch, err := patch.FindOne(patch.ById(patch.NewId(patch_id)))
+	if err != nil {
+		return false, err
+	}
+	finishTime := patch.FinishTime
+
+	var isDone bool
+	if finishTime.IsZero() {
+		isDone = false
+	} else {
+		isDone = true
+	}
+	return isDone, nil
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
