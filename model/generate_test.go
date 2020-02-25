@@ -607,10 +607,16 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 
+	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(5, v.ConfigUpdateNumber)
+	s.Equal(4, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(5, pp.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}
@@ -680,7 +686,13 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(1, v.ConfigUpdateNumber)
+	s.Equal(0, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(1, pp.ConfigUpdateNumber)
+
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
@@ -806,7 +818,12 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(1, v.ConfigUpdateNumber)
+	s.Equal(0, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(1, pp.ConfigUpdateNumber)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
@@ -833,6 +850,7 @@ func TestUpdateParserProject(t *testing.T) {
 		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 1
 			pp.ConfigUpdateNumber = 5
+			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
 		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
@@ -864,12 +882,7 @@ func TestUpdateParserProject(t *testing.T) {
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			}
-			if testName == "ParserProjectMostRecent" {
-				assert.Equal(t, 1, v.ConfigUpdateNumber)
-				assert.Equal(t, 6, pp.ConfigUpdateNumber)
-				return
-			}
-			assert.Equal(t, 6, v.ConfigUpdateNumber)
+			assert.NotEqual(t, 6, v.ConfigUpdateNumber)
 			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
 	}

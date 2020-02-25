@@ -832,7 +832,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 		if err != nil {
 			return errors.Wrap(err, "error starting transaction")
 		}
-		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
+		db := evergreen.GetEnvironment().DB()
+		_, err = db.Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
@@ -844,7 +845,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
-		_, err = evergreen.GetEnvironment().DB().Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
+		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
@@ -856,7 +857,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata VersionM
 			}
 			return errors.Wrapf(err, "error inserting parser project '%s'", v.Id)
 		}
-		_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
+		_, err = db.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",

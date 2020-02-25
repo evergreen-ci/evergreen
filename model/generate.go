@@ -167,23 +167,16 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	return nil
 }
 
-// if the parser project is more recent, update contingent on that and force update the version (and vice versa)
+// update the parser project using the newest config number (if using legacy version config, this comes from version)
 func updateParserProject(v *Version, pp *ParserProject) error {
-	if pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-		curNumber := pp.ConfigUpdateNumber
-		if err := pp.UpsertWithConfigNumber(curNumber, true); err != nil {
-			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
-		}
-		return nil
+	updateNum := pp.ConfigUpdateNumber + 1
+	// legacy: most likely a version for which no parser project exists
+	if pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
+		updateNum = v.ConfigUpdateNumber + 1
 	}
 
-	// legacy
-	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber); err != nil {
-		return errors.Wrapf(err, "error updating version '%s'", v.Id)
-	}
-
-	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber, false); err != nil {
-		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
+	if err := pp.UpsertWithConfigNumber(updateNum); err != nil {
+		return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }

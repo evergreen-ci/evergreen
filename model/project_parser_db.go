@@ -136,28 +136,15 @@ func (pp *ParserProject) TryUpsert() error {
 // UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
 // existing config number is less than or equal to the new config number.
 // If shouldEqual, only update if the config update number matches.
-func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error {
+func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
 	}
-	pp.ConfigUpdateNumber = num + 1
-	q := bson.M{ParserProjectIdKey: pp.Id}
-	if shouldEqual { // guarantee that the config number hasn't changed
-		q = checkConfigNumberQuery(pp.Id, num)
-	}
-
-	err := ParserProjectUpsertOne(q, setAllFieldsUpdate(pp))
-	// If shouldEqual, then we expose all errors to check for a race.
-	// Otherwise, only return errors database errors.
-	if shouldEqual || !db.IsDuplicateKey(err) {
+	expectedNum := pp.ConfigUpdateNumber
+	pp.ConfigUpdateNumber = updateNum
+	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), setAllFieldsUpdate(pp)); err != nil {
+		// expose all errors to check duplicate key errors for a race
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
-	// log this error but don't return it
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message":                      "parser project not upserted",
-		"operation":                    "UpsertWithConfigNumber",
-		"version":                      pp.Id,
-		"attempted_to_update_with_num": num + 1,
-	}))
 	return nil
 }
