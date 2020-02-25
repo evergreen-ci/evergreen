@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
@@ -168,6 +170,19 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds)...)
+	return validationErrs
+}
+
+func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	// check strict yaml, i.e warn if there are missing fields
+	strictProject := &model.ParserProject{}
+	if err := yaml.UnmarshalStrict(yamlBytes, strictProject); err != nil {
+		validationErrs = append(validationErrs, ValidationError{
+			Level:   Warning,
+			Message: err.Error(),
+		})
+	}
 	return validationErrs
 }
 
