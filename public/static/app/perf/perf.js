@@ -330,6 +330,7 @@ $http.get(templateUrl).success(function(template) {
 
   $scope.comparisonPct = function (compareSample, testName) {
     const maxThreadLevel = "MAX";
+    // if only showing max thread level, set it to "MAX", otherwise find the highest value among the thread levels for this test
     let threadLevel = _.contains($scope.selectedThreads[testName], maxThreadLevel) ?
       _.max($scope.hoverSamples[testName].threadResults, (result) => result.threadLevel).threadLevel :
       _.max($scope.selectedThreads[testName]);
