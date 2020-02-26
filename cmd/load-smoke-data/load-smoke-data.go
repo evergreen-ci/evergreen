@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -63,7 +62,6 @@ func main() {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
 
-	var doc bson.D
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range files {
 		file, err = os.Open(fn)
@@ -79,7 +77,7 @@ func main() {
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
-			doc = bson.D{}
+			doc := bson.D{}
 			count++
 			if err = bson.UnmarshalExtJSON(scanner.Bytes(), false, &doc); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
