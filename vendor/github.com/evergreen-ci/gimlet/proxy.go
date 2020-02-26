@@ -71,7 +71,7 @@ func (opts *ProxyOptions) getPath(r *http.Request) string {
 		regexString, err := route.GetPathRegexp()
 		if err != nil {
 			grip.Error(message.Fields{
-				"message": "can't",
+				"message": "can't get route regexp",
 				"route":   route,
 				"URL":     path,
 			})
