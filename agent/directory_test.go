@@ -29,6 +29,8 @@ func TestRemoveTaskDirectory(t *testing.T) {
 	require.NoError(err)
 	err = os.MkdirAll(filepath.Join(tmpDir, "foo", "bar", a, b), 0755)
 	require.NoError(err)
+	// verify files with read-only permissions get deleted
+	require.NoError(ioutil.WriteFile(filepath.Join(tmpDir, "read.txt"), []byte("haha can't delete me!"), 0444))
 
 	// remove the task directory
 	agent := Agent{}

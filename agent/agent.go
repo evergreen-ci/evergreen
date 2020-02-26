@@ -341,7 +341,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	if err != nil {
 		grip.Errorf("Error fetching task configuration: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 	taskConfig.Redacted = tc.expVars.PrivateVars
 	tc.setTaskConfig(taskConfig)
@@ -349,7 +349,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	if err = a.startLogging(ctx, tc); err != nil {
 		grip.Errorf("Error setting up logger producer: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 
 	grip.Info(message.Fields{

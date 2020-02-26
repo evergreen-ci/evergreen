@@ -63,12 +63,24 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Critical(errors.Wrap(err, "Problem getting absolute directory for task directory"))
 		return
 	}
-	err = os.RemoveAll(abs)
+	err = a.removeAll(abs)
 	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":   "Successfully deleted directory for completed task",
 		"directory": tc.taskDirectory,
 	})
+}
+
+// removeAll is the same as os.RemoveAll, but recursively changes permissions for subdirectories and contents before removing
+func (a *Agent) removeAll(dir string) error {
+	grip.Error(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		grip.Error(os.Chmod(path, 0777))
+		return nil
+	}))
+	return os.RemoveAll(dir)
 }
 
 // tryCleanupDirectory is a very conservative function that attempts
