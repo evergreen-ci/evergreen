@@ -65,8 +65,9 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('auth')">Global Config</li>
 						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
 						<li class="link" ng-click="scrollTo('okta')">Okta</li>
-						<li class="link" ng-click="scrollTo('github')">Github</li>
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
+						<li class="link" ng-click="scrollTo('only_api')">API-Only</li>
+						<li class="link" ng-click="scrollTo('github')">Github</li>
 						<div>External Communication</div>
 						<li class="link" ng-click="scrollTo('jira')">Jira</li>
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
@@ -702,7 +703,7 @@ Admin Settings
 
 						</section>
 
-						<section>
+						<section layout="row" flex>
 							<md-card flex=50 id="auth" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
@@ -728,10 +729,11 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
+
 						</section>
 
-						<section>
-							<md-card flex=50 id="ldap">
+						<section layout="row" flex>
+							<md-card flex=50 id="ldap" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
 										<span>LDAP Authentication</span>
@@ -777,7 +779,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="okta">
+							<md-card flex=50 id="okta" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Okta Authentication</span>
@@ -825,7 +827,7 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-chips md-transform-chip="transformNaiveUser($chip)" ng-model="Settings.auth.naive.users" placeholder="Enter a user in json format">
+									<md-chips md-transform-chip="chipToUserJSON($chip)" ng-model="Settings.auth.naive.users" placeholder="Enter a user in json format">
 										<md-chip-template>
 											username:[[$chip.username]], password:[[$chip.password]], display_name:[[$chip.display_name]],
 											email:[[$chip.email]]
@@ -834,7 +836,29 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="github">
+							<md-card flex=50 id="only_api" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>API-Only Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','only_api')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-chips md-transform-chip="chipToUserJSON($chip)"
+										ng-model="tempOnlyAPIUsers" placeholder="Enter a user in json format (username and key)">
+										<md-chip-template>
+											username:[[$chip.username]], key:[[$chip.key]]
+										</md-chip-template>
+									</md-chips>
+								</md-card-content>
+							</md-card>
+
+						</section>
+
+						<section layout="row" flex>
+							<md-card flex=50 id="github" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Github Authentication</span>
@@ -862,7 +886,6 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
 						</section>
 
 						<section layout="row" flex>
@@ -1537,11 +1560,11 @@ Admin Settings
 							<label class="icon fa fa-warning distro-error" ng-show="tempSSHKeyPairs.length !== 0 && tempSSHKeyPairs.length !== Settings.ssh_key_pairs.length"> SSH key will not be updated until app server is restarted.<br></label>
 
 							<md-card-content>
-								<md-input-container class="control" style="width:45%;">
+								<md-input-container class="control">
 									<label>SSH Key Directory</label>
 									<input type=text ng-model="Settings.ssh_key_directory" placeholder="Path to the directory containing each server's SSH key files"/>
 								</md-input-container>
-								<md-input-container class="control" style="width:45%;">
+								<md-input-container class="control">
 									<label>Authorized Keys File</label>
 									<input type=text ng-model="Settings.authorized_keys_file" placeholder="Path where authorized SSH keys are stored on static hosts"/>
 								</md-input-container>

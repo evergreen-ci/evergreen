@@ -19,9 +19,22 @@ type AuthUser struct {
 	Email       string `bson:"email" json:"email" yaml:"email"`
 }
 
+// OnlyAPIUser configures a special service user with only access to the API via
+// a key.
+type OnlyAPIUser struct {
+	Username string `bson:"username" json:"username" yaml:"username"`
+	Key      string `bson:"key" json:"key" yaml:"key"`
+}
+
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
 	Users []*AuthUser `bson:"users" json:"users" yaml:"users"`
+}
+
+// KeyAuthConfig contains the users that can only authenticate via the API from
+// the settings.
+type OnlyAPIAuthConfig struct {
+	Users []*OnlyAPIUser `bson:"users" json:"users" yaml:"users"`
 }
 
 // LDAPConfig contains settings for interacting with an LDAP server.
@@ -54,14 +67,15 @@ type GithubAuthConfig struct {
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
 }
 
-// AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
+// AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
-	LDAP                    *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
-	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
-	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
-	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
-	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
-	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
+	LDAP                    *LDAPConfig        `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Okta                    *OktaConfig        `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	Naive                   *NaiveAuthConfig   `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	OnlyAPI                 *OnlyAPIAuthConfig `bson:"only_api,omitempty" json:"only_api" yaml:"only_api"`
+	Github                  *GithubAuthConfig  `bson:"github,omitempty" json:"github" yaml:"github"`
+	PreferredType           string             `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
+	BackgroundReauthMinutes int                `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
@@ -97,6 +111,7 @@ func (c *AuthConfig) Set() error {
 			AuthLDAPKey:                    c.LDAP,
 			AuthOktaKey:                    c.Okta,
 			AuthNaiveKey:                   c.Naive,
+			AuthOnlyAPIKey:                 c.OnlyAPI,
 			AuthGithubKey:                  c.Github,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
@@ -113,18 +128,32 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthOktaKey,
 		AuthNaiveKey,
 		AuthGithubKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
-	if c.LDAP == nil && c.Naive == nil && c.Github == nil && c.Okta == nil {
+	if c.LDAP == nil && c.Naive == nil && c.OnlyAPI == nil && c.Github == nil && c.Okta == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
-	if c.Naive != nil {
+
+	checkDuplicateUsers := func(usernames []string) error {
 		used := map[string]bool{}
-		for _, x := range c.Naive.Users {
-			if used[x.Username] {
-				catcher.Add(fmt.Errorf("Duplicate user %s in list", x.Username))
-			}
-			used[x.Username] = true
+		dupCatcher := grip.NewBasicCatcher()
+		for _, name := range usernames {
+			dupCatcher.AddWhen(used[name], fmt.Errorf("duplicate user '%s' in list", name))
+			used[name] = true
+		}
+		return dupCatcher.Resolve()
+	}
+	var usernames []string
+	if c.Naive != nil {
+		for _, u := range c.Naive.Users {
+			usernames = append(usernames, u.Username)
 		}
 	}
+	if c.OnlyAPI != nil {
+		for _, u := range c.OnlyAPI.Users {
+			usernames = append(usernames, u.Username)
+		}
+	}
+	catcher.Wrap(checkDuplicateUsers(usernames), "duplicate users in config")
+
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {
 			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
