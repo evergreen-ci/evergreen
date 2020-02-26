@@ -847,9 +847,9 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-chips md-transform-chip="chipToUserJSON($chip)"
-										ng-model="tempOnlyAPIUsers" placeholder="Enter a user in json format (username and key)">
+										ng-model="tempOnlyAPIUsers" placeholder="Enter a user in json format (specify username, key, and roles)">
 										<md-chip-template>
-											username:[[$chip.username]], key:[[$chip.key]]
+											username:[[$chip.username]], key:[[$chip.key]], roles:[[$chip.roles]]
 										</md-chip-template>
 									</md-chips>
 								</md-card-content>

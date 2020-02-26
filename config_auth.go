@@ -22,8 +22,9 @@ type AuthUser struct {
 // OnlyAPIUser configures a special service user with only access to the API via
 // a key.
 type OnlyAPIUser struct {
-	Username string `bson:"username" json:"username" yaml:"username"`
-	Key      string `bson:"key" json:"key" yaml:"key"`
+	Username string   `bson:"username" json:"username" yaml:"username"`
+	Key      string   `bson:"key" json:"key" yaml:"key"`
+	Roles    []string `bson:"roles" json:"roles" yaml:"roles"`
 }
 
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.

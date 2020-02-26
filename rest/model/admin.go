@@ -749,7 +749,7 @@ func (a *APIOnlyAPIAuthConfig) ToService() (interface{}, error) {
 	for _, u := range a.Users {
 		i, err := u.ToService()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "could not convert user to service model")
 		}
 		user := i.(*evergreen.OnlyAPIUser)
 		config.Users = append(config.Users, user)
@@ -758,8 +758,9 @@ func (a *APIOnlyAPIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIOnlyAPIUser struct {
-	Username *string `json:"username"`
-	Key      *string `json:"key"`
+	Username *string  `json:"username"`
+	Key      *string  `json:"key"`
+	Roles    []string `json:"roles"`
 }
 
 func (a *APIOnlyAPIUser) BuildFromService(h interface{}) error {
@@ -770,6 +771,7 @@ func (a *APIOnlyAPIUser) BuildFromService(h interface{}) error {
 		}
 		a.Username = ToStringPtr(v.Username)
 		a.Key = ToStringPtr(v.Key)
+		a.Roles = v.Roles
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -783,6 +785,7 @@ func (a *APIOnlyAPIUser) ToService() (interface{}, error) {
 	return &evergreen.OnlyAPIUser{
 		Username: FromStringPtr(a.Username),
 		Key:      FromStringPtr(a.Key),
+		Roles:    a.Roles,
 	}, nil
 }
 
