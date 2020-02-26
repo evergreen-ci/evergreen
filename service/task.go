@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/timber/fetcher"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -657,6 +658,8 @@ func (uis *UIServer) getBuildloggerLogs(projCtx projectContext, r *http.Request,
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting auth token cookie for user")
 	}
+
+	logReader, err := fetcher.Logs(fetcher.FetchOptions{})
 
 	url := fmt.Sprintf(
 		"https://%s/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true&print_priority=true",
