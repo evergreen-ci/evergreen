@@ -79,7 +79,6 @@ func main() {
 		for scanner.Scan() {
 			var doc map[string]interface{}
 			count++
-
 			err = bson.UnmarshalExtJSON(scanner.Bytes(), false, &doc)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
