@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -295,28 +294,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		variantNameParam = *variantName
 	}
 
-	// for getting base statuses of tasks
-	version, err := r.sc.FindVersionById(patchID)
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting patch: ", err.Error()))
-	}
-	if version == nil {
-		return nil, ResourceNotFound.Send(ctx, "Patch is nil")
-	}
-	baseBuilds, err := build.Find(build.ByVersion(version.Id))
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting base builds: ", err.Error()))
-	}
-	baseTaskStatuses := map[string]string{}
-	for _, build := range baseBuilds {
-		for _, task := range build.Tasks {
-			baseTaskStatuses[task.Id] = task.Status
-		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
 
 	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskNameParam, variantNameParam, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks: ", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("No tasks found for %s", patchID))
 	}
 	var taskResults []*TaskResult
 	for _, task := range tasks {

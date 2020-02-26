@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -80,4 +81,37 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 func IsURL(str string) bool {
 	u, err := url.ParseRequestURI(str)
 	return err == nil && u.Scheme != "" && u.Host != ""
+}
+
+// GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task.
+// Returns the value in format {[taskId]: baseStatus}
+func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (map[string]string, error) {
+	patch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting patch %s: %s", patchID, err.Error())
+	}
+	if patch == nil {
+		return nil, fmt.Errorf("No patch found for ID %s", patchID)
+	}
+	version, err := r.sc.FindVersionById(*patch.Version)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting version %s: %s", *patch.Version, err.Error())
+	}
+	if version == nil {
+		return nil, fmt.Errorf("No version found for ID %s", *patch.Version)
+	}
+	baseBuilds, err := build.Find(build.ByVersion(version.Id))
+	if err != nil {
+		return nil, fmt.Errorf("Error getting build for version %s: %s", version.Id, err.Error())
+	}
+	if baseBuilds == nil {
+		return nil, fmt.Errorf("No build found for version %s", version.Id)
+	}
+	baseTaskStatuses := map[string]string{}
+	for _, build := range baseBuilds {
+		for _, task := range build.Tasks {
+			baseTaskStatuses[task.Id] = task.Status
+		}
+	}
+	return baseTaskStatuses, nil
 }
