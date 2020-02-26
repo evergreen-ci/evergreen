@@ -37,24 +37,24 @@ describe('AdminSettingsController', function() {
     });
   });
 
-  describe('transformNaiveUser', function () {
+  describe('chipToUserJSON', function () {
     it('returns a chip object for valid json', function() {
       var input = '{"username": "u", "password": "p"}';
-      expect(scope.transformNaiveUser(input)).toEqual(
+      expect(scope.chipToUserJSOn(input)).toEqual(
         {"username": "u", "password": "p"}
       );
     });
 
     it('returns null for invalid json', function() {
       var input = 'blah';
-      expect(scope.transformNaiveUser(input)).toBe(
+      expect(scope.chipToUserJSON(input)).toBe(
         null
       );
     });
 
     it('returns null for missing username', function() {
       var input = '{"password": "p"}';
-      expect(scope.transformNaiveUser(input)).toBe(
+      expect(scope.chipToUserJSON(input)).toBe(
         null
       );
     });
