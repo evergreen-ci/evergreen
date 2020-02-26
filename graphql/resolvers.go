@@ -427,7 +427,8 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id: %s: %s", t.Project, err.Error()))
 	}
-	if err := model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName()); err != nil {
+	err = model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName())
+	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
