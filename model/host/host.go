@@ -989,7 +989,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 
 	selector := bson.M{
 		IdKey:          h.Id,
-		StatusKey:      evergreen.HostRunning,
+		StatusKey:      bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 		RunningTaskKey: bson.M{"$exists": false},
 	}
 
