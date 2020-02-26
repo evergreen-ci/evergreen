@@ -592,7 +592,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				nextModelTask := &model.APITask{}
 				err := nextModelTask.BuildFromService(serviceModel)
 				So(err, ShouldBeNil)
-				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks)
+				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, serviceContext.GetURL())
 				So(err, ShouldBeNil)
 				err = nextModelTask.BuildFromService(serviceContext.GetURL())
 				So(err, ShouldBeNil)

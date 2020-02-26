@@ -77,11 +77,17 @@ type ApiTaskEndDetail struct {
 	TimedOut    bool    `json:"timed_out"`
 }
 
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task) error {
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
+		}
+		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
+			return errors.Wrap(err, "failed to build logs for previous execution")
+		}
+		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
+			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
 		}
 	}
 

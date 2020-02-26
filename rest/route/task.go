@@ -71,15 +71,8 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
+		if err = taskModel.BuildPreviousExecutions(tasks, tgh.sc.GetURL()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-		}
-
-		for i := range taskModel.PreviousExecutions {
-			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err,
-					"failed to fetch artifacts for previous executions"))
-			}
 		}
 	}
 
