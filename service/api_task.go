@@ -110,7 +110,13 @@ func checkHostHealth(h *host.Host) bool {
 		return false
 	}
 
-	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && !util.StringSliceContains(evergreen.DownHostStatus, h.Status) {
+	// User data can start anytime after the instance is created, so the app
+	// server may not have marked it as running yet.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData &&
+		!util.StringSliceContains([]string{
+			evergreen.HostStarting,
+			evergreen.HostProvisioning,
+		}, h.Status) {
 		return false
 	}
 

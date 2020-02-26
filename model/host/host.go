@@ -987,9 +987,15 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		return false, errors.New("task has empty task ID, cannot update")
 	}
 
+	statuses := []string{evergreen.HostRunning}
+	// User data can start anytime after the instance is created, so the app
+	// server may not have marked it as running yet.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+		statuses = append(statuses, evergreen.HostStarting, evergreen.HostProvisioning)
+	}
 	selector := bson.M{
 		IdKey:          h.Id,
-		StatusKey:      bson.M{"$nin": evergreen.DownHostStatus},
+		StatusKey:      bson.M{"$in": statuses},
 		RunningTaskKey: bson.M{"$exists": false},
 	}
 

@@ -716,6 +716,11 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		h2 := Host{
 			Id:     "test2",
 			Status: evergreen.HostProvisioning,
+			Distro: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				},
+			},
 		}
 		So(h.Insert(), ShouldBeNil)
 		So(h2.Insert(), ShouldBeNil)
