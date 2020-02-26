@@ -21,6 +21,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
 }
 
@@ -141,6 +142,7 @@ type Task {
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+  aborted: Boolean
 }
 
 type Projects {

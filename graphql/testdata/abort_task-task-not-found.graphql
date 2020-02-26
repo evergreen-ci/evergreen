@@ -1,0 +1,6 @@
+mutation {
+  abortTask(taskId: "not-for-real-task-id") {
+    activated
+    aborted
+  }
+}
