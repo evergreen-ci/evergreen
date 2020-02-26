@@ -81,7 +81,7 @@ func main() {
 		for scanner.Scan() {
 			doc = bson.D{}
 			count++
-			if err = bson.UnmarshalExtJSON(scanner.Bytes(), true, &doc); err != nil {
+			if err = bson.UnmarshalExtJSON(scanner.Bytes(), false, &doc); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
 				continue
 			}
