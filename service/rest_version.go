@@ -62,6 +62,7 @@ type restVersion struct {
 	RemotePath          string    `json:"remote_path"`
 	Requester           string    `json:"requester"`
 	Config              string    `json:"config,omitempty"`
+	ConfigUpdateNumber  int       `json:"config_number"`
 }
 
 type versionLessInfo struct {
@@ -115,6 +116,7 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.RemotePath = srcVersion.RemotePath
 	destVersion.Requester = srcVersion.Requester
 	destVersion.Config = srcVersion.Config
+	destVersion.ConfigUpdateNumber = srcVersion.ConfigUpdateNumber
 }
 
 // Returns a JSON response of an array with the NumRecentVersions
@@ -271,19 +273,17 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
-	if destVersion.Config == "" {
-		var err error
-		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	var err error
+	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+	}
+	if pp != nil && pp.ConfigUpdateNumber >= destVersion.ConfigUpdateNumber {
+		config, err := yaml.Marshal(pp)
 		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
 		}
-		if pp != nil {
-			config, err := yaml.Marshal(pp)
-			if err != nil {
-				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
-			}
-			destVersion.Config = string(config)
-		}
+		destVersion.Config = string(config)
 	}
 
 	gimlet.WriteJSON(w, destVersion)
@@ -307,7 +307,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
-	if pp != nil {
+	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
 		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
