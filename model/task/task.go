@@ -1990,7 +1990,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 // GetTaskResultsByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTaskResultsByVersion(versionID, taskName, variantName, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
+func GetTaskResultsByVersion(versionID, taskOrVariantName, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
 	tasks := []Task{}
 	match := bson.M{
 		VersionKey: versionID,
@@ -2001,14 +2001,13 @@ func GetTaskResultsByVersion(versionID, taskName, variantName, sortBy string, st
 		}
 	}
 	pipeline := []bson.M{
-		{"$match": match},
+		{"$match": &match},
 	}
-	if len(taskName) > 0 || len(variantName) > 0 {
-		matchTaskOrVariantName := bson.M{"$or": bson.A{
-			bson.M{"$match": bson.M{DisplayNameKey: bson.M{"$regex": taskName, "$options": "i"}}},
-			bson.M{"$match": bson.M{DisplayNameKey: bson.M{"$regex": variantName, "$options": "i"}}},
-		}}
-		pipeline = append(pipeline, matchTaskOrVariantName)
+	if len(taskOrVariantName) > 0 {
+		match["$or"] = []bson.M{
+			bson.M{DisplayNameKey: bson.M{"$regex": taskOrVariantName, "$options": "i"}},
+			bson.M{BuildVariantKey: bson.M{"$regex": taskOrVariantName, "$options": "i"}},
+		}
 	}
 	pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
 

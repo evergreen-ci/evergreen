@@ -9,8 +9,7 @@ type Query {
     sortDirection: SortDirection = ASC
     page: Int = 0
     limit: Int = 0
-    taskName: String = ""
-    variantName: String = ""
+    searchInput: String = ""
     statuses: [String] = []
   ): [TaskResult!]!
   taskTests(

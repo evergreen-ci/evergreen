@@ -243,7 +243,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, taskName *string, variantName *string, statuses []*string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, searchInput *string, statuses []*string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -285,13 +285,9 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			statusesParam = append(statusesParam, *status)
 		}
 	}
-	taskNameParam := ""
-	if taskName != nil {
-		taskNameParam = *taskName
-	}
-	variantNameParam := ""
-	if taskName != nil {
-		variantNameParam = *variantName
+	taskOrVariantName := ""
+	if searchInput != nil {
+		taskOrVariantName = *searchInput
 	}
 
 	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
@@ -299,7 +295,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
 
-	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskNameParam, variantNameParam, sorter, statusesParam, sortDir, pageParam, limitParam)
+	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskOrVariantName, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
