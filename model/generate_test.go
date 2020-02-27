@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -520,10 +519,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP)
-	s.NotNil(newConfig)
 	s.Require().Len(newPP.Tasks, 6)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Require().Len(newPP.Functions, 2)
@@ -534,10 +532,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[4].Name, "new_task")
 	s.Equal(newPP.Tasks[5].Name, "another_task")
 
-	newPP2, newConfig2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
+	newPP2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
 
 	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
 	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
@@ -555,16 +552,10 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	// verify addGeneratedProjectToConfig returned the updated config
-	ppConfig, err := yaml.Marshal(newPP)
-	s.NoError(err)
-	s.Equal(newConfig, string(ppConfig))
-
 	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
 	s.NoError(err)
-	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
-	s.NotEmpty(newConfig)
 	s.NotNil(newPP)
 	s.Require().Len(newPP.Tasks, 5)
 	s.Require().Len(newPP.BuildVariants, 3)
@@ -573,10 +564,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[1].Name, "say-bye")
 	s.Equal(newPP.Tasks[3].Name, "new_task")
 
-	newPP2, newConfig2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
+	newPP2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
