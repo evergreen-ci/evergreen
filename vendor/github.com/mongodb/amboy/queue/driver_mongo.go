@@ -750,6 +750,7 @@ RETRY:
 						"group":     d.opts.GroupName,
 					}))
 					// try for the next thing in the iterator if we can
+					job = nil
 					continue CURSOR
 				}
 
@@ -770,10 +771,12 @@ RETRY:
 					}
 					grip.Warning(message.WrapError(err, msg))
 					grip.NoticeWhen(err == nil, msg)
+					job = nil
 					continue CURSOR
 				}
 
 				if err := d.dispatcher.Dispatch(ctx, job); err != nil {
+					job = nil
 					continue CURSOR
 				}
 				break CURSOR
