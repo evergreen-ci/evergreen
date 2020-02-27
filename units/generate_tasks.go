@@ -145,8 +145,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
-		"function":      "Save",
-		"operation":     "CheckProjectConfigurationIsValid",
+		"function":      "generate",
+		"operation":     "Save",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
 		"job":           j.ID(),
