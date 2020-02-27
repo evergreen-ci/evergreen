@@ -143,6 +143,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 		case <-timer.C:
 			stat := j.Status()
 			stat.Completed = true
+			stat.InProgress = false
 			j.SetStatus(stat)
 
 			ti := j.TimeInfo()

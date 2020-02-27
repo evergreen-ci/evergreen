@@ -187,7 +187,7 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	s.Equal(0, s.driver.Stats(s.ctx).Running)
 }
 
-func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
+func (s *DriverSuite) TestNextMethodSkipsCompletedJobs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	j := job.NewShellJob("echo foo", "")
@@ -200,6 +200,21 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
 	s.Equal(0, s.driver.Stats(s.ctx).Pending)
 	s.Equal(1, s.driver.Stats(s.ctx).Completed)
+
+	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
+}
+
+func (s *DriverSuite) TestNextMethodDoesNotReturnLastJob() {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	j := job.NewShellJob("echo foo", "")
+	s.Require().NoError(j.Lock("taken"))
+
+	s.NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(1, s.driver.Stats(s.ctx).Pending)
+	s.Equal(0, s.driver.Stats(s.ctx).Completed)
 
 	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
 }
