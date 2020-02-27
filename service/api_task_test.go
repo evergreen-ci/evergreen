@@ -775,7 +775,6 @@ func TestNextTask(t *testing.T) {
 				})
 				Convey("should exit when it is quarantined", func() {
 					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
-					nonLegacyHost.Status = evergreen.HostQuarantined
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
