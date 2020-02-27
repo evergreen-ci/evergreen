@@ -180,7 +180,7 @@ func (s *CommitQueueSuite) TestProcessing() {
 	s.NoError(s.q.SetProcessing(true))
 	s.Error(s.q.SetProcessing(true))
 	s.NoError(s.q.SetProcessing(false))
-	s.Error(s.q.SetProcessing(false))
+	s.NoError(s.q.SetProcessing(false))
 }
 
 func (s *CommitQueueSuite) TestClearAll() {
