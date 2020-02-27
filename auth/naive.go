@@ -16,7 +16,7 @@ import (
 // Note: This use of the UserManager is recommended for dev/test purposes only and users who need high security authentication
 // mechanisms should rely on a different authentication mechanism.
 type NaiveUserManager struct {
-	users []*evergreen.AuthUser
+	users []evergreen.AuthUser
 }
 
 func NewNaiveUserManager(naiveAuthConfig *evergreen.NaiveAuthConfig) (*NaiveUserManager, error) {
