@@ -8,9 +8,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type TaskFinder func(distro.Distro) ([]task.Task, error)
@@ -31,14 +34,14 @@ func GetTaskFinder(version string) TaskFinder {
 }
 
 func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
-	return task.FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
+	return FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
 func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindSchedulable(d.Id)
+	undispatchedTasks, err := FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +129,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 }
 
 func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable(d.Id)
+	undispatchedTasks, err := FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +237,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 }
 
 func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable(d.Id)
+	undispatchedTasks, err := FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -402,4 +405,246 @@ func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]mod
 	}
 
 	return filteredTasks, versions, nil
+}
+
+func FindSchedulable(distroID string) ([]task.Task, error) {
+	query := task.ScheduleableTasksQuery()
+
+	if err := addApplicableDistroFilter(distroID, task.DistroIdKey, query); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	// kim: NOTE: can't do this without causing import cycle.
+	// tq, err := model.FindDistroAliasTaskQueue(distroID)
+	// if err != nil {
+	//     return nil, errors.WithStack(err)
+	// }
+	// var taskIDs string
+	// for _, item := range tq {
+	// taskIDs = append(taskIDs, item.Id)
+	// }
+	// query[IdKey] = bson.M{"$nin": taskIDs}
+
+	return task.Find(db.Query(query))
+}
+
+func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+	if id == "" {
+		return nil
+	}
+
+	aliases, err := distro.FindApplicableDistroIDs(id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if len(aliases) == 1 {
+		query[fieldName] = aliases[0]
+	} else {
+		query[fieldName] = bson.M{"$in": aliases}
+	}
+
+	return nil
+}
+
+func FindSchedulableForAlias(id string) ([]task.Task, error) {
+	q := task.ScheduleableTasksQuery()
+
+	if err := addApplicableDistroFilter(id, task.DistroAliasesKey, q); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	// kim: NOTE: can't do this without causing import cycle.
+	// tq, err := model.FindDistroTaskQueue(distroID)
+	// tq, err := FindDistroTaskQueue(distroID)
+	// if err != nil {
+	//     return nil, errors.WithStack(err)
+	// }
+	// var taskIDs string
+	// for _, item := range tq {
+	// taskIDs = append(taskIDs, item.Id)
+	// }
+	// query[IdKey] = bson.M{"$nin": taskIDs}
+
+	// Single-host task groups can't be put in an alias queue, because it can
+	// cause a race when assigning tasks to hosts where the tasks in the task
+	// group might be assigned to different hosts.
+	q[task.TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
+
+	return task.FindAll(db.Query(q))
+}
+
+func FindRunnable(distroID string, removeDeps bool) ([]task.Task, error) {
+	const dependencyKey = "dependencies"
+
+	match := task.ScheduleableTasksQuery()
+	var d distro.Distro
+	var err error
+	if distroID != "" {
+		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
+	}
+
+	if err = addApplicableDistroFilter(distroID, task.DistroIdKey, match); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	matchActivatedUndispatchedTasks := bson.M{
+		"$match": match,
+	}
+
+	filterInvalidDistros := bson.M{
+		"$match": bson.M{task.ProjectKey: bson.M{"$in": d.ValidProjects}},
+	}
+
+	removeFields := bson.M{
+		"$project": bson.M{
+			task.LogsKey:      0,
+			task.OldTaskIdKey: 0,
+			task.DependsOnKey + "." + task.DependencyUnattainableKey: 0,
+		},
+	}
+
+	graphLookupTaskDeps := bson.M{
+		"$graphLookup": bson.M{
+			"from":             task.Collection,
+			"startWith":        "$" + task.DependsOnKey + "." + task.IdKey,
+			"connectFromField": task.DependsOnKey + "." + task.IdKey,
+			"connectToField":   task.IdKey,
+			"as":               dependencyKey,
+			// restrict graphLookup to only direct dependencies
+			"maxDepth": 0,
+		},
+	}
+
+	unwindDependencies := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + dependencyKey,
+			"preserveNullAndEmptyArrays": true,
+		},
+	}
+
+	unwindDependsOn := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + task.DependsOnKey,
+			"preserveNullAndEmptyArrays": true,
+		},
+	}
+
+	matchIds := bson.M{
+		"$match": bson.M{
+			"$expr": bson.M{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, task.IdKey)}},
+		},
+	}
+
+	projectSatisfied := bson.M{
+		"$addFields": bson.M{
+			"satisfied_dependencies": bson.M{
+				"$cond": bson.A{
+					bson.M{
+						"$or": []bson.M{
+							{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, task.StatusKey)}},
+							{"$and": []bson.M{
+								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyStatusKey), "*"}},
+								{"$or": []bson.M{
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, task.StatusKey), task.CompletedStatuses}},
+									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, task.DependsOnKey, task.DependencyUnattainableKey)},
+								}},
+							}},
+						},
+					},
+					true,
+					false,
+				},
+			},
+		},
+	}
+
+	regroupTasks := bson.M{
+		"$group": bson.M{
+			"_id":           "$_id",
+			"satisfied_set": bson.M{"$addToSet": "$satisfied_dependencies"},
+			"root":          bson.M{"$first": "$$ROOT"},
+		},
+	}
+
+	redactUnsatisfiedDependencies := bson.M{
+		"$redact": bson.M{
+			"$cond": bson.A{
+				bson.M{"$allElementsTrue": "$satisfied_set"},
+				"$$KEEP",
+				"$$PRUNE",
+			},
+		},
+	}
+
+	replaceRoot := bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}}
+
+	joinProjectRef := bson.M{
+		"$lookup": bson.M{
+			"from":         "project_ref",
+			"localField":   task.ProjectKey,
+			"foreignField": "identifier",
+			"as":           "project_ref",
+		},
+	}
+
+	filterDisabledProjects := bson.M{
+		"$match": bson.M{
+			"project_ref.0." + "enabled": true,
+		},
+	}
+
+	filterPatchingDisabledProjects := bson.M{
+		"$match": bson.M{"$or": []bson.M{
+			{
+				task.RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
+			},
+			{
+				"project_ref.0." + "patching_disabled": false,
+			},
+		}},
+	}
+
+	removeProjectRef := bson.M{
+		"$project": bson.M{
+			"project_ref": 0,
+		},
+	}
+
+	pipeline := []bson.M{
+		matchActivatedUndispatchedTasks,
+		removeFields,
+		graphLookupTaskDeps,
+	}
+
+	if distroID != "" && len(d.ValidProjects) > 0 {
+		pipeline = append(pipeline, filterInvalidDistros)
+	}
+
+	if removeDeps {
+		pipeline = append(pipeline,
+			unwindDependencies,
+			unwindDependsOn,
+			matchIds,
+			projectSatisfied,
+			regroupTasks,
+			redactUnsatisfiedDependencies,
+			replaceRoot,
+		)
+	}
+
+	pipeline = append(pipeline,
+		joinProjectRef,
+		filterDisabledProjects,
+		filterPatchingDisabledProjects,
+		removeProjectRef,
+	)
+
+	runnableTasks := []task.Task{}
+	if err := task.Aggregate(pipeline, &runnableTasks); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
+	}
+
+	return runnableTasks, nil
 }
