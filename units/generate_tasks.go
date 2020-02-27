@@ -58,6 +58,7 @@ func NewGenerateTasksJob(id string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
+	start := time.Now()
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "attempted to generate tasks, but generator already ran for this task",
@@ -79,16 +80,57 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "parseProjects",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
+
 	g := model.MergeGeneratedProjects(projects)
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "MergeGeneratedProjects",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 	g.TaskID = j.TaskID
 
 	p, pp, v, t, pm, err := g.NewVersion()
 	if err != nil {
 		return j.handleError(v, errors.WithStack(err))
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "NewVersion",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 		return j.handleError(v, errors.WithStack(err))
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "CheckProjectConfigurationIsValid",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
@@ -101,6 +143,15 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error saving config in `generate.tasks`")
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "Save",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
 	return nil
 }
 
@@ -151,6 +202,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	})
 	grip.DebugWhen(shouldNoop, message.WrapError(err, message.Fields{
@@ -158,6 +210,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	}))
 	grip.ErrorWhen(!shouldNoop, message.WrapError(err, message.Fields{
@@ -165,6 +218,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	}))
 }
