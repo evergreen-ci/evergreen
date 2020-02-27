@@ -217,12 +217,15 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// terminate containers in DB if parent already terminated
 	if j.host.ParentID != "" {
-		parent, err := j.host.GetParent()
-		if err != nil && err.Error() != host.ErrorParentNotFound {
-			j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
-			return
+		var parent *host.Host
+		parent, err = j.host.GetParent()
+		if err != nil {
+			if err.Error() != host.ErrorParentNotFound {
+				j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
+				return
+			}
 		}
-		if parent.Status == evergreen.HostTerminated || err.Error() == host.ErrorParentNotFound {
+		if parent == nil || parent.Status == evergreen.HostTerminated {
 			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
 				j.AddError(errors.Wrap(err, "problem terminating container in db"))
 				grip.Error(message.WrapError(err, message.Fields{

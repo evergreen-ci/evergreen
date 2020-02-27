@@ -61,6 +61,7 @@ type APITask struct {
 	Blocked            bool             `json:"blocked"`
 	Requester          *string          `json:"requester"`
 	TestResults        []APITest        `json:"test_results"`
+	Aborted            bool             `json:"aborted"`
 }
 
 type LogLinks struct {
@@ -77,11 +78,17 @@ type ApiTaskEndDetail struct {
 	TimedOut    bool    `json:"timed_out"`
 }
 
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task) error {
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
+		}
+		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
+			return errors.Wrap(err, "failed to build logs for previous execution")
+		}
+		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
+			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
 		}
 	}
 
@@ -134,6 +141,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
+			Aborted:           v.Aborted,
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}

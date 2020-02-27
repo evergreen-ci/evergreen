@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
@@ -79,25 +78,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// get commit information
-	taskData := client.TaskData{
-		ID:     conf.Task.Id,
-		Secret: conf.Task.Secret,
-	}
-	u, err := comm.GetUserAuthorInfo(ctx, taskData, p.Author)
-	if err != nil {
-		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
-	}
-
 	_, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get token")
 	}
-	hasCommits := false
-	params := pushParams{
-		authorName:  restModel.FromStringPtr(u.DisplayName),
-		authorEmail: restModel.FromStringPtr(u.Email),
-		token:       projectToken,
-	}
+	params := pushParams{token: projectToken}
 
 	// push module patches
 	for _, modulePatch := range p.Patches {
@@ -108,13 +93,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
 			continue
-		}
-
-		for _, summary := range modulePatch.PatchSet.Summary {
-			if summary.Description != "" {
-				hasCommits = true
-				break
-			}
 		}
 
 		var module *model.Module
@@ -136,14 +114,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
-		params.commitMessage = modulePatch.Message
-		params.skipCommit = hasCommits
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
 	}
 
-	hasCommits = false
 	// Push main patch
 	for _, mainPatch := range p.Patches {
 		if mainPatch.ModuleName != "" {
@@ -155,17 +130,9 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		for _, summary := range mainPatch.PatchSet.Summary {
-			if summary.Description != "" {
-				hasCommits = true
-				break
-			}
-		}
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
-		params.commitMessage = mainPatch.Message
-		params.skipCommit = hasCommits
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -175,48 +142,30 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 }
 
 type pushParams struct {
-	token         string
-	directory     string
-	authorName    string
-	authorEmail   string
-	commitMessage string
-	branch        string
-	skipCommit    bool
+	token     string
+	directory string
+	branch    string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
-	jpm := c.JasperManager()
-	if !p.skipCommit {
-		author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
-		commitCommand := fmt.Sprintf("git "+
-			`-c "user.name=%s" `+
-			`-c "user.email=%s" `+
-			`commit --file - `+
-			`--author="%s"`,
-			c.CommitterName, c.CommitterEmail, author)
-		logger.Execution().Debugf("git commit command: %s", commitCommand)
-		cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
-		if err := cmd.Run(ctx); err != nil {
-			return errors.Wrap(err, "can't create commit from files")
-		}
+	if c.DryRun {
+		return nil
 	}
 
-	if !c.DryRun {
-		stdErr := noopWriteCloser{&bytes.Buffer{}}
-		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
-		logger.Execution().Debugf("git push command: %s", pushCommand)
-		cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
-		if err := cmd.Run(ctx); err != nil {
-			return errors.Wrap(err, "can't push to remote")
-		}
+	jpm := c.JasperManager()
+	stdErr := noopWriteCloser{&bytes.Buffer{}}
+	pushCommand := fmt.Sprintf("git push origin %s", p.branch)
+	logger.Execution().Debugf("git push command: %s", pushCommand)
+	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
+	if err := cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't push to remote")
+	}
 
-		errorOutput := stdErr.String()
-		if errorOutput != "" && p.token != "" {
-			errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
-			logger.Execution().Error(errorOutput)
-		}
+	errorOutput := stdErr.String()
+	if errorOutput != "" && p.token != "" {
+		errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+		logger.Execution().Error(errorOutput)
 	}
 
 	return nil

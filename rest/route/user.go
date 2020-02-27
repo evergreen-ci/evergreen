@@ -126,53 +126,6 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apiSettings)
 }
 
-////////////////////////////////////////////////////////////////////////
-//
-// GET /rest/v2/user/author
-
-type userAuthorGetHandler struct {
-	sc     data.Connector
-	userID string
-}
-
-func makeFetchUserAuthor(sc data.Connector) gimlet.RouteHandler {
-	return &userAuthorGetHandler{
-		sc: sc,
-	}
-}
-
-func (h *userAuthorGetHandler) Factory() gimlet.RouteHandler {
-	return &userAuthorGetHandler{
-		sc: h.sc,
-	}
-}
-
-func (h *userAuthorGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	vars := gimlet.GetVars(r)
-	h.userID = vars["user_id"]
-	return nil
-}
-
-func (h *userAuthorGetHandler) Run(ctx context.Context) gimlet.Responder {
-	user, err := h.sc.FindUserById(h.userID)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get user for id '%s'", h.userID))
-	}
-	if user == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
-			StatusCode: 404,
-		})
-	}
-
-	apiAuthor := model.APIUserAuthorInformation{}
-	if err := apiAuthor.BuildFromService(user); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error formatting user author information"))
-	}
-
-	return gimlet.NewJSONResponse(apiAuthor)
-}
-
 type userPermissionsPostHandler struct {
 	sc          data.Connector
 	rm          gimlet.RoleManager
@@ -194,7 +147,7 @@ func makeModifyUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.
 }
 
 func (h *userPermissionsPostHandler) Factory() gimlet.RouteHandler {
-	return &userAuthorGetHandler{
+	return &userPermissionsPostHandler{
 		sc: h.sc,
 	}
 }
@@ -223,12 +176,12 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u, err := h.sc.FindUserById(h.userID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
 	if u == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
-			StatusCode: 404,
+			StatusCode: http.StatusNotFound,
 		})
 	}
 

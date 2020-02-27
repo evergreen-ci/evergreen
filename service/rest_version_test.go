@@ -20,7 +20,6 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -235,9 +234,6 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
-	assert.NoError(t, evergreen.SetServiceFlags(flags))
-
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
 
@@ -410,9 +406,6 @@ func TestActivateVersion(t *testing.T) {
 	env.SetUserManager(serviceutil.MockUserManager{})
 	router, err := newAuthTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
-
-	flags := evergreen.ServiceFlags{ParserProjectDisabled: true}
-	assert.NoError(t, evergreen.SetServiceFlags(flags))
 
 	Convey("When marking a particular version as active", t, func() {
 		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),

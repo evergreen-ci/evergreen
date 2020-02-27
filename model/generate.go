@@ -141,13 +141,12 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	newPP.Id = v.Id
-	v.Config = newConfig
 	p, err = TranslateProject(newPP)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
@@ -157,7 +156,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
-	if err := updateVersionAndParserProject(v, pp); err != nil {
+	if err := updateParserProject(v, pp); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -167,34 +166,16 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	return nil
 }
 
-// if the parser project is more recent, update contingent on that and force update the version (and vice versa)
-func updateVersionAndParserProject(v *Version, pp *ParserProject) error {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return errors.Wrapf(err, "error getting service flags")
-	}
-	condition := pp.ConfigUpdateNumber >= v.ConfigUpdateNumber
-	if flags.ParserProjectDisabled {
-		condition = pp.ConfigUpdateNumber > v.ConfigUpdateNumber
-	}
-	if condition {
-		curNumber := pp.ConfigUpdateNumber
-		if err := pp.UpsertWithConfigNumber(curNumber, true); err != nil {
-			return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
-		}
-
-		if err := VersionUpdateConfig(v.Id, v.Config, curNumber, false); err != nil {
-			return errors.Wrapf(err, "database error updating version '%s'", v.Id)
-		}
-		return nil
+// update the parser project using the newest config number (if using legacy version config, this comes from version)
+func updateParserProject(v *Version, pp *ParserProject) error {
+	updateNum := pp.ConfigUpdateNumber + 1
+	// legacy: most likely a version for which no parser project exists
+	if pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
+		updateNum = v.ConfigUpdateNumber + 1
 	}
 
-	if err := VersionUpdateConfig(v.Id, v.Config, v.ConfigUpdateNumber, true); err != nil {
-		return errors.Wrapf(err, "error updating version '%s'", v.Id)
-	}
-
-	if err := pp.UpsertWithConfigNumber(v.ConfigUpdateNumber, false); err != nil {
-		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
+	if err := pp.UpsertWithConfigNumber(updateNum); err != nil {
+		return errors.Wrapf(err, "error upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }
@@ -308,12 +289,12 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 
 // addGeneratedProjectToConfig takes a ParserProject and a YML config and returns a new one with the GeneratedProject included.
 // support for YML config will be degraded.
-func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, string, error) {
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, error) {
 	var err error
 	if intermediateProject == nil {
 		intermediateProject, err = createIntermediateProject([]byte(config))
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "error creating intermediate project")
+			return nil, errors.Wrapf(err, "error creating intermediate project")
 		}
 	}
 
@@ -337,12 +318,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
 	}
-	// prepare new config file
-	byteConfig, err := yaml.Marshal(intermediateProject)
-	if err != nil {
-		return nil, "", errors.Wrap(err, "error marshalling new project config")
-	}
-	return intermediateProject, string(byteConfig), nil
+	return intermediateProject, nil
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.

@@ -1,5 +1,23 @@
 {
   "setupData": {
+    "roles": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted_task_access",
+        "scope": "unrestrictedTaskAccess",
+        "permissions": {
+          "project_tasks": 55
+        }
+      }
+    ],
+    "scopes": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted access",
+        "type": "project",
+        "resources": ["curator"]
+      }
+    ],
     "builds": [
       {
         "_id": "some_thang",
@@ -41,6 +59,21 @@
         "predicted_makespan": 0,
         "actual_makespan": 0,
         "r": "ad_hoc"
+      }
+    ],
+    "commit_queue": [
+      {
+        "_id": "mci",
+        "processing": false,
+        "time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "queue": [
+          {
+            "issue": "nothing",
+            "version": "something",
+            "enqueue_time": { "$date": "2018-01-12T00:01:36.796Z" },
+            "modules": [{ "module": "mod", "issue": "none" }]
+          }
+        ]
       }
     ],
     "patches": [
@@ -174,7 +207,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "nothing that actually exists",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -252,7 +285,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "curator",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -269,7 +302,7 @@
         "execution": 5,
         "order": 5,
         "r": "something",
-        "status": "pass",
+        "status": "started",
         "details": {
           "status": "status",
           "type": "type",
@@ -291,7 +324,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "logkeeper",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -330,7 +363,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "logkeeper",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -346,8 +379,8 @@
         "restarts": 5,
         "execution": 5,
         "order": 5,
-        "r": "something",
-        "status": "pass",
+        "r": "merge_test",
+        "status": "started",
         "details": {
           "status": "status",
           "type": "type",
@@ -369,7 +402,7 @@
         "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
         "version": "version",
-        "branch": "id",
+        "branch": "mci",
         "gitspec": "revise",
         "priority": 5,
         "task_group": "grp",
@@ -385,8 +418,8 @@
         "restarts": 5,
         "execution": 5,
         "order": 5,
-        "r": "something",
-        "status": "pass",
+        "r": "merge_test",
+        "status": "started",
         "details": {
           "status": "status",
           "type": "type",
@@ -1699,7 +1732,7 @@
             "finishTime": "2018-01-10T19:01:36-05:00",
             "activatedTime": "2018-01-10T19:01:36-05:00",
             "version": "version",
-            "projectId": "id",
+            "projectId": "mci",
             "revision": "revise",
             "priority": 5,
             "taskGroup": "grp",
@@ -1715,8 +1748,8 @@
             "restarts": 5,
             "execution": 5,
             "order": 5,
-            "requester": "something",
-            "status": "pass",
+            "requester": "merge_test",
+            "status": "started",
             "details": {
               "status": "status",
               "type": "type",
@@ -2456,6 +2489,110 @@
             }
           }
         }
+      }
+    },
+    {
+      "query_file": "set_priority-success.graphql",
+      "result": {
+        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
+      }
+    },
+    {
+      "query_file": "set_priority-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-no-permission.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "FORBIDDEN" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-has-permission.graphql",
+      "result": {
+        "data": {
+          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
+        }
+      }
+    },
+    {
+      "query_file": "abort_task-success.graphql",
+      "result": {
+        "data": { "abortTask": { "activated": false, "aborted": true } }
+      }
+    },
+    {
+      "query_file": "abort_task-success-remove-commit-queue.graphql",
+      "result": {
+        "data": { "abortTask": { "activated": false, "aborted": true } }
+      }
+    },
+    {
+      "query_file": "abort_task-fail-remove-commit-queue.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to remove commit queue item for project exec2, version version: can't get commit queue for id 'logkeeper': document not found",
+            "path": ["abortTask"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-fail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error aborting task exec1: Task 'exec1' is currently 'pass' - cannot abort task in this status",
+            "path": ["abortTask"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-task-not-found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task by id not-for-real-task-id: 404 (Not Found): task with id not-for-real-task-id not found",
+            "path": ["abortTask"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-project-not-found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'nothing that actually exists'",
+            "path": ["abortTask"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
       }
     }
   ]

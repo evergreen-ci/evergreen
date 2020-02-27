@@ -182,7 +182,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     }
 
     $scope.unexpirableEnabled = function () {
-      return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null
+      return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData && ($scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null)
     }
 
     $scope.generatePassword = function () {

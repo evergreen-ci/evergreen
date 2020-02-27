@@ -27,7 +27,6 @@ type ServiceFlags struct {
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
-	ParserProjectDisabled      bool `bson:"parser_project_disabled" json:"parser_project_disabled"`
 	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
 	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 
@@ -93,7 +92,6 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
-			parserProjectDisabledKey:        c.ParserProjectDisabled,
 			drBackupDisabledKey:             c.DRBackupDisabled,
 			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
 		},

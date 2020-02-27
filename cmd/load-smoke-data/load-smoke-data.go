@@ -3,13 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -62,7 +62,6 @@ func main() {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
 
-	var doc map[string]interface{}
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range files {
 		file, err = os.Open(fn)
@@ -78,10 +77,9 @@ func main() {
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
-			doc = map[string]interface{}{}
+			doc := bson.D{}
 			count++
-			err = json.Unmarshal(scanner.Bytes(), &doc)
-			if err != nil {
+			if err = bson.UnmarshalExtJSON(scanner.Bytes(), false, &doc); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
 				continue
 			}

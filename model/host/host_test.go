@@ -710,10 +710,20 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
-			Id:     "test",
+			Id:     "test1",
 			Status: evergreen.HostRunning,
 		}
+		h2 := Host{
+			Id:     "test2",
+			Status: evergreen.HostProvisioning,
+			Distro: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				},
+			},
+		}
 		So(h.Insert(), ShouldBeNil)
+		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
 			_, err := h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
@@ -733,6 +743,16 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
+		})
+		Convey("updating the running task on a provisioning host should succeed", func() {
+			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
+			So(err, ShouldBeNil)
+			found, err := FindOne(ById(h2.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, newTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 	})
 }

@@ -115,7 +115,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 
-			if err = taskModel.BuildPreviousExecutions(oldTasks); err != nil {
+			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.sc.GetURL()); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}
