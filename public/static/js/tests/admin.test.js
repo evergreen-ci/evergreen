@@ -40,7 +40,7 @@ describe('AdminSettingsController', function() {
   describe('chipToUserJSON', function () {
     it('returns a chip object for valid json', function() {
       var input = '{"username": "u", "password": "p"}';
-      expect(scope.chipToUserJSOn(input)).toEqual(
+      expect(scope.chipToUserJSON(input)).toEqual(
         {"username": "u", "password": "p"}
       );
     });
