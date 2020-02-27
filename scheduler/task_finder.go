@@ -17,13 +17,13 @@ type TaskFinder func(distro.Distro) ([]task.Task, error)
 
 func GetTaskFinder(version string) TaskFinder {
 	switch version {
-	case "parallel":
+	case evergreen.FinderVersionParallel:
 		return ParallelTaskFinder
-	case "legacy":
+	case evergreen.FinderVersionLegacy:
 		return LegacyFindRunnableTasks
-	case "pipeline":
+	case evergreen.FinderVersionPipeline:
 		return RunnableTasksPipeline
-	case "alternate":
+	case evergreen.FinderVersionAlternate:
 		return AlternateTaskFinder
 	default:
 		return LegacyFindRunnableTasks
