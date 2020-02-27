@@ -141,13 +141,12 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	newPP.Id = v.Id
-	v.Config = newConfig
 	p, err = TranslateProject(newPP)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
@@ -290,12 +289,12 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 
 // addGeneratedProjectToConfig takes a ParserProject and a YML config and returns a new one with the GeneratedProject included.
 // support for YML config will be degraded.
-func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, string, error) {
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, error) {
 	var err error
 	if intermediateProject == nil {
 		intermediateProject, err = createIntermediateProject([]byte(config))
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "error creating intermediate project")
+			return nil, errors.Wrapf(err, "error creating intermediate project")
 		}
 	}
 
@@ -319,12 +318,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
 	}
-	// prepare new config file
-	byteConfig, err := yaml.Marshal(intermediateProject)
-	if err != nil {
-		return nil, "", errors.Wrap(err, "error marshalling new project config")
-	}
-	return intermediateProject, string(byteConfig), nil
+	return intermediateProject, nil
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.
