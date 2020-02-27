@@ -397,7 +397,7 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
 		if v, _ := strconv.ParseInt(reset, 10, 64); v != 0 {
-			rate.Reset = github.Timestamp{time.Unix(v, 0)}
+			rate.Reset = github.Timestamp{Time: time.Unix(v, 0)}
 		}
 	}
 
