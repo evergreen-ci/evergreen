@@ -254,9 +254,13 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			sorter = task.DisplayNameKey
 			break
 		case TaskSortCategoryBaseStatus:
+			// base status is not a field on the task db model; therefore sorting by base status
+			// cannot be done in the mongo query. sorting by base status is done in the resolver.
 			break
 		case TaskSortCategoryVariant:
 			sorter = task.BuildVariantKey
+			break
+		default:
 			break
 		}
 	}
@@ -313,6 +317,11 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			BaseStatus:   baseTaskStatuses[task.Id],
 		}
 		taskResults = append(taskResults, &t)
+	}
+	if *sortBy == TaskSortCategoryBaseStatus {
+		sort.SliceStable(taskResults, func(i, j int) bool {
+			return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+		})
 	}
 	return taskResults, nil
 }

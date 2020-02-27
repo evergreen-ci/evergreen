@@ -5,7 +5,7 @@ type Query {
   projects: Projects!
   patchTasks(
     patchId: String!
-    sortBy: TaskSortCategory = NAME
+    sortBy: TaskSortCategory = STATUS
     sortDirection: SortDirection = ASC
     page: Int = 0
     limit: Int = 0

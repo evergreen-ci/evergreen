@@ -100,6 +100,21 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (map[strin
 	if version == nil {
 		return nil, fmt.Errorf("No version found for ID %s", *patch.Version)
 	}
+	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(version.Identifier, version.Revision))
+	if err != nil {
+		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
+	}
+	if baseVersion == nil {
+		return nil, fmt.Errorf("No base version found from version %s", version.Id)
+	}
+	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
+	if err != nil {
+		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
+	}
+	if baseTasks == nil {
+		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
+	}
+
 	baseBuilds, err := build.Find(build.ByVersion(version.Id))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting build for version %s: %s", version.Id, err.Error())
