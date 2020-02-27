@@ -645,10 +645,6 @@ func (c *Mock) EnqueueItem(ctx context.Context, patchID string, force bool) (int
 	return 0, nil
 }
 
-func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error) {
-	return "github.user", nil
-}
-
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }

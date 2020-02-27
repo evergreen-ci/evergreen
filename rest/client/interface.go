@@ -183,7 +183,6 @@ type Communicator interface {
 
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
-	GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error)
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
 	// if enqueueNext is true then allow item to be processed next
 	EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error)
