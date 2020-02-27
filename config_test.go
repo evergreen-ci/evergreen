@@ -295,10 +295,10 @@ func (s *AdminSuite) TestAuthConfig() {
 			ExpireAfterMinutes: 60,
 		},
 		Naive: &NaiveAuthConfig{
-			Users: []*AuthUser{{Username: "user", Password: "pw"}},
+			Users: []AuthUser{{Username: "user", Password: "pw"}},
 		},
 		OnlyAPI: &OnlyAPIAuthConfig{
-			Users: []*OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
+			Users: []OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
 		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",

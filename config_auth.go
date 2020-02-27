@@ -1,8 +1,6 @@
 package evergreen
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -29,13 +27,13 @@ type OnlyAPIUser struct {
 
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
-	Users []*AuthUser `bson:"users" json:"users" yaml:"users"`
+	Users []AuthUser `bson:"users" json:"users" yaml:"users"`
 }
 
 // KeyAuthConfig contains the users that can only authenticate via the API from
 // the settings.
 type OnlyAPIAuthConfig struct {
-	Users []*OnlyAPIUser `bson:"users" json:"users" yaml:"users"`
+	Users []OnlyAPIUser `bson:"users" json:"users" yaml:"users"`
 }
 
 // LDAPConfig contains settings for interacting with an LDAP server.
@@ -121,6 +119,27 @@ func (c *AuthConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
+func (c *AuthConfig) checkDuplicateUsers() error {
+	catcher := grip.NewBasicCatcher()
+	var usernames []string
+	if c.Naive != nil {
+		for _, u := range c.Naive.Users {
+			usernames = append(usernames, u.Username)
+		}
+	}
+	if c.OnlyAPI != nil {
+		for _, u := range c.OnlyAPI.Users {
+			usernames = append(usernames, u.Username)
+		}
+	}
+	used := map[string]bool{}
+	for _, name := range usernames {
+		catcher.AddWhen(used[name], errors.Errorf("duplicate user '%s' in list", name))
+		used[name] = true
+	}
+	return catcher.Resolve()
+}
+
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.ErrorfWhen(!util.StringSliceContains([]string{
@@ -133,27 +152,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 
-	checkDuplicateUsers := func(usernames []string) error {
-		used := map[string]bool{}
-		dupCatcher := grip.NewBasicCatcher()
-		for _, name := range usernames {
-			dupCatcher.AddWhen(used[name], fmt.Errorf("duplicate user '%s' in list", name))
-			used[name] = true
-		}
-		return dupCatcher.Resolve()
-	}
-	var usernames []string
-	if c.Naive != nil {
-		for _, u := range c.Naive.Users {
-			usernames = append(usernames, u.Username)
-		}
-	}
-	if c.OnlyAPI != nil {
-		for _, u := range c.OnlyAPI.Users {
-			usernames = append(usernames, u.Username)
-		}
-	}
-	catcher.Wrap(checkDuplicateUsers(usernames), "duplicate users in config")
+	catcher.Add(c.checkDuplicateUsers())
 
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {

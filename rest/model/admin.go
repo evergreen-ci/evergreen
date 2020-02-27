@@ -645,7 +645,7 @@ func (a *APIOktaConfig) ToService() (interface{}, error) {
 }
 
 type APINaiveAuthConfig struct {
-	Users []*APIAuthUser `json:"users"`
+	Users []APIAuthUser `json:"users"`
 }
 
 func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
@@ -655,11 +655,11 @@ func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
 			return nil
 		}
 		for _, u := range v.Users {
-			APIuser := &APIAuthUser{}
-			if err := APIuser.BuildFromService(u); err != nil {
+			apiUser := APIAuthUser{}
+			if err := apiUser.BuildFromService(u); err != nil {
 				return err
 			}
-			a.Users = append(a.Users, APIuser)
+			a.Users = append(a.Users, apiUser)
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -677,7 +677,10 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		user := i.(*evergreen.AuthUser)
+		user, ok := i.(evergreen.AuthUser)
+		if !ok {
+			continue
+		}
 		config.Users = append(config.Users, user)
 	}
 	return &config, nil
@@ -692,10 +695,7 @@ type APIAuthUser struct {
 
 func (a *APIAuthUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.AuthUser:
-		if v == nil {
-			return nil
-		}
+	case evergreen.AuthUser:
 		a.Username = ToStringPtr(v.Username)
 		a.Password = ToStringPtr(v.Password)
 		a.DisplayName = ToStringPtr(v.DisplayName)
@@ -710,7 +710,7 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
-	return &evergreen.AuthUser{
+	return evergreen.AuthUser{
 		Username:    FromStringPtr(a.Username),
 		Password:    FromStringPtr(a.Password),
 		DisplayName: FromStringPtr(a.DisplayName),
@@ -719,7 +719,7 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 }
 
 type APIOnlyAPIAuthConfig struct {
-	Users []*APIOnlyAPIUser `json:"users"`
+	Users []APIOnlyAPIUser `json:"users"`
 }
 
 func (a *APIOnlyAPIAuthConfig) BuildFromService(h interface{}) error {
@@ -729,7 +729,7 @@ func (a *APIOnlyAPIAuthConfig) BuildFromService(h interface{}) error {
 			return nil
 		}
 		for _, u := range v.Users {
-			apiUser := &APIOnlyAPIUser{}
+			apiUser := APIOnlyAPIUser{}
 			if err := apiUser.BuildFromService(u); err != nil {
 				return err
 			}
@@ -751,7 +751,10 @@ func (a *APIOnlyAPIAuthConfig) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not convert user to service model")
 		}
-		user := i.(*evergreen.OnlyAPIUser)
+		user, ok := i.(evergreen.OnlyAPIUser)
+		if !ok {
+			continue
+		}
 		config.Users = append(config.Users, user)
 	}
 	return &config, nil
@@ -765,10 +768,7 @@ type APIOnlyAPIUser struct {
 
 func (a *APIOnlyAPIUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.OnlyAPIUser:
-		if v == nil {
-			return nil
-		}
+	case evergreen.OnlyAPIUser:
 		a.Username = ToStringPtr(v.Username)
 		a.Key = ToStringPtr(v.Key)
 		a.Roles = v.Roles
@@ -782,7 +782,7 @@ func (a *APIOnlyAPIUser) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
-	return &evergreen.OnlyAPIUser{
+	return evergreen.OnlyAPIUser{
 		Username: FromStringPtr(a.Username),
 		Key:      FromStringPtr(a.Key),
 		Roles:    a.Roles,
