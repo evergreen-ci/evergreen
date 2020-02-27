@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -115,18 +114,9 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (map[strin
 		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
 	}
 
-	baseBuilds, err := build.Find(build.ByVersion(version.Id))
-	if err != nil {
-		return nil, fmt.Errorf("Error getting build for version %s: %s", version.Id, err.Error())
+	var baseTaskStatusesByTaskID map[string]string
+	for _, task := range baseTasks {
+		baseTaskStatusesByTaskID[task.Id] = task.Status
 	}
-	if baseBuilds == nil {
-		return nil, fmt.Errorf("No build found for version %s", version.Id)
-	}
-	baseTaskStatuses := map[string]string{}
-	for _, build := range baseBuilds {
-		for _, task := range build.Tasks {
-			baseTaskStatuses[task.Id] = task.Status
-		}
-	}
-	return baseTaskStatuses, nil
+	return baseTaskStatusesByTaskID, nil
 }
