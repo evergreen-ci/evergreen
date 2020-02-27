@@ -123,7 +123,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		})
 		return
 	}
-	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
+	if err := cq.SetProcessing(true); err != nil {
+		j.AddError(errors.Wrap(err, "can't set processing to true"))
+		return
+	}
 
 	// log time waiting in queue
 	timeWaiting := time.Now().Sub(nextItem.EnqueueTime)

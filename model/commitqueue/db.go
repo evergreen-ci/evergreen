@@ -109,9 +109,13 @@ func remove(id, issue string) error {
 	)
 }
 
+// if the DB queue isn't in the processing state we expect, we should error
 func setProcessing(id string, status bool) error {
 	return updateOne(
-		bson.M{IdKey: id},
+		bson.M{
+			IdKey:         id,
+			ProcessingKey: !status,
+		},
 		bson.M{
 			"$set": bson.M{
 				ProcessingKey:            status,

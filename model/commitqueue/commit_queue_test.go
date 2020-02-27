@@ -175,6 +175,14 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.False(s.q.Processing)
 }
 
+// can only update processing successfully if the status will actually be changed
+func (s *CommitQueueSuite) TestProcessing() {
+	s.NoError(s.q.SetProcessing(true))
+	s.Error(s.q.SetProcessing(true))
+	s.NoError(s.q.SetProcessing(false))
+	s.Error(s.q.SetProcessing(false))
+}
+
 func (s *CommitQueueSuite) TestClearAll() {
 	item := sampleCommitQueueItem
 	pos, err := s.q.Enqueue(item)
