@@ -73,6 +73,9 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
 	}
+	if upstreamProject == nil {
+		return nil, errors.Errorf("project %s not found", args.SourceVersion.Identifier)
+	}
 	for _, module := range proj.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
