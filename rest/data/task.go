@@ -426,6 +426,6 @@ func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifes
 }
 
 func (tc *MockTaskConnector) FindTaskResultsByVersion(versionID, taskOrVariantName, sortBy string, statuses []string, sortDir, page, limit int) ([]task.Task, error) {
-	// todo
+	// FindTaskResultsByVersion is extensively tested byt he gql test suite for the patchTasks query
 	return nil, nil
 }

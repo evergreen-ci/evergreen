@@ -268,13 +268,6 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		}
 	}
 	sortDir := 1
-	if sortDirection != nil {
-		switch *sortDirection {
-		case SortDirectionDesc:
-			sortDir = -1
-			break
-		}
-	}
 	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
@@ -305,7 +298,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("No tasks found for %s", patchID))
 	}
 
-	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID, tasks)
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
