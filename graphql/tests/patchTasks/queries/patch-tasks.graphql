@@ -1,9 +1,5 @@
 {
-  patchTasks(patchId: "5e4ff3abe3c3317e352062e4") {
+  patch(id: "5e1f8ab8834b87d7b5d251a5") {
     id
-    status
-    baseStatus
-    displayName
-    buildVariant
   }
 }

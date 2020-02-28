@@ -1,6 +1,434 @@
 {
-    "patches": [],
-    "tasks": [],
-    "builds": [],
-    "versions": []
+  "patches": [
+    {
+      "_id": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+      "desc": "mydesc",
+      "branch": "mci",
+      "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+      "patch_number": 1,
+      "author": "testuser",
+      "version": "",
+      "status": "created",
+      "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+      "build_variants": ["rhel62"],
+      "tasks": ["test-auth"],
+      "variants_tasks": [{ "variant": "rhel62", "tasks": ["test-model-host"] }],
+      "patches": [
+        {
+          "name": "",
+          "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+          "patch_set": {
+            "patch_file_id": "58d05bc79dbe327e79000001",
+            "summary": [
+              {
+                "filename": "agent/api_integration_test.go",
+                "additions": 21,
+                "deletions": 235
+              },
+              {
+                "filename": "agent/patch_integration_test.go",
+                "additions": 8,
+                "deletions": 6
+              },
+              {
+                "filename": "agent/push_integration_test.go",
+                "additions": 3,
+                "deletions": 2
+              },
+              {
+                "filename": "cli/http.go",
+                "additions": 30,
+                "deletions": 0
+              },
+              {
+                "filename": "cli/patch.go",
+                "additions": 13,
+                "deletions": 4
+              },
+              {
+                "filename": "service/api.go",
+                "additions": 1,
+                "deletions": 0
+              },
+              {
+                "filename": "service/api_patch.go",
+                "additions": 33,
+                "deletions": 0
+              }
+            ]
+          }
+        }
+      ],
+      "activated": false
+    },
+    {
+      "_id": { "$oid": "9a1f8ab8834b87d7b5d251a5" },
+      "desc": "patch-to-duration-time-resolver",
+      "create_time": { "$date": "2020-02-12T16:58:19Z" }
+    },
+    {
+      "_id": { "$oid": "9e1f8ab8834b87d7b5d251a5" },
+      "desc": "patch-to-test-time-resolver",
+      "create_time": { "$date": "2020-02-12T16:58:19Z" },
+      "start_time": { "$date": "2020-02-13T17:42:19Z" },
+      "finish_time": { "$date": "2020-02-14T18:03:19Z" }
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "evergreen_ubuntu1604_test_thirdparty_docker_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "secret": "d3431bd42eb0a64592675ab589b1958f",
+      "create_time": { "$date": "2020-02-20T20:37:06Z" },
+      "injest_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "dispatch_time": { "$date": "2020-02-21T15:15:05.778Z" },
+      "scheduled_time": { "$date": "2020-02-21T15:14:02.452Z" },
+      "start_time": { "$date": "2020-02-21T15:15:09.356Z" },
+      "finish_time": { "$date": "2020-02-21T15:15:34.371Z" },
+      "activated_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": { "$numberLong": "0" },
+      "task_group": "",
+      "last_heartbeat": { "$date": "2020-02-21T15:15:09.356Z" },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "distro": "ubuntu1604-build",
+      "build_variant": "ubuntu1604",
+      "depends_on": [],
+      "distro_aliases": ["ubuntu1604-build"],
+      "display_name": "test-thirdparty-docker",
+      "tags": ["nodb", "test", "agent"],
+      "host_id": "i-0794a73c7d24cf601",
+      "restarts": 0,
+      "execution": 0,
+      "order": 2567,
+      "r": "github_pull_request",
+      "status": "success",
+      "time_taken": { "$numberLong": "25015340200" },
+      "duration_prediction": {
+        "value": { "$numberLong": "25101533232" },
+        "std_dev": { "$numberLong": "4663844722" },
+        "ttl": { "$numberLong": "39184647183633" },
+        "collected_at": { "$date": "2020-02-21T15:14:02.363Z" },
+        "expected_duration": { "$numberLong": "25101533232" },
+        "expected_duration_std_dev": { "$numberLong": "4663844722" },
+        "details": {
+          "status": "success",
+          "type": "test",
+          "desc": "'subprocess.exec' in \"run-make\" (#1)"
+        },
+        "logs": { "agent": null, "system": null, "task": null },
+        "cost": 0.002063891913580247
+      }
+    },
+    {
+      "_id": "evergreen_ubuntu1604_test_trigger_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "secret": "94e2b617f6675e8847c95ad8e9d77c70",
+      "create_time": { "$date": "2020-02-20T20:37:06Z" },
+      "injest_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "dispatch_time": { "$date": "2020-02-21T15:14:50.461Z" },
+      "scheduled_time": { "$date": "2020-02-21T15:14:02.452Z" },
+      "start_time": { "$date": "2020-02-21T15:14:55.182Z" },
+      "finish_time": { "$date": "2020-02-21T15:15:42.556Z" },
+      "activated_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": { "$numberLong": "0" },
+      "task_group": "",
+      "last_heartbeat": { "$date": "2020-02-21T15:15:25.172Z" },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "distro": "ubuntu1604-build",
+      "build_variant": "ubuntu1604",
+      "depends_on": [],
+      "distro_aliases": ["ubuntu1604-build"],
+      "display_name": "test-trigger",
+      "tags": ["db", "test"],
+      "host_id": "i-010f972ecd35905d0",
+      "restarts": 0,
+      "execution": 0,
+      "order": 2567,
+      "r": "github_pull_request",
+      "status": "success",
+      "time_taken": { "$numberLong": "47374117202" },
+      "duration_prediction": {
+        "value": { "$numberLong": "78562515444" },
+        "std_dev": { "$numberLong": "9076477721" },
+        "ttl": { "$numberLong": "57204925141672" },
+        "collected_at": { "$date": "2020-02-21T15:14:02.377Z" },
+        "expected_duration": { "$numberLong": "78562515444" },
+        "expected_duration_std_dev": { "$numberLong": "9076477721" },
+        "details": {
+          "status": "success",
+          "type": "test",
+          "desc": "'subprocess.exec' in \"run-make\" (#1)"
+        },
+        "logs": { "agent": null, "system": null, "task": null },
+        "cost": 0.003908647432098765
+      }
+    },
+    {
+      "_id": "evergreen_ubuntu1604_test_units_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "secret": "ffee362afac713d20711e40711120f4f",
+      "create_time": { "$date": "2020-02-20T20:37:06Z" },
+      "injest_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "dispatch_time": { "$date": "2020-02-21T15:14:45.819Z" },
+      "scheduled_time": { "$date": "2020-02-21T15:14:02.452Z" },
+      "start_time": { "$date": "2020-02-21T15:14:49.526Z" },
+      "finish_time": { "$date": "2020-02-21T15:15:53.709Z" },
+      "activated_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": { "$numberLong": "0" },
+      "task_group": "",
+      "last_heartbeat": { "$date": "2020-02-21T15:15:48.542Z" },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "distro": "ubuntu1604-build",
+      "build_variant": "ubuntu1604",
+      "depends_on": [],
+      "distro_aliases": ["ubuntu1604-build"],
+      "display_name": "test-units",
+      "tags": ["test", "db"],
+      "host_id": "i-036dcce0bfecd37cc",
+      "restarts": 0,
+      "execution": 0,
+      "order": 2567,
+      "r": "github_pull_request",
+      "status": "success",
+      "time_taken": { "$numberLong": "64183900728" },
+      "duration_prediction": {
+        "value": { "$numberLong": "97987626563" },
+        "std_dev": { "$numberLong": "11650755053" },
+        "ttl": { "$numberLong": "38511725861183" },
+        "collected_at": { "$date": "2020-02-21T15:14:02.371Z" },
+        "expected_duration": { "$numberLong": "97987626563" },
+        "expected_duration_std_dev": { "$numberLong": "11650755053" },
+        "details": {
+          "status": "success",
+          "type": "test",
+          "desc": "'subprocess.exec' in \"run-make\" (#1)"
+        },
+        "logs": { "agent": null, "system": null, "task": null },
+        "cost": 0.005295493691358025
+      }
+    },
+    {
+      "_id": "evergreen_ubuntu1604_test_util_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "secret": "42576f91ef516bba495349e444ee1600",
+      "create_time": { "$date": "2020-02-20T20:37:06Z" },
+      "injest_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "dispatch_time": { "$date": "2020-02-21T15:15:16.331Z" },
+      "scheduled_time": { "$date": "2020-02-21T15:14:02.452Z" },
+      "start_time": { "$date": "2020-02-21T15:15:17.342Z" },
+      "finish_time": { "$date": "2020-02-21T15:15:44.418Z" },
+      "activated_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": { "$numberLong": "0" },
+      "task_group": "",
+      "last_heartbeat": { "$date": "2020-02-21T15:15:17.342Z" },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "distro": "ubuntu1604-build",
+      "build_variant": "ubuntu1604",
+      "depends_on": [],
+      "distro_aliases": ["ubuntu1604-build"],
+      "display_name": "test-util",
+      "tags": ["nodb", "test", "agent"],
+      "host_id": "i-0ce9b214829c60bb1",
+      "restarts": 0,
+      "execution": 0,
+      "order": 2567,
+      "r": "github_pull_request",
+      "status": "success",
+      "time_taken": { "$numberLong": "27076474330" },
+      "duration_prediction": {
+        "value": { "$numberLong": "31359735118" },
+        "std_dev": { "$numberLong": "5170497556" },
+        "ttl": { "$numberLong": "49327008213831" },
+        "collected_at": { "$date": "2020-02-21T15:14:02.371Z" },
+        "expected_duration": { "$numberLong": "31359735118" },
+        "expected_duration_std_dev": { "$numberLong": "5170497556" },
+        "details": {
+          "status": "success",
+          "type": "test",
+          "desc": "'subprocess.exec' in \"run-make\" (#1)"
+        },
+        "logs": { "agent": null, "system": null, "task": null },
+        "cost": 0.002233937135802469
+      }
+    },
+    {
+      "_id": "evergreen_ubuntu1604_test_validator_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "secret": "d3432ab3b9f68eb440d42366787c5e3a",
+      "create_time": { "$date": "2020-02-20T20:37:06Z" },
+      "injest_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "dispatch_time": { "$date": "2020-02-21T15:14:32.930Z" },
+      "scheduled_time": { "$date": "2020-02-21T15:14:02.452Z" },
+      "start_time": { "$date": "2020-02-21T15:14:35.105Z" },
+      "finish_time": { "$date": "2020-02-21T15:15:17.124Z" },
+      "activated_time": { "$date": "2020-02-21T15:13:48.838Z" },
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "evergreen",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "priority": { "$numberLong": "0" },
+      "task_group": "",
+      "last_heartbeat": { "$date": "2020-02-21T15:15:04.293Z" },
+      "activated": true,
+      "activated_by": "",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "distro": "ubuntu1604-build",
+      "build_variant": "ubuntu1604",
+      "depends_on": [],
+      "distro_aliases": ["ubuntu1604-build"],
+      "display_name": "test-validator",
+      "tags": ["db", "test"],
+      "host_id": "i-0f204d006f3924e04",
+      "restarts": 0,
+      "execution": 0,
+      "order": 2567,
+      "r": "github_pull_request",
+      "status": "success",
+      "time_taken": { "$numberLong": "42019480788" },
+      "duration_prediction": {
+        "value": { "$numberLong": "75382008476" },
+        "std_dev": { "$numberLong": "10605057405" },
+        "ttl": { "$numberLong": "53482329993587" },
+        "collected_at": { "$date": "2020-02-21T15:14:02.387Z" },
+        "expected_duration": { "$numberLong": "75382008476" },
+        "expected_duration_std_dev": { "$numberLong": "10605057405" },
+        "details": {
+          "status": "success",
+          "type": "test",
+          "desc": "'subprocess.exec' in \"run-make\" (#1)"
+        },
+        "logs": { "agent": null, "system": null, "task": null },
+        "cost": 0.0034668268765432097
+      }
+    }
+  ],
+  "versions": [
+    {
+      "_id": "performance_37cb7ea09393e88662e3139bd20fa29e59f2a1a3",
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "start_time": {
+        "$date": "2018-01-11T08:09:43.749Z"
+      },
+      "finish_time": {
+        "$date": "2018-01-11T08:22:25.073Z"
+      },
+      "gitspec": "37cb7ea09393e88662e3139bd20fa29e59f2a1a3",
+      "author": "Martin Neupauer",
+      "author_email": "martin.neupauer@mongodb.com",
+      "message": "SERVER-31530 Certain queries using 2d index could incorrecly compute\nboundaries delivering incorrect results. The root cause was in incorrectly\npropagating index tags during the query plan construction.",
+      "status": "failed",
+      "order": 10352,
+      "config": "identifier: performance\ncommand_type: system\npre:\n- command: shell.exec\n  params:\n    script: |\n      ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongotop-2.4; pkill -9 resmoke.py; pkill -9 python; pkill -9 python2; pkill -9 lldb; pkill -9 _test} >/dev/null 2>&1\n      exit 0\n    silent: true\npost:\n- command: attach.results\n  params:\n    file_location: src/report.json\n- command: s3.put\n  params:\n    aws_key: ${aws_key}\n    aws_secret: ${aws_secret}\n    bucket: mciuploads\n    content_type: ${content_type|text/plain}\n    display_name: mongod.log\n    local_file: src/mongod.log\n    permissions: public-read\n    remote_file: ${project}/${build_variant}/${revision}/${task_id}/${version_id}/logs/mongod-${build_id}.log\n- command: shell.exec\n  params:\n    script: |\n      ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongotop-2.4; pkill -9 resmoke.py; pkill -9 python; pkill -9 python2; pkill -9 lldb; pkill -9 _test} >/dev/null 2>&1\n      exit 0\n    silent: true\n- command: shell.exec\n  params:\n    script: |\n      # removes files from the (local} scons cache when it's over a\n      # threshold, to the $prune_ratio percentage. Ideally override\n      # these default values in the distro config in evergreen.\n\n      if [ -d \"${scons_cache_path}\" ]; then\n          ${python|/opt/mongodbtoolchain/v2/bin/python2} buildscripts/scons_cache_prune.py --cache-dir ${scons_cache_path} --cache-size ${scons_cache_size|200} --prune-ratio ${scons_prune_ratio|0.8}\n      fi\n    working_dir: src\nmodules:\n- name: enterprise\n  branch: master\n  repo: git@github.com:10gen/mongo-enterprise-modules.git\n  prefix: src/mongo/db/modules\nbuildvariants:\n- name: linux-wt-standalone\n  display_name: Standalone Linux inMemory\n  expansions:\n    compile_flags: -j$(grep -c ^processor /proc/cpuinfo} CC=/opt/mongodbtoolchain/v2/bin/gcc\n      CXX=/opt/mongodbtoolchain/v2/bin/g++ OBJCOPY=/opt/mongodbtoolchain/v2/bin/objcopy\n      --ssl\n    mongod_exec_wrapper: numactl --physcpubind=4,5,6,7 -i 1\n    mongod_flags: --storageEngine=inMemory --logpath ./mongod.log --fork --syncdelay\n      0 --setParameter ttlMonitorEnabled=false --setParameter diagnosticDataCollectionEnabled=false\n      --inMemoryEngineConfigString 'eviction=(threads_min=1},' --inMemorySizeGB 60\n      --auth --networkMessageCompressors=noop\n    perf_exec_wrapper: numactl --physcpubind=1,2,3 -i 0\n    project: perf\n    use_scons_cache: \"true\"\n  modules:\n  - enterprise\n  batchtime: 90\n  run_on:\n  - centos6-perf\n  tasks:\n  - name: compile\n    distros:\n    - rhel62-large\n  - name: aggregation\n  - name: agg-query-comparison\n  - name: query\n  - name: views-aggregation\n  - name: views-query\n  - name: where\n  - name: update\n  - name: insert\n  - name: geo\n  - name: misc\n  - name: singleThreaded\n- name: linux-mmap-standalone\n  display_name: Standalone Linux MMAPv1\n  expansions:\n    mongod_exec_wrapper: numactl --physcpubind=4,5,6,7 -i 1\n    mongod_flags: --storageEngine=mmapv1 --logpath ./mongod.log --fork --syncdelay\n      0 --nojournal --setParameter ttlMonitorEnabled=false --setParameter diagnosticDataCollectionEnabled=false\n      --auth --networkMessageCompressors=noop\n    perf_exec_wrapper: numactl --physcpubind=1,2,3 -i 0\n    project: perf\n  batchtime: 90\n  run_on:\n  - centos6-perf\n  tasks:\n  - name: aggregation\n  - name: agg-query-comparison\n  - name: query\n  - name: views-aggregation\n  - name: views-query\n  - name: where\n  - name: update\n  - name: insert\n  - name: geo\n  - name: misc\n  - name: singleThreaded\n- name: linux-wt-repl\n  display_name: 1-Node ReplSet Linux inMemory\n  expansions:\n    mongod_exec_wrapper: numactl --physcpubind=4,5,6,7 -i 1\n    mongod_flags: --replSet=test --storageEngine=inMemory  --logpath ./mongod.log\n      --fork --syncdelay 0 --setParameter ttlMonitorEnabled=false --setParameter diagnosticDataCollectionEnabled=false\n      --inMemoryEngineConfigString 'eviction=(threads_min=1},' --inMemorySizeGB 60\n      --auth --oplogSize 30000 --networkMessageCompressors=noop\n    perf_exec_wrapper: numactl --physcpubind=1,2,3 -i 0\n    project: perf\n  batchtime: 90\n  run_on:\n  - centos6-perf\n  tasks:\n  - name: update\n  - name: insert\n  - name: misc\n  - name: singleThreaded\n- name: linux-mmap-repl\n  display_name: 1-Node ReplSet Linux MMAPv1\n  expansions:\n    mongod_exec_wrapper: numactl --physcpubind=4,5,6,7 -i 1\n    mongod_flags: --replSet=test --storageEngine=mmapv1 --logpath ./mongod.log --fork\n      --syncdelay 0 --nojournal --setParameter ttlMonitorEnabled=false --setParameter\n      diagnosticDataCollectionEnabled=false --auth --oplogSize 100000 --networkMessageCompressors=noop\n    perf_exec_wrapper: numactl --physcpubind=1,2,3 -i 0\n    project: perf\n  batchtime: 90\n  run_on:\n  - centos6-perf\n  tasks:\n  - name: update\n  - name: insert\n  - name: misc\n  - name: singleThreaded\nfunctions:\n  analyze:\n  - command: shell.exec\n    params:\n      script: |\n        set -e\n        set -v\n        virtualenv ./venv\n        source ./venv/bin/activate\n        pip install -r ../dsi/requirements/analysis.txt\n      working_dir: src\n  - command: json.get_history\n    params:\n      file: src/history.json\n      name: perf\n      task: ${task_name}\n  - command: json.get_history\n    params:\n      file: src/tags.json\n      name: perf\n      tags: true\n      task: ${task_name}\n  - type: test\n    command: shell.exec\n    params:\n      script: |\n        set -o errexit\n        source ./venv/bin/activate\n        REFTAGS=\"3.4.9-Baseline 3.2.17-Baseline 3.0.15-Baseline\" # These are project specific\n        # Project Opts are  project specific, but don't match expansion from elsewhere.\n        # Note project_id performance doesn't match string perf used elsewhere for ${project}\n        PROJECT_OPTS=\"--overrideFile ../dsi/analysis/${branch_name}/perf_override.json --project_id performance\"\n        python -u ../dsi/analysis/dashboard_gen.py --rev ${revision} -f history.json -t tags.json --refTag $REFTAGS $PROJECT_OPTS --variant ${build_variant} --task ${task_name} --jira-user ${perf_jira_user} --jira-password ${perf_jira_pw} || true\n      silent: true\n      working_dir: src\n  - command: json.send\n    params:\n      file: src/dashboard.json\n      name: dashboard\n  - type: test\n    command: shell.exec\n    params:\n      script: |\n        set -o errexit\n        set -o verbose\n        source ./venv/bin/activate\n\n        # Any tasks that want the analysis scripts to analyze mongod.log files should pass in\n        # `reports_analysis: true` as a var to this function. The following line will select the\n        # appropriate flags if it's `true`.\n        reports_analysis_flags=\"--reports-analysis . --perf-file perf/perf.json\"\n        cmd_flags=$([ \"${reports_analysis}\" = \"true\" ] && echo \"$reports_analysis_flags\" || echo \"\"}\n        REFTAG=\"3.4.9-Baseline\"\n        OVERRIDE=\"../dsi/analysis/${branch_name}/perf_override.json\"\n        python ../dsi/analysis/perf_regression_check.py $cmd_flags -f history.json --rev ${revision} -t tags.json --refTag $REFTAG --overrideFile $OVERRIDE --variant ${build_variant} --task ${task_name} --threshold 0.075 --threadThreshold 0.12\n      working_dir: src\n  download analysis scripts:\n  - command: shell.exec\n    params:\n      script: |\n        set -v\n        rm -rf ./dsi\n        mkdir -p ./src\n        git clone git@github.com:10gen/dsi.git\n  run perf tests:\n  - command: shell.exec\n    params:\n      script: |\n        set -e\n        set -v\n        virtualenv ./venv\n        source ./venv/bin/activate\n        pip install argparse\n      working_dir: src\n  - type: test\n    command: shell.exec\n    params:\n      script: |\n        set -e\n        set -v\n        source ./venv/bin/activate\n        cd perf\n        #  give mongod a few seconds to start up so that we can connect.\n        sleep 5\n        ${perf_exec_wrapper} python benchrun.py --shell ../mongo -t ${threads} --trialCount 5 -f testcases/*.js --readCmd ${readCmd} --includeFilter ${includeFilter1}  --includeFilter ${includeFilter2} --excludeFilter ${excludeFilter} --out perf.json --exclude-testbed --username admin --password password\n        echo \"Oplog size at end of tests...\"\n        ../mongo --username admin --password password --eval \"db.getSiblingDB('local'}.oplog.rs.totalSize(}/1024/1024\" admin\n      working_dir: src\n  - command: json.send\n    params:\n      file: src/perf/perf.json\n      name: perf\n  start server:\n  - command: shell.exec\n    params:\n      script: |\n        rm -rf ./*\n        mkdir src\n  - command: s3.get\n    params:\n      aws_key: ${aws_key}\n      aws_secret: ${aws_secret}\n      bucket: mciuploads\n      local_file: src/mongod\n      remote_file: ${project}/${version_id}/${revision}/mongod-${version_id}\n  - command: s3.get\n    params:\n      aws_key: ${aws_key}\n      aws_secret: ${aws_secret}\n      bucket: mciuploads\n      local_file: src/mongo\n      remote_file: ${project}/${version_id}/${revision}/mongo-${version_id}\n  - command: shell.exec\n    params:\n      script: |\n        set -e\n        set -v\n        chmod +x mongod\n        chmod +x mongo\n        git clone https://github.com/mongodb/mongo-perf perf\n        cd perf\n        git describe --tags\n      working_dir: src\n  - command: shell.exec\n    params:\n      background: true\n      script: |\n        set -e\n        set -o verbose\n        mkdir -p ./dbdata\n        ${mongod_exec_wrapper} ./mongod --dbpath ./dbdata ${mongod_flags}\n      working_dir: src\n  - command: shell.exec\n    params:\n      script: |\n        set -e\n        set -o verbose\n        sleep 5\n\n        # if we started a replset, initiate it and wait for it to become primary\n        #\n        # Note: This process is always currently started with --nojournal (not a recommended production configuration, see\n        #       https://docs.mongodb.com/manual/tutorial/manage-journaling/#disable-journaling}.\n        #       As a result, writeConcernMajorityJournalDefault can be set to false. If this becomes configurable later\n        #       then the correct value should be passed to rs.initiate or getCmdLineOpts needs to interrogated (but\n        #       only after db.createUser}.\n        ./mongo --eval \"if(db.isMaster(}.isreplicaset}{\\\n                           rs.initiate({_id: 'test', version: 1, members: [ { _id: 0, host : 'localhost:27017' }], writeConcernMajorityJournalDefault:false}};\\\n                           assert.soon(function(}{return db.isMaster(}.ismaster}, 'no primary'};\\\n                        }\"\n\n        # benchRun(} authenticates against the admin db, with a user that must has admin access.\n        # Note: This is possibly a legacy requirement from times when it would call serverStatus.\n        # Btw, when mongod is started without --auth, these should be harmless no-ops\n        ./mongo --eval \"db.createUser({user: 'admin', pwd: 'password', roles:\\\n                       [ { role: 'root', db: 'admin' } ] }}\"\\\n                         admin\n\n        # print the replset config unless this is a standalone\n        ./mongo --eval \"if( db.isMaster(}.hosts } { printjson(rs.config(}}; }\" --username admin --password password admin\n        echo \"MONGOD STARTED.\"\n      working_dir: src\ntasks:\n- name: compile\n  commands:\n  - command: git.get_project\n    params:\n      directory: src\n  - command: manifest.load\n  - command: shell.exec\n    params:\n      script: |\n        set -o errexit\n        set -o verbose\n\n        # We get the raw version string (r1.2.3-45-gabcdef} from git\n        MONGO_VERSION=$(git describe}\n        # If this is a patch build, we add the patch version id to the version string so we know\n        # this build was a patch, and which evergreen task it came from\n        if [ \"${is_patch|}\" = \"true\" ]; then\n          MONGO_VERSION=\"$MONGO_VERSION-patch-${version_id}\"\n        fi\n\n        # This script converts the generated version string into a sanitized version string for\n        # use by scons and uploading artifacts as well as information about for the scons cache.\n        MONGO_VERSION=$MONGO_VERSION USE_SCONS_CACHE=${use_scons_cache|false} ${python|/opt/mongodbtoolchain/v2/bin/python2} buildscripts/generate_compile_expansions.py --out compile_expansions.yml\n      working_dir: src\n  - command: expansions.update\n    params:\n      file: src/compile_expansions.yml\n  - command: shell.exec\n    params:\n      script: |\n        set -o errexit\n        set -o verbose\n\n        ${python|/opt/mongodbtoolchain/v2/bin/python2} ./buildscripts/scons.py ${compile_flags|} ${scons_cache_args|} mongo mongod\n      working_dir: src\n  - command: s3.put\n    params:\n      aws_key: ${aws_key}\n      aws_secret: ${aws_secret}\n      bucket: mciuploads\n      content_type: ${content_type|application/octet-stream}\n      display_name: mongod\n      local_file: src/mongod\n      permissions: public-read\n      remote_file: ${project}/${version_id}/${revision}/mongod-${version_id}\n  - command: s3.put\n    params:\n      aws_key: ${aws_key}\n      aws_secret: ${aws_secret}\n      bucket: mciuploads\n      content_type: ${content_type|application/octet-stream}\n      display_name: mongo\n      local_file: src/build/cached/mongo/mongo\n      permissions: public-read\n      remote_file: ${project}/${version_id}/${revision}/mongo-${version_id}\n- name: query\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: query\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: views-query\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: query_identityview\n      includeFilter2: core regression\n      readCmd: \"true\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: views-aggregation\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: none\n      includeFilter1: aggregation_identityview\n      includeFilter2: regression\n      readCmd: \"true\"\n      threads: \"1\"\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      report_analysis: \"true\"\n- name: where\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: where\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: update\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: update\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: insert\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: insert\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: geo\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: geo\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: misc\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: command multi remove mixed\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: singleThreaded\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: none\n      includeFilter1: single_threaded\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: \"1\"\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n- name: aggregation\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: none\n      includeFilter1: aggregation\n      includeFilter2: regression\n      readCmd: \"false\"\n      threads: \"1\"\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      report_analysis: \"true\"\n- name: agg-query-comparison\n  depends_on:\n  - name: compile\n    variant: linux-wt-standalone\n  commands:\n  - func: start server\n  - func: run perf tests\n    vars:\n      excludeFilter: single_threaded\n      includeFilter1: agg_query_comparison\n      includeFilter2: core regression\n      readCmd: \"false\"\n      threads: 1 2 4 8\n  - func: download analysis scripts\n  - func: analyze\n    vars:\n      reports_analysis: \"true\"\n",
+      "ignored": false,
+      "owner_name": "mongodb",
+      "repo_name": "mongo",
+      "branch_name": "master",
+      "repo_kind": "github",
+      "build_variants_status": [
+        {
+          "build_variant": "linux-wt-standalone",
+          "activated": true,
+          "activate_at": {
+            "$date": "2018-01-11T00:17:08.695Z"
+          },
+          "build_id": "performance_linux_wt_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+        },
+        {
+          "build_variant": "linux-mmap-standalone",
+          "activated": true,
+          "activate_at": {
+            "$date": "2018-01-11T00:17:08.695Z"
+          },
+          "build_id": "performance_linux_mmap_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+        },
+        {
+          "build_variant": "linux-wt-repl",
+          "activated": true,
+          "activate_at": {
+            "$date": "2018-01-11T00:17:08.695Z"
+          },
+          "build_id": "performance_linux_wt_repl_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+        },
+        {
+          "build_variant": "linux-mmap-repl",
+          "activated": true,
+          "activate_at": {
+            "$date": "2018-01-11T00:17:08.695Z"
+          },
+          "build_id": "performance_linux_mmap_repl_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+        }
+      ],
+      "builds": [
+        "performance_linux_wt_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36",
+        "performance_linux_mmap_standalone_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36",
+        "performance_linux_wt_repl_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36",
+        "performance_linux_mmap_repl_37cb7ea09393e88662e3139bd20fa29e59f2a1a3_18_01_11_00_01_36"
+      ],
+      "identifier": "performance",
+      "remote": false,
+      "remote_path": "etc/perf.yml",
+      "r": "gitter_request"
+    },
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "create_time": {
+        "$date": "2020-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2020-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-21T15:29:54.869Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "brian.samek",
+      "author_email": "",
+      "message": "'evergreen-ci/evergreen' pull request #3186 by bsamek: EVG-7425 Don't send ShouldExit to unprovisioned hosts (https://github.com/evergreen-ci/evergreen/pull/3186)",
+      "status": "failed",
+      "order": 2567,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "",
+      "repo_name": "",
+      "branch_name": "master",
+      "repo_kind": "",
+      "build_variants_status": [
+        {
+          "build_variant": "ubuntu1604",
+          "activated": true,
+          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        },
+        {
+          "build_variant": "lint",
+          "activated": true,
+          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        }
+      ],
+      "builds": [
+        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      ],
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "",
+      "r": "github_pull_request",
+      "author_id": "brian.samek"
+    }
+  ]
 }
