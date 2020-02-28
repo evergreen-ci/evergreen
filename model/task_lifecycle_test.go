@@ -2892,23 +2892,17 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	b := build.Build{Id: "build0"}
 	tasks := []task.Task{
 		{Id: "t0", BuildId: b.Id},
-		{
-			Id:      "t1",
-			BuildId: b.Id,
-			DependsOn: []task.Dependency{
-				{
-					TaskId:       "t0",
-					Unattainable: true,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
+		{Id: "t1", BuildId: b.Id, Status: evergreen.TaskFailed},
 		{
 			Id:      "t2",
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
 					TaskId:       "t0",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t1",
 					Unattainable: true,
 				},
 			},
@@ -2919,8 +2913,8 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			BuildId: b.Id,
 			DependsOn: []task.Dependency{
 				{
-					TaskId:       "t2",
-					Unattainable: false,
+					TaskId:       "t0",
+					Unattainable: true,
 				},
 			},
 			Status: evergreen.TaskUndispatched,
@@ -2931,6 +2925,17 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 			DependsOn: []task.Dependency{
 				{
 					TaskId:       "t3",
+					Unattainable: false,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t5",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t4",
 					Unattainable: true,
 				},
 			},
@@ -2947,27 +2952,30 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
 	dbBuild, err := build.FindOneId(b.Id)
 	assert.NoError(err)
-	require.Len(t, dbBuild.Tasks, 5)
+	require.Len(t, dbBuild.Tasks, 6)
 	assert.False(dbBuild.Tasks[0].Blocked)
-
-	dbTask1, err := task.FindOneId(tasks[1].Id)
-	assert.NoError(err)
-	assert.False(dbTask1.DependsOn[0].Unattainable)
 	assert.False(dbBuild.Tasks[1].Blocked)
 
+	// this task should still be marked blocked because t1 is unattainable
 	dbTask2, err := task.FindOneId(tasks[2].Id)
 	assert.NoError(err)
 	assert.False(dbTask2.DependsOn[0].Unattainable)
-	assert.False(dbBuild.Tasks[2].Blocked)
+	assert.True(dbTask2.DependsOn[1].Unattainable)
+	assert.True(dbBuild.Tasks[2].Blocked)
 
 	dbTask3, err := task.FindOneId(tasks[3].Id)
 	assert.NoError(err)
 	assert.False(dbTask3.DependsOn[0].Unattainable)
 	assert.False(dbBuild.Tasks[3].Blocked)
 
-	// We don't traverse past the t3 which was already unattainable == false
 	dbTask4, err := task.FindOneId(tasks[4].Id)
 	assert.NoError(err)
-	assert.True(dbTask4.DependsOn[0].Unattainable)
-	assert.True(dbBuild.Tasks[4].Blocked)
+	assert.False(dbTask4.DependsOn[0].Unattainable)
+	assert.False(dbBuild.Tasks[4].Blocked)
+
+	// We don't traverse past the t4 which was already unattainable == false
+	dbTask5, err := task.FindOneId(tasks[5].Id)
+	assert.NoError(err)
+	assert.True(dbTask5.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[5].Blocked)
 }

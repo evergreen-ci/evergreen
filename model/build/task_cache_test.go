@@ -65,7 +65,7 @@ func TestUpdateCachedTask(t *testing.T) {
 		Id:        "task1",
 		BuildId:   "build1",
 		Status:    evergreen.TaskUndispatched,
-		DependsOn: []task.Dependency{{TaskId: "task2", Unattainable: true}},
+		DependsOn: []task.Dependency{{TaskId: "task2", Unattainable: true}, {TaskId: "task1", Unattainable: false}},
 	}, 0))
 	dbBuild, err = FindOne(ById(b.Id))
 	assert.NoError(err)

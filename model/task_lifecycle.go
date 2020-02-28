@@ -518,11 +518,11 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
-		if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, true); err != nil {
-			return errors.Wrap(err, "error marking cached task as blocked")
-		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.WithStack(err)
+		}
+		if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, dependentTask.Blocked()); err != nil {
+			return errors.Wrap(err, "error marking cached task as blocked")
 		}
 	}
 	return nil
@@ -538,11 +538,11 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
-		if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, false); err != nil {
-			return errors.Wrap(err, "error setting cached task unblocked")
-		}
 		if err = UpdateUnblockedDependencies(&blockedTask); err != nil {
 			return errors.WithStack(err)
+		}
+		if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, blockedTask.Blocked()); err != nil {
+			return errors.Wrap(err, "error setting cached task unblocked")
 		}
 	}
 
