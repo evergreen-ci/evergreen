@@ -324,7 +324,10 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	}
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
-			return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			if sortDir == 1 {
+				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			}
+			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
 	}
 	return taskResults, nil
