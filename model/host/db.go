@@ -975,6 +975,7 @@ type HostsInRangeParams struct {
 	User          string
 	Distro        string
 	Status        string
+	Region        string
 	UserSpawned   bool
 }
 
@@ -999,13 +1000,16 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	if params.User != "" {
 		filter[StartedByKey] = params.User
 	}
-
 	if params.Distro != "" {
 		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = params.Distro
 	}
 
 	if params.UserSpawned {
 		filter[UserHostKey] = true
+	}
+
+	if params.Region != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey)] = params.Region
 	}
 
 	hosts, err := Find(db.Query(filter))
