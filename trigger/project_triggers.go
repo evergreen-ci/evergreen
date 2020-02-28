@@ -65,6 +65,24 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, err
 	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting evergreen settings")
+	}
+	upstreamProject, err := model.FindOneProjectRef(args.SourceVersion.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project ref")
+	}
+	for _, module := range proj.Modules {
+		owner, repo := module.GetRepoOwnerAndName()
+		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
+			_, err = repotracker.CreateManifest(*v, proj, upstreamProject.Branch, settings)
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
 	err = model.UpdateLastRevision(v.Identifier, v.Revision)
 	if err != nil {
 		return nil, errors.Wrap(err, "error updating last revision")
