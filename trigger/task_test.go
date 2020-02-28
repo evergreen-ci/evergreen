@@ -891,6 +891,17 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithStepback() {
 	s.tryDoubleTrigger(false)
 }
 
+func (s *taskSuite) TestRegressionByTestWithPassingTests() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	// all passing tests should fall back to task regression
+	s.makeTask(27, evergreen.TaskSucceeded)
+	s.makeTask(28, evergreen.TaskFailed)
+	s.makeTest(28, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest(28, 0, "", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(true)
+}
+
 func (s *taskSuite) TestRegressionByTestWithRegex() {
 	sub := event.Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
