@@ -40,7 +40,6 @@ type atomicGraphQLSuite struct {
 }
 
 func TestAtomicGraphQLSuite(t *testing.T) {
-	fmt.Println("HEAR ME ROAR")
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {

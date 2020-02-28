@@ -2012,7 +2012,6 @@ func GetTaskResultsByVersion(versionID, taskOrVariantName, sortBy string, status
 	if len(sortBy) > 0 {
 		pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
 	}
-
 	if page > 0 {
 		pipeline = append(pipeline, bson.M{"$skip": page * limit})
 	}
