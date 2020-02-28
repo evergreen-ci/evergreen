@@ -53,12 +53,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	if patchString == "" {
 		patchString = data.PatchString
 	}
+	patchString = strings.TrimSpace(patchString)
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
 
-	if data.Alias == evergreen.CommitQueueAlias && !patch.IsMailboxDiff(patchString) {
+	if data.Alias == evergreen.CommitQueueAlias && len(patchString) != 0 && !patch.IsMailboxDiff(patchString) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
 		return
 	}
@@ -166,7 +167,8 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Alias == evergreen.CommitQueueAlias && !patch.IsMailboxDiff(data.PatchString) {
+	data.PatchString = strings.TrimSpace(data.PatchString)
+	if p.Alias == evergreen.CommitQueueAlias && len(data.PatchString) != 0 && !patch.IsMailboxDiff(data.PatchString) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
 			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
 		return
