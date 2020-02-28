@@ -29,7 +29,8 @@ func (s *TestFileVisibilitySuite) SetupTest() {
 }
 
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
-	stripped := artifact.StripHiddenFiles(s.files, false)
+	stripped, err := artifact.StripHiddenFiles(s.files, false)
+	s.Require().NoError(err)
 	s.Len(s.files, 5)
 
 	s.Equal("Public", stripped[0].Name)
@@ -39,7 +40,8 @@ func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
 
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithUser() {
 	hasUser := &user.DBUser{} != nil
-	stripped := artifact.StripHiddenFiles(s.files, hasUser)
+	stripped, err := artifact.StripHiddenFiles(s.files, hasUser)
+	s.Require().NoError(err)
 	s.Len(s.files, 5)
 
 	s.Equal("Private", stripped[0].Name)
