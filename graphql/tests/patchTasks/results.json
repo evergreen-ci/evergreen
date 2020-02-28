@@ -4,9 +4,36 @@
       "query_file": "patch-tasks.graphql",
       "result": {
         "data": {
-          "patch": {
-            "id": "5e1f8ab8834b87d7b5d251a5"
-          }
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
         }
       }
     }
