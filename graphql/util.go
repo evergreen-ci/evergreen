@@ -85,19 +85,12 @@ func IsURL(str string) bool {
 // GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task.
 // Returns the value in format {[taskId]: baseStatus}
 func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string, tasks []task.Task) (map[string]map[string]string, error) {
-	patch, err := r.sc.FindPatchById(patchID)
+	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting patch %s: %s", patchID, err.Error())
-	}
-	if patch == nil {
-		return nil, fmt.Errorf("No patch found for ID %s", patchID)
-	}
-	version, err := r.sc.FindVersionById(*patch.Version)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting version %s: %s", *patch.Version, err.Error())
+		return nil, fmt.Errorf("Error getting version %s: %s", patchID, err.Error())
 	}
 	if version == nil {
-		return nil, fmt.Errorf("No version found for ID %s", *patch.Version)
+		return nil, fmt.Errorf("No version found for ID %s", patchID)
 	}
 	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(version.Identifier, version.Revision))
 	if err != nil {
