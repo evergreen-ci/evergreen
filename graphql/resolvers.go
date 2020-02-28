@@ -297,11 +297,6 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		taskOrVariantName = *searchInput
 	}
 
-	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
-	}
-
 	tasks, err := r.sc.FindTaskResultsByVersion(patchID, taskOrVariantName, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
@@ -309,6 +304,12 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if tasks == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("No tasks found for %s", patchID))
 	}
+
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID, tasks)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
+	}
+
 	var taskResults []*TaskResult
 	for _, task := range tasks {
 		t := TaskResult{
@@ -317,7 +318,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			Version:      task.Version,
 			Status:       task.Status,
 			BuildVariant: task.BuildVariant,
-			BaseStatus:   baseTaskStatuses[task.Id],
+			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
 		}
 		taskResults = append(taskResults, &t)
 	}

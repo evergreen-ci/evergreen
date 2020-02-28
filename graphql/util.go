@@ -84,7 +84,7 @@ func IsURL(str string) bool {
 
 // GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task.
 // Returns the value in format {[taskId]: baseStatus}
-func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (map[string]string, error) {
+func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string, tasks []task.Task) (map[string]map[string]string, error) {
 	patch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting patch %s: %s", patchID, err.Error())
@@ -114,9 +114,13 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (map[strin
 		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
 	}
 
-	var baseTaskStatusesByTaskID map[string]string
+	// has format of {variant: {displayName: status}}
+	baseTaskStatusesByDisplayNameByVariant := make(map[string]map[string]string)
 	for _, task := range baseTasks {
-		baseTaskStatusesByTaskID[task.Id] = task.Status
+		if _, ok := baseTaskStatusesByDisplayNameByVariant[task.BuildVariant]; !ok {
+			baseTaskStatusesByDisplayNameByVariant[task.BuildVariant] = map[string]string{}
+		}
+		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
 	}
-	return baseTaskStatusesByTaskID, nil
+	return baseTaskStatusesByDisplayNameByVariant, nil
 }
