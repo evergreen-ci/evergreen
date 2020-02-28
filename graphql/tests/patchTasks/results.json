@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "patch-tasks.graphql",
+      "query_file": "no-params.graphql",
       "result": {
         "data": {
           "patchTasks": [
@@ -26,6 +26,352 @@
               "displayName": "test-thirdparty-docker",
               "buildVariant": "ubuntu1604"
             },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-by-name.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-by-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-by-status.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-by-base-status.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-base-status-descending.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "sort-descending.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "search-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "search-display-name.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-status.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "limit-and-pagination-1.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "limit-and-pagination-2.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "all-params.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
             {
               "id": "3",
               "status": "success",
