@@ -69,6 +69,14 @@ func (opts *ProxyOptions) getPath(r *http.Request) string {
 	if opts.StripSourcePrefix {
 		route := mux.CurrentRoute(r)
 		regexString, err := route.GetPathRegexp()
+		if err != nil {
+			grip.Error(message.Fields{
+				"message": "can't get route regexp",
+				"route":   route,
+				"URL":     path,
+			})
+			return path
+		}
 		compiled, err := regexp.Compile(regexString)
 		if err != nil {
 			grip.Error(message.Fields{

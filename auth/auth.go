@@ -41,6 +41,13 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 		}
 		return manager, info, nil
 	}
+	makeOnlyAPIManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+		manager, err := NewOnlyAPIUserManager(authConfig.OnlyAPI)
+		if err != nil {
+			return nil, info, errors.Wrap(err, "problem setting up API-only authentication")
+		}
+		return manager, info, nil
+	}
 	makeGithubManager := func() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 		manager, err := NewGithubUserManager(authConfig.Github, settings.Ui.LoginDomain)
 		if err != nil {
@@ -66,6 +73,10 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 		if authConfig.Naive != nil {
 			return makeNaiveManager()
 		}
+	case evergreen.AuthOnlyAPIKey:
+		if authConfig.OnlyAPI != nil {
+			return makeOnlyAPIManager()
+		}
 	}
 
 	if authConfig.LDAP != nil {
@@ -79,6 +90,9 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 	}
 	if authConfig.Github != nil {
 		return makeGithubManager()
+	}
+	if authConfig.OnlyAPI != nil {
+		return makeOnlyAPIManager()
 	}
 	return nil, info, errors.New("Must have at least one form of authentication, currently there are none")
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSimpleAuthenticator(t *testing.T) {
@@ -26,7 +27,9 @@ func TestSimpleAuthenticator(t *testing.T) {
 	assert.Len(auth.(*simpleAuthenticator).users, 0)
 
 	// constructor avoids nils
-	usr := NewBasicUser("id", "name", "email", "pass", "key", "", "", []string{}, false, nil)
+	opts, err := NewBasicUserOptions("id")
+	require.NoError(t, err)
+	usr := NewBasicUser(opts.Name("name").Email("email").Password("pass").Key("key"))
 	auth = NewSimpleAuthenticator([]User{usr}, nil)
 	assert.NotNil(auth)
 	assert.NotNil(auth.(*simpleAuthenticator).groups)
@@ -38,11 +41,15 @@ func TestSimpleAuthenticator(t *testing.T) {
 	assert.True(auth.CheckAuthenticated(usr))
 
 	// a second user shouldn't validate
-	usr2 := NewBasicUser("id2", "name", "email", "pass", "key", "", "", []string{}, false, nil)
+	opts2, err := NewBasicUserOptions("id2")
+	require.NoError(t, err)
+	usr2 := NewBasicUser(opts2.Name("name").Email("email").Password("pass").Key("key"))
 	assert.False(auth.CheckAuthenticated(usr2))
 
-	usr3 := NewBasicUser("id3", "name", "email", "pass", "key", "", "", []string{"admin"}, false, nil)
-	usr3broken := NewBasicUser("id3", "name", "email", "pass", "yek", "", "", []string{"admin"}, false, nil)
+	opts3, err := NewBasicUserOptions("id3")
+	require.NoError(t, err)
+	usr3 := NewBasicUser(opts3.Name("name").Email("email").Password("pass").Key("key").Roles("admin"))
+	usr3broken := NewBasicUser(opts3.Key("yek"))
 	auth = NewSimpleAuthenticator([]User{usr3}, map[string][]string{
 		"none":  []string{"_"},
 		"admin": []string{"id3"}})
@@ -56,7 +63,7 @@ func TestSimpleAuthenticator(t *testing.T) {
 	assert.True(auth.CheckGroupAccess(usr3, "admin"))
 
 	// check user-based role access
-	usr.(*basicUser).AccessRoles = []string{"admin", "project", "one"}
+	usr.AccessRoles = []string{"admin", "project", "one"}
 	assert.False(auth.CheckResourceAccess(usr, "admin")) // not currently authenticated
 	auth.(*simpleAuthenticator).users[usr.Username()] = usr
 	assert.True(auth.CheckResourceAccess(usr, "admin")) // now it's defined
@@ -77,8 +84,10 @@ func TestBasicAuthenticator(t *testing.T) {
 	// authenticated users are all non-nil users that have
 	// usernames
 	assert.False(auth.CheckAuthenticated(nil))
-	assert.False(auth.CheckAuthenticated(&basicUser{}))
-	usr := NewBasicUser("id", "name", "email", "pass", "key", "", "", []string{}, false, nil)
+	assert.False(auth.CheckAuthenticated(&BasicUser{}))
+	opts, err := NewBasicUserOptions("id")
+	require.NoError(t, err)
+	usr := NewBasicUser(opts.Name("name").Email("email").Password("pass").Key("key"))
 	assert.True(auth.CheckAuthenticated(usr))
 
 	auth = NewBasicAuthenticator(map[string][]string{"one": []string{"id"}}, nil)
