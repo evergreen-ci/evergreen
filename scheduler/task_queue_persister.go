@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -13,7 +14,49 @@ import (
 func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) error {
 	startAt := time.Now()
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
+
+	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	var duplicateTaskIDs []string
+	var err error
+	// kim: TODO: change this query to filter only task IDs that are already in
+	// the queue, probably with some kind of $unwind.
+	// if distroQueueInfo.AliasQueue {
+	//     otherTaskQueue, err = model.FindDistroTaskQueue(distro)
+	//     if err != nil {
+	//         return errors.Wrap(err, "could not get task queue")
+	//     }
+	// } else {
+	//     otherTaskQueue, err = model.FindDistroAliasTaskQueue(distro)
+	//     if err != nil {
+	//         return errors.Wrap(err, "could not get alias queue")
+	//     }
+	// }
+	if distroQueueInfo.AliasQueue {
+		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, model.TaskQueuesCollection)
+		if err != nil {
+			return errors.Wrap(err, "could not get duplicate task IDs from task queues")
+		}
+	} else {
+		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, model.TaskAliasQueuesCollection)
+		if err != nil {
+			return errors.Wrap(err, "could not get duplicate task IDs from task alias queues")
+		}
+	}
+
+	for _, t := range tasks {
+		// Ignore tasks that are already in the other queue.
+		// for _, item := range otherTaskQueue.Queue {
+		//     if t.Id == item.Id {
+		//         continue
+		//     }
+		// }
+		if util.StringSliceContains(duplicateTaskIDs, t.Id) {
+			continue
+		}
+
 		// Does this task have any dependencies?
 		dependencies := make([]string, 0, len(t.DependsOn))
 		for _, d := range t.DependsOn {
@@ -38,13 +81,13 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
-	err := queue.Save()
+	err = queue.Save()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	// track scheduled time for prioritized tasks
-	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
+	if err = task.SetTasksScheduledTime(tasks, startAt); err != nil {
 		return errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
 
