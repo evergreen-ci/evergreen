@@ -43,6 +43,12 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.newSSHKeyPair = {};
       $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
 
+      if (resp.data.auth && resp.data.auth.only_api) {
+        $scope.tempOnlyAPIUsers = _.clone(resp.data.auth.only_api.users)
+      } else {
+        $scope.tempOnlyAPIUsers = []
+      }
+
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
@@ -80,6 +86,16 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       }
     });
     $scope.Settings.ssh_key_pairs = $scope.tempSSHKeyPairs;
+
+    if ($scope.tempOnlyAPIUsers.length > 0) {
+        if (!$scope.Settings.auth) {
+            $scope.Settings.auth = {};
+        }
+        if (!$scope.Settings.auth.only_api) {
+            $scope.Settings.auth.only_api = {};
+        }
+        $scope.Settings.auth.only_api.users = $scope.tempOnlyAPIUsers;
+    }
 
     $scope.Settings.expansions = {};
     _.map($scope.tempExpansions, function(elem, index) {
@@ -296,7 +312,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
   }
 
-  $scope.transformNaiveUser = function(chip) {
+  $scope.chipToUserJSON = function(chip) {
     var user = {};
     try {
       var user = JSON.parse(chip);

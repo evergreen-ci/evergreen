@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -338,6 +339,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 func TestProjectViewPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
@@ -384,8 +386,10 @@ func TestProjectViewPermission(t *testing.T) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", nil, false, env.RoleManager())
-	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, env.RoleManager())
+	opts, err := gimlet.NewBasicUserOptions("user")
+	require.NoError(err)
+	user := gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").RoleManager(env.RoleManager()))
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, env.RoleManager())
 	assert.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
@@ -419,7 +423,9 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(1, counter)
 
 	// give user the right permissions
-	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{role1.ID}, false, env.RoleManager())
+	opts, err = gimlet.NewBasicUserOptions("user")
+	require.NoError(err)
+	user = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").Roles(role1.ID).RoleManager(env.RoleManager()))
 	_, err = um.GetOrCreateUser(user)
 	assert.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), user)
@@ -433,6 +439,7 @@ func TestProjectViewPermission(t *testing.T) {
 func TestEventLogPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
@@ -491,8 +498,10 @@ func TestEventLogPermission(t *testing.T) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{projRole.ID, distroRole.ID, superuserRole.ID}, false, env.RoleManager())
-	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, env.RoleManager())
+	opts, err := gimlet.NewBasicUserOptions("user")
+	require.NoError(err)
+	user := gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").Roles(projRole.ID, distroRole.ID, superuserRole.ID).RoleManager(env.RoleManager()))
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, env.RoleManager())
 	assert.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)

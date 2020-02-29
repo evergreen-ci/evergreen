@@ -129,7 +129,7 @@ func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
 
 		summaries, err = ParseGitSummary(gitOutput)
 		if err != nil {
-			return nil, errors.Wrap(err, "couldn't validate patch")
+			return nil, errors.Wrap(err, "couldn't parse git summary")
 		}
 	}
 	return summaries, nil

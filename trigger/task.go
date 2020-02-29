@@ -711,9 +711,14 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	testsToAlert := []task.TestResult{}
+	hasFailingTest := false
 	var match bool
-	for i := range t.task.LocalTestResults {
-		match, err = testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub)
+	for _, test := range t.task.LocalTestResults {
+		if test.Status != evergreen.TestFailedStatus {
+			continue
+		}
+		hasFailingTest = true
+		match, err = testMatchesRegex(test.TestFile, sub)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
@@ -727,7 +732,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &test)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -737,12 +742,15 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, t.task.LocalTestResults[i].TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
-			testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
+			testsToAlert = append(testsToAlert, test)
 		}
+	}
+	if !hasFailingTest {
+		return t.taskRegression(sub)
 	}
 	if len(testsToAlert) == 0 {
 		return nil, nil
