@@ -306,6 +306,10 @@ func (s *AdminSuite) TestAuthConfig() {
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
 		},
+		Multi: &MultiAuthConfig{
+			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
+			ReadOnly:  []string{AuthNaiveKey, AuthOnlyAPIKey},
+		},
 		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,
 	}
