@@ -1923,30 +1923,25 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 // GetTaskResultsByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTaskResultsByVersion(versionID, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
-	tasks := []Task{}
 	match := bson.M{
 		VersionKey: versionID,
 	}
-	pipeline := []bson.M{
-		{"$match": &match},
-	}
 	if len(statuses) > 0 {
-		statusFilters := []bson.M{}
-		for _, status := range statuses {
-			statusFilters = append(statusFilters, bson.M{StatusKey: status})
-		}
-		match["$or"] = statusFilters
+		match[StatusKey] = bson.M{"$in": statuses}
 	}
+	sorters := []string{}
 	if len(sortBy) > 0 {
-		pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
+		sortKey := sortBy
+		if sortDir < 0 {
+			sortKey = "-" + sortKey
+		}
+		sorters = append(sorters, sortKey)
 	}
-	if page > 0 {
-		pipeline = append(pipeline, bson.M{"$skip": page * limit})
-	}
-	if limit > 0 {
-		pipeline = append(pipeline, bson.M{"$limit": limit})
-	}
-	err := db.Aggregate(Collection, pipeline, &tasks)
+	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+	sorters = append(sorters, "_id")
+
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, db.Query(match).Sort(sorters).Limit(limit).Skip(page*limit), &tasks)
 	if err != nil {
 		return nil, err
 	}
