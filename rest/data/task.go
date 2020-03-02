@@ -215,9 +215,6 @@ func (tc *DBTaskConnector) FindTaskResultsByVersion(versionID, taskOrVariantName
 	if err != nil {
 		return nil, err
 	}
-	if len(tasks) == 0 {
-		return []task.Task{}, nil
-	}
 	return tasks, nil
 }
 
