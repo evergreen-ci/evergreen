@@ -944,6 +944,7 @@ func (p PluginCommandConf) GetType(prj *Project) string {
 	return DefaultCommandType
 }
 
+// GetRepoOwnerAndName returns the owner and repo name (in that order) of a module
 func (m *Module) GetRepoOwnerAndName() (string, string) {
 	parts := strings.Split(m.Repo, ":")
 	basename := parts[len(parts)-1]
