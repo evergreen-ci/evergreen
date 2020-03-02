@@ -551,6 +551,9 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 		if err := doc.UnmarshalBSON(bytes); err != nil {
 			return nil, errors.Wrapf(err, "error unmarshalling settings bytes into document")
 		}
+		if region == evergreen.DefaultEC2Region {
+			doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+		}
 		return doc, nil
 	}
 	// if no region given, we assume the provided settings list is accurate
