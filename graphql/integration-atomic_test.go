@@ -72,8 +72,6 @@ type testsCases struct {
 	Tests []test `json:"tests"`
 }
 
-type data map[string]json.RawMessage
-
 func (s *atomicGraphQLSuite) TestQueries() {
 	dataFile, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "data.json"))
 	s.Require().NoError(err)
@@ -81,7 +79,7 @@ func (s *atomicGraphQLSuite) TestQueries() {
 	resultsFile, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "results.json"))
 	s.Require().NoError(err)
 
-	var testData data
+	var testData map[string]json.RawMessage
 	err = json.Unmarshal(dataFile, &testData)
 	s.Require().NoError(err)
 
@@ -89,7 +87,7 @@ func (s *atomicGraphQLSuite) TestQueries() {
 	err = json.Unmarshal(resultsFile, &tests)
 	s.Require().NoError(err)
 
-	s.Require().NoError(testData.SetupData(*evergreen.GetEnvironment().DB()))
+	s.Require().NoError(SetupData(*evergreen.GetEnvironment().DB(), testData))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
@@ -114,14 +112,14 @@ func (s *atomicGraphQLSuite) TestQueries() {
 	}
 }
 
-func (d *data) SetupData(db mongo.Database) error {
+func SetupData(db mongo.Database, data map[string]json.RawMessage) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
-	for coll, data := range *d {
+	for coll, d := range data {
 		var docs []interface{}
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
 		// test spec is normal JSON
-		catcher.Add(bson.UnmarshalExtJSON(data, false, &docs))
+		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
 		_, err := db.Collection(coll).InsertMany(ctx, docs)
 		catcher.Add(err)
 	}
