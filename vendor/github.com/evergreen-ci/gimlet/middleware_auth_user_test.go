@@ -16,7 +16,6 @@ func TestUserMiddleware(t *testing.T) {
 	assert := assert.New(t)
 
 	// set up test fixtures
-	//
 	buf := []byte{}
 	body := bytes.NewBuffer(buf)
 	counter := 0
@@ -28,13 +27,10 @@ func TestUserMiddleware(t *testing.T) {
 		ID:     "test-user",
 		APIKey: "better",
 	}
-	usermanager := &MockUserManager{
-		TokenToUsers: map[string]User{},
-	}
+	usermanager := &MockUserManager{Users: []*MockUser{user}}
 	conf := UserMiddlewareConfiguration{}
 
 	// make sure the constructor works right
-	//
 	m := UserMiddleware(usermanager, conf)
 	assert.NotNil(m)
 	assert.Implements((*Middleware)(nil), m)
@@ -43,7 +39,6 @@ func TestUserMiddleware(t *testing.T) {
 	assert.Equal(m.(*userMiddleware).manager, usermanager)
 
 	// first test: make sure that if nothing is enabled, we pass
-	//
 	conf = UserMiddlewareConfiguration{SkipHeaderCheck: true, SkipCookie: true}
 	m = UserMiddleware(usermanager, conf)
 	assert.NotNil(m)
@@ -74,14 +69,12 @@ func TestUserMiddleware(t *testing.T) {
 	counter = 0
 
 	// Check that the header check works
-	//
 	conf = UserMiddlewareConfiguration{
 		SkipHeaderCheck: false,
 		SkipCookie:      true,
 		HeaderUserName:  "api-user",
 		HeaderKeyName:   "api-key",
 	}
-	usermanager.TokenToUsers[user.ID] = user
 	m = UserMiddleware(usermanager, conf)
 	assert.NotNil(m)
 
@@ -107,7 +100,6 @@ func TestUserMiddleware(t *testing.T) {
 	assert.Equal(http.StatusUnauthorized, rw.Code)
 
 	// check reading the cookie
-	//
 	conf = UserMiddlewareConfiguration{
 		SkipHeaderCheck: true,
 		SkipCookie:      false,
@@ -145,7 +137,7 @@ func TestUserMiddleware(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 
 	// try with something that should work
-	usermanager.TokenToUsers["42"] = user
+	user.Token = "42"
 	req, err = http.NewRequest("GET", "http://localhost/bar", body)
 	assert.NoError(err)
 	assert.NotNil(req)
@@ -161,7 +153,7 @@ func TestUserMiddleware(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 
 	// test that if get-or-create fails that the op does
-	usermanager.CreateUserFails = true
+	usermanager.FailGetOrCreateUser = true
 	req, err = http.NewRequest("GET", "http://localhost/bar", body)
 	assert.NoError(err)
 	assert.NotNil(req)
