@@ -89,7 +89,7 @@ func (s *atomicGraphQLSuite) TestQueries() {
 	err = json.Unmarshal(resultsFile, &tests)
 	s.Require().NoError(err)
 
-	s.Require().NoError(data.SetupData(*evergreen.GetEnvironment().DB()))
+	s.Require().NoError(testData.SetupData(*evergreen.GetEnvironment().DB()))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {

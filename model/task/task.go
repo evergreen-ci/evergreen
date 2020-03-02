@@ -1995,13 +1995,15 @@ func GetTaskResultsByVersion(versionID, taskOrVariantName, sortBy string, status
 	match := bson.M{
 		VersionKey: versionID,
 	}
-	if len(statuses) > 0 {
-		for _, status := range statuses {
-			match[StatusKey] = status
-		}
-	}
 	pipeline := []bson.M{
 		{"$match": &match},
+	}
+	if len(statuses) > 0 {
+		statusFilters := []bson.M{}
+		for _, status := range statuses {
+			statusFilters = append(statusFilters, bson.M{StatusKey: status})
+		}
+		match["$or"] = statusFilters
 	}
 	if len(taskOrVariantName) > 0 {
 		match["$or"] = []bson.M{
