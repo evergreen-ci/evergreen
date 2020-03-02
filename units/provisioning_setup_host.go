@@ -592,7 +592,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	})
 
 	incErr := j.host.IncProvisionAttempts()
-	grip.Critical(message.WrapError(incErr, message.Fields{
+	grip.Error(message.WrapError(incErr, message.Fields{
 		"job":           j.ID(),
 		"host_id":       j.host.Id,
 		"attempt_value": j.host.ProvisionAttempts,
