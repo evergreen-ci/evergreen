@@ -446,6 +446,9 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 
 	// if parser project config number is old then we should default to legacy
 	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+		if pp.Functions == nil {
+			pp.Functions = map[string]*YAMLCommandSet{}
+		}
 		pp.Identifier = identifier
 		var p *Project
 		p, err = TranslateProject(pp)

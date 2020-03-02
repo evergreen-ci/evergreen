@@ -6,35 +6,20 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // BasicUserManager implements the UserManager interface and has a list of
 // BasicUsers which is passed into the constructor.
 type BasicUserManager struct {
-	users []basicUser
+	users []BasicUser
 	rm    RoleManager
 }
 
 // NewBasicUserManager is a constructor to create a BasicUserManager from
 // a list of basic users. It requires a user created by NewBasicUser.
-func NewBasicUserManager(users []User, rm RoleManager) (UserManager, error) {
-	catcher := grip.NewBasicCatcher()
-	basicUsers := []basicUser{}
-	var bu *basicUser
-	var ok bool
-	for _, u := range users {
-		if bu, ok = u.(*basicUser); !ok {
-			catcher.Errorf("%T is not a basicUser", u)
-			continue
-		}
-		basicUsers = append(basicUsers, *bu)
-	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-	return &BasicUserManager{users: basicUsers, rm: rm}, nil
+func NewBasicUserManager(users []BasicUser, rm RoleManager) (UserManager, error) {
+	return &BasicUserManager{users: users, rm: rm}, nil
 }
 
 // GetUserByToken does a find by creating a temporary token from the index of
@@ -43,8 +28,8 @@ func NewBasicUserManager(users []User, rm RoleManager) (UserManager, error) {
 // there is a match.
 func (um *BasicUserManager) GetUserByToken(_ context.Context, token string) (User, error) {
 	for i, user := range um.users {
-		//check to see if token exists
-		possibleToken := fmt.Sprintf("%v:%v:%v", i, user.EmailAddress, md5.Sum([]byte(user.ID+user.Password)))
+		// Check to see if the token exists.
+		possibleToken := makeToken(user, i)
 		if token == possibleToken {
 			return &user, nil
 		}
@@ -60,7 +45,7 @@ func (um *BasicUserManager) CreateUserToken(username, password string) (string, 
 	for i, user := range um.users {
 		if user.ID == username && user.Password == password {
 			// return a token that is a hash of the index, user's email and username and password hashed.
-			return fmt.Sprintf("%v:%v:%v", i, user.EmailAddress, md5.Sum([]byte(user.ID+user.Password))), nil
+			return makeToken(user, i), nil
 		}
 	}
 	return "", errors.New("No valid user for the given username and password")
@@ -78,20 +63,20 @@ func (um *BasicUserManager) ReauthorizeUser(user User) error {
 	return errors.Errorf("user '%s 'not found", user.Username())
 }
 
-func (um *BasicUserManager) IsInvalid(username string) bool {
+func (um *BasicUserManager) isInvalid(username string) bool {
 	for _, user := range um.users {
 		if user.ID == username {
-			return user.Invalid
+			return user.invalid
 		}
 	}
 
 	return true
 }
 
-func (um *BasicUserManager) SetInvalid(username string, invalid bool) {
+func (um *BasicUserManager) setInvalid(username string, invalid bool) {
 	for i := range um.users {
 		if um.users[i].ID == username {
-			um.users[i].Invalid = invalid
+			um.users[i].invalid = invalid
 			return
 		}
 	}
@@ -100,7 +85,7 @@ func (um *BasicUserManager) SetInvalid(username string, invalid bool) {
 func (um *BasicUserManager) GetUserByID(id string) (User, error) {
 	for _, user := range um.users {
 		if user.ID == id {
-			if user.Invalid {
+			if user.invalid {
 				return nil, errors.Errorf("user %s not authorized!", id)
 			}
 			return &user, nil
@@ -115,7 +100,7 @@ func (um *BasicUserManager) GetOrCreateUser(u User) (User, error) {
 		return existingUser, nil
 	}
 
-	newUser := &basicUser{
+	newUser := &BasicUser{
 		ID:           u.Username(),
 		EmailAddress: u.Email(),
 		AccessRoles:  u.Roles(),
@@ -137,4 +122,9 @@ func (b *BasicUserManager) GetGroupsForUser(userId string) ([]string, error) {
 	}
 
 	return nil, errors.Errorf("user %s not found", userId)
+}
+
+// makeToken generates a token for a user.
+func makeToken(u BasicUser, index int) string {
+	return fmt.Sprintf("%v:%v:%v", index, u.Email(), md5.Sum([]byte(u.Username()+u.Password)))
 }

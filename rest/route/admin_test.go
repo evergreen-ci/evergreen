@@ -114,6 +114,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settings.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settings.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
 	s.EqualValues(testSettings.AuthConfig.PreferredType, settings.AuthConfig.PreferredType)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settings.AuthConfig.Github.Users))

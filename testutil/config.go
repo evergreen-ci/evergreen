@@ -127,7 +127,10 @@ func MockConfig() *evergreen.Settings {
 				ExpireAfterMinutes: 60,
 			},
 			Naive: &evergreen.NaiveAuthConfig{
-				Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pw"}},
+				Users: []evergreen.AuthUser{evergreen.AuthUser{Username: "user", Password: "pw"}},
+			},
+			OnlyAPI: &evergreen.OnlyAPIAuthConfig{
+				Users: []evergreen.OnlyAPIUser{evergreen.OnlyAPIUser{Username: "api_user", Key: "key", Roles: []string{"admin"}}},
 			},
 			Github: &evergreen.GithubAuthConfig{
 				ClientId:     "ghclient",

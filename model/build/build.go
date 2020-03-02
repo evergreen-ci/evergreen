@@ -28,6 +28,7 @@ type TaskCache struct {
 	StartTime     time.Time               `bson:"st" json:"start_time"`
 	TimeTaken     time.Duration           `bson:"tt" json:"time_taken"`
 	Activated     bool                    `bson:"a" json:"activated"`
+	Blocked       bool                    `bson:"b" json:"blocked"`
 }
 
 // Build represents a set of tasks on one variant of a Project
@@ -216,8 +217,6 @@ func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 	)
 }
 
-// Create
-
 // Insert writes the b to the db.
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
@@ -260,6 +259,7 @@ cacheLoop:
 				cache[i].Status = realTask.Status
 				cache[i].TimeTaken = realTask.TimeTaken
 				cache[i].StatusDetails = realTask.Details
+				cache[i].Blocked = realTask.Blocked()
 				continue cacheLoop
 			}
 		}

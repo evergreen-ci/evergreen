@@ -31,7 +31,6 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
-		regionFlagName       = "region"
 	)
 
 	return cli.Command{
@@ -563,7 +562,6 @@ func hostDeleteVolume() cli.Command {
 func hostList() cli.Command {
 	const (
 		mineFlagName = "mine"
-		allFlagName  = "all"
 	)
 
 	return cli.Command{
@@ -574,11 +572,16 @@ func hostList() cli.Command {
 				Name:  mineFlagName,
 				Usage: "list hosts spawned by the current user",
 			},
+			cli.StringFlag{
+				Name:  regionFlagName,
+				Usage: "list hosts in specified region",
+			},
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
+			region := c.String(regionFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -593,6 +596,7 @@ func hostList() cli.Command {
 			params := model.APIHostParams{
 				UserSpawned: true,
 				Mine:        showMine,
+				Region:      region,
 			}
 			hosts, err := client.GetHosts(ctx, params)
 			if err != nil {

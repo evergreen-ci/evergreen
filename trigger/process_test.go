@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
@@ -268,7 +269,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
-		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection))
+		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
@@ -305,16 +306,25 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		RemotePath: "self-tests.yml",
 		RepoKind:   "github",
 		Triggers: []model.TriggerDefinition{
-			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "self-tests.yml", Alias: "a1"},
+			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
 	assert.NoError(downstreamProjectRef.Insert())
+	uptreamProjectRef := model.ProjectRef{
+		Identifier: "upstream",
+		Enabled:    true,
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		Branch:     "master",
+		RepoKind:   "github",
+	}
+	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{
 		ID:        mgobson.NewObjectId(),
 		ProjectID: downstreamProjectRef.Identifier,
 		Alias:     "a1",
-		Variant:   "ubuntu1604",
-		Task:      "test",
+		Variant:   "buildvariant",
+		Task:      "task1",
 	}
 	assert.NoError(alias.Upsert())
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Identifier)
@@ -349,7 +359,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, b.TriggerID)
 		assert.Equal("task", b.TriggerType)
 		assert.Equal(e.ID, b.TriggerEvent)
-		assert.Contains(b.BuildVariant, "ubuntu1604")
+		assert.Contains(b.BuildVariant, "buildvariant")
 	}
 	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
@@ -361,8 +371,12 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, t.TriggerID)
 		assert.Equal("task", t.TriggerType)
 		assert.Equal(e.ID, t.TriggerEvent)
-		assert.Contains(t.DisplayName, "test")
+		assert.Contains(t.DisplayName, "task1")
 	}
+	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Identifier, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	assert.NoError(err)
+	assert.Equal(downstreamProjectRef.Identifier, mani.ProjectName)
+	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing
 	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)

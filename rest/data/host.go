@@ -46,6 +46,7 @@ func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, u
 		Distro:        apiParams.Distro,
 		UserSpawned:   apiParams.UserSpawned,
 		Status:        apiParams.Status,
+		Region:        apiParams.Region,
 		User:          username,
 	}
 
@@ -229,6 +230,16 @@ func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, us
 
 		if params.Distro != "" && h.Distro.Id != params.Distro {
 			continue
+		}
+
+		if params.Region != "" {
+			if len(h.Distro.ProviderSettingsList) < 1 {
+				continue
+			}
+			region, ok := h.Distro.ProviderSettingsList[0].Lookup("region").StringValueOK()
+			if !ok || region != params.Region {
+				continue
+			}
 		}
 
 		if params.UserSpawned && !h.UserHost {

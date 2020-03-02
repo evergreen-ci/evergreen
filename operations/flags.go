@@ -21,6 +21,7 @@ const (
 	tasksFlagName          = "tasks"
 	largeFlagName          = "large"
 	hostFlagName           = "host"
+	regionFlagName         = "region"
 	startTimeFlagName      = "time"
 	limitFlagName          = "limit"
 	messageFlagName        = "message"

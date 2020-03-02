@@ -307,12 +307,11 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 }
 
 type UpdatePatchModuleParams struct {
-	patchID     string
-	module      string
-	patch       string
-	base        string
-	message     string
-	commitQueue bool
+	patchID string
+	module  string
+	patch   string
+	base    string
+	message string
 }
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
@@ -327,8 +326,7 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 		PatchString string `json:"patch"`
 		Githash     string `json:"githash"`
 		Message     string `json:"message"`
-		CommitQueue bool   `json:"commit_queue"`
-	}{params.module, []byte(params.patch), params.patch, params.base, params.message, params.commitQueue}
+	}{params.module, []byte(params.patch), params.patch, params.base, params.message}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)

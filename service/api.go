@@ -194,13 +194,13 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" {
-		pp, err := model.ParserProjectFindOneById(t.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+
+	pp, err := model.ParserProjectFindOneById(t.Version)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		config, err := yaml.Marshal(pp)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

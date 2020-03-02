@@ -214,7 +214,8 @@ type APIHostParams struct {
 	CreatedBefore time.Time `json:"created_before"`
 	CreatedAfter  time.Time `json:"created_after"`
 	Distro        string    `json:"distro"`
-	UserSpawned   bool      `json:"user_spawned"`
 	Status        string    `json:"status"`
+	Region        string    `json:"region"`
+	UserSpawned   bool      `json:"user_spawned"`
 	Mine          bool      `json:"mine"`
 }
