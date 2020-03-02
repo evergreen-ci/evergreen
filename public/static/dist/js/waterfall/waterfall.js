@@ -499,13 +499,13 @@ var GearMenu = function (_React$PureComponent6) {
     var _this7 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
 
     _this7.addNotification = _this7.addNotification.bind(_this7);
-    const requesterSubscriberSettings = {text: "Build initiator", key:"requester", type:"select", options:{
-      "gitter_request":"Commit",
-      "patch_request":"Patch",
-      "github_pull_request":"Pull Request",
-      "merge_test":"Commit Queue",
-      "ad_hoc":"Periodic Build"
-    }, default: "gitter_request"}
+    var requesterSubscriberSettings = { text: "Build initiator", key: "requester", type: "select", options: {
+        "gitter_request": "Commit",
+        "patch_request": "Patch",
+        "github_pull_request": "Pull Request",
+        "merge_test": "Commit Queue",
+        "ad_hoc": "Periodic Build"
+      }, default: "gitter_request" };
     _this7.triggers = [{
       trigger: "outcome",
       resource_type: "TASK",
@@ -517,10 +517,7 @@ var GearMenu = function (_React$PureComponent6) {
       resource_type: "TASK",
       label: "any task fails",
       regex_selectors: taskRegexSelectors(),
-      extraFields: [
-        {text: "Failure type", key:"failure-type", type:"select", options:{"any":"Any","test":"Test","system":"System","setup":"Setup"}, default: "any"},
-        requesterSubscriberSettings
-      ]
+      extraFields: [{ text: "Failure type", key: "failure-type", type: "select", options: { "any": "Any", "test": "Test", "system": "System", "setup": "Setup" }, default: "any" }, requesterSubscriberSettings]
     }, {
       trigger: "success",
       resource_type: "TASK",

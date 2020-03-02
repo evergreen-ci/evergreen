@@ -286,7 +286,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
 		// this operation is recursive, maybe be refactorable
 		// to use some kind of cache.
-		catcher.Add(taskToBlock.UpdateBlockedDependencies())
+		catcher.Add(UpdateBlockedDependencies(&taskToBlock))
 	}
 	return catcher.Resolve()
 }

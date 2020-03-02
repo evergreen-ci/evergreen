@@ -924,22 +924,6 @@ func (t *Task) displayTaskPriority() int {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
-	if t.DisplayOnly {
-		for _, et := range t.ExecutionTasks {
-			execTask, err := FindOne(ById(et))
-			if err != nil {
-				return errors.Wrap(err, "error retrieving execution task")
-			}
-			if err = execTask.Reset(); err != nil {
-				return errors.Wrap(err, "error resetting execution task")
-			}
-		}
-	}
-
-	if err := t.UpdateUnblockedDependencies(); err != nil {
-		return errors.Wrap(err, "can't clear cached unattainable dependencies")
-	}
-
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -974,39 +958,24 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
-	if err != nil {
-		return err
-	}
-	for _, t := range tasks {
-		if t.DisplayOnly {
-			taskIds = append(taskIds, t.Id)
-		}
-		if err = t.UpdateUnblockedDependencies(); err != nil {
-			return errors.Wrap(err, "can't clear cached unattainable dependencies")
-		}
-	}
-
-	reset := bson.M{
-		"$set": bson.M{
-			ActivatedKey:     true,
-			SecretKey:        util.RandomString(),
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  util.ZeroTime,
-			StartTimeKey:     util.ZeroTime,
-			ScheduledTimeKey: util.ZeroTime,
-			FinishTimeKey:    util.ZeroTime,
-		},
-		"$unset": bson.M{
-			DetailsKey: "",
-		},
-	}
-
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
-		reset,
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     true,
+				SecretKey:        util.RandomString(),
+				StatusKey:        evergreen.TaskUndispatched,
+				DispatchTimeKey:  util.ZeroTime,
+				StartTimeKey:     util.ZeroTime,
+				ScheduledTimeKey: util.ZeroTime,
+				FinishTimeKey:    util.ZeroTime,
+			},
+			"$unset": bson.M{
+				DetailsKey: "",
+			},
+		},
 	)
 
 	return err
@@ -1904,7 +1873,7 @@ func (t *Task) CircularDependencies() error {
 	return catcher.Resolve()
 }
 
-func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
+func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
 	okStatusSet := []string{AllStatuses, t.Status}
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
@@ -1917,26 +1886,7 @@ func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
-// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
-// parent dependency as unattainable in depending tasks.
-func (t *Task) UpdateBlockedDependencies() error {
-	dependentTasks, err := t.findAllUnmarkedBlockedDependencies()
-	if err != nil {
-		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
-	}
-
-	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
-			return errors.Wrap(err, "error marking dependency unattainable")
-		}
-		if err = dependentTask.UpdateBlockedDependencies(); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
-}
-
-func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
+func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
@@ -1945,24 +1895,6 @@ func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
 		}})
 
 	return FindAll(query)
-}
-
-func (t *Task) UpdateUnblockedDependencies() error {
-	blockedTasks, err := t.findAllMarkedUnattainableDependencies()
-	if err != nil {
-		return errors.Wrap(err, "can't get dependencies marked unattainable")
-	}
-
-	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
-			return errors.Wrap(err, "error marking dependency attainable")
-		}
-		if err = blockedTask.UpdateUnblockedDependencies(); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-
-	return nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks

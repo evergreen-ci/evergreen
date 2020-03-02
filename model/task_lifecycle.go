@@ -134,7 +134,7 @@ func resetTask(taskId, caller string) error {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = t.Reset(); err != nil {
+	if err = MarkOneTaskReset(t); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -437,7 +437,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not mark task finished")
 	}
 
-	if err = t.UpdateBlockedDependencies(); err != nil {
+	if err = UpdateBlockedDependencies(t); err != nil {
 		return errors.Wrap(err, "could not update blocked dependencies")
 	}
 
@@ -500,6 +500,49 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	if len(updates.BuildNewStatus) != 0 {
 		if updates.BuildComplete || !isBuildCompleteStatus {
 			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		}
+	}
+
+	return nil
+}
+
+// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
+// parent dependency as unattainable in depending tasks.
+func UpdateBlockedDependencies(t *task.Task) error {
+	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
+	if err != nil {
+		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
+	}
+
+	for _, dependentTask := range dependentTasks {
+		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
+			return errors.Wrap(err, "error marking dependency unattainable")
+		}
+		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
+			return errors.WithStack(err)
+		}
+		if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, dependentTask.Blocked()); err != nil {
+			return errors.Wrap(err, "error marking cached task as blocked")
+		}
+	}
+	return nil
+}
+
+func UpdateUnblockedDependencies(t *task.Task) error {
+	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
+	if err != nil {
+		return errors.Wrap(err, "can't get dependencies marked unattainable")
+	}
+
+	for _, blockedTask := range blockedTasks {
+		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
+			return errors.Wrap(err, "error marking dependency attainable")
+		}
+		if err = UpdateUnblockedDependencies(&blockedTask); err != nil {
+			return errors.WithStack(err)
+		}
+		if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, blockedTask.Blocked()); err != nil {
+			return errors.Wrap(err, "error setting cached task unblocked")
 		}
 	}
 
@@ -852,6 +895,41 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 		return errors.Wrapf(err, "error updating task cache in build %s", t.BuildId)
 	}
 	return nil
+}
+
+func MarkOneTaskReset(t *task.Task) error {
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := task.FindOneId(et)
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = MarkOneTaskReset(execTask); err != nil {
+				return errors.Wrap(err, "error resetting execution task")
+			}
+		}
+	}
+
+	if err := UpdateUnblockedDependencies(t); err != nil {
+		return errors.Wrap(err, "can't clear cached unattainable dependencies")
+	}
+	return errors.Wrap(t.Reset(), "error resetting task in database")
+}
+
+func MarkTasksReset(taskIds []string) error {
+	tasks, err := task.FindWithDisplayTasks(task.ByIds(taskIds))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.Id)
+		}
+		if err = UpdateUnblockedDependencies(&t); err != nil {
+			return errors.Wrap(err, "can't clear cached unattainable dependencies")
+		}
+	}
+	return errors.Wrap(task.ResetTasks(taskIds), "error resetting tasks in database")
 }
 
 func updateDisplayTaskAndCache(t *task.Task) error {
