@@ -448,6 +448,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 						build.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStartTimeKey),
 						build.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheTimeTakenKey),
 						build.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheActivatedKey),
+						build.TaskCacheBlockedKey:   fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheBlockedKey),
 					},
 				},
 			},

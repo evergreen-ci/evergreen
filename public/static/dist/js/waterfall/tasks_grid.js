@@ -66,6 +66,10 @@ function labelFromTask(task) {
       if (task.task_waiting) {
         return task.task_waiting;
       }
+      if (task.blocked) {
+        // for cached tasks
+        return 'blocked';
+      }
       return 'scheduled';
     } else if (+task.dispatch_time == 0 || typeof task.dispatch_time == "string" && +new Date(task.dispatch_time) <= 0) {
       return 'not scheduled';
@@ -245,7 +249,7 @@ function Build(_ref3) {
   return React.createElement(ActiveBuild, { tasks: build.tasks, taskFilter: taskFilter, currentTime: currentTime });
 }
 
-// At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
+// At least one task in the version is not inactive, so we display all build tasks with their appropriate colors signifying their status
 function ActiveBuild(_ref4) {
   var tasks = _ref4.tasks,
       taskFilter = _ref4.taskFilter,
