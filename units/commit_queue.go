@@ -69,7 +69,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
-	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
+	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
 	}
@@ -145,6 +145,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": processingSeconds,
 		})
+		//todo: take of the if, but add a check to only dequeue if it's the cli queue. also add with fields to only ge the field needed from the patch
 		if processingSeconds > 3600 {
 			j.TryUnstick(cq)
 		}
