@@ -69,7 +69,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
-	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields)
+	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
 	}
