@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -62,55 +60,13 @@ type File struct {
 
 // StripHiddenFiles is a helper for only showing users the files they are allowed to see.
 func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
+	//todo: are private files getting signed?
 	publicFiles := []File{}
-	grip.Debug(message.Fields{
-		"message": "Chaya. artifact_file 67. File: ",
-		"files":   files,
-		"stack":   message.NewStack(1, "").Raw(),
-		"hasuser": hasUser,
-	})
 	for _, file := range files {
-		//check if any files need to be signed.
-		// if file.Visibility == Signed {
-		// 	if !file.ContainsSigningParams() {
-		// 		return nil, errors.Errorf("error presigning the url for %s, awsSecret, awsKey, bucket, or filekey missing", file.Name)
-		// 	}
-		// 	requestParams := thirdparty.RequestParams{
-		// 		Bucket:    file.Bucket,
-		// 		FileKey:   file.FileKey,
-		// 		AwsKey:    file.AwsKey,
-		// 		AwsSecret: file.AwsSecret,
-		// 	}
-		// 	urlStr, err := thirdparty.PreSign(requestParams)
-		// 	if err != nil {
-		// 		return nil, errors.Wrap(err, "problem presigning url")
-		// 	}
-		// 	file.Link = urlStr
-		// }
-
-		grip.Debug(message.Fields{
-			"message": "Chaya. artifact_file 92. File: ",
-			"File":    file,
-			"stack":   message.NewStack(1, "").Raw(),
-			"hasuser": hasUser,
-		})
-
 		switch {
 		case file.Visibility == None:
-			grip.Debug(message.Fields{
-				"message": "Chaya. artifact_file 101. File: case file.Visibility == None",
-				"File":    file,
-				"stack":   message.NewStack(1, "").Raw(),
-				"hasuser": hasUser,
-			})
 			continue
 		case (file.Visibility == Private || file.Visibility == Signed) && hasUser == false:
-			grip.Debug(message.Fields{
-				"message": "Chaya. artifact_file 109. File: case file.Visibility == case (file.Visibility == Private || file.Visibility == Signed) && hasUser == false:",
-				"File":    file,
-				"stack":   message.NewStack(1, "").Raw(),
-				"hasuser": hasUser,
-			})
 			continue
 		case file.Visibility == Signed && hasUser == true:
 			if !file.ContainsSigningParams() {
@@ -127,24 +83,11 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 				return nil, errors.Wrap(err, "problem presigning url")
 			}
 			file.Link = urlStr
+			publicFiles = append(publicFiles, file)
 		default:
 			publicFiles = append(publicFiles, file)
-			grip.Debug(message.Fields{
-				"message":     "default",
-				"File":        file,
-				"stack":       message.NewStack(1, "").Raw(),
-				"hasuser":     hasUser,
-				"publicFiles": publicFiles,
-			})
-
 		}
 	}
-	// grip.Debug(message.Fields{
-	// 	"message":     "Chaya. artifact_file 128. Returning public files",
-	// 	"stack":       message.NewStack(1, "").Raw(),
-	// 	"hasuser":     hasUser,
-	// 	"publicFiles": publicFiles,
-	// })
 	return publicFiles, nil
 }
 

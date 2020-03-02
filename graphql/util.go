@@ -13,8 +13,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -23,12 +21,6 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	grip.Debug(message.Fields{
-		"message":   "Chaya. util.go 27. ",
-		"taskFiles": taskFiles,
-		"user":      gimlet.GetUser(ctx),
-		"stack":     message.NewStack(1, "").Raw(),
-	})
 	hasUser := gimlet.GetUser(ctx) != nil
 	strippedFiles, err := artifact.StripHiddenFiles(taskFiles, hasUser)
 	if err != nil {

@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -75,24 +73,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 								return nil, err
 							}
 							hasUser := context.User.(*user.DBUser) != nil
-
-							grip.Debug(message.Fields{
-								"message":       "Chaya. attache_plugin  77",
-								"execTaskFiles": execTaskFiles,
-								"stack":         message.NewStack(1, "").Raw(),
-								"hasuser":       hasUser,
-								"user":          context.User,
-								"user == nil":   context.User == nil,
-							})
 							strippedFiles, err := artifact.StripHiddenFiles(execTaskFiles, hasUser)
-							grip.Debug(message.Fields{
-								"message":       "Chaya. attach_plugin 87 after calling stripHidden",
-								"execTaskFiles": execTaskFiles,
-								"stack":         message.NewStack(1, "").Raw(),
-								"hasUser":       hasUser,
-								"user":          context.User,
-								"user == nil":   context.User == nil,
-							})
 							if err != nil {
 								return nil, errors.Wrap(err, "error signign urls")
 							}
@@ -121,40 +102,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					}
 					hasUser := context.User.(*user.DBUser) != nil
 
-					// var currentUser gimlet.User = context.User
-					if context.User.DisplayName != nil {
-						grip.Debug(message.Fields{
-							"err":     err,
-							"message": "Chaya. attach_plugin  123",
-							"files":   files,
-							"stack":   message.NewStack(1, "").Raw(),
-							"hasUser": hasUser,
-							"user":    context.User,
-						})
-					} else {
-
-						grip.Debug(message.Fields{
-							"err":         err,
-							"message":     "Chaya. attach_plugin  139. username is nil",
-							"files":       files,
-							"stack":       message.NewStack(1, "").Raw(),
-							"hasUser":     hasUser,
-							"user":        context.User,
-							"user == nil": context.User == nil,
-						})
-					}
-
 					strippedFiles, err := artifact.StripHiddenFiles(files, hasUser)
-
-					grip.Debug(message.Fields{
-						"err":         err,
-						"message":     "Chaya. attach_plugin  145, after Striphiddenfiles",
-						"files":       files,
-						"stack":       message.NewStack(1, "").Raw(),
-						"hasUser":     hasUser,
-						"user":        context.User,
-						"user == nil": context.User.(*user.DBUser) == nil,
-					})
 					if err != nil {
 						return nil, errors.Wrap(err, "error signing urls")
 					}
@@ -177,25 +125,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
 						hasUser := context.User.(*user.DBUser) != nil
-						grip.Debug(message.Fields{
-							"err":         err,
-							"message":     "Chaya. attach_plugin  158, before  Striphiddenfiles",
-							"files":       taskArtifactFiles,
-							"stack":       message.NewStack(1, "").Raw(),
-							"hasUser":     hasUser,
-							"user":        context.User,
-							"user == nil": context.User == nil,
-						})
 						taskArtifactFiles[i].Files, err = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
-						grip.Debug(message.Fields{
-							"err":         err,
-							"message":     "Chaya. attach_plugin  167, after Striphiddenfiles",
-							"files":       taskArtifactFiles,
-							"stack":       message.NewStack(1, "").Raw(),
-							"hasUser":     hasUser,
-							"user":        context.User,
-							"user == nil": context.User == nil,
-						})
 						if err != nil {
 							return nil, errors.Wrap(err, "error singing urls")
 						}
