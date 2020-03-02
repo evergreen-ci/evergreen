@@ -143,6 +143,22 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
+  eventLogs: [EventLogItem!]!
+}
+
+type EventLogData {
+  execution: Int
+  status: String
+  timestamp: String
+}
+
+type EventLogItem {
+  resourceType: String
+  processedAt: String
+  timestamp: String
+  resourceId: String
+  eventType: String
+  data: EventLogData
 }
 
 type Projects {

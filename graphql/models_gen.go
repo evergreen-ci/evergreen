@@ -10,6 +10,21 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type EventLogData struct {
+	Execution *int    `json:"execution"`
+	Status    *string `json:"status"`
+	Timestamp *string `json:"timestamp"`
+}
+
+type EventLogItem struct {
+	ResourceType *string       `json:"resourceType"`
+	ProcessedAt  *string       `json:"processedAt"`
+	Timestamp    *string       `json:"timestamp"`
+	ResourceID   *string       `json:"resourceId"`
+	EventType    *string       `json:"eventType"`
+	Data         *EventLogData `json:"data"`
+}
+
 type GroupedFiles struct {
 	TaskName *string          `json:"taskName"`
 	Files    []*model.APIFile `json:"files"`
