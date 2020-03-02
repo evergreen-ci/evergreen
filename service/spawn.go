@@ -103,21 +103,20 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Find(distro.All)
+	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.ProviderSettingsListKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return
 	}
 
 	distroList := []map[string]interface{}{}
-
 	for _, d := range distros {
-		if d.SpawnAllowed {
-			distroList = append(distroList, map[string]interface{}{
-				"name":                        d.Id,
-				"virtual_workstation_allowed": d.IsVirtualWorkstation,
-			})
-		}
+		regions := d.GetRegionsList()
+		distroList = append(distroList, map[string]interface{}{
+			"name":                        d.Id,
+			"virtual_workstation_allowed": d.IsVirtualWorkstation,
+			"regions":                     regions,
+		})
 	}
 	gimlet.WriteJSON(w, distroList)
 }
@@ -137,6 +136,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		HomeVolumeSize       int        `json:"home_volume_size"`
 		InstanceTags         []host.Tag `json:"instance_tags"`
 		InstanceType         string     `json:"instance_type"`
+		Region               string     `json:"region"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -156,6 +156,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	hc := &data.DBConnector{}
 	options := &restModel.HostRequestOptions{
 		DistroID:             putParams.Distro,
+		Region:               putParams.Region,
 		KeyName:              putParams.PublicKey,
 		TaskID:               putParams.Task,
 		UserData:             putParams.UserData,

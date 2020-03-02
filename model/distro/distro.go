@@ -525,10 +525,7 @@ func (distros DistroGroup) GetDistroIds() []string {
 	return ids
 }
 
-func (d *Distro) RemoveExtraneousProviderSettings(region string) {
-	if len(d.ProviderSettingsList) <= 1 {
-		return
-	}
+func (d *Distro) RemoveExtraneousProviderSettings(region string) error {
 	doc, err := d.GetProviderSettingByRegion(region)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
@@ -537,12 +534,25 @@ func (d *Distro) RemoveExtraneousProviderSettings(region string) {
 			"region":        region,
 			"settings_list": d.ProviderSettingsList,
 		}))
-		return
+		return errors.Wrapf(err, "error getting provider settings by region")
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
+	d.ProviderSettings = nil
+	return nil
 }
 
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	if (region == "" || region == evergreen.DefaultEC2Region) && len(d.ProviderSettingsList) == 0 {
+		bytes, err := bson.Marshal(d.ProviderSettings)
+		if err != nil {
+			return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return nil, errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		return doc, nil
+	}
 	// if no region given, we assume the provided settings list is accurate
 	if region == "" {
 		if len(d.ProviderSettingsList) > 1 {
@@ -558,6 +568,26 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 		}
 	}
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
+}
+
+func (d *Distro) GetRegionsList() []string {
+	regions := []string{}
+	if len(d.ProviderSettingsList) <= 1 {
+		return regions
+	}
+	for _, doc := range d.ProviderSettingsList {
+		region, ok := doc.Lookup("region").StringValueOK()
+		if !ok {
+			grip.Debug(message.Fields{
+				"message":  "provider settings list missing region",
+				"distro":   d.Id,
+				"settings": doc,
+			})
+			continue
+		}
+		regions = append(regions, region)
+	}
+	return regions
 }
 
 func (d *Distro) SetUserdata(userdata, region string) error {

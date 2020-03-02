@@ -12,7 +12,7 @@
           </strong>
       </button>
       <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
-        <li role="presentation" class="dropdown-header">Spawnable distros</li>
+        <li role="presentation" class="dropdown-header">Spawnable Distros</li>
         <li role="presentation" ng-repeat="spawnableDistro in spawnableDistros">
           <a role="menuitem" ng-click="setSpawnableDistro(spawnableDistro.distro);">
             [[spawnableDistro.distro.name]]
@@ -43,6 +43,25 @@
             </a>
           </li>
         </ul>
+      </span>
+      <span class="dropdown" style="float:left;" ng-show="selectedDistro.regions.length > 0">
+        <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="regions">
+          <span class="semi-muted">
+           Region:
+          </span>
+          <strong>
+            [[selectedRegion]]
+            <span class="fa fa-caret-down"></span>
+          </strong>
+      </button>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="regions">
+        <li role="presentation" class="dropdown-header">Spawnable Regions</li>
+        <li role="presentation" ng-repeat="region in selectedDistro.regions">
+          <a role="menuitem" ng-click="setRegion(region)">
+            [[region]]
+          </a>
+        </li>
+      </ul>
       </span>
     </div>
     <br />

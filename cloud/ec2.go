@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -124,6 +125,18 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		}
 	}
 	return nil
+}
+
+func (s *EC2ProviderSettings) ToDocument() (*birch.Document, error) {
+	bytes, err := bson.Marshal(s)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+	}
+	doc := birch.Document{}
+	if err = doc.UnmarshalBSON(bytes); err != nil {
+		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
+	}
+	return &doc, nil
 }
 
 func (s *EC2ProviderSettings) getSecurityGroups() []*string {
