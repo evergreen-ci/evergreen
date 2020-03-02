@@ -145,8 +145,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": processingSeconds,
 		})
-		//todo: take of the if, but add a check to only dequeue if it's the cli queue. also add with fields to only ge the field needed from the patch
-		if processingSeconds > 3600 {
+		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
 		}
 		return
