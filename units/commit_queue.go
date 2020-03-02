@@ -69,24 +69,23 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
-
-	done, err := IsPatchDone(nextItem.Issue)
+	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
-		return
 	}
-	if done {
+
+	//patchisdone
+	if !patch.FinishTime.IsZero() {
 		j.dequeue(cq, nextItem)
+		grip.Info(message.Fields{
+			"source":             "commit queue",
+			"job_id":             j.ID(),
+			"item_id":            nextItem.Issue,
+			"project_id":         cq.ProjectID,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
+		})
 	}
-	//log that the queue needed to be unstuck
-	grip.Info(message.Fields{
-		"source":             "commit queue",
-		"job_id":             j.ID(),
-		"item_id":            nextItem.Issue,
-		"project_id":         cq.ProjectID,
-		"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
-		"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
-	})
 	return
 }
 
@@ -195,17 +194,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 func IsPatchDone(patch_id string) (bool, error) {
 	patch, err := patch.FindOne(patch.ById(patch.NewId(patch_id)))
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "error finding the patch %s", patch_id)
 	}
-	finishTime := patch.FinishTime
 
-	var isDone bool
-	if finishTime.IsZero() {
-		isDone = false
-	} else {
-		isDone = true
-	}
-	return isDone, nil
+	return !patch.FinishTime.IsZero(), nil
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
