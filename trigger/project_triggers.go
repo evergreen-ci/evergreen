@@ -81,7 +81,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
 			_, err = repotracker.CreateManifest(*v, proj, upstreamProject.Branch, settings)
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 			break
 		}
