@@ -81,8 +81,8 @@ func (s *atomicGraphQLSuite) TestQueries() {
 	resultsFile, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "results.json"))
 	s.Require().NoError(err)
 
-	var data data
-	err = json.Unmarshal(dataFile, &data)
+	var testData data
+	err = json.Unmarshal(dataFile, &testData)
 	s.Require().NoError(err)
 
 	var tests testsCases
