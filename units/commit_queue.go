@@ -69,23 +69,26 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
-	patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
+	if nextItem != nil {
+		patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
+		}
+
+		//patchisdone
+		if !patch.FinishTime.IsZero() {
+			j.dequeue(cq, nextItem)
+			grip.Info(message.Fields{
+				"source":             "commit queue",
+				"job_id":             j.ID(),
+				"item_id":            nextItem.Issue,
+				"project_id":         cq.ProjectID,
+				"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+				"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
+			})
+		}
 	}
 
-	//patchisdone
-	if !patch.FinishTime.IsZero() {
-		j.dequeue(cq, nextItem)
-		grip.Info(message.Fields{
-			"source":             "commit queue",
-			"job_id":             j.ID(),
-			"item_id":            nextItem.Issue,
-			"project_id":         cq.ProjectID,
-			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
-			"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
-		})
-	}
 	return
 }
 
@@ -145,6 +148,9 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": processingSeconds,
 		})
+		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
+		//If the notification gets to it first, it is okay since it will check if the item
+		//is still on the queue before removing it.
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
 		}
