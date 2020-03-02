@@ -260,45 +260,6 @@
       }
     },
     {
-      "query_file": "search-variant.graphql",
-      "result": {
-        "data": {
-          "patchTasks": [
-            {
-              "id": "4",
-              "status": "failed",
-              "baseStatus": "success",
-              "displayName": "compile",
-              "buildVariant": "windows"
-            },
-            {
-              "id": "3",
-              "status": "success",
-              "baseStatus": "success",
-              "displayName": "lint",
-              "buildVariant": "windows"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "query_file": "search-display-name.graphql",
-      "result": {
-        "data": {
-          "patchTasks": [
-            {
-              "id": "2",
-              "status": "failed",
-              "baseStatus": "failed",
-              "displayName": "test-cloud",
-              "buildVariant": "ubuntu1604"
-            }
-          ]
-        }
-      }
-    },
-    {
       "query_file": "filter-by-status.graphql",
       "result": {
         "data": {
@@ -414,6 +375,13 @@
               "status": "success",
               "baseStatus": "success",
               "displayName": "lint",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
               "buildVariant": "windows"
             }
           ]

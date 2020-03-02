@@ -5,7 +5,6 @@
     page: 0
     sortDirection: DESC
     sortBy: VARIANT
-    searchInput: "li"
   ) {
     id
     status
