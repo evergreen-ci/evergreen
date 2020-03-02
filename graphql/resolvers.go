@@ -246,7 +246,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, statuses []*string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -281,9 +281,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	}
 	statusesParam := []string{}
 	if statuses != nil {
-		for _, status := range statuses {
-			statusesParam = append(statusesParam, *status)
-		}
+		statusesParam = statuses
 	}
 	tasks, err := r.sc.FindTaskResultsByVersion(patchID, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
