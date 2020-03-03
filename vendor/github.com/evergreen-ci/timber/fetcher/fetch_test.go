@@ -142,7 +142,7 @@ func TestPaginatedReadCloser(t *testing.T) {
 		server := httptest.NewServer(handler)
 		handler.baseURL = server.URL
 
-		resp, err := doReq(context.TODO(), server.URL, nil)
+		resp, err := doReq(context.TODO(), server.URL, GetOptions{})
 		require.NoError(t, err)
 
 		var r io.ReadCloser
@@ -162,7 +162,7 @@ func TestPaginatedReadCloser(t *testing.T) {
 		server := httptest.NewServer(handler)
 		handler.baseURL = server.URL
 
-		resp, err := doReq(context.TODO(), server.URL, nil)
+		resp, err := doReq(context.TODO(), server.URL, GetOptions{})
 		require.NoError(t, err)
 
 		var r io.ReadCloser
@@ -182,7 +182,7 @@ func TestPaginatedReadCloser(t *testing.T) {
 		server := httptest.NewServer(handler)
 		handler.baseURL = server.URL
 
-		resp, err := doReq(context.TODO(), server.URL, nil)
+		resp, err := doReq(context.TODO(), server.URL, GetOptions{})
 		require.NoError(t, err)
 
 		var r io.ReadCloser
@@ -226,16 +226,20 @@ func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func getParams(opts GetOptions) string {
 	params := fmt.Sprintf(
-		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&start=%s&end=%s&paginate=true",
+		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&paginate=true",
 		opts.Execution,
 		opts.ProcessName,
 		opts.PrintTime,
 		opts.PrintPriority,
 		opts.Tail,
 		opts.Limit,
-		opts.Start.Format(time.RFC3339),
-		opts.End.Format(time.RFC3339),
 	)
+	if !opts.Start.IsZero() {
+		params += fmt.Sprintf("&start=%s", opts.Start.Format(time.RFC3339))
+	}
+	if !opts.End.IsZero() {
+		params += fmt.Sprintf("&end=%s", opts.End.Format(time.RFC3339))
+	}
 	for _, tag := range opts.Tags {
 		params += fmt.Sprintf("&tags=%s", tag)
 	}
