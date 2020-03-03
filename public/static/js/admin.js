@@ -12,6 +12,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartPurple = true;
     $scope.restartLavender = true;
     $scope.ValidThemes = [ "announcement", "information", "warning", "important"];
+    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "github"]
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -42,11 +43,24 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
       $scope.newSSHKeyPair = {};
       $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
-
-      if (resp.data.auth && resp.data.auth.only_api) {
-        $scope.tempOnlyAPIUsers = _.clone(resp.data.auth.only_api.users)
+      
+      if (!resp.data.auth) {
+          resp.data.auth = {};
+      }
+      if (resp.data.auth.only_api) {
+        $scope.tempOnlyAPIUsers = _.clone(resp.data.auth.only_api.users);
       } else {
-        $scope.tempOnlyAPIUsers = []
+        $scope.tempOnlyAPIUsers = [];
+      }
+      if (resp.data.auth.multi.read_write) {
+        $scope.tempMultiAuthReadWrite = _.clone(resp.data.auth.multi.read_write);
+      } else {
+        $scope.tempMultiAuthReadWrite = [];
+      }
+      if (resp.data.auth.multi.read_only) {
+        $scope.tempMultiAuthReadOnly = _.clone(resp.data.auth.multi.read_only);
+      } else {
+        $scope.tempMultiAuthReadOnly = [];
       }
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
@@ -67,7 +81,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       window.location.href = "/admin";
     }
     var errorHandler = function(resp) {
-      notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
+      notificationService.pushNotification("Error saving settings: " + resp.data.message, "errorHeader");
     }
 
     if ($scope.Settings.slack && $scope.Settings.slack.options) {
@@ -86,6 +100,22 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       }
     });
     $scope.Settings.ssh_key_pairs = $scope.tempSSHKeyPairs;
+
+    if (!$scope.Settings.auth) {
+      $scope.Settings.auth = {};
+    }
+    if (!$scope.Settings.auth.multi) {
+      $scope.Settings.auth.multi = {};
+    }
+    if (!$scope.Settings.auth.multi.read_write) {
+      $scope.Settings.auth.read_write = [];
+    }
+    if ($scope.tempMultiAuthReadWrite) {
+      $scope.Settings.auth.multi.read_write = $scope.tempMultiAuthReadWrite;
+    }
+    if ($scope.tempMultiAuthReadOnly) {
+      $scope.Settings.auth.multi.read_only = $scope.tempMultiAuthReadOnly;
+    }
 
     if ($scope.tempOnlyAPIUsers.length > 0) {
         if (!$scope.Settings.auth) {
@@ -351,6 +381,32 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
     $scope.newSSHKeyPair = {};
+  }
+
+  $scope.addMultiAuthReadWrite = function() {
+    if (!$scope.tempMultiAuthReadWrite) {
+      $scope.tempMultiAuthReadWrite = [];
+    }
+    $scope.tempMultiAuthReadWrite.push("");
+  }
+
+  $scope.removeMultiAuthReadWrite = function(index) {
+    $scope.tempMultiAuthReadWrite.splice(index, 1);
+  }
+
+  $scope.addMultiAuthReadOnly = function() {
+    if (!$scope.tempMultiAuthReadOnly) {
+      $scope.tempMultiAuthReadOnly = [];
+    }
+    $scope.tempMultiAuthReadOnly.push("");
+  }
+
+  $scope.removeMultiAuthReadOnly = function(index) {
+     $scope.tempMultiAuthReadOnly.splice(index, 1);
+  }
+
+  $scope.invalidAuth = function(kind) {
+    return ($scope.validAuthKinds.indexOf(kind) < 0);
   }
 
   $scope.addExpansion = function(chip) {

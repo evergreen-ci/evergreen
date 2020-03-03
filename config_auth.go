@@ -56,14 +56,21 @@ type OktaConfig struct {
 	ExpireAfterMinutes int    `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
 
-// GithubAuthConfig holds settings for interacting with Github Authentication including the
-// ClientID, ClientSecret and CallbackUri which are given when registering the application
-// Furthermore,
+// GithubAuthConfig contains settings for interacting with Github Authentication
+// including the ClientID, ClientSecret and CallbackUri which are given when
+// registering the application Furthermore,
 type GithubAuthConfig struct {
 	ClientId     string   `bson:"client_id" json:"client_id" yaml:"client_id"`
 	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
 	Users        []string `bson:"users" json:"users" yaml:"users"`
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
+}
+
+// MultiAuthConfig contains settings for using multiple authentication
+// mechanisms.
+type MultiAuthConfig struct {
+	ReadWrite []string `bson:"read_write" json:"read_write" yaml:"read_write"`
+	ReadOnly  []string `bson:"read_only" json:"read_only" yaml:"read_only"`
 }
 
 // AuthConfig contains the settings for the various auth managers.
@@ -73,6 +80,7 @@ type AuthConfig struct {
 	Naive                   *NaiveAuthConfig   `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	OnlyAPI                 *OnlyAPIAuthConfig `bson:"only_api,omitempty" json:"only_api" yaml:"only_api"`
 	Github                  *GithubAuthConfig  `bson:"github,omitempty" json:"github" yaml:"github"`
+	Multi                   *MultiAuthConfig   `bson:"multi" json:"multi" yaml:"multi"`
 	PreferredType           string             `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int                `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
 }
@@ -112,6 +120,7 @@ func (c *AuthConfig) Set() error {
 			AuthNaiveKey:                   c.Naive,
 			AuthOnlyAPIKey:                 c.OnlyAPI,
 			AuthGithubKey:                  c.Github,
+			AuthMultiKey:                   c.Multi,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 		}}, options.Update().SetUpsert(true))
@@ -147,8 +156,10 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthLDAPKey,
 		AuthOktaKey,
 		AuthNaiveKey,
-		AuthGithubKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
-	if c.LDAP == nil && c.Naive == nil && c.OnlyAPI == nil && c.Github == nil && c.Okta == nil {
+		AuthGithubKey,
+		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
+
+	if c.LDAP == nil && c.Naive == nil && c.OnlyAPI == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 
@@ -159,5 +170,32 @@ func (c *AuthConfig) ValidateAndDefault() error {
 			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
 		}
 	}
+
+	if c.Multi != nil {
+		seen := map[string]bool{}
+		kinds := append([]string{}, c.Multi.ReadWrite...)
+		kinds = append(kinds, c.Multi.ReadOnly...)
+		for _, kind := range kinds {
+			// Check that settings exist for the user manager.
+			switch kind {
+			case AuthLDAPKey:
+				catcher.NewWhen(c.LDAP == nil, "LDAP settings cannot be empty if using in multi auth")
+			case AuthOktaKey:
+				catcher.NewWhen(c.Okta == nil, "Okta settings cannot be empty if using in multi auth")
+			case AuthGithubKey:
+				catcher.NewWhen(c.Github == nil, "GitHub settings cannot be empty if using in multi auth")
+			case AuthNaiveKey:
+				catcher.NewWhen(c.Naive == nil, "Naive settings cannot be empty if using in multi auth")
+			case AuthOnlyAPIKey:
+				catcher.NewWhen(c.OnlyAPI == nil, "OnlyAPI settings cannot be empty if using in multi auth")
+			default:
+				catcher.Errorf("unrecognized auth mechanism '%s'", kind)
+			}
+			// Check for duplicate user managers.
+			catcher.ErrorfWhen(seen[kind], "duplicate auth mechanism '%s' in multi auth", kind)
+			seen[kind] = true
+		}
+	}
+
 	return catcher.Resolve()
 }
