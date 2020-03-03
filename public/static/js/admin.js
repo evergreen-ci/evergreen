@@ -52,6 +52,16 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       } else {
         $scope.tempOnlyAPIUsers = [];
       }
+      if (resp.data.auth.multi.read_write) {
+        $scope.tempMultiAuthReadWrite = _.clone(resp.data.auth.multi.read_write);
+      } else {
+        $scope.tempMultiAuthReadWrite = [];
+      }
+      if (resp.data.auth.multi.read_only) {
+        $scope.tempMultiAuthReadOnly = _.clone(resp.data.auth.multi.read_only);
+      } else {
+        $scope.tempMultiAuthReadOnly = [];
+      }
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
@@ -71,7 +81,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       window.location.href = "/admin";
     }
     var errorHandler = function(resp) {
-      notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
+      notificationService.pushNotification("Error saving settings: " + resp.data.message, "errorHeader");
     }
 
     if ($scope.Settings.slack && $scope.Settings.slack.options) {
@@ -100,8 +110,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     if (!$scope.Settings.auth.multi.read_write) {
       $scope.Settings.auth.read_write = [];
     }
-    if ($scope.tempMultiAuthReadWrite.length > 0) {
+    if ($scope.tempMultiAuthReadWrite) {
       $scope.Settings.auth.multi.read_write = $scope.tempMultiAuthReadWrite;
+    }
+    if ($scope.tempMultiAuthReadOnly) {
+      $scope.Settings.auth.multi.read_only = $scope.tempMultiAuthReadOnly;
     }
 
     if ($scope.tempOnlyAPIUsers.length > 0) {
@@ -381,18 +394,19 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.tempMultiAuthReadWrite.splice(index, 1);
   }
 
-  $scope.invalidAuth = function(kind) {
-    return ($scope.validAuthKinds.indexOf(kind) < 0);
-  }
-
   $scope.addMultiAuthReadOnly = function() {
     if (!$scope.tempMultiAuthReadOnly) {
       $scope.tempMultiAuthReadOnly = [];
     }
     $scope.tempMultiAuthReadOnly.push("");
   }
+
   $scope.removeMultiAuthReadOnly = function(index) {
      $scope.tempMultiAuthReadOnly.splice(index, 1);
+  }
+
+  $scope.invalidAuth = function(kind) {
+    return ($scope.validAuthKinds.indexOf(kind) < 0);
   }
 
   $scope.addExpansion = function(chip) {
