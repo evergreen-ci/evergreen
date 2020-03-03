@@ -70,31 +70,32 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
-	if nextItem != nil {
-		patchIdString := nextItem.Issue
-		if !patch.IsValidId(patchIdString) {
-			j.dequeue(cq, nextItem)
-			j.logError(nil, "The Patch id '%s' is not an object id. It was removed from the queue.", nextItem)
-			return
-		}
-		patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
-			return
-		}
-		if patchDoc == nil {
-			j.dequeue(cq, nextItem)
-			j.logError(err, "The patch on top of the queue is null. It was removed from the queue.", nextItem)
-			return
-		}
+	if nextItem == nil {
+		return
+	}
+	patchIdString := nextItem.Issue
+	if !patch.IsValidId(patchIdString) {
+		j.dequeue(cq, nextItem)
+		j.logError(nil, "The Patch id '%s' is not an object id. It was removed from the queue.", nextItem)
+		return
+	}
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
+		return
+	}
+	if patchDoc == nil {
+		j.dequeue(cq, nextItem)
+		j.logError(err, "The patch on top of the queue is null. It was removed from the queue.", nextItem)
+		return
+	}
 
-		//patchisdone
-		patchFinishTime := patchDoc.FinishTime
-		if !util.IsZeroTime(patchFinishTime) {
-			j.dequeue(cq, nextItem)
-			status := evergreen.MergeTestSucceeded
-			event.LogCommitQueueConcludeTest(nextItem.Issue, status)
-		}
+	//patchisdone
+	patchFinishTime := patchDoc.FinishTime
+	if !util.IsZeroTime(patchFinishTime) {
+		j.dequeue(cq, nextItem)
+		status := evergreen.MergeTestSucceeded
+		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
 	}
 
 	return
