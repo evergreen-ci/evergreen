@@ -105,7 +105,7 @@ func fetch() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 
 			confPath := c.Parent().Parent().String(confFlagName)
