@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -93,6 +94,30 @@ func (s *commitQueueSuite) SetupTest() {
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
+}
+
+func (s *commitQueueSuite) TestTryUnstick() {
+	job := commitQueueJob{}
+	s.NoError(db.Clear(patch.Collection))
+
+	patchID := mgobson.ObjectIdHex("aabbccddeeff112233445566")
+	patchDoc := &patch.Patch{
+		Id:         patchID,
+		Githash:    "abcdef",
+		FinishTime: time.Now(),
+	}
+	s.NoError(patchDoc.Insert())
+
+	var cq *commitqueue.CommitQueue = &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue: []commitqueue.CommitQueueItem{
+			commitqueue.CommitQueueItem{
+				Issue: "aabbccddeeff112233445566",
+			},
+		},
+	}
+	job.TryUnstick(cq)
+	s.Len(cq.Queue, 0)
 }
 
 func (s *commitQueueSuite) TestNewCommitQueueJob() {
