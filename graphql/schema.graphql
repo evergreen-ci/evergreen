@@ -57,6 +57,7 @@ type Patch {
   alias: String!
   duration: PatchDuration
   time: PatchTime
+  taskCount: Int
 }
 
 type PatchDuration {
