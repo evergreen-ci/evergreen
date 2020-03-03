@@ -243,7 +243,7 @@ func TestJasperCommands(t *testing.T) {
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
-			bashSetupSpawnHost := []string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			bashSetupSpawnHost := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
 				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
 				&options.Command{Commands: [][]string{bashSetupSpawnHost}})

@@ -249,13 +249,13 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 	}, " && ")
 }
 
-// ForceReinstallJasperCommand returns the command to stop the Jasper service,
-// delete the current Jasper service configuration (if it exists), install the
-// new configuration, and restart the service.
+// ForceReinstallJasperCommand returns the command to stop the Jasper service
+// (if it's running), delete the current Jasper service configuration (if it
+// exists), install the new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)))
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)))
 	}
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
@@ -273,7 +273,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", h.PathByProvisioning(h.splunkTokenFilePath())),
+			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -383,7 +383,11 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
-			fetchCmd := []string{h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			// We have to run this in the Cygwin shell in order for git clone to
+			// use the correct SSH key. Additionally, user data may time out
+			// this operation, which would prevent user data from completing so
+			// the host would be stuck in provisioning.
+			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
@@ -565,7 +569,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath))
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath))
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
@@ -631,6 +635,8 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 
 // bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
 // WriteJasperCredentialsFilesCommands but writes with multiple commands.
+// This is necessary for Windows user data for unknown reasons. If the file
+// isn't written in a buffered way, it gets truncated.
 func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
@@ -798,7 +804,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 			Type:                jcli.RPCService,
 			Port:                settings.HostJasper.Port,
-			CredentialsFilePath: h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath),
+			CredentialsFilePath: h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath),
 		}
 
 		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
@@ -935,9 +941,9 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 }
 
 // AgentCommand returns the arguments to start the agent.
-func (h *Host) AgentCommand(binary string, settings *evergreen.Settings) []string {
+func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
 	return []string{
-		binary,
+		h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName()),
 		"agent",
 		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
 		fmt.Sprintf("--host_id='%s'", h.Id),
@@ -951,12 +957,11 @@ func (h *Host) AgentCommand(binary string, settings *evergreen.Settings) []strin
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
-	binary := h.PathByProvisioning(h.Distro.HomeDir(), h.Distro.BinaryName())
-	clientPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
-	credsPath := h.PathByProvisioning(h.Distro.BootstrapSettings.JasperCredentialsPath)
-	shellPath := h.PathByProvisioning(h.Distro.BootstrapSettings.ShellPath)
+	clientPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
+	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	args := append(h.AgentCommand(binary, settings),
+	args := append(h.AgentCommand(settings),
 		"monitor",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
@@ -1013,9 +1018,6 @@ func (h *Host) AgentBinary() string {
 // spawnHostConfigDir returns the directory containing the CLI and evergreen
 // yaml for a spawn host.
 func (h *Host) spawnHostConfigDir() string {
-	if h.Distro.LegacyBootstrap() {
-		return "cli_bin"
-	}
 	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
 }
 
@@ -1050,22 +1052,16 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{h.PathByProvisioning(h.AgentBinary()),
-		"-c", h.PathByProvisioning(h.spawnHostConfigFile()),
+	return []string{h.AgentBinary(),
+		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
 		"--source", "--artifacts",
+		// We can't use a Cygwin path for the working directory because it's
+		// symlinked with a Cygwin symlink, which is not a real directory or
+		// Windows shortcut.
 		"--dir", h.Distro.WorkDir,
 	}
-}
-
-// PathByProvisioning createa a filepath that is compatible with the host's
-// provisioning settings.
-func (h *Host) PathByProvisioning(path ...string) string {
-	if h.Distro.LegacyBootstrap() {
-		return filepath.Join(path...)
-	}
-	return filepath.Join(append([]string{h.Distro.BootstrapSettings.RootDir}, path...)...)
 }
 
 const userDataDoneFileName = "user_data_done"

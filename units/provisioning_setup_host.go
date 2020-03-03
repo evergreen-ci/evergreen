@@ -768,8 +768,10 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 		output, err = j.host.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, 15*time.Minute)
 	} else {
 		var logs []string
+		// We have to run this in the Cygwin shell in order for git clone to
+		// use the correct SSH key.
 		logs, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: []string{j.host.PathByProvisioning(j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", cmd},
+			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 		})
 		output = strings.Join(logs, " ")
 	}
