@@ -81,6 +81,10 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
 			return
 		}
+		if patchDoc == nil {
+			j.AddError(errors.Errorf("could not unstick queue. pathc %s not found", patchIdString))
+			return
+		}
 
 		//patchisdone
 		if !util.IsZeroTime(patchDoc.FinishTime) {
