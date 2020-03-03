@@ -76,7 +76,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	patchIdString := nextItem.Issue
 	if !patch.IsValidId(patchIdString) {
 		j.dequeue(cq, nextItem)
-		j.logError(nil, "The Patch id '%s' is not an object id. It was removed from the queue.", nextItem)
+		j.logError(errors.Errorf("The Patch id '%s' is not an object id", patchIdString), "The patch was removed from the queue.", nextItem)
 		return
 	}
 	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
@@ -86,15 +86,17 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	}
 	if patchDoc == nil {
 		j.dequeue(cq, nextItem)
-		j.logError(err, "The patch on top of the queue is nil. It was removed from the queue.", nextItem)
+		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
 		return
 	}
 
 	//patchisdone
-	patchFinishTime := patchDoc.FinishTime
-	if !util.IsZeroTime(patchFinishTime) {
+	if !util.IsZeroTime(patchDoc.FinishTime) {
 		j.dequeue(cq, nextItem)
 		status := evergreen.MergeTestSucceeded
+		if patchDoc.Status == evergreen.PatchFailed {
+			status = evergreen.MergeTestFailed
+		}
 		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
 	}
 
