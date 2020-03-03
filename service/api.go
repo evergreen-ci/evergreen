@@ -194,13 +194,13 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" {
-		pp, err := model.ParserProjectFindOneById(t.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+
+	pp, err := model.ParserProjectFindOneById(t.Version)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		config, err := yaml.Marshal(pp)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -448,10 +448,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
-	syntaxErrs := validator.CheckProjectSyntax(project)
-	semanticErrs := validator.CheckProjectSemantics(project)
-	if len(syntaxErrs)+len(semanticErrs) != 0 {
-		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))
+
+	errs := validator.CheckYamlStrict(yamlBytes)
+	errs = append(errs, validator.CheckProjectSyntax(project)...)
+	errs = append(errs, validator.CheckProjectSemantics(project)...)
+	if len(errs) > 0 {
+		gimlet.WriteJSONError(w, errs)
 		return
 	}
 	gimlet.WriteJSON(w, validator.ValidationErrors{})

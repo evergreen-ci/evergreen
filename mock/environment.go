@@ -91,8 +91,11 @@ func (e *Environment) Configure(ctx context.Context) error {
 	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
 	// cycle where this package would transitively depend on the database
 	// models.
-	e.userManager = nil
-	e.userManagerInfo = evergreen.UserManagerInfo{}
+	um, err := gimlet.NewBasicUserManager(nil, nil)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	e.userManager = um
 
 	return nil
 }

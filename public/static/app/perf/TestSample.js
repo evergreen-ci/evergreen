@@ -76,7 +76,7 @@ mciModule.factory('TestSample', function () {
       if (!d) {
         return null;
       }
-      if (threadLevel) {
+      if (threadLevel > 0) {
         return d.results[threadLevel][metric];
       } else {
         return _.max(

@@ -95,6 +95,8 @@ var (
 	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
 	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
 	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	AuthOnlyAPIKey                 = bsonutil.MustHaveTag(AuthConfig{}, "OnlyAPI")
+	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
 	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 

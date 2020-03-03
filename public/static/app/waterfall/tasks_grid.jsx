@@ -56,6 +56,9 @@ function labelFromTask(task){
       if (task.task_waiting) {
         return task.task_waiting;
       }
+      if (task.blocked) { // for cached tasks
+        return 'blocked';
+      }
       return 'scheduled';
     } else if (+task.dispatch_time == 0 || (typeof task.dispatch_time == "string" && +new Date(task.dispatch_time) <= 0)) {
        return 'not scheduled';
@@ -210,7 +213,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
       )
     }
     // Can be modified to show combinations of tasks by statuses
-    var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses)
+    var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses);
     return (
       <div>
         <CollapsedBuild build={build} activeTaskStatuses={collapseInfo.activeTaskStatuses} />
@@ -224,7 +227,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
   )
 }
 
-// At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
+// At least one task in the version is not inactive, so we display all build tasks with their appropriate colors signifying their status
 function ActiveBuild({tasks, taskFilter, currentTime}){
   if (taskFilter != null){
     tasks = _.filter(tasks, function(task){

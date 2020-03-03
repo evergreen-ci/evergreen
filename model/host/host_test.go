@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -710,10 +712,20 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
-			Id:     "test",
+			Id:     "test1",
 			Status: evergreen.HostRunning,
 		}
+		h2 := Host{
+			Id:     "test2",
+			Status: evergreen.HostProvisioning,
+			Distro: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				},
+			},
+		}
 		So(h.Insert(), ShouldBeNil)
+		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
 			_, err := h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
@@ -733,6 +745,16 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
+		})
+		Convey("updating the running task on a provisioning host should succeed", func() {
+			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
+			So(err, ShouldBeNil)
+			found, err := FindOne(ById(h2.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, newTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 	})
 }
@@ -4480,25 +4502,26 @@ func TestStartingHostsByClient(t *testing.T) {
 
 func TestFindHostsInRange(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
-
+	distroEast := birch.NewDocument(birch.EC.String("region", "us-east-1"))
+	distroWest := distroEast.Copy().Set(birch.EC.String("region", "us-west-1"))
 	hosts := []Host{
 		{
 			Id:           "h0",
 			Status:       evergreen.HostTerminated,
 			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroEast}},
 		},
 		{
 			Id:           "h1",
 			Status:       evergreen.HostRunning,
 			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroWest}},
 		},
 		{
 			Id:           "h2",
 			Status:       evergreen.HostRunning,
 			CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
-			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroWest}},
 		},
 	}
 	for _, h := range hosts {
@@ -4519,6 +4542,19 @@ func TestFindHostsInRange(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, filteredHosts, 1)
 	assert.Equal(t, "h2", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-east-1", Status: evergreen.HostTerminated})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-west-1"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 2)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-west-1", Distro: "ubuntu-1604"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h1", filteredHosts[0].Id)
 }
 
 func TestRemoveAndReplace(t *testing.T) {

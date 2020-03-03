@@ -295,13 +295,20 @@ func (s *AdminSuite) TestAuthConfig() {
 			ExpireAfterMinutes: 60,
 		},
 		Naive: &NaiveAuthConfig{
-			Users: []*AuthUser{{Username: "user", Password: "pw"}},
+			Users: []AuthUser{{Username: "user", Password: "pw"}},
+		},
+		OnlyAPI: &OnlyAPIAuthConfig{
+			Users: []OnlyAPIUser{{Username: "user", Key: "key", Roles: []string{"admin"}}},
 		},
 		Github: &GithubAuthConfig{
 			ClientId:     "ghclient",
 			ClientSecret: "ghsecret",
 			Users:        []string{"ghuser"},
 			Organization: "ghorg",
+		},
+		Multi: &MultiAuthConfig{
+			ReadWrite: []string{AuthGithubKey, AuthLDAPKey},
+			ReadOnly:  []string{AuthNaiveKey, AuthOnlyAPIKey},
 		},
 		PreferredType:           AuthLDAPKey,
 		BackgroundReauthMinutes: 60,

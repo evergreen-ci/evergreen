@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoadUserManager(t *testing.T) {
-	l := evergreen.LDAPConfig{
+	ldap := evergreen.LDAPConfig{
 		URL:                "url",
 		Port:               "port",
 		UserPath:           "path",
@@ -16,68 +16,112 @@ func TestLoadUserManager(t *testing.T) {
 		Group:              "group",
 		ExpireAfterMinutes: "60",
 	}
-	g := evergreen.GithubAuthConfig{
+	github := evergreen.GithubAuthConfig{
 		ClientId:     "client_id",
 		ClientSecret: "client_secret",
 	}
-	n := evergreen.NaiveAuthConfig{}
-	o := evergreen.OktaConfig{
+	naive := evergreen.NaiveAuthConfig{}
+	onlyAPI := evergreen.OnlyAPIAuthConfig{}
+	okta := evergreen.OktaConfig{
 		ClientID:     "client_id",
 		ClientSecret: "client_secret",
 		Issuer:       "issuer",
 		UserGroup:    "user_group",
 	}
+	multi := evergreen.MultiAuthConfig{
+		ReadWrite: []string{evergreen.AuthLDAPKey},
+		ReadOnly:  []string{evergreen.AuthNaiveKey},
+	}
+	multiNoInfo := evergreen.MultiAuthConfig{
+		ReadWrite: []string{evergreen.AuthGithubKey},
+		ReadOnly:  []string{evergreen.AuthOnlyAPIKey},
+	}
 
 	a := evergreen.AuthConfig{}
 	um, info, err := LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.Error(t, err, "a UserManager should not be able to be created in an empty AuthConfig")
+	assert.Error(t, err, "a UserManager should not be created in an empty AuthConfig")
 	assert.False(t, info.CanClearTokens)
 	assert.False(t, info.CanReauthorize)
-	assert.Nil(t, um, "a UserManager should not be able to be created in an empty AuthConfig")
+	assert.Nil(t, um, "a UserManager should not be created in an empty AuthConfig")
 
-	a = evergreen.AuthConfig{Github: &g}
+	a = evergreen.AuthConfig{Github: &github}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Github")
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Github")
 	assert.False(t, info.CanClearTokens)
 	assert.False(t, info.CanReauthorize)
-	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Github")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Github")
 
-	a = evergreen.AuthConfig{LDAP: &l}
+	a = evergreen.AuthConfig{LDAP: &ldap}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is LDAP")
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is LDAP")
 	assert.True(t, info.CanClearTokens)
 	assert.True(t, info.CanReauthorize)
-	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is LDAP")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is LDAP")
 
-	a = evergreen.AuthConfig{Okta: &o}
+	a = evergreen.AuthConfig{Okta: &okta}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Okta")
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Okta")
 	assert.True(t, info.CanClearTokens)
 	assert.True(t, info.CanReauthorize)
-	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Okta")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Okta")
 
-	a = evergreen.AuthConfig{Naive: &n}
+	a = evergreen.AuthConfig{Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Naive")
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Naive")
 	assert.False(t, info.CanClearTokens)
 	assert.False(t, info.CanReauthorize)
-	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Naive")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Naive")
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthLDAPKey, LDAP: &l}
+	a = evergreen.AuthConfig{OnlyAPI: &onlyAPI}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is OnlyAPI")
+	assert.False(t, info.CanClearTokens)
+	assert.False(t, info.CanReauthorize)
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is OnlyAPI")
+
+	a = evergreen.AuthConfig{Multi: &multi}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.Error(t, err, "a multi UserManager should not be created if the component types are missing settings")
+	assert.Nil(t, um)
+	assert.False(t, info.CanClearTokens)
+	assert.False(t, info.CanReauthorize)
+
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, LDAP: &ldap}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.Error(t, err, "a multi UserManager should not be created if the component types are missing settings")
+	assert.Nil(t, um)
+	assert.False(t, info.CanClearTokens)
+	assert.False(t, info.CanReauthorize)
+
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, LDAP: &ldap, Naive: &naive}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Multi")
+	assert.True(t, info.CanClearTokens, "should be able to clear tokens if the underlying manager is able")
+	assert.True(t, info.CanReauthorize, "should be able to reauthorize if the underlying manager is able")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Multi")
+
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multiNoInfo, Github: &github, OnlyAPI: &onlyAPI}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Multi")
+	assert.False(t, info.CanClearTokens, "should not be able to clear tokens if the underlying user managers is unable")
+	assert.False(t, info.CanReauthorize, "should not be able to reauthorize if the underlying user managers is unable")
+	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Multi")
+
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthLDAPKey, LDAP: &ldap}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.True(t, info.CanClearTokens)
 	assert.True(t, info.CanReauthorize)
 	assert.NotNil(t, um)
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthOktaKey, Okta: &o}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthOktaKey, Okta: &okta}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.True(t, info.CanClearTokens)
 	assert.True(t, info.CanReauthorize)
 	assert.NotNil(t, um)
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, Github: &g}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, Github: &github}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.False(t, info.CanClearTokens)
@@ -86,14 +130,14 @@ func TestLoadUserManager(t *testing.T) {
 	_, ok := um.(*GithubUserManager)
 	assert.True(t, ok)
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthNaiveKey, Naive: &n}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthNaiveKey, Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.False(t, info.CanClearTokens)
 	assert.False(t, info.CanReauthorize)
 	assert.NotNil(t, um)
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, LDAP: &l, Github: &g, Naive: &n}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, LDAP: &ldap, Github: &github, Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.False(t, info.CanClearTokens)
@@ -102,7 +146,7 @@ func TestLoadUserManager(t *testing.T) {
 	_, ok = um.(*GithubUserManager)
 	assert.True(t, ok)
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, Naive: &n}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthGithubKey, Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err)
 	assert.False(t, info.CanClearTokens)

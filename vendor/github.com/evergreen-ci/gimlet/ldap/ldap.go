@@ -31,6 +31,8 @@ type userService struct {
 	serviceUserPassword string
 	serviceUserPath     string
 	cache               usercache.Cache
+	convertIDIn         func(old string) (new string)
+	unconvertIDOut      func(new string) (old string)
 	connect             connectFunc
 	conn                ldap.Client
 }
@@ -52,6 +54,9 @@ type CreationOpts struct {
 	UserCache usercache.Cache
 	// Functions to produce a UserCache
 	ExternalCache *usercache.ExternalOptions
+
+	ConvertIDIn    func(old string) (new string)
+	UnconvertIDOut func(new string) (old string)
 
 	connect connectFunc // connect changes connection behavior for testing
 }
@@ -87,6 +92,8 @@ func NewUserService(opts CreationOpts) (gimlet.UserManager, error) {
 		serviceUserName:     opts.ServiceUserName,
 		serviceUserPassword: opts.ServiceUserPassword,
 		serviceUserPath:     opts.ServiceUserPath,
+		convertIDIn:         opts.ConvertIDIn,
+		unconvertIDOut:      opts.UnconvertIDOut,
 	}
 
 	// override, typically, for testing
@@ -394,6 +401,9 @@ func findCnsWithGroup(dnString, ouName string) []string {
 }
 
 func (u *userService) validateGroup(username string) error {
+	if u.unconvertIDOut != nil {
+		username = u.unconvertIDOut(username)
+	}
 	errs := make([]error, 0, 3)
 	var (
 		err    error
@@ -494,12 +504,12 @@ func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
 	}
 
 	if found {
-		return makeUser(result), nil
+		return makeUser(result, u.convertIDIn)
 	}
 	return nil, catcher.Resolve()
 }
 
-func makeUser(result *ldap.SearchResult) gimlet.User {
+func makeUser(result *ldap.SearchResult, convertIDIn func(string) string) (gimlet.User, error) {
 	var (
 		id     string
 		name   string
@@ -510,6 +520,9 @@ func makeUser(result *ldap.SearchResult) gimlet.User {
 	for _, entry := range result.Entries[0].Attributes {
 		if entry.Name == "uid" {
 			id = entry.Values[0]
+			if convertIDIn != nil {
+				id = convertIDIn(id)
+			}
 		}
 		if entry.Name == "cn" {
 			name = entry.Values[0]
@@ -521,5 +534,9 @@ func makeUser(result *ldap.SearchResult) gimlet.User {
 			groups = append(groups, entry.Values...)
 		}
 	}
-	return gimlet.NewBasicUser(id, name, email, "", "", "", "", groups, false, nil)
+	opts, err := gimlet.NewBasicUserOptions(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create user")
+	}
+	return gimlet.NewBasicUser(opts.Name(name).Email(email).Roles(groups...)), nil
 }

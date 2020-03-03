@@ -247,8 +247,10 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "access_token", "refresh_token", nil, false, s.m)
-	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, s.m)
+	userOpts, err := gimlet.NewBasicUserOptions("user")
+	s.Require().NoError(err)
+	user := gimlet.NewBasicUser(userOpts.Name("name").Email("email").Password("password").Key("key").AccessToken("access_token").RefreshToken("refresh_token").RoleManager(s.m))
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, s.m)
 	s.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
@@ -269,7 +271,9 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(0, counter)
 
 	// give user the right permissions
-	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", "access_token", "refresh_token", []string{role1.ID}, false, s.m)
+	userOpts, err = gimlet.NewBasicUserOptions("user")
+	s.Require().NoError(err)
+	user = gimlet.NewBasicUser(userOpts.Name("name").Email("email").Password("password").Key("key").AccessToken("access_token").RefreshToken("refresh_token").Roles(role1.ID).RoleManager(s.m))
 	_, err = um.GetOrCreateUser(user)
 	s.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), user)

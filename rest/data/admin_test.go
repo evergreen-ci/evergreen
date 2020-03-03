@@ -113,17 +113,17 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// convert the DB model to an API model
 	restSettings := restModel.NewConfigModel()
 	err := restSettings.BuildFromService(testSettings)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig()
 	s.NoError(err)
 	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// read the settings and spot check values
 	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -141,8 +141,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settingsFromConnector.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settingsFromConnector.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
+	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
@@ -259,8 +261,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settingsFromConnector.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settingsFromConnector.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
+	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
 	switch s.ctx.(type) {
 	case *MockConnector:

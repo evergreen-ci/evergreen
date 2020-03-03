@@ -77,8 +77,19 @@ type Marshaler interface {
 // supported tag options.
 //
 func Unmarshal(in []byte, out interface{}) (err error) {
+	return unmarshal(in, out, false)
+}
+
+// UnmarshalStrict is like Unmarshal except that any fields that are found
+// in the data that do not have corresponding struct members will result in
+// an error.
+func UnmarshalStrict(in []byte, out interface{}) (err error) {
+	return unmarshal(in, out, true)
+}
+
+func unmarshal(in []byte, out interface{}, strict bool) (err error) {
 	defer handleErr(&err)
-	d := newDecoder()
+	d := newDecoder(strict)
 	p := newParser(in)
 	defer p.destroy()
 	node := p.parse()
@@ -222,7 +233,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 	inlineMap := -1
 	for i := 0; i != n; i++ {
 		field := st.Field(i)
-		if field.PkgPath != "" {
+		if field.PkgPath != "" && !field.Anonymous {
 			continue // Private field
 		}
 
@@ -324,13 +335,15 @@ func isZero(v reflect.Value) bool {
 		return v.Len() == 0
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return v.Int() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		return v.Uint() == 0
 	case reflect.Bool:
 		return !v.Bool()
 	case reflect.Struct:
 		vt := v.Type()
-		for i := v.NumField()-1; i >= 0; i-- {
+		for i := v.NumField() - 1; i >= 0; i-- {
 			if vt.Field(i).PkgPath != "" {
 				continue // Private field
 			}

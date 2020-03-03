@@ -27,11 +27,14 @@ type MockUser struct {
 	ID           string
 	Name         string
 	EmailAddress string
+	Password     string
+	Token        string
 	ReportNil    bool
 	APIKey       string
 	AccessToken  string
 	RefreshToken string
 	RoleNames    []string
+	Groups       []string
 }
 
 func (u *MockUser) DisplayName() string     { return u.Name }
@@ -88,52 +91,92 @@ func (a *MockAuthenticator) GetUserFromRequest(um UserManager, r *http.Request) 
 }
 
 type MockUserManager struct {
-	TokenToUsers    map[string]User
-	CreateUserFails bool
+	Users                []*MockUser
+	FailGetOrCreateUser  bool
+	FailGetUserByToken   bool
+	FailCreateUserToken  bool
+	FailGetUserByID      bool
+	FailClearUser        bool
+	FailGetGroupsForUser bool
+	FailReauthorizeUser  bool
+	Redirect             bool
+	LoginHandler         http.HandlerFunc
+	LoginCallbackHandler http.HandlerFunc
 }
 
 func (m *MockUserManager) GetUserByToken(_ context.Context, token string) (User, error) {
-	if m.TokenToUsers == nil {
-		return nil, errors.New("no users configured")
+	if m.FailGetUserByToken {
+		return nil, errors.New("mock fail")
 	}
-
-	u, ok := m.TokenToUsers[token]
-	if !ok {
-		return nil, errors.New("user does not exist")
+	for _, u := range m.Users {
+		if token == u.Token {
+			return u, nil
+		}
 	}
+	return nil, errors.New("user not found")
+}
 
-	return u, nil
+func mockUserToken(username, password string) string {
+	return strings.Join([]string{username, password}, ".")
 }
 
 func (m *MockUserManager) CreateUserToken(username, password string) (string, error) {
-	return strings.Join([]string{username, password}, "."), nil
+	if m.FailCreateUserToken {
+		return "", errors.New("mock fail")
+	}
+	return mockUserToken(username, password), nil
 }
 
-func (m *MockUserManager) GetLoginHandler(url string) http.HandlerFunc { return nil }
-func (m *MockUserManager) GetLoginCallbackHandler() http.HandlerFunc   { return nil }
-func (m *MockUserManager) IsRedirect() bool                            { return false }
-func (m *MockUserManager) ReauthorizeUser(User) error                  { return nil }
+func (m *MockUserManager) GetLoginHandler(url string) http.HandlerFunc { return m.LoginHandler }
+func (m *MockUserManager) GetLoginCallbackHandler() http.HandlerFunc   { return m.LoginCallbackHandler }
+func (m *MockUserManager) IsRedirect() bool                            { return m.Redirect }
+func (m *MockUserManager) ReauthorizeUser(user User) error {
+	if m.FailReauthorizeUser {
+		return errors.New("mock fail")
+	}
+	for _, u := range m.Users {
+		if user.Username() == u.Username() {
+			return nil
+		}
+	}
+	return errors.New("user not found")
+}
 
 func (m *MockUserManager) GetUserByID(id string) (User, error) {
-	u, ok := m.TokenToUsers[id]
-	if !ok {
-		return nil, errors.New("not exist")
+	if m.FailGetUserByID {
+		return nil, errors.New("mock fail")
 	}
-
-	return u, nil
+	for _, u := range m.Users {
+		if id == u.Username() {
+			return u, nil
+		}
+	}
+	return nil, errors.New("user does not exist")
 }
+
 func (m *MockUserManager) GetOrCreateUser(u User) (User, error) {
-	if m.CreateUserFails {
-		return nil, errors.New("event")
+	if m.FailGetOrCreateUser {
+		return nil, errors.New("mock fail")
 	}
 
 	return u, nil
 }
 
 func (m *MockUserManager) ClearUser(u User, all bool) error {
-	return errors.New("MockUserManager does not support Clear User")
+	if m.FailClearUser {
+		return errors.New("mock fail")
+	}
+	return nil
 }
 
 func (m *MockUserManager) GetGroupsForUser(username string) ([]string, error) {
-	return nil, errors.New("not implemented")
+	if m.FailGetGroupsForUser {
+		return nil, errors.New("mock fail")
+	}
+	for _, u := range m.Users {
+		if username == u.Username() {
+			return u.Groups, nil
+		}
+	}
+	return nil, errors.New("not found")
 }

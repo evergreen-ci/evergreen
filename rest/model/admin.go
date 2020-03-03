@@ -388,12 +388,14 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP                    *APILDAPConfig       `json:"ldap"`
-	Okta                    *APIOktaConfig       `json:"okta"`
-	Naive                   *APINaiveAuthConfig  `json:"naive"`
-	Github                  *APIGithubAuthConfig `json:"github"`
-	PreferredType           *string              `json:"preferred_type"`
-	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
+	LDAP                    *APILDAPConfig        `json:"ldap"`
+	Okta                    *APIOktaConfig        `json:"okta"`
+	Naive                   *APINaiveAuthConfig   `json:"naive"`
+	OnlyAPI                 *APIOnlyAPIAuthConfig `json:"only_api"`
+	Github                  *APIGithubAuthConfig  `json:"github"`
+	Multi                   *APIMultiAuthConfig   `json:"multi"`
+	PreferredType           *string               `json:"preferred_type"`
+	BackgroundReauthMinutes int                   `json:"background_reauth_minutes"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -411,12 +413,6 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 				return errors.Wrap(err, "could not build API Okta auth settings from service")
 			}
 		}
-		if v.Okta != nil {
-			a.Okta = &APIOktaConfig{}
-			if err := a.Okta.BuildFromService(v.Okta); err != nil {
-				return err
-			}
-		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
@@ -427,6 +423,18 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 			a.Naive = &APINaiveAuthConfig{}
 			if err := a.Naive.BuildFromService(v.Naive); err != nil {
 				return errors.Wrap(err, "could not build API naive auth settings from service")
+			}
+		}
+		if v.OnlyAPI != nil {
+			a.OnlyAPI = &APIOnlyAPIAuthConfig{}
+			if err := a.OnlyAPI.BuildFromService(v.OnlyAPI); err != nil {
+				return errors.Wrap(err, "could not build API auth settings for API-only users from service")
+			}
+		}
+		if v.Multi != nil {
+			a.Multi = &APIMultiAuthConfig{}
+			if err := a.Multi.BuildFromService(v.Multi); err != nil {
+				return errors.Wrap(err, "could not build API multi auth settings from service")
 			}
 		}
 		a.PreferredType = ToStringPtr(v.PreferredType)
@@ -441,11 +449,13 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var ldap *evergreen.LDAPConfig
 	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
+	var onlyAPI *evergreen.OnlyAPIAuthConfig
 	var github *evergreen.GithubAuthConfig
+	var multi *evergreen.MultiAuthConfig
 	var ok bool
 	i, err := a.LDAP.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not convert LDAP auth config to service")
 	}
 	if i != nil {
 		ldap, ok = i.(*evergreen.LDAPConfig)
@@ -453,9 +463,10 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting LDAPConfig but got %T", i)
 		}
 	}
+
 	i, err = a.Okta.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not convert Okta auth config to service")
 	}
 	if i != nil {
 		okta, ok = i.(*evergreen.OktaConfig)
@@ -463,16 +474,10 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
 		}
 	}
-	i, err = a.Okta.ToService()
-	if err != nil {
-		return nil, err
-	}
-	if i != nil {
-		okta = i.(*evergreen.OktaConfig)
-	}
+
 	i, err = a.Naive.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could  not convert naive auth config to service")
 	}
 	if i != nil {
 		naive, ok = i.(*evergreen.NaiveAuthConfig)
@@ -480,9 +485,21 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting NaiveAuthConfig but got %T", i)
 		}
 	}
+
+	i, err = a.OnlyAPI.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert API-only auth config to service")
+	}
+	if i != nil {
+		onlyAPI, ok = i.(*evergreen.OnlyAPIAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting OnlyAPIAuthConfig but got %T", i)
+		}
+	}
+
 	i, err = a.Github.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not convert GitHub auth config to service")
 	}
 	if i != nil {
 		github, ok = i.(*evergreen.GithubAuthConfig)
@@ -490,11 +507,25 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 			return nil, errors.Errorf("expecting GithubAuthConfig but got %T", i)
 		}
 	}
+
+	i, err = a.Multi.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could  not convert multi auth config to service")
+	}
+	if i != nil {
+		multi, ok = i.(*evergreen.MultiAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting MultiAuthConfig but got %T", i)
+		}
+	}
+
 	return evergreen.AuthConfig{
 		LDAP:                    ldap,
 		Okta:                    okta,
 		Naive:                   naive,
+		OnlyAPI:                 onlyAPI,
 		Github:                  github,
+		Multi:                   multi,
 		PreferredType:           FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 	}, nil
@@ -622,7 +653,7 @@ func (a *APIOktaConfig) ToService() (interface{}, error) {
 }
 
 type APINaiveAuthConfig struct {
-	Users []*APIAuthUser `json:"users"`
+	Users []APIAuthUser `json:"users"`
 }
 
 func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
@@ -632,11 +663,11 @@ func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
 			return nil
 		}
 		for _, u := range v.Users {
-			APIuser := &APIAuthUser{}
-			if err := APIuser.BuildFromService(u); err != nil {
+			apiUser := APIAuthUser{}
+			if err := apiUser.BuildFromService(u); err != nil {
 				return err
 			}
-			a.Users = append(a.Users, APIuser)
+			a.Users = append(a.Users, apiUser)
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -654,7 +685,10 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		user := i.(*evergreen.AuthUser)
+		user, ok := i.(evergreen.AuthUser)
+		if !ok {
+			continue
+		}
 		config.Users = append(config.Users, user)
 	}
 	return &config, nil
@@ -669,10 +703,7 @@ type APIAuthUser struct {
 
 func (a *APIAuthUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.AuthUser:
-		if v == nil {
-			return nil
-		}
+	case evergreen.AuthUser:
 		a.Username = ToStringPtr(v.Username)
 		a.Password = ToStringPtr(v.Password)
 		a.DisplayName = ToStringPtr(v.DisplayName)
@@ -687,11 +718,82 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
-	return &evergreen.AuthUser{
+	return evergreen.AuthUser{
 		Username:    FromStringPtr(a.Username),
 		Password:    FromStringPtr(a.Password),
 		DisplayName: FromStringPtr(a.DisplayName),
 		Email:       FromStringPtr(a.Email),
+	}, nil
+}
+
+type APIOnlyAPIAuthConfig struct {
+	Users []APIOnlyAPIUser `json:"users"`
+}
+
+func (a *APIOnlyAPIAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.OnlyAPIAuthConfig:
+		if v == nil {
+			return nil
+		}
+		for _, u := range v.Users {
+			apiUser := APIOnlyAPIUser{}
+			if err := apiUser.BuildFromService(u); err != nil {
+				return err
+			}
+			a.Users = append(a.Users, apiUser)
+		}
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIOnlyAPIAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.OnlyAPIAuthConfig{}
+	for _, u := range a.Users {
+		i, err := u.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not convert user to service model")
+		}
+		user, ok := i.(evergreen.OnlyAPIUser)
+		if !ok {
+			continue
+		}
+		config.Users = append(config.Users, user)
+	}
+	return &config, nil
+}
+
+type APIOnlyAPIUser struct {
+	Username *string  `json:"username"`
+	Key      *string  `json:"key"`
+	Roles    []string `json:"roles"`
+}
+
+func (a *APIOnlyAPIUser) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.OnlyAPIUser:
+		a.Username = ToStringPtr(v.Username)
+		a.Key = ToStringPtr(v.Key)
+		a.Roles = v.Roles
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIOnlyAPIUser) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.OnlyAPIUser{
+		Username: FromStringPtr(a.Username),
+		Key:      FromStringPtr(a.Key),
+		Roles:    a.Roles,
 	}, nil
 }
 
@@ -733,6 +835,35 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		config.Users = append(config.Users, FromStringPtr(u))
 	}
 	return &config, nil
+}
+
+type APIMultiAuthConfig struct {
+	ReadWrite []string `json:"read_write"`
+	ReadOnly  []string `json:"read_only"`
+}
+
+func (a *APIMultiAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.MultiAuthConfig:
+		if v == nil {
+			return nil
+		}
+		a.ReadWrite = v.ReadWrite
+		a.ReadOnly = v.ReadOnly
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIMultiAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.MultiAuthConfig{
+		ReadWrite: a.ReadWrite,
+		ReadOnly:  a.ReadOnly,
+	}, nil
 }
 
 // APIBanner is a public structure representing the banner part of the admin settings

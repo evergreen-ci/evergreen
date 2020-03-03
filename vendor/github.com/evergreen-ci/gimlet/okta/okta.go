@@ -820,10 +820,11 @@ func makeUserFromInfo(info *userInfoResponse, accessToken, refreshToken string, 
 	if reconciliateID != nil {
 		id = reconciliateID(id)
 	}
-	if id == "" {
-		return nil, errors.New("could not create user ID from email")
+	opts, err := gimlet.NewBasicUserOptions(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create user")
 	}
-	return gimlet.NewBasicUser(id, info.Name, info.Email, "", "", accessToken, refreshToken, info.Groups, false, nil), nil
+	return gimlet.NewBasicUser(opts.Name(info.Name).Email(info.Email).AccessToken(accessToken).RefreshToken(refreshToken).Roles(info.Groups...)), nil
 }
 
 // makeUserFromIDToken returns a user based on information from an ID token.
@@ -843,5 +844,9 @@ func makeUserFromIDToken(idToken *jwtverifier.Jwt, accessToken, refreshToken str
 	if !ok {
 		return nil, errors.New("user is missing name")
 	}
-	return gimlet.NewBasicUser(id, name, email, "", "", accessToken, refreshToken, []string{}, false, nil), nil
+	opts, err := gimlet.NewBasicUserOptions(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create user")
+	}
+	return gimlet.NewBasicUser(opts.Name(name).Email(email).AccessToken(accessToken).RefreshToken(refreshToken)), nil
 }
