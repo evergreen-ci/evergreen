@@ -116,11 +116,11 @@ func fetch() cli.Command {
 
 			start, err := time.Parse(time.RFC3339, c.String(startFlagName))
 			if err != nil {
-				errors.Wrapf(err, "unable to parse start time '%s' from RFC3339 format", c.String(startFlagName))
+				return errors.Wrapf(err, "unable to parse start time '%s' from RFC3339 format", c.String(startFlagName))
 			}
 			end, err := time.Parse(time.RFC3339, c.String(endFlagName))
 			if err != nil {
-				errors.Wrapf(err, "unable to parse end time '%s' from RFC3339 format", c.String(endFlagName))
+				return errors.Wrapf(err, "unable to parse end time '%s' from RFC3339 format", c.String(endFlagName))
 			}
 			var tags []string
 			if c.String(tagsFlagName) != "" {
