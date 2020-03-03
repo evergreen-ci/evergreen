@@ -73,7 +73,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	if nextItem != nil {
 		patchIdString := nextItem.Issue
 		if !patch.IsValidId(patchIdString) {
-			j.AddError(errors.Errorf("error unstickibg queue. Patch id  '%s' is not an object id", nextItem.Issue))
+			j.AddError(errors.Errorf("error unsticking queue. Patch id  '%s' is not an object id", nextItem.Issue))
 			return
 		}
 		patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
