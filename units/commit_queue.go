@@ -87,7 +87,8 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		}
 
 		//patchisdone
-		if !util.IsZeroTime(patchDoc.FinishTime) {
+		patchFinishTime := patchDoc.FinishTime
+		if !util.IsZeroTime(patchFinishTime) {
 			j.dequeue(cq, nextItem)
 			status := evergreen.MergeTestSucceeded
 			event.LogCommitQueueConcludeTest(patchIdString, status)
@@ -97,6 +98,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 				"item_id":            nextItem.Issue,
 				"project_id":         cq.ProjectID,
 				"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+				"timeSincePatchDone": time.Since(patchFinishTime).Seconds(),
 				"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
 			})
 		}
