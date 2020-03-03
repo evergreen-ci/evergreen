@@ -73,7 +73,8 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 								return nil, err
 							}
 							hasUser := context.User.(*user.DBUser) != nil
-							strippedFiles, err := artifact.StripHiddenFiles(execTaskFiles, hasUser)
+							var strippedFiles []artifact.File
+							strippedFiles, err = artifact.StripHiddenFiles(execTaskFiles, hasUser)
 							if err != nil {
 								return nil, errors.Wrap(err, "error signing urls")
 							}

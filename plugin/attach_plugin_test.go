@@ -24,7 +24,7 @@ func (s *TestFileVisibilitySuite) SetupTest() {
 		{Name: "Public", Visibility: artifact.Public},
 		{Name: "Hidden", Visibility: artifact.None},
 		{Name: "Unset", Visibility: ""},
-		{Name: "Signed", Visibility: artifact.Signed},
+		{Name: "Signed", Visibility: artifact.Signed, AwsKey: "key", AwsSecret: "secret", Bucket: "bucket", FileKey: "filekey"},
 	}
 }
 
