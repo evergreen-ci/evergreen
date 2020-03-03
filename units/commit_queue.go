@@ -73,16 +73,18 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	if nextItem != nil {
 		patchIdString := nextItem.Issue
 		if !patch.IsValidId(patchIdString) {
-			j.AddError(errors.Errorf("error unsticking queue. Patch id  '%s' is not an object id", nextItem.Issue))
+			j.dequeue(cq, nextItem)
+			j.logError(nil, "The Patch id '%s' is not an object id. It was removed from the queue.", nextItem)
 			return
 		}
 		patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
+			j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 			return
 		}
 		if patchDoc == nil {
-			j.AddError(errors.Errorf("could not unstick queue. patch %s not found", patchIdString))
+			j.dequeue(cq, nextItem)
+			j.logError(err, "The patch on top of the queue is null. It was removed from the queue.", nextItem)
 			return
 		}
 
@@ -91,16 +93,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		if !util.IsZeroTime(patchFinishTime) {
 			j.dequeue(cq, nextItem)
 			status := evergreen.MergeTestSucceeded
-			event.LogCommitQueueConcludeTest(patchIdString, status)
-			grip.Info(message.Fields{
-				"source":             "commit queue",
-				"job_id":             j.ID(),
-				"item_id":            nextItem.Issue,
-				"project_id":         cq.ProjectID,
-				"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
-				"timeSincePatchDone": time.Since(patchFinishTime).Seconds(),
-				"message":            "The queue was stuck despite the patch being done. The item on top of the queue was removed.",
-			})
+			event.LogCommitQueueConcludeTest(nextItem.Issue, status)
 		}
 	}
 
