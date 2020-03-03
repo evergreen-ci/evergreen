@@ -462,7 +462,7 @@ func (d *Distro) GetImageID() (string, error) {
 func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
-		if len(d.ProviderSettingsList) != 1 && d.ProviderSettings == nil {
+		if len(d.ProviderSettingsList) == 0 && d.ProviderSettings == nil {
 			return 0
 		}
 		if len(d.ProviderSettingsList) > 0 {
