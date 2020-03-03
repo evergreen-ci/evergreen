@@ -1920,9 +1920,9 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// GetTaskResultsByVersion gets all tasks for a specific version
+// GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTaskResultsByVersion(versionID, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
+func GetTasksByVersion(versionID, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}

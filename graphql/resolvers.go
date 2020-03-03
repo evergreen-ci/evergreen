@@ -283,7 +283,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tasks, err := r.sc.FindTaskResultsByVersion(patchID, sorter, statusesParam, sortDir, pageParam, limitParam)
+	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, sortDir, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
