@@ -73,6 +73,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
+			return
 		}
 
 		//patchisdone
@@ -149,7 +150,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"processing_seconds": processingSeconds,
 		})
 		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
-		//It's okay if this gets to it before the notification does, since that will 
+		//It's okay if this gets to it before the notification does, since that will
 		//check if the item is still on the queue before removing it.
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
@@ -195,15 +196,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"item":    nextItem,
 		"message": "finished processing item",
 	})
-}
-
-func IsPatchDone(patch_id string) (bool, error) {
-	patch, err := patch.FindOne(patch.ById(patch.NewId(patch_id)))
-	if err != nil {
-		return false, errors.Wrapf(err, "error finding the patch %s", patch_id)
-	}
-
-	return !patch.FinishTime.IsZero(), nil
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
