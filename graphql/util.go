@@ -32,7 +32,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		apiFile := restModel.APIFile{}
 		err := apiFile.BuildFromService(file)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error stripping hidden files"))
 		}
 		apiFileList = append(apiFileList, &apiFile)
 	}
