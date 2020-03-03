@@ -24,7 +24,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	hasUser := gimlet.GetUser(ctx) != nil
 	strippedFiles, err := artifact.StripHiddenFiles(taskFiles, hasUser)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+		return nil, err
 	}
 
 	apiFileList := []*restModel.APIFile{}
