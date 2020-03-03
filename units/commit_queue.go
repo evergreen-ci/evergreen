@@ -149,8 +149,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"processing_seconds": processingSeconds,
 		})
 		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
-		//If the notification gets to it first, it is okay since it will check if the item
-		//is still on the queue before removing it.
+		//It's okay if this gets to it before the notification does, since that will 
+		//check if the item is still on the queue before removing it.
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
 		}
