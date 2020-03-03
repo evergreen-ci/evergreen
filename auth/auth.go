@@ -7,17 +7,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // LoadUserManager is used to check the configuration for authentication and
 // create a UserManager depending on what type of authentication is used.
-func LoadUserManager(settings *evergreen.Settings) (um gimlet.UserManager, i evergreen.UserManagerInfo, e error) {
-	defer func() {
-		pp.Println("loaded user manager", um)
-	}()
+func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	authConfig := settings.AuthConfig
 
 	if authConfig.PreferredType != "" {
