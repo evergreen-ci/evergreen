@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -70,6 +71,11 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	//unstuck the queue if the patch is done.
 	nextItem := cq.Next()
 	if nextItem != nil {
+		patchIdString := nextItem.Issue
+		if !patch.IsValidId(patchIdString) {
+			j.AddError(errors.Errorf("error unstickibg queue. Patch id  '%s' is not an object id", nextItem.Issue))
+			return
+		}
 		patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
@@ -77,8 +83,10 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		}
 
 		//patchisdone
-		if !patch.FinishTime.IsZero() {
+		if !util.IsZeroTime(patch.FinishTime) {
 			j.dequeue(cq, nextItem)
+			status := evergreen.MergeTestSucceeded
+			event.LogCommitQueueConcludeTest(patchIdString, status)
 			grip.Info(message.Fields{
 				"source":             "commit queue",
 				"job_id":             j.ID(),
