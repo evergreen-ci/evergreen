@@ -76,14 +76,14 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 			j.AddError(errors.Errorf("error unstickibg queue. Patch id  '%s' is not an object id", nextItem.Issue))
 			return
 		}
-		patch, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
+		patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "error determining if patch is done for %s", j.QueueID))
 			return
 		}
 
 		//patchisdone
-		if !util.IsZeroTime(patch.FinishTime) {
+		if !util.IsZeroTime(patchDoc.FinishTime) {
 			j.dequeue(cq, nextItem)
 			status := evergreen.MergeTestSucceeded
 			event.LogCommitQueueConcludeTest(patchIdString, status)
