@@ -25,81 +25,83 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type atomicGraphQLSuite struct {
+type atomicGraphQLState struct {
 	url       string
 	apiUser   string
 	apiKey    string
 	directory string
-
-	suite.Suite
 }
 
-func TestAtomicGraphQLSuite(t *testing.T) {
+func TestAtomicGQLQueries(t *testing.T) {
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {
-		suite.Run(t, &atomicGraphQLSuite{directory: dir.Name()})
+		state := setup(t, dir.Name())
+		runTestsInDirectory(t, state)
 	}
 }
 
-func (s *atomicGraphQLSuite) SetupSuite() {
+func setup(t *testing.T, directory string) atomicGraphQLState {
 	const apiKey = "testapikey"
 	const apiUser = "testuser"
 
+	state := atomicGraphQLState{}
 	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
-	s.Require().NoError(err)
+	require.NoError(t, err)
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
-	s.Require().NoError(env.DB().Drop(ctx))
+	require.NoError(t, env.DB().Drop(ctx))
 	testUser := user.DBUser{
 		Id:          apiUser,
 		APIKey:      apiKey,
 		Settings:    user.UserSettings{Timezone: "America/New_York"},
 		SystemRoles: []string{"unrestrictedTaskAccess"},
 	}
-	s.Require().NoError(testUser.Insert())
-	s.url = server.URL
-	s.apiKey = apiKey
-	s.apiUser = apiUser
+	require.NoError(t, testUser.Insert())
+	state.url = server.URL
+	state.apiKey = apiKey
+	state.apiUser = apiUser
+	state.directory = directory
+
+	return state
 }
 
 type testsCases struct {
 	Tests []test `json:"tests"`
 }
 
-func (s *atomicGraphQLSuite) TestQueries() {
-	dataFile, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "data.json"))
-	s.Require().NoError(err)
+func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
+	dataFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "data.json"))
+	require.NoError(t, err)
 
-	resultsFile, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "results.json"))
-	s.Require().NoError(err)
+	resultsFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "results.json"))
+	require.NoError(t, err)
 
 	var testData map[string]json.RawMessage
 	err = json.Unmarshal(dataFile, &testData)
-	s.Require().NoError(err)
+	require.NoError(t, err)
 
 	var tests testsCases
 	err = json.Unmarshal(resultsFile, &tests)
-	s.Require().NoError(err)
+	require.NoError(t, err)
 
-	s.Require().NoError(SetupData(*evergreen.GetEnvironment().DB(), testData))
+	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), testData))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join("tests", s.directory, "queries", testCase.QueryFile))
+			f, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "queries", testCase.QueryFile))
 			require.NoError(t, err)
 			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 			body := bytes.NewBuffer([]byte(jsonQuery))
 			client := http.Client{}
-			r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", s.url), body)
-			s.Require().NoError(err)
-			r.Header.Add(evergreen.APIKeyHeader, s.apiKey)
-			r.Header.Add(evergreen.APIUserHeader, s.apiUser)
+			r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.url), body)
+			require.NoError(t, err)
+			r.Header.Add(evergreen.APIKeyHeader, state.apiKey)
+			r.Header.Add(evergreen.APIUserHeader, state.apiUser)
 			r.Header.Add("content-type", "application/json")
 			resp, err := client.Do(r)
 			require.NoError(t, err)
@@ -108,11 +110,11 @@ func (s *atomicGraphQLSuite) TestQueries() {
 			assert.JSONEq(t, string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
 		}
 
-		s.T().Run(testCase.QueryFile, singleTest)
+		t.Run(fmt.Sprintf("%s/%s", state.directory, testCase.QueryFile), singleTest)
 	}
 }
 
-func SetupData(db mongo.Database, data map[string]json.RawMessage) error {
+func setupData(db mongo.Database, data map[string]json.RawMessage) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
