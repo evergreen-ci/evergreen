@@ -108,7 +108,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"output":  *s,
 		})
 		s.Region = s.getRegion()
-		if s.Region != evergreen.DefaultEC2Region && s.Region != "" {
+		if s.Region != evergreen.DefaultEC2Region {
 			return errors.Errorf("only default region should be saved in provider settings")
 		}
 	} else if len(d.ProviderSettingsList) != 0 {
@@ -128,6 +128,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 }
 
 func (s *EC2ProviderSettings) ToDocument() (*birch.Document, error) {
+	s.Region = s.getRegion()
 	bytes, err := bson.Marshal(s)
 	if err != nil {
 		return nil, errors.Wrap(err, "error marshalling provider setting into bson")

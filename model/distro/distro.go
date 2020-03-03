@@ -462,8 +462,15 @@ func (d *Distro) GetImageID() (string, error) {
 func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
-		if d.ProviderSettings == nil {
+		if len(d.ProviderSettingsList) != 1 && d.ProviderSettings == nil {
 			return 0
+		}
+		if len(d.ProviderSettingsList) > 0 {
+			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
+			if !ok {
+				return 0
+			}
+			return len(hosts)
 		}
 
 		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
@@ -542,6 +549,7 @@ func (d *Distro) RemoveExtraneousProviderSettings(region string) error {
 }
 
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	// check legacy case
 	if (region == "" || region == evergreen.DefaultEC2Region) && len(d.ProviderSettingsList) == 0 {
 		bytes, err := bson.Marshal(d.ProviderSettings)
 		if err != nil {
@@ -556,7 +564,7 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 		}
 		return doc, nil
 	}
-	// if no region given, we assume the provided settings list is accurate
+	// if no region given but there's a provider settings list, we assume the list is accurate
 	if region == "" {
 		if len(d.ProviderSettingsList) > 1 {
 			return nil, errors.Errorf("multiple provider settings available but no region given")

@@ -234,6 +234,9 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		provider = evergreen.ProviderNameEc2Spot
 	}
 
+	if createHost.Region == "" {
+		createHost.Region = evergreen.DefaultEC2Region
+	}
 	// get distro if it is set
 	d := distro.Distro{}
 	ec2Settings := cloud.EC2ProviderSettings{}
