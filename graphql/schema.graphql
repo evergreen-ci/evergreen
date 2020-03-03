@@ -152,7 +152,7 @@ type EventLogData {
   timestamp: String
 }
 
-type EventLogItem {
+type EventLogEntry {
   resourceType: String
   processedAt: String
   timestamp: String
