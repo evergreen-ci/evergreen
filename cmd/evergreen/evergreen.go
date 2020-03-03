@@ -48,6 +48,7 @@ func buildApp() *cli.App {
 		operations.Host(),
 		operations.Volume(),
 		operations.Notification(),
+		operations.Buildlogger(),
 
 		// Top-level commands.
 		operations.Keys(),
