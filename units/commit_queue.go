@@ -86,7 +86,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	}
 	if patchDoc == nil {
 		j.dequeue(cq, nextItem)
-		j.logError(err, "The patch on top of the queue is null. It was removed from the queue.", nextItem)
+		j.logError(err, "The patch on top of the queue is nil. It was removed from the queue.", nextItem)
 		return
 	}
 
