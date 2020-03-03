@@ -203,16 +203,3 @@ func (s *TestArtifactFileSuite) TestFindByIds() {
 	s.NoError(err)
 	s.Len(entries, 3)
 }
-
-func (s *TestArtifactFileSuite) TestGetAllArtifacts() {
-	tasks := []TaskIDAndExecution{
-		{TaskID: "task1", Execution: 1},
-		{TaskID: "task2", Execution: 5},
-	}
-	files, _ := GetAllArtifacts(tasks)
-	for i := range files {
-		if files[i].Visibility == "signed" {
-			s.Contains(files[i].Link, "Signature")
-		}
-	}
-}

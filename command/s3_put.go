@@ -236,12 +236,17 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return nil
 	}
 
-	if s3pc.isMulti() {
-		logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
-			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+	if s3pc.isPrivate(s3pc.Visibility) {
+		logger.Task().Infof("Putting private file(s) into s3")
+
 	} else {
-		logger.Task().Infof("Putting %s into %s/%s/%s",
-			s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
+		if s3pc.isMulti() {
+			logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
+				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+		} else {
+			logger.Task().Infof("Putting %s into %s/%s/%s",
+				s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
+		}
 	}
 
 	errChan := make(chan error)
@@ -274,9 +279,13 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
-			s3pc.Bucket, s3pc.RemoteFile,
-			i, maxS3OpAttempts)
+		if s3pc.isPrivate(s3pc.Visibility) {
+			logger.Task().Infof("performing s3 put of a hidden file")
+		} else {
+			logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
+				s3pc.Bucket, s3pc.RemoteFile,
+				i, maxS3OpAttempts)
+		}
 
 		select {
 		case <-ctx.Done():
@@ -421,4 +430,11 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, opts)
 	s3pc.bucket = bucket
 	return err
+}
+
+func (s3pc *s3put) isPrivate(visibility string) bool {
+	if visibility == artifact.Signed || visibility == artifact.Private || visibility == artifact.None {
+		return true
+	}
+	return false
 }
