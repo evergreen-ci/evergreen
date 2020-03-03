@@ -68,7 +68,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 			continue
 		case (file.Visibility == Private || file.Visibility == Signed) && hasUser == false:
 			continue
-		case file.Visibility == Signed && hasUser == true:
+		case file.Visibility == Signed && hasUser:
 			if !file.ContainsSigningParams() {
 				return nil, errors.Errorf("error presigning the url for %s, awsSecret, awsKey, bucket, or filekey missing", file.Name)
 			}
