@@ -72,6 +72,7 @@ func (so *SpawnOptions) validate() error {
 	if !evergreen.UseSpawnHostRegions && so.Region != "" && so.Region != evergreen.DefaultEC2Region {
 		return errors.Wrap(err, "no configurable regions supported")
 	}
+
 	// validate public key
 	rsa := "ssh-rsa"
 	dss := "ssh-dss"
@@ -133,6 +134,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 
+	// remove extraneous provider settings from the host's saved distro document
+	if err := d.RemoveExtraneousProviderSettings(so.Region); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	if so.InstanceType != "" {
 		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
 			return nil, errors.Wrap(err, "error validating instance type")
@@ -177,6 +183,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
+// assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !util.StringSliceContains(allowedTypes, requestedType) {
 		return errors.New("This instance type has not been allowed by admins")

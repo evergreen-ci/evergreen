@@ -256,6 +256,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.is_virtual_workstation = $scope.is_virtual_workstation;
       $scope.spawnInfo.home_volume_size = $scope.home_volume_size;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
+      $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
@@ -375,11 +376,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           if (a.distro.name > b.distro.name) return 1;
           return 0;
         });
-        $scope.selectedDistro = $scope.spawnableDistros[0].distro;
-        $scope.spawnInfo = {
-          'distroId': $scope.selectedDistro.name,
-          'spawnKey': $scope.newKey,
-        };
+        $scope.setSpawnableDistro($scope.spawnableDistros[0].distro);
+        $scope.spawnInfo.spawnKey = $scope.newKey;
         if (selectDistroId) {
           var selectedIndex = _.findIndex($scope.spawnableDistros,
             function (x) {
@@ -387,8 +385,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             }
           )
           if (selectedIndex >= 0) {
-            $scope.selectedDistro = $scope.spawnableDistros[selectedIndex].distro;
-            $scope.spawnInfo.distroId = $scope.selectedDistro.name;
+            $scope.setSpawnableDistro($scope.spawnableDistros[selectedIndex].distro);
           }
         }
       };
@@ -423,13 +420,21 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     // User Interface helper functions
     // set the spawn request distro based on user selection
     $scope.setSpawnableDistro = function (spawnableDistro) {
-      $scope.selectedDistro = spawnableDistro
+      $scope.selectedDistro = spawnableDistro;
       $scope.spawnInfo.distroId = spawnableDistro.name;
+
+      if ($scope.selectedDistro.regions.length > 0) {
+        $scope.selectedRegion = $scope.selectedDistro.regions[0];
+      }
 
       // clear home volume settings when switching between distros
       $scope.is_virtual_workstation = false
       $scope.home_volume_size = 500
     };
+
+    $scope.setRegion = function(region) {
+      $scope.selectedRegion = region;
+    }
 
     // set the spawn host update instance type based on user selection
     $scope.setInstanceType = function (instanceType) {

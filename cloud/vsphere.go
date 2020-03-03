@@ -109,10 +109,8 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	}
 
 	s := &vsphereSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := s.FromDistroSettings(h.Distro, ""); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
-		}
+	if err := s.FromDistroSettings(h.Distro, ""); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := s.Validate(); err != nil {
