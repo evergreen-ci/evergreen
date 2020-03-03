@@ -391,7 +391,7 @@ func (d *Distro) ExecutableSubPath() string {
 }
 
 // HomeDir gets the absolute path to the home directory for this distro's user.
-// This is compatible with Cygwin (see (*host.Host).AbsPathCygwinCompatible for
+// This is compatible with Cygwin (see (*Distro).AbsPathCygwinCompatible for
 // details).
 func (d *Distro) HomeDir() string {
 	if d.User == "root" {
@@ -751,24 +751,23 @@ func (d *Distro) JasperCommunication() bool {
 	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
 }
 
-// AbsPathCygwinCompatible creates an absolute path from the given path. It is a
-// hack to create a filepath that is compatible with the host's provisioning
-// settings.
+// AbsPathCygwinCompatible creates an absolute path from the given path that is
+// compatible with the host's provisioning settings.
 //
 // For example, in the context of an SSH session with Cygwin, if you invoke the
-// "/usr/bin/echo" binary, Cygwin finds the binary in "$ROOT_DIR/usr/bin/echo".
-// Similarly, Cygwin binaries like "ls" will resolve filepaths as paths relative
-// to the Cygwin root directory, so "ls /usr/bin", will correctly list the
-// directory contents of "$ROOT_DIR/usr/bin".
+// "/usr/bin/echo" binary, Cygwin uses the binary located relative to Cygwin's
+// filesystem root directory, so it will use the binary at
+// "$ROOT_DIR/usr/bin/echo". Similarly, Cygwin binaries like "ls" will resolve
+// filepaths as paths relative to the Cygwin root directory, so "ls /usr/bin",
+// will correctly list the directory contents of "$ROOT_DIR/usr/bin".
 //
-// However, in almost all other cases, we must use native Windows paths for
-// everything. For example, if the evergreen binary tries to open a file given
-// in the command line flags, the Golang standard library uses native paths, so
-// giving a path like "/home/Administrator/my_file" will fail because the
-// library has no awareness of the Cygwin filesystem context. The correct
-// specification of the path would be to give an absolute native path,
-// "$ROOT_DIR/home/Administrator/evergreen". In these cases, use
-// (*Distro).AbsPathNotCygwinCompatible.
+// However, in almost all other cases, Windows binaries expect native Windows
+// paths for everything. For example, if the evergreen binary accepts a filepath
+// given in the command line flags, the Golang standard library uses native
+// paths. Therefore, giving a path like "/home/Administrator/my_file" will fail,
+// because the library has no awareness of the Cygwin filesystem context. The
+// correct path would be to give an absolute native path,
+// "$ROOT_DIR/home/Administrator/evergreen".
 //
 // Documentation for Cygwin paths:
 // https://www.cygwin.com/cygwin-ug-net/using-effectively.html
@@ -779,10 +778,10 @@ func (d *Distro) AbsPathCygwinCompatible(path ...string) string {
 	return d.AbsPathNotCygwinCompatible(path...)
 }
 
-// AbsPathNotCygwinCompatible is a hack that requires RootDir (the path to the
-// Cygwin root directory) to get around the fact that Cygwin binaries use Unix
-// paths relative to the Cygwin filesystem root directory, but most other paths
-// require absolute filepaths using native Windows absolute paths. See
+// AbsPathNotCygwinCompatible creates a Cygwin-incompatible absolute path using
+// RootDir to get around the fact that Cygwin binaries use POSIX paths relative
+// to the Cygwin filesystem root directory, but most other paths require
+// absolute filepaths using native Windows absolute paths. See
 // (*Distro).AbsPathCygwinCompatible for more details.
 func (d *Distro) AbsPathNotCygwinCompatible(path ...string) string {
 	return filepath.Join(append([]string{d.BootstrapSettings.RootDir}, path...)...)

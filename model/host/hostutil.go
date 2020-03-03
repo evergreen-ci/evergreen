@@ -384,9 +384,10 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		}
 		if h.ProvisionOptions.TaskId != "" {
 			// We have to run this in the Cygwin shell in order for git clone to
-			// use the correct SSH key. Additionally, user data may time out
-			// this operation, which would prevent user data from completing so
-			// the host would be stuck in provisioning.
+			// use the correct SSH key. Additionally, since this can take a long
+			// time to download all the task data, user data may time out this
+			// operation, which would prevent user data from completing and the
+			// host would be stuck in provisioning.
 			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
@@ -1052,7 +1053,10 @@ func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error)
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{h.AgentBinary(),
+	return []string{
+		// We can't use the absolute path for the binary because we always run
+		// it in a Cygwin context on Windows.
+		h.AgentBinary(),
 		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
 		"fetch",
 		"-t", h.ProvisionOptions.TaskId,
