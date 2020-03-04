@@ -577,3 +577,55 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].Count, 8)
 	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].ExpectedDuration, time.Duration(2600127105386))
 }
+
+func TestFindEnqueuedTaskIDs(t *testing.T) {
+	taskIDs := []string{"task1", "task2"}
+	multiQueueTaskIDs := []string{"task3", "task4"}
+	const coll = TaskQueuesCollection
+	for testName, testCase := range map[string]func(t *testing.T){
+		"MatchesAllTaskQueueItems": func(t *testing.T) {
+			ids, err := FindEnqueuedTaskIDs(taskIDs, coll)
+			require.NoError(t, err)
+			require.Len(t, ids, len(taskIDs))
+			assert.Subset(t, ids, taskIDs)
+			assert.Subset(t, taskIDs, ids)
+		},
+		"MatchesMultipleQueues": func(t *testing.T) {
+			ids, err := FindEnqueuedTaskIDs(multiQueueTaskIDs, coll)
+			require.NoError(t, err)
+			assert.Subset(t, ids, multiQueueTaskIDs)
+			assert.Subset(t, multiQueueTaskIDs, ids)
+		},
+		"DoesNotMatchEmpty": func(t *testing.T) {
+			ids, err := FindEnqueuedTaskIDs([]string{}, coll)
+			require.NoError(t, err)
+			assert.Empty(t, ids)
+		},
+		"DoesNotMatchNonexistent": func(t *testing.T) {
+			ids, err := FindEnqueuedTaskIDs([]string{"doesnotexist1", "doesnotexist2"}, coll)
+			require.NoError(t, err)
+			assert.Empty(t, ids)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(coll))
+			defer func() {
+				assert.NoError(t, db.Clear(coll))
+			}()
+			var items1 []TaskQueueItem
+			var items2 []TaskQueueItem
+			for _, id := range taskIDs {
+				items1 = append(items1, TaskQueueItem{Id: id})
+			}
+			for _, id := range multiQueueTaskIDs {
+				items1 = append(items1, TaskQueueItem{Id: id})
+				items2 = append(items2, TaskQueueItem{Id: id})
+			}
+			tq1 := NewTaskQueue("distro1", items1, DistroQueueInfo{})
+			require.NoError(t, tq1.Save())
+			tq2 := NewTaskQueue("distro2", items2, DistroQueueInfo{})
+			require.NoError(t, tq2.Save())
+			testCase(t)
+		})
+	}
+}
