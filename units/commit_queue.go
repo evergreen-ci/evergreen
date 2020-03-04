@@ -99,14 +99,14 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		}
 		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
 		grip.Info(message.Fields{
-			"source":             "commit queue",
-			"patch status":       status,
-			"job_id":             j.ID(),
-			"item_id":            nextItem.Issue,
-			"project_id":         cq.ProjectID,
-			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
-			"timeSincePatchDone": time.Since(patchDoc.FinishTime).Seconds(),
-			"message":            "patch done and dequeued",
+			"source":                "commit queue",
+			"patch status":          status,
+			"job_id":                j.ID(),
+			"item_id":               nextItem.Issue,
+			"project_id":            cq.ProjectID,
+			"processing_seconds":    time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
+			"message":               "patch done and dequeued",
 		})
 	}
 
