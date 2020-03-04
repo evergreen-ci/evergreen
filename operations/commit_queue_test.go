@@ -144,7 +144,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 }
 
 func (s *CommitQueueSuite) TestMergeWithEmptyPatch() {
-	s.Require().NoError(db.ClearCollections(commitqueue.Collection, patch.Collection, model.ProjectRefCollection))
+	s.Require().NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection))
 	now := time.Now()
 	p1 := patch.Patch{
 		Id:          mgobson.ObjectIdHex("aabbccddeeff112233445566"),
