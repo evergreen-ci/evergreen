@@ -487,7 +487,7 @@ var (
 	})
 )
 
-func ScheduleableTasksQuery() bson.M {
+func SchedulableTasksQuery() bson.M {
 	return bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,

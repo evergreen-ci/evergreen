@@ -229,8 +229,8 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":             RunnerName,
-		"scheduleable_tasks": len(undispatchedTasks),
+		"runner":            RunnerName,
+		"schedulable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
@@ -351,9 +351,9 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 		runnabletasks = append(runnabletasks, t)
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":             RunnerName,
-		"planner":            d.PlannerSettings.Version,
-		"scheduleable_tasks": len(undispatchedTasks),
+		"runner":            RunnerName,
+		"planner":           d.PlannerSettings.Version,
+		"schedulable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
@@ -408,7 +408,7 @@ func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]mod
 }
 
 func FindSchedulable(distroID string) ([]task.Task, error) {
-	query := task.ScheduleableTasksQuery()
+	query := task.SchedulableTasksQuery()
 
 	if err := addApplicableDistroFilter(distroID, task.DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
@@ -436,7 +436,7 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 }
 
 func FindSchedulableForAlias(id string) ([]task.Task, error) {
-	q := task.ScheduleableTasksQuery()
+	q := task.SchedulableTasksQuery()
 
 	if err := addApplicableDistroFilter(id, task.DistroAliasesKey, q); err != nil {
 		return nil, errors.WithStack(err)
@@ -453,7 +453,7 @@ func FindSchedulableForAlias(id string) ([]task.Task, error) {
 func FindRunnable(distroID string, removeDeps bool) ([]task.Task, error) {
 	const dependencyKey = "dependencies"
 
-	match := task.ScheduleableTasksQuery()
+	match := task.SchedulableTasksQuery()
 	var d distro.Distro
 	var err error
 	if distroID != "" {

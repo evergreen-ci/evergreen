@@ -730,7 +730,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // If you pass an empty string as an argument to this function, this
 // operation will select tasks from all distros.
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
-	query := ScheduleableTasksQuery()
+	query := SchedulableTasksQuery()
 	query[PriorityKey] = 0
 
 	if distroID != "" {
