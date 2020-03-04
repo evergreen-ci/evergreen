@@ -737,13 +737,12 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	testsToAlert := []task.TestResult{}
 	hasFailingTest := false
-	var match bool
 	for _, test := range testResults {
 		if test.Status != evergreen.TestFailedStatus {
 			continue
 		}
 		hasFailingTest = true
-		match, err = testMatchesRegex(test.TestFile, sub)
+		match, err := testMatchesRegex(test.TestFile, sub)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
