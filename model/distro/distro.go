@@ -120,6 +120,8 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		catcher.NewWhen(d.BootstrapSettings.Communication == CommunicationMethodLegacySSH, "communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 	}
 
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for Windows")
+
 	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
 	}
@@ -134,7 +136,6 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
-	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumProcesses < -1, "max number of files should be a positive number or -1")
@@ -146,7 +147,7 @@ func (d *Distro) ValidateBootstrapSettings() error {
 
 // ShellPath returns the native path to the shell binary.
 func (d *Distro) ShellBinary() string {
-	return filepath.Join(d.BootstrapSettings.RootDir, d.BootstrapSettings.ShellPath)
+	return d.AbsPathNotCygwinCompatible(d.BootstrapSettings.ShellPath)
 }
 
 type HostAllocatorSettings struct {
@@ -389,12 +390,10 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(arch, d.BinaryName())
 }
 
-// HomeDir gets the absolute path to the home directory for this distro's user
-// for non-legacy provisioned hosts.
+// HomeDir gets the absolute path to the home directory for this distro's user.
+// This is compatible with Cygwin (see (*Distro).AbsPathCygwinCompatible for
+// details).
 func (d *Distro) HomeDir() string {
-	if d.LegacyBootstrap() {
-		return "~"
-	}
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
@@ -791,4 +790,40 @@ func (d *Distro) LegacyCommunication() bool {
 // hosts of this distro's Jasper service.
 func (d *Distro) JasperCommunication() bool {
 	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
+}
+
+// AbsPathCygwinCompatible creates an absolute path from the given path that is
+// compatible with the host's provisioning settings.
+//
+// For example, in the context of an SSH session with Cygwin, if you invoke the
+// "/usr/bin/echo" binary, Cygwin uses the binary located relative to Cygwin's
+// filesystem root directory, so it will use the binary at
+// "$ROOT_DIR/usr/bin/echo". Similarly, Cygwin binaries like "ls" will resolve
+// filepaths as paths relative to the Cygwin root directory, so "ls /usr/bin",
+// will correctly list the directory contents of "$ROOT_DIR/usr/bin".
+//
+// However, in almost all other cases, Windows binaries expect native Windows
+// paths for everything. For example, if the evergreen binary accepts a filepath
+// given in the command line flags, the Golang standard library uses native
+// paths. Therefore, giving a path like "/home/Administrator/my_file" will fail,
+// because the library has no awareness of the Cygwin filesystem context. The
+// correct path would be to give an absolute native path,
+// "$ROOT_DIR/home/Administrator/evergreen".
+//
+// Documentation for Cygwin paths:
+// https://www.cygwin.com/cygwin-ug-net/using-effectively.html
+func (d *Distro) AbsPathCygwinCompatible(path ...string) string {
+	if d.LegacyBootstrap() {
+		return filepath.Join(path...)
+	}
+	return d.AbsPathNotCygwinCompatible(path...)
+}
+
+// AbsPathNotCygwinCompatible creates a Cygwin-incompatible absolute path using
+// RootDir to get around the fact that Cygwin binaries use POSIX paths relative
+// to the Cygwin filesystem root directory, but most other paths require
+// absolute filepaths using native Windows absolute paths. See
+// (*Distro).AbsPathCygwinCompatible for more details.
+func (d *Distro) AbsPathNotCygwinCompatible(path ...string) string {
+	return filepath.Join(append([]string{d.BootstrapSettings.RootDir}, path...)...)
 }
