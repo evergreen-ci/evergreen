@@ -1,0 +1,20 @@
+query {
+  taskLogs(taskId: "asrtoeiarnst") {
+    eventLogs {
+      resourceType
+      processedAt
+      timestamp
+      resourceId
+      eventType
+      data {
+        execution
+        hostId
+        jiraIssue
+        priority
+        status
+        timestamp
+        userId
+      }
+    }
+  }
+}
