@@ -907,7 +907,7 @@ func readBuildloggerToChan(taskID string, r io.ReadCloser, lines chan apimodels.
 	for err == nil {
 		line, err = reader.ReadString('\n')
 		if err != nil && err != io.EOF {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"task_id": taskID,
 				"message": "problem reading buildlogger log lines",
 			}))
