@@ -698,22 +698,47 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if len(t.task.LocalTestResults) == 0 {
 		return t.taskRegression(sub)
 	}
+	testResults := t.task.LocalTestResults
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
-	if err != nil {
-		return nil, errors.Wrap(err, "error fetching previous task")
-	}
+	var previousCompleteTask *task.Task
+	if t.task.IsPartOfDisplay() {
+		displayTask, err := t.task.GetDisplayTask()
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get display task for '%s'", t.task)
+		}
+		t.task = displayTask
 
-	if previousCompleteTask != nil {
-		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
+		previousCompleteTask, err = task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(displayTask.RevisionOrderNumber,
+			task.CompletedStatuses, displayTask.BuildVariant, displayTask.DisplayName, displayTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching previous task")
+		}
+		if previousCompleteTask != nil {
+			for _, execTaskID := range previousCompleteTask.ExecutionTasks {
+				execTask, err := task.FindOne(task.ById(execTaskID))
+				if err != nil {
+					return nil, errors.Wrapf(err, "can't get execution task '%s'", execTaskID)
+				}
+				t.oldTestResults = mergeTestResultsByTestFile(t.oldTestResults, execTask.LocalTestResults)
+			}
+		}
+	} else {
+		var err error
+		previousCompleteTask, err = task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+			task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching previous task")
+		}
+		if previousCompleteTask != nil {
+			t.oldTestResults = mergeTestResultsByTestFile(t.oldTestResults, previousCompleteTask.LocalTestResults)
+		}
 	}
 
 	testsToAlert := []task.TestResult{}
 	hasFailingTest := false
 	var match bool
-	for _, test := range t.task.LocalTestResults {
+	for _, test := range testResults {
 		if test.Status != evergreen.TestFailedStatus {
 			continue
 		}
@@ -843,23 +868,25 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	return builder.build()
 }
 
-// mapTestResultsByTestFile creates map of test file to TestResult struct. If
+// mergeTestResultsByTestFile merges maps of test file to TestResult struct. If
 // multiple tests of the same name exist, this function will return a
 // failing test if one existed, otherwise it may return any test with
 // the same name
-func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
-	m := map[string]*task.TestResult{}
+func mergeTestResultsByTestFile(existingTestResults map[string]*task.TestResult, newTestResults []task.TestResult) map[string]*task.TestResult {
+	if existingTestResults == nil {
+		existingTestResults = make(map[string]*task.TestResult)
+	}
 
-	for i := range t.LocalTestResults {
-		if testResult, ok := m[t.LocalTestResults[i].TestFile]; ok {
-			if !isTestStatusRegression(testResult.Status, t.LocalTestResults[i].Status) {
+	for _, result := range newTestResults {
+		if testResult, ok := existingTestResults[result.TestFile]; ok {
+			if !isTestStatusRegression(testResult.Status, result.Status) {
 				continue
 			}
 		}
-		m[t.LocalTestResults[i].TestFile] = &t.LocalTestResults[i]
+		existingTestResults[result.TestFile] = &result
 	}
 
-	return m
+	return existingTestResults
 }
 
 func taskFormat(t *task.Task) string {
