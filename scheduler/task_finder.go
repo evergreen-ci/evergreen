@@ -462,9 +462,7 @@ func FindSchedulableForAlias(id string) ([]task.Task, error) {
 			return nil, errors.WithStack(err)
 		}
 		addApplicableDistroFilter(aliases, task.DistroAliasesKey, q)
-		// kim: TODO: need to resolve this into actual distro IDs, because this
-		// is an alias, which won't be found in the distro collection by _id.
-		if tqs, err := model.FindAllDistroTaskQueues(aliases...); err == nil {
+		if tqs, err := model.FindAllDistroTaskQueues(id); err == nil {
 			addDuplicateTaskIDFilter(tqs, q)
 		}
 	}
@@ -496,9 +494,9 @@ func FindRunnable(distroID string, removeDeps bool) ([]task.Task, error) {
 			return nil, errors.WithStack(err)
 		}
 		addApplicableDistroFilter(aliases, task.DistroIdKey, match)
-		// if tqs, err := model.FindAllDistroTaskQueues(aliases...); err == nil {
-		//     addDuplicateTaskIDFilter(tqs, match)
-		// }
+		if tqs, err := model.FindAllDistroAliasTaskQueues(aliases...); err == nil {
+			addDuplicateTaskIDFilter(tqs, match)
+		}
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
