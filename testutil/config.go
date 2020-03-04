@@ -138,6 +138,10 @@ func MockConfig() *evergreen.Settings {
 				Users:        []string{"ghuser"},
 				Organization: "ghorg",
 			},
+			Multi: &evergreen.MultiAuthConfig{
+				ReadWrite: []string{evergreen.AuthLDAPKey},
+				ReadOnly:  []string{evergreen.AuthNaiveKey},
+			},
 			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},

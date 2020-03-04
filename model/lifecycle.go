@@ -57,6 +57,7 @@ func cacheFromTask(t task.Task) build.TaskCache {
 		StartTime:     t.StartTime,
 		TimeTaken:     t.TimeTaken,
 		Activated:     t.Activated,
+		Blocked:       t.Blocked(),
 	}
 }
 
@@ -355,7 +356,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 
 	// Set all the task fields to indicate restarted
-	if err = task.ResetTasks(restartIds); err != nil {
+	if err = MarkTasksReset(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
 

@@ -262,6 +262,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/PuerkitoBio/rehttp/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/sys/

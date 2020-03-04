@@ -792,7 +792,7 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 			WaitUntil: time.Now().Add(time.Minute),
 		})
 		err := j.env.RemoteQueue().Put(ctx, job)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host_id":  j.host.Id,
 			"job":      j.ID(),

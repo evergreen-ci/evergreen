@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/gimlet/rolemanager"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -24,6 +22,8 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/timber/fetcher"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -522,7 +522,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	if defaultLogger == model.BuildloggerLogSender {
 		var logReader io.ReadCloser
-		logReader, err = uis.getBuildloggerLogs(projCtx, r, logType, DefaultLogMessages, execution)
+		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
 			gimlet.WriteText(w, logReader)
 			grip.Warning(logReader.Close())
@@ -587,7 +587,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err = uis.getBuildloggerLogs(projCtx, r, logType, 0, execution)
+		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
 		if err == nil {
 			defer logReader.Close()
 		} else {
@@ -652,44 +652,32 @@ func getDefaultLogger(projCtx projectContext) (string, error) {
 	return defaultLogger, nil
 }
 
-func (uis *UIServer) getBuildloggerLogs(projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
+func (uis *UIServer) getBuildloggerLogs(ctx context.Context, projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
 	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting auth token cookie for user")
 	}
 
-	url := fmt.Sprintf(
-		"https://%s/rest/v1/buildlogger/task_id/%s?n=%d&execution=%d&print_time=true&print_priority=true",
-		uis.env.Settings().LoggerConfig.BuildloggerBaseURL,
-		projCtx.Task.Id,
-		tail,
-		execution,
-	)
+	opts := fetcher.GetOptions{
+		BaseURL:       fmt.Sprintf("https://%s", uis.env.Settings().LoggerConfig.BuildloggerBaseURL),
+		Cookie:        userCookie,
+		TaskID:        projCtx.Task.Id,
+		Execution:     execution,
+		PrintTime:     true,
+		PrintPriority: true,
+		Tail:          tail,
+	}
 	switch logType {
 	case apimodels.TaskLogPrefix:
-		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeTask)
+		opts.ProcessName = evergreen.LogTypeTask
 	case apimodels.SystemLogPrefix:
-		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeSystem)
+		opts.ProcessName = evergreen.LogTypeSystem
 	case apimodels.AgentLogPrefix:
-		url += fmt.Sprintf("&proc_name=%s", evergreen.LogTypeAgent)
+		opts.ProcessName = evergreen.LogTypeAgent
 	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating http request for cedar buildlogger")
-	}
-	req.AddCookie(userCookie)
 
-	c := util.GetHTTPClient()
-	defer util.PutHTTPClient(c)
-
-	resp, err := c.Do(req)
-	if err == nil {
-		if resp.StatusCode == http.StatusOK {
-			return resp.Body, nil
-		}
-		return nil, errors.Errorf("failed to get logs for '%s' from buildlogger with status '%s', using evergreen logger", projCtx.Task.Id, resp.Status)
-	}
-	return nil, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
+	logReader, err := fetcher.Logs(ctx, opts)
+	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
 }
 
 // avoids type-checking json params for the below function

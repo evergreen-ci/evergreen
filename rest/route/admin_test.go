@@ -97,7 +97,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	respm, ok := resp.Data().(restModel.Model)
 	s.Require().True(ok, "%+v", resp.Data())
 	settingsResp, err := respm.ToService()
-	s.NoError(err)
+	s.Require().NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 
@@ -117,6 +117,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settings.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
 	s.EqualValues(testSettings.AuthConfig.PreferredType, settings.AuthConfig.PreferredType)
+	s.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], settings.AuthConfig.Multi.ReadWrite[0])
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settings.AuthConfig.Github.Users))
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Distro, settings.ContainerPools.Pools[0].Distro)
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Id, settings.ContainerPools.Pools[0].Id)

@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/birch"
+
+	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -25,7 +26,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // DBCreateHostConnector supports `host.create` commands from the agent.
@@ -234,6 +234,9 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		provider = evergreen.ProviderNameEc2Spot
 	}
 
+	if createHost.Region == "" {
+		createHost.Region = evergreen.DefaultEC2Region
+	}
 	// get distro if it is set
 	d := distro.Distro{}
 	ec2Settings := cloud.EC2ProviderSettings{}
@@ -305,18 +308,12 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 
 	// update local distro with modified settings
-	if err = mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
-		return nil, errors.Wrap(err, "error marshaling provider settings")
-	}
-	bytes, err := bson.Marshal(ec2Settings)
+	doc, err := ec2Settings.ToDocument()
 	if err != nil {
-		return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+		return nil, errors.Wrap(err, "error marshalling ec2 settings to document")
 	}
-	doc := birch.Document{}
-	if err = doc.UnmarshalBSON(bytes); err != nil {
-		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
-	}
-	d.ProviderSettingsList = []*birch.Document{&doc}
+	d.ProviderSettingsList = []*birch.Document{doc}
+	d.ProviderSettings = nil
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {

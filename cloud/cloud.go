@@ -254,13 +254,6 @@ func UpdateProviderSettings(d *distro.Distro) error {
 		if len(d.ProviderSettingsList) > 1 {
 			region = evergreen.DefaultEC2Region
 		}
-		s, err := GetSettings(d.Provider)
-		if err != nil {
-			return errors.Wrap(err, "error getting settings object")
-		}
-		if err = s.FromDistroSettings(*d, region); err != nil {
-			return errors.Wrapf(err, "error getting region '%s' from distro settings", region)
-		}
 		doc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {
 			return errors.Wrapf(err, "unable to get default provider settings for distro '%s'", d.Id)
@@ -284,5 +277,6 @@ func CreateSettingsListFromLegacy(d *distro.Distro) error {
 		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
+	d.ProviderSettings = nil
 	return nil
 }

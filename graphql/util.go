@@ -22,13 +22,17 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles := artifact.StripHiddenFiles(taskFiles, hasUser)
+	strippedFiles, err := artifact.StripHiddenFiles(taskFiles, hasUser)
+	if err != nil {
+		return nil, err
+	}
+
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
 		err := apiFile.BuildFromService(file)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error stripping hidden files"))
 		}
 		apiFileList = append(apiFileList, &apiFile)
 	}
