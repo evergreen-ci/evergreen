@@ -592,7 +592,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	})
 
 	incErr := j.host.IncProvisionAttempts()
-	grip.Error(message.WrapError(incErr, message.Fields{
+	grip.Critical(message.WrapError(incErr, message.Fields{
 		"job":           j.ID(),
 		"host_id":       j.host.Id,
 		"attempt_value": j.host.ProvisionAttempts,
@@ -792,7 +792,7 @@ func (j *setupHostJob) tryRequeue(ctx context.Context) {
 			WaitUntil: time.Now().Add(time.Minute),
 		})
 		err := j.env.RemoteQueue().Put(ctx, job)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host_id":  j.host.Id,
 			"job":      j.ID(),
