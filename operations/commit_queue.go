@@ -302,6 +302,13 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	if p.pause {
 		return nil
 	}
+	patchDoc, err := ac.GetPatch(p.id)
+	if err != nil {
+		return err
+	}
+	if len(patchDoc.Patches) == 0 {
+		return errors.New("patch cannot be empty")
+	}
 	position, err := client.EnqueueItem(ctx, p.id, p.force)
 	if err != nil {
 		return err

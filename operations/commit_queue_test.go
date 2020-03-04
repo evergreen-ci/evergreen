@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -140,6 +141,37 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	patchURL := fmt.Sprintf("Build : %s/patch/%s", s.conf.UIServerHost, p2.Id.Hex())
 	s.Contains(stringOut, versionURL)
 	s.Contains(stringOut, patchURL)
+}
+
+func (s *CommitQueueSuite) TestMergeWithEmptyPatch() {
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, patch.Collection, model.ProjectRefCollection))
+	now := time.Now()
+	p1 := patch.Patch{
+		Id:          mgobson.ObjectIdHex("aabbccddeeff112233445566"),
+		Project:     "mci",
+		Author:      "annie.black",
+		Activated:   true,
+		Description: "fix things",
+		CreateTime:  now,
+		Status:      evergreen.TaskDispatched,
+	}
+	s.NoError(p1.Insert())
+
+	pRef := &model.ProjectRef{
+		Identifier:  "mci",
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
+	}
+	s.Require().NoError(pRef.Insert())
+
+	mergeParam := mergeParams{
+		projectID: "some id",
+		pause:     false,
+		id:        "aabbccddeeff112233445566",
+	}
+	ac, _, err := s.conf.getLegacyClients()
+	s.NoError(err)
+	err = mergeParam.mergeBranch(s.ctx, s.conf, s.client, ac)
+	s.Equal(err.Error(), "patch cannot be empty")
 }
 
 func (s *CommitQueueSuite) TestListContentsForPRs() {
