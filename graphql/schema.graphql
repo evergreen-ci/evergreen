@@ -37,10 +37,6 @@ enum SortDirection {
   DESC
 }
 
-type RecentTaskLogs {
-  eventLogs: [EventLogEntry!]!
-}
-
 type GroupedFiles {
   taskName: String
   files: [File!]
@@ -150,21 +146,6 @@ type Task {
   aborted: Boolean
 }
 
-type EventLogData {
-  hostId: String
-  jiraIssue: String
-  priority: Int
-  status: String
-  timestamp: Time
-  userId: String
-}
-
-type EventLogEntry {
-  timestamp: Time
-  eventType: String
-  data: EventLogData
-}
-
 type Projects {
   favorites: [Project!]!
   otherProjects: [GroupedProjects!]!
@@ -190,6 +171,25 @@ type File {
 
 type User {
   displayName: String!
+}
+
+type RecentTaskLogs {
+  eventLogs: [EventLogEntry!]!
+}
+
+type EventLogData {
+  hostId: String
+  jiraIssue: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type EventLogEntry {
+  timestamp: Time
+  eventType: String
+  data: EventLogData
 }
 
 scalar Time
