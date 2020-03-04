@@ -246,7 +246,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -267,9 +267,9 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			break
 		}
 	}
-	sortDir := 1
-	if *sortDirection == SortDirectionDesc {
-		sortDir = -1
+	sortDirParam := 1
+	if *sortDir == SortDirectionDesc {
+		sortDirParam = -1
 	}
 	pageParam := 0
 	if page != nil {
@@ -283,7 +283,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, sortDir, pageParam, limitParam)
+	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -306,7 +306,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	}
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
-			if sortDir == 1 {
+			if sortDirParam == 1 {
 				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
 			}
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
