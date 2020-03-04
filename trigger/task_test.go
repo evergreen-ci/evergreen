@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -1028,7 +1029,7 @@ func TestIsTestRegression(t *testing.T) {
 func TestMapTestResultsByTestFile(t *testing.T) {
 	assert := assert.New(t)
 
-	taskDoc := task.Task{}
+	results := []task.TestResult{}
 
 	statuses := []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus,
 		evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus}
@@ -1040,7 +1041,7 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 			first = statuses[i]
 			second = evergreen.TestFailedStatus
 		}
-		taskDoc.LocalTestResults = append(taskDoc.LocalTestResults,
+		results = append(results,
 			task.TestResult{
 				TestFile: fmt.Sprintf("file%d", i),
 				Status:   first,
@@ -1052,7 +1053,7 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 		)
 	}
 
-	m := mapTestResultsByTestFile(&taskDoc)
+	m := mapTestResultsByTestFile(results)
 	assert.Len(m, 4)
 
 	for _, v := range m {
@@ -1186,4 +1187,113 @@ func (s *taskSuite) TestBuildBreak() {
 	n, err = s.t.buildBreak(&s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
+}
+
+func TestTaskRegressionByTestDisplayTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, alertrecord.Collection, build.Collection, model.ProjectRefCollection))
+
+	b := build.Build{Id: "b0"}
+	require.NoError(t, b.Insert())
+	projectRef := model.ProjectRef{Identifier: "p0"}
+	require.NoError(t, projectRef.Insert())
+
+	tasks := []task.Task{
+		{
+			Id:                  "dt0_0",
+			DisplayName:         "dt0",
+			ExecutionTasks:      []string{"et0_0", "et1_0"},
+			RevisionOrderNumber: 1,
+			BuildVariant:        "bv0",
+			Project:             "p0",
+			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			FinishTime:          time.Now(),
+			DisplayOnly:         true,
+		},
+		{
+			Id:                  "et0_0",
+			DisplayName:         "et0",
+			RevisionOrderNumber: 1,
+			BuildId:             "b0",
+			Project:             "p0",
+			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
+		},
+		{
+			Id:                  "et1_0",
+			DisplayName:         "et1",
+			RevisionOrderNumber: 1,
+			BuildId:             "b0",
+			Project:             "p0",
+			Status:              evergreen.TaskSucceeded,
+			Requester:           evergreen.RepotrackerVersionRequester,
+		},
+		{
+			Id:                  "dt0_1",
+			DisplayName:         "dt0",
+			ExecutionTasks:      []string{"et0_1", "et1_1"},
+			RevisionOrderNumber: 2,
+			BuildVariant:        "bv0",
+			Project:             "p0",
+			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			DisplayOnly:         true,
+		},
+		{
+			Id:                  "et0_1",
+			DisplayName:         "et0",
+			RevisionOrderNumber: 2,
+			BuildId:             "b0",
+			Project:             "p0",
+			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			LocalTestResults:    []task.TestResult{{TestFile: "f1", Status: evergreen.TestFailedStatus}},
+		},
+		{
+			Id:                  "et1_1",
+			DisplayName:         "et1",
+			RevisionOrderNumber: 2,
+			BuildId:             "b0",
+			Project:             "p0",
+			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
+		},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	testResults := []testresult.TestResult{
+		{TaskID: "et0_0", TestFile: "f0", Status: evergreen.TestFailedStatus},
+		{TaskID: "et1_0", TestFile: "f1", Status: evergreen.TestSucceededStatus},
+	}
+
+	for _, result := range testResults {
+		require.NoError(t, result.Insert())
+	}
+
+	// trigger for the first run of this display task
+	tr := taskTriggers{
+		task:  &tasks[1],
+		event: &event.EventLogEntry{ID: "e0"},
+	}
+	notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.NotNil(t, notification)
+	assert.Equal(t, "et0_0", notification.Metadata.TaskID)
+
+	// trigger for the second run of the display task for a different execution task that contains the same test
+	tr.task = &tasks[5]
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.Nil(t, notification)
+
+	// trigger for the second run of the display task for the same execution task that triggered before, for a different test
+	tr.task = &tasks[4]
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.NotNil(t, notification)
+	assert.Equal(t, "et0_1", notification.Metadata.TaskID)
 }

@@ -12,7 +12,8 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartPurple = true;
     $scope.restartLavender = true;
     $scope.ValidThemes = [ "announcement", "information", "warning", "important"];
-    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "github"]
+    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "github"];
+    $scope.apiOnlyUserMissingKey = false;
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -43,7 +44,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
       $scope.newSSHKeyPair = {};
       $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
-      
+
       if (!resp.data.auth) {
           resp.data.auth = {};
       }
@@ -360,6 +361,16 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return user;
   }
 
+  $scope.onAPIOnlyUsersChanged  = function(){
+    for (const user of $scope.tempOnlyAPIUsers) {
+      if (!user.key) {
+        $scope.apiOnlyUserMissingKey = true;
+        return
+      }
+    }
+    $scope.apiOnlyUserMissingKey = false;
+  }
+
   $scope.addCredential = function(chip) {
     var obj = {};
     pieces = chip.split(":");
@@ -446,7 +457,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
   $scope.addJIRAFieldToProject = function(project) {
     var field = $scope.jiraMapping.newField[project];
-    
+
     if ($scope.Settings.jira_notifications.custom_fields[project].fields == null) {
       $scope.Settings.jira_notifications.custom_fields[project].fields = {}
     }

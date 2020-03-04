@@ -165,6 +165,15 @@ func (c *AuthConfig) ValidateAndDefault() error {
 
 	catcher.Add(c.checkDuplicateUsers())
 
+	if c.OnlyAPI != nil {
+		// Generate API key if none are explicitly set.
+		for i := range c.OnlyAPI.Users {
+			if c.OnlyAPI.Users[i].Key == "" {
+				c.OnlyAPI.Users[i].Key = util.RandomString()
+			}
+		}
+	}
+
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {
 			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
