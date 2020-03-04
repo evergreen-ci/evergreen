@@ -58,3 +58,8 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 	}
 	return nil
 }
+
+// ToService is not implemented for APITestStats.
+func (el *APIEventLogEntry) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIEventLogEntry")
+}
