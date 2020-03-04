@@ -715,13 +715,11 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			return nil, errors.Wrap(err, "error fetching previous task")
 		}
 		if previousCompleteTask != nil {
-			for _, execTaskID := range previousCompleteTask.ExecutionTasks {
-				execTask, err := task.FindOne(task.ById(execTaskID))
-				if err != nil {
-					return nil, errors.Wrapf(err, "can't get execution task '%s'", execTaskID)
-				}
-				t.oldTestResults = mergeTestResultsByTestFile(t.oldTestResults, execTask.LocalTestResults)
+			results, err := previousCompleteTask.GetTestResultsForDisplayTask()
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get test results for '%s'", previousCompleteTask.Id)
 			}
+			t.oldTestResults = mapTestResultsByTestFile(results)
 		}
 	} else {
 		var err error
@@ -731,7 +729,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			return nil, errors.Wrap(err, "error fetching previous task")
 		}
 		if previousCompleteTask != nil {
-			t.oldTestResults = mergeTestResultsByTestFile(t.oldTestResults, previousCompleteTask.LocalTestResults)
+			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
 		}
 	}
 
@@ -867,25 +865,23 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	return builder.build()
 }
 
-// mergeTestResultsByTestFile merges maps of test file to TestResult struct. If
+// mapTestResultsByTestFile creates map of test file to TestResult struct. If
 // multiple tests of the same name exist, this function will return a
 // failing test if one existed, otherwise it may return any test with
 // the same name
-func mergeTestResultsByTestFile(existingTestResults map[string]*task.TestResult, newTestResults []task.TestResult) map[string]*task.TestResult {
-	if existingTestResults == nil {
-		existingTestResults = make(map[string]*task.TestResult)
-	}
+func mapTestResultsByTestFile(results []task.TestResult) map[string]*task.TestResult {
+	m := map[string]*task.TestResult{}
 
-	for _, result := range newTestResults {
-		if testResult, ok := existingTestResults[result.TestFile]; ok {
+	for _, result := range results {
+		if testResult, ok := m[result.TestFile]; ok {
 			if !isTestStatusRegression(testResult.Status, result.Status) {
 				continue
 			}
 		}
-		existingTestResults[result.TestFile] = &result
+		m[result.TestFile] = &result
 	}
 
-	return existingTestResults
+	return m
 }
 
 func taskFormat(t *task.Task) string {
