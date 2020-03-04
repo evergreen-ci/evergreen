@@ -413,17 +413,6 @@ func FindSchedulable(distroID string) ([]task.Task, error) {
 	if err := addApplicableDistroFilter(distroID, task.DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	// kim: NOTE: can't do this without causing import cycle.
-	// tq, err := model.FindDistroAliasTaskQueue(distroID)
-	// if err != nil {
-	//     return nil, errors.WithStack(err)
-	// }
-	// var taskIDs string
-	// for _, item := range tq {
-	// taskIDs = append(taskIDs, item.Id)
-	// }
-	// query[IdKey] = bson.M{"$nin": taskIDs}
-
 	return task.Find(db.Query(query))
 }
 
@@ -452,17 +441,6 @@ func FindSchedulableForAlias(id string) ([]task.Task, error) {
 	if err := addApplicableDistroFilter(id, task.DistroAliasesKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	// kim: NOTE: can't do this without causing import cycle.
-	// tq, err := model.FindDistroTaskQueue(distroID)
-	// tq, err := FindDistroTaskQueue(distroID)
-	// if err != nil {
-	//     return nil, errors.WithStack(err)
-	// }
-	// var taskIDs string
-	// for _, item := range tq {
-	// taskIDs = append(taskIDs, item.Id)
-	// }
-	// query[IdKey] = bson.M{"$nin": taskIDs}
 
 	// Single-host task groups can't be put in an alias queue, because it can
 	// cause a race when assigning tasks to hosts where the tasks in the task

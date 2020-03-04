@@ -21,19 +21,6 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	}
 	var duplicateTaskIDs []string
 	var err error
-	// kim: TODO: change this query to filter only task IDs that are already in
-	// the queue, probably with some kind of $unwind.
-	// if distroQueueInfo.AliasQueue {
-	//     otherTaskQueue, err = model.FindDistroTaskQueue(distro)
-	//     if err != nil {
-	//         return errors.Wrap(err, "could not get task queue")
-	//     }
-	// } else {
-	//     otherTaskQueue, err = model.FindDistroAliasTaskQueue(distro)
-	//     if err != nil {
-	//         return errors.Wrap(err, "could not get alias queue")
-	//     }
-	// }
 	if distroQueueInfo.AliasQueue {
 		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, model.TaskQueuesCollection)
 		if err != nil {
@@ -48,11 +35,6 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 
 	for _, t := range tasks {
 		// Ignore tasks that are already in the other queue.
-		// for _, item := range otherTaskQueue.Queue {
-		//     if t.Id == item.Id {
-		//         continue
-		//     }
-		// }
 		if util.StringSliceContains(duplicateTaskIDs, t.Id) {
 			continue
 		}
