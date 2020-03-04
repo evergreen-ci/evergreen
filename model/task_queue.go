@@ -556,18 +556,18 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 	return taskQueues, err
 }
 
-func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
+func FindDistroTaskQueue(id string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	err := db.FindOne(
 		TaskQueuesCollection,
-		bson.M{taskQueueDistroKey: distroID},
+		bson.M{taskQueueDistroKey: id},
 		db.NoProjection,
 		db.NoSort,
 		&queue)
 
 	grip.DebugWhen(err == nil, message.Fields{
 		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
-		"distro":                               distroID,
+		"distro":                               id,
 		"task_queue_generated_at":              queue.GeneratedAt,
 		"num_task_queue_items":                 len(queue.Queue),
 		"distro_queue_info_length":             queue.DistroQueueInfo.Length,
@@ -578,16 +578,50 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	return queue, errors.WithStack(err)
 }
 
-func FindDistroAliasTaskQueue(distroID string) (TaskQueue, error) {
+func FindAllDistroTaskQueues(ids ...string) ([]TaskQueue, error) {
+	queues := []TaskQueue{}
+	if len(ids) == 0 {
+		return queues, nil
+	}
+	err := db.FindAll(
+		TaskQueuesCollection,
+		bson.M{taskQueueDistroKey: bson.M{"$in": ids}},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&queues)
+
+	return queues, errors.WithStack(err)
+}
+
+func FindDistroAliasTaskQueue(id string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	err := db.FindOne(
 		TaskAliasQueuesCollection,
-		bson.M{taskQueueDistroKey: distroID},
+		bson.M{taskQueueDistroKey: id},
 		db.NoProjection,
 		db.NoSort,
 		&queue)
 
 	return queue, errors.WithStack(err)
+}
+
+func FindAllDistroAliasTaskQueues(ids ...string) ([]TaskQueue, error) {
+	queues := []TaskQueue{}
+	if len(ids) == 0 {
+		return queues, nil
+	}
+	err := db.FindAll(
+		TaskAliasQueuesCollection,
+		bson.M{taskQueueDistroKey: bson.M{"$in": ids}},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&queues)
+
+	return queues, errors.WithStack(err)
 }
 
 func taskQueueGenerationTimesPipeline() []bson.M {

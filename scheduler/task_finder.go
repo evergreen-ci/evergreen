@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -411,35 +410,38 @@ func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]mod
 func FindSchedulable(distroID string) ([]task.Task, error) {
 	query := task.SchedulableTasksQuery()
 
-	if err := addApplicableDistroFilter(distroID, task.DistroIdKey, query); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	tq, err := model.FindDistroAliasTaskQueue(distroID)
-	if err == nil {
-		addDuplicateTaskIDFilter(tq, query)
+	if distroID != "" {
+		aliases, err := distro.FindApplicableDistroIDs(distroID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		addApplicableDistroFilter(aliases, task.DistroIdKey, query)
+		if tqs, err := model.FindAllDistroAliasTaskQueues(aliases...); err == nil {
+			addDuplicateTaskIDFilter(tqs, query)
+		}
 	}
 
 	return task.Find(db.Query(query))
 }
 
-func addDuplicateTaskIDFilter(tq model.TaskQueue, query bson.M) {
+// addDuplicateTaskIDFilter filters any task in thq query which is already
+// present in one of the given TaskQueues.
+func addDuplicateTaskIDFilter(tqs []model.TaskQueue, query bson.M) {
+	if len(tqs) == 0 {
+		return
+	}
 	taskIDs := []string{}
-	for _, item := range tq.Queue {
-		taskIDs = append(taskIDs, item.Id)
+	for _, tq := range tqs {
+		for _, item := range tq.Queue {
+			taskIDs = append(taskIDs, item.Id)
+		}
 	}
 	query[task.IdKey] = bson.M{"$nin": taskIDs}
-	pp.Println("ignore task IDs:", taskIDs)
 }
 
-func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
-	if id == "" {
-		return nil
-	}
-
-	aliases, err := distro.FindApplicableDistroIDs(id)
-	if err != nil {
-		return errors.WithStack(err)
+func addApplicableDistroFilter(aliases []string, fieldName string, query bson.M) {
+	if len(aliases) == 0 {
+		return
 	}
 
 	if len(aliases) == 1 {
@@ -448,25 +450,29 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 		query[fieldName] = bson.M{"$in": aliases}
 	}
 
-	return nil
+	return
 }
 
 func FindSchedulableForAlias(id string) ([]task.Task, error) {
 	q := task.SchedulableTasksQuery()
 
-	if err := addApplicableDistroFilter(id, task.DistroAliasesKey, q); err != nil {
-		return nil, errors.WithStack(err)
+	if id != "" {
+		aliases, err := distro.FindApplicableDistroIDs(id)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		addApplicableDistroFilter(aliases, task.DistroAliasesKey, q)
+		// kim: TODO: need to resolve this into actual distro IDs, because this
+		// is an alias, which won't be found in the distro collection by _id.
+		if tqs, err := model.FindAllDistroTaskQueues(aliases...); err == nil {
+			addDuplicateTaskIDFilter(tqs, q)
+		}
 	}
 
 	// Single-host task groups can't be put in an alias queue, because it can
 	// cause a race when assigning tasks to hosts where the tasks in the task
 	// group might be assigned to different hosts.
 	q[task.TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
-
-	tq, err := model.FindDistroTaskQueue(id)
-	if err == nil {
-		addDuplicateTaskIDFilter(tq, q)
-	}
 
 	return task.FindAll(db.Query(q))
 }
@@ -484,8 +490,15 @@ func FindRunnable(distroID string, removeDeps bool) ([]task.Task, error) {
 		}
 	}
 
-	if err = addApplicableDistroFilter(distroID, task.DistroIdKey, match); err != nil {
-		return nil, errors.WithStack(err)
+	if distroID != "" {
+		aliases, err := distro.FindApplicableDistroIDs(distroID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		addApplicableDistroFilter(aliases, task.DistroIdKey, match)
+		// if tqs, err := model.FindAllDistroTaskQueues(aliases...); err == nil {
+		//     addDuplicateTaskIDFilter(tqs, match)
+		// }
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
