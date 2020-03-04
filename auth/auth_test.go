@@ -4,10 +4,22 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	testutil.Setup()
+}
+
 func TestLoadUserManager(t *testing.T) {
+	require.NoError(t, db.Clear(user.Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(user.Collection))
+	}()
 	ldap := evergreen.LDAPConfig{
 		URL:                "url",
 		Port:               "port",

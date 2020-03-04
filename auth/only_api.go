@@ -64,11 +64,14 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 	}
 
 	// Remove API-only users that are no longer in the API-only config.
-	if err := db.RemoveAll(user.Collection, bson.M{
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	if _, err := env.DB().Collection(user.Collection).DeleteMany(ctx, bson.M{
 		user.IdKey:      bson.M{"$nin": validIDs},
-		user.OnlyAPIKey: true},
-	); err != nil {
-		catcher.Wrap(err, "failed to remove nonexistent API-only users from database")
+		user.OnlyAPIKey: true,
+	}); err != nil {
+		catcher.Wrap(err, "could not delete old API-only users from DB")
 	}
 
 	if catcher.HasErrors() {
