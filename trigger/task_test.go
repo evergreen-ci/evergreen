@@ -1204,9 +1204,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			ExecutionTasks:      []string{"et0_0", "et1_0"},
 			RevisionOrderNumber: 1,
 			BuildVariant:        "bv0",
-			Status:              evergreen.TaskFailed,
-			BuildId:             "b0",
 			Project:             "p0",
+			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
 		},
@@ -1214,6 +1213,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Id:                  "et0_0",
 			DisplayName:         "et0",
 			RevisionOrderNumber: 1,
+			BuildId:             "b0",
+			Project:             "p0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
@@ -1222,6 +1223,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Id:                  "et1_0",
 			DisplayName:         "et1",
 			RevisionOrderNumber: 1,
+			BuildId:             "b0",
+			Project:             "p0",
 			Status:              evergreen.TaskSucceeded,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		},
@@ -1231,15 +1234,16 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			ExecutionTasks:      []string{"et0_1", "et1_1"},
 			RevisionOrderNumber: 2,
 			BuildVariant:        "bv0",
-			Status:              evergreen.TaskFailed,
-			BuildId:             "b0",
 			Project:             "p0",
+			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		},
 		{
 			Id:                  "et0_1",
 			DisplayName:         "et0",
 			RevisionOrderNumber: 2,
+			BuildId:             "b0",
+			Project:             "p0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			LocalTestResults:    []task.TestResult{{TestFile: "f1", Status: evergreen.TestFailedStatus}},
@@ -1248,6 +1252,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Id:                  "et1_1",
 			DisplayName:         "et1",
 			RevisionOrderNumber: 2,
+			BuildId:             "b0",
+			Project:             "p0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
@@ -1274,6 +1280,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.NotNil(t, notification)
+	assert.Equal(t, "et0_0", notification.Metadata.TaskID)
 
 	// trigger for the second run of the display task for a different execution task that contains the same test
 	tr.task = &tasks[5]
@@ -1286,4 +1293,5 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.NotNil(t, notification)
+	assert.Equal(t, "et0_1", notification.Metadata.TaskID)
 }

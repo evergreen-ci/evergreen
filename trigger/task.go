@@ -631,12 +631,12 @@ func testMatchesRegex(testName string, sub *event.Subscription) (bool, error) {
 	return regexp.MatchString(regex, testName)
 }
 
-func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, test *task.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
 
-	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.Id)
+	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
 	if err != nil {
 		return false, errors.Wrap(err, "can't find alerts for task test")
 	}
@@ -658,7 +658,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 
 	if isTestStatusRegression(oldTestResult.Status, test.Status) {
 		// try to find a stepback alert
-		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
+		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get alert for stepback")
 		}
@@ -667,7 +667,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 			return true, nil
 		}
 	} else {
-		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get most recent alert")
 		}
@@ -698,19 +698,19 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if len(t.task.LocalTestResults) == 0 {
 		return t.taskRegression(sub)
 	}
-	testResults := t.task.LocalTestResults
 
 	catcher := grip.NewBasicCatcher()
+	currentTask := t.task
 	var previousCompleteTask *task.Task
+	var err error
 	if t.task.IsPartOfDisplay() {
-		displayTask, err := t.task.GetDisplayTask()
+		currentTask, err = t.task.GetDisplayTask()
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get display task for '%s'", t.task)
 		}
-		t.task = displayTask
 
-		previousCompleteTask, err = task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(displayTask.RevisionOrderNumber,
-			task.CompletedStatuses, displayTask.BuildVariant, displayTask.DisplayName, displayTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		previousCompleteTask, err = task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
+			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching previous task")
 		}
@@ -725,8 +725,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		}
 	} else {
 		var err error
-		previousCompleteTask, err = task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-			task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		previousCompleteTask, err = task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
+			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching previous task")
 		}
@@ -737,7 +737,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	testsToAlert := []task.TestResult{}
 	hasFailingTest := false
-	for _, test := range testResults {
+	for _, test := range t.task.LocalTestResults {
 		if test.Status != evergreen.TestFailedStatus {
 			continue
 		}
@@ -756,17 +756,17 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &test)
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, currentTask, &test)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		if shouldInclude {
-			orderNumber := t.task.RevisionOrderNumber
+			orderNumber := currentTask.RevisionOrderNumber
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, currentTask.Id, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
