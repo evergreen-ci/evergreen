@@ -1026,10 +1026,10 @@ func TestIsTestRegression(t *testing.T) {
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
 }
 
-func TestMergeTestResultsByTestFile(t *testing.T) {
+func TestMapTestResultsByTestFile(t *testing.T) {
 	assert := assert.New(t)
 
-	taskDoc := task.Task{}
+	results := []task.TestResult{}
 
 	statuses := []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus,
 		evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus}
@@ -1041,7 +1041,7 @@ func TestMergeTestResultsByTestFile(t *testing.T) {
 			first = statuses[i]
 			second = evergreen.TestFailedStatus
 		}
-		taskDoc.LocalTestResults = append(taskDoc.LocalTestResults,
+		results = append(results,
 			task.TestResult{
 				TestFile: fmt.Sprintf("file%d", i),
 				Status:   first,
@@ -1053,7 +1053,7 @@ func TestMergeTestResultsByTestFile(t *testing.T) {
 		)
 	}
 
-	m := mapTestResultsByTestFile(taskDoc.LocalTestResults)
+	m := mapTestResultsByTestFile(results)
 	assert.Len(m, 4)
 
 	for _, v := range m {
@@ -1208,6 +1208,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
+			DisplayOnly:         true,
 		},
 		{
 			Id:                  "et0_0",
@@ -1237,6 +1238,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Project:             "p0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
+			DisplayOnly:         true,
 		},
 		{
 			Id:                  "et0_1",

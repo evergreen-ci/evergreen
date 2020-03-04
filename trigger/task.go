@@ -702,8 +702,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	catcher := grip.NewBasicCatcher()
 	currentTask := t.task
 	var previousCompleteTask *task.Task
-	var err error
 	if t.task.IsPartOfDisplay() {
+		var err error
 		currentTask, err = t.task.GetDisplayTask()
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get display task for '%s'", t.task)
@@ -872,13 +872,13 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 func mapTestResultsByTestFile(results []task.TestResult) map[string]*task.TestResult {
 	m := map[string]*task.TestResult{}
 
-	for _, result := range results {
+	for i, result := range results {
 		if testResult, ok := m[result.TestFile]; ok {
 			if !isTestStatusRegression(testResult.Status, result.Status) {
 				continue
 			}
 		}
-		m[result.TestFile] = &result
+		m[result.TestFile] = &results[i]
 	}
 
 	return m
