@@ -151,7 +151,6 @@ type Task {
 }
 
 type EventLogData {
-  execution: Int
   hostId: String
   jiraIssue: String
   priority: Int
@@ -161,10 +160,7 @@ type EventLogData {
 }
 
 type EventLogEntry {
-  resourceType: String
-  processedAt: Time
   timestamp: Time
-  resourceId: String
   eventType: String
   data: EventLogData
 }

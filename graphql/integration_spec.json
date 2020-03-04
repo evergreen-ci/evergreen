@@ -2681,13 +2681,9 @@
           "taskLogs": {
             "eventLogs": [
               {
-                "resourceType": "TASK",
-                "processedAt": "2015-10-21T19:29:01-04:00",
                 "timestamp": "2020-03-03T10:45:17-05:00",
-                "resourceId": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
                 "eventType": "TASK_SCHEDULED",
                 "data": {
-                  "execution": 55,
                   "hostId": "",
                   "jiraIssue": "",
                   "priority": 0,
@@ -2697,13 +2693,9 @@
                 }
               },
               {
-                "resourceType": "TASK",
-                "processedAt": "2015-10-21T19:29:01-04:00",
                 "timestamp": "2020-03-03T10:45:27-05:00",
-                "resourceId": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
                 "eventType": "TASK_DISPATCHED",
                 "data": {
-                  "execution": 0,
                   "hostId": "i-08f7b38b217d21c13",
                   "jiraIssue": "",
                   "priority": 0,
@@ -2713,13 +2705,9 @@
                 }
               },
               {
-                "resourceType": "TASK",
-                "processedAt": "2015-10-21T19:29:01-04:00",
                 "timestamp": "2020-03-03T10:45:27-05:00",
-                "resourceId": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
                 "eventType": "TASK_STARTED",
                 "data": {
-                  "execution": 50,
                   "hostId": "hostid",
                   "jiraIssue": "an_issue",
                   "priority": 55,
@@ -2729,13 +2717,9 @@
                 }
               },
               {
-                "resourceType": "TASK",
-                "processedAt": "2020-03-03T10:46:29-05:00",
                 "timestamp": "2020-03-03T10:46:00-05:00",
-                "resourceId": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
                 "eventType": "TASK_FINISHED",
                 "data": {
-                  "execution": 0,
                   "hostId": "",
                   "jiraIssue": "",
                   "priority": 0,

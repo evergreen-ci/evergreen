@@ -46,7 +46,6 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	EventLogData struct {
-		Execution func(childComplexity int) int
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
 		Priority  func(childComplexity int) int
@@ -56,12 +55,9 @@ type ComplexityRoot struct {
 	}
 
 	EventLogEntry struct {
-		Data         func(childComplexity int) int
-		EventType    func(childComplexity int) int
-		ProcessedAt  func(childComplexity int) int
-		ResourceId   func(childComplexity int) int
-		ResourceType func(childComplexity int) int
-		Timestamp    func(childComplexity int) int
+		Data      func(childComplexity int) int
+		EventType func(childComplexity int) int
+		Timestamp func(childComplexity int) int
 	}
 
 	File struct {
@@ -263,13 +259,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "EventLogData.execution":
-		if e.complexity.EventLogData.Execution == nil {
-			break
-		}
-
-		return e.complexity.EventLogData.Execution(childComplexity), true
-
 	case "EventLogData.hostId":
 		if e.complexity.EventLogData.HostId == nil {
 			break
@@ -325,27 +314,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.EventLogEntry.EventType(childComplexity), true
-
-	case "EventLogEntry.processedAt":
-		if e.complexity.EventLogEntry.ProcessedAt == nil {
-			break
-		}
-
-		return e.complexity.EventLogEntry.ProcessedAt(childComplexity), true
-
-	case "EventLogEntry.resourceId":
-		if e.complexity.EventLogEntry.ResourceId == nil {
-			break
-		}
-
-		return e.complexity.EventLogEntry.ResourceId(childComplexity), true
-
-	case "EventLogEntry.resourceType":
-		if e.complexity.EventLogEntry.ResourceType == nil {
-			break
-		}
-
-		return e.complexity.EventLogEntry.ResourceType(childComplexity), true
 
 	case "EventLogEntry.timestamp":
 		if e.complexity.EventLogEntry.Timestamp == nil {
@@ -1222,7 +1190,6 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
 type EventLogData {
-	execution: Int
 	hostId: String
 	jiraIssue: String
 	priority: Int
@@ -1231,10 +1198,7 @@ type EventLogData {
 	userId: String
 }
 type EventLogEntry {
-	resourceType: String
-	processedAt: Time
 	timestamp: Time
-	resourceId: String
 	eventType: String
 	data: EventLogData
 }
@@ -1671,37 +1635,6 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _EventLogData_execution(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "EventLogData",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Execution, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _EventLogData_hostId(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1888,68 +1821,6 @@ func (ec *executionContext) _EventLogData_userId(ctx context.Context, field grap
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _EventLogEntry_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "EventLogEntry",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ResourceType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _EventLogEntry_processedAt(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "EventLogEntry",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ProcessedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _EventLogEntry_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1979,37 +1850,6 @@ func (ec *executionContext) _EventLogEntry_timestamp(ctx context.Context, field 
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _EventLogEntry_resourceId(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "EventLogEntry",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ResourceId, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _EventLogEntry_eventType(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
@@ -6761,8 +6601,6 @@ func (ec *executionContext) _EventLogData(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("EventLogData")
-		case "execution":
-			out.Values[i] = ec._EventLogData_execution(ctx, field, obj)
 		case "hostId":
 			out.Values[i] = ec._EventLogData_hostId(ctx, field, obj)
 		case "jiraIssue":
@@ -6797,14 +6635,8 @@ func (ec *executionContext) _EventLogEntry(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("EventLogEntry")
-		case "resourceType":
-			out.Values[i] = ec._EventLogEntry_resourceType(ctx, field, obj)
-		case "processedAt":
-			out.Values[i] = ec._EventLogEntry_processedAt(ctx, field, obj)
 		case "timestamp":
 			out.Values[i] = ec._EventLogEntry_timestamp(ctx, field, obj)
-		case "resourceId":
-			out.Values[i] = ec._EventLogEntry_resourceId(ctx, field, obj)
 		case "eventType":
 			out.Values[i] = ec._EventLogEntry_eventType(ctx, field, obj)
 		case "data":
