@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -302,7 +303,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	if p.pause {
 		return nil
 	}
-	patchDoc, err := ac.GetPatch(p.id)
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(p.id)).WithFields(patch.PatchesKey))
 	if err != nil {
 		return err
 	}
