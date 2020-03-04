@@ -85,3 +85,40 @@ func IsURL(str string) bool {
 	u, err := url.ParseRequestURI(str)
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
+
+// BaseTaskStatuses represents the format {buildVariant: {displayName: status}} for base task statuses
+type BaseTaskStatuses map[string]map[string]string
+
+// GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
+func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskStatuses, error) {
+	version, err := r.sc.FindVersionById(patchID)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting version %s: %s", patchID, err.Error())
+	}
+	if version == nil {
+		return nil, fmt.Errorf("No version found for ID %s", patchID)
+	}
+	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(version.Identifier, version.Revision))
+	if err != nil {
+		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
+	}
+	if baseVersion == nil {
+		return nil, fmt.Errorf("No base version found from version %s", version.Id)
+	}
+	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
+	if err != nil {
+		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
+	}
+	if baseTasks == nil {
+		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
+	}
+
+	baseTaskStatusesByDisplayNameByVariant := make(map[string]map[string]string)
+	for _, task := range baseTasks {
+		if _, ok := baseTaskStatusesByDisplayNameByVariant[task.BuildVariant]; !ok {
+			baseTaskStatusesByDisplayNameByVariant[task.BuildVariant] = map[string]string{}
+		}
+		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
+	}
+	return baseTaskStatusesByDisplayNameByVariant, nil
+}
