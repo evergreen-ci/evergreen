@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -122,39 +120,17 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return nil, nil
 					}
 					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
-					grip.Debug(message.Fields{
-						"message":           "Chaya. attach_plugin.go 135. taskArtifactFiles for loop. ",
-						"taskArtifactFiles": taskArtifactFiles,
-						"error":             err,
-						"stack":             message.NewStack(1, "").Raw(),
-					})
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for build")
 					}
-
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
 						hasUser := context.User.(*user.DBUser) != nil
 						taskArtifactFiles[i].Files, err = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
-						grip.Debug(message.Fields{
-							"message":              "Chaya. attach_plugin.go 135. taskArtifactFiles for loop. ",
-							"taskArtifactFiles":    taskArtifactFiles,
-							"current task's files": taskArtifactFiles[i].Files,
-							"error":                err,
-							"hasUser":              hasUser,
-							"stack":                message.NewStack(1, "").Raw(),
-						})
 						if err != nil {
 							return nil, errors.Wrap(err, "error singing urls")
 						}
-
 					}
-					grip.Debug(message.Fields{
-						"message":           "Chaya. attach_plugin.go 135. returning taskArtifactFiles. ",
-						"taskArtifactFiles": taskArtifactFiles,
-						"hasUser":           context.User.(*user.DBUser) != nil,
-						"stack":             message.NewStack(1, "").Raw(),
-					})
 					return taskArtifactFiles, nil
 				},
 			},
