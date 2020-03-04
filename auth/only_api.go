@@ -93,14 +93,14 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 			return errors.New("cannot clear user token")
 		},
 		GetUserByID: func(id string) (gimlet.User, bool, error) {
-			user, err := findAPIOnlyUser(id, validIDs, validUsers)
+			user, err := findOnlyAPIUser(id, validIDs, validUsers)
 			if err != nil {
 				return nil, false, errors.Errorf("failed to get API-only user")
 			}
 			return user, true, nil
 		},
 		GetOrCreateUser: func(u gimlet.User) (gimlet.User, error) {
-			user, err := findAPIOnlyUser(u.Username(), validIDs, validUsers)
+			user, err := findOnlyAPIUser(u.Username(), validIDs, validUsers)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get API-only user and cannot create new one")
 			}
@@ -114,9 +114,9 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 	return cached.NewUserManager(cache)
 }
 
-// findAPIOnlyUser finds an API-only user by ID and verifies that it is a valid
+// findOnlyAPIUser finds an API-only user by ID and verifies that it is a valid
 // user against the list of authoritative valid users.
-func findAPIOnlyUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
+func findOnlyAPIUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
 	if !util.StringSliceContains(validIDs, id) {
 		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
 	}
