@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/cached"
 	"github.com/evergreen-ci/gimlet/usercache"
@@ -17,8 +18,8 @@ import (
 // NewOnlyAPIUserManager creates a user manager for special users that can only
 // make API requests. Users cannot be created and must come from the database.
 func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserManager, error) {
-	users := make([]gimlet.User, 0, len(config.Users))
-	ids := make([]string, 0, len(config.Users))
+	validUsers := make([]gimlet.User, 0, len(config.Users))
+	validIDs := make([]string, 0, len(config.Users))
 
 	catcher := grip.NewBasicCatcher()
 	for _, u := range config.Users {
@@ -32,16 +33,17 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 			catcher.Errorf("cannot use API-only user '%s' who is not marked as API-only", u.Username)
 			continue
 		}
+
 		_, err = db.Upsert(user.Collection,
 			bson.M{user.IdKey: u.Username, user.OnlyAPIKey: true},
 			bson.M{
 				"$set": bson.M{
-					user.APIKeyKey: u.Key,
-					user.RolesKey:  u.Roles,
+					user.APIKeyKey:  u.Key,
+					user.RolesKey:   u.Roles,
+					user.OnlyAPIKey: true,
 				},
 				"$setOnInsert": bson.M{
-					user.IdKey:      u.Username,
-					user.OnlyAPIKey: true,
+					user.IdKey: u.Username,
 				},
 			},
 		)
@@ -57,12 +59,15 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 			OnlyAPI:     true,
 		}
 
-		users = append(users, dbUser)
-		ids = append(ids, u.Username)
+		validUsers = append(validUsers, dbUser)
+		validIDs = append(validIDs, u.Username)
 	}
 
 	// Remove API-only users that are no longer in the API-only config.
-	if err := db.RemoveAll(user.Collection, bson.M{user.IdKey: bson.M{"$nin": ids}, user.OnlyAPIKey: true}); err != nil {
+	if err := db.RemoveAll(user.Collection, bson.M{
+		user.IdKey:      bson.M{"$nin": validIDs},
+		user.OnlyAPIKey: true},
+	); err != nil {
 		catcher.Wrap(err, "failed to remove nonexistent API-only users from database")
 	}
 
@@ -85,31 +90,18 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 			return errors.New("cannot clear user token")
 		},
 		GetUserByID: func(id string) (gimlet.User, bool, error) {
-			dbUser, err := user.FindOneById(id)
+			user, err := findAPIOnlyUser(id, validIDs, validUsers)
 			if err != nil {
-				return nil, false, errors.Wrapf(err, "could not find user '%s' in DB", id)
+				return nil, false, errors.Errorf("failed to get API-only user")
 			}
-			for _, user := range users {
-				if user.Username() == dbUser.Username() && user.GetAPIKey() == dbUser.GetAPIKey() {
-					return dbUser, true, nil
-				}
-			}
-			return nil, false, errors.Errorf("user '%s' found in DB but does not match a pre-populated API-only user", id)
+			return user, true, nil
 		},
 		GetOrCreateUser: func(u gimlet.User) (gimlet.User, error) {
-			dbUser, err := user.FindOneById(u.Username())
+			user, err := findAPIOnlyUser(u.Username(), validIDs, validUsers)
 			if err != nil {
-				return nil, errors.Wrapf(err, "could not find user '%s' in DB", u.Username())
+				return nil, errors.Wrap(err, "failed to get API-only user and cannot create new one")
 			}
-			if dbUser == nil {
-				return nil, errors.Errorf("no such user '%s' in db", u.Username())
-			}
-			for _, user := range users {
-				if user.Username() == dbUser.Username() && user.GetAPIKey() == dbUser.GetAPIKey() {
-					return dbUser, nil
-				}
-			}
-			return nil, errors.New("cannot create user that does not already exist")
+			return user, nil
 		},
 	}
 	cache, err := usercache.NewExternal(opts)
@@ -117,4 +109,28 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 		return nil, errors.Wrap(err, "could not create DB cache")
 	}
 	return cached.NewUserManager(cache)
+}
+
+// findAPIOnlyUser finds an API-only user by ID and verifies that it is a valid
+// user against the list of authoritative valid users.
+func findAPIOnlyUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
+	if !util.StringSliceContains(validIDs, id) {
+		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
+	}
+	dbUser, err := user.FindOne(db.Query(bson.M{
+		user.IdKey:      id,
+		user.OnlyAPIKey: true,
+	}))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find API-only user in DB")
+	}
+	if dbUser == nil {
+		return nil, errors.Errorf("no such user '%s' in DB", id)
+	}
+	for _, user := range validUsers {
+		if user.Username() == dbUser.Username() && user.GetAPIKey() == dbUser.GetAPIKey() {
+			return dbUser, nil
+		}
+	}
+	return nil, errors.Errorf("user '%s' found but not in list of valid API-only users", id)
 }
