@@ -121,7 +121,6 @@ type Connector interface {
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(string, string, string, string, int, int, int, int) ([]testresult.TestResult, error)
-	FindTasksByVersion(string, string, []string, int, int, int) ([]task.Task, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 

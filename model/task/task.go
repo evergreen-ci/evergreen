@@ -1920,34 +1920,6 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// GetTasksByVersion gets all tasks for a specific version
-// Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
-	match := bson.M{
-		VersionKey: versionID,
-	}
-	if len(statuses) > 0 {
-		match[StatusKey] = bson.M{"$in": statuses}
-	}
-	sorters := []string{}
-	if len(sortBy) > 0 {
-		sortKey := sortBy
-		if sortDir < 0 {
-			sortKey = "-" + sortKey
-		}
-		sorters = append(sorters, sortKey)
-	}
-	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
-	sorters = append(sorters, "_id")
-
-	tasks := []Task{}
-	err := db.FindAllQ(Collection, db.Query(match).Sort(sorters).Limit(limit).Skip(page*limit), &tasks)
-	if err != nil {
-		return nil, err
-	}
-	return tasks, nil
-}
-
 // UpdateDependsOn appends new dependnecies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
