@@ -52,15 +52,17 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       } else {
         $scope.tempOnlyAPIUsers = [];
       }
-      if (resp.data.auth.multi.read_write) {
+      if (resp.data.auth.multi) {
+        if (resp.data.auth.multi.read_write) {
         $scope.tempMultiAuthReadWrite = _.clone(resp.data.auth.multi.read_write);
-      } else {
-        $scope.tempMultiAuthReadWrite = [];
-      }
-      if (resp.data.auth.multi.read_only) {
-        $scope.tempMultiAuthReadOnly = _.clone(resp.data.auth.multi.read_only);
-      } else {
-        $scope.tempMultiAuthReadOnly = [];
+        } else {
+          $scope.tempMultiAuthReadWrite = [];
+        }
+        if (resp.data.auth.multi.read_only) {
+          $scope.tempMultiAuthReadOnly = _.clone(resp.data.auth.multi.read_only);
+        } else {
+          $scope.tempMultiAuthReadOnly = [];
+        }
       }
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
