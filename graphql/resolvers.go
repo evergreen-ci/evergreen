@@ -246,7 +246,77 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TaskSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error) {
+	sorter := ""
+	if sortBy != nil {
+		switch *sortBy {
+		case TaskSortCategoryStatus:
+			sorter = task.StatusKey
+			break
+		case TaskSortCategoryName:
+			sorter = task.DisplayNameKey
+			break
+		case TaskSortCategoryBaseStatus:
+			// base status is not a field on the task db model; therefore sorting by base status
+			// cannot be done in the mongo query. sorting by base status is done in the resolver.
+			break
+		case TaskSortCategoryVariant:
+			sorter = task.BuildVariantKey
+			break
+		default:
+			break
+		}
+	}
+	sortDirParam := 1
+	if *sortDir == SortDirectionDesc {
+		sortDirParam = -1
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	statusesParam := []string{}
+	if statuses != nil {
+		statusesParam = statuses
+	}
+	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, sortDirParam, pageParam, limitParam)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
+	}
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
+	}
+
+	var taskResults []*TaskResult
+	for _, task := range tasks {
+		t := TaskResult{
+			ID:           task.Id,
+			DisplayName:  task.DisplayName,
+			Version:      task.Version,
+			Status:       task.Status,
+			BuildVariant: task.BuildVariant,
+			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
+		}
+		taskResults = append(taskResults, &t)
+	}
+	if *sortBy == TaskSortCategoryBaseStatus {
+		sort.SliceStable(taskResults, func(i, j int) bool {
+			if sortDirParam == 1 {
+				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			}
+			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
+		})
+	}
+	return taskResults, nil
+}
+
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -255,13 +325,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
-		case TaskSortCategoryStatus:
+		case TestSortCategoryStatus:
 			sortBy = testresult.StatusKey
 			break
-		case TaskSortCategoryDuration:
+		case TestSortCategoryDuration:
 			sortBy = "duration"
 			break
-		case TaskSortCategoryTestName:
+		case TestSortCategoryTestName:
 			sortBy = testresult.TestFileKey
 		}
 	}
