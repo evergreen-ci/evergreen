@@ -396,7 +396,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
-
 	return &RecentTaskLogs{EventLogs: apiEventLogPointers}, nil
 }
 
