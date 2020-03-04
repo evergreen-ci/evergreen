@@ -126,6 +126,7 @@ imports:
     version: 505d1051058d81836ddb3cb839ba06009588a14e
   - name: github.com/mongodb/amboy
     version: df24672ec6aa73d93b329b156128e645fb34ee79
+    # kim: TODO: update when MAKE-1178 is merged
   - name: github.com/evergreen-ci/gimlet
     version: f4dd85baa80ace3799e1e9d8eb3cec6ca7182f91
   - name: github.com/evergreen-ci/shrub
