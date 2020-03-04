@@ -37,15 +37,6 @@ type Projects struct {
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
-type TaskResult struct {
-	ID           string `json:"id"`
-	DisplayName  string `json:"displayName"`
-	Version      string `json:"version"`
-	Status       string `json:"status"`
-	BaseStatus   string `json:"baseStatus"`
-	BuildVariant string `json:"buildVariant"`
-}
-
 type SortDirection string
 
 const (
@@ -90,22 +81,20 @@ func (e SortDirection) MarshalGQL(w io.Writer) {
 type TaskSortCategory string
 
 const (
-	TaskSortCategoryName       TaskSortCategory = "NAME"
-	TaskSortCategoryStatus     TaskSortCategory = "STATUS"
-	TaskSortCategoryBaseStatus TaskSortCategory = "BASE_STATUS"
-	TaskSortCategoryVariant    TaskSortCategory = "VARIANT"
+	TaskSortCategoryStatus   TaskSortCategory = "STATUS"
+	TaskSortCategoryDuration TaskSortCategory = "DURATION"
+	TaskSortCategoryTestName TaskSortCategory = "TEST_NAME"
 )
 
 var AllTaskSortCategory = []TaskSortCategory{
-	TaskSortCategoryName,
 	TaskSortCategoryStatus,
-	TaskSortCategoryBaseStatus,
-	TaskSortCategoryVariant,
+	TaskSortCategoryDuration,
+	TaskSortCategoryTestName,
 }
 
 func (e TaskSortCategory) IsValid() bool {
 	switch e {
-	case TaskSortCategoryName, TaskSortCategoryStatus, TaskSortCategoryBaseStatus, TaskSortCategoryVariant:
+	case TaskSortCategoryStatus, TaskSortCategoryDuration, TaskSortCategoryTestName:
 		return true
 	}
 	return false
@@ -129,48 +118,5 @@ func (e *TaskSortCategory) UnmarshalGQL(v interface{}) error {
 }
 
 func (e TaskSortCategory) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type TestSortCategory string
-
-const (
-	TestSortCategoryStatus   TestSortCategory = "STATUS"
-	TestSortCategoryDuration TestSortCategory = "DURATION"
-	TestSortCategoryTestName TestSortCategory = "TEST_NAME"
-)
-
-var AllTestSortCategory = []TestSortCategory{
-	TestSortCategoryStatus,
-	TestSortCategoryDuration,
-	TestSortCategoryTestName,
-}
-
-func (e TestSortCategory) IsValid() bool {
-	switch e {
-	case TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
-		return true
-	}
-	return false
-}
-
-func (e TestSortCategory) String() string {
-	return string(e)
-}
-
-func (e *TestSortCategory) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = TestSortCategory(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid TestSortCategory", str)
-	}
-	return nil
-}
-
-func (e TestSortCategory) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
