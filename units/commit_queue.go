@@ -98,6 +98,16 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 			status = evergreen.MergeTestFailed
 		}
 		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
+		grip.Info(message.Fields{
+			"source":             "commit queue",
+			"patch status":       status,
+			"job_id":             j.ID(),
+			"item_id":            nextItem.Issue,
+			"project_id":         cq.ProjectID,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"timeSincePatchDone": time.Since(patchDoc.FinishTime).Seconds(),
+			"message":            "patch done and dequeued",
+		})
 	}
 
 	return
@@ -151,13 +161,12 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	if cq.Processing {
-		processingSeconds := time.Since(cq.ProcessingUpdatedTime).Seconds()
 		grip.Info(message.Fields{
 			"source":             "commit queue",
 			"job_id":             j.ID(),
 			"item_id":            nextItem.Issue,
 			"project_id":         cq.ProjectID,
-			"processing_seconds": processingSeconds,
+			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
 		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
 		//It's okay if this gets to it before the notification does, since that will
