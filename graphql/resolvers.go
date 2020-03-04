@@ -34,6 +34,9 @@ func (r *Resolver) Patch() PatchResolver {
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
+func (r *Resolver) Task() TaskResolver {
+	return &taskResolver{r}
+}
 
 type mutationResolver struct{ *Resolver }
 
@@ -534,6 +537,12 @@ func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 		DisplayName: &displayName,
 	}
 	return &user, nil
+}
+
+type taskResolver struct{ *Resolver }
+
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *model.APITask) (int, error) {
+	panic("not implemented")
 }
 
 // New injects resources into the resolvers, such as the data connector
