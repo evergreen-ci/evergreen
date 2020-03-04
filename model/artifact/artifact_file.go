@@ -60,7 +60,6 @@ type File struct {
 
 // StripHiddenFiles is a helper for only showing users the files they are allowed to see.
 func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
-	//todo: are private files getting signed?
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
