@@ -188,7 +188,7 @@ type ComplexityRoot struct {
 		Type        func(childComplexity int) int
 	}
 
-	TaskLogs struct {
+	TaskLogLinks struct {
 		AgentLogLink  func(childComplexity int) int
 		AllLogLink    func(childComplexity int) int
 		SystemLogLink func(childComplexity int) int
@@ -1005,33 +1005,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.Type(childComplexity), true
 
-	case "TaskLogs.agentLogLink":
-		if e.complexity.TaskLogs.AgentLogLink == nil {
+	case "TaskLogLinks.agentLogLink":
+		if e.complexity.TaskLogLinks.AgentLogLink == nil {
 			break
 		}
 
-		return e.complexity.TaskLogs.AgentLogLink(childComplexity), true
+		return e.complexity.TaskLogLinks.AgentLogLink(childComplexity), true
 
-	case "TaskLogs.allLogLink":
-		if e.complexity.TaskLogs.AllLogLink == nil {
+	case "TaskLogLinks.allLogLink":
+		if e.complexity.TaskLogLinks.AllLogLink == nil {
 			break
 		}
 
-		return e.complexity.TaskLogs.AllLogLink(childComplexity), true
+		return e.complexity.TaskLogLinks.AllLogLink(childComplexity), true
 
-	case "TaskLogs.systemLogLink":
-		if e.complexity.TaskLogs.SystemLogLink == nil {
+	case "TaskLogLinks.systemLogLink":
+		if e.complexity.TaskLogLinks.SystemLogLink == nil {
 			break
 		}
 
-		return e.complexity.TaskLogs.SystemLogLink(childComplexity), true
+		return e.complexity.TaskLogLinks.SystemLogLink(childComplexity), true
 
-	case "TaskLogs.taskLogLink":
-		if e.complexity.TaskLogs.TaskLogLink == nil {
+	case "TaskLogLinks.taskLogLink":
+		if e.complexity.TaskLogLinks.TaskLogLink == nil {
 			break
 		}
 
-		return e.complexity.TaskLogs.TaskLogLink(childComplexity), true
+		return e.complexity.TaskLogLinks.TaskLogLink(childComplexity), true
 
 	case "TestLog.htmlDisplayURL":
 		if e.complexity.TestLog.HTMLDisplayURL == nil {
@@ -1292,7 +1292,7 @@ type Task {
 	priority: Int
 	taskGroup: String
 	taskGroupMaxHosts: Int
-	logs: TaskLogs!
+	logs: TaskLogLinks!
 	activated: Boolean!
 	activatedBy: String
 	buildId: String!
@@ -1321,7 +1321,7 @@ type TaskEndDetail {
 	description: String
 	timedOut: Boolean
 }
-type TaskLogs {
+type TaskLogLinks {
 	allLogLink: String
 	agentLogLink: String
 	systemLogLink: String
@@ -4174,7 +4174,7 @@ func (ec *executionContext) _Task_logs(ctx context.Context, field graphql.Collec
 	}
 	res := resTmp.(model.LogLinks)
 	fc.Result = res
-	return ec.marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
+	return ec.marshalNTaskLogLinks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_activated(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -4979,7 +4979,7 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_allLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogLinks_allLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4987,7 +4987,7 @@ func (ec *executionContext) _TaskLogs_allLogLink(ctx context.Context, field grap
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "TaskLogs",
+		Object:   "TaskLogLinks",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -5010,7 +5010,7 @@ func (ec *executionContext) _TaskLogs_allLogLink(ctx context.Context, field grap
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogLinks_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5018,7 +5018,7 @@ func (ec *executionContext) _TaskLogs_agentLogLink(ctx context.Context, field gr
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "TaskLogs",
+		Object:   "TaskLogLinks",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -5041,7 +5041,7 @@ func (ec *executionContext) _TaskLogs_agentLogLink(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_systemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogLinks_systemLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5049,7 +5049,7 @@ func (ec *executionContext) _TaskLogs_systemLogLink(ctx context.Context, field g
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "TaskLogs",
+		Object:   "TaskLogLinks",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -5072,7 +5072,7 @@ func (ec *executionContext) _TaskLogs_systemLogLink(ctx context.Context, field g
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskLogLinks_taskLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5080,7 +5080,7 @@ func (ec *executionContext) _TaskLogs_taskLogLink(ctx context.Context, field gra
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "TaskLogs",
+		Object:   "TaskLogLinks",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -7371,25 +7371,25 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 	return out
 }
 
-var taskLogsImplementors = []string{"TaskLogs"}
+var taskLogLinksImplementors = []string{"TaskLogLinks"}
 
-func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet, obj *model.LogLinks) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, taskLogsImplementors)
+func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.SelectionSet, obj *model.LogLinks) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskLogLinksImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("TaskLogs")
+			out.Values[i] = graphql.MarshalString("TaskLogLinks")
 		case "allLogLink":
-			out.Values[i] = ec._TaskLogs_allLogLink(ctx, field, obj)
+			out.Values[i] = ec._TaskLogLinks_allLogLink(ctx, field, obj)
 		case "agentLogLink":
-			out.Values[i] = ec._TaskLogs_agentLogLink(ctx, field, obj)
+			out.Values[i] = ec._TaskLogLinks_agentLogLink(ctx, field, obj)
 		case "systemLogLink":
-			out.Values[i] = ec._TaskLogs_systemLogLink(ctx, field, obj)
+			out.Values[i] = ec._TaskLogLinks_systemLogLink(ctx, field, obj)
 		case "taskLogLink":
-			out.Values[i] = ec._TaskLogs_taskLogLink(ctx, field, obj)
+			out.Values[i] = ec._TaskLogLinks_taskLogLink(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8213,8 +8213,8 @@ func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Task(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
-	return ec._TaskLogs(ctx, sel, &v)
+func (ec *executionContext) marshalNTaskLogLinks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
+	return ec._TaskLogLinks(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {

@@ -77,7 +77,7 @@ type VariantTask {
   tasks: [String!]!
 }
 
-type TaskLogs {
+type TaskLogLinks {
   allLogLink: String
   agentLogLink: String
   systemLogLink: String
@@ -122,7 +122,7 @@ type Task {
   priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
-  logs: TaskLogs!
+  logs: TaskLogLinks!
   activated: Boolean!
   activatedBy: String
   buildId: String!
