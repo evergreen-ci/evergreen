@@ -4,12 +4,13 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -413,7 +414,22 @@ func FindSchedulable(distroID string) ([]task.Task, error) {
 	if err := addApplicableDistroFilter(distroID, task.DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	tq, err := model.FindDistroAliasTaskQueue(distroID)
+	if err == nil {
+		addDuplicateTaskIDFilter(tq, query)
+	}
+
 	return task.Find(db.Query(query))
+}
+
+func addDuplicateTaskIDFilter(tq model.TaskQueue, query bson.M) {
+	taskIDs := []string{}
+	for _, item := range tq.Queue {
+		taskIDs = append(taskIDs, item.Id)
+	}
+	query[task.IdKey] = bson.M{"$nin": taskIDs}
+	pp.Println("ignore task IDs:", taskIDs)
 }
 
 func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
@@ -446,6 +462,11 @@ func FindSchedulableForAlias(id string) ([]task.Task, error) {
 	// cause a race when assigning tasks to hosts where the tasks in the task
 	// group might be assigned to different hosts.
 	q[task.TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
+
+	tq, err := model.FindDistroTaskQueue(id)
+	if err == nil {
+		addDuplicateTaskIDFilter(tq, q)
+	}
 
 	return task.FindAll(db.Query(q))
 }
