@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -200,19 +198,17 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 }
 
 func (r *taskResolver) EventLogs(ctx context.Context, obj *restModel.APITask) ([]*EventLogItem, error) {
-	const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
-	var loggedEvents []event.EventLogEntry
-	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(obj.Id, DefaultLogMessages))
-	if err != nil {
-		nil, InternalServerError.send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.Id, err.Error()))
-	}
-	for i := len(loggedEvents)/2-1; i >= 0; i-- {
-		opp := len(loggedEvents)-1-i
-		loggedEvents[i], loggedEvents[opp] = loggedEvents[opp], a[i]
-	}
-	
+	// const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
+	// var loggedEvents []event.EventLogEntry
+	// loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(obj.Id, DefaultLogMessages))
+	// if err != nil {
+	// 	nil, InternalServerError.send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.Id, err.Error()))
+	// }
+	// for i := len(loggedEvents)/2-1; i >= 0; i-- {
+	// 	opp := len(loggedEvents)-1-i
+	// 	loggedEvents[i], loggedEvents[opp] = loggedEvents[opp], a[i]
+	// }
 	return nil, nil
-
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {

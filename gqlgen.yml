@@ -38,3 +38,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUser
+  EventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEventLogEntry
+  EventLogData:
+    model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData

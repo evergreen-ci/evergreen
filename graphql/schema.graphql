@@ -143,13 +143,17 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  eventLogs: [EventLogItem!]!
+  eventLogs: [EventLogEntry!]!
 }
 
 type EventLogData {
   execution: Int
+  hostId: String
+  jiraIssue: String
+  priority: Int
   status: String
   timestamp: String
+  userId: String
 }
 
 type EventLogEntry {
