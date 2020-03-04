@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -115,6 +116,20 @@ func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, er
 
 func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
+}
+
+func (pc *DBCommitQueueConnector) IsPatchEmpty(id string) (bool, error) {
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(id)).WithFields(patch.PatchesKey))
+	if err != nil {
+		return true, err
+	}
+	if patchDoc == nil {
+		return false, errors.New("patch is empty")
+	}
+	if len(patchDoc.Patches) == 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 type UserRepoInfo struct {
@@ -236,6 +251,19 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
+func (pc *MockCommitQueueConnector) IsPatchEmpty(id string) (bool, error) {
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(id)).WithFields(patch.PatchesKey))
+	if err != nil {
+		return true, err
+	}
+	if patchDoc == nil {
+		return false, errors.New("patch is empty")
+	}
+	if len(patchDoc.Patches) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
 func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
 	return true, nil
 }
