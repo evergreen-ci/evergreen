@@ -37,6 +37,10 @@ type Projects struct {
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
+type RecentTaskLogs struct {
+	EventLogs []*model.APIEventLogEntry `json:"eventLogs"`
+}
+
 type SortDirection string
 
 const (

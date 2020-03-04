@@ -50,6 +50,7 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 				JiraIssue: ToStringPtr(d.JiraIssue),
 				Timestamp: ToTimePtr(d.Timestamp),
 				Priority:  d.Priority,
+				Status:    ToStringPtr(d.Status),
 			},
 		}
 	default:

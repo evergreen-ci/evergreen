@@ -14,6 +14,7 @@ type Query {
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!
+  taskLogs(taskId: String!): RecentTaskLogs!
 }
 
 type Mutation {
@@ -34,6 +35,10 @@ enum TaskSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+type RecentTaskLogs {
+  eventLogs: [EventLogEntry!]!
 }
 
 type GroupedFiles {
@@ -143,7 +148,6 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  eventLogs: [EventLogEntry!]!
 }
 
 type EventLogData {
@@ -152,14 +156,14 @@ type EventLogData {
   jiraIssue: String
   priority: Int
   status: String
-  timestamp: String
+  timestamp: Time
   userId: String
 }
 
 type EventLogEntry {
   resourceType: String
-  processedAt: String
-  timestamp: String
+  processedAt: Time
+  timestamp: Time
   resourceId: String
   eventType: String
   data: EventLogData
