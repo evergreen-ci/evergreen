@@ -1053,7 +1053,7 @@ func TestMergeTestResultsByTestFile(t *testing.T) {
 		)
 	}
 
-	m := mergeTestResultsByTestFile(nil, taskDoc.LocalTestResults)
+	m := mapTestResultsByTestFile(taskDoc.LocalTestResults)
 	assert.Len(m, 4)
 
 	for _, v := range m {
