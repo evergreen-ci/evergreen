@@ -19,18 +19,9 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	var duplicateTaskIDs []string
-	var err error
-	if distroQueueInfo.AliasQueue {
-		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, model.TaskQueuesCollection)
-		if err != nil {
-			return errors.Wrap(err, "could not get duplicate task IDs from task queues")
-		}
-	} else {
-		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, model.TaskAliasQueuesCollection)
-		if err != nil {
-			return errors.Wrap(err, "could not get duplicate task IDs from task alias queues")
-		}
+	duplicateTaskIDs, err := model.FindEnqueuedTaskIDs(taskIDs, distroQueueInfo.GetOtherQueueCollection())
+	if err != nil {
+		return errors.Wrap(err, "could not find duplicate task IDs from other collection's task queues")
 	}
 
 	for _, t := range tasks {

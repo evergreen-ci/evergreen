@@ -69,12 +69,21 @@ func RemoveTaskQueues(distroID string) error {
 	return catcher.Resolve()
 }
 
+// GetQueueCollection returns the collection associated with this queue.
 func (q *DistroQueueInfo) GetQueueCollection() string {
 	if q.AliasQueue {
 		return TaskAliasQueuesCollection
 	}
 
 	return TaskQueuesCollection
+}
+
+// GetOtherQueueCollection is the inverse of GetQueueCollection.
+func (q *DistroQueueInfo) GetOtherQueueCollection() string {
+	if q.AliasQueue {
+		return TaskQueuesCollection
+	}
+	return TaskAliasQueuesCollection
 }
 
 // represents the next n tasks to be run on hosts of the distro
