@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -73,7 +74,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	startAt := time.Now()
-	tasks, err := scheduler.FindSchedulableForAlias(j.DistroID)
+	tasks, err := task.FindSchedulableForAlias(j.DistroID)
 	j.AddError(errors.Wrap(err, "problem finding tasks"))
 	if tasks == nil {
 		return

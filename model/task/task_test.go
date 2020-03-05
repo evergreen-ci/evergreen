@@ -1405,7 +1405,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.Len(unattainableTasks, 1)
 }
 
-func TestUnattainableSchedulableTasksQuery(t *testing.T) {
+func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1459,7 +1459,7 @@ func TestUnattainableSchedulableTasksQuery(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	q := SchedulableTasksQuery()
+	q := scheduleableTasksQuery()
 	schedulableTasks, err := FindAll(db.Query(q))
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)

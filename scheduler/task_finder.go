@@ -4,29 +4,26 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type TaskFinder func(distro.Distro) ([]task.Task, error)
 
 func GetTaskFinder(version string) TaskFinder {
 	switch version {
-	case evergreen.FinderVersionParallel:
+	case "parallel":
 		return ParallelTaskFinder
-	case evergreen.FinderVersionLegacy:
+	case "legacy":
 		return LegacyFindRunnableTasks
-	case evergreen.FinderVersionPipeline:
+	case "pipeline":
 		return RunnableTasksPipeline
-	case evergreen.FinderVersionAlternate:
+	case "alternate":
 		return AlternateTaskFinder
 	default:
 		return LegacyFindRunnableTasks
@@ -34,14 +31,14 @@ func GetTaskFinder(version string) TaskFinder {
 }
 
 func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
-	return FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
+	return task.FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
 func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := FindSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +126,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 }
 
 func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := FindSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -229,15 +226,15 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":            RunnerName,
-		"schedulable_tasks": len(undispatchedTasks),
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
 }
 
 func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := FindSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -351,9 +348,9 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 		runnabletasks = append(runnabletasks, t)
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":            RunnerName,
-		"planner":           d.PlannerSettings.Version,
-		"schedulable_tasks": len(undispatchedTasks),
+		"runner":             RunnerName,
+		"planner":            d.PlannerSettings.Version,
+		"scheduleable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
@@ -405,256 +402,4 @@ func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]mod
 	}
 
 	return filteredTasks, versions, nil
-}
-
-func FindSchedulable(distroID string) ([]task.Task, error) {
-	query := task.SchedulableTasksQuery()
-
-	if distroID != "" {
-		aliases, err := distro.FindApplicableDistroIDs(distroID)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		addApplicableDistroFilter(aliases, task.DistroIdKey, query)
-		if tqs, err := model.FindAllDistroAliasTaskQueues(aliases...); err == nil {
-			addDuplicateTaskIDFilter(tqs, query)
-		}
-	}
-
-	return task.Find(db.Query(query))
-}
-
-// addDuplicateTaskIDFilter filters any task in thq query which is already
-// present in one of the given TaskQueues.
-func addDuplicateTaskIDFilter(tqs []model.TaskQueue, query bson.M) {
-	if len(tqs) == 0 {
-		return
-	}
-	taskIDs := []string{}
-	for _, tq := range tqs {
-		for _, item := range tq.Queue {
-			taskIDs = append(taskIDs, item.Id)
-		}
-	}
-	query[task.IdKey] = bson.M{"$nin": taskIDs}
-}
-
-func addApplicableDistroFilter(aliases []string, fieldName string, query bson.M) {
-	if len(aliases) == 0 {
-		return
-	}
-
-	if len(aliases) == 1 {
-		query[fieldName] = aliases[0]
-	} else {
-		query[fieldName] = bson.M{"$in": aliases}
-	}
-
-	return
-}
-
-func FindSchedulableForAlias(id string) ([]task.Task, error) {
-	q := task.SchedulableTasksQuery()
-
-	if id != "" {
-		aliases, err := distro.FindApplicableDistroIDs(id)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		addApplicableDistroFilter(aliases, task.DistroAliasesKey, q)
-		if tqs, err := model.FindAllDistroTaskQueues(id); err == nil {
-			addDuplicateTaskIDFilter(tqs, q)
-		}
-	}
-
-	// Single-host task groups can't be put in an alias queue, because it can
-	// cause a race when assigning tasks to hosts where the tasks in the task
-	// group might be assigned to different hosts.
-	q[task.TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
-
-	return task.FindAll(db.Query(q))
-}
-
-func FindRunnable(distroID string, removeDeps bool) ([]task.Task, error) {
-	const dependencyKey = "dependencies"
-
-	match := task.SchedulableTasksQuery()
-	var d distro.Distro
-	var err error
-	if distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
-		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
-		}
-	}
-
-	if distroID != "" {
-		aliases, err := distro.FindApplicableDistroIDs(distroID)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		addApplicableDistroFilter(aliases, task.DistroIdKey, match)
-		if tqs, err := model.FindAllDistroAliasTaskQueues(aliases...); err == nil {
-			addDuplicateTaskIDFilter(tqs, match)
-		}
-	}
-
-	matchActivatedUndispatchedTasks := bson.M{
-		"$match": match,
-	}
-
-	filterInvalidDistros := bson.M{
-		"$match": bson.M{task.ProjectKey: bson.M{"$in": d.ValidProjects}},
-	}
-
-	removeFields := bson.M{
-		"$project": bson.M{
-			task.LogsKey:      0,
-			task.OldTaskIdKey: 0,
-			task.DependsOnKey + "." + task.DependencyUnattainableKey: 0,
-		},
-	}
-
-	graphLookupTaskDeps := bson.M{
-		"$graphLookup": bson.M{
-			"from":             task.Collection,
-			"startWith":        "$" + task.DependsOnKey + "." + task.IdKey,
-			"connectFromField": task.DependsOnKey + "." + task.IdKey,
-			"connectToField":   task.IdKey,
-			"as":               dependencyKey,
-			// restrict graphLookup to only direct dependencies
-			"maxDepth": 0,
-		},
-	}
-
-	unwindDependencies := bson.M{
-		"$unwind": bson.M{
-			"path":                       "$" + dependencyKey,
-			"preserveNullAndEmptyArrays": true,
-		},
-	}
-
-	unwindDependsOn := bson.M{
-		"$unwind": bson.M{
-			"path":                       "$" + task.DependsOnKey,
-			"preserveNullAndEmptyArrays": true,
-		},
-	}
-
-	matchIds := bson.M{
-		"$match": bson.M{
-			"$expr": bson.M{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, task.IdKey)}},
-		},
-	}
-
-	projectSatisfied := bson.M{
-		"$addFields": bson.M{
-			"satisfied_dependencies": bson.M{
-				"$cond": bson.A{
-					bson.M{
-						"$or": []bson.M{
-							{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, task.StatusKey)}},
-							{"$and": []bson.M{
-								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyStatusKey), "*"}},
-								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, task.StatusKey), task.CompletedStatuses}},
-									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, task.DependsOnKey, task.DependencyUnattainableKey)},
-								}},
-							}},
-						},
-					},
-					true,
-					false,
-				},
-			},
-		},
-	}
-
-	regroupTasks := bson.M{
-		"$group": bson.M{
-			"_id":           "$_id",
-			"satisfied_set": bson.M{"$addToSet": "$satisfied_dependencies"},
-			"root":          bson.M{"$first": "$$ROOT"},
-		},
-	}
-
-	redactUnsatisfiedDependencies := bson.M{
-		"$redact": bson.M{
-			"$cond": bson.A{
-				bson.M{"$allElementsTrue": "$satisfied_set"},
-				"$$KEEP",
-				"$$PRUNE",
-			},
-		},
-	}
-
-	replaceRoot := bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}}
-
-	joinProjectRef := bson.M{
-		"$lookup": bson.M{
-			"from":         "project_ref",
-			"localField":   task.ProjectKey,
-			"foreignField": "identifier",
-			"as":           "project_ref",
-		},
-	}
-
-	filterDisabledProjects := bson.M{
-		"$match": bson.M{
-			"project_ref.0." + "enabled": true,
-		},
-	}
-
-	filterPatchingDisabledProjects := bson.M{
-		"$match": bson.M{"$or": []bson.M{
-			{
-				task.RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
-			},
-			{
-				"project_ref.0." + "patching_disabled": false,
-			},
-		}},
-	}
-
-	removeProjectRef := bson.M{
-		"$project": bson.M{
-			"project_ref": 0,
-		},
-	}
-
-	pipeline := []bson.M{
-		matchActivatedUndispatchedTasks,
-		removeFields,
-		graphLookupTaskDeps,
-	}
-
-	if distroID != "" && len(d.ValidProjects) > 0 {
-		pipeline = append(pipeline, filterInvalidDistros)
-	}
-
-	if removeDeps {
-		pipeline = append(pipeline,
-			unwindDependencies,
-			unwindDependsOn,
-			matchIds,
-			projectSatisfied,
-			regroupTasks,
-			redactUnsatisfiedDependencies,
-			replaceRoot,
-		)
-	}
-
-	pipeline = append(pipeline,
-		joinProjectRef,
-		filterDisabledProjects,
-		filterPatchingDisabledProjects,
-		removeProjectRef,
-	)
-
-	runnableTasks := []task.Task{}
-	if err := task.Aggregate(pipeline, &runnableTasks); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
-	}
-
-	return runnableTasks, nil
 }
