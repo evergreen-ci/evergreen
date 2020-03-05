@@ -370,11 +370,11 @@ tasks:
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
-    tags: ["db", "test"]
-    name: test-auth
-  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-thirdparty-docker
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-auth
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
