@@ -62,11 +62,14 @@
     {
       "query_file": "task_logs-event_logs-empty.graphql",
       "result": {
-        "data": {
-          "taskLogs": {
-            "eventLogs": []
+        "errors": [
+          {
+            "message": "error finding task by id asrtoeiarnst: 404 (Not Found): task with id asrtoeiarnst not found",
+            "path": ["taskLogs"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
-        }
+        ],
+        "data": null
       }
     }
   ]
