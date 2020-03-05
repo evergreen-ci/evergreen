@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	_ "github.com/evergreen-ci/evergreen/testutil" // Import testutil to force init to run
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

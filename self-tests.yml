@@ -370,7 +370,7 @@ tasks:
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+    tags: ["db", "test"]
     name: test-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
