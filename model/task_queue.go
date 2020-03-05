@@ -78,15 +78,7 @@ func (q *DistroQueueInfo) GetQueueCollection() string {
 	return TaskQueuesCollection
 }
 
-// GetOtherQueueCollection is the inverse of GetQueueCollection.
-func (q *DistroQueueInfo) GetOtherQueueCollection() string {
-	if q.AliasQueue {
-		return TaskQueuesCollection
-	}
-	return TaskAliasQueuesCollection
-}
-
-// represents the next n tasks to be run on hosts of the distro
+// TaskQueue represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
 	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Distro          string           `bson:"distro" json:"distro"`
