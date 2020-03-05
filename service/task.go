@@ -526,13 +526,10 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
 			defer func() {
-				err := logReader.Close()
-				if err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"task_id": projCtx.Task.Id,
-						"message": "failed to close buildlogger log ReadCloser",
-					}))
-				}
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
 			}()
 			gimlet.WriteJSON(w, readBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 			return
@@ -599,13 +596,10 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
 		if err == nil {
 			defer func() {
-				err := logReader.Close()
-				if err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"task_id": projCtx.Task.Id,
-						"message": "failed to close buildlogger log ReadCloser",
-					}))
-				}
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
 			}()
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -948,7 +942,6 @@ func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 			Message:  strings.TrimSuffix(line, "\n"),
 			Severity: getSeverityMapping(severity),
 		}:
-			continue
 		}
 	}
 }
