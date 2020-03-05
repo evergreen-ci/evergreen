@@ -73,6 +73,11 @@ type MultiAuthConfig struct {
 	ReadOnly  []string `bson:"read_only" json:"read_only" yaml:"read_only"`
 }
 
+// IsZero checks if the configuration is populated or not.
+func (c *MultiAuthConfig) IsZero() bool {
+	return len(c.ReadWrite) == 0 && len(c.ReadOnly) == 0
+}
+
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
 	LDAP                    *LDAPConfig        `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
