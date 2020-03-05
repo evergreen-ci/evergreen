@@ -541,8 +541,12 @@ func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 
 type taskResolver struct{ *Resolver }
 
-func (r *taskResolver) PatchNumber(ctx context.Context, obj *model.APITask) (int, error) {
-	panic("not implemented")
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
+	patch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+	}
+	return &patch.PatchNumber, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

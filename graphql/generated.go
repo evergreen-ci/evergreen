@@ -236,7 +236,7 @@ type QueryResolver interface {
 	User(ctx context.Context) (*model.APIUser, error)
 }
 type TaskResolver interface {
-	PatchNumber(ctx context.Context, obj *model.APITask) (int, error)
+	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 }
 
 type executableSchema struct {
@@ -1331,7 +1331,7 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  patchNumber: Int!
+  patchNumber: Int
 }
 
 type Projects {
@@ -4609,14 +4609,11 @@ func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -7218,9 +7215,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patchNumber(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		default:

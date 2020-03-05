@@ -167,7 +167,7 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  patchNumber: Int!
+  patchNumber: Int
 }
 
 type Projects {
