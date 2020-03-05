@@ -93,9 +93,7 @@ func TestAuthRequiredBehavior(t *testing.T) {
 	baduser := &MockUser{
 		ID: "bad-user",
 	}
-	usermanager := &MockUserManager{
-		TokenToUsers: map[string]User{},
-	}
+	usermanager := &MockUserManager{}
 
 	ra := NewRequireAuthHandler()
 
@@ -138,8 +136,7 @@ func TestAuthRequiredBehavior(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// now set up the user
-	//
-	usermanager.TokenToUsers[authenticator.UserToken] = user
+	user.Token = authenticator.UserToken
 
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw = httptest.NewRecorder()
@@ -196,9 +193,7 @@ func TestAuthAttachWrapper(t *testing.T) {
 		UserToken:               "test",
 		CheckAuthenticatedState: map[string]bool{},
 	}
-	usermanager := &MockUserManager{
-		TokenToUsers: map[string]User{},
-	}
+	usermanager := &MockUserManager{}
 
 	ah := NewAuthenticationHandler(authenticator, usermanager)
 	assert.NotNil(ah)
@@ -248,9 +243,7 @@ func TestRoleRestrictedAccessMiddleware(t *testing.T) {
 		ID:        "test-user",
 		RoleNames: []string{"staff"},
 	}
-	usermanager := &MockUserManager{
-		TokenToUsers: map[string]User{},
-	}
+	usermanager := &MockUserManager{}
 
 	ra := NewRoleRequired("sudo")
 
@@ -293,8 +286,7 @@ func TestRoleRestrictedAccessMiddleware(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// now set up the user (which is defined with the wrong role, so won't work)
-	//
-	usermanager.TokenToUsers[authenticator.UserToken] = user
+	user.Token = authenticator.UserToken
 
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw = httptest.NewRecorder()
@@ -349,14 +341,11 @@ func TestGroupAccessRequired(t *testing.T) {
 	user := &MockUser{
 		ID: "test-user",
 	}
-	usermanager := &MockUserManager{
-		TokenToUsers: map[string]User{},
-	}
+	usermanager := &MockUserManager{}
 
 	ra := NewGroupMembershipRequired("sudo")
 
 	// start without any context setup
-	//
 	req := httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw := httptest.NewRecorder()
 	ra.ServeHTTP(rw, req, next)
@@ -366,7 +355,6 @@ func TestGroupAccessRequired(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// try again with an authenticator...
-	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw = httptest.NewRecorder()
 	ctx := req.Context()
@@ -380,7 +368,6 @@ func TestGroupAccessRequired(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// try with a user manager
-	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw = httptest.NewRecorder()
 	ctx = req.Context()
@@ -394,8 +381,7 @@ func TestGroupAccessRequired(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// now set up the user (which has the wrong access defined)
-	//
-	usermanager.TokenToUsers[authenticator.UserToken] = user
+	user.Token = authenticator.UserToken
 
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
 	rw = httptest.NewRecorder()
@@ -412,7 +398,6 @@ func TestGroupAccessRequired(t *testing.T) {
 	assert.Equal(0, counter)
 
 	// make the user have the right access
-	//
 	authenticator.GroupUserMapping["test-user"] = "sudo"
 
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)

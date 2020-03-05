@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -64,6 +65,52 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	job.SetID(fmt.Sprintf("%s:%s_%s", commitQueueJobName, queueID, id))
 
 	return job
+}
+
+func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
+	//unstuck the queue if the patch is done.
+	nextItem := cq.Next()
+	if nextItem == nil {
+		return
+	}
+	patchIdString := nextItem.Issue
+	if !patch.IsValidId(patchIdString) {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.Errorf("The Patch id '%s' is not an object id", patchIdString), "The patch was removed from the queue.", nextItem)
+		return
+	}
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
+		return
+	}
+	if patchDoc == nil {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
+		return
+	}
+
+	//patchisdone
+	if !util.IsZeroTime(patchDoc.FinishTime) {
+		j.dequeue(cq, nextItem)
+		status := evergreen.MergeTestSucceeded
+		if patchDoc.Status == evergreen.PatchFailed {
+			status = evergreen.MergeTestFailed
+		}
+		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
+		grip.Info(message.Fields{
+			"source":                "commit queue",
+			"patch status":          status,
+			"job_id":                j.ID(),
+			"item_id":               nextItem.Issue,
+			"project_id":            cq.ProjectID,
+			"processing_seconds":    time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
+			"message":               "patch done and dequeued",
+		})
+	}
+
+	return
 }
 
 func (j *commitQueueJob) Run(ctx context.Context) {
@@ -121,6 +168,12 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
+		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
+		//It's okay if this gets to it before the notification does, since that will
+		//check if the item is still on the queue before removing it.
+		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+			j.TryUnstick(cq)
+		}
 		return
 	}
 	if err = cq.SetProcessing(true); err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
 
@@ -71,9 +72,12 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 							if err != nil {
 								return nil, err
 							}
-							hasUser := context.User != nil
-							strippedFiles := artifact.StripHiddenFiles(execTaskFiles, hasUser)
-
+							hasUser := context.User.(*user.DBUser) != nil
+							var strippedFiles []artifact.File
+							strippedFiles, err = artifact.StripHiddenFiles(execTaskFiles, hasUser)
+							if err != nil {
+								return nil, errors.Wrap(err, "error signing urls")
+							}
 							var execTask *task.Task
 							execTask, err = task.FindOne(task.ById(execTaskID))
 							if err != nil {
@@ -97,8 +101,13 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if err != nil {
 						return nil, err
 					}
-					hasUser := context.User != nil
-					return artifact.StripHiddenFiles(files, hasUser), nil
+					hasUser := context.User.(*user.DBUser) != nil
+
+					strippedFiles, err := artifact.StripHiddenFiles(files, hasUser)
+					if err != nil {
+						return nil, errors.Wrap(err, "error signing urls")
+					}
+					return strippedFiles, nil
 				},
 			},
 			{
@@ -116,8 +125,11 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
-						hasUser := context.User != nil
-						taskArtifactFiles[i].Files = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
+						hasUser := context.User.(*user.DBUser) != nil
+						taskArtifactFiles[i].Files, err = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
+						if err != nil {
+							return nil, errors.Wrap(err, "error singing urls")
+						}
 					}
 					return taskArtifactFiles, nil
 				},

@@ -263,6 +263,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         };
         config.data['task_id'] = spawnInfo.task_id;
         config.data['distro'] = spawnInfo.distroId;
+        config.data['region'] = spawnInfo.region;
         config.data['save_key'] = spawnInfo.saveKey;
         config.data['key_name'] = spawnInfo.spawnKey.name;
         config.data['public_key'] = spawnInfo.spawnKey.key;
