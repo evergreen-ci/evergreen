@@ -175,15 +175,16 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	projectCtx, err := GetProjectContext(r)
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
-		uis.projectNotFoundBase(w, r, nil)
 		return ViewData{}
 	}
 	if needsProject {
 		var project *model.Project
 		project, err = projectCtx.GetProject()
 		if err != nil || project == nil {
+			if err == nil && project == nil {
+				err = errors.New("no project found")
+			}
 			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
-			uis.ProjectNotFound(w, r)
 			return ViewData{}
 		}
 		viewData.Project = *project
