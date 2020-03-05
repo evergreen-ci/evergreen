@@ -34,6 +34,9 @@ func (r *Resolver) Patch() PatchResolver {
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
+func (r *Resolver) Task() TaskResolver {
+	return &taskResolver{r}
+}
 
 type mutationResolver struct{ *Resolver }
 
@@ -534,6 +537,16 @@ func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 		DisplayName: &displayName,
 	}
 	return &user, nil
+}
+
+type taskResolver struct{ *Resolver }
+
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
+	patch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+	}
+	return &patch.PatchNumber, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
