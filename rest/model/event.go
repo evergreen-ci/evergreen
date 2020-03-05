@@ -29,6 +29,29 @@ type TaskEventData struct {
 	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
+func (el *TaskEventData) BuildFromService(t interface{}) error {
+	switch v := t.(type) {
+	case *event.TaskEventData:
+		el = &TaskEventData{
+			Execution: v.Execution,
+			HostId:    ToStringPtr(v.HostId),
+			UserId:    ToStringPtr(v.UserId),
+			JiraIssue: ToStringPtr(v.JiraIssue),
+			Status:    ToStringPtr(v.Status),
+			Timestamp: ToTimePtr(v.Timestamp),
+			Priority:  v.Priority,
+		}
+	default:
+		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling TaskEventData", t))
+	}
+	return nil
+}
+
+// ToService is not implemented for TaskEventData.
+func (el *TaskEventData) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for TaskEventData")
+}
+
 func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *event.EventLogEntry:
