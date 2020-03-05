@@ -39,8 +39,10 @@ type Projects struct {
 }
 
 type RecentTaskLogs struct {
-	EventLogs []*model.APIEventLogEntry `json:"eventLogs"`
-	TaskLogs  []*apimodels.LogMessage   `json:"taskLogs"`
+	EventLogs  []*model.APIEventLogEntry `json:"eventLogs"`
+	TaskLogs   []*apimodels.LogMessage   `json:"taskLogs"`
+	SystemLogs []*apimodels.LogMessage   `json:"systemLogs"`
+	AgentLogs  []*apimodels.LogMessage   `json:"agentLogs"`
 }
 
 type TaskResult struct {

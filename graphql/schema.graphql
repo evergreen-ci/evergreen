@@ -201,6 +201,8 @@ type User {
 type RecentTaskLogs {
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
+  systemLogs: [LogMessage!]!
+  agentLogs: [LogMessage!]!
 }
 
 type TaskEventLogData {

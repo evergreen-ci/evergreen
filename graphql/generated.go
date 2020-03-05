@@ -135,8 +135,10 @@ type ComplexityRoot struct {
 	}
 
 	RecentTaskLogs struct {
-		EventLogs func(childComplexity int) int
-		TaskLogs  func(childComplexity int) int
+		AgentLogs  func(childComplexity int) int
+		EventLogs  func(childComplexity int) int
+		SystemLogs func(childComplexity int) int
+		TaskLogs   func(childComplexity int) int
 	}
 
 	Task struct {
@@ -728,12 +730,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.UserPatches(childComplexity, args["userId"].(string)), true
 
+	case "RecentTaskLogs.agentLogs":
+		if e.complexity.RecentTaskLogs.AgentLogs == nil {
+			break
+		}
+
+		return e.complexity.RecentTaskLogs.AgentLogs(childComplexity), true
+
 	case "RecentTaskLogs.eventLogs":
 		if e.complexity.RecentTaskLogs.EventLogs == nil {
 			break
 		}
 
 		return e.complexity.RecentTaskLogs.EventLogs(childComplexity), true
+
+	case "RecentTaskLogs.systemLogs":
+		if e.complexity.RecentTaskLogs.SystemLogs == nil {
+			break
+		}
+
+		return e.complexity.RecentTaskLogs.SystemLogs(childComplexity), true
 
 	case "RecentTaskLogs.taskLogs":
 		if e.complexity.RecentTaskLogs.TaskLogs == nil {
@@ -1397,6 +1413,8 @@ type Query {
 type RecentTaskLogs {
 	eventLogs: [TaskEventLogEntry!]!
 	taskLogs: [LogMessage!]!
+	systemLogs: [LogMessage!]!
+	agentLogs: [LogMessage!]!
 }
 enum SortDirection {
 	ASC
@@ -3842,6 +3860,74 @@ func (ec *executionContext) _RecentTaskLogs_taskLogs(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TaskLogs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*apimodels.LogMessage)
+	fc.Result = res
+	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RecentTaskLogs_systemLogs(ctx context.Context, field graphql.CollectedField, obj *RecentTaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RecentTaskLogs",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SystemLogs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*apimodels.LogMessage)
+	fc.Result = res
+	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field graphql.CollectedField, obj *RecentTaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RecentTaskLogs",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AgentLogs, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7855,6 +7941,16 @@ func (ec *executionContext) _RecentTaskLogs(ctx context.Context, sel ast.Selecti
 			}
 		case "taskLogs":
 			out.Values[i] = ec._RecentTaskLogs_taskLogs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "systemLogs":
+			out.Values[i] = ec._RecentTaskLogs_systemLogs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "agentLogs":
+			out.Values[i] = ec._RecentTaskLogs_agentLogs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

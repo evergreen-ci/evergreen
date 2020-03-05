@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -469,7 +471,65 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
-	return &RecentTaskLogs{EventLogs: apiEventLogPointers}, nil
+
+	/////
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	p, err := r.sc.FindProjectById(t.Project)
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	taskLogPointers := []*apimodels.LogMessage{}
+	systemLogPointers := []*apimodels.LogMessage{}
+	agentLogPointers := []*apimodels.LogMessage{}
+
+	if defaultLogger == model.BuildloggerLogSender {
+		// code to access build logger
+	} else {
+		taskLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.TaskLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
+		}
+		//reverse
+		for i := len(taskLogs) - 1; i >= 0; i-- {
+			taskLogPointers = append(taskLogPointers, &taskLogs[i])
+		}
+
+		systemLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.SystemLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
+		}
+		//reverse
+		for i := len(systemLogs) - 1; i >= 0; i-- {
+			systemLogPointers = append(systemLogPointers, &systemLogs[i])
+		}
+
+		agentLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.AgentLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))
+		}
+		//reverse
+		for i := len(agentLogs) - 1; i >= 0; i-- {
+			agentLogPointers = append(agentLogPointers, &agentLogs[i])
+		}
+
+	}
+
+	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers}, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
