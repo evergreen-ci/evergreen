@@ -200,6 +200,7 @@ type User {
 
 type RecentTaskLogs {
   eventLogs: [TaskEventLogEntry!]!
+  taskLogs: [LogMessage!]!
 }
 
 type TaskEventLogData {

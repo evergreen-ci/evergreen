@@ -7,6 +7,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -39,6 +40,7 @@ type Projects struct {
 
 type RecentTaskLogs struct {
 	EventLogs []*model.APIEventLogEntry `json:"eventLogs"`
+	TaskLogs  []*apimodels.LogMessage   `json:"taskLogs"`
 }
 
 type TaskResult struct {

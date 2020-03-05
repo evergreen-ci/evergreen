@@ -136,6 +136,7 @@ type ComplexityRoot struct {
 
 	RecentTaskLogs struct {
 		EventLogs func(childComplexity int) int
+		TaskLogs  func(childComplexity int) int
 	}
 
 	Task struct {
@@ -733,6 +734,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RecentTaskLogs.EventLogs(childComplexity), true
+
+	case "RecentTaskLogs.taskLogs":
+		if e.complexity.RecentTaskLogs.TaskLogs == nil {
+			break
+		}
+
+		return e.complexity.RecentTaskLogs.TaskLogs(childComplexity), true
 
 	case "Task.aborted":
 		if e.complexity.Task.Aborted == nil {
@@ -1388,6 +1396,7 @@ type Query {
 }
 type RecentTaskLogs {
 	eventLogs: [TaskEventLogEntry!]!
+	taskLogs: [LogMessage!]!
 }
 enum SortDirection {
 	ASC
@@ -3813,6 +3822,40 @@ func (ec *executionContext) _RecentTaskLogs_eventLogs(ctx context.Context, field
 	res := resTmp.([]*model.APIEventLogEntry)
 	fc.Result = res
 	return ec.marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RecentTaskLogs_taskLogs(ctx context.Context, field graphql.CollectedField, obj *RecentTaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RecentTaskLogs",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskLogs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*apimodels.LogMessage)
+	fc.Result = res
+	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -7810,6 +7853,11 @@ func (ec *executionContext) _RecentTaskLogs(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "taskLogs":
+			out.Values[i] = ec._RecentTaskLogs_taskLogs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8693,6 +8741,57 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNLogMessage2githubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessage(ctx context.Context, sel ast.SelectionSet, v apimodels.LogMessage) graphql.Marshaler {
+	return ec._LogMessage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*apimodels.LogMessage) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessage(ctx context.Context, sel ast.SelectionSet, v *apimodels.LogMessage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LogMessage(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
