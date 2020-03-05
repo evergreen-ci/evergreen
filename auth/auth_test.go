@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	_ "github.com/evergreen-ci/evergreen/testutil" // Import testutil to force init to run
 	"github.com/stretchr/testify/assert"
 )
 
