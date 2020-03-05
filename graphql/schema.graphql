@@ -217,5 +217,13 @@ type TaskEventLogEntry {
   data: TaskEventLogData
 }
 
+type LogMessage {
+  type: String
+  severity: String
+  message: String
+  timestamp: Time
+  version: Int
+}
+
 scalar Time
 scalar Duration

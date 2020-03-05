@@ -39,3 +39,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEventLogEntry
   TaskEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
+  LogMessage:
+    model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
