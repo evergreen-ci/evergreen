@@ -911,7 +911,15 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	cmd = client.CreateCommand(ctx).Sudo(true)
-	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	// skip formatting if the volume already contains a filesystem
+	cmdOut := util.NewMBCappedWriter()
+	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("file -s /dev/%s", deviceName)).SetOutputWriter(cmdOut).Run(ctx); err != nil {
+		return errors.Wrap(err, "problem checking for formatted device")
+	}
+	if strings.TrimSpace(cmdOut.String()) == fmt.Sprintf("%s: data", deviceName) {
+		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	}
+
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
