@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,9 +21,15 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	duplicateTaskIDs, err := model.FindEnqueuedTaskIDs(taskIDs, distroQueueInfo.GetQueueCollection())
-	if err != nil {
-		return errors.Wrap(err, "could not find duplicate task IDs from other collection's task queues")
+	var duplicateTaskIDs []string
+	if distroQueueInfo.AliasQueue {
+		var err error
+		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, distroQueueInfo.GetQueueCollection())
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not find duplicate task IDs from other collection's task queues",
+			}))
+		}
 	}
 
 	for _, t := range tasks {
