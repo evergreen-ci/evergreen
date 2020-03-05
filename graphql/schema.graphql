@@ -174,10 +174,10 @@ type User {
 }
 
 type RecentTaskLogs {
-  eventLogs: [EventLogEntry!]!
+  eventLogs: [TaskEventLogEntry!]!
 }
 
-type EventLogData {
+type TaskEventLogData {
   hostId: String
   jiraIssue: String
   priority: Int
@@ -186,10 +186,10 @@ type EventLogData {
   userId: String
 }
 
-type EventLogEntry {
+type TaskEventLogEntry {
   timestamp: Time
   eventType: String
-  data: EventLogData
+  data: TaskEventLogData
 }
 
 scalar Time
