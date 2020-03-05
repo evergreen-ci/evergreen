@@ -1,0 +1,73 @@
+{
+  "tests": [
+    {
+      "query_file": "task_logs-event_logs-success.graphql",
+      "result": {
+        "data": {
+          "taskLogs": {
+            "eventLogs": [
+              {
+                "timestamp": "2020-03-03T10:45:17-05:00",
+                "eventType": "TASK_SCHEDULED",
+                "data": {
+                  "hostId": "",
+                  "jiraIssue": "",
+                  "priority": 0,
+                  "status": "",
+                  "timestamp": "2020-03-03T10:45:16-05:00",
+                  "userId": ""
+                }
+              },
+              {
+                "timestamp": "2020-03-03T10:45:27-05:00",
+                "eventType": "TASK_DISPATCHED",
+                "data": {
+                  "hostId": "i-08f7b38b217d21c13",
+                  "jiraIssue": "",
+                  "priority": 0,
+                  "status": "",
+                  "timestamp": null,
+                  "userId": ""
+                }
+              },
+              {
+                "timestamp": "2020-03-03T10:45:27-05:00",
+                "eventType": "TASK_STARTED",
+                "data": {
+                  "hostId": "hostid",
+                  "jiraIssue": "an_issue",
+                  "priority": 55,
+                  "status": "success",
+                  "timestamp": "2020-03-03T10:45:27-05:00",
+                  "userId": "super user"
+                }
+              },
+              {
+                "timestamp": "2020-03-03T10:46:00-05:00",
+                "eventType": "TASK_FINISHED",
+                "data": {
+                  "hostId": "",
+                  "jiraIssue": "",
+                  "priority": 0,
+                  "status": "success",
+                  "timestamp": null,
+                  "userId": ""
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_logs-event_logs-empty.graphql",
+      "result": {
+        "data": {
+          "taskLogs": {
+            "eventLogs": []
+          }
+        }
+      }
+    }
+  ]
+}
