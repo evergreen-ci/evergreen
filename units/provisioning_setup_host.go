@@ -826,15 +826,38 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				h.Id, h.Provider)
 		}
 
-		// create the volume
-		volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-			Size:             h.HomeVolumeSize,
-			AvailabilityZone: h.Zone,
-			CreatedBy:        h.StartedBy,
-			Type:             evergreen.DefaultEBSType,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+		var volume *host.Volume
+		if h.HomeVolumeID != "" {
+			volume, err = host.FindVolumeByID(h.HomeVolumeID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get volume '%s'", h.HomeVolumeID)
+			}
+			if volume == nil {
+				return errors.Errorf("volume '%s' does not exist", h.HomeVolumeID)
+			}
+			sourceHost, err := host.FindHostWithVolume(h.HomeVolumeID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
+			}
+			if sourceHost != nil {
+				if sourceHost.Status != evergreen.HostTerminated {
+					return errors.Errorf("source host '%s' is not terminated", sourceHost.Id)
+				}
+				if err = sourceHost.RemoveVolumeFromHost(h.HomeVolumeID); err != nil {
+					return errors.Wrapf(err, "can't remove volume '%s' from source host '%s'", h.HomeVolumeID)
+				}
+			}
+		} else {
+			// create the volume
+			volume, err = cloudMgr.CreateVolume(ctx, &host.Volume{
+				Size:             h.HomeVolumeSize,
+				AvailabilityZone: h.Zone,
+				CreatedBy:        h.StartedBy,
+				Type:             evergreen.DefaultEBSType,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+			}
 		}
 
 		// attach to the host

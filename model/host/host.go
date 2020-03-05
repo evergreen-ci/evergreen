@@ -151,7 +151,8 @@ type Host struct {
 
 	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
-	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
+	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
+	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 }
 
 type Tag struct {
