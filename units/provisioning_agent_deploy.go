@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -309,11 +308,8 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string
 
 // Start the agent process on the specified remote host.
 func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
-	// the path to the agent binary on the remote machine
-	binary := filepath.Join(j.host.Distro.HomeDir(), j.host.Distro.BinaryName())
-
 	// build the command to run on the remote machine
-	remoteCmd := strings.Join(j.host.AgentCommand(binary, settings), " ")
+	remoteCmd := strings.Join(j.host.AgentCommand(settings), " ")
 	grip.Info(message.Fields{
 		"message": "starting agent on host",
 		"host_id": j.host.Id,

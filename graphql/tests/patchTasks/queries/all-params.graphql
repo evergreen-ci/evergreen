@@ -1,0 +1,15 @@
+{
+  patchTasks(
+    patchId: "5e4ff3abe3c3317e352062e4"
+    limit: 2
+    page: 0
+    sortDir: DESC
+    sortBy: VARIANT
+  ) {
+    id
+    status
+    baseStatus
+    displayName
+    buildVariant
+  }
+}

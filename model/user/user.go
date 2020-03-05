@@ -32,6 +32,7 @@ type DBUser struct {
 	SystemRoles      []string     `bson:"roles"`
 	LoginCache       LoginCache   `bson:"login_cache,omitempty"`
 	FavoriteProjects []string     `bson:"favorite_projects"`
+	OnlyAPI          bool         `bson:"only_api,omitempty"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }

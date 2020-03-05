@@ -699,6 +699,11 @@ Evergreen - Distros
           </div>
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
+
+          <label class="distro-label">Root Directory:</label>
+          <input type="text" ng-required="isWindows()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
+            placeholder="Native path to root directory" ng-readonly="readOnly">
+          <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
           <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Binary Directory:</label>
             <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperBinaryDir"
@@ -711,7 +716,7 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.jasperCredentialsPath.$invalid"> Jasper credentials path is required</div><br />
 
             <label class="distro-label">Client Directory:</label>
-            <input type="text" ng-required="isNonLegacyProvisioning(0)" ng-readonly="readOnly" name="clientDir"
+            <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="clientDir"
               class="form-control" ng-model="activeDistro.bootstrap_settings.client_dir" placeholder="Absolute native path to the directory of the evergreen binary">
             <div class="icon fa fa-warning distro-error" ng-show="form.clientDir.$invalid"> Client directory is required</div><br />
 
@@ -727,11 +732,6 @@ Evergreen - Distros
                 ng-readonly="readOnly" name="serviceUser"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
               <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
-
-              <label class="distro-label">Root Directory:</label>
-              <input type="text" ng-required="isWindows() && isNonLegacyProvisioning()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
-                placeholder="Native path to root directory" ng-readonly="readOnly">
-              <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
             </div>
 			<div ng-form name="env">
 			  <label id="env-table" class="distro-label">Environment Variables:</label>

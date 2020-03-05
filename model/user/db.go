@@ -22,6 +22,7 @@ var (
 	CreatedAtKey                = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
 	SettingsKey                 = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey                   = bsonutil.MustHaveTag(DBUser{}, "APIKey")
+	OnlyAPIKey                  = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
 	PubKeysKey                  = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
 	LoginCacheKey               = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
 	RolesKey                    = bsonutil.MustHaveTag(DBUser{}, "SystemRoles")

@@ -631,12 +631,12 @@ func testMatchesRegex(testName string, sub *event.Subscription) (bool, error) {
 	return regexp.MatchString(regex, testName)
 }
 
-func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, test *task.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
 
-	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.Id)
+	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
 	if err != nil {
 		return false, errors.Wrap(err, "can't find alerts for task test")
 	}
@@ -658,7 +658,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 
 	if isTestStatusRegression(oldTestResult.Status, test.Status) {
 		// try to find a stepback alert
-		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, previousTask.RevisionOrderNumber)
+		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get alert for stepback")
 		}
@@ -667,7 +667,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 			return true, nil
 		}
 	} else {
-		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get most recent alert")
 		}
@@ -700,25 +700,47 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
-	if err != nil {
-		return nil, errors.Wrap(err, "error fetching previous task")
-	}
+	currentTask := t.task
+	var previousCompleteTask *task.Task
+	if t.task.IsPartOfDisplay() {
+		var err error
+		currentTask, err = t.task.GetDisplayTask()
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get display task for '%s'", t.task)
+		}
 
-	if previousCompleteTask != nil {
-		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
+		previousCompleteTask, err = task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
+			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching previous task")
+		}
+		if previousCompleteTask != nil {
+			results, err := previousCompleteTask.GetTestResultsForDisplayTask()
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get test results for '%s'", previousCompleteTask.Id)
+			}
+			t.oldTestResults = mapTestResultsByTestFile(results)
+		}
+	} else {
+		var err error
+		previousCompleteTask, err = task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
+			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching previous task")
+		}
+		if previousCompleteTask != nil {
+			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
+		}
 	}
 
 	testsToAlert := []task.TestResult{}
 	hasFailingTest := false
-	var match bool
 	for _, test := range t.task.LocalTestResults {
 		if test.Status != evergreen.TestFailedStatus {
 			continue
 		}
 		hasFailingTest = true
-		match, err = testMatchesRegex(test.TestFile, sub)
+		match, err := testMatchesRegex(test.TestFile, sub)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
@@ -732,17 +754,17 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &test)
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, currentTask, &test)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		if shouldInclude {
-			orderNumber := t.task.RevisionOrderNumber
+			orderNumber := currentTask.RevisionOrderNumber
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, currentTask.Id, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
@@ -847,16 +869,16 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 // multiple tests of the same name exist, this function will return a
 // failing test if one existed, otherwise it may return any test with
 // the same name
-func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
+func mapTestResultsByTestFile(results []task.TestResult) map[string]*task.TestResult {
 	m := map[string]*task.TestResult{}
 
-	for i := range t.LocalTestResults {
-		if testResult, ok := m[t.LocalTestResults[i].TestFile]; ok {
-			if !isTestStatusRegression(testResult.Status, t.LocalTestResults[i].Status) {
+	for i, result := range results {
+		if testResult, ok := m[result.TestFile]; ok {
+			if !isTestStatusRegression(testResult.Status, result.Status) {
 				continue
 			}
 		}
-		m[t.LocalTestResults[i].TestFile] = &t.LocalTestResults[i]
+		m[result.TestFile] = &results[i]
 	}
 
 	return m
