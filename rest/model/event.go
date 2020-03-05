@@ -29,15 +29,15 @@ type TaskEventData struct {
 	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
-func (el *TaskEventData) BuildFromService(t *event.TaskEventData) {
-	el = &TaskEventData{
-		Execution: t.Execution,
-		HostId:    ToStringPtr(t.HostId),
-		UserId:    ToStringPtr(t.UserId),
-		JiraIssue: ToStringPtr(t.JiraIssue),
-		Status:    ToStringPtr(t.Status),
-		Timestamp: ToTimePtr(t.Timestamp),
-		Priority:  t.Priority,
+func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
+	(*el) = TaskEventData{
+		Execution: v.Execution,
+		HostId:    ToStringPtr(v.HostId),
+		UserId:    ToStringPtr(v.UserId),
+		JiraIssue: ToStringPtr(v.JiraIssue),
+		Status:    ToStringPtr(v.Status),
+		Timestamp: ToTimePtr(v.Timestamp),
+		Priority:  v.Priority,
 	}
 }
 
@@ -53,9 +53,8 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 		if ok == false {
 			return errors.New(fmt.Sprintf("Incorrect type for data field when unmarshalling EventLogEntry"))
 		}
-		// te := TaskEventData{}
-		// te.BuildFromService(d)
-
+		taskEventData := TaskEventData{}
+		taskEventData.BuildFromService(d)
 		(*el) = APIEventLogEntry{
 			ID:           ToStringPtr(v.ID),
 			ResourceType: ToStringPtr(v.ResourceType),
@@ -63,15 +62,7 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 			Timestamp:    ToTimePtr(v.Timestamp),
 			ResourceId:   ToStringPtr(v.ResourceId),
 			EventType:    ToStringPtr(v.EventType),
-			Data: &TaskEventData{
-				Execution: d.Execution,
-				HostId:    ToStringPtr(d.HostId),
-				UserId:    ToStringPtr(d.UserId),
-				JiraIssue: ToStringPtr(d.JiraIssue),
-				Timestamp: ToTimePtr(d.Timestamp),
-				Priority:  d.Priority,
-				Status:    ToStringPtr(d.Status),
-			},
+			Data:         &taskEventData,
 		}
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
