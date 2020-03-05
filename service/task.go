@@ -528,7 +528,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				grip.Warning(logReader.Close())
 			}()
-			gimlet.WriteJSON(w, readBuildloggerToSlice(projCtx.Task.Id, logReader))
+			gimlet.WriteJSON(w, readBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 			return
 		}
 		grip.Error(message.WrapError(err, message.Fields{
@@ -620,7 +620,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go readBuildloggerToChan(projCtx.Task.Id, logReader, data.Buildlogger)
+	go readBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
@@ -875,10 +875,10 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func readBuildloggerToSlice(taskID string, r io.ReadCloser) []apimodels.BuildloggerLogLine {
+func readBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []apimodels.BuildloggerLogLine {
 	lines := []apimodels.BuildloggerLogLine{}
 	lineChan := make(chan apimodels.BuildloggerLogLine, 1024)
-	go readBuildloggerToChan(taskID, r, lineChan)
+	go readBuildloggerToChan(ctx, taskID, r, lineChan)
 
 	for {
 		line, more := <-lineChan
@@ -892,7 +892,7 @@ func readBuildloggerToSlice(taskID string, r io.ReadCloser) []apimodels.Buildlog
 	return lines
 }
 
-func readBuildloggerToChan(taskID string, r io.ReadCloser, lines chan apimodels.BuildloggerLogLine) {
+func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- apimodels.BuildloggerLogLine) {
 	var (
 		line string
 		err  error
@@ -926,9 +926,17 @@ func readBuildloggerToChan(taskID string, r io.ReadCloser, lines chan apimodels.
 			}
 		}
 
-		lines <- apimodels.BuildloggerLogLine{
+		select {
+		case <-ctx.Done():
+			grip.Error(message.WrapError(ctx.Err(), message.Fields{
+				"task_id": taskID,
+				"message": "context error while reading buildlogger log lines",
+			}))
+		case lines <- apimodels.BuildloggerLogLine{
 			Message:  strings.TrimSuffix(line, "\n"),
 			Severity: getSeverityMapping(severity),
+		}:
+			continue
 		}
 	}
 }
