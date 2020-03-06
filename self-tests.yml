@@ -191,9 +191,8 @@ variables:
           remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
           bucket: mciuploads
           content_type: application/json
-          permissions: private
+          permissions: public-read
           display_name: generate-lint.json
-          visibility: signed
       - command: generate.tasks
         params:
           files:
