@@ -38,7 +38,8 @@ func makeDuplicateTaskCheckJob() *duplicateTaskCheckJob {
 	return j
 }
 
-// NewDuplicateTaskCheckJob checks for tasks that appear more than once in the
+// NewDuplicateTaskCheckJob checks for any tasks that appear in multiple primary
+// task queues.
 func NewDuplicateTaskCheckJob(id string) amboy.Job {
 	j := makeDuplicateTaskCheckJob()
 	j.SetID(fmt.Sprintf("%s.%s", duplicateTaskCheckJobName, id))
