@@ -174,6 +174,17 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 	return nil
 }
 
+func (p *DBPatchConnector) IsPatchEmpty(id string) (bool, error) {
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(id)).WithFields(patch.PatchesKey))
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	if patchDoc == nil {
+		return false, errors.New("patch is empty")
+	}
+	return len(patchDoc.Patches) == 0, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
@@ -296,4 +307,8 @@ func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, str
 	}
 
 	return baseRepo[0], baseRepo[1], nil
+}
+
+func (pc *MockPatchConnector) IsPatchEmpty(id string) (bool, error) {
+	return false, nil
 }

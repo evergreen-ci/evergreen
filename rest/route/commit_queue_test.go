@@ -6,11 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -156,20 +154,8 @@ func (s *CommitQueueSuite) TestClearAll() {
 }
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	id := mgobson.NewObjectId().Hex()
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-	id := "aabbccddeeff112233445566"
-	p := &patch.Patch{
-		Id:      mgobson.ObjectIdHex(id),
-		Project: "test",
-		Author:  "somebody",
-		Patches: []patch.ModulePatch{
-			{
-				Githash: "revision",
-			},
-		},
-	}
-	s.NoError(p.Insert())
 	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
 		Id: &id,
 	})
@@ -177,22 +163,4 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
-}
-
-func (s *CommitQueueSuite) TestIsPatchEmpty() {
-	s.NoError(db.ClearCollections(patch.Collection))
-	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-	id := "aabbccddeeff112233445566"
-	p := &patch.Patch{
-		Id:      mgobson.ObjectIdHex(id),
-		Project: "test",
-		Author:  "somebody",
-	}
-	s.NoError(p.Insert())
-	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
-		Id: &id,
-	})
-	route.item = id
-	response := route.Run(context.Background())
-	s.Equal(500, response.Status())
 }
