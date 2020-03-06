@@ -91,6 +91,7 @@ type ComplexityRoot struct {
 		PatchNumber   func(childComplexity int) int
 		ProjectId     func(childComplexity int) int
 		Status        func(childComplexity int) int
+		TaskCount     func(childComplexity int) int
 		Tasks         func(childComplexity int) int
 		Time          func(childComplexity int) int
 		Variants      func(childComplexity int) int
@@ -256,6 +257,7 @@ type MutationResolver interface {
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
+	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -512,6 +514,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Status(childComplexity), true
+
+	case "Patch.taskCount":
+		if e.complexity.Patch.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.Patch.TaskCount(childComplexity), true
 
 	case "Patch.tasks":
 		if e.complexity.Patch.Tasks == nil {
@@ -1378,6 +1387,7 @@ type Patch {
 	alias: String!
 	duration: PatchDuration
 	time: PatchTime
+	taskCount: Int
 }
 type PatchDuration {
 	makespan: String
@@ -2995,6 +3005,37 @@ func (ec *executionContext) _Patch_time(ctx context.Context, field graphql.Colle
 	res := resTmp.(*PatchTime)
 	fc.Result = res
 	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_taskCount(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().TaskCount(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
@@ -7627,6 +7668,17 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Patch_time(ctx, field, obj)
+				return res
+			})
+		case "taskCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_taskCount(ctx, field, obj)
 				return res
 			})
 		default:

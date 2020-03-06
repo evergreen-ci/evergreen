@@ -34,3 +34,10 @@ type TaskLog struct {
 	MessageCount int          `json:"c"`
 	Messages     []LogMessage `json:"m"`
 }
+
+// BuildloggerLogLine represents a cedar buildlogger log line, with the
+// severity extracted.
+type BuildloggerLogLine struct {
+	Message  string `bson:"m" json:"m"`
+	Severity string `bson:"s" json:"s"`
+}

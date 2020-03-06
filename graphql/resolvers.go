@@ -152,6 +152,14 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 	}, nil
 }
 
+func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
+	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
+	}
+	return &taskCount, nil
+}
+
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }

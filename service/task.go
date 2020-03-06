@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/timber/fetcher"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -125,7 +126,7 @@ type uiTestResult struct {
 }
 
 type logData struct {
-	Buildlogger chan string
+	Buildlogger chan apimodels.BuildloggerLogLine
 	Data        chan apimodels.LogMessage
 	User        gimlet.User
 }
@@ -524,8 +525,13 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		var logReader io.ReadCloser
 		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
 		if err == nil {
-			gimlet.WriteText(w, logReader)
-			grip.Warning(logReader.Close())
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+			gimlet.WriteJSON(w, readBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 			return
 		}
 		grip.Error(message.WrapError(err, message.Fields{
@@ -578,7 +584,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := logData{Buildlogger: make(chan string, 1024), User: usr}
+	data := logData{Buildlogger: make(chan apimodels.BuildloggerLogLine, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	defaultLogger, err := getDefaultLogger(projCtx)
@@ -589,7 +595,12 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	if defaultLogger == model.BuildloggerLogSender {
 		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
 		if err == nil {
-			defer logReader.Close()
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task_id": projCtx.Task.Id,
@@ -615,27 +626,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		defer close(data.Buildlogger)
-		if logReader == nil {
-			return
-		}
-
-		reader := bufio.NewReader(logReader)
-		var line string
-		var err error
-		for err == nil {
-			line, err = reader.ReadString('\n')
-			if err != nil && err != io.EOF {
-				grip.Error(message.WrapError(err, message.Fields{
-					"task_id": projCtx.Task.Id,
-					"message": "problem reading buildlogger log lines",
-				}))
-				return
-			}
-			data.Buildlogger <- strings.TrimSuffix(line, "\n")
-		}
-	}()
+	go readBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
@@ -887,5 +878,85 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
+	}
+}
+
+func readBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []apimodels.BuildloggerLogLine {
+	lines := []apimodels.BuildloggerLogLine{}
+	lineChan := make(chan apimodels.BuildloggerLogLine, 1024)
+	go readBuildloggerToChan(ctx, taskID, r, lineChan)
+
+	for {
+		line, more := <-lineChan
+		if !more {
+			break
+		}
+
+		lines = append(lines, line)
+	}
+
+	return lines
+}
+
+func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- apimodels.BuildloggerLogLine) {
+	var (
+		line string
+		err  error
+	)
+
+	defer close(lines)
+	if r == nil {
+		return
+	}
+
+	reader := bufio.NewReader(r)
+	for err == nil {
+		line, err = reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": taskID,
+				"message": "problem reading buildlogger log lines",
+			}))
+			return
+		}
+
+		severity := int(level.Info)
+		if strings.HasPrefix(line, "[P: ") {
+			severity, err = strconv.Atoi(strings.TrimSpace(line[3:6]))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"task_id": taskID,
+					"message": "problem reading buildlogger log line severity",
+				}))
+				err = nil
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			grip.Error(message.WrapError(ctx.Err(), message.Fields{
+				"task_id": taskID,
+				"message": "context error while reading buildlogger log lines",
+			}))
+		case lines <- apimodels.BuildloggerLogLine{
+			Message:  strings.TrimSuffix(line, "\n"),
+			Severity: getSeverityMapping(severity),
+		}:
+		}
+	}
+}
+
+func getSeverityMapping(s int) string {
+	switch {
+	case s >= int(level.Error):
+		return apimodels.LogErrorPrefix
+	case s >= int(level.Warning):
+		return apimodels.LogWarnPrefix
+	case s >= int(level.Info):
+		return apimodels.LogInfoPrefix
+	case s < int(level.Info):
+		return apimodels.LogDebugPrefix
+	default:
+		return apimodels.LogInfoPrefix
 	}
 }
