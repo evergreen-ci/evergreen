@@ -164,7 +164,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // GetCommonViewData returns a struct that can supplement the struct used to provide data to
 // views. It contains data that is used for most/all Evergreen pages.
 // The needsUser and needsProject params will cause an error to be logged if there is no
-// user/project, but other data will still be returned
+// user/project. Data will not be returned if the project cannot be found.
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
 	ctx := r.Context()
