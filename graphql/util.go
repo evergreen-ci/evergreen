@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -172,9 +173,9 @@ func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 			return
 		}
 
-		severity := string(level.Info)
+		severity := int(level.Info)
 		if strings.HasPrefix(line, "[P: ") {
-			severity = strings.TrimSpace(line[3:6])
+			severity, err = strconv.Atoi(strings.TrimSpace(line[3:6]))
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"task_id": taskID,
@@ -192,7 +193,7 @@ func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 			}))
 		case lines <- apimodels.LogMessage{
 			Message:  strings.TrimSuffix(line, "\n"),
-			Severity: severity,
+			Severity: apimodels.GetSeverityMapping(severity),
 		}:
 		}
 	}

@@ -940,23 +940,8 @@ func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 			}))
 		case lines <- apimodels.BuildloggerLogLine{
 			Message:  strings.TrimSuffix(line, "\n"),
-			Severity: getSeverityMapping(severity),
+			Severity: apimodels.GetSeverityMapping(severity),
 		}:
 		}
-	}
-}
-
-func getSeverityMapping(s int) string {
-	switch {
-	case s >= int(level.Error):
-		return apimodels.LogErrorPrefix
-	case s >= int(level.Warning):
-		return apimodels.LogWarnPrefix
-	case s >= int(level.Info):
-		return apimodels.LogInfoPrefix
-	case s < int(level.Info):
-		return apimodels.LogDebugPrefix
-	default:
-		return apimodels.LogInfoPrefix
 	}
 }

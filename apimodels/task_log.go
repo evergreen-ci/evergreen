@@ -1,6 +1,10 @@
 package apimodels
 
-import "time"
+import (
+	"time"
+
+	"github.com/mongodb/grip/level"
+)
 
 // for the different types of remote logging
 const (
@@ -40,4 +44,19 @@ type TaskLog struct {
 type BuildloggerLogLine struct {
 	Message  string `bson:"m" json:"m"`
 	Severity string `bson:"s" json:"s"`
+}
+
+func GetSeverityMapping(s int) string {
+	switch {
+	case s >= int(level.Error):
+		return LogErrorPrefix
+	case s >= int(level.Warning):
+		return LogWarnPrefix
+	case s >= int(level.Info):
+		return LogInfoPrefix
+	case s < int(level.Info):
+		return LogDebugPrefix
+	default:
+		return LogInfoPrefix
+	}
 }

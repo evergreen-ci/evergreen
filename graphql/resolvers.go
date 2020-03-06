@@ -519,8 +519,8 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		systemLogs := readBuildloggerToSlice(ctx, taskID, systemLogReader)
-		for _, systemLog := range systemLogs {
-			systemLogPointers = append(systemLogPointers, &systemLog)
+		for i := range systemLogs {
+			systemLogPointers = append(systemLogPointers, &systemLogs[i])
 		}
 
 		agentLogReader, err := GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
@@ -528,8 +528,8 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		agentLogs := readBuildloggerToSlice(ctx, taskID, agentLogReader)
-		for _, agentLog := range agentLogs {
-			agentLogPointers = append(agentLogPointers, &agentLog)
+		for i := range agentLogs {
+			agentLogPointers = append(agentLogPointers, &agentLogs[i])
 		}
 	} else {
 		taskLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
