@@ -30,15 +30,13 @@ type TaskEventData struct {
 }
 
 func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
-	(*el) = TaskEventData{
-		Execution: v.Execution,
-		HostId:    ToStringPtr(v.HostId),
-		UserId:    ToStringPtr(v.UserId),
-		JiraIssue: ToStringPtr(v.JiraIssue),
-		Status:    ToStringPtr(v.Status),
-		Timestamp: ToTimePtr(v.Timestamp),
-		Priority:  v.Priority,
-	}
+	el.Execution = v.Execution
+	el.HostId = ToStringPtr(v.HostId)
+	el.UserId = ToStringPtr(v.UserId)
+	el.JiraIssue = ToStringPtr(v.JiraIssue)
+	el.Status = ToStringPtr(v.Status)
+	el.Timestamp = ToTimePtr(v.Timestamp)
+	el.Priority = v.Priority
 }
 
 // ToService is not implemented for TaskEventData.
@@ -55,15 +53,13 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 		}
 		taskEventData := TaskEventData{}
 		taskEventData.BuildFromService(d)
-		(*el) = APIEventLogEntry{
-			ID:           ToStringPtr(v.ID),
-			ResourceType: ToStringPtr(v.ResourceType),
-			ProcessedAt:  ToTimePtr(v.ProcessedAt),
-			Timestamp:    ToTimePtr(v.Timestamp),
-			ResourceId:   ToStringPtr(v.ResourceId),
-			EventType:    ToStringPtr(v.EventType),
-			Data:         &taskEventData,
-		}
+		el.ID = ToStringPtr(v.ID)
+		el.ResourceType = ToStringPtr(v.ResourceType)
+		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
+		el.Timestamp = ToTimePtr(v.Timestamp)
+		el.ResourceId = ToStringPtr(v.ResourceId)
+		el.EventType = ToStringPtr(v.EventType)
+		el.Data = &taskEventData
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
 	}
