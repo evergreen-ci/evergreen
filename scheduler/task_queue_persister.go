@@ -23,7 +23,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	}
 	var duplicateTaskIDs []string
 	var err error
-	if distroQueueInfo.AliasQueue {
+	if !distroQueueInfo.AliasQueue {
 		duplicateTaskIDs, err = model.FindEnqueuedTaskIDs(taskIDs, distroQueueInfo.GetQueueCollection())
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -34,7 +34,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 
 	for _, t := range tasks {
 		// Ignore tasks that are already in the other queue.
-		if util.StringSliceContains(duplicateTaskIDs, t.Id) {
+		if !distroQueueInfo.AliasQueue && util.StringSliceContains(duplicateTaskIDs, t.Id) {
 			continue
 		}
 
