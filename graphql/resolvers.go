@@ -472,7 +472,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
 
-	/////
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
@@ -494,8 +493,36 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	systemLogPointers := []*apimodels.LogMessage{}
 	agentLogPointers := []*apimodels.LogMessage{}
 
-	if defaultLogger == model.BuildloggerLogSender {
-		// code to access build logger
+	if true {
+		// look at cedar
+		// task logs
+		taskLogReader, err := GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		taskLogs := readBuildloggerToSlice(ctx, taskID, taskLogReader)
+		for i := range taskLogs {
+			taskLogPointers = append(taskLogPointers, &taskLogs[i])
+		}
+
+		// system logs
+		systemLogReader, err := GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		systemLogs := readBuildloggerToSlice(ctx, taskID, systemLogReader)
+		for _, systemLog := range systemLogs {
+			systemLogPointers = append(systemLogPointers, &systemLog)
+		}
+
+		agentLogReader, err := GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		agentLogs := readBuildloggerToSlice(ctx, taskID, agentLogReader)
+		for _, agentLog := range agentLogs {
+			agentLogPointers = append(agentLogPointers, &agentLog)
+		}
 	} else {
 		taskLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
@@ -541,6 +568,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	authUser := gimlet.GetUser(ctx)
+
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
@@ -631,6 +659,9 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++=")
+	fmt.Println(usr.GetAPIKey())
+	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++=")
 	displayName := usr.DisplayName()
 	user := restModel.APIUser{
 		DisplayName: &displayName,
