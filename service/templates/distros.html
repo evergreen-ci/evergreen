@@ -700,10 +700,12 @@ Evergreen - Distros
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
 
-          <label class="distro-label">Root Directory:</label>
-          <input type="text" ng-required="isWindows()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
-            placeholder="Native path to root directory" ng-readonly="readOnly">
-          <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+          <div ng-show="isWindows()">
+            <label class="distro-label">Root Directory:</label>
+            <input type="text" ng-required="isWindows()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
+              placeholder="Native path to root directory" ng-readonly="readOnly">
+            <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
+          </div>
           <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Binary Directory:</label>
             <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperBinaryDir"
