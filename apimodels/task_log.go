@@ -1,15 +1,20 @@
 package apimodels
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/timber/fetcher"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -44,13 +49,6 @@ type TaskLog struct {
 	Timestamp    time.Time    `json:"ts"`
 	MessageCount int          `json:"c"`
 	Messages     []LogMessage `json:"m"`
-}
-
-// BuildloggerLogLine represents a cedar buildlogger log line, with the
-// severity extracted.
-type BuildloggerLogLine struct {
-	Message  string `bson:"m" json:"m"`
-	Severity string `bson:"s" json:"s"`
 }
 
 func GetSeverityMapping(s int) string {
@@ -95,4 +93,69 @@ func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType
 
 	logReader, err := fetcher.Logs(ctx, opts)
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", taskId)
+}
+
+func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- LogMessage) {
+	var (
+		line string
+		err  error
+	)
+
+	defer close(lines)
+	if r == nil {
+		return
+	}
+
+	reader := bufio.NewReader(r)
+	for err == nil {
+		line, err = reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": taskID,
+				"message": "problem reading buildlogger log lines",
+			}))
+			return
+		}
+
+		severity := int(level.Info)
+		if strings.HasPrefix(line, "[P: ") {
+			severity, err = strconv.Atoi(strings.TrimSpace(line[3:6]))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"task_id": taskID,
+					"message": "problem reading buildlogger log line severity",
+				}))
+				err = nil
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			grip.Error(message.WrapError(ctx.Err(), message.Fields{
+				"task_id": taskID,
+				"message": "context error while reading buildlogger log lines",
+			}))
+		case lines <- LogMessage{
+			Message:  strings.TrimSuffix(line, "\n"),
+			Severity: GetSeverityMapping(severity),
+		}:
+		}
+	}
+}
+
+func ReadBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []LogMessage {
+	lines := []LogMessage{}
+	lineChan := make(chan LogMessage, 1024)
+	go ReadBuildloggerToChan(ctx, taskID, r, lineChan)
+
+	for {
+		line, more := <-lineChan
+		if !more {
+			break
+		}
+
+		lines = append(lines, line)
+	}
+
+	return lines
 }

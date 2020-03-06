@@ -501,14 +501,14 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	systemLogPointers := []*apimodels.LogMessage{}
 	agentLogPointers := []*apimodels.LogMessage{}
 
-	if true {
-		// look at cedar
+	if defaultLogger == model.BuildloggerLogSender {
+		// get logs from cedar
 		// task logs
 		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		taskLogs := readBuildloggerToSlice(ctx, taskID, taskLogReader)
+		taskLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
 		for i := range taskLogs {
 			taskLogPointers = append(taskLogPointers, &taskLogs[i])
 		}
@@ -518,16 +518,17 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		systemLogs := readBuildloggerToSlice(ctx, taskID, systemLogReader)
+		systemLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
 		for i := range systemLogs {
 			systemLogPointers = append(systemLogPointers, &systemLogs[i])
 		}
 
+		// agent logs
 		agentLogReader, err := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		agentLogs := readBuildloggerToSlice(ctx, taskID, agentLogReader)
+		agentLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
 		for i := range agentLogs {
 			agentLogPointers = append(agentLogPointers, &agentLogs[i])
 		}
@@ -564,7 +565,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 
 	}
 
-	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers}, nil
+	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
@@ -667,9 +668,6 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++=")
-	fmt.Println(usr.GetAPIKey())
-	fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++=")
 	displayName := usr.DisplayName()
 	user := restModel.APIUser{
 		DisplayName: &displayName,
