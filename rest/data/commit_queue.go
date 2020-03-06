@@ -121,15 +121,12 @@ func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 func (pc *DBCommitQueueConnector) IsPatchEmpty(id string) (bool, error) {
 	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(id)).WithFields(patch.PatchesKey))
 	if err != nil {
-		return true, errors.WithStack(err)
+		return false, errors.WithStack(err)
 	}
 	if patchDoc == nil {
 		return false, errors.New("patch is empty")
 	}
-	if len(patchDoc.Patches) == 0 {
-		return true, nil
-	}
-	return false, nil
+	return len(patchDoc.Patches) == 0, nil
 }
 
 type UserRepoInfo struct {
