@@ -1,10 +1,19 @@
 {
   "tests": [
     {
-      "query_file": "task_logs-event_logs-success.graphql",
+      "query_file": "task_logs-all-logs-success.graphql",
       "result": {
         "data": {
           "taskLogs": {
+            "systemLogs": [
+              {
+                "type": "S",
+                "severity": "I",
+                "message": "    [javac]     protected void finalize() {",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              }
+            ],
             "eventLogs": [
               {
                 "timestamp": "2020-03-03T10:45:17-05:00",
@@ -54,17 +63,42 @@
                   "userId": ""
                 }
               }
+            ],
+            "taskLogs": [
+              {
+                "type": "T",
+                "severity": "I",
+                "message": "    [javac] 9 warnings",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              },
+              {
+                "type": "T",
+                "severity": "I",
+                "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              }
+            ],
+            "agentLogs": [
+              {
+                "type": "E",
+                "severity": "I",
+                "message": "    [javac]                    ^",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              }
             ]
           }
         }
       }
     },
     {
-      "query_file": "task_logs-event_logs-empty.graphql",
+      "query_file": "task_logs-nonexistent-task.graphql",
       "result": {
         "errors": [
           {
-            "message": "error finding task by id asrtoeiarnst: 404 (Not Found): task with id asrtoeiarnst not found",
+            "message": "error finding task by id osiernar: 404 (Not Found): task with id osiernar not found",
             "path": ["taskLogs"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }

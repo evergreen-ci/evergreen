@@ -55,6 +55,8 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
+	logsDb := env.Client().Database("logs")
+	require.NoError(t, logsDb.Drop(ctx))
 	testUser := user.DBUser{
 		Id:          apiUser,
 		APIKey:      apiKey,
@@ -89,7 +91,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	err = json.Unmarshal(resultsFile, &tests)
 	require.NoError(t, err)
 
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), testData))
+	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database("logs"), testData))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
@@ -114,7 +116,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	}
 }
 
-func setupData(db mongo.Database, data map[string]json.RawMessage) error {
+func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
@@ -122,8 +124,14 @@ func setupData(db mongo.Database, data map[string]json.RawMessage) error {
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
 		// test spec is normal JSON
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
-		_, err := db.Collection(coll).InsertMany(ctx, docs)
-		catcher.Add(err)
+		// task_logg collection belongs to the logs db
+		if coll == "task_logg" {
+			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
+			catcher.Add(err)
+		} else {
+			_, err := db.Collection(coll).InsertMany(ctx, docs)
+			catcher.Add(err)
+		}
 	}
 	return catcher.Resolve()
 }

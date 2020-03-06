@@ -1,0 +1,11 @@
+query {
+  taskLogs(taskId: "osiernar") {
+    systemLogs {
+      type
+      severity
+      message
+      timestamp
+      version
+    }
+  }
+}
