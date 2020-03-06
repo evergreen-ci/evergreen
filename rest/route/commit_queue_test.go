@@ -154,8 +154,8 @@ func (s *CommitQueueSuite) TestClearAll() {
 }
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
-	id := mgobson.NewObjectId().Hex()
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	id := mgobson.NewObjectId().Hex()
 	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
 		Id: &id,
 	})
