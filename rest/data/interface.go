@@ -299,6 +299,7 @@ type Connector interface {
 	CommitQueueRemoveItem(string, string) (bool, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
+	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 
 	// GetDockerLogs returns logs for the given docker container

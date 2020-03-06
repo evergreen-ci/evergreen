@@ -190,7 +190,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"project_id":   cq.ProjectID,
 		"time_waiting": timeWaiting.Seconds(),
 		"queue_length": len(cq.Queue),
-		"message":      "dequeued commit queue item",
+		"message":      "started testing commit queue item",
 	})
 
 	conf := j.env.Settings()
