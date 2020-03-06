@@ -68,14 +68,10 @@ func GetSeverityMapping(s int) string {
 
 func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
-	fmt.Println(usr.GetAPIKey())
-	taskId = "evergreen_lint_lint_service_d7550a92b28636350af9d375b0df7e341477751d_20_03_06_13_55_56"
-	execution = 0
-	buildloggerBaseURL = "cedar.mongodb.com"
 	opts := fetcher.GetOptions{
 		BaseURL:       fmt.Sprintf("https://%s", buildloggerBaseURL),
-		UserKey:       "1dc6f93f6cde1ea0f4a41b90f36a25af",
-		UserName:      "arjun.patel",
+		UserKey:       usr.GetAPIKey(),
+		UserName:      usr.Username(),
 		TaskID:        taskId,
 		Execution:     execution,
 		PrintTime:     true,

@@ -443,6 +443,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 	}
 	return groupedFilesList, nil
 }
+
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error) {
 	const LogMessageCount = 100
 	var loggedEvents []event.EventLogEntry
@@ -577,7 +578,6 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	authUser := gimlet.GetUser(ctx)
-
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
