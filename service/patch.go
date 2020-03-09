@@ -104,36 +104,48 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
-func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
+func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Patch == nil {
-		http.Error(w, "patch not found", http.StatusNotFound)
-		return
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("patch not found"))
 	}
 	curUser := gimlet.GetUser(r.Context())
 	if curUser == nil {
-		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
+	}
+	patchUpdateReq := patchVariantsTasksRequest{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
+	}
+
+	err, status, successMessage, versionId := uis.SchedulePatch(r.Context(), projCtx, patchUpdateReq)
+	if err != nil {
+		uis.LoggedError(w, r, status, err)
 		return
 	}
-	// grab patch again, as the diff  was excluded
+
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(successMessage))
+	gimlet.WriteJSON(w, struct {
+		VersionId string `json:"version"`
+	}{versionId})
+
+}
+
+// SchedulePatch schedules a patch, returning an error, an http status code,
+// an optional success message, and an optional version ID.
+func (uis *UIServer) SchedulePatch(ctx context.Context, projCtx projectContext, patchUpdateReq patchVariantsTasksRequest) (error, int, string, string) {
 	var err error
 	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
-		return
+		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
 	if _, err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
+		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
-	patchUpdateReq := patchVariantsTasksRequest{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
 		"source":     "ui_update_patch",
 		"message":    "legacy structure is being used",
@@ -158,91 +170,67 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
 
 	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return err, http.StatusBadRequest, "", ""
 	}
 
 	// update the description for both reconfigured and new patches
 	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error setting description"))
-		return
+		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
 
 	// update the description for both reconfigured and new patches
 	if err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error setting description"))
-		return
+		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
 
 	if projCtx.Patch.Version != "" {
 		projCtx.Patch.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
-			return
+			return errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version), http.StatusInternalServerError, "", ""
 		}
 
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id))
-			return
+			return errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err := model.AddNewBuildsForPatch(r.Context(), projCtx.Patch, projCtx.Version, project, tasks)
+		err := model.AddNewBuildsForPatch(ctx, projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id))
-			return
+			return errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
-		gimlet.WriteJSON(w, struct {
-			VersionId string `json:"version"`
-		}{projCtx.Version.Id})
+		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", projCtx.Version.Id
 
 	} else {
 		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
-			gimlet.WriteJSONError(w, err)
-			return
+			return err, http.StatusBadRequest, "", ""
 		}
 		projCtx.Patch.Activated = true
 		err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks())
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error setting patch variants and tasks"))
-			return
+			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
 
-		ctx, cancel := context.WithCancel(r.Context())
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		requester := projCtx.Patch.GetRequester()
 		ver, err := model.FinalizePatch(ctx, projCtx.Patch, requester, githubOauthToken)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error finalizing patch"))
-			return
+			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
 
 		if projCtx.Patch.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
 			if err := uis.queue.Put(ctx, job); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError,
-					errors.Wrap(err, "Error adding github status update job to queue"))
-				return
+				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
 			}
 		}
 
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
-		gimlet.WriteJSON(w, struct {
-			VersionId string `json:"version"`
-		}{ver.Id})
+		return nil, http.StatusOK, "Patch builds are scheduled.", ver.Id
 	}
 }
 
