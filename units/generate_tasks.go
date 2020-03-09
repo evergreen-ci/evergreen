@@ -164,12 +164,12 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	if err != nil {
 		return errors.Wrapf(err, "problem finding version %s", v.Id)
 	}
-	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
-	if err != nil {
-		return errors.Wrapf(err, "problem finding version %s", v.Id)
-	}
 	if versionFromDB == nil {
 		return errors.Errorf("could not find version %s", v.Id)
+	}
+	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
+	if err != nil {
+		return errors.Wrapf(err, "problem finding parser project %s", v.Id)
 	}
 	// If the config update number has been updated, then another task has raced with us.
 	// The error is therefore not an actual configuration problem but instead a symptom
