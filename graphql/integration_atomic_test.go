@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -55,7 +56,7 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-	logsDb := env.Client().Database("logs")
+	logsDb := env.Client().Database(model.TaskLogDB)
 	require.NoError(t, logsDb.Drop(ctx))
 	testUser := user.DBUser{
 		Id:          apiUser,
@@ -91,7 +92,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	err = json.Unmarshal(resultsFile, &tests)
 	require.NoError(t, err)
 
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database("logs"), testData))
+	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(model.TaskLogDB), testData))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
@@ -125,7 +126,7 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 		// test spec is normal JSON
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
 		// task_logg collection belongs to the logs db
-		if coll == "task_logg" {
+		if coll == model.TaskLogCollection {
 			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
 			catcher.Add(err)
 		} else {
