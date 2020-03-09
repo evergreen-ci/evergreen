@@ -100,13 +100,13 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 		logsDb := evergreen.GetEnvironment().Client().Database(state.taskLogDB)
 		idArr := []string{}
 		var docs []model.TaskLog
-		bson.UnmarshalExtJSON(testData[state.taskLogColl], false, &docs)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(bson.UnmarshalExtJSON(testData[state.taskLogColl], false, &docs))
 		for _, d := range docs {
 			fmt.Println(d.Id)
 			idArr = append(idArr, d.Id)
 		}
 		_, err := logsDb.Collection(state.taskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
-		catcher := grip.NewBasicCatcher()
 		catcher.Add(err)
 	}
 
