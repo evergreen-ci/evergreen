@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
