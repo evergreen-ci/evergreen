@@ -121,6 +121,35 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	gimlet.WriteJSON(w, distroList)
 }
 
+func (uis *UIServer) availableVolumes(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	volumes, err := host.FindVolumesByUser(user.Username())
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", user.Username()))
+		return
+	}
+
+	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
+	for _, vol := range volumes {
+		// check if the volume is already attached
+		h, err := host.FindHostWithVolume(vol.ID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting host for volume '%s'", vol.ID))
+			return
+		}
+		if h == nil {
+			apiVolume := restModel.APIVolume{}
+			if err = apiVolume.BuildFromService(vol); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
+				continue
+			}
+			apiVolumes = append(apiVolumes, apiVolume)
+		}
+	}
+
+	gimlet.WriteJSON(w, apiVolumes)
+}
+
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
@@ -134,6 +163,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UseTaskConfig        bool       `json:"use_task_config"`
 		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
 		HomeVolumeSize       int        `json:"home_volume_size"`
+		HomeVolumeID         string     `json:"home_volume_id"`
 		InstanceTags         []host.Tag `json:"instance_tags"`
 		InstanceType         string     `json:"instance_type"`
 		Region               string     `json:"region"`
@@ -164,6 +194,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		InstanceType:         putParams.InstanceType,
 		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
 		HomeVolumeSize:       putParams.HomeVolumeSize,
+		HomeVolumeID:         putParams.HomeVolumeID,
 	}
 	ctx, cancel := uis.env.Context()
 	defer cancel()

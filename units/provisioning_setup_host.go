@@ -922,8 +922,8 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("chown -R %s:%s %s/%s", h.User, h.User, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}

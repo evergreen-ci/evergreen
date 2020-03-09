@@ -40,6 +40,7 @@ type SpawnOptions struct {
 	NoExpiration         bool
 	IsVirtualWorkstation bool
 	HomeVolumeSize       int
+	HomeVolumeID         string
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -173,6 +174,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		NoExpiration:         so.NoExpiration,
 		IsVirtualWorkstation: so.IsVirtualWorkstation,
 		HomeVolumeSize:       so.HomeVolumeSize,
+		HomeVolumeID:         so.HomeVolumeID,
 		Region:               so.Region,
 	}
 

@@ -270,6 +270,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['userdata'] = spawnInfo.userData;
         config.data['is_virtual_workstation'] = spawnInfo.is_virtual_workstation;
         config.data['home_volume_size'] = spawnInfo.home_volume_size;
+        config.data['home_volume_id'] = spawnInfo.home_volume_id;
         config.data['use_task_config'] = spawnInfo.useTaskConfig;
         baseSvc.putResource(resource, [], config, callbacks);
     };
@@ -322,6 +323,10 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['host_id'] = hostId;
         config.data['instance_type'] = newInstanceType;
         return baseSvc.postResource(resource, [], config, callbacks);
+    }
+
+    service.getAvailableVolumes = function (callbacks) {
+        baseSvc.getResource(resource, "available_volumes", {}, callbacks);
     }
 
     return service;
