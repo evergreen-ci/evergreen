@@ -215,6 +215,34 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.Settings.providers.aws.ec2_keys.splice(index, 1);
   }
 
+  $scope.addSubnet = function(){
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {"subnets": []}
+      };
+    }
+    if ($scope.Settings.providers.aws.subnets == null) {
+        $scope.Settings.providers.aws = {"subnets": []}
+    }
+
+    if (!$scope.validSubnet($scope.new_subnet)){
+        $scope.invalidSubnet = "Availability zone and subnet ID are required.";
+        return
+    }
+
+    $scope.Settings.providers.aws.subnets.push($scope.new_subnet);
+    $scope.new_subnet = {};
+    $scope.invalidSubnet = "";
+  }
+
+  $scope.deleteSubnet = function(index){
+    $scope.Settings.providers.aws.subnets.splice(index, 1);
+  }
+
+  $scope.validSubnet = function(subnet){
+    return subnet && subnet.az && subnet.subnetID;
+  }
+
   $scope.clearAllUserTokens = function(){
     if(!confirm("This will log out all users from all existing sessions. Continue?"))
       return

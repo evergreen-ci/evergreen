@@ -1296,7 +1296,12 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-card style="margin-bottom:20px;">
+									<md-card>
+										<md-card-title>
+											<md-card-title-text>
+												<span>Regions</span>
+											</md-card-title-text>
+										</md-card-title>
 										<md-card-content>
 											<div id="ec2-list" class="form-group" ng-repeat="(index, item) in Settings.providers.aws.ec2_keys">
 												<section layout="row" flex>
@@ -1333,6 +1338,45 @@ Admin Settings
 														<i class="fa fa-plus"></i>
 													</button>
 													<label class="control">[[invalidCredential]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Subnets</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="ec2-list" class="form-group" ng-repeat="(index, subnet) in Settings.providers.aws.subnets">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="subnet.az" placeholder="Availability Zone">
+													</md-input-container>
+													<md-input-container class="control" flex=50>
+														<input class="control" type="text" ng-model="subnet.subnetID" placeholder="Subnet ID">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button" style="float: left" ng-click="deleteSubnet(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_subnet.az" placeholder="Availability Zone">
+												</md-input-container>
+
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="new_subnet.subnetID" placeholder="Subnet ID">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary" ng-disabled="!validSubnet(new_subnet)" type="button" style="float: left" ng-click="addSubnet()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidSubnet ]]</label>
 												</div>
 											</section>
 										</md-card-content>
