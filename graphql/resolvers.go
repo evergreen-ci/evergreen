@@ -500,10 +500,9 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 	}
 
-	taskLogPointers := []*apimodels.LogMessage{}
-	systemLogPointers := []*apimodels.LogMessage{}
-	agentLogPointers := []*apimodels.LogMessage{}
-
+	taskLogs := []apimodels.LogMessage{}
+	systemLogs := []apimodels.LogMessage{}
+	agentLogs := []apimodels.LogMessage{}
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		// task logs
@@ -511,64 +510,50 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		taskLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
-		for i := range taskLogs {
-			taskLogPointers = append(taskLogPointers, &taskLogs[i])
-		}
-
+		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
 		// system logs
 		systemLogReader, err := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		systemLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
-		for i := range systemLogs {
-			systemLogPointers = append(systemLogPointers, &systemLogs[i])
-		}
-
+		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
 		// agent logs
 		agentLogReader, err := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		agentLogs := apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
-		for i := range agentLogs {
-			agentLogPointers = append(agentLogPointers, &agentLogs[i])
-		}
+		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
 	} else {
 		// task logs
-		taskLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
 		}
-		//reverse
-		for i := len(taskLogs) - 1; i >= 0; i-- {
-			taskLogPointers = append(taskLogPointers, &taskLogs[i])
-		}
-
 		// system logs
-		systemLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		systemLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
 		}
-		//reverse
-		for i := len(systemLogs) - 1; i >= 0; i-- {
-			systemLogPointers = append(systemLogPointers, &systemLogs[i])
-		}
-
 		// agent logs
-		agentLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		agentLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))
 		}
-		//reverse
-		for i := len(agentLogs) - 1; i >= 0; i-- {
-			agentLogPointers = append(agentLogPointers, &agentLogs[i])
-		}
-
+	}
+	taskLogPointers := []*apimodels.LogMessage{}
+	systemLogPointers := []*apimodels.LogMessage{}
+	agentLogPointers := []*apimodels.LogMessage{}
+	for i := range taskLogs {
+		taskLogPointers = append(taskLogPointers, &taskLogs[i])
+	}
+	for i := range systemLogs {
+		systemLogPointers = append(systemLogPointers, &systemLogs[i])
+	}
+	for i := range agentLogs {
+		agentLogPointers = append(agentLogPointers, &agentLogs[i])
 	}
 	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
 }
