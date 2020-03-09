@@ -35,6 +35,7 @@ type atomicGraphQLState struct {
 	apiUser   string
 	apiKey    string
 	directory string
+	taskLogDB string
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
@@ -50,13 +51,13 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	const apiKey = "testapikey"
 	const apiUser = "testuser"
 
-	state := atomicGraphQLState{}
+	state := atomicGraphQLState{taskLogDB: model.TaskLogDB}
 	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
 	require.NoError(t, err)
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-	logsDb := env.Client().Database(model.TaskLogDB)
+	logsDb := env.Client().Database(state.taskLogDB)
 	require.NoError(t, logsDb.Drop(ctx))
 	testUser := user.DBUser{
 		Id:          apiUser,
@@ -92,7 +93,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	err = json.Unmarshal(resultsFile, &tests)
 	require.NoError(t, err)
 
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(model.TaskLogDB), testData))
+	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), testData))
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
