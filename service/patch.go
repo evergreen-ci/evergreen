@@ -214,7 +214,8 @@ func (uis *UIServer) SchedulePatch(ctx context.Context, projCtx projectContext, 
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
 
-		ctx, cancel := context.WithCancel(ctx)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
 
 		requester := projCtx.Patch.GetRequester()
