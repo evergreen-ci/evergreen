@@ -5,11 +5,10 @@ package cloud
 import (
 	"context"
 
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
