@@ -94,8 +94,8 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	err = json.Unmarshal(resultsFile, &tests)
 	require.NoError(t, err)
 
-	// Delete exactly the documents added in
-	// this test instead of dropping task log db
+	// Delete exactly the documents added to the task_logg coll instead of dropping task log db
+	// we do this to minimize deleting data that was not added from this test suite
 	if testData[state.taskLogColl] != nil {
 		logsDb := evergreen.GetEnvironment().Client().Database(state.taskLogDB)
 		idArr := []string{}
