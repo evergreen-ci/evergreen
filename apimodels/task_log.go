@@ -66,6 +66,7 @@ func GetSeverityMapping(s int) string {
 	}
 }
 
+// GetBuildloggerLogs makes request to cedar for a specifc log type and returns a ReadCloser
 func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
 	opts := fetcher.GetOptions{
@@ -91,6 +92,7 @@ func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", taskId)
 }
 
+// ReadBuildloggerToChan parses cedar log lines by message and severity and reads into channel
 func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- LogMessage) {
 	var (
 		line string
@@ -139,6 +141,7 @@ func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 	}
 }
 
+// ReadBuildloggerToSlice returns a slice of LogMessages from a ReadCloser
 func ReadBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []LogMessage {
 	lines := []LogMessage{}
 	lineChan := make(chan LogMessage, 1024)
