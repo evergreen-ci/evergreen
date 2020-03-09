@@ -66,7 +66,7 @@ func GetSeverityMapping(s int) string {
 	}
 }
 
-// GetBuildloggerLogs makes request to cedar for a specifc log type and returns a ReadCloser
+// GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
 func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
 	opts := fetcher.GetOptions{
