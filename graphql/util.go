@@ -6,13 +6,17 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -121,4 +125,77 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
 	}
 	return baseTaskStatusesByDisplayNameByVariant, nil
+}
+
+// SchedulePatch schedules a patch and returns the scheduled patch model
+func SchedulePatch(ctx context.Context, r *mutationResolver, patchID string) (*patch.Patch, error) {
+	patch, err := patch.FindOne(patch.ById(patch.NewId(patchID)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch %s: %s", patchID, err.Error()))
+	}
+
+	// Unmarshal the project config and set it in the project context
+	project := &model.Project{}
+	if _, err = model.LoadProjectInto([]byte(patch.PatchedConfig), patch.Project, project); err != nil {
+		grip.Alertf("Error unmarshaling project config: %v", err)
+	}
+
+	tasks := model.TaskVariantPairs{}
+	if len(patch.VariantsTasks) > 0 {
+		tasks = model.VariantTasksToTVPairs(patch.VariantsTasks)
+	} else {
+		for _, v := range patch.BuildVariants {
+			for _, t := range patch.Tasks {
+				if project.FindTaskForVariant(t, v) != nil {
+					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
+				}
+			}
+		}
+	}
+
+	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
+	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
+		return nil, BadRequest.Send(ctx, fmt.Sprintf("Error validating task variants: %s", err.Error()))
+	}
+
+	patch.Activated = true
+
+	if patch.Version != "" {
+		// This patch has already been finalized, just add the new builds and tasks
+		version, err := r.sc.FindVersionById(patch.Version)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version for patch: %s", err.Error()))
+		}
+		if version == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Version not found for patch %s: %s", patch.Version, err.Error()))
+		}
+
+		if err := model.AddNewBuildsForPatch(ctx, patch, version, project, tasks); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating new builds for version `%s`", version.Id))
+		}
+	} else {
+		env := evergreen.GetEnvironment()
+		githubOauthToken, err := env.Settings().GetGithubOauthToken()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting github oauth token: %s", err.Error()))
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		requester := patch.GetRequester()
+		_, err = model.FinalizePatch(ctx, patch, requester, githubOauthToken)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finalizing patch: %s", err.Error()))
+		}
+
+		if patch.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForNewPatch(patch.Id.Hex())
+			queue := env.RemoteQueue()
+			if err := queue.Put(ctx, job); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error adding github status update job to queue: %s", err.Error()))
+			}
+		}
+	}
+	return patch, nil
 }

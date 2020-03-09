@@ -27,6 +27,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  schedulePatch(patchId: String!): Patch!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!

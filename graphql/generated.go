@@ -66,6 +66,7 @@ type ComplexityRoot struct {
 		AbortTask             func(childComplexity int, taskID string) int
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
+		SchedulePatch         func(childComplexity int, patchID string) int
 		ScheduleTask          func(childComplexity int, taskID string) int
 		SetTaskPriority       func(childComplexity int, taskID string, priority int) int
 		UnscheduleTask        func(childComplexity int, taskID string) int
@@ -217,6 +218,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
+	SchedulePatch(ctx context.Context, patchID string) (*model.APIPatch, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -340,6 +342,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.schedulePatch":
+		if e.complexity.Mutation.SchedulePatch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_schedulePatch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string)), true
 
 	case "Mutation.scheduleTask":
 		if e.complexity.Mutation.ScheduleTask == nil {
@@ -1200,6 +1214,7 @@ var parsedSchema = gqlparser.MustLoadSchema(
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  schedulePatch(patchId: String!): Patch!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -1419,6 +1434,20 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -2006,6 +2035,47 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	res := resTmp.(*model.UIProjectFields)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_schedulePatch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -6719,6 +6789,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removeFavoriteProject":
 			out.Values[i] = ec._Mutation_removeFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "schedulePatch":
+			out.Values[i] = ec._Mutation_schedulePatch(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
