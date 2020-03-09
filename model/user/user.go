@@ -323,6 +323,44 @@ func (u *DBUser) IncReauthAttempts() error {
 	return nil
 }
 
+func (u *DBUser) DeleteAllRoles() error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$set": bson.M{RolesKey: []string{}},
+			},
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "error clearing user roles")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
+}
+
+func (u *DBUser) DeleteRoles(roles []string) error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$pullAll": bson.M{RolesKey: roles},
+			},
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "error deleting user roles")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
+}
+
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	u, err := FindByGithubUID(gitHubUID)
 	if err != nil {

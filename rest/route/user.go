@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -197,5 +199,114 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+type deletePermissionsRequest struct {
+	ResourceType string `json:"resource_type"`
+}
+
+const allResourceType = "all"
+
+type userPermissionsDeleteHandler struct {
+	sc           data.Connector
+	rm           gimlet.RoleManager
+	userID       string
+	resourceType string
+}
+
+func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &userPermissionsPostHandler{
+		sc: sc,
+		rm: rm,
+	}
+}
+
+func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
+	return &userPermissionsDeleteHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	if h.userID == "" {
+		return errors.New("no user found")
+	}
+	request := deletePermissionsRequest{}
+	if err := util.ReadJSONInto(r.Body, &request); err != nil {
+		return errors.Wrap(err, "request body is an invalid format")
+	}
+	h.resourceType = request.ResourceType
+	if !util.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
+		return errors.New("resource_type is not a valid value")
+	}
+
+	return nil
+}
+
+func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := h.sc.FindUserById(h.userID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
+	}
+	if u == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	dbUser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("user exists, but is of invalid type"))
+	}
+
+	if h.resourceType == allResourceType {
+		err = dbUser.DeleteAllRoles()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error deleting roles",
+			}))
+			return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to delete roles"))
+		}
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	roles, err := h.rm.GetRoles(u.Roles())
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting roles",
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get roles for user"))
+	}
+	scopesIds := []string{}
+	for _, role := range roles {
+		scopesIds = append(scopesIds, role.Scope)
+	}
+	applicableScopes, err := h.rm.FilterScopesByResourceType(scopesIds, h.resourceType)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error filtering scopes",
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to find applicable scopes for user"))
+	}
+	rolesToRemove := []string{}
+	scopesToRemove := []string{}
+	for _, scope := range applicableScopes {
+		scopesToRemove = append(scopesToRemove, scope.ID)
+	}
+	for _, role := range roles {
+		if util.StringSliceContains(scopesToRemove, role.Scope) {
+			rolesToRemove = append(rolesToRemove, role.ID)
+		}
+	}
+	err = dbUser.DeleteRoles(rolesToRemove)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error deleting roles for user",
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to find delete roles for user"))
+	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
