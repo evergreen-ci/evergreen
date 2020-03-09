@@ -470,6 +470,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		filteredEvents[i], filteredEvents[opp] = filteredEvents[opp], filteredEvents[i]
 	}
 
+	// populate eventlogs pointer arrays
 	apiEventLogPointers := []*restModel.APIEventLogEntry{}
 	for _, e := range filteredEvents {
 		apiEventLog := restModel.APIEventLogEntry{}
@@ -480,6 +481,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
 
+	// need to task to get project id
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
@@ -487,6 +489,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
+	// need project to get default logger
 	p, err := r.sc.FindProjectById(t.Project)
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
@@ -501,8 +504,8 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	systemLogPointers := []*apimodels.LogMessage{}
 	agentLogPointers := []*apimodels.LogMessage{}
 
+	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
-		// get logs from cedar
 		// task logs
 		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
 		if err != nil {
@@ -533,6 +536,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 			agentLogPointers = append(agentLogPointers, &agentLogs[i])
 		}
 	} else {
+		// task logs
 		taskLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
@@ -543,6 +547,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 			taskLogPointers = append(taskLogPointers, &taskLogs[i])
 		}
 
+		// system logs
 		systemLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
@@ -553,6 +558,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 			systemLogPointers = append(systemLogPointers, &systemLogs[i])
 		}
 
+		// agent logs
 		agentLogs, err := model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
@@ -564,7 +570,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 		}
 
 	}
-
 	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
 }
 
