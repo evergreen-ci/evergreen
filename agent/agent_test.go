@@ -73,6 +73,9 @@ func (s *AgentSuite) SetupTest() {
 	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
+	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)
+	s.Require().NoError(err)
+	s.a.SetDefaultLogger(sender)
 }
 
 func (s *AgentSuite) TearDownTest() {
