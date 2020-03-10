@@ -56,9 +56,11 @@ func (j *duplicateTaskCheckJob) Run(ctx context.Context) {
 	}
 	for _, dup := range dups {
 		grip.Critical(message.Fields{
-			"message": "task is enqueued multiple times in primary task queues",
-			"task":    dup.TaskID,
-			"distros": dup.DistroIDs,
+			"message":  "task is enqueued multiple times in primary task queues",
+			"task":     dup.TaskID,
+			"distros":  dup.DistroIDs,
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
 		})
 	}
 }
