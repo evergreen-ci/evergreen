@@ -21,15 +21,17 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
-	comm   client.Communicator
-	jasper jasper.Manager
-	opts   Options
+	comm          client.Communicator
+	jasper        jasper.Manager
+	opts          Options
+	defaultLogger send.Sender
 }
 
 // Options contains startup options for the Agent.
@@ -317,7 +319,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		return err
 	}
 
-	sender, err := a.GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
+	sender, err := a.GetSender(ctx, a.opts.LogPrefix)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
 	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 
@@ -336,12 +338,21 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		err = recovery.HandlePanicWithError(recover(), err, "running task")
 	}()
 
+	// If the heartbeat aborts the task immediately, we should report that
+	// the task failed during initial task setup.
+	factory, ok := command.GetCommandFactory("setup.initial")
+	if !ok {
+		return false, errors.New("problem during configuring initial state")
+	}
+	tc.setCurrentCommand(factory())
+
 	var taskConfig *model.TaskConfig
 	taskConfig, err = a.makeTaskConfig(ctx, tc)
 	if err != nil {
 		grip.Errorf("Error fetching task configuration: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 	taskConfig.Redacted = tc.expVars.PrivateVars
 	tc.setTaskConfig(taskConfig)
@@ -349,7 +360,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	if err = a.startLogging(ctx, tc); err != nil {
 		grip.Errorf("Error setting up logger producer: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskSystemFailed)
+		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 
 	grip.Info(message.Fields{
@@ -360,14 +372,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
-
-	// If the heartbeat aborts the task immediately, we should report that
-	// the task failed during initial task setup.
-	factory, ok := command.GetCommandFactory("setup.initial")
-	if !ok {
-		return false, errors.New("problem during configuring initial state")
-	}
-	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string, 1)
 	go a.startHeartbeat(tskCtx, tskCancel, tc, heartbeat)
