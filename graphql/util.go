@@ -3,16 +3,23 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -121,4 +128,116 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
 	}
 	return baseTaskStatusesByDisplayNameByVariant, nil
+}
+
+// SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
+// success, it also returns a success message and a version ID.
+func SchedulePatch(ctx context.Context, patchId string, v *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
+	var err error
+	p, err := patch.FindOne(patch.ById(patch.NewId(patchId)))
+	if err != nil {
+		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
+	}
+
+	// Unmarshal the project config and set it in the project context
+	project := &model.Project{}
+	if _, err = model.LoadProjectInto([]byte(p.PatchedConfig), p.Project, project); err != nil {
+		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
+	}
+
+	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
+		"source":     "ui_update_patch",
+		"message":    "legacy structure is being used",
+		"update_req": patchUpdateReq,
+		"patch_id":   p.Id.Hex(),
+		"version":    p.Version,
+	})
+
+	tasks := model.TaskVariantPairs{}
+	if len(patchUpdateReq.VariantsTasks) > 0 {
+		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+	} else {
+		for _, v := range patchUpdateReq.Variants {
+			for _, t := range patchUpdateReq.Tasks {
+				if project.FindTaskForVariant(t, v) != nil {
+					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
+				}
+			}
+		}
+	}
+
+	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
+
+	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
+		return err, http.StatusBadRequest, "", ""
+	}
+
+	// update the description for both reconfigured and new patches
+	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
+		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
+	}
+
+	// update the description for both reconfigured and new patches
+	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
+		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
+	}
+
+	if p.Version != "" {
+		p.Activated = true
+		// This patch has already been finalized, just add the new builds and tasks
+		if v == nil {
+			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
+		}
+
+		// First add new tasks to existing builds, if necessary
+		err = model.AddNewTasksForPatch(context.Background(), p, v, project, tasks)
+		if err != nil {
+			return errors.Wrapf(err, "Error creating new tasks for version `%s`", v.Id), http.StatusInternalServerError, "", ""
+		}
+
+		err := model.AddNewBuildsForPatch(ctx, p, v, project, tasks)
+		if err != nil {
+			return errors.Wrapf(err, "Error creating new builds for version `%s`", v.Id), http.StatusInternalServerError, "", ""
+		}
+
+		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", v.Id
+
+	} else {
+		env := evergreen.GetEnvironment()
+		githubOauthToken, err := env.Settings().GetGithubOauthToken()
+		if err != nil {
+			return err, http.StatusBadRequest, "", ""
+		}
+		p.Activated = true
+		err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks())
+		if err != nil {
+			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
+		}
+
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		defer cancel()
+
+		requester := p.GetRequester()
+		ver, err := model.FinalizePatch(ctx, p, requester, githubOauthToken)
+		if err != nil {
+			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
+		}
+
+		if p.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
+			if err := env.LocalQueue().Put(ctx, job); err != nil {
+				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
+			}
+		}
+
+		return nil, http.StatusOK, "Patch builds are scheduled.", ver.Id
+	}
+}
+
+type PatchVariantsTasksRequest struct {
+	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
+	Variants      []string             `json:"variants"`                 // old format
+	Tasks         []string             `json:"tasks"`                    // old format
+	Description   string               `json:"description"`
 }
