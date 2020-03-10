@@ -122,6 +122,13 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ensure docker password wasn't auto-filled from form
+	if newDistro.Provider != evergreen.ProviderNameDocker && newDistro.Provider != evergreen.ProviderNameDockerMock {
+		if newDistro.ProviderSettings != nil {
+			delete(*newDistro.ProviderSettings, "docker_registry_pw")
+		}
+	}
+
 	// populate settings list with the modified settings (temporary)
 	if err = cloud.UpdateProviderSettings(&newDistro); err != nil {
 		message := fmt.Sprintf("error updating provider settings: %v", err)

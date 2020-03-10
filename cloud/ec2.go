@@ -98,20 +98,7 @@ func (s *EC2ProviderSettings) Validate() error {
 
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-		grip.Debug(message.Fields{
-			"message": "mapstructure comparison",
-			"input":   *d.ProviderSettings,
-			"output":  *s,
-		})
-		s.Region = s.getRegion()
-		if s.Region != evergreen.DefaultEC2Region {
-			return errors.Errorf("only default region should be saved in provider settings")
-		}
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {
 			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
@@ -123,6 +110,20 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := bson.Unmarshal(bytes, s); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
+	} else if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+		grip.Debug(message.Fields{
+			"message": "mapstructure comparison",
+			"input":   *d.ProviderSettings,
+			"output":  *s,
+		})
+
+		if region != evergreen.DefaultEC2Region && region != "" {
+			return errors.Errorf("only default region should be saved in provider settings")
+		}
+		s.Region = s.getRegion()
 	}
 	return nil
 }

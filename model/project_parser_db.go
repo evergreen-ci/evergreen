@@ -45,14 +45,24 @@ var (
 	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
-// ProjectById returns the parser project for the version
+// ParserProjectFindOneById returns the parser project for the version
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
+	return ParserProjectFindOne(ParserProjectById(id))
+}
+
+// ParserProjectFindOne finds a parser project with a given query.
+func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
-	err := db.FindOneQ(ParserProjectCollection, db.Query(bson.M{ParserProjectIdKey: id}), project)
+	err := db.FindOneQ(ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return project, err
+}
+
+// ParserProjectById returns a query to find a parser project by id.
+func ParserProjectById(id string) db.Q {
+	return db.Query(bson.M{ParserProjectIdKey: id})
 }
 
 // UpdateOne updates one project

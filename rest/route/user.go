@@ -310,3 +310,54 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
+
+type userPermissionsGetHandler struct {
+	sc     data.Connector
+	rm     gimlet.RoleManager
+	userID string
+}
+
+func makeGetUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &userPermissionsGetHandler{
+		sc: sc,
+		rm: rm,
+	}
+}
+
+func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
+	return &userPermissionsGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	if h.userID == "" {
+		return errors.New("no user found")
+	}
+	return nil
+}
+
+func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := user.FindOneById(h.userID)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error finding user",
+			"route":   "userPermissionsGetHandler",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.New("problem finding user"))
+	}
+	if u == nil {
+		return gimlet.NewJSONErrorResponse(errors.New("user not found"))
+	}
+	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, u.Roles(), h.rm)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting permission summary",
+			"route":   "userPermissionsGetHandler",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.New("unable to get permissions for user"))
+	}
+	return gimlet.NewJSONResponse(permissions)
+}

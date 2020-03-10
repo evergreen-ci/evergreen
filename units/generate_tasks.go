@@ -106,7 +106,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	p, pp, v, t, pm, err := g.NewVersion()
 	if err != nil {
-		return j.handleError(v, errors.WithStack(err))
+		return j.handleError(pp, v, errors.WithStack(err))
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
@@ -119,7 +119,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 	start = time.Now()
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		return j.handleError(v, errors.WithStack(err))
+		return j.handleError(pp, v, errors.WithStack(err))
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
@@ -156,7 +156,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 }
 
 // handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
-func (j *generateTasksJob) handleError(v *model.Version, handledError error) error {
+func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
 	if v == nil {
 		return handledError
 	}
@@ -167,10 +167,15 @@ func (j *generateTasksJob) handleError(v *model.Version, handledError error) err
 	if versionFromDB == nil {
 		return errors.Errorf("could not find version %s", v.Id)
 	}
+	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
+	if err != nil {
+		return errors.Wrapf(err, "problem finding parser project %s", v.Id)
+	}
 	// If the config update number has been updated, then another task has raced with us.
 	// The error is therefore not an actual configuration problem but instead a symptom
 	// of the race.
-	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
+	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber ||
+		pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
 		return mongo.ErrNoDocuments
 	}
 	return handledError
