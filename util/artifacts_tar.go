@@ -169,11 +169,11 @@ func extractTarArcive(ctx context.Context, tarReader *tar.Reader, rootPath strin
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeLink {
-			if err := os.Link(hdr.Name, hdr.Linkname); err != nil {
+			if err = os.Link(hdr.Name, hdr.Linkname); err != nil {
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeSymlink {
-			if err := os.Symlink(hdr.Name, hdr.Linkname); err != nil {
+			if err = os.Symlink(hdr.Name, hdr.Linkname); err != nil {
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
