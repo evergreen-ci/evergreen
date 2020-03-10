@@ -46,7 +46,7 @@ func init() {
 func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging to a file.
-func (a *Agent) GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, error) {
 	var (
 		err     error
 		sender  send.Sender
@@ -91,6 +91,10 @@ func (a *Agent) GetSender(ctx context.Context, prefix, taskId string) (send.Send
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
+}
+
+func (a *Agent) SetDefaultLogger(sender send.Sender) {
+	a.defaultLogger = sender
 }
 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {

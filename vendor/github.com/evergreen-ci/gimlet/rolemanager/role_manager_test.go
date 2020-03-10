@@ -540,3 +540,42 @@ func (s *RoleManagerSuite) TestValidPermissions() {
 	s.Contains(err.Error(), "'stillnotvalid' is not a valid permission")
 	s.NotContains(err.Error(), "edit")
 }
+
+func (s *RoleManagerSuite) TestPermissionSummaryForRoles() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+		Permissions: gimlet.Permissions{
+			"edit": 20,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "2",
+		Permissions: gimlet.Permissions{
+			"read": 50,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "3",
+		Permissions: gimlet.Permissions{
+			"edit": 40,
+			"read": 30,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	summary, err := PermissionSummaryForRoles(context.Background(), []string{"r1", "r2", "r3"}, s.m)
+	s.NoError(err)
+	s.Len(summary[0].Permissions, 3)
+	s.Equal("project", summary[0].Type)
+	s.Equal(40, summary[0].Permissions["resource1"]["edit"])
+	s.Equal(30, summary[0].Permissions["resource1"]["read"])
+	s.Equal(40, summary[0].Permissions["resource2"]["edit"])
+	s.Equal(30, summary[0].Permissions["resource2"]["read"])
+	s.Equal(40, summary[0].Permissions["resource3"]["edit"])
+	s.Equal(50, summary[0].Permissions["resource3"]["read"])
+}

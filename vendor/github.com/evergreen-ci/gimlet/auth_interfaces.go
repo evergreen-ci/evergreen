@@ -110,6 +110,9 @@ type RoleManager interface {
 	// DeleteScope removes a scope from the manager
 	DeleteScope(Scope) error
 
+	// GetScope returns the given scope
+	GetScope(context.Context, string) (*Scope, error)
+
 	// AddResourceToScope adds the specified resource to the given scope, updating parents
 	AddResourceToScope(string, string) error
 

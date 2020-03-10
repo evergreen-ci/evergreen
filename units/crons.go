@@ -617,6 +617,13 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 	}
 }
 
+func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		return queue.Put(ctx, NewDuplicateTaskCheckJob(ts))
+	}
+}
+
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
 func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
