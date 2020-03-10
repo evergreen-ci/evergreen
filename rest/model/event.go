@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/pkg/errors"
 )
@@ -30,10 +31,15 @@ type TaskEventData struct {
 }
 
 func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
+	jiraHost := evergreen.GetEnvironment().Settings().Jira.GetHostURL()
+	jiraLink := ""
+	if len(v.JiraIssue) != 0 {
+		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue
+	}
 	el.Execution = v.Execution
 	el.HostId = ToStringPtr(v.HostId)
 	el.UserId = ToStringPtr(v.UserId)
-	el.JiraIssue = ToStringPtr(v.JiraIssue)
+	el.JiraIssue = ToStringPtr(jiraLink)
 	el.Status = ToStringPtr(v.Status)
 	el.Timestamp = ToTimePtr(v.Timestamp)
 	el.Priority = v.Priority

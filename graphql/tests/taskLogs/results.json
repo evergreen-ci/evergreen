@@ -44,7 +44,7 @@
                 "eventType": "TASK_STARTED",
                 "data": {
                   "hostId": "hostid",
-                  "jiraIssue": "an_issue",
+                  "jiraIssue": "https:///browse/an_issue",
                   "priority": 55,
                   "status": "success",
                   "timestamp": "2020-03-03T10:45:27-05:00",
