@@ -30,7 +30,7 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 		}
 	}
 
-	if authConfig.Multi != nil {
+	if authConfig.Multi != nil && !authConfig.Multi.IsZero() {
 		return makeMultiManager(settings, authConfig)
 	}
 	if authConfig.LDAP != nil {
