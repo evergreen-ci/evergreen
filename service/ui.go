@@ -170,29 +170,47 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	ctx := r.Context()
 	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
-		grip.Error("no user attached to request")
+		grip.Error(message.WrapError(errors.New("no user attached to request"), message.Fields{
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 	projectCtx, err := GetProjectContext(r)
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get project context from request",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 		return ViewData{}
 	}
 	if needsProject {
 		var project *model.Project
 		project, err = projectCtx.GetProject()
 		if err != nil {
-			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not find project from project context",
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
 			return ViewData{}
 		}
 		if project == nil {
-			grip.Error(errors.New("no project found").Error())
+			grip.Error(message.WrapError(errors.New("no project found"), message.Fields{
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
 			return ViewData{}
 		}
 		viewData.Project = *project
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to retrieve admin settings",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {
