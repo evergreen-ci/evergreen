@@ -131,8 +131,8 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// SchedulePatch schedules a patch, returning an error, an http status code,
-// an optional success message, and an optional version ID.
+// SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
+// success, it also returns a success message and a version ID.
 func SchedulePatch(ctx context.Context, projCtx projectContext, patchUpdateReq patchVariantsTasksRequest) (error, int, string, string) {
 	var err error
 	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
