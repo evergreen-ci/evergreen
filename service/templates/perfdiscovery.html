@@ -55,7 +55,7 @@ Performance Discovery
 
     <md-input-container style="width: 180px;">
       <label>Metric</label>
-      <md-select ng-model="$ctrl.metric_name" ng-change="reload()">
+      <md-select ng-model="$ctrl.metric_name" ng-change="changeMetric()">
         <md-option ng-value="metric" ng-repeat="metric in $ctrl.all_metrics">[[ metric ]]</md-option>
       </md-select>
     </md-input-container>

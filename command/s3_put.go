@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -69,6 +70,7 @@ type s3put struct {
 	//  "private", which allows logged-in users to see the file;
 	//  "public", which allows anyone to see the file; or
 	//  "none", which hides the file from the UI for everybody.
+	//  "signed" which grants access to private S3 objects to logged-in users
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
@@ -136,6 +138,9 @@ func (s3pc *s3put) validate() error {
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
 	}
+	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
+		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
+	}
 
 	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Add(errors.Errorf("invalid visibility setting: %v", s3pc.Visibility))
@@ -157,15 +162,15 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config to all appropriate
 // fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
+	var err error
+	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
+		return errors.WithStack(err)
+	}
+
 	if filepath.IsAbs(s3pc.LocalFile) {
 		s3pc.workDir = ""
 	} else {
 		s3pc.workDir = conf.WorkDir
-	}
-
-	var err error
-	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
-		return errors.WithStack(err)
 	}
 
 	if s3pc.Optional != "" {
@@ -231,12 +236,17 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return nil
 	}
 
-	if s3pc.isMulti() {
-		logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
-			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+	if s3pc.isPrivate(s3pc.Visibility) {
+		logger.Task().Infof("Putting private file(s) into s3")
+
 	} else {
-		logger.Task().Infof("Putting %s into %s/%s/%s",
-			s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
+		if s3pc.isMulti() {
+			logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
+				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+		} else {
+			logger.Task().Infof("Putting %s into %s/%s/%s",
+				s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
+		}
 	}
 
 	errChan := make(chan error)
@@ -269,9 +279,13 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
-			s3pc.Bucket, s3pc.RemoteFile,
-			i, maxS3OpAttempts)
+		if s3pc.isPrivate(s3pc.Visibility) {
+			logger.Task().Infof("performing s3 put of a hidden file")
+		} else {
+			logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
+				s3pc.Bucket, s3pc.RemoteFile,
+				i, maxS3OpAttempts)
+		}
 
 		select {
 		case <-ctx.Done():
@@ -374,11 +388,22 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.isMulti() || displayName == "" {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
+		var key, secret, bucket, fileKey string
+		if s3pc.Visibility == artifact.Signed {
+			key = s3pc.AwsKey
+			secret = s3pc.AwsSecret
+			bucket = s3pc.Bucket
+			fileKey = remoteFileName
+		}
 
 		files = append(files, &artifact.File{
 			Name:       displayName,
 			Link:       fileLink,
 			Visibility: s3pc.Visibility,
+			AwsKey:     key,
+			AwsSecret:  secret,
+			Bucket:     bucket,
+			FileKey:    fileKey,
 		})
 	}
 
@@ -405,4 +430,11 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, opts)
 	s3pc.bucket = bucket
 	return err
+}
+
+func (s3pc *s3put) isPrivate(visibility string) bool {
+	if visibility == artifact.Signed || visibility == artifact.Private || visibility == artifact.None {
+		return true
+	}
+	return false
 }

@@ -1,6 +1,8 @@
 package commitqueue
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
@@ -74,3 +76,5 @@ func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 
 	return nil
 }
+
+func (cq *commitQueueDequeueLogger) Flush(_ context.Context) error { return nil }

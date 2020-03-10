@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,6 +23,9 @@ type multiSender struct {
 //
 // Use the AddToMulti helper to add additioanl senders to one of these
 // multi Sender implementations after construction.
+//
+// The Sender takes ownership of the underlying Senders, so closing this Sender
+// closes all underlying Senders.
 func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) {
 	if !l.Valid() {
 		return nil, fmt.Errorf("invalid level specification: %+v", l)
@@ -52,6 +56,9 @@ func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) 
 //
 // Use the AddToMulti helper to add additioanl senders to one of these
 // multi Sender implementations after construction.
+//
+// The Sender takes ownership of the underlying Senders, so closing this Sender
+// closes all underlying Senders.
 func NewConfiguredMultiSender(senders ...Sender) Sender {
 	s := &multiSender{senders: senders, Base: NewBase("")}
 	_ = s.Base.SetLevel(LevelInfo{Default: level.Invalid, Threshold: level.Invalid})
@@ -138,4 +145,15 @@ func (s *multiSender) Send(m message.Composer) {
 	for _, sender := range s.senders {
 		sender.Send(m)
 	}
+}
+
+func (s *multiSender) Flush(ctx context.Context) error {
+	var lastErr error
+	for _, sender := range s.senders {
+		if err := sender.Flush(ctx); err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
 }

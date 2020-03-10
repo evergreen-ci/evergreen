@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 // ScriptingPython defines the configuration of a python environment.
@@ -19,15 +19,15 @@ type ScriptingPython struct {
 	RequirementsFilePath  string            `bson:"requirements_path" json:"requirements_path" yaml:"requirements_path"`
 	HostPythonInterpreter string            `bson:"host_python" json:"host_python" yaml:"host_python"`
 	Packages              []string          `bson:"packages" json:"packages" yaml:"packages"`
+	AddTestRequirements   bool              `bson:"add_test_deps" json:"add_test_deps" yaml:"add_test_deps"`
 	LegacyPython          bool              `bson:"legacy_python" json:"legacy_python" yaml:"legacy_python"`
 	CachedDuration        time.Duration     `bson:"cache_duration" json:"cache_duration" yaml:"cache_duration"`
 	Environment           map[string]string `bson:"env" json:"env" yaml:"env"`
 	Output                Output            `bson:"output" json:"output" yaml:"output"`
-
-	requirementsMTime time.Time
-	cachedAt          time.Time
-	requrementsHash   string
-	cachedHash        string
+	requirementsMTime     time.Time
+	cachedAt              time.Time
+	requrementsHash       string
+	cachedHash            string
 }
 
 // NewPythonScriptingEnvironmnet generates a ScriptingEnvironment
@@ -63,11 +63,17 @@ func (opts *ScriptingPython) Validate() error {
 	}
 
 	if opts.VirtualEnvPath == "" {
-		opts.VirtualEnvPath = filepath.Join("venv", uuid.Must(uuid.NewV4()).String())
+		opts.VirtualEnvPath = filepath.Join("venv", uuid.New().String())
 	}
 
 	if opts.HostPythonInterpreter == "" {
 		opts.HostPythonInterpreter = "python3"
+	}
+
+	if opts.AddTestRequirements {
+		opts.Packages = appendWhenNotContains(opts.Packages, "pytest")
+		opts.Packages = appendWhenNotContains(opts.Packages, "pytest-repeat")
+		opts.Packages = appendWhenNotContains(opts.Packages, "pytest-timeout")
 	}
 
 	return nil
@@ -105,4 +111,14 @@ func (opts *ScriptingPython) ID() string {
 	opts.cachedHash = fmt.Sprintf("%x", hash.Sum(nil))
 	opts.cachedAt = time.Now()
 	return opts.cachedHash
+}
+
+func appendWhenNotContains(list []string, value string) []string {
+	for _, str := range list {
+		if str == value {
+			return list
+		}
+	}
+
+	return append(list, value)
 }

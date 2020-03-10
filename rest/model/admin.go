@@ -46,7 +46,6 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	ACLCheckingEnabled      *bool                             `json:"acl_enabled,omitempty"`
 	Alerts                  *APIAlertsConfig                  `json:"alerts,omitempty"`
 	Amboy                   *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                     *APIapiConfig                     `json:"api,omitempty"`
@@ -82,9 +81,10 @@ type APIAdminSettings struct {
 	Scheduler               *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags            *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack                   *APISlackConfig                   `json:"slack,omitempty"`
+	SSHKeyDirectory         *string                           `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs             []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	SpawnHostsPerUser       *int                              `json:"spawn_hosts_per_user"`
 	Splunk                  *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	SuperUsers              []string                          `json:"superusers,omitempty"`
 	Triggers                *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                      *APIUIConfig                      `json:"ui,omitempty"`
 	UnexpirableHostsPerUser *int                              `json:"unexpirable_hosts_per_user"`
@@ -117,7 +117,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "error converting model section %s", propName)
 			}
 		}
-		as.ACLCheckingEnabled = &v.ACLCheckingEnabled
 		as.ApiUrl = &v.ApiUrl
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -133,8 +132,16 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
-		as.SuperUsers = v.SuperUsers
 		as.GithubOrgs = v.GithubOrgs
+		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
+		as.SSHKeyPairs = []APISSHKeyPair{}
+		for _, pair := range v.SSHKeyPairs {
+			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
+				Name:    ToStringPtr(pair.Name),
+				Public:  ToStringPtr(pair.Public),
+				Private: ToStringPtr(pair.Private),
+			})
+		}
 		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
 		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
@@ -150,13 +157,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Expansions:              map[string]string{},
 		Keys:                    map[string]string{},
 		Plugins:                 evergreen.PluginConfig{},
-		SuperUsers:              as.SuperUsers,
 		GithubOrgs:              as.GithubOrgs,
 		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
-	}
-	if as.ACLCheckingEnabled != nil {
-		settings.ACLCheckingEnabled = *as.ACLCheckingEnabled
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -229,6 +232,15 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		for k2, v2 := range v {
 			settings.Plugins[k][k2] = v2
 		}
+	}
+	settings.SSHKeyDirectory = FromStringPtr(as.SSHKeyDirectory)
+	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
+	for _, pair := range as.SSHKeyPairs {
+		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
+			Name:    FromStringPtr(pair.Name),
+			Public:  FromStringPtr(pair.Public),
+			Private: FromStringPtr(pair.Private),
+		})
 	}
 	return settings, nil
 }
@@ -376,9 +388,14 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP   *APILDAPConfig       `json:"ldap"`
-	Naive  *APINaiveAuthConfig  `json:"naive"`
-	Github *APIGithubAuthConfig `json:"github"`
+	LDAP                    *APILDAPConfig        `json:"ldap"`
+	Okta                    *APIOktaConfig        `json:"okta"`
+	Naive                   *APINaiveAuthConfig   `json:"naive"`
+	OnlyAPI                 *APIOnlyAPIAuthConfig `json:"only_api"`
+	Github                  *APIGithubAuthConfig  `json:"github"`
+	Multi                   *APIMultiAuthConfig   `json:"multi"`
+	PreferredType           *string               `json:"preferred_type"`
+	BackgroundReauthMinutes int                   `json:"background_reauth_minutes"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -387,21 +404,41 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		if v.LDAP != nil {
 			a.LDAP = &APILDAPConfig{}
 			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API LDAP auth settings from service")
+			}
+		}
+		if v.Okta != nil {
+			a.Okta = &APIOktaConfig{}
+			if err := a.Okta.BuildFromService(v.Okta); err != nil {
+				return errors.Wrap(err, "could not build API Okta auth settings from service")
 			}
 		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API GitHub auth settings from service")
 			}
 		}
 		if v.Naive != nil {
 			a.Naive = &APINaiveAuthConfig{}
 			if err := a.Naive.BuildFromService(v.Naive); err != nil {
-				return err
+				return errors.Wrap(err, "could not build API naive auth settings from service")
 			}
 		}
+		if v.OnlyAPI != nil {
+			a.OnlyAPI = &APIOnlyAPIAuthConfig{}
+			if err := a.OnlyAPI.BuildFromService(v.OnlyAPI); err != nil {
+				return errors.Wrap(err, "could not build API auth settings for API-only users from service")
+			}
+		}
+		if v.Multi != nil {
+			a.Multi = &APIMultiAuthConfig{}
+			if err := a.Multi.BuildFromService(v.Multi); err != nil {
+				return errors.Wrap(err, "could not build API multi auth settings from service")
+			}
+		}
+		a.PreferredType = ToStringPtr(v.PreferredType)
+		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -410,33 +447,87 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var ldap *evergreen.LDAPConfig
+	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
+	var onlyAPI *evergreen.OnlyAPIAuthConfig
 	var github *evergreen.GithubAuthConfig
+	var multi *evergreen.MultiAuthConfig
+	var ok bool
 	i, err := a.LDAP.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not convert LDAP auth config to service")
 	}
 	if i != nil {
-		ldap = i.(*evergreen.LDAPConfig)
+		ldap, ok = i.(*evergreen.LDAPConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting LDAPConfig but got %T", i)
+		}
 	}
+
+	i, err = a.Okta.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert Okta auth config to service")
+	}
+	if i != nil {
+		okta, ok = i.(*evergreen.OktaConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
+		}
+	}
+
 	i, err = a.Naive.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could  not convert naive auth config to service")
 	}
 	if i != nil {
-		naive = i.(*evergreen.NaiveAuthConfig)
+		naive, ok = i.(*evergreen.NaiveAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting NaiveAuthConfig but got %T", i)
+		}
 	}
+
+	i, err = a.OnlyAPI.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert API-only auth config to service")
+	}
+	if i != nil {
+		onlyAPI, ok = i.(*evergreen.OnlyAPIAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting OnlyAPIAuthConfig but got %T", i)
+		}
+	}
+
 	i, err = a.Github.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not convert GitHub auth config to service")
 	}
 	if i != nil {
-		github = i.(*evergreen.GithubAuthConfig)
+		github, ok = i.(*evergreen.GithubAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting GithubAuthConfig but got %T", i)
+		}
 	}
+
+	i, err = a.Multi.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could  not convert multi auth config to service")
+	}
+	if i != nil {
+		multi, ok = i.(*evergreen.MultiAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("expecting MultiAuthConfig but got %T", i)
+		}
+	}
+
 	return evergreen.AuthConfig{
-		LDAP:   ldap,
-		Naive:  naive,
-		Github: github,
+		LDAP:                    ldap,
+		Okta:                    okta,
+		Naive:                   naive,
+		OnlyAPI:                 onlyAPI,
+		Github:                  github,
+		Multi:                   multi,
+		PreferredType:           FromStringPtr(a.PreferredType),
+		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 	}, nil
 }
 
@@ -523,8 +614,46 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIOktaConfig struct {
+	ClientID           *string `json:"client_id"`
+	ClientSecret       *string `json:"client_secret"`
+	Issuer             *string `json:"issuer"`
+	UserGroup          *string `json:"user_group"`
+	ExpireAfterMinutes int     `json:"expire_after_minutes"`
+}
+
+func (a *APIOktaConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.OktaConfig:
+		if v == nil {
+			return nil
+		}
+		a.ClientID = ToStringPtr(v.ClientID)
+		a.ClientSecret = ToStringPtr(v.ClientSecret)
+		a.Issuer = ToStringPtr(v.Issuer)
+		a.UserGroup = ToStringPtr(v.UserGroup)
+		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIOktaConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.OktaConfig{
+		ClientID:           FromStringPtr(a.ClientID),
+		ClientSecret:       FromStringPtr(a.ClientSecret),
+		Issuer:             FromStringPtr(a.Issuer),
+		UserGroup:          FromStringPtr(a.UserGroup),
+		ExpireAfterMinutes: a.ExpireAfterMinutes,
+	}, nil
+}
+
 type APINaiveAuthConfig struct {
-	Users []*APIAuthUser `json:"users"`
+	Users []APIAuthUser `json:"users"`
 }
 
 func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
@@ -534,11 +663,11 @@ func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
 			return nil
 		}
 		for _, u := range v.Users {
-			APIuser := &APIAuthUser{}
-			if err := APIuser.BuildFromService(u); err != nil {
+			apiUser := APIAuthUser{}
+			if err := apiUser.BuildFromService(u); err != nil {
 				return err
 			}
-			a.Users = append(a.Users, APIuser)
+			a.Users = append(a.Users, apiUser)
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -556,7 +685,10 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		user := i.(*evergreen.AuthUser)
+		user, ok := i.(evergreen.AuthUser)
+		if !ok {
+			continue
+		}
 		config.Users = append(config.Users, user)
 	}
 	return &config, nil
@@ -571,10 +703,7 @@ type APIAuthUser struct {
 
 func (a *APIAuthUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.AuthUser:
-		if v == nil {
-			return nil
-		}
+	case evergreen.AuthUser:
 		a.Username = ToStringPtr(v.Username)
 		a.Password = ToStringPtr(v.Password)
 		a.DisplayName = ToStringPtr(v.DisplayName)
@@ -589,11 +718,82 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
-	return &evergreen.AuthUser{
+	return evergreen.AuthUser{
 		Username:    FromStringPtr(a.Username),
 		Password:    FromStringPtr(a.Password),
 		DisplayName: FromStringPtr(a.DisplayName),
 		Email:       FromStringPtr(a.Email),
+	}, nil
+}
+
+type APIOnlyAPIAuthConfig struct {
+	Users []APIOnlyAPIUser `json:"users"`
+}
+
+func (a *APIOnlyAPIAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.OnlyAPIAuthConfig:
+		if v == nil {
+			return nil
+		}
+		for _, u := range v.Users {
+			apiUser := APIOnlyAPIUser{}
+			if err := apiUser.BuildFromService(u); err != nil {
+				return err
+			}
+			a.Users = append(a.Users, apiUser)
+		}
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIOnlyAPIAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.OnlyAPIAuthConfig{}
+	for _, u := range a.Users {
+		i, err := u.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not convert user to service model")
+		}
+		user, ok := i.(evergreen.OnlyAPIUser)
+		if !ok {
+			continue
+		}
+		config.Users = append(config.Users, user)
+	}
+	return &config, nil
+}
+
+type APIOnlyAPIUser struct {
+	Username *string  `json:"username"`
+	Key      *string  `json:"key"`
+	Roles    []string `json:"roles"`
+}
+
+func (a *APIOnlyAPIUser) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.OnlyAPIUser:
+		a.Username = ToStringPtr(v.Username)
+		a.Key = ToStringPtr(v.Key)
+		a.Roles = v.Roles
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIOnlyAPIUser) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.OnlyAPIUser{
+		Username: FromStringPtr(a.Username),
+		Key:      FromStringPtr(a.Key),
+		Roles:    a.Roles,
 	}, nil
 }
 
@@ -635,6 +835,35 @@ func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
 		config.Users = append(config.Users, FromStringPtr(u))
 	}
 	return &config, nil
+}
+
+type APIMultiAuthConfig struct {
+	ReadWrite []string `json:"read_write"`
+	ReadOnly  []string `json:"read_only"`
+}
+
+func (a *APIMultiAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.MultiAuthConfig:
+		if v == nil {
+			return nil
+		}
+		a.ReadWrite = v.ReadWrite
+		a.ReadOnly = v.ReadOnly
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIMultiAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.MultiAuthConfig{
+		ReadWrite: a.ReadWrite,
+		ReadOnly:  a.ReadOnly,
+	}, nil
 }
 
 // APIBanner is a public structure representing the banner part of the admin settings
@@ -757,6 +986,7 @@ type APILoggerConfig struct {
 	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
 	BuildloggerUser     *string          `json:"buildlogger_user"`
 	BuildloggerPassword *string          `json:"buildlogger_password"`
+	DefaultLogger       *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -769,6 +999,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.BuildloggerRPCPort = ToStringPtr(v.BuildloggerRPCPort)
 		a.BuildloggerUser = ToStringPtr(v.BuildloggerUser)
 		a.BuildloggerPassword = ToStringPtr(v.BuildloggerPassword)
+		a.DefaultLogger = ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -788,6 +1019,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		BuildloggerRPCPort:  FromStringPtr(a.BuildloggerRPCPort),
 		BuildloggerUser:     FromStringPtr(a.BuildloggerUser),
 		BuildloggerPassword: FromStringPtr(a.BuildloggerPassword),
+		DefaultLogger:       FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -1265,7 +1497,8 @@ type APISchedulerConfig struct {
 	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `json:"group_versions"`
 	PatchFactor                   int64   `json:"patch_factor"`
-	TimeInQueueFactor             int64   `json:"time_in_queue_factor"`
+	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
 
@@ -1281,7 +1514,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
-		a.TimeInQueueFactor = v.TimeInQueueFactor
+		a.PatchTimeInQueueFactor = v.PatchTimeInQueueFactor
+		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1301,7 +1535,8 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		GroupVersions:                 a.GroupVersions,
 		PatchFactor:                   a.PatchFactor,
 		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
-		TimeInQueueFactor:             a.TimeInQueueFactor,
+		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
+		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 	}, nil
 }
 
@@ -1326,6 +1561,7 @@ type APIServiceFlags struct {
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	DRBackupDisabled           bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1334,6 +1570,12 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+}
+
+type APISSHKeyPair struct {
+	Name    *string `json:"name"`
+	Public  *string `json:"public"`
+	Private *string `json:"private"`
 }
 
 type APISlackConfig struct {
@@ -1349,7 +1591,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Level = ToStringPtr(v.Level)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
-			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: vet
+			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
 				return err
 			}
 		}
@@ -1364,7 +1606,7 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	options := i.(send.SlackOptions) //nolint: vet
+	options := i.(send.SlackOptions) //nolint: govet
 	return evergreen.SlackConfig{
 		Token:   FromStringPtr(a.Token),
 		Level:   FromStringPtr(a.Level),
@@ -1581,6 +1823,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
+		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1615,6 +1858,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		DRBackupDisabled:             as.DRBackupDisabled,
+		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil
 }
 

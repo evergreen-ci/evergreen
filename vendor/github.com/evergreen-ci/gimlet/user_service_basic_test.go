@@ -12,7 +12,7 @@ func TestBasicUserManager(t *testing.T) {
 	assert := assert.New(t)
 	assert.Implements((*UserManager)(nil), &BasicUserManager{})
 
-	u := BasicUserManager{users: []basicUser{
+	u := BasicUserManager{users: []BasicUser{
 		{
 			ID:           "foo",
 			Password:     "bar",
@@ -36,6 +36,8 @@ func TestBasicUserManager(t *testing.T) {
 	assert.Nil(u.GetLoginHandler(""))
 	assert.Nil(u.GetLoginCallbackHandler())
 	assert.False(u.IsRedirect())
+	assert.Nil(u.ReauthorizeUser(&u.users[0]))
+	assert.NotNil(u.ReauthorizeUser(&BasicUser{ID: "bar"}))
 
 	user, err = u.GetUserByID("bar")
 	assert.Error(err)
@@ -47,29 +49,29 @@ func TestBasicUserManager(t *testing.T) {
 	assert.Equal("foo", user.Username())
 	assert.Equal("baz", user.Email())
 
-	newUser := &basicUser{ID: "foo"}
+	newUser := &BasicUser{ID: "foo"}
 	user, err = u.GetOrCreateUser(newUser)
 	assert.NoError(err)
 	assert.NotNil(user)
 	assert.Equal("foo", user.Username())
 	assert.Equal("baz", user.Email())
 
-	newUser = &basicUser{ID: "new_user", Password: "password", EmailAddress: "email@example.com"}
+	newUser = &BasicUser{ID: "new_user", Password: "password", EmailAddress: "email@example.com"}
 	user, err = u.GetOrCreateUser(newUser)
 	assert.NoError(err)
 	assert.NotNil(user)
 	assert.Equal("new_user", user.Username())
 	assert.Equal("email@example.com", user.Email())
 
-	assert.False(u.IsInvalid(user.Username()))
-	u.SetInvalid(user.Username(), true)
-	assert.True(u.IsInvalid(user.Username()))
+	assert.False(u.isInvalid(user.Username()))
+	u.setInvalid(user.Username(), true)
+	assert.True(u.isInvalid(user.Username()))
 	returnedUser, err := u.GetUserByID(user.Username())
 	assert.Nil(returnedUser)
 	assert.Error(err)
-	u.SetInvalid(user.Username(), false)
-	assert.False(u.IsInvalid(user.Username()))
-	assert.True(u.IsInvalid("DNE"))
+	u.setInvalid(user.Username(), false)
+	assert.False(u.isInvalid(user.Username()))
+	assert.True(u.isInvalid("DNE"))
 
 	assert.Error(u.ClearUser(newUser, false))
 }

@@ -119,7 +119,7 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 		grip.Debug(message.Fields{
 			"ticket":     "EVG-6100",
 			"message":    "host status",
-			"host":       h,
+			"host_id":    h,
 			"hostStatus": hostStatus.String(),
 		})
 		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
@@ -128,7 +128,7 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 	}
 	grip.Info(message.Fields{
 		"message": "host not ready for setup",
-		"hostid":  h.Id,
+		"host_id": h.Id,
 		"DNS":     h.Host,
 		"distro":  h.Distro.Id,
 		"runner":  "hostinit",

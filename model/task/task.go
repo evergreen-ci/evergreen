@@ -632,7 +632,7 @@ func (t *Task) MarkAsUndispatched() error {
 
 // MarkGeneratedTasks marks that the task has generated tasks.
 func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) {
+	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
 		return nil
 	}
 	query := bson.M{
@@ -940,22 +940,6 @@ func (t *Task) displayTaskPriority() int {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
-	if t.DisplayOnly {
-		for _, et := range t.ExecutionTasks {
-			execTask, err := FindOne(ById(et))
-			if err != nil {
-				return errors.Wrap(err, "error retrieving execution task")
-			}
-			if err = execTask.Reset(); err != nil {
-				return errors.Wrap(err, "error resetting execution task")
-			}
-		}
-	}
-
-	if err := t.UpdateUnblockedDependencies(); err != nil {
-		return errors.Wrap(err, "can't clear cached unattainable dependencies")
-	}
-
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -990,39 +974,24 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
-	if err != nil {
-		return err
-	}
-	for _, t := range tasks {
-		if t.DisplayOnly {
-			taskIds = append(taskIds, t.Id)
-		}
-		if err = t.UpdateUnblockedDependencies(); err != nil {
-			return errors.Wrap(err, "can't clear cached unattainable dependencies")
-		}
-	}
-
-	reset := bson.M{
-		"$set": bson.M{
-			ActivatedKey:     true,
-			SecretKey:        util.RandomString(),
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  util.ZeroTime,
-			StartTimeKey:     util.ZeroTime,
-			ScheduledTimeKey: util.ZeroTime,
-			FinishTimeKey:    util.ZeroTime,
-		},
-		"$unset": bson.M{
-			DetailsKey: "",
-		},
-	}
-
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
-		reset,
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     true,
+				SecretKey:        util.RandomString(),
+				StatusKey:        evergreen.TaskUndispatched,
+				DispatchTimeKey:  util.ZeroTime,
+				StartTimeKey:     util.ZeroTime,
+				ScheduledTimeKey: util.ZeroTime,
+				FinishTimeKey:    util.ZeroTime,
+			},
+			"$unset": bson.M{
+				DetailsKey: "",
+			},
+		},
 	)
 
 	return err
@@ -1443,18 +1412,43 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 func FindSchedulable(distroID string) ([]Task, error) {
 	query := scheduleableTasksQuery()
 
-	if distroID == "" {
-		return Find(db.Query(query))
+	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	query[DistroIdKey] = distroID
 	return Find(db.Query(query))
+}
+
+func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
+	if id == "" {
+		return nil
+	}
+
+	aliases, err := distro.FindApplicableDistroIDs(id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if len(aliases) == 1 {
+		query[fieldName] = aliases[0]
+	} else {
+		query[fieldName] = bson.M{"$in": aliases}
+	}
+
+	return nil
 }
 
 func FindSchedulableForAlias(id string) ([]Task, error) {
 	q := scheduleableTasksQuery()
 
-	q[DistroAliasesKey] = id
+	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Single-host task groups can't be put in an alias queue, because it can
+	// cause a race when assigning tasks to hosts where the tasks in the task
+	// group might be assigned to different hosts.
+	q[TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
 
 	return FindAll(db.Query(q))
 }
@@ -1464,11 +1458,14 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		match[DistroIdKey] = distroID
 		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
+	}
+
+	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
@@ -1892,7 +1889,7 @@ func (t *Task) CircularDependencies() error {
 	return catcher.Resolve()
 }
 
-func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
+func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
 	okStatusSet := []string{AllStatuses, t.Status}
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
@@ -1905,26 +1902,7 @@ func (t *Task) findAllUnmarkedBlockedDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
-// UpdateBlockedDependencies traverses the dependency graph and recursively sets each
-// parent dependency as unattainable in depending tasks.
-func (t *Task) UpdateBlockedDependencies() error {
-	dependentTasks, err := t.findAllUnmarkedBlockedDependencies()
-	if err != nil {
-		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
-	}
-
-	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
-			return errors.Wrap(err, "error marking dependency unattainable")
-		}
-		if err = dependentTask.UpdateBlockedDependencies(); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
-}
-
-func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
+func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
@@ -1933,24 +1911,6 @@ func (t *Task) findAllMarkedUnattainableDependencies() ([]Task, error) {
 		}})
 
 	return FindAll(query)
-}
-
-func (t *Task) UpdateUnblockedDependencies() error {
-	blockedTasks, err := t.findAllMarkedUnattainableDependencies()
-	if err != nil {
-		return errors.Wrap(err, "can't get dependencies marked unattainable")
-	}
-
-	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
-			return errors.Wrap(err, "error marking dependency attainable")
-		}
-		if err = blockedTask.UpdateUnblockedDependencies(); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-
-	return nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks
@@ -1976,28 +1936,55 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-// UpdateDependencies replaces the dependencies of a task with
-// the dependencies provided
-func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
-	err := UpdateOne(
-		bson.M{
-			IdKey:        t.Id,
-			DependsOnKey: t.DependsOn,
-		},
-		bson.M{
-			"$push": bson.M{DependsOnKey: bson.M{"$each": dependsOn}},
-		},
-	)
-	if err != nil {
-		if adb.ResultsNotFound(err) {
-			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
+// GetTasksByVersion gets all tasks for a specific version
+// Query results can be filtered by task name, variant name and status in addition to being paginated and limited
+func GetTasksByVersion(versionID, sortBy string, statuses []string, sortDir, page, limit int) ([]Task, error) {
+	match := bson.M{
+		VersionKey: versionID,
+	}
+	if len(statuses) > 0 {
+		match[StatusKey] = bson.M{"$in": statuses}
+	}
+	sorters := []string{}
+	if len(sortBy) > 0 {
+		sortKey := sortBy
+		if sortDir < 0 {
+			sortKey = "-" + sortKey
 		}
-		return errors.Wrap(err, "can't update dependencies")
+		sorters = append(sorters, sortKey)
+	}
+	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+	sorters = append(sorters, "_id")
+
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, db.Query(match).Sort(sorters).Limit(limit).Skip(page*limit), &tasks)
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
+	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
+	for _, depID := range newDependencyIDs {
+		newDependencies = append(newDependencies, Dependency{
+			TaskId: depID,
+			Status: status,
+		})
 	}
 
-	t.DependsOn = append(t.DependsOn, dependsOn...)
+	_, err := UpdateAll(
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+				DependencyStatusKey: status,
+			}},
+		},
+		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+	)
 
-	return nil
+	return errors.Wrap(err, "can't update dependencies")
 }
 
 func (t *Task) SetTaskGroupInfo() error {

@@ -3,7 +3,7 @@ import:
 - package: gonum.org/v1/gonum
 - package: github.com/VividCortex/ewma
 - package: github.com/pkg/errors
-- package: github.com/satori/go.uuid
+- package: github.com/google/uuid
 - package: github.com/stretchr/testify
 - package: github.com/mongodb/grip
 - package: github.com/mongodb/mongo-go-driver

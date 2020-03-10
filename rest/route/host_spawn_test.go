@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/cloud"
-
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,11 +32,15 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NoError(err)
 	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
 	assert.NoError(config.Set())
-
+	doc := birch.NewDocument(
+		birch.EC.String("ami", "ami-123"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
 	d := &distro.Distro{
-		Id:           "distro",
-		SpawnAllowed: true,
-		Provider:     evergreen.ProviderNameEc2OnDemand,
+		Id:                   "distro",
+		SpawnAllowed:         true,
+		Provider:             evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{doc},
 	}
 	require.NoError(d.Insert())
 	settings, err := evergreen.GetConfig()
@@ -69,8 +74,11 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
+	d.Provider = evergreen.ProviderNameMock
+	assert.NoError(d.Update())
 	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 	h.options.InstanceType = "test_instance_type"
+	h.options.UserData = ""
 	resp = h.Run(ctx)
 	require.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
@@ -78,13 +86,17 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 4)
 	h0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0]
 	d0 := h0.Distro
-	assert.Empty((*d0.ProviderSettings)["user_data"])
+	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.False(ok)
+	assert.Empty(userdata)
 	assert.Empty(h0.InstanceTags)
 	assert.Empty(h0.InstanceType)
 
 	h1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1]
 	d1 := h1.Distro
-	assert.Equal("my script", (*d1.ProviderSettings)["user_data"].(string))
+	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.True(ok)
+	assert.Equal("my script", userdata)
 	assert.Empty(h1.InstanceTags)
 	assert.Empty(h1.InstanceType)
 
@@ -97,6 +109,8 @@ func TestHostPostHandler(t *testing.T) {
 }
 
 func TestHostStopHandler(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	h := &hostStopHandler{
 		sc:  &data.MockConnector{},
 		env: evergreen.GetEnvironment(),
@@ -139,6 +153,8 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{
 		sc:  &data.MockConnector{},
 		env: evergreen.GetEnvironment(),

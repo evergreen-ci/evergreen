@@ -19,28 +19,31 @@ import (
 )
 
 type DBUser struct {
-	Id           string       `bson:"_id"`
-	FirstName    string       `bson:"first_name"`
-	LastName     string       `bson:"last_name"`
-	DispName     string       `bson:"display_name"`
-	EmailAddress string       `bson:"email"`
-	PatchNumber  int          `bson:"patch_number"`
-	PubKeys      []PubKey     `bson:"public_keys" json:"public_keys"`
-	CreatedAt    time.Time    `bson:"created_at"`
-	Settings     UserSettings `bson:"settings"`
-	APIKey       string       `bson:"apikey"`
-	SystemRoles  []string     `bson:"roles"`
-	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
+	Id               string       `bson:"_id"`
+	FirstName        string       `bson:"first_name"`
+	LastName         string       `bson:"last_name"`
+	DispName         string       `bson:"display_name"`
+	EmailAddress     string       `bson:"email"`
+	PatchNumber      int          `bson:"patch_number"`
+	PubKeys          []PubKey     `bson:"public_keys" json:"public_keys"`
+	CreatedAt        time.Time    `bson:"created_at"`
+	Settings         UserSettings `bson:"settings"`
+	APIKey           string       `bson:"apikey"`
+	SystemRoles      []string     `bson:"roles"`
+	LoginCache       LoginCache   `bson:"login_cache,omitempty"`
+	FavoriteProjects []string     `bson:"favorite_projects"`
+	OnlyAPI          bool         `bson:"only_api,omitempty"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
-	Token        string    `bson:"token"`
-	TTL          time.Time `bson:"ttl"`
-	AccessToken  string    `bson:"access_token,omitempty"`
-	RefreshToken string    `bson:"refresh_token,omitempty"`
+	Token          string    `bson:"token"`
+	TTL            time.Time `bson:"ttl"`
+	AccessToken    string    `bson:"access_token,omitempty"`
+	RefreshToken   string    `bson:"refresh_token,omitempty"`
+	ReauthAttempts int       `bson:"reauth_attempts,omitempty"`
 }
 
 type GithubUser struct {
@@ -86,11 +89,13 @@ const (
 	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
 )
 
-func (u *DBUser) Username() string     { return u.Id }
-func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
-func (u *DBUser) Email() string        { return u.EmailAddress }
-func (u *DBUser) GetAPIKey() string    { return u.APIKey }
-func (u *DBUser) IsNil() bool          { return u == nil }
+func (u *DBUser) Username() string        { return u.Id }
+func (u *DBUser) PublicKeys() []PubKey    { return u.PubKeys }
+func (u *DBUser) Email() string           { return u.EmailAddress }
+func (u *DBUser) GetAPIKey() string       { return u.APIKey }
+func (u *DBUser) GetAccessToken() string  { return u.LoginCache.AccessToken }
+func (u *DBUser) GetRefreshToken() string { return u.LoginCache.RefreshToken }
+func (u *DBUser) IsNil() bool             { return u == nil }
 
 func (u *DBUser) Roles() []string {
 	if u.SystemRoles == nil {
@@ -104,16 +109,6 @@ func (u *DBUser) DisplayName() string {
 		return u.DispName
 	}
 	return u.Id
-}
-
-func (u *DBUser) GetAccessToken() string {
-	grip.Alert("GetAccessToken not yet implemented for DBUser")
-	return ""
-}
-
-func (u *DBUser) GetRefreshToken() string {
-	grip.Alert("GetRefreshToken not yet implemented for DBUser")
-	return ""
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -208,6 +203,45 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
+// AddFavoritedProject adds a project ID to the user favorites in user DB model
+func (u *DBUser) AddFavoritedProject(identifier string) error {
+	if util.StringSliceContains(u.FavoriteProjects, identifier) {
+		return errors.Errorf("cannot add duplicate project '%s'", identifier)
+	}
+	update := bson.M{
+		"$push": bson.M{FavoriteProjectsKey: identifier},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+
+	u.FavoriteProjects = append(u.FavoriteProjects, identifier)
+
+	return nil
+}
+
+// RemoveFavoriteProject removes a project ID from the user favorites in user DB model
+func (u *DBUser) RemoveFavoriteProject(identifier string) error {
+	if !util.StringSliceContains(u.FavoriteProjects, identifier) {
+		return errors.Errorf("project '%s' does not exist in user's favorites", identifier)
+	}
+
+	update := bson.M{
+		"$pull": bson.M{FavoriteProjectsKey: identifier},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+
+	for i := len(u.FavoriteProjects) - 1; i >= 0; i-- {
+		if u.FavoriteProjects[i] == identifier {
+			u.FavoriteProjects = append(u.FavoriteProjects[:i], u.FavoriteProjects[i+1:]...)
+		}
+	}
+
+	return nil
+}
+
 func (u *DBUser) AddRole(role string) error {
 	if util.StringSliceContains(u.SystemRoles, role) {
 		return errors.Errorf("cannot add duplicate role '%s'", role)
@@ -241,6 +275,9 @@ func (u *DBUser) RemoveRole(role string) error {
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
+	if evergreen.PermissionsDisabledForTests() {
+		return true
+	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(u.Roles())
 	if err != nil {
@@ -263,6 +300,65 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 		}
 	}
 	return false
+}
+
+// IncReauthAttempts increases the number of attempted reauths for this user.
+func (u *DBUser) IncReauthAttempts() error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$inc": bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 1},
+			},
+			ReturnNew: true,
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "could not increment reauth attempts")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
+}
+
+func (u *DBUser) DeleteAllRoles() error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$set": bson.M{RolesKey: []string{}},
+			},
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "error clearing user roles")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
+}
+
+func (u *DBUser) DeleteRoles(roles []string) error {
+	info, err := db.FindAndModify(
+		Collection,
+		bson.M{IdKey: u.Id},
+		nil,
+		adb.Change{
+			Update: bson.M{
+				"$pullAll": bson.M{RolesKey: roles},
+			},
+		}, u)
+	if err != nil {
+		return errors.Wrap(err, "error deleting user roles")
+	}
+	if info.Updated != 1 {
+		return errors.Errorf("could not find user '%s' to update", u.Id)
+	}
+	return nil
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
@@ -317,55 +413,22 @@ func PutLoginCache(g gimlet.User) (string, error) {
 
 	// Always update the TTL. If the user doesn't have a token, generate and set it.
 	token := u.LoginCache.Token
-	var update bson.M
+	setFields := bson.M{
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):            time.Now(),
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 0,
+	}
 	if token == "" {
 		token = util.RandomString()
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   time.Now(),
-		}}
-	} else {
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
-		}}
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey)] = token
 	}
+	if accessToken := g.GetAccessToken(); accessToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
+	}
+	if refreshToken := g.GetRefreshToken(); refreshToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
+	}
+	update := bson.M{"$set": setFields}
 
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return "", errors.Wrap(err, "problem updating user cache")
-	}
-	return token, nil
-}
-
-// PutLoginCacheAndTokens is the same as PutLoginCache but also adds the given
-// access and refresh tokens to the cache.
-func PutLoginCacheAndTokens(gu gimlet.User, accessToken, refreshToken string) (string, error) {
-	u, err := FindOneById(gu.Username())
-	if err != nil {
-		return "", errors.Wrap(err, "problem finding user by id")
-	}
-	if u == nil {
-		return "", errors.Errorf("no user '%s' found", gu.Username())
-	}
-
-	// Always update the TTL. If the user doesn't  have a token, generate and
-	// set it.
-	var update bson.M
-	token := u.LoginCache.Token
-	if token == "" {
-		token = util.RandomString()
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey):        token,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
-		}}
-	} else {
-		update = bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):          time.Now(),
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey):  accessToken,
-			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey): refreshToken,
-		}}
-	}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return "", errors.Wrap(err, "problem updating user cache")
 	}
@@ -391,19 +454,6 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 	return u, true, nil
 }
 
-// GetLoginCacheAndTokens is the same as GetLoginCache but also returns their
-// access and refresh tokens.
-func GetLoginCacheAndTokens(token string, expireAfter time.Duration) (user gimlet.User, valid bool, accessToken string, refreshToken string, err error) {
-	u, err := FindOneByToken(token)
-	if err != nil {
-		return nil, false, "", "", errors.Wrap(err, "probloem getting user from cache")
-	}
-	if u == nil {
-		return nil, false, "", "", nil
-	}
-	return u, time.Since(u.LoginCache.TTL) < expireAfter, u.LoginCache.AccessToken, u.LoginCache.RefreshToken, nil
-}
-
 // ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out
 func ClearLoginCache(user gimlet.User, all bool) error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
@@ -427,4 +477,19 @@ func ClearLoginCache(user gimlet.User, all bool) error {
 		}
 	}
 	return nil
+}
+
+// FindNeedsReauthorization finds all users need to be reauthorized after the
+// given period has passed.
+func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) ([]DBUser, error) {
+	cutoff := time.Now().Add(-reauthorizeAfter)
+	users, err := Find(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$exists": false}},
+			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts}},
+		},
+	}))
+	return users, errors.Wrap(err, "could not find users who need reauthorization")
 }

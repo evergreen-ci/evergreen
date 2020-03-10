@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,7 +30,7 @@ func (s *LocalFileSuite) SetupTest() {
 }
 
 func (s *LocalFileSuite) SetupSuite() {
-	tmpDir, err := ioutil.TempDir("", uuid.NewV4().String())
+	tmpDir, err := ioutil.TempDir("", uuid.New().String())
 	s.NoError(err)
 	s.tmpDir = tmpDir
 }

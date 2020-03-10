@@ -26,6 +26,9 @@ func (MockUserManager) IsRedirect() bool { return false }
 func (MockUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {}
 }
+func (MockUserManager) ReauthorizeUser(gimlet.User) error {
+	return errors.New("not implemented")
+}
 func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return &MockUser, nil }
 func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }
 func (MockUserManager) ClearUser(gimlet.User, bool) error {

@@ -63,8 +63,13 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 		return nil, errors.Wrap(err, "error converting to DB model")
 	}
 	newSettings := i.(evergreen.Settings)
-
 	if persist {
+		// We have to call Validate before we attempt to persist it because the
+		// evergreen.Settings internally calls ValidateAndDefault to set the
+		// default values.
+		if err = newSettings.Validate(); err != nil {
+			return nil, errors.Wrap(err, "validation failed")
+		}
 		err = evergreen.UpdateConfig(&newSettings)
 		if err != nil {
 			return nil, errors.Wrap(err, "error saving new settings")

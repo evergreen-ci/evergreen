@@ -188,7 +188,7 @@ func validateLogLevel(flagName string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		l := c.String(logLevelFlagName)
 		priority := level.FromString(l)
-		if !level.IsValidPriority(priority) {
+		if !priority.IsValid() {
 			return errors.Errorf("%s is not a valid log level", l)
 		}
 		return nil
@@ -219,7 +219,7 @@ func makeLogger(c *cli.Context) *options.Logger {
 
 	l := c.String(logLevelFlagName)
 	priority := level.FromString(l)
-	if !level.IsValidPriority(priority) {
+	if !priority.IsValid() {
 		return nil
 	}
 

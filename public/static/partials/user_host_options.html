@@ -12,7 +12,7 @@
           </strong>
       </button>
       <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
-        <li role="presentation" class="dropdown-header">Spawnable distros</li>
+        <li role="presentation" class="dropdown-header">Spawnable Distros</li>
         <li role="presentation" ng-repeat="spawnableDistro in spawnableDistros">
           <a role="menuitem" ng-click="setSpawnableDistro(spawnableDistro.distro);">
             [[spawnableDistro.distro.name]]
@@ -44,6 +44,25 @@
           </li>
         </ul>
       </span>
+      <span class="dropdown" style="float:left;" ng-show="selectedDistro.regions.length > 1">
+        <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="regions">
+          <span class="semi-muted">
+           Region:
+          </span>
+          <strong>
+            [[selectedRegion]]
+            <span class="fa fa-caret-down"></span>
+          </strong>
+      </button>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="regions">
+        <li role="presentation" class="dropdown-header">Spawnable Regions</li>
+        <li role="presentation" ng-repeat="region in selectedDistro.regions">
+          <a role="menuitem" ng-click="setRegion(region)">
+            [[region]]
+          </a>
+        </li>
+      </ul>
+      </span>
     </div>
     <br />
     <span class="semi-muted invalid" ng-show="saveKey && (form.keyname.$error.required || form.keyname.$error.keyNameUnique)">
@@ -63,6 +82,13 @@
         <input type="checkbox" id="input-key-chk" ng-click="toggleSaveKey()">&nbsp;&nbsp;Save public key&nbsp;&nbsp;</input>
         <input type="text" id="input-key-name" name="keyname" ng-model="selectedKey.name" ng-disabled="!saveKey"; placeholder="mykey.pub" key-name-unique></input>
       </p>
+    </div>
+    <div style="padding-bottom:5px;" ng-show="selectedDistro.virtual_workstation_allowed">
+      <input type="checkbox" ng-model="$parent.is_virtual_workstation"> Virtual Workstation </input>
+      <div ng-show="$parent.is_virtual_workstation">
+        <label> Volume size (GB) </label>
+        <input type="number" ng-model="$parent.home_volume_size" min="1" max="10000"></input>
+      </div>
     </div>
     <div id="userData" style="padding-bottom:5px;">
       <input type="checkbox" ng-model="$parent.use_userdata"> Run Userdata script on start </input>

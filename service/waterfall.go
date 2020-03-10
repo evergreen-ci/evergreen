@@ -86,6 +86,7 @@ type waterfallTask struct {
 	DisplayName      string                  `json:"display_name"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	Activated        bool                    `json:"activated"`
+	Blocked          bool                    `json:"blocked"`
 	FailedTestNames  []string                `json:"failed_test_names,omitempty"`
 	ExpectedDuration time.Duration           `json:"expected_duration,omitempty"`
 	StartTime        int64                   `json:"start_time"`
@@ -170,6 +171,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 			StatusDetails: t.StatusDetails,
 			DisplayName:   t.DisplayName,
 			Activated:     t.Activated,
+			Blocked:       t.Blocked,
 			TimeTaken:     t.TimeTaken,
 			StartTime:     t.StartTime.UnixNano(),
 		}

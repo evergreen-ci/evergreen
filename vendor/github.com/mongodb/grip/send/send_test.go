@@ -51,7 +51,7 @@ func (s *SenderSuite) SetupTest() {
 		},
 	}
 
-	internal := new(InternalSender)
+	internal := MakeInternalLogger()
 	internal.name = "internal"
 	internal.output = make(chan *InternalMessage)
 	s.senders["internal"] = internal
@@ -139,7 +139,7 @@ func (s *SenderSuite) SetupTest() {
 
 	bufferedInternal, err := NewNativeLogger("buffered", l)
 	s.Require().NoError(err)
-	s.senders["buffered"] = NewBufferedSender(bufferedInternal, minBufferLength, 1)
+	s.senders["buffered"] = NewBufferedSender(bufferedInternal, minInterval, 1)
 
 	s.senders["github"], err = NewGithubIssuesLogger("gh", &GithubOptions{})
 	s.Require().NoError(err)

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -63,6 +62,7 @@ type restVersion struct {
 	RemotePath          string    `json:"remote_path"`
 	Requester           string    `json:"requester"`
 	Config              string    `json:"config,omitempty"`
+	ConfigUpdateNumber  int       `json:"config_number"`
 }
 
 type versionLessInfo struct {
@@ -116,6 +116,7 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.RemotePath = srcVersion.RemotePath
 	destVersion.Requester = srcVersion.Requester
 	destVersion.Config = srcVersion.Config
+	destVersion.ConfigUpdateNumber = srcVersion.ConfigUpdateNumber
 }
 
 // Returns a JSON response of an array with the NumRecentVersions
@@ -272,12 +273,12 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
-	if evergreen.UseParserProject && destVersion.Config == "" {
-		var err error
-		pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
-		}
+	var err error
+	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+	}
+	if pp != nil && pp.ConfigUpdateNumber >= destVersion.ConfigUpdateNumber {
 		config, err := yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
@@ -301,15 +302,16 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var config []byte
-	var err error
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		return
 	}
-	if evergreen.UseParserProject && pp != nil {
+	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
 		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+			return
 		}
 	} else {
 		config = []byte(projCtx.Version.Config)
@@ -446,6 +448,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 						build.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStartTimeKey),
 						build.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheTimeTakenKey),
 						build.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheActivatedKey),
+						build.TaskCacheBlockedKey:   fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheBlockedKey),
 					},
 				},
 			},

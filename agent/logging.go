@@ -46,7 +46,7 @@ func init() {
 func getInc() int { return <-idSource }
 
 // GetSender configures the agent's local logging to a file.
-func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) {
+func (a *Agent) GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) {
 	var (
 		err     error
 		sender  send.Sender
@@ -54,9 +54,14 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 	)
 
 	if os.Getenv(util.MarkerAgentPID) == "" { // this var is set if the agent is started via a command
-		if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
+		if token := a.opts.SetupData.SplunkClientToken; token != "" {
+			info := send.SplunkConnectionInfo{
+				ServerURL: a.opts.SetupData.SplunkServerURL,
+				Token:     a.opts.SetupData.SplunkClientToken,
+				Channel:   a.opts.SetupData.SplunkChannel,
+			}
 			grip.Info("configuring splunk sender")
-			sender, err = send.NewSplunkLogger("evergreen.agent", splunk, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+			sender, err = send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
 			if err != nil {
 				return nil, errors.Wrap(err, "problem creating the splunk logger")
 			}
@@ -127,6 +132,25 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
 	}
 	config := client.LoggerConfig{}
+
+	var defaultLogger string
+	if tc.taskConfig != nil && tc.taskConfig.ProjectRef != nil {
+		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
+	}
+	if !model.IsValidDefaultLogger(defaultLogger) {
+		grip.Warningf("default logger '%s' is not valid, setting Evergreen logger as default", defaultLogger)
+		defaultLogger = model.EvergreenLogSender
+	}
+	if len(c.Agent) == 0 {
+		c.Agent = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.System) == 0 {
+		c.System = []model.LogOpts{{Type: defaultLogger}}
+	}
+	if len(c.Task) == 0 {
+		c.Task = []model.LogOpts{{Type: defaultLogger}}
+	}
+
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
 	}

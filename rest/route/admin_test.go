@@ -10,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen"
@@ -95,7 +97,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	respm, ok := resp.Data().(restModel.Model)
 	s.Require().True(ok, "%+v", resp.Data())
 	settingsResp, err := respm.ToService()
-	s.NoError(err)
+	s.Require().NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 
@@ -110,16 +112,30 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settings.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settings.AuthConfig.LDAP.URL)
+	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settings.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
+	s.EqualValues(testSettings.AuthConfig.PreferredType, settings.AuthConfig.PreferredType)
+	s.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], settings.AuthConfig.Multi.ReadWrite[0])
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settings.AuthConfig.Github.Users))
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Distro, settings.ContainerPools.Pools[0].Distro)
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Id, settings.ContainerPools.Pools[0].Id)
 	s.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, settings.ContainerPools.Pools[0].MaxContainers)
+	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settings.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
-	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
+	// We have to check different cases because the mock connector does not set
+	// defaults for the settings.
+	switch s.sc.(type) {
+	case *data.MockConnector:
+		s.Equal(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
+	case *data.DBConnector:
+		s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
+	default:
+		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
@@ -142,15 +158,15 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	badSettingsOne.ApiUrl = ""
 	badSettingsOne.Ui.CsrfKey = "12345"
 	jsonBody, err = json.Marshal(badSettingsOne)
-	s.NoError(err)
+	s.Require().NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.Parse(ctx, request))
+	s.Require().NoError(err)
+	s.Require().NoError(s.postHandler.Parse(ctx, request))
 	resp = s.postHandler.Run(ctx)
+	s.Require().NotNil(resp)
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "API hostname must not be empty")
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
-	s.NotNil(resp)
 
 	// test that invalid container pools errors
 	badSettingsTwo := testutil.MockConfig()
@@ -189,10 +205,10 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	changes := restModel.APIAdminSettings{
-		SuperUsers: []string{"me"},
+		ApiUrl: restModel.ToStringPtr("foo"),
 	}
-	before := evergreen.Settings{}
-	_, err := s.sc.SetEvergreenSettings(&changes, &before, user, true)
+	before := testutil.NewEnvironment(ctx, s.T()).Settings()
+	_, err := s.sc.SetEvergreenSettings(&changes, before, user, true)
 	s.Require().NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.Require().NoError(err)
@@ -466,99 +482,4 @@ func TestClearTaskQueueRoute(t *testing.T) {
 	queueFromDb, err := model.LoadTaskQueue(distro)
 	assert.NoError(err)
 	assert.Len(queueFromDb.Queue, 0)
-}
-
-func TestRoleMappingRoutes(t *testing.T) {
-	ctx := context.Background()
-	sc := &data.MockConnector{}
-
-	addHandler := makeAddLDAPRoleMappingHandler(sc)
-	removeHandler := makeRemoveLDAPRoleMappingHandler(sc)
-
-	// add a key
-	expectedMappings := map[string]string{"group1": "role1"}
-	body := struct {
-		Group  string `json:"group"`
-		RoleID string `json:"role_id"`
-	}{"group1", "role1"}
-	jsonBody, err := json.Marshal(&body)
-	assert.NoError(t, err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest("POST", "/admin/role_mapping", buffer)
-	assert.NoError(t, err)
-	assert.NoError(t, addHandler.Parse(ctx, request))
-	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
-	for _, mapping := range sc.MockSettings.LDAPRoleMap {
-		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
-	}
-
-	// add another key
-	expectedMappings["group2"] = "role2"
-	body = struct {
-		Group  string `json:"group"`
-		RoleID string `json:"role_id"`
-	}{"group2", "role2"}
-	jsonBody, err = json.Marshal(&body)
-	assert.NoError(t, err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("POST", "/admin/role_mapping", buffer)
-	assert.NoError(t, err)
-	assert.NoError(t, addHandler.Parse(ctx, request))
-	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
-	for _, mapping := range sc.MockSettings.LDAPRoleMap {
-		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
-	}
-
-	// change value of existing key
-	expectedMappings["group2"] = "role3"
-	body = struct {
-		Group  string `json:"group"`
-		RoleID string `json:"role_id"`
-	}{"group2", "role3"}
-	jsonBody, err = json.Marshal(&body)
-	assert.NoError(t, err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("POST", "/admin/role_mapping", buffer)
-	assert.NoError(t, err)
-	assert.NoError(t, addHandler.Parse(ctx, request))
-	assert.Equal(t, http.StatusOK, addHandler.Run(ctx).Status())
-	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
-	for _, mapping := range sc.MockSettings.LDAPRoleMap {
-		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
-	}
-
-	// remove existing key
-	delete(expectedMappings, "group2")
-	removeBody := struct {
-		Group string `json:"group"`
-	}{"group2"}
-	jsonBody, err = json.Marshal(&removeBody)
-	assert.NoError(t, err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("DELETE", "/admin/role_mapping", buffer)
-	assert.NoError(t, err)
-	assert.NoError(t, removeHandler.Parse(ctx, request))
-	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
-	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
-	for _, mapping := range sc.MockSettings.LDAPRoleMap {
-		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
-	}
-
-	// remove key that DNE
-	removeBody = struct {
-		Group string `json:"group"`
-	}{"DNE"}
-	jsonBody, err = json.Marshal(&removeBody)
-	assert.NoError(t, err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("DELETE", "/admin/role_mapping", buffer)
-	assert.NoError(t, err)
-	assert.NoError(t, removeHandler.Parse(ctx, request))
-	assert.Equal(t, http.StatusOK, removeHandler.Run(ctx).Status())
-	assert.Len(t, sc.MockSettings.LDAPRoleMap, len(expectedMappings))
-	for _, mapping := range sc.MockSettings.LDAPRoleMap {
-		require.Equal(t, expectedMappings[mapping.LDAPGroup], mapping.RoleID)
-	}
 }

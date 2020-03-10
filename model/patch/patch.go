@@ -321,15 +321,32 @@ func (p *Patch) SetActivation(activated bool) error {
 
 // UpdateModulePatch adds or updates a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
+	// update the in-memory patch
+	patchFound := false
+	for i, patch := range p.Patches {
+		if patch.ModuleName == modulePatch.ModuleName {
+			p.Patches[i] = modulePatch
+			patchFound = true
+			break
+		}
+	}
+	if !patchFound {
+		p.Patches = append(p.Patches, modulePatch)
+	}
+	if modulePatch.Message != "" {
+		p.Description = modulePatch.Message
+	}
+
 	// check that a patch for this module exists
 	query := bson.M{
 		IdKey:                                 p.Id,
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
-	update := bson.M{
-		"$set": bson.M{PatchesKey + ".$": modulePatch},
+	update := bson.M{PatchesKey + ".$": modulePatch}
+	if modulePatch.Message != "" {
+		update[DescriptionKey] = modulePatch.Message
 	}
-	result, err := UpdateAll(query, update)
+	result, err := UpdateAll(query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
@@ -343,6 +360,9 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	query = bson.M{IdKey: p.Id}
 	update = bson.M{
 		"$push": bson.M{PatchesKey: modulePatch},
+	}
+	if modulePatch.Message != "" {
+		update["$set"] = bson.M{DescriptionKey: modulePatch.Message}
 	}
 	return UpdateOne(query, update)
 }
@@ -385,6 +405,16 @@ func (p *Patch) IsGithubPRPatch() bool {
 
 func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
+}
+
+func (p *Patch) GetRequester() string {
+	if p.IsGithubPRPatch() {
+		return evergreen.GithubPRRequester
+	}
+	if p.IsPRMergePatch() {
+		return evergreen.MergeTestRequester
+	}
+	return evergreen.PatchVersionRequester
 }
 
 // IsMailbox checks if the first line of a patch file

@@ -48,8 +48,8 @@ func updateGlide(pkg, revision string) {
 			grip.EmergencyFatal(errors.Wrapf(err, "vendor directory %s not found", vendorPath))
 		}
 	} else if !stat.IsDir() {
-			grip.EmergencyFatalf("'%s' is not a directory", vendorPath)
-		}
+		grip.EmergencyFatal(fmt.Sprintf("'%s' is not a directory", vendorPath))
+	}
 
 	glidePath := filepath.Join(wd, "glide.lock")
 	_, err = os.Stat(glidePath)

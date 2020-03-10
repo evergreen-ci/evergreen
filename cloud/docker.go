@@ -5,13 +5,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/anser/bsonutil"
-
+	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // dockerManager implements the Manager interface for Docker.
@@ -41,6 +44,23 @@ func (settings *dockerSettings) Validate() error {
 	return nil
 }
 
+func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+	}
+	return nil
+}
+
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
 	return &dockerSettings{}
@@ -53,8 +73,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
-	if h.DockerOptions.Image == "" {
-		return nil, errors.Errorf("Docker image empty for host '%s'", h.Id)
+	if err := h.DockerOptions.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Docker options not valid for host '%s'", h.Id)
 	}
 
 	// get parent of host
@@ -67,17 +87,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
-	settings := dockerSettings{ImageURL: h.DockerOptions.Image}
-	if err = settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
-	}
-
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", h.Id)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "spawn container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
@@ -100,14 +115,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "start container host failed",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 		return nil, err
 	}
 
 	grip.Info(message.Fields{
 		"message": "created and started Docker container",
-		"host":    h.Id,
+		"host_id": h.Id,
 	})
 
 	return h, nil
@@ -128,6 +143,9 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
+		if client.IsErrConnectionFailed(err) {
+			return StatusTerminated, nil
+		}
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
 
@@ -143,7 +161,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
-		grip.Error(err)
 		return err
 	}
 
@@ -219,6 +236,10 @@ func (m *dockerManager) DetachVolume(context.Context, *host.Host, string) error 
 
 func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
 	return nil, errors.New("can't create volume with docker provider")
+}
+
+func (m *dockerManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with docker provider")
 }
 
 func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {
@@ -363,6 +384,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
+		"host_id":   parent.Id,
 		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
@@ -379,10 +401,15 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",
+		"host_id":   parent.Id,
 		"details":   "total",
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
 	})
 
+	return nil
+}
+
+func (m *dockerManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	return nil
 }

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -32,7 +32,7 @@ type RemoteUnorderedSuite struct {
 
 func TestRemoteUnorderedMongoSuite(t *testing.T) {
 	tests := new(RemoteUnorderedSuite)
-	name := "test-" + uuid.NewV4().String()
+	name := "test-" + uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 
@@ -306,7 +306,7 @@ checkResults:
 	s.True(qStat.Running >= numLocked)
 	s.True(qStat.Total == created)
 	s.True(qStat.Completed <= observed, fmt.Sprintf("%d <= %d", qStat.Completed, observed))
-	s.Equal(numLocked, qStat.Running)
+	s.Equal(created, observed+numLocked, "%+v", qStat)
 }
 
 func (s *RemoteUnorderedSuite) TestJobStatsIterator() {

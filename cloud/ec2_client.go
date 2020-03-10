@@ -43,6 +43,9 @@ type AWSClient interface {
 	// ModifyInstanceAttribute is a wrapper for ec2.ModifyInstanceAttribute
 	ModifyInstanceAttribute(context.Context, *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
 
+	// DescribeInstanceTypeOfferings is a wrapper for ec2.DescribeInstanceTypeOfferings.
+	DescribeInstanceTypeOfferings(context.Context, *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error)
+
 	// CreateTags is a wrapper for ec2.CreateTags.
 	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
@@ -102,6 +105,9 @@ type AWSClient interface {
 
 	// CreateKeyPair is a wrapper for ec2.CreateKeyPairWithContext.
 	CreateKeyPair(context.Context, *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error)
+
+	// ImportKeyPair is a wrapper for ec2.ImportKeyPairWithContext.
+	ImportKeyPair(context.Context, *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error)
 
 	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPairWithContext.
 	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
@@ -235,6 +241,29 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
+	var output *ec2.DescribeInstanceTypeOfferingsOutput
+	var err error
+	msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DescribeInstanceTypeOfferingsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
@@ -767,6 +796,33 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 	return output, nil
 }
 
+func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error) {
+	var output *ec2.ImportKeyPairOutput
+	var err error
+	msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx, func() (bool, error) {
+			output, err = c.EC2.ImportKeyPairWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					// Don't retry if the key already exists
+					if ec2err.Code() == EC2DuplicateKeyPair {
+						grip.Info(msg)
+						return false, ec2err
+					}
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // DeleteKeyPair is a wrapper for ec2.DeleteKeyPair.
 func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
 	var output *ec2.DeleteKeyPairOutput
@@ -963,7 +1019,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error attaching tags",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -977,7 +1033,7 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 		"tags":          h.InstanceTags,
@@ -1041,7 +1097,8 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 func (c *awsClientImpl) getHostInstanceID(ctx context.Context, h *host.Host) (string, error) {
 	id := h.Id
 	if isHostSpot(h) {
-		id, err := c.GetSpotInstanceId(ctx, h)
+		var err error
+		id, err = c.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
@@ -1058,6 +1115,7 @@ type awsClientMock struct { //nolint
 	*credentials.Credentials
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
+	*ec2.DescribeInstanceTypeOfferingsInput
 	*ec2.CreateTagsInput
 	*ec2.DeleteTagsInput
 	*ec2.ModifyInstanceAttributeInput
@@ -1076,6 +1134,7 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeVpcsInput
 	*ec2.CreateKeyPairInput
+	*ec2.ImportKeyPairInput
 	*ec2.DeleteKeyPairInput
 	*pricing.GetProductsInput
 	*ec2.CreateLaunchTemplateInput
@@ -1167,6 +1226,11 @@ func (c *awsClientMock) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 
 func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
 	c.ModifyInstanceAttributeInput = input
+	return nil, nil
+}
+
+func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
+	c.DescribeInstanceTypeOfferingsInput = input
 	return nil, nil
 }
 
@@ -1407,6 +1471,11 @@ func (c *awsClientMock) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 		KeyName:     aws.String("key_name"),
 		KeyMaterial: aws.String("key_material"),
 	}, nil
+}
+
+func (c *awsClientMock) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error) {
+	c.ImportKeyPairInput = input
+	return &ec2.ImportKeyPairOutput{KeyName: input.KeyName}, nil
 }
 
 // DeleteKeyPair is a mock for ec2.DeleteKeyPair.

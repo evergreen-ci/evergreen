@@ -15,7 +15,7 @@ type APIHost struct {
 	Distro           DistroInfo `json:"distro"`
 	Provisioned      bool       `json:"provisioned"`
 	StartedBy        *string    `json:"started_by"`
-	Type             *string    `json:"host_type"`
+	Provider         *string    `json:"host_type"`
 	User             *string    `json:"user"`
 	Status           *string    `json:"status"`
 	RunningTask      taskInfo   `json:"running_task"`
@@ -27,13 +27,16 @@ type APIHost struct {
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
 type HostRequestOptions struct {
-	DistroID     string     `json:"distro"`
-	TaskID       string     `json:"task"`
-	KeyName      string     `json:"keyname"`
-	UserData     string     `json:"userdata"`
-	InstanceTags []host.Tag `json:"instance_tags"`
-	InstanceType string     `json:"instance_type"`
-	NoExpiration bool       `json:"no_expiration"`
+	DistroID             string     `json:"distro"`
+	TaskID               string     `json:"task"`
+	Region               string     `json:"region"`
+	KeyName              string     `json:"keyname"`
+	UserData             string     `json:"userdata"`
+	InstanceTags         []host.Tag `json:"instance_tags"`
+	InstanceType         string     `json:"instance_type"`
+	NoExpiration         bool       `json:"no_expiration"`
+	IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+	HomeVolumeSize       int        `json:"home_volume_size"`
 }
 
 type DistroInfo struct {
@@ -43,11 +46,11 @@ type DistroInfo struct {
 }
 
 type taskInfo struct {
-	Id           *string   `json:"task_id"`
-	Name         *string   `json:"name"`
-	DispatchTime time.Time `json:"dispatch_time"`
-	VersionId    *string   `json:"version_id"`
-	BuildId      *string   `json:"build_id"`
+	Id           *string    `json:"task_id"`
+	Name         *string    `json:"name"`
+	DispatchTime *time.Time `json:"dispatch_time"`
+	VersionId    *string    `json:"version_id"`
+	BuildId      *string    `json:"build_id"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. It can
@@ -71,7 +74,7 @@ func getTaskInfo(t *task.Task) taskInfo {
 	return taskInfo{
 		Id:           ToStringPtr(t.Id),
 		Name:         ToStringPtr(t.DisplayName),
-		DispatchTime: t.DispatchTime,
+		DispatchTime: ToTimePtr(t.DispatchTime),
 		VersionId:    ToStringPtr(t.Version),
 		BuildId:      ToStringPtr(t.BuildId),
 	}
@@ -92,7 +95,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.HostURL = ToStringPtr(v.Host)
 	apiHost.Provisioned = v.Provisioned
 	apiHost.StartedBy = ToStringPtr(v.StartedBy)
-	apiHost.Type = ToStringPtr(v.InstanceType)
+	apiHost.Provider = ToStringPtr(v.Provider)
 	apiHost.User = ToStringPtr(v.User)
 	apiHost.Status = ToStringPtr(v.Status)
 	apiHost.UserHost = v.UserHost
@@ -119,7 +122,8 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Id:           FromStringPtr(apiHost.Id),
 		Provisioned:  apiHost.Provisioned,
 		StartedBy:    FromStringPtr(apiHost.StartedBy),
-		InstanceType: FromStringPtr(apiHost.Type),
+		Provider:     FromStringPtr(apiHost.Provider),
+		InstanceType: FromStringPtr(apiHost.InstanceType),
 		User:         FromStringPtr(apiHost.User),
 		Status:       FromStringPtr(apiHost.Status),
 		Zone:         FromStringPtr(apiHost.AvailabilityZone),
@@ -183,21 +187,35 @@ func (apiVolume *APIVolume) ToService() (interface{}, error) {
 }
 
 type APISpawnHostModify struct {
-	Action       *string   `json:"action"`
-	HostID       *string   `json:"host_id"`
-	VolumeID     *string   `json:"volume_id"`
-	RDPPwd       *string   `json:"rdp_pwd"`
-	AddHours     *string   `json:"add_hours"`
-	Expiration   time.Time `json:"expiration"`
-	InstanceType *string   `json:"instance_type"`
-	AddTags      []*string `json:"tags_to_add"`
-	DeleteTags   []*string `json:"tags_to_delete"`
+	Action       *string    `json:"action"`
+	HostID       *string    `json:"host_id"`
+	VolumeID     *string    `json:"volume_id"`
+	RDPPwd       *string    `json:"rdp_pwd"`
+	AddHours     *string    `json:"add_hours"`
+	Expiration   *time.Time `json:"expiration"`
+	InstanceType *string    `json:"instance_type"`
+	AddTags      []*string  `json:"tags_to_add"`
+	DeleteTags   []*string  `json:"tags_to_delete"`
 }
 
 type APIHostScript struct {
-	Script string `json:"script"`
+	Hosts  []string `json:"hosts"`
+	Script string   `json:"script"`
 }
 
-type APIHostScriptResponse struct {
-	Output []string `json:"output"`
+type APIHostProcess struct {
+	HostID   string `json:"host_id"`
+	ProcID   string `json:"proc_id"`
+	Complete bool   `json:"complete"`
+	Output   string `json:"output"`
+}
+
+type APIHostParams struct {
+	CreatedBefore time.Time `json:"created_before"`
+	CreatedAfter  time.Time `json:"created_after"`
+	Distro        string    `json:"distro"`
+	Status        string    `json:"status"`
+	Region        string    `json:"region"`
+	UserSpawned   bool      `json:"user_spawned"`
+	Mine          bool      `json:"mine"`
 }

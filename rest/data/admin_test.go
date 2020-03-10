@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -111,17 +113,17 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// convert the DB model to an API model
 	restSettings := restModel.NewConfigModel()
 	err := restSettings.BuildFromService(testSettings)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig()
 	s.NoError(err)
 	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// read the settings and spot check values
 	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -135,14 +137,28 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settingsFromConnector.Amboy.GroupPruneFrequencyMinutes)
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settingsFromConnector.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
+	s.EqualValues(testSettings.AuthConfig.PreferredType, settingsFromConnector.AuthConfig.PreferredType)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
+	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settingsFromConnector.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settingsFromConnector.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
+	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
+	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
-	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	// We have to check different cases because the mock connector does not set
+	// defaults for the settings.
+	switch s.ctx.(type) {
+	case *MockConnector:
+		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	case *DBConnector:
+		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+	default:
+		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
@@ -194,7 +210,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			foundRootEvent = true
 			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
 			s.Equal(testSettings.Credentials, v.Credentials)
-			s.Equal(testSettings.SuperUsers, v.SuperUsers)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)
@@ -242,12 +257,23 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settingsFromConnector.Amboy.GroupPruneFrequencyMinutes)
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settingsFromConnector.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
+	s.EqualValues(testSettings.AuthConfig.PreferredType, settingsFromConnector.AuthConfig.PreferredType)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
+	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settingsFromConnector.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, settingsFromConnector.AuthConfig.OnlyAPI.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
+	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
-	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	switch s.ctx.(type) {
+	case *MockConnector:
+		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	case *DBConnector:
+		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+	default:
+		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)

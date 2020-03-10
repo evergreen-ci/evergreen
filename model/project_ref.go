@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +18,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -40,6 +42,8 @@ type ProjectRef struct {
 	// TracksPushEvents, if true indicates that Repotracker is triggered by
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
+
+	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 
 	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
@@ -109,11 +113,12 @@ type TriggerDefinition struct {
 }
 
 type PeriodicBuildDefinition struct {
-	ID            string `bson:"id" json:"id"`
-	ConfigFile    string `bson:"config_file" json:"config_file"`
-	IntervalHours int    `bson:"interval_hours" json:"interval_hours"`
-	Alias         string `bson:"alias,omitempty" json:"alias,omitempty"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+	ID            string    `bson:"id" json:"id"`
+	ConfigFile    string    `bson:"config_file" json:"config_file"`
+	IntervalHours int       `bson:"interval_hours" json:"interval_hours"`
+	Alias         string    `bson:"alias,omitempty" json:"alias,omitempty"`
+	Message       string    `bson:"message,omitempty" json:"message,omitempty"`
+	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -136,6 +141,7 @@ var (
 	ProjectRefRepoKindKey            = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
 	ProjectRefEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
 	ProjectRefPrivateKey             = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey          = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey           = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey          = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
 	ProjectRefDisplayNameKey         = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
@@ -147,6 +153,7 @@ var (
 	ProjectRefDisabledStatsCache     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey              = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey    = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefDefaultLogger          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
@@ -204,9 +211,11 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	}
 	newRole := gimlet.Role{
 		ID:          fmt.Sprintf("admin_project_%s", p.Identifier),
-		Owners:      []string{creator.Id},
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
+	}
+	if creator != nil {
+		newRole.Owners = []string{creator.Id}
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
 		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Identifier)
@@ -229,6 +238,12 @@ func (projectRef *ProjectRef) Update() error {
 	)
 }
 
+func (projectRef *ProjectRef) checkDefaultLogger() {
+	if projectRef.DefaultLogger == "" {
+		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+}
+
 // FindOneProjectRef gets a project ref given the owner name, the repo
 // name and the project name
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
@@ -245,6 +260,9 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
+
+	projectRef.checkDefaultLogger()
+
 	return projectRef, err
 }
 
@@ -259,6 +277,9 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 		[]string{"-" + ProjectRefDisplayNameKey},
 		projectRef,
 	)
+
+	projectRef.checkDefaultLogger()
+
 	return projectRef, err
 }
 
@@ -297,6 +318,10 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 		return nil, errors.WithStack(err)
 	}
 
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, nil
 }
 
@@ -314,6 +339,11 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -333,6 +363,11 @@ func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -348,6 +383,11 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -374,6 +414,10 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 		return nil, err
 	}
 
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -395,6 +439,11 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -431,6 +480,10 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		return nil, nil
 	}
 
+	if projectRefs[target].DefaultLogger == "" {
+		projectRefs[target].checkDefaultLogger()
+	}
+
 	return &projectRefs[target], nil
 }
 
@@ -438,7 +491,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 // There should only ever be one project for the query because we only enable commit queue if
 // no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	projRef := &ProjectRef{}
+	projectRef := &ProjectRef{}
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
@@ -449,7 +502,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		},
 		db.NoProjection,
 		db.NoSort,
-		projRef,
+		projectRef,
 	)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -457,7 +510,10 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
-	return projRef, nil
+
+	projectRef.checkDefaultLogger()
+
+	return projectRef, nil
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
@@ -478,6 +534,11 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, nil
 }
 
@@ -502,6 +563,11 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, nil
 }
 
@@ -528,6 +594,11 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 		limit,
 		&projectRefs,
 	)
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
 	return projectRefs, err
 }
 
@@ -555,6 +626,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepoKindKey:            projectRef.RepoKind,
 				ProjectRefEnabledKey:             projectRef.Enabled,
 				ProjectRefPrivateKey:             projectRef.Private,
+				ProjectRefRestrictedKey:          projectRef.Restricted,
 				ProjectRefBatchTimeKey:           projectRef.BatchTime,
 				ProjectRefOwnerKey:               projectRef.Owner,
 				ProjectRefRepoKey:                projectRef.Repo,
@@ -570,6 +642,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefDisabledStatsCache:     projectRef.DisabledStatsCache,
 				ProjectRefAdminsKey:              projectRef.Admins,
 				projectRefTracksPushEventsKey:    projectRef.TracksPushEvents,
+				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,
@@ -588,8 +661,8 @@ func (projectRef *ProjectRef) String() string {
 	return projectRef.Identifier
 }
 
-// GetBatchTime returns the Batch Time of the ProjectRef
-func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
+// getBatchTime returns the Batch Time of the ProjectRef
+func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 	var val int = p.BatchTime
 	if variant.BatchTime != nil {
 		val = *variant.BatchTime
@@ -605,8 +678,41 @@ func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
 	}
 }
 
-func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
-	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)
+// return the next valid batch time
+func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
+	sched, err := parser.Parse(cronBatchTime)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
+	}
+	return sched.Next(curTime), nil
+}
+
+func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error) {
+	defaultRes := time.Now()
+	if variant.CronBatchTime != "" {
+		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
+	}
+
+	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name))
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "error finding version")
+	}
+
+	if lastActivated == nil {
+		return defaultRes, nil
+	}
+
+	// find matching activated build variant
+	for _, buildStatus := range lastActivated.BuildVariants {
+		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
+			continue
+		}
+
+		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTime(variant))), nil
+	}
+
+	return defaultRes, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
@@ -715,7 +821,10 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", addedUser)
+			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+		}
+		if adminUser == nil {
+			return errors.Errorf("no user '%s' found", addedUser)
 		}
 		if !util.StringSliceContains(adminUser.Roles(), role.ID) {
 			err = adminUser.AddRole(role.ID)
@@ -735,6 +844,31 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {
+	for i, d := range p.PeriodicBuilds {
+		if d.ID == definition {
+			d.NextRunTime = nextRun
+			p.PeriodicBuilds[i] = d
+			break
+		}
+	}
+	filter := bson.M{
+		ProjectRefIdentifierKey: p.Identifier,
+		projectRefPeriodicBuildsKey: bson.M{
+			"$elemMatch": bson.M{
+				"id": definition,
+			},
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(projectRefPeriodicBuildsKey, "$", "next_run_time"): nextRun,
+		},
+	}
+
+	return db.Update(ProjectRefCollection, filter, update)
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {

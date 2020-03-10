@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -18,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -1160,14 +1162,9 @@ func (s *EC2Suite) TestGetRegion() {
 	s.Equal(evergreen.DefaultEC2Region, r)
 
 	(*s.h.Distro.ProviderSettings)["region"] = evergreen.DefaultEC2Region
-	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
+	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, evergreen.DefaultEC2Region))
 	r = ec2Settings.getRegion()
 	s.Equal(evergreen.DefaultEC2Region, r)
-
-	(*s.h.Distro.ProviderSettings)["region"] = "us-west-2"
-	s.NoError(ec2Settings.fromDistroSettings(s.h.Distro))
-	r = ec2Settings.getRegion()
-	s.Equal("us-west-2", r)
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
@@ -1261,28 +1258,55 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	s.NoError(ec2Settings.fromDistroSettings(d))
+	s.NoError(ec2Settings.FromDistroSettings(d, evergreen.DefaultEC2Region))
 	s.Equal("key", ec2Settings.KeyName)
 	s.Equal("ami", ec2Settings.AMI)
 	s.Equal("instance", ec2Settings.InstanceType)
 	s.Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
+	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
+
+	// create provider list, choose by region
+	settings2 := EC2ProviderSettings{
+		Region:           "us-east-2",
+		AMI:              "other_ami",
+		InstanceType:     "other_instance",
+		SecurityGroupIDs: []string{"ghijkl"},
+		BidPrice:         float64(0.002),
+		AWSKeyID:         "other_key_id",
+		KeyName:          "other_key",
+	}
+	bytes, err := bson.Marshal(ec2Settings)
+	s.NoError(err)
+	doc1 := &birch.Document{}
+	s.NoError(doc1.UnmarshalBSON(bytes))
+
+	bytes, err = bson.Marshal(settings2)
+	s.NoError(err)
+	doc2 := &birch.Document{}
+	s.NoError(doc2.UnmarshalBSON(bytes))
+	d.ProviderSettingsList = []*birch.Document{doc1, doc2}
+	d.ProviderSettings = nil
+
+	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
+	s.Equal(ec2Settings.Region, "us-east-2")
+	s.Equal(ec2Settings.InstanceType, "other_instance")
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
-			"region":                "test-region",
+			"region":                evergreen.DefaultEC2Region,
 			"aws_access_key_id":     "key",
 			"aws_secret_access_key": "secret",
 		},
 	}
 
-	managerOpts, err := getEC2ManagerOptions(d1.Provider, d1.ProviderSettings)
+	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
-	s.Equal("test-region", managerOpts.Region)
+	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 	s.Equal("key", managerOpts.ProviderKey)
 	s.Equal("secret", managerOpts.ProviderSecret)
 }

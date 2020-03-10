@@ -1,7 +1,7 @@
 package util
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +13,7 @@ func TestRandomString(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		s, err := RandomString()
 		require.NoError(t, err)
-		assert.Len(t, s, base64.URLEncoding.EncodedLen(32))
+		assert.Len(t, s, hex.EncodedLen(32))
 		assert.NotContains(t, prev, s)
 		prev = append(prev, s)
 	}

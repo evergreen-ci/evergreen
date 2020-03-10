@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -59,8 +58,7 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 		return true
 	}
 
-	rateMessage, _ := getGithubRateLimit(attempt.Response.Header)
-	grip.Debugf("Github API response: %s. %s", attempt.Response.Status, rateMessage)
+	logGitHubRateLimit(limit)
 
 	return false
 }
@@ -377,10 +375,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 			defer resp.Body.Close()
 			err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
 		}
-		// read the results
-		rateMessage, loglevel := getGithubRateLimit(resp.Header)
+		logGitHubRateLimit(parseGithubRateLimit(resp.Header))
 
-		grip.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
 		return false, nil
 	}, NumGithubRetries, GithubSleepTimeSecs*time.Second, 0)
 
@@ -392,46 +388,37 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 }
 
 func parseGithubRateLimit(h http.Header) github.Rate {
-	limitStr := h.Get("X-Ratelimit-Limit")
-	remStr := h.Get("X-Ratelimit-Remaining")
-
-	lim, _ := strconv.Atoi(limitStr)
-	rem, _ := strconv.Atoi(remStr)
-
-	return github.Rate{
-		Limit:     lim,
-		Remaining: rem,
+	var rate github.Rate
+	if limit := h.Get("X-Ratelimit-Limit"); limit != "" {
+		rate.Limit, _ = strconv.Atoi(limit)
 	}
+	if remaining := h.Get("X-Ratelimit-Remaining"); remaining != "" {
+		rate.Remaining, _ = strconv.Atoi(remaining)
+	}
+	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
+		if v, _ := strconv.ParseInt(reset, 10, 64); v != 0 {
+			rate.Reset = github.Timestamp{Time: time.Unix(v, 0)}
+		}
+	}
+
+	return rate
 }
 
-// getGithubRateLimit interprets the limit headers, and produces an increasingly
-// alarmed message (for the caller to log) as we get closer and closer
-func getGithubRateLimit(header http.Header) (message string, loglevel level.Priority) {
-	limit := parseGithubRateLimit(header)
+func logGitHubRateLimit(limit github.Rate) {
 	if limit.Limit == 0 {
-		loglevel = level.Warning
-		message = "Could not get rate limit data"
-		return
+		grip.Error(message.Fields{
+			"message": "GitHub API rate limit",
+			"error":   "can't parse rate limit",
+		})
+	} else {
+		grip.Info(message.Fields{
+			"message":    "GitHub API rate limit",
+			"remaining":  limit.Remaining,
+			"limit":      limit.Limit,
+			"reset":      limit.Reset,
+			"percentage": float32(limit.Remaining) / float32(limit.Limit),
+		})
 	}
-
-	// We're in good shape
-	if limit.Remaining > int(0.1*float32(limit.Limit)) {
-		loglevel = level.Info
-		message = fmt.Sprintf("Rate limit: %v/%v", limit.Remaining, limit.Limit)
-		return
-	}
-
-	// we're running short
-	if limit.Remaining < 20 {
-		loglevel = level.Warning
-		message = fmt.Sprintf("Rate limit significantly low: %v/%v", limit.Remaining, limit.Limit)
-		return
-	}
-
-	// we're in trouble
-	loglevel = level.Error
-	message = fmt.Sprintf("Throttling required - rate limit almost exhausted: %v/%v", limit.Remaining, limit.Limit)
-	return
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
@@ -532,9 +519,6 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 		grip.Errorf("github GET rate limit failed: %+v", err)
 		return 0, err
 	}
-
-	rateMessage, _ := getGithubRateLimit(resp.Header)
-	grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
 
 	if limits.Core == nil {
 		return 0, errors.New("nil github limits")

@@ -1,0 +1,20 @@
+{
+  patch(id: "i-dont-exist") {
+    id
+    description
+    projectID
+    githash
+    patchNumber
+    author
+    version
+    status
+    variants
+    tasks
+    variantsTasks {
+      name
+      tasks
+    }
+    activated
+    alias
+  }
+}

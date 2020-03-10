@@ -247,8 +247,10 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
 	}
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
-	user := gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", nil, false, s.m)
-	um, err := gimlet.NewBasicUserManager([]gimlet.User{user}, s.m)
+	userOpts, err := gimlet.NewBasicUserOptions("user")
+	s.Require().NoError(err)
+	user := gimlet.NewBasicUser(userOpts.Name("name").Email("email").Password("password").Key("key").AccessToken("access_token").RefreshToken("refresh_token").RoleManager(s.m))
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, s.m)
 	s.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
@@ -269,7 +271,9 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	s.Equal(0, counter)
 
 	// give user the right permissions
-	user = gimlet.NewBasicUser("user", "name", "email", "password", "key", "", "", []string{role1.ID}, false, s.m)
+	userOpts, err = gimlet.NewBasicUserOptions("user")
+	s.Require().NoError(err)
+	user = gimlet.NewBasicUser(userOpts.Name("name").Email("email").Password("password").Key("key").AccessToken("access_token").RefreshToken("refresh_token").Roles(role1.ID).RoleManager(s.m))
 	_, err = um.GetOrCreateUser(user)
 	s.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), user)
@@ -290,7 +294,7 @@ func (s *RoleManagerSuite) TestRequiresPermissionMiddleware() {
 	rw = httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{})
 	authHandler.ServeHTTP(rw, req, checkPermission)
-	s.Equal(http.StatusUnauthorized, rw.Code)
+	s.Equal(http.StatusNotFound, rw.Code)
 	s.Equal(1, counter)
 }
 
@@ -522,4 +526,56 @@ func (s *RoleManagerSuite) TestFindRolesWithResources() {
 	roles, err = s.m.FindRolesWithResources("project", []string{"resource4"})
 	s.NoError(err)
 	s.Len(roles, 0)
+}
+
+func (s *RoleManagerSuite) TestValidPermissions() {
+	permissions := gimlet.Permissions{
+		"edit":          10,
+		"notvalid":      20,
+		"stillnotvalid": 30,
+	}
+	err := s.m.IsValidPermissions(permissions)
+	s.Error(err)
+	s.Contains(err.Error(), "'notvalid' is not a valid permission")
+	s.Contains(err.Error(), "'stillnotvalid' is not a valid permission")
+	s.NotContains(err.Error(), "edit")
+}
+
+func (s *RoleManagerSuite) TestPermissionSummaryForRoles() {
+	r1 := gimlet.Role{
+		ID:    "r1",
+		Scope: "1",
+		Permissions: gimlet.Permissions{
+			"edit": 20,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r1))
+	r2 := gimlet.Role{
+		ID:    "r2",
+		Scope: "2",
+		Permissions: gimlet.Permissions{
+			"read": 50,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r2))
+	r3 := gimlet.Role{
+		ID:    "r3",
+		Scope: "3",
+		Permissions: gimlet.Permissions{
+			"edit": 40,
+			"read": 30,
+		},
+	}
+	s.NoError(s.m.UpdateRole(r3))
+
+	summary, err := PermissionSummaryForRoles(context.Background(), []string{"r1", "r2", "r3"}, s.m)
+	s.NoError(err)
+	s.Len(summary[0].Permissions, 3)
+	s.Equal("project", summary[0].Type)
+	s.Equal(40, summary[0].Permissions["resource1"]["edit"])
+	s.Equal(30, summary[0].Permissions["resource1"]["read"])
+	s.Equal(40, summary[0].Permissions["resource2"]["edit"])
+	s.Equal(30, summary[0].Permissions["resource2"]["read"])
+	s.Equal(40, summary[0].Permissions["resource3"]["edit"])
+	s.Equal(50, summary[0].Permissions["resource3"]["read"])
 }

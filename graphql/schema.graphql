@@ -1,6 +1,59 @@
 type Query {
-  userPatches(userId: String!): [Patch]!
+  userPatches(userId: String!): [Patch!]!
+  patch(id: String!): Patch!
   task(taskId: String!): Task
+  projects: Projects!
+  patchTasks(
+    patchId: String!
+    sortBy: TaskSortCategory = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    statuses: [String!]! = []
+  ): [TaskResult!]!
+  taskTests(
+    taskId: String!
+    sortCategory: TestSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    status: String = ""
+  ): [TestResult!]
+  taskFiles(taskId: String!): [GroupedFiles!]!
+  user: User!
+}
+
+type Mutation {
+  addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
+  scheduleTask(taskId: String!): Task!
+  unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task!
+  setTaskPriority(taskId: String!, priority: Int!): Task!
+}
+
+enum TaskSortCategory {
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
+}
+
+enum TestSortCategory {
+  STATUS
+  DURATION
+  TEST_NAME
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+type GroupedFiles {
+  taskName: String
+  files: [File!]
 }
 
 type Patch {
@@ -12,26 +65,47 @@ type Patch {
   author: String!
   version: String!
   status: String!
-  createTime: Time!
-  startTime: Time
-  finishTime: Time
-  variants: [String]!
-  tasks: [String]!
+  variants: [String!]!
+  tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String!
+  duration: PatchDuration
+  time: PatchTime
+  taskCount: Int
+}
+
+type TaskResult {
+  id: ID!
+  displayName: String!
+  version: String!
+  status: String!
+  baseStatus: String!
+  buildVariant: String!
+}
+
+type PatchDuration {
+  makespan: String
+  timeTaken: String
+  time: PatchTime
+}
+
+type PatchTime {
+  started: String
+  finished: String
+  submittedAt: String!
 }
 
 type VariantTask {
   name: String!
-  tasks: [String]!
+  tasks: [String!]!
 }
 
 type TaskLogs {
-  AllLogLink: String
-  AgentLogLink: String
-  SystemLogLink: String
-  TaskLogLink: String
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
 }
 
 type TaskEndDetail {
@@ -42,19 +116,19 @@ type TaskEndDetail {
 }
 
 type TestResult {
+  id: String!
   status: String!
   testFile: String!
   logs: TestLog!
   exitCode: Int
   startTime: Time
+  duration: Float
   endTime: Time
 }
 
 type TestLog {
-  url: String
-  urlRaw: String
-  lineNum: Int
-  logId: String
+  htmlDisplayURL: String
+  rawDisplayURL: String
 }
 
 type Task {
@@ -72,7 +146,7 @@ type Task {
   priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
-  logs: TaskLogs
+  logs: TaskLogs!
   activated: Boolean!
   activatedBy: String
   buildId: String!
@@ -89,11 +163,39 @@ type Task {
   details: TaskEndDetail
   timeTaken: Duration
   expectedDuration: Duration
-  testResults: [TestResult!]
   displayOnly: Boolean
   executionTasks: [String!]
   generateTask: Boolean
   generatedBy: String
+  aborted: Boolean
+  patchNumber: Int
+}
+
+type Projects {
+  favorites: [Project!]!
+  otherProjects: [GroupedProjects!]!
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project!]!
+}
+
+type Project {
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
+}
+
+type File {
+  name: String!
+  link: String!
+  visibility: String!
+}
+
+type User {
+  displayName: String!
 }
 
 scalar Time

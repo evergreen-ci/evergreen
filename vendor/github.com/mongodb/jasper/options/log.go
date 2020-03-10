@@ -16,14 +16,14 @@ import (
 type LogType string
 
 const (
-	LogBuildloggerV2 LogType = "buildloggerv2" // nolint
-	LogBuildloggerV3         = "buildloggerv3" // nolint
-	LogDefault               = "default"       // nolint
-	LogFile                  = "file"          // nolint
-	LogInherit               = "inherit"       // nolint
-	LogSplunk                = "splunk"        // nolint
-	LogSumologic             = "sumologic"     // nolint
-	LogInMemory              = "inmemory"      // nolint
+	LogBuildloggerV2 LogType = "buildloggerv2"
+	LogBuildloggerV3 LogType = "buildloggerv3"
+	LogDefault       LogType = "default"
+	LogFile          LogType = "file"
+	LogInherit       LogType = "inherit"
+	LogSplunk        LogType = "splunk"
+	LogSumologic     LogType = "sumologic"
+	LogInMemory      LogType = "inmemory"
 )
 
 // Validate ensures that the LogType is valid.
@@ -47,10 +47,10 @@ const (
 type LogFormat string
 
 const (
-	LogFormatPlain   LogFormat = "plain"   // nolint
-	LogFormatDefault LogFormat = "default" // nolint
-	LogFormatJSON    LogFormat = "json"    // nolint
-	LogFormatInvalid LogFormat = "invalid" // nolint
+	LogFormatPlain   LogFormat = "plain"
+	LogFormatDefault LogFormat = "default"
+	LogFormatJSON    LogFormat = "json"
+	LogFormatInvalid LogFormat = "invalid"
 )
 
 // Validate ensures that the LogFormat is valid.
@@ -103,16 +103,16 @@ func (opts Buffer) Validate() error {
 //
 // By default, logger reads from both standard output and standard error.
 type Log struct {
-	BufferOptions        Buffer                    `json:"buffer_options,omitempty"`
-	BuildloggerOptions   send.BuildloggerConfig    `json:"buildlogger_options,omitempty"`
-	BuildloggerV3Options timber.LoggerOptions      `json:"buildlogger_v3_options"`
-	DefaultPrefix        string                    `json:"default_prefix,omitempty"`
-	FileName             string                    `json:"file_name,omitempty"`
-	Format               LogFormat                 `json:"format"`
-	InMemoryCap          int                       `json:"in_memory_cap,omitempty"`
-	Level                send.LevelInfo            `json:"level,omitempty"`
-	SplunkOptions        send.SplunkConnectionInfo `json:"splunk_options,omitempty"`
-	SumoEndpoint         string                    `json:"sumo_endpoint,omitempty"`
+	BufferOptions        Buffer                    `json:"buffer_options,omitempty" bson:"buffer_options"`
+	BuildloggerOptions   send.BuildloggerConfig    `json:"buildlogger_options,omitempty" bson:"buildlogger_options"`
+	BuildloggerV3Options timber.LoggerOptions      `json:"buildlogger_v3_options" bson:"buildlogger_v_3_options"`
+	DefaultPrefix        string                    `json:"default_prefix,omitempty" bson:"default_prefix"`
+	FileName             string                    `json:"file_name,omitempty" bson:"file_name"`
+	Format               LogFormat                 `json:"format" bson:"format"`
+	InMemoryCap          int                       `json:"in_memory_cap,omitempty" bson:"in_memory_cap"`
+	Level                send.LevelInfo            `json:"level,omitempty" bson:"level"`
+	SplunkOptions        send.SplunkConnectionInfo `json:"splunk_options,omitempty" bson:"splunk_options"`
+	SumoEndpoint         string                    `json:"sumo_endpoint,omitempty" bson:"sumo_endpoint"`
 }
 
 // Validate ensures that LogOptions is valid.
@@ -129,12 +129,18 @@ func (opts *Log) Validate() error {
 	return catcher.Resolve()
 }
 
-// Logger is a wrapper struct around a grip/send.Sender.
+// Logger is a wrapper around a grip/send.Sender. It is not thread-safe.
 type Logger struct {
 	Type    LogType `bson:"log_type" json:"log_type" yaml:"log_type"`
 	Options Log     `bson:"log_options" json:"log_options" yaml:"log_options"`
 
+	// sender may be the actual send.Sender or the wrapping send.Sender.
 	sender send.Sender
+	// baseSender stores the underlying send.Senders. It must be stored to work
+	// around the fact that wrapping Senders do not necessarily close their
+	// underlying send.Sender, but we have to clean up the resources when the
+	// Logger is finished.
+	baseSender send.Sender
 }
 
 // Validate ensures that LogOptions is valid.
@@ -146,8 +152,9 @@ func (l Logger) Validate() error {
 }
 
 // Configure will configure the grip/send.Sender used by the Logger to use the
-// specified LogType as specified in Logger.Type.
-func (l *Logger) Configure() (send.Sender, error) {
+// specified LogType as specified in Logger.Type. If the error is nil, callers
+// are expected to call Close for the Logger once complete.
+func (l *Logger) Configure() (send.Sender, error) { //nolint: gocognit
 	if l.sender != nil {
 		return l.sender, nil
 	}
@@ -234,6 +241,8 @@ func (l *Logger) Configure() (send.Sender, error) {
 		return nil, errors.New("failed to set log format")
 	}
 
+	baseSender := sender
+
 	if l.Type != LogBuildloggerV3 && l.Options.BufferOptions.Buffered {
 		if l.Options.BufferOptions.Duration < 0 || l.Options.BufferOptions.MaxSize < 0 {
 			return nil, errors.New("buffer options cannot be negative")
@@ -242,6 +251,21 @@ func (l *Logger) Configure() (send.Sender, error) {
 	}
 
 	l.sender = sender
+	l.baseSender = baseSender
 
 	return l.sender, nil
+}
+
+// Close closes its send.Senders, closing the wrapper send.Sender and then the
+// underlying base send.Sender. This should be called once the Logger is
+// finished logging.
+func (l *Logger) Close() error {
+	catcher := grip.NewBasicCatcher()
+	if l.sender != nil {
+		catcher.Wrap(l.sender.Close(), "could not close sender")
+	}
+	if l.baseSender != nil && l.sender != l.baseSender {
+		catcher.Wrap(l.baseSender.Close(), "could not close underlying sender")
+	}
+	return catcher.Resolve()
 }

@@ -38,7 +38,8 @@ func TestFleet(t *testing.T) {
 
 	for name, test := range map[string]func(*testing.T){
 		"SpawnHost": func(*testing.T) {
-			h, err := m.SpawnHost(context.Background(), h)
+			var err error
+			h, err = m.SpawnHost(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, "i-12345", h.Id)
 		},
@@ -86,14 +87,14 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
 		"SpawnFleetSpotHost": func(*testing.T) {
-			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}, []*ec2.LaunchTemplateBlockDeviceMappingRequest{}))
+			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Equal(t, "templateID", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateId)
 		},
 		"UploadLaunchTemplate": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{AMI: "ami"}
-			templateID, templateVersion, err := m.uploadLaunchTemplate(context.Background(), &host.Host{}, ec2Settings, []*ec2.LaunchTemplateBlockDeviceMappingRequest{})
+			templateID, templateVersion, err := m.uploadLaunchTemplate(context.Background(), &host.Host{}, ec2Settings)
 			assert.NoError(t, err)
 			assert.Equal(t, "templateID", *templateID)
 			assert.Equal(t, int64(1), *templateVersion)
@@ -153,7 +154,7 @@ func TestFleet(t *testing.T) {
 		"CostForDuration": func(*testing.T) {
 			start := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 			end := start.Add(time.Hour * 24)
-			h := &host.Host{
+			h = &host.Host{
 				ComputeCostPerHour: float64(1),
 				VolumeTotalSize:    int64(30),
 				Zone:               "us-east-1a",

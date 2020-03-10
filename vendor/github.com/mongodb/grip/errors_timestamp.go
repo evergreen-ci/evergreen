@@ -164,7 +164,7 @@ func (e *timestampError) Priority() level.Priority {
 	return e.Metadata.Level
 }
 func (e *timestampError) SetPriority(l level.Priority) error {
-	if !level.IsValidPriority(l) {
+	if !l.IsValid() {
 		return fmt.Errorf("%s (%d) is not a valid priority", l, l)
 	}
 

@@ -23,7 +23,6 @@ var (
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
 	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")
 	domainNameKey         = bsonutil.MustHaveTag(Settings{}, "DomainName")
-	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")
 	slackKey              = bsonutil.MustHaveTag(Settings{}, "Slack")
@@ -57,7 +56,11 @@ var (
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
-	aclEnabledKey         = bsonutil.MustHaveTag(Settings{}, "ACLCheckingEnabled")
+	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
+	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
+
+	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
+	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -85,6 +88,17 @@ var (
 	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
+	backgroundReauthDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
+
+	// AuthConfig keys
+	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	AuthOnlyAPIKey                 = bsonutil.MustHaveTag(AuthConfig{}, "OnlyAPI")
+	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
+	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
+	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

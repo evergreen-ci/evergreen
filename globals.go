@@ -155,6 +155,7 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 	TeardownScriptName            = "teardown.sh"
+	HomeVolumeDir                 = "user_home"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
@@ -195,8 +196,10 @@ const (
 	DefaultJasperPort          = 2385
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
-	// TODO: remove this when degrading YAML
-	UseParserProject = false
+	VSCodePort = 2021
+
+	// can flip this when regions are configured
+	UseSpawnHostRegions = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -415,6 +418,7 @@ var (
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
 		HostRunning,
+		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
@@ -489,7 +493,9 @@ func IsGitHubPatchRequester(requester string) bool {
 }
 
 // Permissions-related constants
-var AclCheckingIsEnabled = false
+func PermissionsDisabledForTests() bool {
+	return PermissionSystemDisabled
+}
 
 const (
 	SuperUserResourceType = "super_user"
@@ -507,7 +513,8 @@ type PermissionLevel struct {
 }
 
 var (
-	UnauthedUserRoles = []string{"unauthorized_project"}
+	UnauthedUserRoles  = []string{"unauthorized_project"}
+	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
 
@@ -515,6 +522,7 @@ var (
 	PermissionAdminSettings = "admin_settings"
 	PermissionProjectCreate = "project_create"
 	PermissionDistroCreate  = "distro_create"
+	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
@@ -538,6 +546,10 @@ var (
 	}
 	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
+		Value:       10,
+	}
+	RoleModify = PermissionLevel{
+		Description: "Modify system roles and permissions",
 		Value:       10,
 	}
 	ProjectSettingsEdit = PermissionLevel{
@@ -692,3 +704,17 @@ var DistroPermissions = []string{
 	PermissionDistroSettings,
 	PermissionHosts,
 }
+
+var SuperuserPermissions = []string{
+	PermissionAdminSettings,
+	PermissionProjectCreate,
+	PermissionDistroCreate,
+	PermissionRoleModify,
+}
+
+// Evergreen log types
+const (
+	LogTypeAgent  = "agent_log"
+	LogTypeTask   = "task_log"
+	LogTypeSystem = "system_log"
+)

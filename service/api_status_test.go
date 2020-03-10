@@ -150,7 +150,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 
 func TestServiceStatusEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	testServer, err := CreateTestServer(testConfig, nil)
+	testServer, err := CreateTestServer(testConfig, nil, false)
 	require.NoError(t, err, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
@@ -177,7 +177,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 func TestStuckHostEndpoints(t *testing.T) {
 	Convey("With a test server and test config", t, func() {
 		testConfig := testutil.TestConfig()
-		testServer, err := CreateTestServer(testConfig, nil)
+		testServer, err := CreateTestServer(testConfig, nil, false)
 		require.NoError(t, err, "Couldn't create apiserver: %v", err)
 		defer testServer.Close()
 

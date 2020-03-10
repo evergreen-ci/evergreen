@@ -20,7 +20,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 
 	for managerName, makeManager := range map[string]func(ctx context.Context, t *testing.T) *basicProcessManager{
 		"Basic": func(ctx context.Context, t *testing.T) *basicProcessManager {
-			basicManager, err := newBasicProcessManager(map[string]Process{}, false, false)
+			basicManager, err := newBasicProcessManager(map[string]Process{}, true, false)
 			require.NoError(t, err)
 			return basicManager.(*basicProcessManager)
 		},

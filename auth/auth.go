@@ -6,44 +6,153 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-//LoadUserManager is used to check the configuration for authentication and create a UserManager
-// depending on what type of authentication is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool, error) {
-	var manager gimlet.UserManager
-	var err error
-	if authConfig.LDAP != nil {
-		manager, err = NewLDAPUserManager(authConfig.LDAP)
-		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up ldap authentication")
+// LoadUserManager is used to check the configuration for authentication and
+// create a UserManager depending on what type of authentication is used.
+func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	authConfig := settings.AuthConfig
+
+	if authConfig.PreferredType != "" {
+		if authConfig.PreferredType == evergreen.AuthMultiKey {
+			manager, info, err := makeMultiManager(settings, authConfig)
+			if err == nil {
+				return manager, info, nil
+			}
+		} else {
+			manager, info, err := makeSingleManager(authConfig.PreferredType, settings, authConfig)
+			if err == nil {
+				return manager, info, nil
+			}
 		}
-		return manager, true, nil
+	}
+
+	if authConfig.Multi != nil && !authConfig.Multi.IsZero() {
+		return makeMultiManager(settings, authConfig)
+	}
+	if authConfig.LDAP != nil {
+		return makeLDAPManager(authConfig.LDAP)
+	}
+	if authConfig.Okta != nil {
+		return makeOktaManager(settings, authConfig.Okta)
 	}
 	if authConfig.Naive != nil {
-		manager, err = NewNaiveUserManager(authConfig.Naive)
-		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up naive authentication")
-		}
-		return manager, false, nil
+		return makeNaiveManager(authConfig.Naive)
 	}
 	if authConfig.Github != nil {
-		var domain string
-		env := evergreen.GetEnvironment()
-		if env != nil {
-			domain = env.Settings().Ui.LoginDomain
-		}
-		manager, err = NewGithubUserManager(authConfig.Github, domain)
-		if err != nil {
-			return nil, false, errors.Wrap(err, "problem setting up github authentication")
-		}
-		return manager, false, nil
+		return makeGithubManager(settings, authConfig.Github)
 	}
-	return nil, false, errors.New("Must have at least one form of authentication, currently there are none")
+	if authConfig.OnlyAPI != nil {
+		return makeOnlyAPIManager(authConfig.OnlyAPI)
+	}
+	return nil, evergreen.UserManagerInfo{}, errors.New("Must have at least one form of authentication, currently there are none")
+}
+
+func makeLDAPManager(config *evergreen.LDAPConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewLDAPUserManager(config)
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up ldap authentication")
+	}
+	return manager, evergreen.UserManagerInfo{
+		CanClearTokens: true,
+		CanReauthorize: true,
+	}, nil
+}
+
+func makeOktaManager(settings *evergreen.Settings, config *evergreen.OktaConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewOktaUserManager(config, settings.Ui.Url, settings.Ui.LoginDomain)
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up okta authentication")
+	}
+	return manager, evergreen.UserManagerInfo{
+		CanClearTokens: true,
+		CanReauthorize: true,
+	}, nil
+}
+
+func makeNaiveManager(config *evergreen.NaiveAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewNaiveUserManager(config)
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up naive authentication")
+	}
+	return manager, evergreen.UserManagerInfo{}, nil
+}
+
+func makeOnlyAPIManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewOnlyAPIUserManager(config)
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up API-only authentication")
+	}
+	return manager, evergreen.UserManagerInfo{}, nil
+}
+
+func makeGithubManager(settings *evergreen.Settings, config *evergreen.GithubAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewGithubUserManager(config, settings.Ui.LoginDomain)
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up github authentication")
+	}
+	return manager, evergreen.UserManagerInfo{}, nil
+}
+
+func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	var multiInfo evergreen.UserManagerInfo
+	var rw []gimlet.UserManager
+	for _, kind := range config.Multi.ReadWrite {
+		manager, info, err := makeSingleManager(kind, settings, config)
+		if err != nil {
+			return nil, evergreen.UserManagerInfo{}, errors.Wrapf(err, "could not create '%s' manager", kind)
+		}
+		rw = append(rw, manager)
+		if info.CanClearTokens {
+			multiInfo.CanClearTokens = true
+		}
+		if info.CanReauthorize {
+			multiInfo.CanReauthorize = true
+		}
+	}
+	var ro []gimlet.UserManager
+	for _, kind := range config.Multi.ReadOnly {
+		// Ignore info because these managers are read-only and info currently
+		// only contains write operation capabilities.
+		manager, _, err := makeSingleManager(kind, settings, config)
+		if err != nil {
+			return nil, evergreen.UserManagerInfo{}, errors.Wrapf(err, "could not create '%s' manager", kind)
+		}
+		ro = append(ro, manager)
+	}
+	multi := gimlet.NewMultiUserManager(rw, ro)
+	return multi, multiInfo, nil
+}
+
+func makeSingleManager(kind string, settings *evergreen.Settings, config evergreen.AuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	switch kind {
+	case evergreen.AuthLDAPKey:
+		if config.LDAP != nil {
+			return makeLDAPManager(config.LDAP)
+		}
+	case evergreen.AuthOktaKey:
+		if config.Okta != nil {
+			return makeOktaManager(settings, config.Okta)
+		}
+	case evergreen.AuthGithubKey:
+		if config.Github != nil {
+			return makeGithubManager(settings, config.Github)
+		}
+	case evergreen.AuthNaiveKey:
+		if config.Naive != nil {
+			return makeNaiveManager(config.Naive)
+		}
+	case evergreen.AuthOnlyAPIKey:
+		if config.OnlyAPI != nil {
+			return makeOnlyAPIManager(config.OnlyAPI)
+		}
+	default:
+		return nil, evergreen.UserManagerInfo{}, errors.Errorf("unrecognized user manager of type '%s'", kind)
+	}
+	return nil, evergreen.UserManagerInfo{}, errors.Errorf("user manager of type '%s' could not be created", kind)
 }
 
 // SetLoginToken sets the token in the session cookie for authentication.
@@ -73,24 +182,8 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 	http.SetCookie(w, authTokenCookie)
 }
 
-// IsSuperUser verifies that a given user has super user permissions.
-// A user has these permission if they are in the super users list or if the list is empty,
-// in which case all users are super users.
-func IsSuperUser(superUsers []string, u gimlet.User) bool {
-	if u == nil {
-		return false
-	}
-
-	if util.StringSliceContains(superUsers, u.Username()) ||
-		len(superUsers) == 0 {
-		return true
-	}
-	return false
-
-}
-
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email())
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken())
 }
 
 func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }

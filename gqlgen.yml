@@ -15,6 +15,8 @@ resolver:
 models:
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+  File:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Task:
@@ -28,4 +30,8 @@ models:
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
-    model: github.com/evergreen-ci/evergreen/graphql/customscalars.Duration
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  Project:
+    model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
+  User:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUser

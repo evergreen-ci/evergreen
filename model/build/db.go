@@ -45,6 +45,7 @@ var (
 	TaskCacheStartTimeKey     = bsonutil.MustHaveTag(TaskCache{}, "StartTime")
 	TaskCacheTimeTakenKey     = bsonutil.MustHaveTag(TaskCache{}, "TimeTaken")
 	TaskCacheActivatedKey     = bsonutil.MustHaveTag(TaskCache{}, "Activated")
+	TaskCacheBlockedKey       = bsonutil.MustHaveTag(TaskCache{}, "Blocked")
 )
 
 var CompletedStatuses = []string{evergreen.BuildSucceeded, evergreen.BuildFailed}

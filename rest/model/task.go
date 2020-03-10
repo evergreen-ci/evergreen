@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -19,13 +21,13 @@ const (
 type APITask struct {
 	Id                 *string          `json:"task_id"`
 	ProjectId          *string          `json:"project_id"`
-	CreateTime         time.Time        `json:"create_time"`
-	DispatchTime       time.Time        `json:"dispatch_time"`
-	ScheduledTime      time.Time        `json:"scheduled_time"`
-	StartTime          time.Time        `json:"start_time"`
-	FinishTime         time.Time        `json:"finish_time"`
-	IngestTime         time.Time        `json:"ingest_time"`
-	ActivatedTime      time.Time        `json:"activated_time"`
+	CreateTime         *time.Time       `json:"create_time"`
+	DispatchTime       *time.Time       `json:"dispatch_time"`
+	ScheduledTime      *time.Time       `json:"scheduled_time"`
+	StartTime          *time.Time       `json:"start_time"`
+	FinishTime         *time.Time       `json:"finish_time"`
+	IngestTime         *time.Time       `json:"ingest_time"`
+	ActivatedTime      *time.Time       `json:"activated_time"`
 	Version            *string          `json:"version_id"`
 	Revision           *string          `json:"revision"`
 	Priority           int64            `json:"priority"`
@@ -43,9 +45,9 @@ type APITask struct {
 	Status             *string          `json:"status"`
 	Details            ApiTaskEndDetail `json:"status_details"`
 	Logs               LogLinks         `json:"logs"`
-	TimeTaken          time.Duration    `json:"time_taken_ms"`
-	ExpectedDuration   time.Duration    `json:"expected_duration_ms"`
-	EstimatedStart     time.Duration    `json:"est_wait_to_start_ms"`
+	TimeTaken          APIDuration      `json:"time_taken_ms"`
+	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
+	EstimatedStart     APIDuration      `json:"est_wait_to_start_ms"`
 	EstimatedCost      float64          `json:"estimated_cost"`
 	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
 	GenerateTask       bool             `json:"generate_task"`
@@ -59,6 +61,7 @@ type APITask struct {
 	Blocked            bool             `json:"blocked"`
 	Requester          *string          `json:"requester"`
 	TestResults        []APITest        `json:"test_results"`
+	Aborted            bool             `json:"aborted"`
 }
 
 type LogLinks struct {
@@ -75,11 +78,17 @@ type ApiTaskEndDetail struct {
 	TimedOut    bool    `json:"timed_out"`
 }
 
-func (at *APITask) BuildPreviousExecutions(tasks []task.Task) error {
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
+		}
+		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
+			return errors.Wrap(err, "failed to build logs for previous execution")
+		}
+		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
+			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
 		}
 	}
 
@@ -94,13 +103,13 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		(*at) = APITask{
 			Id:            ToStringPtr(v.Id),
 			ProjectId:     ToStringPtr(v.Project),
-			CreateTime:    v.CreateTime,
-			DispatchTime:  v.DispatchTime,
-			ScheduledTime: v.ScheduledTime,
-			StartTime:     v.StartTime,
-			FinishTime:    v.FinishTime,
-			IngestTime:    v.IngestTime,
-			ActivatedTime: v.ActivatedTime,
+			CreateTime:    ToTimePtr(v.CreateTime),
+			DispatchTime:  ToTimePtr(v.DispatchTime),
+			ScheduledTime: ToTimePtr(v.ScheduledTime),
+			StartTime:     ToTimePtr(v.StartTime),
+			FinishTime:    ToTimePtr(v.FinishTime),
+			IngestTime:    ToTimePtr(v.IngestTime),
+			ActivatedTime: ToTimePtr(v.ActivatedTime),
 			Version:       ToStringPtr(v.Version),
 			Revision:      ToStringPtr(v.Revision),
 			Priority:      v.Priority,
@@ -121,8 +130,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				TimedOut:    v.Details.TimedOut,
 			},
 			Status:            ToStringPtr(v.Status),
-			TimeTaken:         v.TimeTaken,
-			ExpectedDuration:  v.ExpectedDuration,
+			TimeTaken:         NewAPIDuration(v.TimeTaken),
+			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:     v.Cost,
 			GenerateTask:      v.GenerateTask,
 			GeneratedBy:       v.GeneratedBy,
@@ -132,6 +141,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
+			Aborted:           v.Aborted,
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}
@@ -168,13 +178,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
 		Id:                  FromStringPtr(ad.Id),
 		Project:             FromStringPtr(ad.ProjectId),
-		CreateTime:          ad.CreateTime,
-		DispatchTime:        ad.DispatchTime,
-		ScheduledTime:       ad.ScheduledTime,
-		StartTime:           ad.StartTime,
-		FinishTime:          ad.FinishTime,
-		IngestTime:          ad.IngestTime,
-		ActivatedTime:       ad.ActivatedTime,
 		Version:             FromStringPtr(ad.Version),
 		Revision:            FromStringPtr(ad.Revision),
 		Priority:            ad.Priority,
@@ -195,14 +198,40 @@ func (ad *APITask) ToService() (interface{}, error) {
 			TimedOut:    ad.Details.TimedOut,
 		},
 		Status:           FromStringPtr(ad.Status),
-		TimeTaken:        ad.TimeTaken,
-		ExpectedDuration: ad.ExpectedDuration,
+		TimeTaken:        ad.TimeTaken.ToDuration(),
+		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 		Cost:             ad.EstimatedCost,
 		GenerateTask:     ad.GenerateTask,
 		GeneratedBy:      ad.GeneratedBy,
 		DisplayOnly:      ad.DisplayOnly,
 		Requester:        FromStringPtr(ad.Requester),
 	}
+	catcher := grip.NewBasicCatcher()
+	createTime, err := FromTimePtr(ad.CreateTime)
+	catcher.Add(err)
+	dispatchTime, err := FromTimePtr(ad.DispatchTime)
+	catcher.Add(err)
+	scheduledTime, err := FromTimePtr(ad.ScheduledTime)
+	catcher.Add(err)
+	startTime, err := FromTimePtr(ad.StartTime)
+	catcher.Add(err)
+	finishTime, err := FromTimePtr(ad.FinishTime)
+	catcher.Add(err)
+	ingestTime, err := FromTimePtr(ad.IngestTime)
+	catcher.Add(err)
+	activatedTime, err := FromTimePtr(ad.ActivatedTime)
+	catcher.Add(err)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	st.CreateTime = createTime
+	st.DispatchTime = dispatchTime
+	st.ScheduledTime = scheduledTime
+	st.StartTime = startTime
+	st.FinishTime = finishTime
+	st.IngestTime = ingestTime
+	st.ActivatedTime = activatedTime
 	if len(ad.ExecutionTasks) > 0 {
 		ets := []string{}
 		for _, t := range ad.ExecutionTasks {
@@ -253,13 +282,13 @@ func (at *APITask) GetArtifacts() error {
 // APITaskCost is the model to be returned by the API whenever tasks
 // for the cost route are fetched.
 type APITaskCost struct {
-	Id            *string       `json:"task_id"`
-	DisplayName   *string       `json:"display_name"`
-	DistroId      *string       `json:"distro"`
-	BuildVariant  *string       `json:"build_variant"`
-	TimeTaken     time.Duration `json:"time_taken"`
-	Githash       *string       `json:"githash"`
-	EstimatedCost float64       `json:"estimated_cost"`
+	Id            *string     `json:"task_id"`
+	DisplayName   *string     `json:"display_name"`
+	DistroId      *string     `json:"distro"`
+	BuildVariant  *string     `json:"build_variant"`
+	TimeTaken     APIDuration `json:"time_taken"`
+	Githash       *string     `json:"githash"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -272,7 +301,7 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 		atc.DisplayName = ToStringPtr(v.DisplayName)
 		atc.DistroId = ToStringPtr(v.DistroId)
 		atc.BuildVariant = ToStringPtr(v.BuildVariant)
-		atc.TimeTaken = v.TimeTaken
+		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
 		atc.Githash = ToStringPtr(v.Revision)
 		atc.EstimatedCost = v.Cost
 	default:

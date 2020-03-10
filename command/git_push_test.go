@@ -78,7 +78,6 @@ func TestGitPush(t *testing.T) {
 			commands := []string{
 				"git checkout master",
 				"git rev-parse master@{upstream}",
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
 
@@ -89,52 +88,17 @@ func TestGitPush(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
-		},
-		"PushPatchMock": func(*testing.T) {
-			manager := &mock.Manager{}
-			manager.Create = func(opts *options.Create) mock.Process {
-				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
-				assert.NoError(t, err)
-				proc := mock.Process{}
-				proc.ProcInfo.Options = *opts
-				return proc
-			}
-			c.base.jasper = manager
-			params := pushParams{
-				directory:     c.Directory,
-				authorName:    "baxterthehacker",
-				authorEmail:   "baxter@thehacker.com",
-				commitMessage: "testing 123",
-				branch:        "master",
-				token:         token,
-				skipCommit:    false,
-			}
-
-			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
-			commands := []string{
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="baxterthehacker <baxter@thehacker.com>"`,
-				"git push origin master",
-			}
-			require.Len(t, manager.Procs, len(commands))
-			for i, proc := range manager.Procs {
-				args := proc.(*mock.Process).ProcInfo.Options.Args
-				splitCommand, err = shlex.Split(commands[i])
-				assert.NoError(t, err)
-				assert.Equal(t, splitCommand, args)
-			}
-
-			assert.NoError(t, logger.Close())
-			msgs := comm.GetMockMessages()[""]
-			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
 		},
 		"PushPatch": func(*testing.T) {
 			ctx := context.Background()
-			jpm, err := jasper.NewSynchronizedManager(false)
+			var jpm jasper.Manager
+			jpm, err = jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 			c.base.jasper = jpm
 			c.DryRun = true
 
-			repoDir, err := ioutil.TempDir("", "test_repo")
+			var repoDir string
+			repoDir, err = ioutil.TempDir("", "test_repo")
 			require.NoError(t, err)
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))
@@ -149,20 +113,17 @@ func TestGitPush(t *testing.T) {
 			require.NoError(t, cmd.Run(ctx))
 
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test3.txt"), []byte("test3"), 0644))
-			addToIndexCommands := []string{
+			toApplyCommands := []string{
 				`git rm test1.txt`,
 				`git add test3.txt`,
+				`git -c "user.name=baxterthehacker" -c "user.email=baxter@thehacker.com" commit -m "changes to push"`,
 			}
-			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(addToIndexCommands...)
+			cmd = jpm.CreateCommand(ctx).Directory(repoDir).Append(toApplyCommands...)
 			require.NoError(t, cmd.Run(ctx))
 
 			params := pushParams{
-				directory:     repoDir,
-				authorName:    "baxterthehacker",
-				authorEmail:   "baxter@thehacker.com",
-				commitMessage: "testing 123",
-				branch:        "master",
-				skipCommit:    false,
+				directory: repoDir,
+				branch:    "master",
 			}
 			assert.NoError(t, c.pushPatch(ctx, logger, params))
 
@@ -177,6 +138,38 @@ func TestGitPush(t *testing.T) {
 			assert.Equal(t, "test3.txt", filesChangedSlice[1])
 
 			assert.NoError(t, os.RemoveAll(repoDir))
+		},
+		"PushPatchMock": func(*testing.T) {
+			manager := &mock.Manager{}
+			manager.Create = func(opts *options.Create) mock.Process {
+				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
+				assert.NoError(t, err)
+				proc := mock.Process{}
+				proc.ProcInfo.Options = *opts
+				return proc
+			}
+			c.base.jasper = manager
+			params := pushParams{
+				directory: c.Directory,
+				branch:    "master",
+				token:     token,
+			}
+
+			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
+			commands := []string{
+				"git push origin master",
+			}
+			require.Len(t, manager.Procs, len(commands))
+			for i, proc := range manager.Procs {
+				args := proc.(*mock.Process).ProcInfo.Options.Args
+				splitCommand, err = shlex.Split(commands[i])
+				assert.NoError(t, err)
+				assert.Equal(t, splitCommand, args)
+			}
+
+			assert.NoError(t, logger.Close())
+			msgs := comm.GetMockMessages()[""]
+			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
 		},
 		"RevParse": func(*testing.T) {
 			manager := &mock.Manager{}

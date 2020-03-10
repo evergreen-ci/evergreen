@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -70,6 +70,7 @@ type ParserProject struct {
 	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -283,20 +284,21 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name         string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName  string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions   util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules      parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disabled     bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
-	Push         bool               `yaml:"push,omitempty" bson:"push,omitempty"`
-	BatchTime    *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Stepback     *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires     taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
+	Name          string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName   string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	Disabled      bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
+	Push          bool               `yaml:"push,omitempty" bson:"push,omitempty"`
+	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
+	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	RunOn         parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Requires      taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -434,40 +436,39 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
 func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Project, *ParserProject, error) {
-	var ppFromDB *ParserProject
+	var pp *ParserProject
 	var err error
-	// if not using parser project anyway, only lookup if saving
-	if evergreen.UseParserProject || shouldSave {
-		ppFromDB, err = ParserProjectFindOneById(v.Id)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error finding parser project")
-		}
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding parser project")
 	}
 
-	if evergreen.UseParserProject && ppFromDB != nil {
-		// if parser project config number is old then there was a race,
-		// and we should default to the version config
-		if ppFromDB.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-			ppFromDB.Identifier = identifier
-			p, err := TranslateProject(ppFromDB)
-			return p, ppFromDB, err
+	// if parser project config number is old then we should default to legacy
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+		if pp.Functions == nil {
+			pp.Functions = map[string]*YAMLCommandSet{}
 		}
+		pp.Identifier = identifier
+		var p *Project
+		p, err = TranslateProject(pp)
+		return p, pp, err
 	}
 
 	if v.Config == "" {
 		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
-	pp, err := LoadProjectInto([]byte(v.Config), identifier, p)
+	pp, err = LoadProjectInto([]byte(v.Config), identifier, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
 	pp.Id = v.Id
 	pp.Identifier = identifier
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
+	pp.CreateTime = v.CreateTime
 
-	// TODO: don't need separate ppFromDB variable once UseParserProject = true
-	if shouldSave && ppFromDB == nil {
+	if shouldSave {
 		if err = pp.TryUpsert(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project": identifier,
@@ -661,16 +662,17 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
-			DisplayName: pbv.DisplayName,
-			Name:        pbv.Name,
-			Expansions:  pbv.Expansions,
-			Modules:     pbv.Modules,
-			Disabled:    pbv.Disabled,
-			Push:        pbv.Push,
-			BatchTime:   pbv.BatchTime,
-			Stepback:    pbv.Stepback,
-			RunOn:       pbv.RunOn,
-			Tags:        pbv.Tags,
+			DisplayName:   pbv.DisplayName,
+			Name:          pbv.Name,
+			Expansions:    pbv.Expansions,
+			Modules:       pbv.Modules,
+			Disabled:      pbv.Disabled,
+			Push:          pbv.Push,
+			BatchTime:     pbv.BatchTime,
+			CronBatchTime: pbv.CronBatchTime,
+			Stepback:      pbv.Stepback,
+			RunOn:         pbv.RunOn,
+			Tags:          pbv.Tags,
 		}
 		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 

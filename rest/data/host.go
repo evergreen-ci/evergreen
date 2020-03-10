@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -37,6 +36,25 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 			Message:    "no hosts found",
 		}
 	}
+	return hostRes, nil
+}
+
+func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+	params := host.HostsInRangeParams{
+		CreatedBefore: apiParams.CreatedBefore,
+		CreatedAfter:  apiParams.CreatedAfter,
+		Distro:        apiParams.Distro,
+		UserSpawned:   apiParams.UserSpawned,
+		Status:        apiParams.Status,
+		Region:        apiParams.Region,
+		User:          username,
+	}
+
+	hostRes, err := host.FindHostsInRange(params)
+	if err != nil {
+		return nil, err
+	}
+
 	return hostRes, nil
 }
 
@@ -65,7 +83,8 @@ func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, er
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
+	settings *evergreen.Settings) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
 	keyVal, err := user.GetPublicKey(options.KeyName)
@@ -75,33 +94,27 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-
-	var providerSettings *map[string]interface{}
-	if options.UserData != "" {
-		var d distro.Distro
-		d, err = distro.FindOne(distro.ById(options.DistroID))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error finding distro '%s'", options.DistroID)
-		}
-		providerSettings = d.ProviderSettings
-		(*providerSettings)["user_data"] = options.UserData
+	if options.Region == "" {
+		options.Region = evergreen.DefaultEC2Region
 	}
-
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		ProviderSettings: providerSettings,
-		UserName:         user.Username(),
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
-		NoExpiration:     options.NoExpiration,
+		DistroId:             options.DistroID,
+		Userdata:             options.UserData,
+		UserName:             user.Username(),
+		PublicKey:            keyVal,
+		TaskId:               options.TaskID,
+		Owner:                user,
+		InstanceTags:         options.InstanceTags,
+		InstanceType:         options.InstanceType,
+		NoExpiration:         options.NoExpiration,
+		IsVirtualWorkstation: options.IsVirtualWorkstation,
+		HomeVolumeSize:       options.HomeVolumeSize,
+		Region:               options.Region,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating spawn host")
 	}
 
 	if err := intentHost.Insert(); err != nil {
@@ -111,7 +124,7 @@ func (hc *DBHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, 
 }
 
 func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
-	return host.SetStatus(status, user, "")
+	return host.SetStatus(status, user, fmt.Sprintf("changed by %s from API", user))
 }
 
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
@@ -197,6 +210,55 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) (
 	return hostsToReturn, nil
 }
 
+// FindHostsInRange searches the mock hosts slice for hosts and returns them
+func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, username string) ([]host.Host, error) {
+	var hostsToReturn []host.Host
+	for ix := range hc.CachedHosts {
+		h := hc.CachedHosts[ix]
+		if username != "" && h.StartedBy != username {
+			continue
+		}
+		if params.Status != "" {
+			if h.Status != params.Status {
+				continue
+			}
+		} else {
+			if !util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+				continue
+			}
+		}
+
+		if params.Distro != "" && h.Distro.Id != params.Distro {
+			continue
+		}
+
+		if params.Region != "" {
+			if len(h.Distro.ProviderSettingsList) < 1 {
+				continue
+			}
+			region, ok := h.Distro.ProviderSettingsList[0].Lookup("region").StringValueOK()
+			if !ok || region != params.Region {
+				continue
+			}
+		}
+
+		if params.UserSpawned && !h.UserHost {
+			continue
+		}
+
+		if h.CreationTime.Before(params.CreatedAfter) {
+			continue
+		}
+
+		if !util.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
+			continue
+		}
+
+		hostsToReturn = append(hostsToReturn, h)
+	}
+	return hostsToReturn, nil
+}
+
 func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit int) ([]host.Host, error) {
 	for ix, h := range hc.CachedHosts {
 		if h.Id == id {
@@ -237,21 +299,21 @@ func (hc *MockHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, 
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(options *restmodel.HostRequestOptions, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser, settings *evergreen.Settings) (*host.Host, error) {
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:         options.DistroID,
-		UserName:         user.Username(),
-		ProviderSettings: &map[string]interface{}{"user_data": options.UserData, "ami": "ami-123456"},
-		PublicKey:        keyVal,
-		TaskId:           options.TaskID,
-		Owner:            user,
-		InstanceTags:     options.InstanceTags,
-		InstanceType:     options.InstanceType,
+		DistroId:     options.DistroID,
+		Userdata:     options.UserData,
+		UserName:     user.Username(),
+		PublicKey:    keyVal,
+		TaskId:       options.TaskID,
+		Owner:        user,
+		InstanceTags: options.InstanceTags,
+		InstanceType: options.InstanceType,
 	}
 
-	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +448,12 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	}
 
 	if user.Username() != host.StartedBy {
-		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
+		if !user.HasPermission(gimlet.PermissionOpts{
+			Resource:      host.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",

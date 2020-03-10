@@ -21,6 +21,7 @@ const (
 	tasksFlagName          = "tasks"
 	largeFlagName          = "large"
 	hostFlagName           = "host"
+	regionFlagName         = "region"
 	startTimeFlagName      = "time"
 	limitFlagName          = "limit"
 	messageFlagName        = "message"
@@ -220,6 +221,13 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  refFlagName,
 		Usage: "diff with `REF`",
 		Value: "HEAD",
+	})
+}
+
+func addCommitsFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(commitsFlagName, "c"),
+		Usage: "specify commit hash <hash1> (can also be a range <hash1>..<hash2>, where hash1 is excluded)",
 	})
 }
 

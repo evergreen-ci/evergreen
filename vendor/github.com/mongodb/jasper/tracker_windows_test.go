@@ -8,15 +8,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func makeTracker() (*windowsProcessTracker, error) {
-	tracker, err := NewProcessTracker("foo" + uuid.Must(uuid.NewV4()).String())
+	tracker, err := NewProcessTracker("foo" + uuid.New().String())
 	if err != nil {
 		return nil, err
 	}

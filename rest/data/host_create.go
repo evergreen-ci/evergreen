@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -129,11 +131,8 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			hosts = append(hosts, *intent)
 		}
 	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
 
-	return errors.Wrap(host.InsertMany(hosts), "error inserting host documents")
+	return catcher.Resolve()
 }
 
 func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
@@ -207,14 +206,25 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		EnvironmentVars:  envVars,
 	}
 
-	hostIntents, err := host.GenerateContainerHostIntents(d, 1, *options)
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting config")
+	}
+	containerPool := config.ContainerPools.GetContainerPool(d.ContainerPool)
+	containerIntents, parentIntents, err := host.MakeContainersAndParents(d, containerPool, 1, *options)
 	if err != nil {
 		return nil, errors.Wrap(err, "error generating host intent")
 	}
-	if len(hostIntents) != 1 {
-		return nil, errors.Errorf("Programmer error: should have created one new container, not %d", len(hostIntents))
+	if len(containerIntents) != 1 {
+		return nil, errors.Errorf("Programmer error: should have created one new container, not %d", len(containerIntents))
 	}
-	return &hostIntents[0], nil
+	if err = host.InsertMany(containerIntents); err != nil {
+		return nil, errors.Wrap(err, "unable to insert container intents")
+	}
+	if err = host.InsertMany(parentIntents); err != nil {
+		return nil, errors.Wrap(err, "unable to insert parent intents")
+	}
+	return &containerIntents[0], nil
 
 }
 
@@ -224,6 +234,9 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		provider = evergreen.ProviderNameEc2Spot
 	}
 
+	if createHost.Region == "" {
+		createHost.Region = evergreen.DefaultEC2Region
+	}
 	// get distro if it is set
 	d := distro.Distro{}
 	ec2Settings := cloud.EC2ProviderSettings{}
@@ -233,8 +246,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err != nil {
 			return nil, errors.Wrap(err, "problem finding distro")
 		}
-		if err = mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
-			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
+		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
 		}
 	}
 
@@ -271,9 +284,6 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if userID == "" {
 		ec2Settings.KeyName = createHost.KeyName // never use the distro's key
 	}
-	if createHost.Region != "" {
-		ec2Settings.Region = createHost.Region
-	}
 	if createHost.Subnet != "" {
 		ec2Settings.SubnetId = createHost.Subnet
 	}
@@ -286,7 +296,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if len(createHost.SecurityGroups) > 0 {
 		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
 	} else {
-		settings, err := evergreen.GetConfig()
+		var settings *evergreen.Settings
+		settings, err = evergreen.GetConfig()
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving evergreen settings")
 		}
@@ -295,16 +306,25 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
-	if err = mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
-		return nil, errors.Wrap(err, "error marshaling provider settings")
+
+	// update local distro with modified settings
+	doc, err := ec2Settings.ToDocument()
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshalling ec2 settings to document")
 	}
+	d.ProviderSettingsList = []*birch.Document{doc}
+	d.ProviderSettings = nil
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
+	intent := host.NewIntent(d, d.GenerateName(), provider, *options)
+	if err = intent.Insert(); err != nil {
+		return nil, errors.Wrap(err, "unable to insert host intent")
+	}
 
-	return host.NewIntent(d, d.GenerateName(), provider, *options), nil
+	return intent, nil
 }
 
 func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {

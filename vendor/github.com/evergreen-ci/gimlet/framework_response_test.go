@@ -54,7 +54,7 @@ func (s *ResponderSuite) TesteStatusSetter() {
 		s.Equal(good, s.resp.Status())
 	}
 
-	for _, bad := range []int{42, 99, 103, 150, 199, 227, 299, 309, 399, 419, 452, 420, 499, 512, 9001} {
+	for _, bad := range []int{42, 99, 120, 150, 199, 227, 299, 309, 399, 419, 452, 420, 499, 512, 9001} {
 		s.Error(s.resp.SetStatus(bad))
 		s.NotEqual(bad, s.resp.Status())
 		s.NotZero(s.resp.Status())
@@ -195,12 +195,12 @@ func TestSimpleResponseBuilder(t *testing.T) {
 	err := errors.New("foo")
 
 	for idx, er := range []error{
-		ErrorResponse{0, "coffee"},
-		&ErrorResponse{0, "coffee"},
-		ErrorResponse{400, "coffee"},
-		&ErrorResponse{400, "coffee"},
-		ErrorResponse{501, "coffee"},
-		&ErrorResponse{501, "coffee"},
+		ErrorResponse{StatusCode: 0, Message: "coffee"},
+		&ErrorResponse{StatusCode: 0, Message: "coffee"},
+		ErrorResponse{StatusCode: 400, Message: "coffee"},
+		&ErrorResponse{StatusCode: 400, Message: "coffee"},
+		ErrorResponse{StatusCode: 501, Message: "coffee"},
+		&ErrorResponse{StatusCode: 501, Message: "coffee"},
 	} {
 		t.Run(fmt.Sprintf("TextConstructorCase%d", idx), func(t *testing.T) {
 			for idx, resp := range []Responder{
@@ -263,7 +263,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 		})
 	}
 	t.Run("ErrorConstructorGeneric", func(t *testing.T) {
-		er := ErrorResponse{418, "coffee"}
+		er := ErrorResponse{StatusCode: 418, Message: "coffee"}
 		for idx, resp := range []Responder{
 			MakeTextErrorResponder(er),
 			MakeJSONErrorResponder(er),

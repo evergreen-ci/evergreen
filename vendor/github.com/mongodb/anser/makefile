@@ -116,10 +116,15 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/evergreen-ci/birch/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/satori/go.uuid/
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
 	find vendor/ -name '.git' | xargs rm -rf

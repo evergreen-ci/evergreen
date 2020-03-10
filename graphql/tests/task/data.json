@@ -1,0 +1,14 @@
+{
+  "patches": [
+    {
+      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "patch_number": 1234
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "taskity_task",
+      "version": "5e4ff3abe3c3317e352062e4"
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 )
@@ -11,22 +13,26 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	TaskId    *string   `json:"task_id"`
-	Status    *string   `json:"status"`
-	TestFile  *string   `json:"test_file"`
-	Logs      TestLogs  `json:"logs"`
-	ExitCode  int       `json:"exit_code"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
+	Id        *string    `json:"test_id"`
+	TaskId    *string    `json:"task_id"`
+	Status    *string    `json:"status"`
+	TestFile  *string    `json:"test_file"`
+	Logs      TestLogs   `json:"logs"`
+	ExitCode  int        `json:"exit_code"`
+	StartTime *time.Time `json:"start_time"`
+	EndTime   *time.Time `json:"end_time"`
+	Duration  float64    `json:"duration"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
 // be written out as part of an APITest.
 type TestLogs struct {
-	URL     *string `json:"url"`
-	LineNum int     `json:"line_num"`
-	URLRaw  *string `json:"url_raw"`
-	LogId   *string `json:"log_id"`
+	URL            *string `json:"url"`
+	LineNum        int     `json:"line_num"`
+	URLRaw         *string `json:"url_raw"`
+	LogId          *string `json:"log_id"`
+	RawDisplayURL  *string `json:"url_raw_display"`
+	HTMLDisplayURL *string `json:"url_html_display"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
@@ -35,18 +41,41 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.Status = ToStringPtr(v.Status)
 		at.TestFile = ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
+		at.Id = ToStringPtr(v.ID.Hex())
 
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
-
-		at.StartTime = startTime
-		at.EndTime = endTime
+		at.Duration = v.EndTime - v.StartTime
+		at.StartTime = ToTimePtr(startTime)
+		at.EndTime = ToTimePtr(endTime)
 
 		at.Logs = TestLogs{
 			URL:     ToStringPtr(v.URL),
 			URLRaw:  ToStringPtr(v.URLRaw),
 			LogId:   ToStringPtr(v.LogID),
 			LineNum: v.LineNum,
+		}
+
+		isEmptyLogID := v.LogID == ""
+		isEmptyURL := v.URL == ""
+		isEmptyURLRaw := v.URLRaw == ""
+
+		if !isEmptyURL {
+			at.Logs.HTMLDisplayURL = at.Logs.URL
+		} else if isEmptyLogID {
+			at.Logs.HTMLDisplayURL = nil
+		} else {
+			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
+			at.Logs.HTMLDisplayURL = &dispString
+		}
+
+		if !isEmptyURLRaw {
+			at.Logs.RawDisplayURL = at.Logs.URLRaw
+		} else if isEmptyLogID {
+			at.Logs.RawDisplayURL = nil
+		} else {
+			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
+			at.Logs.RawDisplayURL = &dispString
 		}
 	case string:
 		at.TaskId = ToStringPtr(v)
@@ -57,6 +86,14 @@ func (at *APITest) BuildFromService(st interface{}) error {
 }
 
 func (at *APITest) ToService() (interface{}, error) {
+	catcher := grip.NewBasicCatcher()
+	start, err := FromTimePtr(at.StartTime)
+	catcher.Add(err)
+	end, err := FromTimePtr(at.EndTime)
+	catcher.Add(err)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 	return &testresult.TestResult{
 		Status:    FromStringPtr(at.Status),
 		TestFile:  FromStringPtr(at.TestFile),
@@ -65,7 +102,7 @@ func (at *APITest) ToService() (interface{}, error) {
 		LogID:     FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
-		StartTime: util.ToPythonTime(at.StartTime),
-		EndTime:   util.ToPythonTime(at.EndTime),
+		StartTime: util.ToPythonTime(start),
+		EndTime:   util.ToPythonTime(end),
 	}, nil
 }

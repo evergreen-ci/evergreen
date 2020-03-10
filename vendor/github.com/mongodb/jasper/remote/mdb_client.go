@@ -42,7 +42,7 @@ func NewMDBClient(ctx context.Context, addr net.Addr, reqTimeout time.Duration) 
 }
 
 func (c *client) ID() string {
-	req, err := shell.RequestToMessage(&idRequest{ID: 1})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &idRequest{ID: 1})
 	if err != nil {
 		grip.Warning(message.WrapError(err, "could not create request"))
 		return ""
@@ -65,7 +65,7 @@ func (c *client) ID() string {
 }
 
 func (c *client) CreateProcess(ctx context.Context, opts *options.Create) (jasper.Process, error) {
-	req, err := shell.RequestToMessage(createProcessRequest{Options: *opts})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, createProcessRequest{Options: *opts})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -100,7 +100,7 @@ func (c *client) Register(ctx context.Context, proc jasper.Process) error {
 }
 
 func (c *client) List(ctx context.Context, f options.Filter) ([]jasper.Process, error) {
-	req, err := shell.RequestToMessage(listRequest{Filter: f})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, listRequest{Filter: f})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -124,7 +124,7 @@ func (c *client) List(ctx context.Context, f options.Filter) ([]jasper.Process, 
 }
 
 func (c *client) Group(ctx context.Context, tag string) ([]jasper.Process, error) {
-	req, err := shell.RequestToMessage(groupRequest{Tag: tag})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, groupRequest{Tag: tag})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -148,7 +148,7 @@ func (c *client) Group(ctx context.Context, tag string) ([]jasper.Process, error
 }
 
 func (c *client) Get(ctx context.Context, id string) (jasper.Process, error) {
-	req, err := shell.RequestToMessage(&getProcessRequest{ID: id})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &getProcessRequest{ID: id})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -168,7 +168,7 @@ func (c *client) Get(ctx context.Context, id string) (jasper.Process, error) {
 }
 
 func (c *client) Clear(ctx context.Context) {
-	req, err := shell.RequestToMessage(&clearRequest{Clear: 1})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &clearRequest{Clear: 1})
 	if err != nil {
 		grip.Warning(message.WrapError(err, "could not create request"))
 		return
@@ -186,7 +186,7 @@ func (c *client) Clear(ctx context.Context) {
 }
 
 func (c *client) Close(ctx context.Context) error {
-	req, err := shell.RequestToMessage(&closeRequest{Close: 1})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &closeRequest{Close: 1})
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -203,7 +203,7 @@ func (c *client) Close(ctx context.Context) error {
 
 func (c *client) WriteFile(ctx context.Context, opts options.WriteFile) error {
 	sendOpts := func(opts options.WriteFile) error {
-		req, err := shell.RequestToMessage(writeFileRequest{Options: opts})
+		req, err := shell.RequestToMessage(mongowire.OP_QUERY, writeFileRequest{Options: opts})
 		if err != nil {
 			return errors.Wrap(err, "could not create request")
 		}
@@ -227,7 +227,7 @@ func (c *client) CloseConnection() error {
 }
 
 func (c *client) ConfigureCache(ctx context.Context, opts options.Cache) error {
-	req, err := shell.RequestToMessage(configureCacheRequest{Options: opts})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, configureCacheRequest{Options: opts})
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -243,7 +243,7 @@ func (c *client) ConfigureCache(ctx context.Context, opts options.Cache) error {
 }
 
 func (c *client) DownloadFile(ctx context.Context, opts options.Download) error {
-	req, err := shell.RequestToMessage(downloadFileRequest{Options: opts})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, downloadFileRequest{Options: opts})
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -259,7 +259,7 @@ func (c *client) DownloadFile(ctx context.Context, opts options.Download) error 
 }
 
 func (c *client) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
-	req, err := shell.RequestToMessage(downloadMongoDBRequest{Options: opts})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, downloadMongoDBRequest{Options: opts})
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -278,7 +278,7 @@ func (c *client) GetLogStream(ctx context.Context, id string, count int) (jasper
 	r := getLogStreamRequest{}
 	r.Params.ID = id
 	r.Params.Count = count
-	req, err := shell.RequestToMessage(r)
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, r)
 	if err != nil {
 		return jasper.LogStream{}, errors.Wrap(err, "could not create request")
 	}
@@ -297,7 +297,7 @@ func (c *client) GetLogStream(ctx context.Context, id string, count int) (jasper
 }
 
 func (c *client) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
-	req, err := shell.RequestToMessage(getBuildloggerURLsRequest{ID: id})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, getBuildloggerURLsRequest{ID: id})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
 	}
@@ -316,7 +316,7 @@ func (c *client) GetBuildloggerURLs(ctx context.Context, id string) ([]string, e
 }
 
 func (c *client) SignalEvent(ctx context.Context, name string) error {
-	req, err := shell.RequestToMessage(signalEventRequest{Name: name})
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, signalEventRequest{Name: name})
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}

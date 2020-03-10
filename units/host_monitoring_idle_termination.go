@@ -97,7 +97,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
-			"host":     j.HostID,
+			"host_id":  j.HostID,
 			"job_type": j.Type().Name,
 			"status":   j.host.Status,
 			"provider": j.host.Distro.Provider,
@@ -138,7 +138,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			"op":                j.Type().Name,
 			"id":                j.ID(),
 			"message":           "not flagging idle host, waiting for an agent",
-			"host":              j.host.Id,
+			"host_id":           j.host.Id,
 			"distro":            j.host.Distro.Id,
 			"idle":              idleTime.String(),
 			"last_communicated": communicationTime.String(),

@@ -2,19 +2,25 @@ package hec
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"sync"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 const (
 	retryWaitTime = 1 * time.Second
 
 	defaultMaxContentLength = 1000000
+
+	defaultAcknowledgementTimeout = 90 * time.Second
 )
 
 type Client struct {
@@ -40,15 +46,23 @@ type Client struct {
 
 	// Max content length (optional, default: 1000000)
 	maxLength int
+
+	// List of acknowledgement IDs provided by Splunk
+	ackIDs []int
+
+	// Mutex to allow threadsafe acknowledgement checking
+	ackMux sync.Mutex
 }
 
 func NewClient(serverURL string, token string) HEC {
+	id := uuid.New()
+
 	return &Client{
 		httpClient: http.DefaultClient,
 		serverURL:  serverURL,
 		token:      token,
 		keepAlive:  true,
-		channel:    uuid.NewV4().String(),
+		channel:    id.String(),
 		retries:    2,
 		maxLength:  defaultMaxContentLength,
 	}
@@ -74,7 +88,7 @@ func (hec *Client) SetMaxContentLength(size int) {
 	hec.maxLength = size
 }
 
-func (hec *Client) WriteEvent(event *Event) error {
+func (hec *Client) WriteEventWithContext(ctx context.Context, event *Event) error {
 	if event.empty() {
 		return nil // skip empty events
 	}
@@ -85,10 +99,14 @@ func (hec *Client) WriteEvent(event *Event) error {
 	if len(data) > hec.maxLength {
 		return ErrEventTooLong
 	}
-	return hec.write(endpoint, data)
+	return hec.write(ctx, endpoint, data)
 }
 
-func (hec *Client) WriteBatch(events []*Event) error {
+func (hec *Client) WriteEvent(event *Event) error {
+	return hec.WriteEventWithContext(context.Background(), event)
+}
+
+func (hec *Client) WriteBatchWithContext(ctx context.Context, events []*Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -109,7 +127,7 @@ func (hec *Client) WriteBatch(events []*Event) error {
 		}
 		// Send out bytes in buffer immediately if the limit exceeded after adding this event
 		if buffer.Len()+len(data) > hec.maxLength {
-			if err := hec.write(endpoint, buffer.Bytes()); err != nil {
+			if err := hec.write(ctx, endpoint, buffer.Bytes()); err != nil {
 				return err
 			}
 			buffer.Reset()
@@ -118,7 +136,7 @@ func (hec *Client) WriteBatch(events []*Event) error {
 	}
 
 	if buffer.Len() > 0 {
-		if err := hec.write(endpoint, buffer.Bytes()); err != nil {
+		if err := hec.write(ctx, endpoint, buffer.Bytes()); err != nil {
 			return err
 		}
 	}
@@ -126,6 +144,10 @@ func (hec *Client) WriteBatch(events []*Event) error {
 		return ErrEventTooLong
 	}
 	return nil
+}
+
+func (hec *Client) WriteBatch(events []*Event) error {
+	return hec.WriteBatchWithContext(context.Background(), events)
 }
 
 type EventMetadata struct {
@@ -136,11 +158,11 @@ type EventMetadata struct {
 	Time       *time.Time
 }
 
-func (hec *Client) WriteRaw(reader io.ReadSeeker, metadata *EventMetadata) error {
+func (hec *Client) WriteRawWithContext(ctx context.Context, reader io.ReadSeeker, metadata *EventMetadata) error {
 	endpoint := rawHecEndpoint(hec.channel, metadata)
 
 	return breakStream(reader, hec.maxLength, func(chunk []byte) error {
-		if err := hec.write(endpoint, chunk); err != nil {
+		if err := hec.write(ctx, endpoint, chunk); err != nil {
 			// Ignore NoData error (e.g. "\n\n" will cause NoData error)
 			if res, ok := err.(*Response); !ok || res.Code != StatusNoData {
 				return err
@@ -148,6 +170,86 @@ func (hec *Client) WriteRaw(reader io.ReadSeeker, metadata *EventMetadata) error
 		}
 		return nil
 	})
+}
+
+func (hec *Client) WriteRaw(reader io.ReadSeeker, metadata *EventMetadata) error {
+	return hec.WriteRawWithContext(context.Background(), reader, metadata)
+}
+
+type acknowledgementRequest struct {
+	Acks []int `json:"acks"`
+}
+
+// WaitForAcknowledgementWithContext blocks until the Splunk indexer has
+// acknowledged that all previously submitted data has been successfully
+// indexed or if the provided context is cancelled. This requires the HEC token
+// configuration in Splunk to have indexer acknowledgement enabled.
+func (hec *Client) WaitForAcknowledgementWithContext(ctx context.Context) error {
+	// Make our own copy of the list of acknowledgement IDs and remove them
+	// from the client while we check them.
+	hec.ackMux.Lock()
+	ackIDs := hec.ackIDs
+	hec.ackIDs = nil
+	hec.ackMux.Unlock()
+
+	if len(ackIDs) == 0 {
+		return nil
+	}
+
+	endpoint := "/services/collector/ack?channel=" + hec.channel
+
+	for {
+		ackRequestData, _ := json.Marshal(acknowledgementRequest{Acks: ackIDs})
+
+		response, err := hec.makeRequest(ctx, endpoint, ackRequestData)
+		if err != nil {
+			// Put the remaining unacknowledged IDs back
+			hec.ackMux.Lock()
+			hec.ackIDs = append(hec.ackIDs, ackIDs...)
+			hec.ackMux.Unlock()
+			return err
+		}
+
+		for ackIDString, status := range response.Acks {
+			if status {
+				ackID, err := strconv.Atoi(ackIDString)
+				if err != nil {
+					return fmt.Errorf("could not convert ack ID to int: %v", err)
+				}
+
+				ackIDs = remove(ackIDs, ackID)
+			}
+		}
+
+		if len(ackIDs) == 0 {
+			break
+		}
+
+		// If the server did not indicate that all acknowledgements have been
+		// made, check again after a short delay.
+		select {
+		case <-time.After(retryWaitTime):
+			continue
+		case <-ctx.Done():
+			// Put the remaining unacknowledged IDs back
+			hec.ackMux.Lock()
+			hec.ackIDs = append(hec.ackIDs, ackIDs...)
+			hec.ackMux.Unlock()
+			return ctx.Err()
+		}
+	}
+
+	return nil
+}
+
+// WaitForAcknowledgement blocks until the Splunk indexer has acknowledged
+// that all previously submitted data has been successfully indexed or if the
+// default acknowledgement timeout is reached. This requires the HEC token
+// configuration in Splunk to have indexer acknowledgement enabled.
+func (hec *Client) WaitForAcknowledgement() error {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultAcknowledgementTimeout)
+	defer cancel()
+	return hec.WaitForAcknowledgementWithContext(ctx)
 }
 
 // breakStream breaks text from reader into chunks, with every chunk less than max.
@@ -209,37 +311,61 @@ func (res *Response) String() string {
 	return string(b)
 }
 
-func (hec *Client) write(endpoint string, data []byte) error {
+func (hec *Client) makeRequest(ctx context.Context, endpoint string, data []byte) (*Response, error) {
 	retries := 0
 RETRY:
 	req, err := http.NewRequest(http.MethodPost, hec.serverURL+endpoint, bytes.NewReader(data))
 	if err != nil {
-		return err
+		return nil, err
 	}
+	req = req.WithContext(ctx)
 	if hec.keepAlive {
 		req.Header.Set("Connection", "keep-alive")
 	}
 	req.Header.Set("Authorization", "Splunk "+hec.token)
 	res, err := hec.httpClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	response := responseFrom(body)
+
 	if res.StatusCode != http.StatusOK {
-		response := responseFrom(body)
 		if retriable(response.Code) && retries < hec.retries {
 			retries++
 			time.Sleep(retryWaitTime)
 			goto RETRY
 		}
+	}
+
+	return response, nil
+}
+
+func (hec *Client) write(ctx context.Context, endpoint string, data []byte) error {
+	response, err := hec.makeRequest(ctx, endpoint, data)
+	if err != nil {
+		return err
+	}
+
+	// TODO: find out the correct code
+	if response.Text != "Success" {
 		return response
 	}
+
+	// Check for acknowledgement IDs and store them if provided
+	if response.AckID != nil {
+		hec.ackMux.Lock()
+		defer hec.ackMux.Unlock()
+
+		hec.ackIDs = append(hec.ackIDs, *response.AckID)
+	}
+
 	return nil
 }
 

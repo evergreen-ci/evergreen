@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
@@ -31,6 +33,7 @@ func (e *golangEnvironment) Setup(ctx context.Context) error {
 
 	gobin := e.opts.Interpreter()
 	cmd := e.manager.CreateCommand(ctx).
+		Environment(e.opts.Environment).
 		AddEnv("GOPATH", e.opts.Gopath).
 		AddEnv("GOROOT", e.opts.Goroot)
 
@@ -54,6 +57,7 @@ func (e *golangEnvironment) Setup(ctx context.Context) error {
 
 func (e *golangEnvironment) Run(ctx context.Context, args []string) error {
 	cmd := e.manager.CreateCommand(ctx).
+		Environment(e.opts.Environment).
 		AddEnv("GOPATH", e.opts.Gopath).
 		AddEnv("GOROOT", e.opts.Goroot).
 		SetOutputOptions(e.opts.Output).
@@ -69,6 +73,7 @@ func (e *golangEnvironment) Run(ctx context.Context, args []string) error {
 func (e *golangEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {
 	err := e.manager.CreateCommand(ctx).
 		Directory(dir).
+		Environment(e.opts.Environment).
 		AddEnv("GOPATH", e.opts.Gopath).
 		AddEnv("GOROOT", e.opts.Goroot).
 		SetOutputOptions(e.opts.Output).
@@ -109,7 +114,8 @@ func (e *golangEnvironment) RunScript(ctx context.Context, script string) error 
 		return errors.Wrap(err, "problem writing file")
 	}
 
-	return e.manager.CreateCommand(ctx).SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), "run", wo.Path).Run(ctx)
+	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).
+		SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), "run", wo.Path).Run(ctx)
 }
 
 func (e *golangEnvironment) Cleanup(ctx context.Context) error {
@@ -121,4 +127,39 @@ func (e *golangEnvironment) Cleanup(ctx context.Context) error {
 		return errors.Wrapf(os.RemoveAll(e.opts.Gopath),
 			"problem removing local golang environment '%s'", e.opts.Gopath)
 	}
+}
+
+func (e *golangEnvironment) Test(ctx context.Context, dir string, tests ...TestOptions) ([]TestResult, error) {
+	out := make([]TestResult, len(tests))
+
+	catcher := grip.NewBasicCatcher()
+	for idx, t := range tests {
+		startAt := time.Now()
+		args := []string{e.opts.Interpreter(), "test", "-v"}
+		if t.Count > 0 {
+			args = append(args, fmt.Sprintf("-count=%d", t.Count))
+		}
+		if t.Pattern != "" {
+			args = append(args, fmt.Sprintf("-run='%s'", t.Pattern))
+		}
+		if t.Timeout > 0 {
+			args = append(args, fmt.Sprintf("-timeout='%s'", t.Timeout.String()))
+		}
+
+		args = append(args, t.Args...)
+
+		err := e.manager.CreateCommand(ctx).
+			Directory(dir).
+			Environment(e.opts.Environment).
+			AddEnv("GOPATH", e.opts.Gopath).
+			AddEnv("GOROOT", e.opts.Goroot).
+			SetOutputOptions(e.opts.Output).
+			Add(args).Run(ctx)
+
+		catcher.Wrapf(err, "golang test %s", t)
+
+		out[idx] = t.getResult(ctx, err, startAt)
+	}
+
+	return out, catcher.Resolve()
 }

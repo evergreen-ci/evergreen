@@ -77,6 +77,8 @@ type Communicator interface {
 	// the base URL, RPC port, and LDAP credentials.
 	GetBuildloggerInfo(context.Context) (*apimodels.BuildloggerInfo, error)
 
+	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
+
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
 	GetLoggerMetadata() LoggerMetadata
@@ -137,9 +139,6 @@ type Communicator interface {
 	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
 	RevertSettings(context.Context, string) error
 
-	// Host methods
-	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
-
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, *restmodel.HostRequestOptions) (*restmodel.APIHost, error)
@@ -149,13 +148,14 @@ type Communicator interface {
 	TerminateSpawnHost(context.Context, string) error
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error
-	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
+	GetHosts(context.Context, restmodel.APIHostParams) ([]*restmodel.APIHost, error)
 	AttachVolume(context.Context, string, *host.VolumeAttachment) error
 	DetachVolume(context.Context, string, string) error
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
-	RunHostScript(context.Context, string, string) ([]string, error)
+	StartHostProcesses(context.Context, []string, string, int) ([]restmodel.APIHostProcess, error)
+	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess, int) ([]restmodel.APIHostProcess, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)
@@ -183,12 +183,9 @@ type Communicator interface {
 
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
-	GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error)
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
 	// if enqueueNext is true then allow item to be processed next
 	EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error)
-
-	GetUserAuthorInfo(context.Context, TaskData, string) (*restmodel.APIUserAuthorInformation, error)
 
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error

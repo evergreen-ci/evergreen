@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // openStackManager implements the Manager interface for OpenStack.
@@ -22,10 +24,10 @@ type openStackManager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type openStackSettings struct {
-	ImageName     string `mapstructure:"image_name"`
-	FlavorName    string `mapstructure:"flavor_name"`
-	KeyName       string `mapstructure:"key_name"`
-	SecurityGroup string `mapstructure:"security_group"`
+	ImageName     string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	FlavorName    string `mapstructure:"flavor_name" json:"flavor_name" bson:"flavor_name"`
+	KeyName       string `mapstructure:"key_name" json:"key_name" bson:"key_name"`
+	SecurityGroup string `mapstructure:"security_group" json:"security_group" bson:"security_group"`
 }
 
 // Validate verifies a set of ProviderSettings.
@@ -46,6 +48,23 @@ func (opts *openStackSettings) Validate() error {
 		return errors.New("Security group must not be blank")
 	}
 
+	return nil
+}
+
+func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+	}
 	return nil
 }
 
@@ -98,10 +117,8 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	}
 
 	settings := &openStackSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
-		}
+	if err := settings.FromDistroSettings(h.Distro, ""); err != nil {
+		return nil, errors.Wrapf(err, "error getting settings from distro %s", h.Distro.Id)
 	}
 
 	if err := settings.Validate(); err != nil {
@@ -115,8 +132,8 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 		grip.Error(err)
 		if rmErr := h.Remove(); rmErr != nil {
 			grip.Errorf("Could not remove intent host: %s", message.Fields{
-				"host":  h.Id,
-				"error": rmErr,
+				"host_id": h.Id,
+				"error":   rmErr,
 			})
 		}
 		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
@@ -234,8 +251,17 @@ func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volumes with openstack provider")
 }
 
+func (m *openStackManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with openstack provider")
+}
+
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party
 // plugins for billing, monitoring, and other management tools.
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *openStackManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

@@ -16,7 +16,7 @@ import (
 // Note: This use of the UserManager is recommended for dev/test purposes only and users who need high security authentication
 // mechanisms should rely on a different authentication mechanism.
 type NaiveUserManager struct {
-	users []*evergreen.AuthUser
+	users []evergreen.AuthUser
 }
 
 func NewNaiveUserManager(naiveAuthConfig *evergreen.NaiveAuthConfig) (*NaiveUserManager, error) {
@@ -58,11 +58,12 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 func (*NaiveUserManager) GetLoginHandler(string) http.HandlerFunc    { return nil }
 func (*NaiveUserManager) GetLoginCallbackHandler() http.HandlerFunc  { return nil }
 func (*NaiveUserManager) IsRedirect() bool                           { return false }
+func (*NaiveUserManager) ReauthorizeUser(gimlet.User) error          { return errors.New("not implemented") }
 func (*NaiveUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
 func (*NaiveUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 	return getOrCreateUser(u)
 }
-func (b *NaiveUserManager) ClearUser(u gimlet.User, all bool) error {
+func (*NaiveUserManager) ClearUser(_ gimlet.User, _ bool) error {
 	return errors.New("Naive Authentication does not support Clear User")
 }
 func (*NaiveUserManager) GetGroupsForUser(string) ([]string, error) {

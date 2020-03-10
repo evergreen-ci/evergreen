@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -710,10 +712,20 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
-			Id:     "test",
+			Id:     "test1",
 			Status: evergreen.HostRunning,
 		}
+		h2 := Host{
+			Id:     "test2",
+			Status: evergreen.HostProvisioning,
+			Distro: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				},
+			},
+		}
 		So(h.Insert(), ShouldBeNil)
+		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
 			_, err := h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
@@ -733,6 +745,16 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
+		})
+		Convey("updating the running task on a provisioning host should succeed", func() {
+			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
+			So(err, ShouldBeNil)
+			found, err := FindOne(ById(h2.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, newTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 	})
 }
@@ -2465,9 +2487,9 @@ func TestIsIdleParent(t *testing.T) {
 	assert.True(idle)
 	assert.NoError(err)
 
-	// has decommissioned container --> false
+	// has decommissioned container --> true
 	idle, err = host4.IsIdleParent()
-	assert.False(idle)
+	assert.True(idle)
 	assert.NoError(err)
 
 	// ios a container --> false
@@ -2475,6 +2497,35 @@ func TestIsIdleParent(t *testing.T) {
 	assert.False(idle)
 	assert.NoError(err)
 
+}
+
+func TestUpdateParentIDs(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	parent := Host{
+		Id:            "parent",
+		Tag:           "foo",
+		HasContainers: true,
+	}
+	assert.NoError(parent.Insert())
+	container1 := Host{
+		Id:       "c1",
+		ParentID: parent.Tag,
+	}
+	assert.NoError(container1.Insert())
+	container2 := Host{
+		Id:       "c2",
+		ParentID: parent.Tag,
+	}
+	assert.NoError(container2.Insert())
+
+	assert.NoError(parent.UpdateParentIDs())
+	dbContainer1, err := FindOneId(container1.Id)
+	assert.NoError(err)
+	assert.Equal(parent.Id, dbContainer1.ParentID)
+	dbContainer2, err := FindOneId(container2.Id)
+	assert.NoError(err)
+	assert.Equal(parent.Id, dbContainer2.ParentID)
 }
 
 func TestFindParentOfContainer(t *testing.T) {
@@ -2701,8 +2752,9 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 			Id:     "1",
 			Status: evergreen.HostRunning,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_1",
-				BuildID: "build_1",
+				TaskID:        "task_1",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
@@ -2717,24 +2769,27 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 			Id:     "4",
 			Status: evergreen.HostRunning,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_2",
-				BuildID: "build_1",
+				TaskID:        "task_2",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
 			Id:     "5",
 			Status: evergreen.HostDecommissioned,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_1",
-				BuildID: "build_1",
+				TaskID:        "task_1",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 		{
 			Id:     "6",
 			Status: evergreen.HostTerminated,
 			SpawnOptions: SpawnOptions{
-				TaskID:  "task_2",
-				BuildID: "build_1",
+				TaskID:        "task_2",
+				BuildID:       "build_1",
+				SpawnedByTask: true,
 			},
 		},
 	}
@@ -3548,87 +3603,6 @@ func TestStaleRunningTasks(t *testing.T) {
 	assert.Len(tasks, 2)
 }
 
-func TestStaleRunningTasksAgg(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, task.Collection))
-	now := time.Now()
-	staleness := 5 * time.Minute
-
-	staleTask := &task.Task{
-		Id:            "stale",
-		Status:        evergreen.TaskStarted,
-		Execution:     2,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "staleHost",
-	}
-	assert.NoError(staleTask.Insert())
-	staleHost := &Host{
-		Id:          "staleHost",
-		RunningTask: staleTask.Id,
-	}
-	assert.NoError(staleHost.Insert())
-	unstaleTask := &task.Task{
-		Id:            "unstale",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-1 * time.Second),
-		HostId:        "unstaleHost",
-	}
-	assert.NoError(unstaleTask.Insert())
-	unstaleHost := &Host{
-		Id:          "unstaleHost",
-		RunningTask: unstaleTask.Id,
-	}
-	assert.NoError(unstaleHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := &task.Task{
-		Id:            "unrelatedTask",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(unrelatedTask.Insert())
-
-	// task assigned to host that is running teardown_group of the previous task, but is not timed out
-	task3 := task.Task{
-		Id:            "task3",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(task3.Insert())
-
-	teardownGroupHost := Host{
-		Id:                     "teardownGroupHost",
-		RunningTask:            task3.Id,
-		RunningTeardownForTask: "somethingelse",
-		RunningTeardownSince:   time.Now().Add(-1 * time.Minute),
-	}
-	assert.NoError(teardownGroupHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task that has timed out
-	task4 := task.Task{
-		Id:            "task4",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost2",
-	}
-	assert.NoError(task4.Insert())
-	teardownGroupHost2 := Host{
-		Id:                     "teardownGroupHost2",
-		RunningTask:            task4.Id,
-		RunningTeardownForTask: "somethingelse",
-		RunningTeardownSince:   time.Now().Add(-40 * time.Minute),
-	}
-	assert.NoError(teardownGroupHost2.Insert())
-
-	tasks, err := StaleRunningTaskIDs(staleness)
-	assert.NoError(err)
-	assert.Len(tasks, 2)
-	assert.Equal(staleTask.Id, tasks[0].Id)
-	assert.Equal(staleTask.Execution, tasks[0].Execution)
-	assert.Equal(task4.Id, tasks[1].Id)
-	assert.Equal(task4.Execution, tasks[1].Execution)
-}
-
 func TestNumNewParentsNeeded(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
@@ -3819,7 +3793,7 @@ func TestFindAvailableParent(t *testing.T) {
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
-	availableParent, err := GetNumContainersOnParents(d)
+	availableParent, err := GetContainersOnParents(d)
 	assert.NoError(err)
 
 	assert.Equal(2, len(availableParent))
@@ -3892,7 +3866,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 	assert.NoError(task1.Insert())
 	assert.NoError(task2.Insert())
 
-	availableParent, err := GetNumContainersOnParents(d)
+	availableParent, err := GetContainersOnParents(d)
 	assert.NoError(err)
 	assert.Equal(0, len(availableParent))
 }
@@ -4524,4 +4498,231 @@ func TestStartingHostsByClient(t *testing.T) {
 			assert.Fail(t, "unrecognized client options")
 		}
 	}
+}
+
+func TestFindHostsInRange(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	distroEast := birch.NewDocument(birch.EC.String("region", "us-east-1"))
+	distroWest := distroEast.Copy().Set(birch.EC.String("region", "us-west-1"))
+	hosts := []Host{
+		{
+			Id:           "h0",
+			Status:       evergreen.HostTerminated,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroEast}},
+		},
+		{
+			Id:           "h1",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroWest}},
+		},
+		{
+			Id:           "h2",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock, ProviderSettingsList: []*birch.Document{distroWest}},
+		},
+	}
+	for _, h := range hosts {
+		require.NoError(t, h.Insert())
+	}
+
+	filteredHosts, err := FindHostsInRange(HostsInRangeParams{Status: evergreen.HostTerminated})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h0", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Distro: "ubuntu-1604"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h1", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h2", filteredHosts[0].Id)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-east-1", Status: evergreen.HostTerminated})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-west-1"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 2)
+
+	filteredHosts, err = FindHostsInRange(HostsInRangeParams{Region: "us-west-1", Distro: "ubuntu-1604"})
+	assert.NoError(t, err)
+	assert.Len(t, filteredHosts, 1)
+	assert.Equal(t, "h1", filteredHosts[0].Id)
+}
+
+func TestRemoveAndReplace(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+
+	// removing a nonexistent host errors
+	assert.Error(t, RemoveStrict("asdf"))
+
+	// replacing an existing host works
+	h := Host{
+		Id:                 "bar",
+		Status:             evergreen.HostUninitialized,
+		ComputeCostPerHour: 50,
+	}
+	assert.NoError(t, h.Insert())
+
+	h.ComputeCostPerHour = 100
+	h.DockerOptions.Command = "hello world"
+	assert.NoError(t, h.Replace())
+	dbHost, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
+	assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
+	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
+
+	// replacing a nonexisting host will just insert
+	h2 := Host{
+		Id:     "host2",
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(t, h2.Replace())
+	dbHost, err = FindOneId(h2.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbHost)
+}
+
+func TestFindStaticNeedsNewSSHKeys(t *testing.T) {
+	keyName := "key"
+	for testName, testCase := range map[string]func(t *testing.T, settings *evergreen.Settings, h *Host){
+		"IgnoresHostsWithMatchingKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"FindsHostsMissingAllKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = []string{}
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"FindsHostsMissingSubsetOfKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			require.NoError(t, h.Insert())
+
+			newKeyName := "new_key"
+			settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
+				Name:    newKeyName,
+				Public:  "new_public",
+				Private: "new_private",
+			})
+
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"IgnoresNonstaticHosts": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = []string{}
+			h.Provider = evergreen.ProviderNameMock
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsWithExtraKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = append(h.SSHKeyNames, "other_key")
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindStaticNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+
+			settings := &evergreen.Settings{
+				SSHKeyDirectory: "/ssh_key_directory",
+				SSHKeyPairs: []evergreen.SSHKeyPair{
+					{
+						Name:    keyName,
+						Public:  "public",
+						Private: "private",
+					},
+				},
+			}
+
+			h := &Host{
+				Id:          "id",
+				Provider:    evergreen.ProviderNameStatic,
+				Status:      evergreen.HostRunning,
+				SSHKeyNames: []string{keyName},
+			}
+
+			testCase(t, settings, h)
+		})
+	}
+}
+
+func TestSetNewSSHKeys(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	h := &Host{
+		Id: "foo",
+	}
+	assert.Error(t, h.AddSSHKeyName("foo"))
+	assert.Empty(t, h.SSHKeyNames)
+
+	require.NoError(t, h.Insert())
+	require.NoError(t, h.AddSSHKeyName("foo"))
+	assert.Equal(t, []string{"foo"}, h.SSHKeyNames)
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"foo"}, dbHost.SSHKeyNames)
+
+	require.NoError(t, h.AddSSHKeyName("bar"))
+	assert.Subset(t, []string{"foo", "bar"}, h.SSHKeyNames)
+	assert.Subset(t, h.SSHKeyNames, []string{"foo", "bar"})
+
+	dbHost, err = FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Subset(t, []string{"foo", "bar"}, dbHost.SSHKeyNames)
+	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
+}
+
+func TestPartitionParents(t *testing.T) {
+	assert := assert.New(t)
+	const distroId = "match"
+
+	parents := []ContainersOnParents{
+		{ParentHost: Host{Id: "1"}, Containers: []Host{{}, {}, {Distro: distro.Distro{Id: distroId}}}},
+		{ParentHost: Host{Id: "2"}, Containers: []Host{{}, {Distro: distro.Distro{Id: "foo"}}}},
+		{ParentHost: Host{Id: "3"}, Containers: []Host{{Distro: distro.Distro{Id: distroId}}, {Distro: distro.Distro{Id: "foo"}}}},
+		{ParentHost: Host{Id: "4"}, Containers: []Host{{Distro: distro.Distro{Id: "foo"}}}},
+	}
+	matched, notMatched := partitionParents(parents, distroId, defaultMaxImagesPerParent)
+	assert.Len(matched, 2)
+	assert.Len(notMatched, 2)
+	assert.Equal("1", matched[0].ParentHost.Id)
+	assert.Equal("3", matched[1].ParentHost.Id)
+	assert.Equal("2", notMatched[0].ParentHost.Id)
+	assert.Equal("4", notMatched[1].ParentHost.Id)
+
+	parents = []ContainersOnParents{
+		{ParentHost: Host{Id: "1"}, Containers: []Host{{Distro: distro.Distro{Id: "1"}}, {Distro: distro.Distro{Id: "2"}}, {Distro: distro.Distro{Id: "3"}}}},
+	}
+	matched, notMatched = partitionParents(parents, distroId, defaultMaxImagesPerParent)
+	assert.Len(matched, 0)
+	assert.Len(notMatched, 0)
 }

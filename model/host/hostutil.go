@@ -1,13 +1,12 @@
 package host
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
-	"os/exec"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -29,6 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+const OutputBufferSize = 1000
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
@@ -54,27 +55,27 @@ func (h *Host) TearDownCommand() string {
 // (https://jira.mongodb.org/browse/EVG-5972). It likely can be removed after work to improve amboy
 // job locking or the SSH dependency.
 func TearDownDirectlyCommand() string {
-	chmod := ChmodCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
+	chmod := ChmodCommandWithSudo(evergreen.TeardownScriptName, false)
 	chmodString := strings.Join(chmod, " ")
-	sh := ShCommandWithSudo(context.Background(), evergreen.TeardownScriptName, false).Args
+	sh := ShCommandWithSudo(evergreen.TeardownScriptName, false)
 	shString := strings.Join(sh, " ")
 	return fmt.Sprintf("%s && %s", chmodString, shString)
 }
 
-func ShCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
-	if sudo {
-		return exec.CommandContext(ctx, "sudo", "sh", script)
-	}
-	return exec.CommandContext(ctx, "sh", script)
-}
-
-func ChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
+func ShCommandWithSudo(script string, sudo bool) []string {
 	args := []string{}
 	if sudo {
 		args = append(args, "sudo")
 	}
-	args = append(args, "chmod", "+x", script)
-	return exec.CommandContext(ctx, args[0], args[1:]...)
+	return append(args, "sh", script)
+}
+
+func ChmodCommandWithSudo(script string, sudo bool) []string {
+	args := []string{}
+	if sudo {
+		args = append(args, "sudo")
+	}
+	return append(args, "chmod", "+x", script)
 }
 
 // CurlCommand returns the command to curl the evergreen client.
@@ -135,27 +136,31 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
-func (h *Host) GetSSHKeyPath(settings *evergreen.Settings) (string, error) {
-	keyPath := settings.Keys[h.Distro.SSHKey]
-	if keyPath == "" {
-		return "", errors.New("no SSH key specified for host")
-	}
-
-	return keyPath, nil
-}
-
 // GetSSHOptions returns the options to SSH into this host.
-// EVG-6389: this currently relies on the fact that the EC2 provider has a
-// single distro-level SSH key name corresponding to an existing SSH key file on
-// the app servers. We should be able to handle multiple keys configured in
-// admin settings rather than from a file name in distro settings.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	keyPath, err := h.GetSSHKeyPath(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var keyPaths []string
+	for _, pair := range settings.SSHKeyPairs {
+		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
+			keyPaths = append(keyPaths, pair.PrivatePath(settings))
+		} else {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not find local SSH key file (this should only be a temporary problem)",
+				"key":     pair.Name,
+			}))
+		}
+	}
+	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
+		keyPaths = append(keyPaths, defaultKeyPath)
+	}
+	if len(keyPaths) == 0 {
+		return nil, errors.New("no SSH identity files available")
 	}
 
-	opts := []string{"-i", keyPath}
+	opts := []string{}
+	for _, path := range keyPaths {
+		opts = append(opts, "-i", path)
+	}
+
 	hasKnownHostsFile := false
 
 	for _, opt := range h.Distro.SSHOptions {
@@ -172,97 +177,67 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	return opts, nil
 }
 
-// RunSSHCommand runs an SSH command on a remote host.
-func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
-	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.Append(cmd)
-	}, sshOptions)
+// RunSSHCommand runs an SSH command on the host with the default SSH timeout.
+func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOpts []string) (string, error) {
+	return h.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, time.Duration(0))
 }
 
-// RunSSHCommandLiterally is the same as RunSSHCommand but passes the given
-// arguments to the SSH process without performing any premature shell parsing
-// on cmd.
-func (h *Host) RunSSHCommandLiterally(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+// RunSSHCommandWithTimeout runs an SSH command on the host with the given
+// timeout.
+func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, sshOpts []string, timeout time.Duration) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{cmd})
-	}, sshOptions)
+	}, sshOpts, timeout)
 }
 
-// RunSSHShellScript runs a shell script on a remote host over SSH.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOptions []string) (string, error) {
+// RunSSHShellScript runs a shell script on a remote host over SSH with the
+// default SSH timeout.
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, time.Duration(0))
+}
+
+// RunSSHShellScript runs a shell script on a remote host over SSH with the
+// given timeout.
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
+	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
+	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.ShellScript("bash", script)
-	}, sshOptions)
+		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
+	}, sshOpts, timeout)
 }
 
-func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOptions []string) (string, error) {
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOpts []string, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
 
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
+	output := util.NewMBCappedWriter()
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-	defer cancel()
+	if timeout != 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	} else {
+		ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+		defer cancel()
+	}
 
+	errOut := util.NewMBCappedWriter()
+	// Run SSH with "-T" because we are not using an interactive terminal.
 	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
-		SetCombinedWriter(output)).Run(ctx)
+		ExtendRemoteArgs("-p", hostInfo.Port, "-T").ExtendRemoteArgs(sshOpts...).
+		SetOutputWriter(output).SetErrorWriter(errOut)).Run(ctx)
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"host_id": h.Id,
+		"distro":  h.Distro.Id,
+		"output":  output.String(),
+		"errout":  errOut.String(),
+	}))
 
 	return output.String(), errors.Wrap(err, "error running SSH command")
-}
-
-// InitSystem determines the current Linux init system used by this host.
-func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
-	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
-	if err != nil {
-		return "", errors.Wrapf(err, "init system command returned: %s", logs)
-	}
-
-	if strings.Contains(logs, InitSystemSystemd) {
-		return InitSystemSystemd, nil
-	} else if strings.Contains(logs, InitSystemSysV) {
-		return InitSystemSysV, nil
-	} else if strings.Contains(logs, InitSystemUpstart) {
-		return InitSystemUpstart, nil
-	}
-
-	return "", errors.Errorf("could not determine init system: init system command returned: %s", logs)
-}
-
-// initSystemCommand returns the string command to determine a Linux host's
-// init system. If it succeeds, it returns the init system as a string.
-func initSystemCommand() string {
-	return `
-	if [[ -x /sbin/init ]] && /sbin/init --version 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
-		echo 'upstart';
-		exit 0;
-	fi
-	if file /sbin/init 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
-		echo 'systemd';
-		exit 0;
-	elif file /sbin/init 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
-		echo 'upstart'
-		exit 0;
-	elif file /sbin/init 2>/dev/null | grep -i 'sysv' >/dev/null 2>&1; then
-		echo 'sysv'
-		exit 0;
-	fi
-	if type systemctl >/dev/null 2>&1; then
-		echo 'systemd'
-		exit 0;
-	fi
-	if ps -p 1 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
-		echo 'systemd';
-		exit 0;
-	fi
-	`
 }
 
 // FetchAndReinstallJasperCommands returns the command to fetch Jasper and
@@ -274,13 +249,13 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 	}, " && ")
 }
 
-// ForceReinstallJasperCommand returns the command to stop the Jasper service,
-// delete the current Jasper service configuration (if it exists), install the
-// new configuration, and restart the service.
+// ForceReinstallJasperCommand returns the command to stop the Jasper service
+// (if it's running), delete the current Jasper service configuration (if it
+// exists), install the new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)))
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)))
 	}
 
 	if user := h.Distro.BootstrapSettings.ServiceUser; user != "" {
@@ -298,7 +273,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	if settings.Splunk.Populated() {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.splunkTokenFilePath())),
+			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
 		)
 		if settings.Splunk.Channel != "" {
 			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -404,8 +379,22 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		}
 	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		// Set up a spawn host.
-		if postFetchClient, err = h.SetupSpawnHostCommands(settings); err != nil {
+		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return "", errors.Wrap(err, "error creating commands to load task data")
+		}
+		if h.ProvisionOptions.TaskId != "" {
+			// We have to run this in the Cygwin shell in order for git clone to
+			// use the correct SSH key. Additionally, since this can take a long
+			// time to download all the task data, user data may time out this
+			// operation, which would prevent user data from completing and the
+			// host would be stuck in provisioning.
+			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			var getTaskDataCmd string
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+			if err != nil {
+				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+			}
+			postFetchClient += " && " + getTaskDataCmd
 		}
 	}
 
@@ -442,7 +431,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		bashCmds = append(bashCmds, fetchClient, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range bashCmds {
-			bashCmds[i] = fmt.Sprintf("%s -l -c %s", filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), util.PowerShellQuotedString(bashCmds[i]))
+			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
 		}
 
 		powershellCmds := append(append([]string{
@@ -500,7 +489,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
-			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath), h.Distro.BootstrapSettings.ServiceUser),
+			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, h.Distro.ShellBinary(), h.Distro.BootstrapSettings.ServiceUser),
 		}, "\n"), nil
 }
 
@@ -581,7 +570,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath))
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath))
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
@@ -647,6 +636,8 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 
 // bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
 // WriteJasperCredentialsFilesCommands but writes with multiple commands.
+// This is necessary for Windows user data for unknown reasons. If the file
+// isn't written in a buffered way, it gets truncated.
 func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
@@ -684,7 +675,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
@@ -697,7 +688,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 	if !inMemoryLoggerExists {
-		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(1000))
+		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(OutputBufferSize))
 	}
 
 	proc, err := client.CreateProcess(ctx, opts)
@@ -706,47 +697,84 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	}
 
 	catcher := grip.NewBasicCatcher()
-	if _, err := proc.Wait(ctx); err != nil {
+	if _, err = proc.Wait(ctx); err != nil {
 		catcher.Wrap(err, "problem waiting for process completion")
 	}
 
-	var logs []string
-	for {
-		logStream, err := client.GetLogStream(ctx, proc.ID(), 1000)
-		if err != nil {
-			catcher.Wrap(err, "can't get output of process")
-			break
-		}
-
-		logs = append(logs, logStream.Logs...)
-		if logStream.Done {
-			break
-		}
+	logStream, err := client.GetLogStream(ctx, proc.ID(), OutputBufferSize)
+	if err != nil {
+		catcher.Wrap(err, "can't get output of process")
 	}
 
-	return logs, catcher.Resolve()
+	return logStream.Logs, catcher.Resolve()
 }
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) error {
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) (string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
-		return errors.Wrap(err, "could not get a Jasper client")
+		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
 
-	if _, err := client.CreateProcess(ctx, opts); err != nil {
-		return errors.Wrap(err, "problem creating Jasper process")
+	proc, err := client.CreateProcess(ctx, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating Jasper process")
 	}
 
-	return nil
+	return proc.ID(), nil
+}
+
+// GetJasperProcess makes a request to the host's Jasper service to get a started
+// process's status. Processes with an output logger return output.
+func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, processID string) (complete bool, output string, err error) {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return false, "", errors.Wrap(err, "could not get a Jasper client")
+	}
+	defer func() {
+		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
+
+	proc, err := client.Get(ctx, processID)
+	if err != nil {
+		return false, "", errors.Wrap(err, "problem getting Jasper process")
+	}
+	info := proc.Info(ctx)
+	if !info.Complete {
+		return false, "", nil
+	}
+
+	bufferSize := 0
+	if len(info.Options.Output.Loggers) > 0 {
+		for _, logger := range info.Options.Output.Loggers {
+			if logger.Type == options.LogInMemory {
+				bufferSize = logger.Options.InMemoryCap
+				break
+			}
+		}
+	}
+	if bufferSize == 0 {
+		return true, "", nil
+	}
+
+	logStream, err := client.GetLogStream(ctx, processID, bufferSize)
+	if err != nil {
+		return true, "", errors.Wrap(err, "can't get output of process")
+	}
+
+	return true, strings.Join(logStream.Logs, "\n"), nil
 }
 
 const jasperDialTimeout = 15 * time.Second
@@ -754,7 +782,7 @@ const jasperDialTimeout = 15 * time.Second
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (remote.Manager, error) {
-	if (h.LegacyBootstrap() || h.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
+	if (h.Distro.LegacyBootstrap() || h.Distro.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
@@ -777,7 +805,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
 			Type:                jcli.RPCService,
 			Port:                settings.HostJasper.Port,
-			CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
+			CredentialsFilePath: h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath),
 		}
 
 		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
@@ -857,64 +885,84 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 	)
 }
 
-// StopAgentMonitor stops the agent monitor (if it is running) on the host via
-// its Jasper service . On legacy hosts, this is a no-op.
-func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
-	if (h.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
-		return nil
-	}
-
+// withTaggedProcs runs the given handler on all Jasper processes on this host
+// matching the given tag.
+func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, tag string, handleTaggedProcs func(taggedProcs []jasper.Process) error) error {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
+
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 	}()
 
-	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
+	procs, err := client.Group(ctx, tag)
 	if err != nil {
 		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
 	}
 
-	grip.WarningWhen(len(procs) != 1, message.Fields{
-		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
-		"host":    h.Id,
-		"distro":  h.Distro.Id,
-	})
+	return handleTaggedProcs(procs)
+}
 
-	catcher := grip.NewBasicCatcher()
-	for _, proc := range procs {
-		if proc.Running(ctx) {
-			catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID())
-		}
+// WithAgentMonitor runs the given handler on all agent monitor processes
+// running on the host.
+func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, handleAgentMonitor func(procs []jasper.Process) error) error {
+	return h.withTaggedProcs(ctx, env, evergreen.AgentMonitorTag, func(procs []jasper.Process) error {
+		grip.WarningWhen(len(procs) > 1, message.Fields{
+			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		})
+		return handleAgentMonitor(procs)
+	})
+}
+
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service. On legacy hosts, this is a no-op.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+		return nil
 	}
 
-	return catcher.Resolve()
+	return h.WithAgentMonitor(ctx, env, func(procs []jasper.Process) error {
+		catcher := grip.NewBasicCatcher()
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling agent monitor process with ID '%s'", proc.ID())
+			}
+		}
+
+		return catcher.Resolve()
+	})
+}
+
+// AgentCommand returns the arguments to start the agent.
+func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
+	return []string{
+		h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		"agent",
+		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
+		fmt.Sprintf("--host_id='%s'", h.Id),
+		fmt.Sprintf("--host_secret='%s'", h.Secret),
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
+		"--cleanup",
+	}
 }
 
 // AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
-	binary := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.HomeDir(), h.Distro.BinaryName())
-	clientPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
-	credsPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.JasperCredentialsPath)
-	shellPath := filepath.Join(h.Distro.BootstrapSettings.RootDir, h.Distro.BootstrapSettings.ShellPath)
+	clientPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
+	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
+	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	args := []string{
-		binary,
-		"agent",
-		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
-		fmt.Sprintf("--host_id=%s", h.Id),
-		fmt.Sprintf("--host_secret=%s", h.Secret),
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url=%s", settings.LoggerConfig.LogkeeperURL),
-		"--cleanup",
+	args := append(h.AgentCommand(settings),
 		"monitor",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
@@ -922,41 +970,17 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
-	}
+	)
 
 	return &options.Create{
-		Args:        args,
-		Environment: buildAgentEnv(settings),
-		Tags:        []string{evergreen.AgentMonitorTag},
+		Args: args,
+		Tags: []string{evergreen.AgentMonitorTag},
 	}
 }
 
-// buildAgentEnv returns the agent environment variables.
-func buildAgentEnv(settings *evergreen.Settings) map[string]string {
-	env := map[string]string{
-		"S3_KEY":    settings.Providers.AWS.S3Key,
-		"S3_SECRET": settings.Providers.AWS.S3Secret,
-		"S3_BUCKET": settings.Providers.AWS.Bucket,
-	}
-
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	return env
-}
-
-// SetupSpawnHostCommands returns the commands to handle setting up a spawn
-// host.
-func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, error) {
+// SpawnHostSetupCommands returns the commands to handle setting up a spawn
+// host with the evergreen binary and config file for the owner.
+func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, error) {
 	if h.ProvisionOptions == nil {
 		return "", errors.New("missing spawn host provisioning options")
 	}
@@ -964,16 +988,54 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		return "", errors.New("missing spawn host owner")
 	}
 
-	binaryPath := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
-	binDir := filepath.Join(h.Distro.HomeDir(), "cli_bin")
-	confPath := filepath.Join(binDir, ".evergreen.yml")
-
-	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
+	confJSON, err := h.spawnHostConfigJSON(settings)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
+		return "", errors.Wrap(err, "could not create JSON configuration settings")
 	}
 
-	confSettings := struct {
+	return h.spawnHostSetupConfigDirCommands(confJSON), nil
+}
+
+// spawnHostSetupConfigDirCommands the shell script that sets up the
+// config directory on a spawn host. In particular, it makes the client binary
+// directory, puts both the evergreen yaml and the client into it, and attempts
+// to add the directory to the path.
+func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
+	return strings.Join([]string{
+		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
+		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
+		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
+		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
+		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
+		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
+	}, " && ")
+}
+
+// AgentBinary returns the path to the evergreen agent binary.
+func (h *Host) AgentBinary() string {
+	return filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
+}
+
+// spawnHostConfigDir returns the directory containing the CLI and evergreen
+// yaml for a spawn host.
+func (h *Host) spawnHostConfigDir() string {
+	return filepath.Join(h.Distro.HomeDir(), "cli_bin")
+}
+
+// spawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
+func (h *Host) spawnHostConfigFile() string {
+	return filepath.Join(h.spawnHostConfigDir(), ".evergreen.yml")
+}
+
+// spawnHostConfigJSON returns evergreen yaml configuration for a spawn host in
+// JSON format.
+func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error) {
+	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
+	}
+
+	conf := struct {
 		APIKey        string `json:"api_key"`
 		APIServerHost string `json:"api_server_host"`
 		UIServerHost  string `json:"ui_server_host"`
@@ -985,45 +1047,31 @@ func (h *Host) SetupSpawnHostCommands(settings *evergreen.Settings) (string, err
 		User:          owner.Id,
 	}
 
-	confJSON, err := json.Marshal(confSettings)
-	if err != nil {
-		return "", errors.Wrap(err, "could not marshal configuration settings to JSON")
+	return json.Marshal(conf)
+}
+
+// SpawnHostGetTaskDataCommand returns the command that fetches the task data
+// for a spawn host.
+func (h *Host) SpawnHostGetTaskDataCommand() []string {
+	return []string{
+		// We can't use the absolute path for the binary because we always run
+		// it in a Cygwin context on Windows.
+		h.AgentBinary(),
+		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
+		"fetch",
+		"-t", h.ProvisionOptions.TaskId,
+		"--source", "--artifacts",
+		// We can't use a Cygwin path for the working directory because it's
+		// symlinked with a Cygwin symlink, which is not a real directory or
+		// Windows shortcut.
+		"--dir", h.Distro.WorkDir,
 	}
-
-	// Make the client binary directory, put both the evergreen.yml and the
-	// client into it, and attempt to add the directory to the path.
-	setupBinDirCmds := strings.Join([]string{
-		fmt.Sprintf("mkdir -m 777 -p %s", binDir),
-		fmt.Sprintf("echo '%s' > %s", confJSON, confPath),
-		fmt.Sprintf("cp %s %s", binaryPath, binDir),
-		fmt.Sprintf("(echo 'export PATH=\"${PATH}:%s\"' >> %s/.profile || true; echo 'export PATH=\"${PATH}:%s\"' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
-	}, " && ")
-
-	script := setupBinDirCmds
-	if h.ProvisionOptions.TaskId != "" {
-		fetchCmd := []string{
-			binaryPath,
-			"-c", confPath,
-			"fetch",
-			"-t", h.ProvisionOptions.TaskId,
-			"--source",
-			"--artifacts",
-			"--dir", h.Distro.WorkDir,
-		}
-		jasperFetchCmd, err := h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
-		if err != nil {
-			return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
-		}
-		script += " && " + jasperFetchCmd
-	}
-
-	return script, nil
 }
 
 const userDataDoneFileName = "user_data_done"
 
-// UserDataDoneFilePath returns the path to the user data done marker file.
-func (h *Host) UserDataDoneFilePath() (string, error) {
+// UserDataDoneFile returns the path to the user data done marker file.
+func (h *Host) UserDataDoneFile() (string, error) {
 	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
 		return "", errors.New("distro jasper binary directory must be specified")
 	}
@@ -1034,7 +1082,7 @@ func (h *Host) UserDataDoneFilePath() (string, error) {
 // MarkUserDataDoneCommands creates the command to make the marker file
 // indicating user data has finished executing.
 func (h *Host) MarkUserDataDoneCommands() (string, error) {
-	path, err := h.UserDataDoneFilePath()
+	path, err := h.UserDataDoneFile()
 	if err != nil {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
@@ -1063,7 +1111,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 
 	grip.Info(message.Fields{
 		"message":              "host successfully provisioned",
-		"host":                 h.Id,
+		"host_id":              h.Id,
 		"distro":               h.Distro.Id,
 		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
 	})

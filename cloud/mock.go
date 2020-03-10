@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -56,6 +57,14 @@ type MockProviderSettings struct {
 
 func GetMockProvider() MockProvider {
 	return globalMockState
+}
+
+func (_ *MockProviderSettings) Validate() error {
+	return nil
+}
+
+func (_ *MockProviderSettings) FromDistroSettings(_ distro.Distro, _ string) error {
+	return nil
 }
 
 type mockState struct {
@@ -165,7 +174,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		host.AddTags(changes.AddInstanceTags)
 		instance.Tags = host.InstanceTags
 		mockMgr.Instances[host.Id] = instance
-		if err := host.SetTags(); err != nil {
+		if err = host.SetTags(); err != nil {
 			return errors.Errorf("error adding tags in db")
 		}
 	}
@@ -174,7 +183,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		instance.Tags = host.InstanceTags
 		mockMgr.Instances[host.Id] = instance
 		host.DeleteTags(changes.DeleteInstanceTags)
-		if err := host.SetTags(); err != nil {
+		if err = host.SetTags(); err != nil {
 			return errors.Errorf("error deleting tags in db")
 		}
 	}
@@ -228,11 +237,7 @@ func (mockMgr *mockManager) GetDNSName(ctx context.Context, host *host.Host) (st
 }
 
 func (_ *mockManager) GetSettings() ProviderSettings {
-	return &mockManager{}
-}
-
-func (_ *mockManager) Validate() error {
-	return nil
+	return &MockProviderSettings{}
 }
 
 // terminate an instance
@@ -393,6 +398,10 @@ func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []hos
 	return []CloudStatus{StatusRunning}, nil
 }
 
+func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string) error {
+	return nil
+}
+
 // CostForDuration for the mock returns 1 dollar per minute up
 func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 	return end.Sub(start).Minutes(), nil
@@ -412,4 +421,8 @@ func getMockManagerOptions(provider string, providerSettings *map[string]interfa
 	opts.Region = s.Region
 
 	return opts, nil
+}
+
+func (m *mockManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

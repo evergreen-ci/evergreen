@@ -1,22 +1,21 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -25,26 +24,11 @@ import (
 var buildTestConfig = testutil.TestConfig()
 
 func TestGetBuildInfo(t *testing.T) {
-
-	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
-
-	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
-		UserManager: userManager,
-	}
-
-	home := evergreen.FindEvergreenHome()
-
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	router, err := app.Handler()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding info on a particular build", t, func() {
@@ -188,26 +172,11 @@ func TestGetBuildInfo(t *testing.T) {
 }
 
 func TestGetBuildStatus(t *testing.T) {
-
-	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
-
-	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
-		UserManager: userManager,
-	}
-
-	home := evergreen.FindEvergreenHome()
-
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: true,
-	})
-
-	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
-	router, err := app.Handler()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular build", t, func() {

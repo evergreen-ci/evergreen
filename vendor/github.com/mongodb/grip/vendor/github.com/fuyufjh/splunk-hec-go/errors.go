@@ -6,8 +6,10 @@ import (
 
 // Response is response message from HEC. For example, `{"text":"Success","code":0}`.
 type Response struct {
-	Text string `json:"text"`
-	Code int    `json:"code"`
+	Text  string          `json:"text"`
+	Code  int             `json:"code"`
+	AckID *int            `json:"ackId"` // Use a pointer so we can differentiate between a 0 and an ack ID not being specified
+	Acks  map[string]bool `json:"acks"`  // Splunk returns ack IDs as strings rather than ints
 }
 
 // Response status codes

@@ -137,6 +137,20 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 	}
 }
 
+func (s *SenderSuite) TestFlush() {
+	for t, sender := range s.senders {
+		for i := 0; i < 10; i++ {
+			sender.Send(message.ConvertToComposer(level.Error, "message"))
+		}
+		s.Require().NoError(sender.Flush(context.TODO()), t)
+		for i := 0; i < 10; i++ {
+			m, ok := s.mock.GetMessageSafe()
+			s.Require().True(ok, t)
+			s.Equal("message", m.Message.String(), t)
+		}
+	}
+}
+
 func (s *SenderSuite) TestCloserShouldUsusallyNoop() {
 	for t, sender := range s.senders {
 		s.NoError(sender.Close(), string(t))

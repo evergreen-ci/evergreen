@@ -16,6 +16,7 @@ var (
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
 	ProviderSettingsKey      = bsonutil.MustHaveTag(Distro{}, "ProviderSettings")
+	ProviderSettingsListKey  = bsonutil.MustHaveTag(Distro{}, "ProviderSettingsList")
 	SetupAsSudoKey           = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")
 	UserKey                  = bsonutil.MustHaveTag(Distro{}, "User")
@@ -34,6 +35,7 @@ var (
 	DisableShallowCloneKey   = bsonutil.MustHaveTag(Distro{}, "DisableShallowClone")
 	UseLegacyAgentKey        = bsonutil.MustHaveTag(Distro{}, "UseLegacyAgent")
 	ValidProjectsKey         = bsonutil.MustHaveTag(Distro{}, "ValidProjects")
+	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
 )
 
 var (
@@ -127,12 +129,20 @@ func BySpawnAllowed() db.Q {
 	return db.Query(bson.M{SpawnAllowedKey: true})
 }
 
-// ByActiveOrStatic returns a query that selects only active or static distros
-func ByActiveOrStatic() db.Q {
-	return db.Query(bson.M{"$or": []bson.M{
-		bson.M{DisabledKey: bson.M{"$exists": false}},
-		bson.M{ProviderKey: evergreen.HostTypeStatic},
-	}})
+// ByNeedsPlanning returns a query that selects only active or static distros that don't run containers
+func ByNeedsPlanning(containerPools []evergreen.ContainerPool) db.Q {
+	poolDistros := []string{}
+	for _, pool := range containerPools {
+		poolDistros = append(poolDistros, pool.Distro)
+	}
+	return db.Query(bson.M{
+		"_id": bson.M{
+			"$nin": poolDistros,
+		},
+		"$or": []bson.M{
+			bson.M{DisabledKey: bson.M{"$exists": false}},
+			bson.M{ProviderKey: evergreen.HostTypeStatic},
+		}})
 }
 
 // ByIds creates a query that finds all distros for the given ids and implicitly

@@ -24,15 +24,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// publicProjectFields are the fields needed by the UI
-// on base_angular and the menu
-type UIProjectFields struct {
-	Identifier  string `json:"identifier"`
-	DisplayName string `json:"display_name"`
-	Repo        string `json:"repo_name"`
-	Owner       string `json:"owner_name"`
-}
-
 // filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view and edit the settings of.
 func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef, error) {
@@ -43,7 +34,7 @@ func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef
 	authorizedProjects := []model.ProjectRef{}
 	// only returns projects for which the user is authorized to see.
 	for _, project := range allProjects {
-		if uis.isSuperUser(u) || isAdmin(u, &project) {
+		if isAdmin(u, &project) {
 			authorizedProjects = append(authorizedProjects, project)
 		}
 	}
@@ -102,7 +93,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	projVars.RedactPrivateVars()
+	projVars = projVars.RedactPrivateVars()
 
 	projectAliases, err := model.FindAliasesForProject(id)
 	if err != nil {
@@ -218,13 +209,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		CommitQueueAliases  []model.ProjectAlias           `json:"commit_queue_aliases"`
 		PatchAliases        []model.ProjectAlias           `json:"patch_aliases"`
 		DeleteAliases       []string                       `json:"delete_aliases"`
+		DefaultLogger       string                         `json:"default_logger"`
 		PrivateVars         map[string]bool                `json:"private_vars"`
 		Enabled             bool                           `json:"enabled"`
 		Private             bool                           `json:"private"`
 		Restricted          bool                           `json:"restricted"`
 		Owner               string                         `json:"owner_name"`
 		Repo                string                         `json:"repo_name"`
-		Admins              []string                       `json:"admins"` //TODO: update roles for this project if admins change
+		Admins              []string                       `json:"admins"`
 		TracksPushEvents    bool                           `json:"tracks_push_events"`
 		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
 		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
@@ -350,7 +342,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are PR aliases defined
-		aliasesDefined, err := verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		var aliasesDefined bool
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
@@ -387,7 +380,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are commit queue aliases defined
-		exists, err := verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
+		var exists bool
+		exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
 			return
@@ -432,6 +426,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled
+	projectRef.DefaultLogger = responseRef.DefaultLogger
 	projectRef.Private = responseRef.Private
 	projectRef.Restricted = responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
@@ -585,7 +580,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if origProjectRef.Restricted != projectRef.Restricted {
-		var err error
 		if projectRef.Restricted {
 			err = projectRef.MakeRestricted()
 		} else {
@@ -747,7 +741,7 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	authorized := isAdmin(DBUser, projectRef) || uis.isSuperUser(DBUser)
+	authorized := isAdmin(DBUser, projectRef)
 	template := "not_admin.html"
 	if authorized {
 		template = "project_events.html"

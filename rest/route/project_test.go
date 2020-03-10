@@ -83,6 +83,7 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
 	h.projectID = "dimoxinil"
@@ -91,7 +92,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	vars, err := s.sc.FindProjectVarsById("dimoxinil")
+	vars, err := s.sc.FindProjectVarsById("dimoxinil", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -208,6 +209,7 @@ func (s *ProjectPutSuite) TestParse() {
 
 func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",

@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -37,15 +36,14 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	//authManager
-	UserManager        gimlet.UserManager
 	umconf             gimlet.UserMiddlewareConfiguration
-	umIsLDAP           bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
 	jiraHandler        thirdparty.JiraHandler
 	buildBaronProjects map[string]evergreen.BuildBaronProject
+
+	hostCache map[string]hostCacheItem
 
 	queue amboy.Queue
 	env   evergreen.Environment
@@ -55,31 +53,37 @@ type UIServer struct {
 
 // ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	User        *user.DBUser
-	ProjectData projectContext
-	Project     model.Project
-	Flashes     []interface{}
-	Banner      string
-	BannerTheme string
-	Csrf        htmlTemplate.HTML
-	JiraHost    string
-	Bugsnag     string
-	NewRelic    evergreen.NewRelicConfig
-	IsAdmin     bool
-	ACLEnabled  bool // TODO PM-1355 remove this
+	User                *user.DBUser
+	ProjectData         projectContext
+	Project             model.Project
+	Flashes             []interface{}
+	Banner              string
+	BannerTheme         string
+	Csrf                htmlTemplate.HTML
+	JiraHost            string
+	Bugsnag             string
+	NewRelic            evergreen.NewRelicConfig
+	IsAdmin             bool
+	ValidDefaultLoggers []string
+}
+
+const hostCacheTTL = 30 * time.Second
+
+type hostCacheItem struct {
+	dnsName              string
+	inserted             time.Time
+	owner                string
+	isVirtualWorkstation bool
+	isRunning            bool
 }
 
 func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	settings := env.Settings()
-	userManager, isLDAP, err := auth.LoadUserManager(settings.AuthConfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    MakeTemplateFuncs(fo, settings.SuperUsers),
+		Functions:    MakeTemplateFuncs(fo),
 	}
 
 	uis := &UIServer{
@@ -87,8 +91,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		env:                env,
 		queue:              queue,
 		Home:               home,
-		UserManager:        userManager,
-		umIsLDAP:           isLDAP,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -106,6 +108,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 			CookiePath:     "/",
 			CookieDomain:   settings.Ui.LoginDomain,
 		},
+		hostCache: make(map[string]hostCacheItem),
 	}
 
 	if err := uis.umconf.Validate(); err != nil {
@@ -161,33 +164,53 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // GetCommonViewData returns a struct that can supplement the struct used to provide data to
 // views. It contains data that is used for most/all Evergreen pages.
 // The needsUser and needsProject params will cause an error to be logged if there is no
-// user/project, but other data will still be returned
+// user/project. Data will not be returned if the project cannot be found.
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
 	ctx := r.Context()
 	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
-		grip.Error("no user attached to request")
+		grip.Error(message.WrapError(errors.New("no user attached to request"), message.Fields{
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 	projectCtx, err := GetProjectContext(r)
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
-		uis.projectNotFoundBase(w, r, nil)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get project context from request",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 		return ViewData{}
 	}
 	if needsProject {
 		var project *model.Project
 		project, err = projectCtx.GetProject()
-		if err != nil || project == nil {
-			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
-			uis.ProjectNotFound(w, r)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not find project from project context",
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
+			return ViewData{}
+		}
+		if project == nil {
+			grip.Error(message.WrapError(errors.New("no project found"), message.Fields{
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
 			return ViewData{}
 		}
 		viewData.Project = *project
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to retrieve admin settings",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {
@@ -199,10 +222,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
 		viewData.IsAdmin = u.HasPermission(opts)
-		// TODO: PM-1355 remove this if statement.
-		if !evergreen.AclCheckingIsEnabled {
-			viewData.IsAdmin = uis.isSuperUser(u)
-		}
 	} else if userCtx != nil {
 		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
 	}
@@ -215,7 +234,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.Bugsnag = settings.Bugsnag
 	viewData.NewRelic = settings.NewRelic
-	viewData.ACLEnabled = evergreen.AclCheckingIsEnabled
+	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
 }
 
@@ -223,10 +242,11 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
+	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
-	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
-	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
+	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
+	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := route.RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
 	createDistro := route.RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
@@ -261,10 +281,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		}
 	})
 
-	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}
-	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
 		app.AddRoute("/login/redirect/callback").Handler(h).Get()
 	}
 
@@ -276,7 +296,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
-	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLogin).Handler(graphql.Handler()).Post().Get()
+	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
@@ -333,18 +353,28 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsSuperUser, needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+		FindTarget:        uis.getHostDNS,
+		StripSourcePrefix: true,
+		RemoteScheme:      "http",
+	}).AllMethods()
+	// Prefix routes not ending in a '/' are not automatically redirected by gimlet's underlying library.
+	// Add another route to match when there's no trailing slash and redirect
+	app.AddRoute("/host/{host_id}/ide").Handler(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+	}).Get()
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// Event Logs
-	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fullEventLogs).Get()
+	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 
 	// Task History
 	app.AddRoute("/task_history/{task_name}").Wrap(needsContext).Handler(uis.taskHistoryPage).Get()
@@ -371,7 +401,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Patch pages
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()
-	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatch).Post()
+	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatchUI).Post()
 	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.diffPage).Get()
 	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
 	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
@@ -403,15 +433,15 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project routes
 	app.AddRoute("/projects").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectPage).Get()
-	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, needsAdmin, viewProjectSettings).Handler(uis.projectEvents).Get()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, editProjectSettings).Handler(uis.modifyProject).Post()
-	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin, createProject).Handler(uis.addProject).Put()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, viewProjectSettings).Handler(uis.projectPage).Get()
+	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, editProjectSettings).Handler(uis.modifyProject).Post()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, createProject).Handler(uis.addProject).Put()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser, adminSettings).Handler(uis.clearAllUserTokens).Post()
+	app.AddRoute("/admin/cleartokens").Wrap(adminSettings).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes

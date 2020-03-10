@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -13,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -519,10 +519,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP)
-	s.NotNil(newConfig)
 	s.Require().Len(newPP.Tasks, 6)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Require().Len(newPP.Functions, 2)
@@ -533,10 +532,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[4].Name, "new_task")
 	s.Equal(newPP.Tasks[5].Name, "another_task")
 
-	newPP2, newConfig2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
+	newPP2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
 
 	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
 	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
@@ -554,16 +552,10 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	// verify addGeneratedProjectToConfig returned the updated config
-	ppConfig, err := yaml.Marshal(newPP)
-	s.NoError(err)
-	s.Equal(newConfig, string(ppConfig))
-
 	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
 	s.NoError(err)
-	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
-	s.NotEmpty(newConfig)
 	s.NotNil(newPP)
 	s.Require().Len(newPP.Tasks, 5)
 	s.Require().Len(newPP.BuildVariants, 3)
@@ -572,10 +564,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[1].Name, "say-bye")
 	s.Equal(newPP.Tasks[3].Name, "new_task")
 
-	newPP2, newConfig2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
+	newPP2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
-	s.Equal(newConfig, newConfig2)
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
@@ -606,10 +597,16 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
 
+	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(5, v.ConfigUpdateNumber)
+	s.Equal(4, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(5, pp.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}
@@ -679,7 +676,13 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(1, v.ConfigUpdateNumber)
+	s.Equal(0, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(1, pp.ConfigUpdateNumber)
+
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
@@ -805,7 +808,12 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(1, v.ConfigUpdateNumber)
+	s.Equal(0, v.ConfigUpdateNumber)
+
+	pp, err = ParserProjectFindOneById(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(pp)
+	s.Equal(1, pp.ConfigUpdateNumber)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
@@ -823,13 +831,11 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
 }
 
-func TestUpdateVersionAndParserProject(t *testing.T) {
-
+func TestUpdateParserProject(t *testing.T) {
 	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
 		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 5
 			assert.NoError(t, v.Insert())
-
 		},
 		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 1
@@ -854,7 +860,7 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			v := &Version{Id: "my-version"}
 			pp := &ParserProject{Id: "my-version"}
 			setupTest(t, v, pp)
-			assert.NoError(t, updateVersionAndParserProject(v, pp))
+			assert.NoError(t, updateParserProject(v, pp))
 			v, err := VersionFindOneId(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, v)
@@ -862,12 +868,40 @@ func TestUpdateVersionAndParserProject(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			if testName == "WithZero" {
-				assert.Equal(t, 1, v.ConfigUpdateNumber)
+				assert.Equal(t, 0, v.ConfigUpdateNumber)
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			}
-			assert.Equal(t, 6, v.ConfigUpdateNumber)
+			assert.NotEqual(t, 6, v.ConfigUpdateNumber)
 			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
+	}
+}
+
+func TestAddDependencies(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	existingTasks := []task.Task{
+		{Id: "t1", DependsOn: []task.Dependency{{TaskId: "generator", Status: evergreen.TaskSucceeded}}},
+		{Id: "t2", DependsOn: []task.Dependency{{TaskId: "generator", Status: task.AllStatuses}}},
+	}
+	for _, task := range existingTasks {
+		assert.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, []string{"t3"}))
+
+	t1, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Len(t, t1.DependsOn, 2)
+	for _, dep := range t1.DependsOn {
+		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+	}
+
+	t2, err := task.FindOneId("t2")
+	assert.NoError(t, err)
+	assert.Len(t, t2.DependsOn, 2)
+	for _, dep := range t2.DependsOn {
+		assert.Equal(t, task.AllStatuses, dep.Status)
 	}
 }

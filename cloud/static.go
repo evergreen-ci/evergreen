@@ -5,11 +5,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type staticManager struct{}
@@ -35,6 +38,23 @@ func (s *StaticSettings) Validate() error {
 	for _, h := range s.Hosts {
 		if h.Name == "" {
 			return errors.New("host 'name' field can not be blank")
+		}
+	}
+	return nil
+}
+
+func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, s); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
 	}
 	return nil
@@ -115,8 +135,16 @@ func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) erro
 	return errors.New("can't delete volume with static provider")
 }
 
+func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with static provider")
+}
+
 // determine how long until a payment is due for the host. static hosts always
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+func (staticMgr *staticManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

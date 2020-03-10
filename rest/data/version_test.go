@@ -440,7 +440,12 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(ref.Identifier, newVersion.Identifier)
 	assert.Equal(6, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
-	assert.NotEmpty(newVersion.Config)
+	assert.Empty(newVersion.Config)
+
+	pp, err := model.ParserProjectFindOneById(newVersion.Id)
+	assert.NoError(err)
+	assert.NotNil(pp)
+	assert.True(pp.Stepback)
 
 	b, err := build.FindOneId(newVersion.BuildIds[0])
 	assert.NoError(err)
@@ -471,7 +476,12 @@ tasks:
 	assert.Equal(ref.Identifier, newVersion.Identifier)
 	assert.Equal(7, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
-	assert.NotEmpty(newVersion.Config)
+	assert.Empty(newVersion.Config)
+
+	pp, err = model.ParserProjectFindOneById(newVersion.Id)
+	assert.NoError(err)
+	assert.NotNil(pp)
+	assert.True(pp.Stepback)
 
 	b, err = build.FindOneId(newVersion.BuildIds[0])
 	assert.NoError(err)

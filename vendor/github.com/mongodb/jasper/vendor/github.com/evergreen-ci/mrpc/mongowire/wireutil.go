@@ -23,14 +23,15 @@ func readInt64(b []byte) int64 {
 		(int64(b[7]) << 56)
 }
 
-func writeInt32(i int32, buf []byte, loc int) {
+func writeInt32(i int32, buf []byte, loc int) int {
 	buf[loc] = byte(i)
 	buf[loc+1] = byte(i >> 8)
 	buf[loc+2] = byte(i >> 16)
 	buf[loc+3] = byte(i >> 24)
+	return 4
 }
 
-func writeInt64(i int64, buf []byte, loc int) {
+func writeInt64(i int64, buf []byte, loc int) int {
 	buf[loc] = byte(i)
 	buf[loc+1] = byte(i >> 8)
 	buf[loc+2] = byte(i >> 16)
@@ -39,6 +40,7 @@ func writeInt64(i int64, buf []byte, loc int) {
 	buf[loc+5] = byte(i >> 40)
 	buf[loc+6] = byte(i >> 48)
 	buf[loc+7] = byte(i >> 56)
+	return 8
 }
 
 func readCString(b []byte) (string, error) {
@@ -51,11 +53,10 @@ func readCString(b []byte) (string, error) {
 	return "", errors.New("c string with no terminator")
 }
 
-func writeCString(s string, buf []byte, loc *int) {
-	copy(buf[*loc:], s)
-	*loc = *loc + len(s)
-	buf[*loc] = 0
-	*loc = *loc + 1
+func writeCString(s string, buf []byte, loc int) int {
+	copy(buf[loc:], s)
+	buf[loc+len(s)] = 0
+	return len(s) + 1
 }
 
 func getDocSize(doc *birch.Document) int {
@@ -63,7 +64,7 @@ func getDocSize(doc *birch.Document) int {
 	return int(size)
 }
 
-func writeDocAt(loc int, doc *birch.Document, buf []byte) int {
-	out, _ := doc.WriteDocument(uint(loc), buf)
-	return int(out)
+func writeDocAt(doc *birch.Document, buf []byte, loc int) int {
+	size, _ := doc.WriteDocument(uint(loc), buf)
+	return int(size)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -57,6 +58,7 @@ func NewGenerateTasksJob(id string, ts string) amboy.Job {
 }
 
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
+	start := time.Now()
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "attempted to generate tasks, but generator already ran for this task",
@@ -84,33 +86,83 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "parseProjects",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
+
 	g := model.MergeGeneratedProjects(projects)
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "MergeGeneratedProjects",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 	g.TaskID = j.TaskID
 
 	p, pp, v, t, pm, err := g.NewVersion()
 	if err != nil {
-		return j.handleError(v, errors.WithStack(err))
+		return j.handleError(pp, v, errors.WithStack(err))
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "NewVersion",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		return j.handleError(v, errors.WithStack(err))
+		return j.handleError(pp, v, errors.WithStack(err))
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "CheckProjectConfigurationIsValid",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+	start = time.Now()
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
 	err = g.Save(context.Background(), p, pp, v, t, pm)
 
-	// If the version has changed there was a race. Another generator will try again.
-	if adb.ResultsNotFound(err) {
+	// If the version or parser project has changed there was a race. Another generator will try again.
+	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
 		return err
 	}
 	if err != nil {
 		return errors.Wrap(err, "error saving config in `generate.tasks`")
 	}
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "Save",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
 	return nil
 }
 
 // handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
-func (j *generateTasksJob) handleError(v *model.Version, handledError error) error {
+func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
 	if v == nil {
 		return handledError
 	}
@@ -121,10 +173,15 @@ func (j *generateTasksJob) handleError(v *model.Version, handledError error) err
 	if versionFromDB == nil {
 		return errors.Errorf("could not find version %s", v.Id)
 	}
+	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
+	if err != nil {
+		return errors.Wrapf(err, "problem finding parser project %s", v.Id)
+	}
 	// If the config update number has been updated, then another task has raced with us.
 	// The error is therefore not an actual configuration problem but instead a symptom
 	// of the race.
-	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber {
+	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber ||
+		pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
 		return mongo.ErrNoDocuments
 	}
 	return handledError
@@ -145,7 +202,8 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 
 	err = j.generate(ctx, t)
-	if !adb.ResultsNotFound(err) {
+	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
+	if err != nil && !shouldNoop {
 		j.AddError(err)
 	}
 	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
@@ -155,20 +213,23 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	})
-	grip.DebugWhen(adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
+	grip.DebugWhen(shouldNoop, message.WrapError(err, message.Fields{
 		"message":       "generate.tasks noop",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	}))
-	grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
+	grip.ErrorWhen(!shouldNoop, message.WrapError(err, message.Fields{
 		"message":       "generate.tasks finished with errors",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
 		"task":          t.Id,
+		"job":           j.ID(),
 		"version":       t.Version,
 	}))
 }

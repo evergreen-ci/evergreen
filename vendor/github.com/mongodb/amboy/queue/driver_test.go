@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,7 +30,7 @@ type DriverSuite struct {
 
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
+	tests.uuid = uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 	mDriver := newMongoDriver(
@@ -187,30 +187,7 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	s.Equal(0, s.driver.Stats(s.ctx).Running)
 }
 
-func (s *DriverSuite) TestNextMethodReturnsJob() {
-	s.Equal(0, s.driver.Stats(s.ctx).Total)
-
-	j := job.NewShellJob("echo foo", "")
-
-	s.NoError(s.driver.Put(s.ctx, j))
-	stats := s.driver.Stats(s.ctx)
-	s.Equal(1, stats.Total, "%+v", stats)
-	s.Equal(1, stats.Pending)
-
-	nj := s.driver.Next(s.ctx)
-	stats = s.driver.Stats(s.ctx)
-	s.Equal(0, stats.Completed)
-	s.Equal(1, stats.Pending)
-	s.Equal(0, stats.Blocked)
-	s.Equal(0, stats.Running)
-
-	if s.NotNil(nj) {
-		s.Equal(j.ID(), nj.ID())
-		s.NoError(j.Lock(s.driver.ID()))
-	}
-}
-
-func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
+func (s *DriverSuite) TestNextMethodSkipsCompletedJobs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	j := job.NewShellJob("echo foo", "")
@@ -223,6 +200,21 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
 	s.Equal(0, s.driver.Stats(s.ctx).Pending)
 	s.Equal(1, s.driver.Stats(s.ctx).Completed)
+
+	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
+}
+
+func (s *DriverSuite) TestNextMethodDoesNotReturnLastJob() {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	j := job.NewShellJob("echo foo", "")
+	s.Require().NoError(j.Lock("taken"))
+
+	s.NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(1, s.driver.Stats(s.ctx).Pending)
+	s.Equal(0, s.driver.Stats(s.ctx).Completed)
 
 	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
 }

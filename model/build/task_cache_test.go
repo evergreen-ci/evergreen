@@ -59,4 +59,16 @@ func TestUpdateCachedTask(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Equal(4*time.Second, dbBuild.Tasks[0].TimeTaken)
+
+	// test blocked
+	assert.NoError(UpdateCachedTask(&task.Task{
+		Id:        "task1",
+		BuildId:   "build1",
+		Status:    evergreen.TaskUndispatched,
+		DependsOn: []task.Dependency{{TaskId: "task2", Unattainable: true}, {TaskId: "task1", Unattainable: false}},
+	}, 0))
+	dbBuild, err = FindOne(ById(b.Id))
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.True(dbBuild.Tasks[0].Blocked)
 }

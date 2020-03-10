@@ -119,8 +119,18 @@ func MockConfig() *evergreen.Settings {
 				Group:              "group",
 				ExpireAfterMinutes: "60",
 			},
+			Okta: &evergreen.OktaConfig{
+				ClientID:           "id",
+				ClientSecret:       "secret",
+				Issuer:             "issuer",
+				UserGroup:          "group",
+				ExpireAfterMinutes: 60,
+			},
 			Naive: &evergreen.NaiveAuthConfig{
-				Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pw"}},
+				Users: []evergreen.AuthUser{evergreen.AuthUser{Username: "user", Password: "pw"}},
+			},
+			OnlyAPI: &evergreen.OnlyAPIAuthConfig{
+				Users: []evergreen.OnlyAPIUser{evergreen.OnlyAPIUser{Username: "api_user", Key: "key", Roles: []string{"admin"}}},
 			},
 			Github: &evergreen.GithubAuthConfig{
 				ClientId:     "ghclient",
@@ -128,6 +138,12 @@ func MockConfig() *evergreen.Settings {
 				Users:        []string{"ghuser"},
 				Organization: "ghorg",
 			},
+			Multi: &evergreen.MultiAuthConfig{
+				ReadWrite: []string{evergreen.AuthLDAPKey},
+				ReadOnly:  []string{evergreen.AuthNaiveKey},
+			},
+			PreferredType:           evergreen.AuthLDAPKey,
+			BackgroundReauthMinutes: 60,
 		},
 		Banner:            "banner",
 		BannerTheme:       "important",
@@ -253,6 +269,15 @@ func MockConfig() *evergreen.Settings {
 			EmailNotificationsDisabled:   true,
 			WebhookNotificationsDisabled: true,
 			GithubStatusAPIDisabled:      true,
+			BackgroundReauthDisabled:     true,
+		},
+		SSHKeyDirectory: "/ssh_key_directory",
+		SSHKeyPairs: []evergreen.SSHKeyPair{
+			{
+				Name:    "key",
+				Public:  "public",
+				Private: "private",
+			},
 		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
@@ -268,7 +293,6 @@ func MockConfig() *evergreen.Settings {
 			Token:     "token",
 			Channel:   "channel",
 		},
-		SuperUsers: []string{"user"},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
 		},
@@ -284,4 +308,12 @@ func MockConfig() *evergreen.Settings {
 		SpawnHostsPerUser:       5,
 		UnexpirableHostsPerUser: 2,
 	}
+}
+
+func DisablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = true
+}
+
+func EnablePermissionsForTests() {
+	evergreen.PermissionSystemDisabled = false
 }

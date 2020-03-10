@@ -119,6 +119,11 @@ func (c *Mock) SetAPIUser(apiUser string)                  { c.apiUser = apiUser
 func (c *Mock) SetAPIKey(apiKey string)                    { c.apiKey = apiKey }
 
 // nolint
+func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+	return nil, nil
+}
+
+// nolint
 func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
 
 // EndTask returns a mock EndTaskResponse.
@@ -343,21 +348,6 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 	return patch, nil
 }
 
-// GetHostsByUser will return an array with a single mock host
-func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
-	hosts := make([]*model.APIHost, 1)
-	spawnRequest := &model.HostRequestOptions{
-		DistroID:     "mock_distro",
-		KeyName:      "mock_key",
-		UserData:     "",
-		InstanceTags: nil,
-		InstanceType: "mock_type",
-	}
-	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
-	hosts = append(hosts, host)
-	return hosts, nil
-}
-
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
@@ -367,7 +357,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 			Id:       model.ToStringPtr(spawnRequest.DistroID),
 			Provider: model.ToStringPtr(evergreen.ProviderNameMock),
 		},
-		Type:         model.ToStringPtr("mock_type"),
+		Provider:     model.ToStringPtr(evergreen.ProviderNameMock),
 		Status:       model.ToStringPtr(evergreen.HostUninitialized),
 		StartedBy:    model.ToStringPtr("mock_user"),
 		UserHost:     true,
@@ -423,8 +413,7 @@ func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
 }
 
 // GetHosts will return an array with a single mock host
-func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
-	hosts := make([]*model.APIHost, 1)
+func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	spawnRequest := &model.HostRequestOptions{
 		DistroID:     "mock_distro",
 		KeyName:      "mock_key",
@@ -433,9 +422,7 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 		InstanceType: "mock_type",
 	}
 	host, _ := c.CreateSpawnHost(ctx, spawnRequest)
-	hosts = append(hosts, host)
-	err := f(hosts)
-	return err
+	return []*model.APIHost{host}, nil
 }
 
 // nolint
@@ -658,17 +645,6 @@ func (c *Mock) EnqueueItem(ctx context.Context, patchID string, force bool) (int
 	return 0, nil
 }
 
-func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error) {
-	return "github.user", nil
-}
-
-func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {
-	return &model.APIUserAuthorInformation{
-		DisplayName: model.ToStringPtr("evergreen"),
-		Email:       model.ToStringPtr("evergreen@mongodb.com"),
-	}, nil
-}
-
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }
@@ -685,6 +661,14 @@ func (c *Mock) GetManifestByTask(context.Context, string) (*manifest.Manifest, e
 	return &manifest.Manifest{Id: "manifest0"}, nil
 }
 
-func (c *Mock) RunHostScript(context.Context, string, string) ([]string, error) {
+func (c *Mock) StartHostProcesses(context.Context, []string, string, int) ([]model.APIHostProcess, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int) ([]model.APIHostProcess, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, bool) ([]string, error) {
 	return nil, nil
 }

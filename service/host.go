@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -125,7 +126,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 	permittedHosts := &hostsData{}
 	for i := range hosts.Hosts {
 		resourcePermissions, ok := permissions[hosts.Hosts[i].Host.Distro.Id]
-		if !evergreen.AclCheckingIsEnabled || (ok && resourcePermissions[evergreen.PermissionHosts] > 0) {
+		if ok && resourcePermissions[evergreen.PermissionHosts] > 0 {
 			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
 		}
 	}
@@ -214,19 +215,15 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	case "updateStatus":
 		hostsUpdated := 0
 		var permissions map[string]gimlet.Permissions
-		if evergreen.AclCheckingIsEnabled {
-			rm := evergreen.GetEnvironment().RoleManager()
-			permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
-			if err != nil {
-				http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
-				return
-			}
+		rm := evergreen.GetEnvironment().RoleManager()
+		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+		if err != nil {
+			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
+			return
 		}
 		for _, h := range hosts {
-			if evergreen.AclCheckingIsEnabled {
-				if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
-					continue
-				}
+			if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
+				continue
 			}
 			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
 			if err != nil {
@@ -241,4 +238,35 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
+}
+
+func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {
+	hostID := gimlet.GetVars(r)["host_id"]
+	h, err := uis.getHostFromCache(hostID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get host '%s'", hostID)
+	}
+	if h == nil {
+		return nil, errors.Wrapf(err, "host '%s' does not exist", hostID)
+	}
+
+	return []string{fmt.Sprintf("%s:%d", h.dnsName, evergreen.VSCodePort)}, nil
+}
+
+func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
+	h, ok := uis.hostCache[hostID]
+	if !ok || time.Since(h.inserted) > hostCacheTTL {
+		hDb, err := host.FindOneId(hostID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get host id '%s'", hostID)
+		}
+		if hDb == nil {
+			return nil, nil
+		}
+
+		h = hostCacheItem{dnsName: hDb.Host, owner: hDb.StartedBy, isVirtualWorkstation: hDb.IsVirtualWorkstation, isRunning: hDb.Status == evergreen.HostRunning, inserted: time.Now()}
+		uis.hostCache[hostID] = h
+	}
+
+	return &h, nil
 }

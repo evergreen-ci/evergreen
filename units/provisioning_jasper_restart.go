@@ -90,14 +90,14 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning {
+	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning || j.host.RunningTask != "" {
 		return
 	}
 
 	defer func() {
 		grip.Error(message.WrapError(j.host.SetReprovisioningLocked(false), message.Fields{
 			"message": "could not clear host provisioning lock",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -107,7 +107,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			if err := j.tryRequeue(ctx); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "could not requeue Jasper restart job",
-					"host":     j.host.Distro.Id,
+					"host_id":  j.host.Distro.Id,
 					"distro:":  j.host.Distro.Id,
 					"expires":  j.CredentialsExpiration,
 					"attempts": j.CurrentAttempt,
@@ -123,7 +123,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.SetReprovisioningLockedAtomically(true); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "provisioning already locked, returning from job",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -132,10 +132,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 	// The host cannot be reprovisioned until the host's agent monitor has been
 	// stopped.
-	if j.host.StartedBy == evergreen.User && !j.host.NeedsNewAgentMonitor {
+	if j.host.StartedBy == evergreen.User && (!j.host.NeedsNewAgentMonitor || j.host.RunningTask != "") {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -146,7 +146,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.UpdateLastCommunicated(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -156,7 +156,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"message": "restarting Jasper service on host",
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"job":     j.ID(),
 	})
@@ -165,7 +165,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem generating new Jasper credentials",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -177,7 +177,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not build command to write Jasper credentials file",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -190,7 +190,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get Jasper client",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -200,7 +200,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		defer func() {
 			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 				"message": "could not close connection to Jasper",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -215,11 +215,12 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 				"bash", "-c", writeCredentialsCmd,
 			},
 		}
-		if output, err := j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
+		var output []string
+		if output, err = j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not replace existing Jasper credentials on host",
 				"logs":    output,
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -237,10 +238,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			},
 		}
 
-		if err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
+		if _, err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not restart Jasper service",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -253,7 +254,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if client, err = j.host.JasperClient(ctx, j.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get Jasper client",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -263,7 +264,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		defer func() {
 			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 				"message": "could not close connection to Jasper",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -274,7 +275,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			err := errors.New("new service ID returned empty")
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "new service ID should be non-empty",
-				"host":      j.host.Id,
+				"host_id":   j.host.Id,
 				"distro":    j.host.Distro.Id,
 				"jasper_id": serviceID,
 				"job":       j.ID(),
@@ -286,7 +287,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			err := errors.New("new service ID should not match current ID")
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "Jasper service should have been restarted, but service is still showing same ID",
-				"host":      j.host.Id,
+				"host_id":   j.host.Id,
 				"distro":    j.host.Distro.Id,
 				"jasper_id": serviceID,
 				"job":       j.ID(),
@@ -299,7 +300,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get SSH options",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -310,8 +311,8 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to write credentials file",
-				"output":  output,
-				"host":    j.host.Id,
+				"logs":    output,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -322,8 +323,8 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
-				"output":  output,
-				"host":    j.host.Id,
+				"logs":    output,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -335,7 +336,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.MarkAsReprovisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host as provisioned",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -349,7 +350,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving new Jasper credentials",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -359,7 +360,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"message": "restarted Jasper service with new credentials",
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"version": j.settings.HostJasper.Version,
 	})
@@ -370,7 +371,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 	if err := j.host.SetNeedsNewAgentMonitor(true); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host as needing new agent monitor",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))

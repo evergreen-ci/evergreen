@@ -52,6 +52,8 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		PopulateHostJasperRestartJobs(j.env),
 		PopulateHostProvisioningConversionJobs(j.env),
 		PopulateSpawnhostExpirationCheckJob(),
+		PopulateSSHKeyUpdates(j.env),
+		PopulateDuplicateTaskCheckJobs(),
 	}
 
 	queue := j.env.RemoteQueue()

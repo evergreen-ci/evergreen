@@ -71,9 +71,11 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
+	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
 		return nil, errors.Wrap(err, "error getting EC2 settings")
+	}
+	if err := ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
@@ -87,16 +89,11 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		ec2Settings.KeyName = k
 	}
 
-	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
-	if err != nil {
-		return nil, errors.Wrap(err, "error making block device mappings")
-	}
-
-	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings, blockDevices); err != nil {
+	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings); err != nil {
 		msg := "error spawning spot host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -104,7 +101,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	}
 	grip.Debug(message.Fields{
 		"message":       "spawned spot host with Fleet",
-		"host":          h.Id,
+		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
@@ -155,7 +152,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 			// cache instance information so we can make fewer calls to AWS's API
 			grip.Error(message.WrapError(cacheHostData(ctx, &h, instanceMap[h.Id], m.client), message.Fields{
 				"message": "can't update host cached data",
-				"host":    h.Id,
+				"host_id": h.Id,
 			}))
 		}
 		statuses = append(statuses, status)
@@ -175,7 +172,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -190,11 +187,30 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 		// cache instance information so we can make fewer calls to AWS's API
 		grip.Error(message.WrapError(cacheHostData(ctx, h, instance, m.client), message.Fields{
 			"message": "can't update host cached data",
-			"host":    h.Id,
+			"host_id": h.Id,
 		}))
 	}
 
 	return status, nil
+}
+
+func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
+	if err != nil {
+		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
+	}
+	validTypes := []string{}
+	for _, availableType := range output.InstanceTypeOfferings {
+		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
+			return nil
+		}
+		validTypes = append(validTypes, *availableType.InstanceType)
+	}
+	return errors.Errorf("available types for region '%s' are: %v", m.region, validTypes)
 }
 
 func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
@@ -213,7 +229,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
 			"user":          user,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
@@ -226,7 +242,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 				"message":       "state change missing instance ID",
 				"user":          user,
 				"host_provider": h.Distro.Provider,
-				"host":          h.Id,
+				"host_id":       h.Id,
 				"distro":        h.Distro.Id,
 			})
 			return errors.New("invalid terminate instances response")
@@ -236,7 +252,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
 	}
@@ -265,36 +281,8 @@ func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) 
 	return false, nil
 }
 
-// OnUp sets tags on the instance created by Fleet
+// OnUp is a noop for Fleet
 func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	resources := []string{h.Id}
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	resources = append(resources, volumeIDs...)
-
-	if err := m.client.SetTags(ctx, resources, h); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-	}
-	grip.Debug(message.Fields{
-		"message":       "attached tags for host",
-		"host":          h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
-
 	return nil
 }
 
@@ -355,7 +343,7 @@ func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, sta
 	return total, nil
 }
 
-func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) error {
+func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	// Cleanup
 	var templateID *string
 	defer func() {
@@ -364,7 +352,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: templateID})
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "can't delete launch template",
-				"host":     h.Id,
+				"host_id":  h.Id,
 				"template": *templateID,
 			}))
 		}
@@ -372,7 +360,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 
 	var err error
 	var templateVersion *int64
-	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings, blockDevices)
+	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings)
 	if err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
 	}
@@ -386,12 +374,18 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	return nil
 }
 
-func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) (*string, *int64, error) {
+func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (*string, *int64, error) {
+	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error making block device mappings")
+	}
+
 	launchTemplate := &ec2.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		KeyName:             aws.String(ec2Settings.KeyName),
 		InstanceType:        aws.String(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
+		TagSpecifications:   makeTagTemplate(makeTags(h)),
 	}
 
 	if ec2Settings.IsVpc {
@@ -535,4 +529,13 @@ func subnetMatchesAz(subnet *ec2.Subnet) bool {
 	}
 
 	return false
+}
+
+func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
 }

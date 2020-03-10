@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -75,11 +74,11 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	path, err := j.host.UserDataDoneFilePath()
+	path, err := j.host.UserDataDoneFile()
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting user data done file path",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -89,13 +88,13 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 		Args: []string{
-			filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath),
+			j.host.Distro.ShellBinary(),
 			"-l", "-c",
 			fmt.Sprintf("ls %s", path)}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -106,12 +105,25 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	if err := j.host.SetUserDataHostProvisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
 		return
+	}
+
+	if j.host.IsVirtualWorkstation {
+		if err := attachVolume(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "can't attach volume",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
 	}
 }
 

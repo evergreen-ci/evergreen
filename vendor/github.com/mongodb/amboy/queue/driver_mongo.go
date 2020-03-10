@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -28,6 +28,7 @@ type mongoDriver struct {
 	instanceID string
 	mu         sync.RWMutex
 	canceler   context.CancelFunc
+	dispatcher Dispatcher
 }
 
 // NewMongoDriver constructs a MongoDB backed queue driver
@@ -43,7 +44,7 @@ func newMongoDriver(name string, opts MongoDBOptions) remoteQueueDriver {
 	return &mongoDriver{
 		name:       name,
 		opts:       opts,
-		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
+		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.New()),
 	}
 }
 
@@ -76,7 +77,7 @@ func newMongoGroupDriver(name string, opts MongoDBOptions, group string) remoteQ
 	return &mongoDriver{
 		name:       name,
 		opts:       opts,
-		instanceID: fmt.Sprintf("%s.%s.%s.%s", name, group, host, uuid.NewV4()),
+		instanceID: fmt.Sprintf("%s.%s.%s.%s", name, group, host, uuid.New()),
 	}
 }
 
@@ -158,24 +159,33 @@ func (d *mongoDriver) getCollection() *mongo.Collection {
 }
 
 func (d *mongoDriver) setupDB(ctx context.Context) error {
-	if d.opts.SkipIndexBuilds {
-		return nil
+	indexes := []mongo.IndexModel{}
+	if !d.opts.SkipQueueIndexBuilds {
+		indexes = append(indexes, d.queueIndexes()...)
+	}
+	if !d.opts.SkipReportingIndexBuilds {
+		indexes = append(indexes, d.reportingIndexes()...)
 	}
 
-	keys := bsonx.Doc{}
-	modKeys := bsonx.Doc{}
+	if len(indexes) > 0 {
+		_, err := d.getCollection().Indexes().CreateMany(ctx, indexes)
+		return errors.Wrap(err, "problem building indexes")
+	}
+
+	return nil
+}
+
+func (d *mongoDriver) queueIndexes() []mongo.IndexModel {
+	primary := bsonx.Doc{}
 
 	if d.opts.UseGroups {
-		keys = append(keys, bsonx.Elem{
-			Key:   "group",
-			Value: bsonx.Int32(1),
-		})
-		modKeys = append(modKeys, bsonx.Elem{
+		primary = append(primary, bsonx.Elem{
 			Key:   "group",
 			Value: bsonx.Int32(1),
 		})
 	}
-	keys = append(keys,
+
+	primary = append(primary,
 		bsonx.Elem{
 			Key:   "status.completed",
 			Value: bsonx.Int32(1),
@@ -185,41 +195,40 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			Value: bsonx.Int32(1),
 		})
 
-	modKeys = append(modKeys, bsonx.Elem{
-		Key:   "status.mod_ts",
-		Value: bsonx.Int32(1),
-	})
-
-	if d.opts.CheckWaitUntil {
-		keys = append(keys, bsonx.Elem{
-			Key:   "time_info.wait_until",
-			Value: bsonx.Int32(1),
-		})
-	}
-
-	if d.opts.CheckDispatchBy {
-		keys = append(keys, bsonx.Elem{
-			Key:   "time_info.dispatch_by",
-			Value: bsonx.Int32(1),
-		})
-	}
-
-	// priority must be at the end for the sort
 	if d.opts.Priority {
-		keys = append(keys, bsonx.Elem{
+		primary = append(primary, bsonx.Elem{
 			Key:   "priority",
 			Value: bsonx.Int32(1),
 		})
 	}
 
+	if d.opts.CheckWaitUntil {
+		primary = append(primary, bsonx.Elem{
+			Key:   "time_info.wait_until",
+			Value: bsonx.Int32(1),
+		})
+	} else if d.opts.CheckDispatchBy {
+		primary = append(primary, bsonx.Elem{
+			Key:   "time_info.dispatch_by",
+			Value: bsonx.Int32(1),
+		})
+	}
+
 	indexes := []mongo.IndexModel{
-		mongo.IndexModel{
-			Keys: keys,
+		{
+			Keys: primary,
 		},
-		mongo.IndexModel{
-			Keys: modKeys,
+		{
+			Keys: bsonx.Doc{
+				{
+					Key:   "scopes",
+					Value: bsonx.Int32(1),
+				},
+			},
+			Options: options.Index().SetSparse(true).SetUnique(true),
 		},
 	}
+
 	if d.opts.TTL > 0 {
 		ttl := int32(d.opts.TTL / time.Second)
 		indexes = append(indexes, mongo.IndexModel{
@@ -232,9 +241,118 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			Options: options.Index().SetExpireAfterSeconds(ttl),
 		})
 	}
-	_, err := d.getCollection().Indexes().CreateMany(ctx, indexes)
 
-	return errors.Wrap(err, "problem building indexes")
+	return indexes
+}
+
+func (d *mongoDriver) reportingIndexes() []mongo.IndexModel {
+	indexes := []mongo.IndexModel{}
+	completedInProgModTs := bsonx.Doc{}
+	completedEnd := bsonx.Doc{}
+	completedCreated := bsonx.Doc{}
+	typeCompletedInProgModTs := bsonx.Doc{}
+	typeCompletedEnd := bsonx.Doc{}
+
+	if d.opts.UseGroups {
+		completedInProgModTs = append(completedInProgModTs, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+		completedEnd = append(completedEnd, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+		completedCreated = append(completedCreated, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+		typeCompletedInProgModTs = append(typeCompletedInProgModTs, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+		typeCompletedEnd = append(typeCompletedEnd, bsonx.Elem{
+			Key:   "group",
+			Value: bsonx.Int32(1),
+		})
+	}
+
+	completedInProgModTs = append(completedInProgModTs,
+		bsonx.Elem{
+			Key:   "status.completed",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.in_prog",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.mod_ts",
+			Value: bsonx.Int32(1),
+		},
+	)
+	indexes = append(indexes, mongo.IndexModel{Keys: completedInProgModTs})
+
+	completedEnd = append(completedEnd,
+		bsonx.Elem{
+			Key:   "status.completed",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "time_info.end",
+			Value: bsonx.Int32(1),
+		},
+	)
+	indexes = append(indexes, mongo.IndexModel{Keys: completedEnd})
+
+	completedCreated = append(completedCreated,
+		bsonx.Elem{
+			Key:   "status.completed",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "time_info.created",
+			Value: bsonx.Int32(1),
+		},
+	)
+	indexes = append(indexes, mongo.IndexModel{Keys: completedCreated})
+
+	typeCompletedInProgModTs = append(typeCompletedInProgModTs,
+		bsonx.Elem{
+			Key:   "type",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.completed",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.in_prog",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.mod_ts",
+			Value: bsonx.Int32(1),
+		},
+	)
+	indexes = append(indexes, mongo.IndexModel{Keys: typeCompletedInProgModTs})
+
+	typeCompletedEnd = append(typeCompletedEnd,
+		bsonx.Elem{
+			Key:   "type",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "status.completed",
+			Value: bsonx.Int32(1),
+		},
+		bsonx.Elem{
+			Key:   "time_info.end",
+			Value: bsonx.Int32(1),
+		},
+	)
+	indexes = append(indexes, mongo.IndexModel{Keys: typeCompletedEnd})
+
+	return indexes
 }
 
 func (d *mongoDriver) Close() {
@@ -310,6 +428,10 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 	d.processJobForGroup(job)
 
 	if _, err = d.getCollection().InsertOne(ctx, job); err != nil {
+		if isMongoDupKey(err) {
+			return amboy.NewDuplicateJobErrorf("job '%s' already exists", j.ID())
+		}
+
 		return errors.Wrapf(err, "problem saving new job %s", j.ID())
 	}
 
@@ -342,7 +464,7 @@ func getAtomicQuery(owner, jobName string, modCount int) bson.M {
 }
 
 func isMongoDupKey(err error) bool {
-	wce, ok := err.(mongo.WriteConcernError)
+	wce, ok := errors.Cause(err).(mongo.WriteConcernError)
 	if !ok {
 		return false
 	}
@@ -350,7 +472,28 @@ func isMongoDupKey(err error) bool {
 }
 
 func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
-	name := j.ID()
+	job, err := d.prepareInterchange(j)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	job.Scopes = j.Scopes()
+
+	return errors.WithStack(d.doUpdate(ctx, job))
+}
+
+func (d *mongoDriver) Complete(ctx context.Context, j amboy.Job) error {
+	job, err := d.prepareInterchange(j)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	job.Scopes = nil
+
+	return errors.WithStack(d.doUpdate(ctx, job))
+}
+
+func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange, error) {
 	stat := j.Status()
 	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
@@ -358,11 +501,14 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 
 	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
-		return errors.Wrap(err, "problem converting job to interchange format")
+		return nil, errors.Wrap(err, "problem converting job to interchange format")
 	}
+	return job, nil
+}
 
+func (d *mongoDriver) doUpdate(ctx context.Context, job *registry.JobInterchange) error {
 	d.processJobForGroup(job)
-	query := getAtomicQuery(d.instanceID, job.Name, stat.ModificationCount)
+	query := getAtomicQuery(d.instanceID, job.Name, job.Status.ModificationCount)
 	res, err := d.getCollection().ReplaceOne(ctx, query, job)
 	if err != nil {
 		if isMongoDupKey(err) {
@@ -370,18 +516,18 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 				"id":        d.instanceID,
 				"service":   "amboy.queue.mongo",
 				"operation": "save job",
-				"name":      name,
+				"name":      job.Name,
 				"is_group":  d.opts.UseGroups,
 				"group":     d.opts.GroupName,
 				"outcome":   "duplicate key error, ignoring stale job",
 			})
 			return nil
 		}
-		return errors.Wrapf(err, "problem saving document %s: %+v", name, res)
+		return errors.Wrapf(err, "problem saving document %s: %+v", job.Name, res)
 	}
 
 	if res.MatchedCount == 0 {
-		return errors.Errorf("problem saving job [id=%s, matched=%d, modified=%d]", name, res.MatchedCount, res.ModifiedCount)
+		return errors.Errorf("problem saving job [id=%s, matched=%d, modified=%d]", job.Name, res.MatchedCount, res.ModifiedCount)
 	}
 	return nil
 }
@@ -548,7 +694,7 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 		misses int64
 	)
 
-	opts := options.Find().SetBatchSize(4)
+	opts := options.Find().SetBatchSize(100)
 	if d.opts.Priority {
 		opts.SetSort(bson.M{"priority": -1})
 	}
@@ -604,6 +750,7 @@ RETRY:
 						"group":     d.opts.GroupName,
 					}))
 					// try for the next thing in the iterator if we can
+					job = nil
 					continue CURSOR
 				}
 
@@ -624,9 +771,14 @@ RETRY:
 					}
 					grip.Warning(message.WrapError(err, msg))
 					grip.NoticeWhen(err == nil, msg)
+					job = nil
 					continue CURSOR
 				}
 
+				if err := d.dispatcher.Dispatch(ctx, job); err != nil {
+					job = nil
+					continue CURSOR
+				}
 				break CURSOR
 			}
 
@@ -662,7 +814,6 @@ RETRY:
 			continue RETRY
 		}
 	}
-
 	return job
 }
 
@@ -719,4 +870,16 @@ func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 		Completed: int(numJobs - pending),
 		Running:   int(numLocked),
 	}
+}
+
+func (d *mongoDriver) Dispatcher() Dispatcher {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.dispatcher
+}
+
+func (d *mongoDriver) SetDispatcher(disp Dispatcher) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.dispatcher = disp
 }

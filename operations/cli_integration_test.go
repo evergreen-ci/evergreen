@@ -56,7 +56,7 @@ type cliTestHarness struct {
 
 func setupCLITestHarness() cliTestHarness {
 	// create a test API server
-	testServer, err := service.CreateTestServer(testConfig, nil)
+	testServer, err := service.CreateTestServer(testConfig, nil, false)
 	So(err, ShouldBeNil)
 	So(
 		db.ClearCollections(
@@ -121,6 +121,8 @@ func setupCLITestHarness() cliTestHarness {
 
 func TestCLIFetchSource(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	Convey("with a task containing patches and modules", t, func() {
@@ -345,6 +347,8 @@ func TestCLITestHistory(t *testing.T) {
 
 func TestCLIFunctions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	var patches []patch.Patch

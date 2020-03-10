@@ -48,6 +48,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 
 func TestModelConversion(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	testSettings := testutil.MockConfig()
 	apiSettings := NewConfigModel()
 
@@ -87,6 +88,12 @@ func TestModelConversion(t *testing.T) {
 			assert.Equal(v2, apiSettings.Plugins[k][k2])
 		}
 	}
+	require.Len(apiSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
+	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
+		assert.Equal(testSettings.SSHKeyPairs[i].Name, FromStringPtr(apiSettings.SSHKeyPairs[i].Name))
+		assert.Equal(testSettings.SSHKeyPairs[i].Public, FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
+		assert.Equal(testSettings.SSHKeyPairs[i].Private, FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
+	}
 
 	assert.EqualValues(testSettings.Alerts.SMTP.From, FromStringPtr(apiSettings.Alerts.SMTP.From))
 	assert.EqualValues(testSettings.Alerts.SMTP.Port, apiSettings.Alerts.SMTP.Port)
@@ -98,8 +105,14 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, apiSettings.Amboy.GroupPruneFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, FromStringPtr(apiSettings.Api.HttpListenAddr))
+	assert.EqualValues(testSettings.AuthConfig.PreferredType, FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, FromStringPtr(apiSettings.AuthConfig.LDAP.URL))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
+	assert.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, FromStringPtr(apiSettings.AuthConfig.OnlyAPI.Users[0].Username))
+	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))
+	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, FromStringPtr(apiSettings.AuthConfig.Github.ClientId))
+	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
+	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
 	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, FromStringPtr(apiSettings.CommitQueue.MergeTaskDistro))
 	assert.EqualValues(testSettings.CommitQueue.CommitterName, FromStringPtr(apiSettings.CommitQueue.CommitterName))
 	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, FromStringPtr(apiSettings.CommitQueue.CommitterEmail))
@@ -107,8 +120,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, FromStringPtr(apiSettings.ContainerPools.Pools[0].Id))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, apiSettings.ContainerPools.Pools[0].Port)
-	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, FromStringPtr(apiSettings.AuthConfig.Github.ClientId))
-	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
+	assert.EqualValues(testSettings.HostJasper.URL, FromStringPtr(apiSettings.HostJasper.URL))
 	assert.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, apiSettings.HostInit.SSHTimeoutSeconds)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, apiSettings.HostInit.HostThrottle)
 	assert.EqualValues(testSettings.Jira.Username, FromStringPtr(apiSettings.Jira.Username))
@@ -152,8 +164,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, dbSettings.AuthConfig.LDAP.URL)
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)
+	assert.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, dbSettings.AuthConfig.OnlyAPI.Users[0].Username)
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, dbSettings.AuthConfig.Github.ClientId)
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
+	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, dbSettings.CommitQueue.MergeTaskDistro)
 	assert.EqualValues(testSettings.CommitQueue.CommitterName, dbSettings.CommitQueue.CommitterName)
 	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, dbSettings.CommitQueue.CommitterEmail)
@@ -181,6 +195,12 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, dbSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, dbSettings.Scheduler.TaskFinder)
 	assert.EqualValues(testSettings.ServiceFlags.HostInitDisabled, dbSettings.ServiceFlags.HostInitDisabled)
+	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
+	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
+		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
+		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
+		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
+	}
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
 	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
@@ -218,7 +238,7 @@ func TestEventConversion(t *testing.T) {
 	}
 	apiEvent := APIAdminEvent{}
 	assert.NoError(apiEvent.BuildFromService(evt))
-	assert.EqualValues(evt.Timestamp, apiEvent.Timestamp)
+	assert.EqualValues(evt.Timestamp, *apiEvent.Timestamp)
 	assert.EqualValues("me", apiEvent.User)
 	assert.NotEmpty(apiEvent.Guid)
 	before := apiEvent.Before.(*APIAdminSettings)

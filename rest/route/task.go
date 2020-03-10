@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -72,15 +71,8 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
+		if err = taskModel.BuildPreviousExecutions(tasks, tgh.sc.GetURL()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-		}
-
-		for i := range taskModel.PreviousExecutions {
-			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err,
-					"failed to fetch artifacts for previous executions"))
-			}
 		}
 	}
 
@@ -88,7 +80,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
 	}
-	taskModel.EstimatedStart = start
+	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
 	err = taskModel.GetArtifacts()
 	if err != nil {
@@ -274,7 +266,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) && !tep.user.HasPermission(requiredPermission) { // TODO PM-1355 remove superuser check
+			if !tep.user.HasPermission(requiredPermission) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

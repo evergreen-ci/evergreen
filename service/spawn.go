@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -65,11 +64,12 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		maxHosts = settings.SpawnHostsPerUser
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Distro          distro.Distro
-		Task            *task.Task
-		MaxHostsPerUser int
+		Distro                     distro.Distro
+		Task                       *task.Task
+		MaxHostsPerUser            int
+		MaxUnexpirableHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, settings.UnexpirableHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -103,20 +103,20 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Find(distro.All)
+	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.ProviderSettingsListKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return
 	}
 
 	distroList := []map[string]interface{}{}
-
 	for _, d := range distros {
-		if d.SpawnAllowed {
-			distroList = append(distroList, map[string]interface{}{
-				"name": d.Id,
-			})
-		}
+		regions := d.GetRegionsList()
+		distroList = append(distroList, map[string]interface{}{
+			"name":                        d.Id,
+			"virtual_workstation_allowed": d.IsVirtualWorkstation,
+			"regions":                     regions,
+		})
 	}
 	gimlet.WriteJSON(w, distroList)
 }
@@ -125,15 +125,18 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task          string     `json:"task_id"`
-		Distro        string     `json:"distro"`
-		KeyName       string     `json:"key_name"`
-		PublicKey     string     `json:"public_key"`
-		SaveKey       bool       `json:"save_key"`
-		UserData      string     `json:"userdata"`
-		UseTaskConfig bool       `json:"use_task_config"`
-		InstanceTags  []host.Tag `json:"instance_tags"`
-		InstanceType  string     `json:"instance_type"`
+		Task                 string     `json:"task_id"`
+		Distro               string     `json:"distro"`
+		KeyName              string     `json:"key_name"`
+		PublicKey            string     `json:"public_key"`
+		SaveKey              bool       `json:"save_key"`
+		UserData             string     `json:"userdata"`
+		UseTaskConfig        bool       `json:"use_task_config"`
+		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+		HomeVolumeSize       int        `json:"home_volume_size"`
+		InstanceTags         []host.Tag `json:"instance_tags"`
+		InstanceType         string     `json:"instance_type"`
+		Region               string     `json:"region"`
 	}{}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
@@ -152,14 +155,19 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	hc := &data.DBConnector{}
 	options := &restModel.HostRequestOptions{
-		DistroID:     putParams.Distro,
-		KeyName:      putParams.PublicKey,
-		TaskID:       putParams.Task,
-		UserData:     putParams.UserData,
-		InstanceTags: putParams.InstanceTags,
-		InstanceType: putParams.InstanceType,
+		DistroID:             putParams.Distro,
+		Region:               putParams.Region,
+		KeyName:              putParams.PublicKey,
+		TaskID:               putParams.Task,
+		UserData:             putParams.UserData,
+		InstanceTags:         putParams.InstanceTags,
+		InstanceType:         putParams.InstanceType,
+		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
+		HomeVolumeSize:       putParams.HomeVolumeSize,
 	}
-	spawnHost, err := hc.NewIntentHost(options, authedUser)
+	ctx, cancel := uis.env.Context()
+	defer cancel()
+	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
@@ -211,7 +219,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if u.Username() != h.StartedBy {
-		if !auth.IsSuperUser(uis.Settings.SuperUsers, u) {
+		if !u.HasPermission(gimlet.PermissionOpts{
+			Resource:      h.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
 			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
 			return
 		}
@@ -232,7 +245,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+		if err = cloud.TerminateSpawnHost(ctx, uis.env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -309,8 +322,15 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
-		if updateParams.Expiration.IsZero() { // set expiration to never expire
-			if err := route.CheckUnexpirableHostLimitExceeded(u.Id, uis.Settings.UnexpirableHostsPerUser); err != nil {
+		if updateParams.Expiration == nil || updateParams.Expiration.IsZero() { // set expiration to never expire
+			var settings *evergreen.Settings
+			settings, err = evergreen.GetConfig()
+			if err != nil {
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating host expiration"))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
+				return
+			}
+			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
@@ -349,7 +369,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		loc, err := time.LoadLocation(u.Settings.Timezone)
+		var loc *time.Location
+		loc, err = time.LoadLocation(u.Settings.Timezone)
 		if err != nil || loc == nil {
 			loc = time.UTC
 		}

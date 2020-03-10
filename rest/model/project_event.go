@@ -11,7 +11,7 @@ import (
 )
 
 type APIProjectEvent struct {
-	Timestamp time.Time          `json:"ts"`
+	Timestamp *time.Time         `json:"ts"`
 	User      *string            `json:"user"`
 	Before    APIProjectSettings `json:"before"`
 	After     APIProjectSettings `json:"after"`
@@ -44,7 +44,7 @@ type APIProjectAlias struct {
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case model.ProjectChangeEventEntry:
-		e.Timestamp = v.Timestamp
+		e.Timestamp = ToTimePtr(v.Timestamp)
 		data, ok := v.Data.(*model.ProjectChangeEvent)
 		if !ok {
 			return errors.New("unable to convert event data to project change")

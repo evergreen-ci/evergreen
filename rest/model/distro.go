@@ -1,12 +1,10 @@
 package model
 
 import (
-	"time"
-
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -15,12 +13,13 @@ import (
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
 
 type APIPlannerSettings struct {
-	Version               *string       `json:"version"`
-	TargetTime            time.Duration `json:"target_time"`
-	GroupVersions         *bool         `json:"group_versions"`
-	PatchFactor           int64         `json:"patch_factor"`
-	TimeInQueueFactor     int64         `json:"time_in_queue_factor"`
-	ExpectedRuntimeFactor int64         `json:"expected_runtime_factor"`
+	Version                   *string     `json:"version"`
+	TargetTime                APIDuration `json:"target_time"`
+	GroupVersions             *bool       `json:"group_versions"`
+	PatchFactor               int64       `json:"patch_factor"`
+	PatchTimeInQueueFactor    int64       `json:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -40,11 +39,12 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	} else {
 		s.Version = ToStringPtr(settings.Version)
 	}
-	s.TargetTime = settings.TargetTime
+	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = settings.GroupVersions
 	s.PatchFactor = settings.PatchFactor
 	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
-	s.TimeInQueueFactor = settings.TimeInQueueFactor
+	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
+	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 
 	return nil
 }
@@ -56,10 +56,11 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
-	settings.TargetTime = s.TargetTime
+	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
 	settings.PatchFactor = s.PatchFactor
-	settings.TimeInQueueFactor = s.TimeInQueueFactor
+	settings.PatchTimeInQueueFactor = s.PatchTimeInQueueFactor
+	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
 	return interface{}(settings), nil
@@ -70,10 +71,10 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 // APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
 
 type APIHostAllocatorSettings struct {
-	Version                *string       `json:"version"`
-	MinimumHosts           int           `json:"minimum_hosts"`
-	MaximumHosts           int           `json:"maximum_hosts"`
-	AcceptableHostIdleTime time.Duration `json:"acceptable_host_idle_time"`
+	Version                *string     `json:"version"`
+	MinimumHosts           int         `json:"minimum_hosts"`
+	MaximumHosts           int         `json:"maximum_hosts"`
+	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 }
 
 // BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
@@ -95,7 +96,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
-	s.AcceptableHostIdleTime = settings.AcceptableHostIdleTime
+	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 
 	return nil
 }
@@ -109,7 +110,7 @@ func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
-	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime
+	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 
 	return interface{}(settings), nil
 }
@@ -325,6 +326,30 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	return settings, nil
 }
 
+type APIHomeVolumeSettings struct {
+	DeviceName    *string `json:"device_name"`
+	FormatCommand *string `json:"format_command"`
+}
+
+func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
+	settings, ok := h.(distro.HomeVolumeSettings)
+	if !ok {
+		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
+	}
+
+	s.DeviceName = ToStringPtr(settings.DeviceName)
+	s.FormatCommand = ToStringPtr(settings.FormatCommand)
+
+	return nil
+}
+
+func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
+	return distro.HomeVolumeSettings{
+		DeviceName:    FromStringPtr(s.DeviceName),
+		FormatCommand: FromStringPtr(s.FormatCommand),
+	}, nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // APIDistro is the model to be returned by the API whenever distros are fetched
@@ -335,7 +360,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettings      map[string]interface{}   `json:"settings"`
-	ImageID               *string                  `json:"image_id"`
+	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
@@ -346,6 +371,7 @@ type APIDistro struct {
 	CloneMethod           *string                  `json:"clone_method"`
 	SSHKey                *string                  `json:"ssh_key"`
 	SSHOptions            []string                 `json:"ssh_options"`
+	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
 	Disabled              bool                     `json:"disabled"`
 	ContainerPool         *string                  `json:"container_pool"`
@@ -355,6 +381,8 @@ type APIDistro struct {
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
+	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
+	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 }
@@ -375,17 +403,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToStringPtr(d.Provider)
-	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
-		ec2Settings := &cloud.EC2ProviderSettings{}
-		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
-		if err != nil {
-			return err
+	if len(d.ProviderSettingsList) == 0 && d.ProviderSettings != nil {
+		if err := cloud.CreateSettingsListFromLegacy(&d); err != nil {
+			return errors.Wrapf(err, "error creating settings list from legacy settings")
 		}
-		apiDistro.ImageID = ToStringPtr(ec2Settings.AMI)
 	}
-	if d.ProviderSettings != nil {
-		apiDistro.ProviderSettings = *d.ProviderSettings
-	}
+	apiDistro.ProviderSettingsList = d.ProviderSettingsList
 	apiDistro.Arch = ToStringPtr(d.Arch)
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
@@ -402,9 +425,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.CloneMethod = ToStringPtr(d.CloneMethod)
 	apiDistro.SSHKey = ToStringPtr(d.SSHKey)
+	apiDistro.SSHOptions = d.SSHOptions
+	apiDistro.AuthorizedKeysFile = ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToStringPtr(d.ContainerPool)
-	apiDistro.SSHOptions = d.SSHOptions
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -443,6 +467,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = ToStringPtr(d.Note)
 	apiDistro.ValidProjects = ToStringPtrSlice(d.ValidProjects)
+	homeVolumeSettings := APIHomeVolumeSettings{}
+	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.API.HomeVolumeSettings")
+	}
+	apiDistro.HomeVolumeSettings = homeVolumeSettings
+	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
 
 	return nil
 }
@@ -455,9 +485,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Arch = FromStringPtr(apiDistro.Arch)
 	d.WorkDir = FromStringPtr(apiDistro.WorkDir)
 	d.Provider = FromStringPtr(apiDistro.Provider)
-	if apiDistro.ProviderSettings != nil {
-		d.ProviderSettings = &apiDistro.ProviderSettings
-	}
+	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = FromStringPtr(apiDistro.Setup)
 	d.Teardown = FromStringPtr(apiDistro.Teardown)
@@ -477,6 +505,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.SSHKey = FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
+	d.AuthorizedKeysFile = FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
@@ -537,6 +566,16 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = FromStringPtr(apiDistro.Note)
 	d.ValidProjects = FromStringPtrSlice(apiDistro.ValidProjects)
+	i, err = apiDistro.HomeVolumeSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIHomeVolumeSettings to distro.HomeVolumeSettings")
+	}
+	homeVolumeSettings, ok := i.(distro.HomeVolumeSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
+	}
+	d.HomeVolumeSettings = homeVolumeSettings
+	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 
 	return &d, nil
 }

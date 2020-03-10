@@ -86,7 +86,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 			if err := j.tryRequeue(ctx); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not enqueue job to retry provisioning conversion",
-					"host":    j.host.Id,
+					"host_id": j.host.Id,
 					"distro":  j.host.Distro.Id,
 					"job":     j.ID(),
 				}))
@@ -96,7 +96,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 		if err := j.host.SetReprovisioningLocked(false); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not clear host reprovisioning lock",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -109,7 +109,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.SetReprovisioningLockedAtomically(true); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "reprovisioning job currently in progress, returning from job",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -118,10 +118,10 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 
 	// The host cannot be reprovisioned until the host's agent monitor has
 	// stopped.
-	if !j.host.NeedsNewAgentMonitor {
+	if !j.host.NeedsNewAgentMonitor || j.host.RunningTask != "" {
 		grip.Error(message.WrapError(j.tryRequeue(ctx), message.Fields{
 			"message": "could not enqueue job to retry provisioning conversion when host's agent monitor is still running",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -132,7 +132,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.UpdateLastCommunicated(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -142,7 +142,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 		if j.HasErrors() {
 			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message": "could not delete Jasper credentials after failed provision attempt",
-				"host":    j.host.Id,
+				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
@@ -152,7 +152,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 	if err := setupJasper(ctx, j.env, j.env.Settings(), j.host); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not set up Jasper service",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -163,7 +163,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 	if err := j.host.MarkAsReprovisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host as provisioned",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -175,7 +175,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"message": "successfully converted host from legacy to non-legacy provisioning",
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 		"job":     j.ID(),
 	})

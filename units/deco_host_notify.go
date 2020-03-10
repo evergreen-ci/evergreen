@@ -76,7 +76,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 			"provider":    j.Host.Provider,
 			"uptime":      hostUptime,
 			"uptime_span": hostUptime.String(),
-			"host":        j.Host.Id,
+			"host_id":     j.Host.Id,
 		}
 
 		if j.HasError {
@@ -108,7 +108,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 			"provider":    j.Host.Provider,
 			"uptime":      hostUptime,
 			"uptime_span": hostUptime.String(),
-			"host":        j.Host.Id,
+			"host_id":     j.Host.Id,
 			"jira_error":  err.Error(),
 		}
 

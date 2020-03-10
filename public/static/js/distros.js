@@ -1,7 +1,6 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
-  $scope.superUser = $window.isSuperUser;
-  $scope.createDistro = (!$window.aclEnabled && $window.isSuperUser) || ($window.aclEnabled && $window.canCreateDistro) // PM-1355: remove this
+  $scope.createDistro = $window.canCreateDistro
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
@@ -98,38 +97,37 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
   }];
 
   $scope.bootstrapMethods = [{
-      'id': 'legacy-ssh',
-      'display': 'Legacy SSH'
-    }, {
-      'id': 'ssh',
-      'display': 'SSH'
-    }, {
-      'id': 'preconfigured-image',
-      'display': 'Preconfigured Image'
-    }, {
-      'id': 'user-data',
-      'display': 'User Data'
-    }, {
-  }];
+    'id': 'legacy-ssh',
+    'display': 'Legacy SSH'
+  }, {
+    'id': 'ssh',
+    'display': 'SSH'
+  }, {
+    'id': 'preconfigured-image',
+    'display': 'Preconfigured Image'
+  }, {
+    'id': 'user-data',
+    'display': 'User Data'
+  }, {}];
 
   $scope.communicationMethods = [{
-      'id': 'legacy-ssh',
-      'display': 'Legacy SSH'
+    'id': 'legacy-ssh',
+    'display': 'Legacy SSH'
   }, {
-      'id': 'ssh',
-      'display': 'SSH'
+    'id': 'ssh',
+    'display': 'SSH'
   }, {
-      'id': 'rpc',
-      'display': 'RPC'
+    'id': 'rpc',
+    'display': 'RPC'
   }]
 
-    $scope.cloneMethods = [{
-      'id': 'legacy-ssh',
-      'display': 'Legacy SSH'
-    }, {
-      'id':  'oauth',
-      'display': 'OAuth Token'
-    }]
+  $scope.cloneMethods = [{
+    'id': 'legacy-ssh',
+    'display': 'Legacy SSH'
+  }, {
+    'id': 'oauth',
+    'display': 'OAuth Token'
+  }]
 
   $scope.ids = [];
 
@@ -137,43 +135,43 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
 
   $scope.modalOpen = false;
 
-  $scope.$on('$locationChangeStart', function(event) {
+  $scope.$on('$locationChangeStart', function (event) {
     $scope.hashLoad();
   });
 
-  $scope.hashLoad = function() {
+  $scope.hashLoad = function () {
     var distroHash = $location.hash();
     if (distroHash) {
       // If the distro exists, load it.
       if (distroHash === newId && $scope.tempDistro) {
-          $scope.activeDistro = $scope.tempDistro;
+        $scope.activeDistro = $scope.tempDistro;
       } else if (distroHash != newId) {
-        $scope.getDistroById(distroHash).then(function(distro) {
+        $scope.getDistroById(distroHash).then(function (distro) {
           if (distro) {
-            $scope.readOnly = (!$window.aclEnabled && !$window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings < 20)
-            $scope.remove = (!$window.aclEnabled && $window.isSuperUser) || ($window.aclEnabled && distro.permissions.distro_settings == 30)
+            $scope.readOnly = distro.permissions.distro_settings < 20
+            $scope.remove = distro.permissions.distro_settings >= 30
             $scope.activeDistro = distro.distro;
           }
         });
       }
     } else {
-        // default to first id
-        $scope.setActiveDistroId(distroIds[0]);
+      // default to first id
+      $scope.setActiveDistroId(distroIds[0]);
     }
   };
 
-  $scope.setActiveDistroId = function(id) {
+  $scope.setActiveDistroId = function (id) {
     $location.hash(id);
   };
 
-  $scope.getDistroById = function(id) {
+  $scope.getDistroById = function (id) {
     if ($scope.tempDistro && $scope.tempDistro._id === id) {
-        return new Promise(function(resolve) {
-            resolve();
-        });
+      return new Promise(function (resolve) {
+        resolve();
+      });
     }
     return $http.get('/distros/' + id).then(
-      function(resp){
+      function (resp) {
         var distro = resp.data
         if (distro.distro) {
           // Host Allocator Settings
@@ -210,13 +208,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
           distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
         }
         return distro
-    },
-    function(resp){
-      console.log(resp.status)
-    });
+      },
+      function (resp) {
+        console.log(resp.status)
+      });
   };
 
-  $scope.initOptions = function() {
+  $scope.initOptions = function () {
     var keys = [];
 
     if ($window.keys !== null) {
@@ -229,21 +227,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
 
     for (var i = 0; i < keys.length; i++) {
       $scope.keys.push({
-    name: keys[i],
-    location: $window.keys[keys[i]],
+        name: keys[i],
+        location: $window.keys[keys[i]],
       });
     }
   };
 
-  $scope.isUnique = function(id) {
+  $scope.isUnique = function (id) {
     return $scope.ids.indexOf(id) == -1;
   };
 
-  $scope.setKeyValue = function(key, value) {
+  $scope.setKeyValue = function (key, value) {
     $scope.activeDistro[key] = value;
   };
 
-  $scope.getKeyDisplay = function(key, display) {
+  $scope.getKeyDisplay = function (key, display) {
     for (var i = 0; i < $scope[key].length; i++) {
       if ($scope[key][i].id === display) {
         return $scope[key][i].display;
@@ -252,7 +250,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     return display;
   };
 
-  $scope.addHost = function() {
+  $scope.addHost = function () {
     if ($scope.activeDistro.settings == null) {
       $scope.activeDistro.settings = {};
     }
@@ -263,12 +261,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#hosts-table');
   }
 
-  $scope.removeHost = function(host) {
+  $scope.removeHost = function (host) {
     var index = $scope.activeDistro.settings.hosts.indexOf(host);
     $scope.activeDistro.settings.hosts.splice(index, 1);
   }
 
-  $scope.addMount = function(mount_point) {
+  $scope.addMount = function (mount_point) {
     if ($scope.activeDistro.settings == null) {
       $scope.activeDistro.settings = {};
     }
@@ -279,18 +277,18 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#mounts-table');
   }
 
-  $scope.scrollElement = function(elt) {
+  $scope.scrollElement = function (elt) {
     $(elt).animate({
       scrollTop: $(elt)[0].scrollHeight
     }, 'slow');
   }
 
-  $scope.removeMount = function(mount_point) {
+  $scope.removeMount = function (mount_point) {
     var index = $scope.activeDistro.settings.mount_points.indexOf(mount_point);
     $scope.activeDistro.settings.mount_points.splice(index, 1);
   }
 
-  $scope.addInstanceSSHKey = function(ssh_key) {
+  $scope.addInstanceSSHKey = function (ssh_key) {
     if ($scope.activeDistro.settings == null) {
       $scope.activeDistro.settings = {};
     }
@@ -301,12 +299,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#ssh-keys-table');
   }
 
-  $scope.removeInstanceSSHKey = function(ssh_key) {
+  $scope.removeInstanceSSHKey = function (ssh_key) {
     var index = $scope.activeDistro.settings.ssh_keys.indexOf(ssh_key);
     $scope.activeDistro.settings.ssh_keys.splice(index, 1);
   }
 
-  $scope.addNetworkTag = function(tag) {
+  $scope.addNetworkTag = function (tag) {
     if ($scope.activeDistro.settings == null) {
       $scope.activeDistro.settings = {};
     }
@@ -317,12 +315,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#network-tags-table');
   }
 
-  $scope.removeNetworkTag = function(tag) {
+  $scope.removeNetworkTag = function (tag) {
     var index = $scope.activeDistro.settings.network_tags.indexOf(tag);
     $scope.activeDistro.settings.network_tags.splice(index, 1);
   }
 
-  $scope.addSSHOption = function() {
+  $scope.addSSHOption = function () {
     if ($scope.activeDistro.ssh_options == null) {
       $scope.activeDistro.ssh_options = [];
     }
@@ -330,7 +328,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#ssh-options-table');
   }
 
-  $scope.addDistroAlias = function() {
+  $scope.addDistroAlias = function () {
     if ($scope.activeDistro.aliases == null) {
       $scope.activeDistro.aliases = [];
     }
@@ -338,32 +336,35 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#distro-aliases-table');
   }
 
-  $scope.removeDistroAlias = function(alias_name) {
+  $scope.removeDistroAlias = function (alias_name) {
     var index = $scope.activeDistro.aliases.indexOf(alias_name);
     $scope.activeDistro.aliases.splice(index, 1);
   }
 
-  $scope.removeSSHOption = function(ssh_option) {
+  $scope.removeSSHOption = function (ssh_option) {
     var index = $scope.activeDistro.ssh_options.indexOf(ssh_option);
     $scope.activeDistro.ssh_options.splice(index, 1);
   }
 
-  $scope.addEnvVar = function() {
+  $scope.addEnvVar = function () {
     if ($scope.activeDistro.bootstrap_settings == null) {
       $scope.activeDistro.bootstrap_settings = {};
     }
     if ($scope.activeDistro.bootstrap_settings.env == null) {
       $scope.activeDistro.bootstrap_settings.env = [];
     }
-    $scope.activeDistro.bootstrap_settings.env.push({"key": "", "value": ""});
+    $scope.activeDistro.bootstrap_settings.env.push({
+      "key": "",
+      "value": ""
+    });
   }
 
-  $scope.removeEnvVar = function(envVar) {
+  $scope.removeEnvVar = function (envVar) {
     var index = $scope.activeDistro.bootstrap_settings.env.indexOf(envVar);
     $scope.activeDistro.bootstrap_settings.env.splice(index, 1);
   }
 
-  $scope.addExpansion = function(expansion) {
+  $scope.addExpansion = function (expansion) {
     if ($scope.activeDistro.expansions == null) {
       $scope.activeDistro.expansions = [];
     }
@@ -371,76 +372,74 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     $scope.scrollElement('#expansions-table');
   }
 
-  $scope.removeExpansion = function(expansion) {
+  $scope.removeExpansion = function (expansion) {
     var index = $scope.activeDistro.expansions.indexOf(expansion);
     $scope.activeDistro.expansions.splice(index, 1);
   }
 
-  $scope.saveConfiguration = function() {
+  $scope.saveConfiguration = function () {
     // Convert from UI display units (seconds) to nanoseconds (time.Duration) for relevant *_settings' fields.
-    if($scope.activeDistro.planner_settings.target_time > 0) {
+    if ($scope.activeDistro.planner_settings.target_time > 0) {
       $scope.activeDistro.planner_settings.target_time *= 1e9
     }
-    if($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
+    if ($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9
     }
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
-      $scope.activeDistro, {
-      success: function(resp) {
-        $window.location.reload(true);
-      },
-      error: function(resp) {
-        $window.location.reload(true);
-        console.log(resp.data.error);
+        $scope.activeDistro, {
+          success: function (resp) {
+            $window.location.reload(true);
+          },
+          error: function (resp) {
+            $window.location.reload(true);
+            console.log(resp.data.error);
+          }
         }
-      }
       );
     } else {
       mciDistroRestService.modifyDistro(
-      $scope.activeDistro._id,
-      $scope.activeDistro,
-      $scope.shouldDeco,
-    {
-      success: function(resp) {
-        $window.location.reload(true);
-      },
-      error: function(resp) {
-        $window.location.reload(true);
-        console.log(resp.data.error);
-      }
-    }
+        $scope.activeDistro._id,
+        $scope.activeDistro,
+        $scope.shouldDeco, {
+          success: function (resp) {
+            $window.location.reload(true);
+          },
+          error: function (resp) {
+            $window.location.reload(true);
+            console.log(resp.data.error);
+          }
+        }
       );
     }
     // this will reset the location hash to the new one in case the _id is changed.
     $scope.setActiveDistroId($scope.activeDistro._id)
   };
 
-  $scope.removeConfiguration = function() {
+  $scope.removeConfiguration = function () {
     mciDistroRestService.removeDistro(
       $scope.activeDistro._id,
-      $scope.shouldDeco,
-      {
-    success: function(resp) {
-      $window.location.reload(true);
-    },
-    error: function(resp) {
-      $window.location.reload(true);
-      console.log(resp.data.error);
-    }
+      $scope.shouldDeco, {
+        success: function (resp) {
+          $window.location.reload(true);
+        },
+        error: function (resp) {
+          $window.location.reload(true);
+          console.log(resp.data.error);
+        }
       }
     );
   };
 
-  $scope.newDistro = function() {
+  $scope.newDistro = function () {
     if (!$scope.tempDistro) {
       var defaultOptions = {
         '_id': newId,
         'arch': 'linux_amd64',
         'provider': 'ec2',
         'bootstrap_settings': {
-            'method': 'legacy-ssh',
-            'communication': 'legacy-ssh'
+          'method': 'legacy-ssh',
+          'communication': 'legacy-ssh'
         },
         'clone_method': 'legacy-ssh',
         'settings': {},
@@ -467,11 +466,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       $scope.setActiveDistroId(defaultOptions._id);
     }
     $scope.setActiveDistroId($scope.distroIds[0]);
-    $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
+    $('#distros-list-container').animate({
+      scrollTop: 0
+    }, 'slow');
     $anchorScroll();
   };
 
-  $scope.copyDistro = function(){
+  $scope.copyDistro = function () {
     if (!$scope.tempDistro) {
       var newDistro = {
         '_id': newId,
@@ -482,10 +483,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
         'user': $scope.activeDistro.user,
         'ssh_key': $scope.activeDistro.ssh_key,
         'ssh_options': $scope.activeDistro.ssh_options,
+        'authorized_keys_file': $scope.activeDistro.authorized_keys_file,
         'setup': $scope.activeDistro.setup,
         'setup': $scope.activeDistro.teardown,
         'setup': $scope.activeDistro.user_data,
-        'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
+        'setup_as_sudo': $scope.activeDistro.setup_as_sudo,
         'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
@@ -494,59 +496,63 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
       newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
-      newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_setting);
+      newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_settings);
 
       $scope.distroIds.unshift(newDistro._id);
       $scope.tempDistro = newDistro;
       $scope.setActiveDistroId(newDistro._id);
-      $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
+      $('#distros-list-container').animate({
+        scrollTop: 0
+      }, 'slow');
       $anchorScroll();
     }
   }
 
-  $scope.openConfirmationModal = function(option) {
+  $scope.openConfirmationModal = function (option) {
     $scope.confirmationOption = option;
     $scope.modalTitle = 'Configuration';
     var modal = $('#admin-modal').modal('show');
 
     if (option === 'removeDistro') {
       if (modal.data('bs.modal').isShown) {
-    $scope.modalOpen = true;
+        $scope.modalOpen = true;
       } else {
-    $scope.modalOpen = false;
+        $scope.modalOpen = false;
       }
     }
 
-    $(document).keyup(function(ev) {
+    $(document).keyup(function (ev) {
       if ($scope.modalOpen && ev.keyCode === 13) {
-    if ($scope.confirmationOption === 'removeDistro') {
-      $scope.removeConfiguration();
-      $('#admin-modal').modal('hide');
-    }
+        if ($scope.confirmationOption === 'removeDistro') {
+          $scope.removeConfiguration();
+          $('#admin-modal').modal('hide');
+        }
       }
     });
   }
 
-  $scope.checkPortRange = function(min, max) {
+  $scope.checkPortRange = function (min, max) {
     if ($scope.form.portRange.minPort.$invalid || $scope.form.portRange.maxPort.$invalid) {
-    return false
+      return false
     }
     return (!min && !max) || (min >= 0 && min <= max);
   }
 
-  $scope.checkPoolID = function(id) {
+  $scope.checkPoolID = function (id) {
     if ($scope.form.poolID.$invalid) {
       return false
     }
     return $scope.containerPoolIds.includes(id)
   }
 
-  $scope.displayContainerPool = function(id){
-    return ($filter('filter')($window.containerPools, {'id':id}))[0];
+  $scope.displayContainerPool = function (id) {
+    return ($filter('filter')($window.containerPools, {
+      'id': id
+    }))[0];
   };
 
   // checks that the form is valid for the given active distro
-  $scope.validForm = function() {
+  $scope.validForm = function () {
     if (!$scope.validBootstrapAndCommunication()) {
       return false;
     }
@@ -556,69 +562,75 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $http, $location, 
     return true;
   }
 
-  $scope.isWindows = function() {
+  $scope.isWindows = function () {
     if ($scope.activeDistro && $scope.activeDistro.arch) {
       return $scope.activeDistro.arch.includes('windows');
     }
     return false
   }
 
-  $scope.isLinux = function() {
+  $scope.isLinux = function () {
     if ($scope.activeDistro && $scope.activeDistro.arch) {
       return $scope.activeDistro.arch.includes('linux');
     }
     return false;
   }
 
-  $scope.isNonLegacyProvisioning = function() {
-      if ($scope.activeDistro && $scope.activeDistro.bootstrap_settings) {
-        return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
-        $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
-      }
-      return false;
+  $scope.isStatic = function () {
+    if ($scope.activeDistro) {
+      return $scope.activeDistro.provider === 'static'
+    }
   }
 
-  $scope.validBootstrapAndCommunication = function() {
+  $scope.isNonLegacyProvisioning = function () {
+    if ($scope.activeDistro && $scope.activeDistro.bootstrap_settings) {
+      return $scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' ||
+        $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh'
+    }
+    return false;
+  }
+
+  $scope.validBootstrapAndCommunication = function () {
     if ($scope.activeDistro && $scope.activeDistro.bootstrap_settings) {
       return ($scope.activeDistro.bootstrap_settings.method == 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication == 'legacy-ssh') ||
-             ($scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh');
+        ($scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh');
     }
     return true;
   };
 
 
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
-  $scope.validSecurityGroup = function(){
-    if ($scope.activeDistro){
-      if ($scope.activeDistro.settings.is_vpc && $scope.activeDistro.settings.security_group_ids){
+  $scope.validSecurityGroup = function () {
+    if ($scope.activeDistro) {
+      if ($scope.activeDistro.settings.is_vpc && $scope.activeDistro.settings.security_group_ids) {
         for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
-          if ($scope.activeDistro.settings.security_group_ids[i].substring(0,3) !== "sg-") {
+          if ($scope.activeDistro.settings.security_group_ids[i].substring(0, 3) !== "sg-") {
             return false
           }
         }
-     }
-   }
-   return true
- };
-
-    // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
-    $scope.validSubnetId = function(){
-      if ($scope.activeDistro){
-    if ($scope.activeDistro.settings.is_vpc) {
-      return $scope.activeDistro.settings.subnet_id.substring(0,7) == 'subnet-';
-    }
       }
-      return true
-    };
+    }
+    return true
+  };
+
+  // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
+  $scope.validSubnetId = function () {
+    if ($scope.activeDistro) {
+      if ($scope.activeDistro.settings.is_vpc) {
+        return $scope.activeDistro.settings.subnet_id.substring(0, 7) == 'subnet-';
+      }
+    }
+    return true
+  };
 
   // scroll to top of window on page reload
-  $(window).on('beforeunload', function() {
+  $(window).on('beforeunload', function () {
     $(window).scrollTop(0);
   });
 
 });
 
-mciModule.directive('removeDistro', function() {
+mciModule.directive('removeDistro', function () {
   return {
     restrict: 'E',
     template: '<div class="row">' +
@@ -635,73 +647,73 @@ mciModule.directive('removeDistro', function() {
   }
 });
 
-mciModule.filter("providerDisplay", function() {
-  return function(provider, scope) {
+mciModule.filter("providerDisplay", function () {
+  return function (provider, scope) {
     return scope.getKeyDisplay('providers', provider);
   }
 });
 
-mciModule.filter("archDisplay", function() {
-  return function(arch, scope) {
+mciModule.filter("archDisplay", function () {
+  return function (arch, scope) {
     return scope.getKeyDisplay('architectures', arch);
   }
 });
 
-mciModule.filter("finderVersionDisplay", function() {
-  return function(version, scope) {
+mciModule.filter("finderVersionDisplay", function () {
+  return function (version, scope) {
     return scope.getKeyDisplay('finderVersions', version);
   }
 });
 
-mciModule.filter("plannerVersionDisplay", function() {
-  return function(version, scope) {
+mciModule.filter("plannerVersionDisplay", function () {
+  return function (version, scope) {
     return scope.getKeyDisplay('plannerVersions', version);
   }
 });
 
-mciModule.filter("hostAllocatorVersionDisplay", function() {
-  return function(version, scope) {
+mciModule.filter("hostAllocatorVersionDisplay", function () {
+  return function (version, scope) {
     return scope.getKeyDisplay('hostAllocatorVersions', version);
   }
 });
 
-mciModule.filter("dispatcherVersionDisplay", function() {
-  return function(version, scope) {
+mciModule.filter("dispatcherVersionDisplay", function () {
+  return function (version, scope) {
     return scope.getKeyDisplay('dispatcherVersions', version);
   }
 });
 
-mciModule.filter('bootstrapMethodDisplay', function() {
-  return function(bootstrapMethod, scope) {
+mciModule.filter('bootstrapMethodDisplay', function () {
+  return function (bootstrapMethod, scope) {
     return scope.getKeyDisplay('bootstrapMethods', bootstrapMethod);
   }
 });
 
-mciModule.filter('communicationMethodDisplay', function() {
-  return function(communicationMethod, scope) {
+mciModule.filter('communicationMethodDisplay', function () {
+  return function (communicationMethod, scope) {
     return scope.getKeyDisplay('communicationMethods', communicationMethod);
   }
 });
 
-mciModule.filter('cloneMethodDisplay', function() {
-  return function(cloneMethod, scope) {
+mciModule.filter('cloneMethodDisplay', function () {
+  return function (cloneMethod, scope) {
     return scope.getKeyDisplay('cloneMethods', cloneMethod);
   }
 })
 
-mciModule.directive('unique', function() {
+mciModule.directive('unique', function () {
   return {
     require: 'ngModel',
-    link: function(scope, elm, attrs, ctrl) {
-      ctrl.$parsers.unshift(function(value) {
-    var valid = scope.isUnique(value);
-    ctrl.$setValidity('unique', valid);
-    return value;
+    link: function (scope, elm, attrs, ctrl) {
+      ctrl.$parsers.unshift(function (value) {
+        var valid = scope.isUnique(value);
+        ctrl.$setValidity('unique', valid);
+        return value;
       });
-      ctrl.$formatters.unshift(function(value) {
-    var valid = scope.isUnique(value);
-    ctrl.$setValidity('unique', valid);
-    return value;
+      ctrl.$formatters.unshift(function (value) {
+        var valid = scope.isUnique(value);
+        ctrl.$setValidity('unique', valid);
+        return value;
       });
     }
   };

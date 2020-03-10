@@ -160,3 +160,53 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 
 	return q
 }
+
+// TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
+func TestResultsFilterSortPaginate(taskIds []string, testName, status, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+	tests := []TestResult{}
+	match := bson.M{
+		TaskIDKey:    bson.M{"$in": taskIds},
+		ExecutionKey: execution,
+	}
+	if len(status) > 0 {
+		match[StatusKey] = status
+	}
+
+	pipeline := []bson.M{
+		{"$match": match},
+	}
+
+	project := bson.M{
+		"duration":   bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
+		TestFileKey:  1,
+		EndTimeKey:   1,
+		StartTimeKey: 1,
+		StatusKey:    1,
+		URLRawKey:    1,
+		URLKey:       1,
+		LogIDKey:     1,
+		LineNumKey:   1,
+		ExitCodeKey:  1,
+	}
+
+	pipeline = append(pipeline, bson.M{"$project": project})
+
+	if len(testName) > 0 {
+		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
+		pipeline = append(pipeline, matchTestName)
+	}
+	pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
+
+	if page > 0 {
+		pipeline = append(pipeline, bson.M{"$skip": page * limit})
+	}
+
+	if limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": limit})
+	}
+	err := db.Aggregate(Collection, pipeline, &tests)
+	if err != nil {
+		return nil, err
+	}
+	return tests, nil
+}

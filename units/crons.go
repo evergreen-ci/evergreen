@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -481,7 +483,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -522,7 +524,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -585,7 +587,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
+		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
 
 		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
@@ -612,6 +614,13 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		return queue.Put(ctx, NewDuplicateTaskCheckJob(ts))
 	}
 }
 
@@ -808,21 +817,22 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		}
 
 		hosts, err := host.Find(host.IsUninitialized)
+		if err != nil {
+			return errors.Wrap(err, "error fetching uninitialized hosts")
+		}
 		grip.Info(message.Fields{
 			"message": "uninitialized hosts",
 			"number":  len(hosts),
 			"runner":  "hostinit",
 		})
+
+		runningHosts, err := host.Find(db.Query(host.IsLive()))
 		if err != nil {
-			return errors.Wrap(err, "error fetching uninitialized hosts")
+			return errors.Wrap(err, "problem getting running hosts")
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
-			"cron":      createHostJobName,
-			"impact":    "hosts cannot start",
-		}))
-		if err != nil {
-			return errors.WithStack(err)
+		runningDistroCount := make(map[string]int)
+		for _, h := range runningHosts {
+			runningDistroCount[h.Distro.Id] += 1
 		}
 
 		ts := util.RoundPartOfHour(part).Format(TSFormat)
@@ -846,19 +856,27 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			if h.UserHost || h.SpawnOptions.SpawnedByTask {
 				// pass:
 				//    always start spawn hosts asap
+
 			} else {
-				if submitted > env.Settings().HostInit.HostThrottle {
-					// throttle hosts, so that we're starting very
-					// few hosts on every pass. Hostinit runs very
-					// frequently, lets not start too many all at
-					// once.
-					continue
+				num := runningDistroCount[h.Distro.Id]
+				if num == 0 || num < len(runningHosts)/100 {
+					// if there aren't many of these hosts up, start them even
+					// if `submitted` exceeds the throttle, but increment each
+					// time so we only create hosts up to the threshold
+					runningDistroCount[h.Distro.Id] += 1
 				} else {
-					// only increment for task hosts, since otherwise
-					// spawn hosts and hosts spawned by tasks could
-					// starve task hosts
-					submitted++
+					if submitted > env.Settings().HostInit.HostThrottle {
+						// throttle hosts, so that we're starting very
+						// few hosts on every pass. Hostinit runs very
+						// frequently, lets not start too many all at
+						// once.
+						continue
+					}
 				}
+				// only increment for task hosts, since otherwise
+				// spawn hosts and hosts spawned by tasks could
+				// starve task hosts
+				submitted++
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
@@ -1158,9 +1176,14 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(TSFormat))))
+			for _, definition := range project.PeriodicBuilds {
+				// schedule the job if we want it to start before the next time this cron runs
+				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
+					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, definition.ID, definition.NextRunTime)))
+				}
+			}
 		}
-		return nil
+		return catcher.Resolve()
 	}
 }
 
@@ -1177,6 +1200,84 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 		for _, h := range hosts {
 			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, ts)))
 		}
+		return catcher.Resolve()
+	}
+}
+
+// PopulateSSHKeyUpdates updates the remote SSH keys in the cloud providers and
+// static hosts.
+func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		settings := env.Settings()
+
+		allRegions := map[string]bool{}
+		for _, key := range settings.Providers.AWS.EC2Keys {
+			allRegions[key.Region] = true
+		}
+		// Enqueue jobs to update SSH keys in the cloud provider.
+		updateRegions := map[string]bool{}
+		for _, key := range settings.SSHKeyPairs {
+			for region := range allRegions {
+				if util.StringSliceContains(key.EC2Regions, region) {
+					continue
+				}
+				updateRegions[region] = true
+			}
+		}
+		for region := range updateRegions {
+			catcher.Wrap(queue.Put(ctx, NewCloudUpdateSSHKeysJob(evergreen.ProviderNameEc2Fleet, region, ts)), "could not enqueue jobs to update cloud provider SSH keys")
+		}
+
+		// Enqueue jobs to update authorized keys on static hosts.
+		hosts, err := host.FindStaticNeedsNewSSHKeys(settings)
+		if err != nil {
+			catcher.Wrap(err, "could not find hosts that need to update their SSH keys")
+			return catcher.Resolve()
+		}
+		for _, h := range hosts {
+			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		if !env.UserManagerInfo().CanReauthorize {
+			return nil
+		}
+
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.BackgroundReauthDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background reauth is disabled",
+				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		reauthAfter := time.Duration(env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
+		if reauthAfter == 0 {
+			reauthAfter = defaultBackgroundReauth
+		}
+		users, err := user.FindNeedsReauthorization(reauthAfter, maxReauthAttempts)
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		for _, user := range users {
+			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+		}
+
 		return catcher.Resolve()
 	}
 }

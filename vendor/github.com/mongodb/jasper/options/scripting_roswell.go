@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 )
 
 // ScriptingRoswell describes the options needed to configure Roswell,
@@ -57,7 +57,7 @@ func (opts *ScriptingRoswell) Validate() error {
 	}
 
 	if opts.Path == "" {
-		opts.Path = filepath.Join("roswell", uuid.Must(uuid.NewV4()).String())
+		opts.Path = filepath.Join("roswell", uuid.New().String())
 	}
 
 	if opts.Lisp == "" {

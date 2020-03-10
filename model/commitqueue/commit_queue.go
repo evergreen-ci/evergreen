@@ -86,7 +86,7 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 		return 0, errors.Wrapf(err, "can't force add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
 
-	grip.Critical(message.Fields{
+	grip.Warning(message.Fields{
 		"source":       "commit queue",
 		"item_id":      item.Issue,
 		"project_id":   q.ProjectID,

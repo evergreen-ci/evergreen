@@ -93,7 +93,6 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 		files = append(files, segment...)
 	}
-
 	if catcher.HasErrors() {
 		err = errors.Wrap(catcher.Resolve(), "encountered errors reading artifact json files")
 		logger.Task().Error(err)

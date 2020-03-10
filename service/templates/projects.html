@@ -1,20 +1,19 @@
 {{define "scripts"}}
 <script>
   window.allTrackedProjects = {{.AllProjects}};
-  window.acl_enabled = {{.ACLEnabled}};
   {{if .User}}
-  window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
   window.isAdmin = {{.ProjectData.IsAdmin}};
-  {{else}}
-  window.isSuperUser = false;
   {{end}}
   window.canCreate = {{.CanCreate}};
+  window.validDefaultLoggers = {{.ValidDefaultLoggers}};
+  window.userTz = {{GetTimezone $.User}}
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
 <script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/js/services/time.js?hash={{ BuildRevision }}"></script>
 {{end}}
 {{define "title"}}
 Evergreen Projects
@@ -98,7 +97,7 @@ Evergreen Projects
     </div>
     <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
-      <fieldset style="display:inline-block;" ng-disabled="acl_enabled && permissions.project_settings<20">
+      <fieldset style="display:inline-block;" ng-disabled="permissions.project_settings<20">
       <div class ="form-group">
         <div class="col-lg-8">
           <div class="radio">
@@ -190,6 +189,14 @@ Evergreen Projects
               </div>
             </div>
           </div>
+          <div class="form-group">
+            <div class="col-lg-8">
+              <label class="control-label">Restricted Project&nbsp;&nbsp;
+                <input type="checkbox" ng-model="settingsFormData.restricted"/>
+              </label>
+              <div class="muted small">Logged-in users by default will not be able to access this project. Access must be granted manually.</div>
+            </div>
+          </div>
         </div>
         <div class="admins">
           <div class="form-group">
@@ -256,6 +263,15 @@ Evergreen Projects
                   <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
                 </label>
               </div>
+          </div>
+        </div>
+
+        <div id="logging-info">
+          <div class="h3">Default Logger</div>
+          <div style="left:-15px" class="col-lg-4">
+            <select name="repeatSelect" id="repeatSelect" ng-model="settingsFormData.default_logger">
+              <option ng-repeat="logger in validDefaultLoggers" value="[[logger]]">[[logger]]</option>
+            </select>
           </div>
         </div>
 
@@ -583,53 +599,16 @@ Evergreen Projects
             </div>
           </div>
 
-          <div class="form-group">
-            <div class="col-lg-2"> <label class="control-label"> Interval (hours) </label> </div>
-            <div class="col-lg-2"> <label class="control-label"> Config File </label> </div>
-            <div class="col-lg-2"> <label class="control-label"> Patch Alias </label> </div>
-            <div class="col-lg-2"> <label class="control-label"> Message </label> </div>
-            <div class="col-lg-2"></div>
-          </div>
-
-          <div class="form-group" ng-repeat="definition in settingsFormData.periodic_builds track by $index">
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="definition.interval_hours" type="number" placeholder="24">
-            </div>
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="definition.config_file" type="text" placeholder=".evergreen.yml">
-            </div>
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="definition.alias" type="text" placeholder="my_task_alias">
-            </div>
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="definition.message" type="text" placeholder="A periodic build">
-            </div>
-            <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" type="button" ng-click="removePeriodicBuild($index)">
-                <i class="fa fa-trash"></i>
-              </button>
-            </div>
+          <div class="form-group" ng-repeat="definition in periodic_builds track by $index">
+            <a class="col-lg-12 link" ng-bind="periodicBuildLabel(definition)" ng-click="showPeriodicBuildModal($index)"></a>
           </div>
 
           <div class="form-group">
             <div class="col-lg-2">
-              <input ng-model="periodic_build.interval_hours" class="form-control" type="number" placeholder="24">
-            </div>
-            <div class="col-lg-2">
-              <input ng-model="periodic_build.config_file" class="form-control" type="text" placeholder=".evergreen.yml">
-            </div>
-            <div class="col-lg-2">
-              <input ng-model="periodic_build.alias" class="form-control" type="text" placeholder="my_task_alias">
-            </div>
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="periodic_build.message" type="text" placeholder="A periodic build">
-            </div>
-            <div class="col-lg-4">
-              <button class="plus-button btn btn-primary " ng-disabled="periodicBuildErrors(periodic_build)" type="button" ng-click="addPeriodicBuild()">
-                <i class="fa fa-plus"></i>
+              <button class="plus-button btn btn-primary" type="button" ng-click="showPeriodicBuildModal()">
+                <i class="fa fa-plus"></i> New Periodic Build
               </button>
             </div>
-            <label class="distro-error">[[invalidPeriodicBuildMsg]]</label>
           </div>
         </div>
 

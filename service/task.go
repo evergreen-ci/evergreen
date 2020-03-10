@@ -1,15 +1,16 @@
 package service
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
-
-	"github.com/evergreen-ci/gimlet/rolemanager"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -21,7 +22,10 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/timber/fetcher"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -119,6 +123,12 @@ type uiTestResult struct {
 	TestResult task.TestResult `json:"test_result"`
 	TaskId     string          `json:"task_id"`
 	TaskName   string          `json:"task_name"`
+}
+
+type logData struct {
+	Buildlogger chan apimodels.BuildloggerLogLine
+	Data        chan apimodels.LogMessage
+	User        gimlet.User
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -366,10 +376,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
-	isAdmin := false
 	permissions := gimlet.Permissions{}
 	if usr != nil {
-		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
 		opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Identifier, ResourceType: evergreen.ProjectResourceType}
 		permissions, err = rolemanager.HighestPermissionsForRoles(usr.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 		if err != nil {
@@ -379,14 +387,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Task           uiTaskData
-		Host           *host.Host
-		PluginContent  pluginData
-		JiraHost       string
-		IsProjectAdmin bool
-		Permissions    gimlet.Permissions
+		Task          uiTaskData
+		Host          *host.Host
+		PluginContent pluginData
+		JiraHost      string
+		Permissions   gimlet.Permissions
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -509,6 +516,29 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defaultLogger, err := getDefaultLogger(projCtx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if defaultLogger == model.BuildloggerLogSender {
+		var logReader io.ReadCloser
+		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
+		if err == nil {
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+			gimlet.WriteJSON(w, readBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
+			return
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id": projCtx.Task.Id,
+			"message": "problem getting buildlogger logs",
+		}))
+	}
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
 	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
@@ -554,22 +584,91 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	channel, err := model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+	data := logData{Buildlogger: make(chan apimodels.BuildloggerLogLine, 1024), User: usr}
+	var logReader io.ReadCloser
+
+	defaultLogger, err := getDefaultLogger(projCtx)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if defaultLogger == model.BuildloggerLogSender {
+		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
+		if err == nil {
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+		} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task_id": projCtx.Task.Id,
+				"message": "problem getting buildlogger logs",
+			}))
+		}
+	}
 
-	type logTemplateData struct {
-		Data chan apimodels.LogMessage
-		User gimlet.User
+	if logReader == nil {
+		data.Data, err = model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
+			return
+		}
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log_raw.html")
+		if logReader != nil {
+			gimlet.WriteText(w, logReader)
+		} else {
+			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		}
 		return
 	}
-	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log.html")
+
+	go readBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
+	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+}
+
+func getDefaultLogger(projCtx projectContext) (string, error) {
+	projRef, err := projCtx.GetProjectRef()
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting project ref to fetch logs")
+	}
+	defaultLogger := projRef.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	return defaultLogger, nil
+}
+
+func (uis *UIServer) getBuildloggerLogs(ctx context.Context, projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
+	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting auth token cookie for user")
+	}
+
+	opts := fetcher.GetOptions{
+		BaseURL:       fmt.Sprintf("https://%s", uis.env.Settings().LoggerConfig.BuildloggerBaseURL),
+		Cookie:        userCookie,
+		TaskID:        projCtx.Task.Id,
+		Execution:     execution,
+		PrintTime:     true,
+		PrintPriority: true,
+		Tail:          tail,
+	}
+	switch logType {
+	case apimodels.TaskLogPrefix:
+		opts.ProcessName = evergreen.LogTypeTask
+	case apimodels.SystemLogPrefix:
+		opts.ProcessName = evergreen.LogTypeSystem
+	case apimodels.AgentLogPrefix:
+		opts.ProcessName = evergreen.LogTypeAgent
+	}
+
+	logReader, err := fetcher.Logs(ctx, opts)
+	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
 }
 
 // avoids type-checking json params for the below function
@@ -636,7 +735,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -660,7 +759,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -681,7 +780,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if priority > evergreen.MaxTaskPriority {
-			if !uis.isSuperUser(authUser) && !taskAdmin { // TODO PM-1355 remove superuser check
+			if !taskAdmin {
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
 					http.StatusUnauthorized)
 				return
@@ -700,7 +799,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) && !taskAdmin { // TODO PM-1355 remove admin check
+		if !taskAdmin {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
@@ -773,15 +872,91 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}()
 	usr := gimlet.GetUser(ctx)
 	template := "task_log.html"
-	data := struct {
-		Data chan apimodels.LogMessage
-		User gimlet.User
-	}{displayLogs, usr}
-
+	data := logData{Data: displayLogs, User: usr}
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
+	}
+}
+
+func readBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []apimodels.BuildloggerLogLine {
+	lines := []apimodels.BuildloggerLogLine{}
+	lineChan := make(chan apimodels.BuildloggerLogLine, 1024)
+	go readBuildloggerToChan(ctx, taskID, r, lineChan)
+
+	for {
+		line, more := <-lineChan
+		if !more {
+			break
+		}
+
+		lines = append(lines, line)
+	}
+
+	return lines
+}
+
+func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- apimodels.BuildloggerLogLine) {
+	var (
+		line string
+		err  error
+	)
+
+	defer close(lines)
+	if r == nil {
+		return
+	}
+
+	reader := bufio.NewReader(r)
+	for err == nil {
+		line, err = reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": taskID,
+				"message": "problem reading buildlogger log lines",
+			}))
+			return
+		}
+
+		severity := int(level.Info)
+		if strings.HasPrefix(line, "[P: ") {
+			severity, err = strconv.Atoi(strings.TrimSpace(line[3:6]))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"task_id": taskID,
+					"message": "problem reading buildlogger log line severity",
+				}))
+				err = nil
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			grip.Error(message.WrapError(ctx.Err(), message.Fields{
+				"task_id": taskID,
+				"message": "context error while reading buildlogger log lines",
+			}))
+		case lines <- apimodels.BuildloggerLogLine{
+			Message:  strings.TrimSuffix(line, "\n"),
+			Severity: getSeverityMapping(severity),
+		}:
+		}
+	}
+}
+
+func getSeverityMapping(s int) string {
+	switch {
+	case s >= int(level.Error):
+		return apimodels.LogErrorPrefix
+	case s >= int(level.Warning):
+		return apimodels.LogWarnPrefix
+	case s >= int(level.Info):
+		return apimodels.LogInfoPrefix
+	case s < int(level.Info):
+		return apimodels.LogDebugPrefix
+	default:
+		return apimodels.LogInfoPrefix
 	}
 }

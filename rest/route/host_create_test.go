@@ -8,8 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/gimlet"
-
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -18,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/mitchellh/mapstructure"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +31,8 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 
 	d := distro.Distro{
-		Id: "archlinux-test",
+		Id:       "archlinux-test",
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
 			"ami": "ami-123456",
 		},
@@ -53,18 +53,32 @@ func TestMakeIntentHost(t *testing.T) {
 	handler.taskID = "task-id"
 	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
-	assert.NotNil(h)
+	require.NotNil(h)
+
 	assert.Equal("archlinux-test", h.Distro.Id)
-	ec2Settings := &cloud.EC2ProviderSettings{}
-	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
-	assert.NoError(err)
-	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
+	ec2Settings := &cloud.EC2ProviderSettings{}
+	assert.Nil(h.Distro.ProviderSettings)
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
-	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	// test roundtripping
+	h, err = host.FindOneByIdOrTag(h.Id)
+	assert.NoError(err)
+	require.NotNil(h)
+	ec2Settings2 := &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings2.AMI)
+	assert.Equal("mock_key", ec2Settings2.KeyName)
+	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// scope to build
 	myTask := task.Task{
@@ -86,9 +100,9 @@ func TestMakeIntentHost(t *testing.T) {
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
+	assert.Nil(h.Distro.ProviderSettings)
 	ec2Settings = &cloud.EC2ProviderSettings{}
-	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
-	assert.NoError(err)
+	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
@@ -110,15 +124,27 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
-	ec2Settings = &cloud.EC2ProviderSettings{}
-	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
-	assert.NoError(err)
-	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	ec2Settings = &cloud.EC2ProviderSettings{}
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
-	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	h, err = host.FindOneByIdOrTag(h.Id)
+	assert.NoError(err)
+	require.NotNil(h)
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings2.AMI)
+	assert.Equal("mock_key", ec2Settings2.KeyName)
+	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
@@ -138,17 +164,27 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
-	ec2Settings = &cloud.EC2ProviderSettings{}
-	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
-	assert.NoError(err)
-	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	ec2Settings = &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
-	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings2.AMI)
+	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// bring your own ami
 	c = apimodels.CreateHost{
@@ -168,17 +204,55 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("", h.Distro.Id)
-	ec2Settings = &cloud.EC2ProviderSettings{}
-	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
-	assert.NoError(err)
-	assert.Equal("ami-654321", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
-	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
-	assert.Equal("subnet-123456", ec2Settings.SubnetId)
-	assert.Equal(true, ec2Settings.IsVpc)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-654321", ec2Settings2.AMI)
+	assert.Equal("my_aws_key", ec2Settings2.AWSKeyID)
+	assert.Equal("my_secret_key", ec2Settings2.AWSSecret)
+	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
+	assert.Equal(true, ec2Settings2.IsVpc)
+
+	// with multiple regions
+	assert.NoError(cloud.CreateSettingsListFromLegacy(&d))
+	require.Len(d.ProviderSettingsList, 1)
+	doc2 := d.ProviderSettingsList[0].Copy().Set(birch.EC.String("region", "us-west-1")).Set(birch.EC.String("ami", "ami-987654"))
+	d.ProviderSettingsList = append(d.ProviderSettingsList, doc2)
+	require.NoError(d.Update())
+	c = apimodels.CreateHost{
+		Distro:              "archlinux-test",
+		CloudProvider:       "ec2",
+		NumHosts:            "1",
+		Scope:               "task",
+		SetupTimeoutSecs:    600,
+		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
+	}
+	handler.createHost = c
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	assert.NoError(err)
+	assert.NotNil(h)
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Nil(h.Distro.ProviderSettings)
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
+	assert.Equal(ec2Settings2.AMI, "ami-123456")
+
+	handler.createHost.Region = "us-west-1"
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	assert.NoError(err)
+	assert.NotNil(h)
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Nil(h.Distro.ProviderSettings)
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
+	assert.Equal(ec2Settings2.AMI, "ami-987654")
 }
 
 func TestHostCreateDocker(t *testing.T) {
@@ -228,18 +302,15 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
-	hosts, err := host.Find(db.Q{})
-	assert.NoError(err)
-	require.Len(hosts, 1)
 
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
 	assert.NoError(evergreen.UpdateConfig(&settings))
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
-	hosts, err = host.Find(db.Q{})
+	hosts, err := host.Find(db.Q{})
 	assert.NoError(err)
-	require.Len(hosts, 2)
+	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
 }
 
@@ -290,7 +361,6 @@ func TestGetDockerLogs(t *testing.T) {
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
-	require.NoError(h.Insert())
 
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
@@ -395,7 +465,6 @@ func TestGetDockerStatus(t *testing.T) {
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
-	require.NoError(h.Insert())
 
 	url := fmt.Sprintf("/hosts/%s/logs/status", h.Id)
 	options := map[string]string{"host_id": h.Id}

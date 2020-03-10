@@ -10,8 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -25,6 +25,8 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
+	ensureValidSSHKeyName,
+	ensureStaticHasAuthorizedKeysFile,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
@@ -79,7 +81,7 @@ func ensureStaticHostsAreNotSpawnable(ctx context.Context, d *distro.Distro, s *
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
-func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen.Settings) ValidationErrors {
 	errs := ValidationErrors{}
 
 	if d.Id == "" {
@@ -123,38 +125,78 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 			Level:   Error,
 		})
 	}
-
-	mgrOpts, err := cloud.GetManagerOptions(*d)
-	if err != nil {
-		return append(errs, ValidationError{
+	if cloud.IsEc2Provider(d.Provider) && len(d.ProviderSettingsList) > 1 {
+		return append(errs, validateMultipleProviderSettings(d)...)
+	}
+	if err := validateSingleProviderSettings(d); err != nil {
+		errs = append(errs, ValidationError{
 			Message: err.Error(),
 			Level:   Error,
 		})
 	}
-	mgr, err := cloud.GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
-	if err != nil {
-		return append(errs, ValidationError{
-			Message: err.Error(),
-			Level:   Error,
-		})
-	}
+	return errs
+}
 
-	settings := mgr.GetSettings()
-
-	if d.ProviderSettings != nil {
-		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-			return append(errs, ValidationError{
-				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
+func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
+	errs := ValidationErrors{}
+	definedRegions := map[string]bool{}
+	for _, doc := range d.ProviderSettingsList {
+		region, ok := doc.Lookup("region").StringValueOK()
+		if !ok {
+			region = evergreen.DefaultEC2Region
+		}
+		if definedRegions[region] {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("defined region %s more than once", region),
 				Level:   Error,
 			})
+			continue
 		}
+		definedRegions[region] = true
+		bytes, err := doc.MarshalBSON()
+		if err != nil {
+			errs = append(errs, ValidationError{
+				Message: errors.Wrap(err, "error marshalling provider setting into bson").Error(),
+				Level:   Error,
+			})
+			continue
+		}
+
+		settings := &cloud.EC2ProviderSettings{}
+		if err := bson.Unmarshal(bytes, settings); err != nil {
+			errs = append(errs, ValidationError{
+				Message: errors.Wrap(err, "error unmarshalling bson into provider settings").Error(),
+				Level:   Error,
+			})
+			continue
+		}
+		if err := settings.FromDistroSettings(*d, region); err != nil {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsListKey, err),
+				Level:   Error,
+			})
+			continue
+		}
+		if err := settings.Validate(); err != nil {
+			errs = append(errs, ValidationError{Error, err.Error()})
+		}
+	}
+	return errs
+}
+
+func validateSingleProviderSettings(d *distro.Distro) error {
+	settings, err := cloud.GetSettings(d.Provider)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if err = settings.FromDistroSettings(*d, ""); err != nil {
+		return errors.Wrapf(err, "distro '%v' decode error", distro.ProviderSettingsKey)
 	}
 
 	if err := settings.Validate(); err != nil {
-		errs = append(errs, ValidationError{Error, err.Error()})
+		return errors.Wrap(err, "error validating settings")
 	}
-
-	return errs
+	return nil
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
@@ -197,6 +239,39 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
+		}
+	}
+	return nil
+}
+
+// ensureValidSSHKeyName checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureValidSSHKeyName(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if key := s.Keys[d.SSHKey]; key != "" {
+		return nil
+	}
+	for _, key := range s.SSHKeyPairs {
+		if key.Name == d.SSHKey {
+			return nil
+		}
+	}
+	return ValidationErrors{
+		{
+			Message: fmt.Sprintf("ssh key '%s' not found", d.SSHKey),
+			Level:   Error,
+		},
+	}
+}
+
+// ensureStaticHasAuthorizedKeysFile checks that the SSH key name corresponds to an actual
+// SSH key.
+func ensureStaticHasAuthorizedKeysFile(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if len(s.SSHKeyPairs) != 0 && d.Provider == evergreen.ProviderNameStatic && d.AuthorizedKeysFile == "" {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("authorized keys file was not specified"),
+				Level:   Error,
+			},
 		}
 	}
 	return nil
@@ -365,9 +440,15 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
-	if settings.TimeInQueueFactor < 0 || settings.TimeInQueueFactor > 100 {
+	if settings.PatchTimeInQueueFactor < 0 || settings.PatchTimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.TimeInQueueFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.patch_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.PatchTimeInQueueFactor, d.Id),
+			Level:   Error,
+		})
+	}
+	if settings.MainlineTimeInQueueFactor < 0 || settings.MainlineTimeInQueueFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.mainline_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.MainlineTimeInQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}

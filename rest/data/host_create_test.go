@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -91,7 +90,7 @@ func TestListHostsForTask(t *testing.T) {
 
 func TestCreateHostsFromTask(t *testing.T) {
 	// Setup tests
-	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 	providerSettings := map[string]interface{}{
 		"ami":                "ami-1234",
 		"vpc_name":           "my_vpc",
@@ -170,8 +169,10 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t1.Id, h.ProvisionOptions.TaskId)
+			assert.Nil(t, h.Distro.ProviderSettings)
+			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
-			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
@@ -244,8 +245,10 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t2.Id, h.ProvisionOptions.TaskId)
+			assert.Nil(t, h.Distro.ProviderSettings)
+			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
-			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
@@ -311,8 +314,10 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t3.Id, h.ProvisionOptions.TaskId)
+			assert.Nil(t, h.Distro.ProviderSettings)
+			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
-			assert.NoError(t, mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings))
+			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
@@ -325,7 +330,8 @@ buildvariants:
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",

@@ -7,10 +7,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -23,6 +28,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
@@ -52,6 +58,7 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 	collections := appendAmboyCollections(settings.Amboy, []backup.Options{})
 	collections = appendFullBackupCollections(settings.Database.DB, collections)
 	collections = appendIndexOnlyBackupCollections(settings.Database.DB, collections)
+	collections = appendQueryBackupCollection(settings.Database.DB, collections)
 
 	catcher := grip.NewBasicCatcher()
 	for _, opt := range collections {
@@ -63,20 +70,19 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 
 func appendIndexOnlyBackupCollections(dbName string, in []backup.Options) []backup.Options {
 	for _, coll := range []string{
-		task.OldCollection,
-		stats.HourlyTestStatsCollection,
-		stats.DailyTaskStatsCollection,
-		stats.DailyTestStatsCollection,
-		stats.DailyStatsStatusCollection,
+		event.AllLogCollection,
+		event.SubscriptionsCollection,
 		model.TaskAliasQueuesCollection,
 		model.TaskQueuesCollection,
 		model.TestLogCollection,
-		testresult.Collection,
-		model.NotifyTimesCollection,
-		model.NotifyHistoryCollection,
-		event.AllLogCollection,
-		event.SubscriptionsCollection,
+		notification.Collection,
 		patch.IntentCollection,
+		stats.DailyStatsStatusCollection,
+		stats.DailyTaskStatsCollection,
+		stats.DailyTestStatsCollection,
+		stats.HourlyTestStatsCollection,
+		task.OldCollection,
+		testresult.Collection,
 	} {
 		in = append(in, backup.Options{
 			NS: amodel.Namespace{
@@ -92,21 +98,26 @@ func appendIndexOnlyBackupCollections(dbName string, in []backup.Options) []back
 
 func appendFullBackupCollections(dbName string, in []backup.Options) []backup.Options {
 	for _, coll := range []string{
-		evergreen.ConfigCollection,
+		alertrecord.Collection,
+		commitqueue.Collection,
+		db.GlobalsCollection, // revision_orderNumber
+		distro.Collection,
+		evergreen.ConfigCollection,      // admin
 		evergreen.CredentialsCollection, // grpc CA
-		evergreen.ScopeCollection,       // acl data
+		evergreen.RoleCollection,
+		evergreen.ScopeCollection, // acl data
+		manifest.Collection,
 		model.GithubHooksCollection,
 		model.KeyValCollection,
+		model.NotesCollection,
 		model.ProjectAliasCollection,
 		model.ProjectRefCollection,
 		model.ProjectVarsCollection,
 		model.PushlogCollection,      // s3copy pushes
 		model.RepositoriesCollection, // last seen hash
+		model.TaskJSONCollection,
 		user.Collection,
-		db.GlobalsCollection, // revision_orderNumber
-		distro.Collection,
-		commitqueue.Collection,
-		manifest.Collection,
+		host.VolumesCollection,
 	} {
 		in = append(in, backup.Options{
 			NS: amodel.Namespace{
@@ -116,6 +127,38 @@ func appendFullBackupCollections(dbName string, in []backup.Options) []backup.Op
 			IndexesOnly: false,
 		})
 	}
+	return in
+}
+
+func appendQueryBackupCollection(dbName string, in []backup.Options) []backup.Options {
+	for coll, createTime := range map[string]string{
+		artifact.Collection:           artifact.CreateTimeKey,
+		build.Collection:              build.CreateTimeKey,
+		model.ParserProjectCollection: model.ParserProjectCreateTimeKey,
+		patch.IntentCollection:        patch.CreateTimeKey,
+		patch.Collection:              patch.CreateTimeKey,
+		task.Collection:               task.CreateTimeKey,
+		model.VersionCollection:       model.VersionCreateTimeKey,
+	} {
+		in = append(in, backup.Options{
+			NS: amodel.Namespace{
+				DB:         dbName,
+				Collection: coll,
+			},
+			IndexesOnly: false,
+			Query:       bson.M{createTime: bson.M{"$gt": time.Now().Add(30 * 24 * time.Hour)}},
+		})
+	}
+
+	in = append(in, backup.Options{
+		NS: amodel.Namespace{
+			DB:         dbName,
+			Collection: host.Collection,
+		},
+		IndexesOnly: false,
+		Query:       bson.M{"$in": evergreen.UpHostStatus},
+	})
+
 	return in
 }
 

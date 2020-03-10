@@ -36,7 +36,9 @@ type WriterSender struct {
 // buffered messages) is only whitespace, then it is not sent.
 //
 // If there are any bytes in the buffer when the Close method is
-// called, this sender flushes the buffer.
+// called, this sender flushes the buffer. WriterSender does not own the
+// underlying Sender, so users are responsible for closing the underlying Sender
+// if/when it is appropriate to release its resources.
 func NewWriterSender(s Sender) *WriterSender { return MakeWriterSender(s, s.Level().Default) }
 
 // MakeWriterSender returns an sender interface that also implements
@@ -90,7 +92,7 @@ func (s *WriterSender) doSend() error {
 	}
 }
 
-// Close writes any buffered messages to the underlying Sender. Does
+// Close writes any buffered messages to the underlying Sender. This does
 // not close the underlying sender.
 func (s *WriterSender) Close() error {
 	s.mu.Lock()

@@ -231,34 +231,10 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 	return oldSettings, nil
 }
 
-type APIUserAuthorInformation struct {
-	DisplayName *string
-	Email       *string
-}
-
-func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
-	v, ok := h.(*user.DBUser)
-	if !ok {
-		return errors.Errorf("incorrect type '%T' for user", h)
-	}
-	if v == nil {
-		return errors.New("can't build from nil user")
-	}
-
-	u.DisplayName = ToStringPtr(v.DisplayName())
-	u.Email = ToStringPtr(v.Email())
-
-	return nil
-}
-
-func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
-}
-
 type APIFeedbackSubmission struct {
 	Type        *string             `json:"type"`
 	User        *string             `json:"user"`
-	SubmittedAt time.Time           `json:"submitted_at"`
+	SubmittedAt *time.Time          `json:"submitted_at"`
 	Questions   []APIQuestionAnswer `json:"questions"`
 }
 
@@ -267,10 +243,14 @@ func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
 }
 
 func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
+	submittedAt, err := FromTimePtr(a.SubmittedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting time")
+	}
 	result := model.FeedbackSubmission{
 		Type:        FromStringPtr(a.Type),
 		User:        FromStringPtr(a.User),
-		SubmittedAt: a.SubmittedAt,
+		SubmittedAt: submittedAt,
 	}
 	for _, question := range a.Questions {
 		answerInterface, _ := question.ToService()
@@ -296,4 +276,16 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 		Prompt: FromStringPtr(a.Prompt),
 		Answer: FromStringPtr(a.Answer),
 	}, nil
+}
+
+type APIUser struct {
+	DisplayName *string `json:"display_name"`
+}
+
+func (a *APIUser) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIUser")
+}
+
+func (a *APIUser) ToService() (interface{}, error) {
+	return nil, errors.New("ToService not implemented for APIUser")
 }

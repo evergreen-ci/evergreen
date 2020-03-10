@@ -2,14 +2,16 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -115,9 +117,14 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	return usr
 }
 
-func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
+func validPriority(priority int64, project string, user gimlet.User, sc data.Connector) bool {
 	if priority > evergreen.MaxTaskPriority {
-		return auth.IsSuperUser(sc.GetSuperUsers(), user)
+		return user.HasPermission(gimlet.PermissionOpts{
+			Resource:      project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		})
 	}
 	return true
 }
@@ -145,9 +152,13 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
-	if !(isSuperuser || isAdmin) {
+	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -232,9 +243,13 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	// A superuser or project admin is authorized
-	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(projRef.Admins, user.Username())
-	if isSuperuser || isAdmin {
+	isAdmin := util.StringSliceContains(projRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
 		next(rw, r)
 		return
 	}
@@ -304,9 +319,6 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -322,13 +334,11 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 		ResourceFunc:  urlVarsToProjectScopes,
 		DefaultRoles:  defaultRoles,
 	}
+
 	return gimlet.RequiresPermission(opts)
 }
 
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -348,9 +358,6 @@ func RequiresDistroPermission(permission string, level evergreen.PermissionLevel
 }
 
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	if !evergreen.AclCheckingIsEnabled {
-		return &noopMiddleware{}
-	}
 	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
@@ -370,18 +377,11 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 
 }
 
-type noopMiddleware struct{}
-
-func (n *noopMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	next(rw, r)
-}
-
-func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
+func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
-
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
 		case model.EventResourceTypeProject:
@@ -392,12 +392,13 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	}
 
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+	destProjectID := util.CoalesceString(query["dest_project"]...)
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
 	if projectID == "" && versionID != "" {
 		projectID, err = model.FindProjectForVersion(versionID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -405,7 +406,7 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && patchID != "" && patch.IsValidId(patchID) {
 		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -413,19 +414,20 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && buildID != "" {
 		projectID, err = build.FindProjectForBuild(buildID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
 	testLog := util.CoalesceStrings(query["log_id"], vars["log_id"])
 	if projectID == "" && testLog != "" {
-		test, err := model.FindOneTestLogById(testLog)
+		var test *model.TestLog
+		test, err = model.FindOneTestLogById(testLog)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 		projectID, err = task.FindProjectForTask(test.Task)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
@@ -434,16 +436,23 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 	if projectID == "" && taskID != "" {
 		projectID, err = task.FindProjectForTask(taskID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
+	}
+
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.WithStack(err)
+	}
+	if projectRef == nil {
+		return nil, http.StatusNotFound, errors.Errorf("error finding the project %s", projectID)
 	}
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
 	if user == nil {
-		projectRef, err := model.FindOneProjectRef(projectID)
 		if err != nil || projectRef == nil {
-			return "", http.StatusNotFound, errors.New("no project found")
+			return nil, http.StatusNotFound, errors.New("no project found")
 		}
 		if projectRef.Private {
 			projectID = ""
@@ -452,20 +461,25 @@ func urlVarsToProjectScopes(r *http.Request) (string, int, error) {
 
 	// no project found - return a 404
 	if projectID == "" {
-		return "", http.StatusNotFound, errors.New("no project found")
+		return nil, http.StatusNotFound, errors.New("no project found")
+	}
+	res := []string{projectID}
+	if destProjectID != "" {
+		res = append(res, destProjectID)
 	}
 
-	return projectID, http.StatusOK, nil
+	return res, http.StatusOK, nil
 }
 
-func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
+func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
 	query := r.URL.Query()
 
-	resourceType := util.CoalesceStrings(query["resource_type"], vars["resource_type"])
+	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
+		case event.ResourceTypeScheduler:
 		case event.ResourceTypeDistro:
 			vars["distro_id"] = vars["resource_id"]
 		case event.ResourceTypeHost:
@@ -479,18 +493,106 @@ func urlVarsToDistroScopes(r *http.Request) (string, int, error) {
 	if distroID == "" && hostID != "" {
 		distroID, err = host.FindDistroForHost(hostID)
 		if err != nil {
-			return "", http.StatusNotFound, err
+			return nil, http.StatusNotFound, err
 		}
 	}
 
 	// no distro found - return a 404
 	if distroID == "" {
-		return "", http.StatusNotFound, errors.New("no distro found")
+		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	return distroID, http.StatusOK, nil
+	distro, err := distro.FindByID(distroID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.WithStack(err)
+	}
+	if distro == nil {
+		return nil, http.StatusNotFound, errors.Errorf("error finding the distro %s", distroID)
+	}
+
+	return []string{distroID}, http.StatusOK, nil
 }
 
-func superUserResource(_ *http.Request) (string, int, error) {
-	return evergreen.SuperUserPermissionsID, http.StatusOK, nil
+func superUserResource(_ *http.Request) ([]string, int, error) {
+	return []string{evergreen.SuperUserPermissionsID}, http.StatusOK, nil
+}
+
+type EventLogPermissionsMiddleware struct{}
+
+func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	vars := gimlet.GetVars(r)
+	var resources []string
+	var status int
+	var err error
+	resourceType := strings.ToUpper(vars["resource_type"])
+	opts := gimlet.PermissionOpts{}
+	switch resourceType {
+	case event.ResourceTypeTask:
+		resources, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionTasks
+		opts.RequiredLevel = evergreen.TasksView.Value
+	case model.EventResourceTypeProject:
+		resources, status, err = urlVarsToProjectScopes(r)
+		opts.ResourceType = evergreen.ProjectResourceType
+		opts.Permission = evergreen.PermissionProjectSettings
+		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
+	case event.ResourceTypeDistro:
+		fallthrough
+	case event.ResourceTypeScheduler:
+		resources, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionHosts
+		opts.RequiredLevel = evergreen.HostsView.Value
+	case event.ResourceTypeHost:
+		resources, status, err = urlVarsToDistroScopes(r)
+		opts.ResourceType = evergreen.DistroResourceType
+		opts.Permission = evergreen.PermissionDistroSettings
+		opts.RequiredLevel = evergreen.DistroSettingsView.Value
+	case event.ResourceTypeAdmin:
+		resources = []string{evergreen.SuperUserPermissionsID}
+		opts.ResourceType = evergreen.SuperUserResourceType
+		opts.Permission = evergreen.PermissionAdminSettings
+		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
+	default:
+		http.Error(rw, fmt.Sprintf("%s is not a valid resource type", resourceType), http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(rw, err.Error(), status)
+		return
+	}
+
+	if len(resources) == 0 {
+		http.Error(rw, "no resources found", http.StatusNotFound)
+		return
+	}
+
+	user := gimlet.GetUser(ctx)
+	if user == nil {
+		http.Error(rw, "no user found", http.StatusUnauthorized)
+		return
+	}
+
+	authenticator := gimlet.GetAuthenticator(ctx)
+	if authenticator == nil {
+		http.Error(rw, "unable to determine an authenticator", http.StatusInternalServerError)
+		return
+	}
+
+	if !authenticator.CheckAuthenticated(user) {
+		http.Error(rw, "not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	for _, item := range resources {
+		opts.Resource = item
+		if !user.HasPermission(opts) {
+			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	next(rw, r)
 }

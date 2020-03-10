@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type QueueTester struct {
@@ -37,7 +37,7 @@ func NewQueueTesterInstance() *QueueTester {
 	return &QueueTester{
 		toProcess: make(chan amboy.Job, 101),
 		storage:   make(map[string]amboy.Job),
-		id:        uuid.NewV4().String(),
+		id:        uuid.New().String(),
 	}
 }
 

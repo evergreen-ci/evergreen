@@ -8,12 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Distro struct {
@@ -23,6 +27,7 @@ type Distro struct {
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	ProviderSettingsList  []*birch.Document       `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
@@ -31,6 +36,7 @@ type Distro struct {
 	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	AuthorizedKeysFile    string                  `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
 	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
@@ -43,6 +49,8 @@ type Distro struct {
 	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	IsVirtualWorkstation  bool                    `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
+	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -80,6 +88,15 @@ type ResourceLimits struct {
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
 }
 
+type HomeVolumeSettings struct {
+	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
+	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
+}
+
+func (d *Distro) SetBSON(raw mgobson.Raw) error {
+	return bson.Unmarshal(raw.Data, d)
+}
+
 // ValidateBootstrapSettings checks if all of the bootstrap settings are valid
 // for legacy or non-legacy bootstrapping.
 func (d *Distro) ValidateBootstrapSettings() error {
@@ -103,6 +120,8 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		catcher.NewWhen(d.BootstrapSettings.Communication == CommunicationMethodLegacySSH, "communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 	}
 
+	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for Windows")
+
 	if d.BootstrapSettings.Method == BootstrapMethodLegacySSH || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH {
 		return catcher.Resolve()
 	}
@@ -117,7 +136,6 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.BootstrapSettings.ShellPath == "", "shell path cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.ServiceUser == "", "service user cannot be empty for non-legacy Windows bootstrapping")
-	catcher.NewWhen(d.IsWindows() && d.BootstrapSettings.RootDir == "", "root directory cannot be empty for non-legacy Windows bootstrapping")
 
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumFiles < -1, "max number of files should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumProcesses < -1, "max number of files should be a positive number or -1")
@@ -125,6 +143,11 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
 
 	return catcher.Resolve()
+}
+
+// ShellPath returns the native path to the shell binary.
+func (d *Distro) ShellBinary() string {
+	return d.AbsPathNotCygwinCompatible(d.BootstrapSettings.ShellPath)
 }
 
 type HostAllocatorSettings struct {
@@ -139,12 +162,13 @@ type FinderSettings struct {
 }
 
 type PlannerSettings struct {
-	Version               string        `bson:"version" json:"version" mapstructure:"version"`
-	TargetTime            time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
-	GroupVersions         *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	PatchFactor           int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
-	TimeInQueueFactor     int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
-	ExpectedRuntimeFactor int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	Version                   string        `bson:"version" json:"version" mapstructure:"version"`
+	TargetTime                time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	GroupVersions             *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
+	PatchFactor               int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
+	PatchTimeInQueueFactor    int64         `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -273,11 +297,18 @@ func (d *Distro) GetPatchFactor() int64 {
 	return d.PlannerSettings.PatchFactor
 }
 
-func (d *Distro) GetTimeInQueueFactor() int64 {
-	if d.PlannerSettings.TimeInQueueFactor <= 0 {
+func (d *Distro) GetPatchTimeInQueueFactor() int64 {
+	if d.PlannerSettings.PatchTimeInQueueFactor <= 0 {
 		return 1
 	}
-	return d.PlannerSettings.TimeInQueueFactor
+	return d.PlannerSettings.PatchTimeInQueueFactor
+}
+
+func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
+	if d.PlannerSettings.MainlineTimeInQueueFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.MainlineTimeInQueueFactor
 }
 
 func (d *Distro) GetExpectedRuntimeFactor() int64 {
@@ -360,6 +391,8 @@ func (d *Distro) ExecutableSubPath() string {
 }
 
 // HomeDir gets the absolute path to the home directory for this distro's user.
+// This is compatible with Cygwin (see (*Distro).AbsPathCygwinCompatible for
+// details).
 func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
@@ -389,46 +422,54 @@ func (d *Distro) IsParent(s *evergreen.Settings) bool {
 }
 
 func (d *Distro) GetImageID() (string, error) {
-	var i interface{}
+	key := ""
+
 	switch d.Provider {
-	case evergreen.ProviderNameEc2Auto:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2OnDemand:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2Spot:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameEc2Fleet:
-		i = (*d.ProviderSettings)["ami"]
-	case evergreen.ProviderNameDocker:
-		i = (*d.ProviderSettings)["image_url"]
-	case evergreen.ProviderNameDockerMock:
-		i = (*d.ProviderSettings)["image_url"]
+	case evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
+		key = "ami"
+	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
+		key = "image_url"
 	case evergreen.ProviderNameGce:
-		i = (*d.ProviderSettings)["image_name"]
+		key = "image_name"
 	case evergreen.ProviderNameVsphere:
-		i = (*d.ProviderSettings)["template"]
-	case evergreen.ProviderNameMock:
-		return "", nil
-	case evergreen.ProviderNameStatic:
-		return "", nil
-	case evergreen.ProviderNameOpenstack:
+		key = "template"
+	case evergreen.ProviderNameMock, evergreen.ProviderNameStatic, evergreen.ProviderNameOpenstack:
 		return "", nil
 	default:
 		return "", errors.New("unknown provider name")
 	}
 
-	s, ok := i.(string)
-	if !ok {
-		return "", errors.New("cannot extract image ID from provider settings")
+	if d.ProviderSettings != nil {
+		i := (*d.ProviderSettings)[key]
+		s, ok := i.(string)
+		if !ok {
+			return "", errors.New("cannot extract image ID from provider settings")
+		}
+		return s, nil
 	}
-	return s, nil
+
+	if len(d.ProviderSettingsList) == 1 {
+		res, ok := d.ProviderSettingsList[0].Lookup(key).StringValueOK()
+		if !ok {
+			return "", errors.Errorf("provider setting key '%s' is empty", key)
+		}
+		return res, nil
+	}
+	return "", errors.New("provider settings not configured correctly")
 }
 
 func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
-		if d.ProviderSettings == nil {
+		if len(d.ProviderSettingsList) == 0 && d.ProviderSettings == nil {
 			return 0
+		}
+		if len(d.ProviderSettingsList) > 0 {
+			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
+			if !ok {
+				return 0
+			}
+			return len(hosts)
 		}
 
 		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
@@ -488,6 +529,94 @@ func (distros DistroGroup) GetDistroIds() []string {
 		ids = append(ids, d.Id)
 	}
 	return ids
+}
+
+func (d *Distro) RemoveExtraneousProviderSettings(region string) error {
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "provider list missing region",
+			"distro":        d.Id,
+			"region":        region,
+			"settings_list": d.ProviderSettingsList,
+		}))
+		return errors.Wrapf(err, "error getting provider settings by region")
+	}
+	d.ProviderSettingsList = []*birch.Document{doc}
+	d.ProviderSettings = nil
+	return nil
+}
+
+func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
+	// check legacy case
+	if (region == "" || region == evergreen.DefaultEC2Region) && len(d.ProviderSettingsList) == 0 {
+		bytes, err := bson.Marshal(d.ProviderSettings)
+		if err != nil {
+			return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		doc := &birch.Document{}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return nil, errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
+		if region == evergreen.DefaultEC2Region {
+			doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+		}
+		return doc, nil
+	}
+	// if no region given but there's a provider settings list, we assume the list is accurate
+	if region == "" {
+		if len(d.ProviderSettingsList) > 1 {
+			return nil, errors.Errorf("multiple provider settings available but no region given")
+		}
+		return d.ProviderSettingsList[0], nil
+	}
+	for _, s := range d.ProviderSettingsList {
+		if val, ok := s.Lookup("region").StringValueOK(); ok {
+			if val == region {
+				return s, nil
+			}
+		}
+	}
+	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
+}
+
+func (d *Distro) GetRegionsList() []string {
+	regions := []string{}
+	if len(d.ProviderSettingsList) <= 1 {
+		return regions
+	}
+	for _, doc := range d.ProviderSettingsList {
+		region, ok := doc.Lookup("region").StringValueOK()
+		if !ok {
+			grip.Debug(message.Fields{
+				"message":  "provider settings list missing region",
+				"distro":   d.Id,
+				"settings": doc,
+			})
+			continue
+		}
+		regions = append(regions, region)
+	}
+	return regions
+}
+
+func (d *Distro) SetUserdata(userdata, region string) error {
+	if d.ProviderSettings != nil {
+		(*d.ProviderSettings)["user_data"] = userdata
+	}
+	if len(d.ProviderSettingsList) == 0 && evergreen.UseSpawnHostRegions {
+		return errors.Errorf("distro '%s' has no provider settings", d.Id)
+	}
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+	doc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		return errors.Wrap(err, "error getting provider setting from list")
+	}
+
+	d.ProviderSettingsList = []*birch.Document{doc.Set(birch.EC.String("user_data", userdata))}
+	return nil
 }
 
 // GetResolvedHostAllocatorSettings combines the distro's HostAllocatorSettings fields with the
@@ -550,13 +679,14 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	config := s.Scheduler
 	ps := d.PlannerSettings
 	resolved := PlannerSettings{
-		Version:               ps.Version,
-		TargetTime:            ps.TargetTime,
-		GroupVersions:         ps.GroupVersions,
-		PatchFactor:           ps.PatchFactor,
-		TimeInQueueFactor:     ps.TimeInQueueFactor,
-		ExpectedRuntimeFactor: ps.ExpectedRuntimeFactor,
-		maxDurationPerHost:    evergreen.MaxDurationPerDistroHost,
+		Version:                   ps.Version,
+		TargetTime:                ps.TargetTime,
+		GroupVersions:             ps.GroupVersions,
+		PatchFactor:               ps.PatchFactor,
+		PatchTimeInQueueFactor:    ps.PatchTimeInQueueFactor,
+		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
+		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
+		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -584,8 +714,11 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.PatchFactor == 0 {
 		resolved.PatchFactor = config.PatchFactor
 	}
-	if resolved.TimeInQueueFactor == 0 {
-		resolved.TimeInQueueFactor = config.TimeInQueueFactor
+	if resolved.PatchTimeInQueueFactor == 0 {
+		resolved.PatchTimeInQueueFactor = config.PatchTimeInQueueFactor
+	}
+	if resolved.MainlineTimeInQueueFactor == 0 {
+		resolved.MainlineTimeInQueueFactor = config.MainlineTimeInQueueFactor
 	}
 	if resolved.ExpectedRuntimeFactor == 0 {
 		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
@@ -639,4 +772,58 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
+}
+
+// LegacyBootstrap returns whether hosts of this distro are bootstrapped using the legacy
+// method.
+func (d *Distro) LegacyBootstrap() bool {
+	return d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with
+// hosts of this distro using the legacy method.
+func (d *Distro) LegacyCommunication() bool {
+	return d.BootstrapSettings.Communication == "" || d.BootstrapSettings.Communication == CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating with
+// hosts of this distro's Jasper service.
+func (d *Distro) JasperCommunication() bool {
+	return d.BootstrapSettings.Communication == CommunicationMethodSSH || d.BootstrapSettings.Communication == CommunicationMethodRPC
+}
+
+// AbsPathCygwinCompatible creates an absolute path from the given path that is
+// compatible with the host's provisioning settings.
+//
+// For example, in the context of an SSH session with Cygwin, if you invoke the
+// "/usr/bin/echo" binary, Cygwin uses the binary located relative to Cygwin's
+// filesystem root directory, so it will use the binary at
+// "$ROOT_DIR/usr/bin/echo". Similarly, Cygwin binaries like "ls" will resolve
+// filepaths as paths relative to the Cygwin root directory, so "ls /usr/bin",
+// will correctly list the directory contents of "$ROOT_DIR/usr/bin".
+//
+// However, in almost all other cases, Windows binaries expect native Windows
+// paths for everything. For example, if the evergreen binary accepts a filepath
+// given in the command line flags, the Golang standard library uses native
+// paths. Therefore, giving a path like "/home/Administrator/my_file" will fail,
+// because the library has no awareness of the Cygwin filesystem context. The
+// correct path would be to give an absolute native path,
+// "$ROOT_DIR/home/Administrator/evergreen".
+//
+// Documentation for Cygwin paths:
+// https://www.cygwin.com/cygwin-ug-net/using-effectively.html
+func (d *Distro) AbsPathCygwinCompatible(path ...string) string {
+	if d.LegacyBootstrap() {
+		return filepath.Join(path...)
+	}
+	return d.AbsPathNotCygwinCompatible(path...)
+}
+
+// AbsPathNotCygwinCompatible creates a Cygwin-incompatible absolute path using
+// RootDir to get around the fact that Cygwin binaries use POSIX paths relative
+// to the Cygwin filesystem root directory, but most other paths require
+// absolute filepaths using native Windows absolute paths. See
+// (*Distro).AbsPathCygwinCompatible for more details.
+func (d *Distro) AbsPathNotCygwinCompatible(path ...string) string {
+	return filepath.Join(append([]string{d.BootstrapSettings.RootDir}, path...)...)
 }

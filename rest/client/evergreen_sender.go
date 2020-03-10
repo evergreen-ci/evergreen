@@ -14,30 +14,34 @@ import (
 )
 
 type evergreenLogSender struct {
-	logTaskData TaskData
-	logChannel  string
-	comm        Communicator
-	cancel      context.CancelFunc
-	pipe        chan message.Composer
-	lastBatch   chan struct{}
-	signalEnd   chan struct{}
-	bufferTime  time.Duration
-	bufferSize  int
-	closed      bool
+	logTaskData         TaskData
+	logChannel          string
+	comm                Communicator
+	cancel              context.CancelFunc
+	pipe                chan message.Composer
+	signalFlush         chan struct{}
+	signalFlushComplete chan struct{}
+	lastBatch           chan struct{}
+	signalEnd           chan struct{}
+	bufferTime          time.Duration
+	bufferSize          int
+	closed              bool
 	sync.RWMutex
 	*send.Base
 }
 
 func newEvergreenLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
 	s := &evergreenLogSender{
-		comm:        comm,
-		logChannel:  channel,
-		logTaskData: taskData,
-		Base:        send.NewBase(taskData.ID),
-		bufferSize:  bufferSize,
-		pipe:        make(chan message.Composer, bufferSize/2),
-		lastBatch:   make(chan struct{}),
-		signalEnd:   make(chan struct{}),
+		comm:                comm,
+		logChannel:          channel,
+		logTaskData:         taskData,
+		Base:                send.NewBase(taskData.ID),
+		bufferSize:          bufferSize,
+		pipe:                make(chan message.Composer, bufferSize/2),
+		signalFlush:         make(chan struct{}),
+		signalFlushComplete: make(chan struct{}),
+		lastBatch:           make(chan struct{}),
+		signalEnd:           make(chan struct{}),
 	}
 	ctx, s.cancel = context.WithCancel(ctx)
 
@@ -87,7 +91,9 @@ backgroundSender:
 	for {
 		select {
 		case <-ctx.Done():
+			s.Lock()
 			s.closed = true
+			s.Unlock()
 			break backgroundSender
 		case <-timer.C:
 			if len(buffer) > 0 {
@@ -95,6 +101,13 @@ backgroundSender:
 				buffer = []apimodels.LogMessage{}
 			}
 			timer.Reset(bufferTime)
+		case <-s.signalFlush:
+			if len(buffer) > 0 {
+				s.flush(ctx, buffer)
+				buffer = []apimodels.LogMessage{}
+			}
+			timer.Reset(bufferTime)
+			s.signalFlushComplete <- struct{}{}
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= s.bufferSize/2 {
@@ -137,6 +150,20 @@ func (s *evergreenLogSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
 	}
+}
+
+func (s *evergreenLogSender) Flush(_ context.Context) error {
+	s.RLock()
+	defer s.RUnlock()
+
+	if s.closed {
+		return nil
+	}
+
+	s.signalFlush <- struct{}{}
+	<-s.signalFlushComplete
+
+	return nil
 }
 
 func (s *evergreenLogSender) convertMessage(m message.Composer) apimodels.LogMessage {

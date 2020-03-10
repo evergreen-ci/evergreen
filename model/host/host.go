@@ -14,12 +14,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -57,13 +60,11 @@ type Host struct {
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
 	// the task the most recently finished running on the host
-	LastTask               string    `bson:"last_task" json:"last_task"`
-	LastGroup              string    `bson:"last_group,omitempty" json:"last_group,omitempty"`
-	LastBuildVariant       string    `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
-	LastVersion            string    `bson:"last_version,omitempty" json:"last_version,omitempty"`
-	LastProject            string    `bson:"last_project,omitempty" json:"last_project,omitempty"`
-	RunningTeardownForTask string    `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
-	RunningTeardownSince   time.Time `bson:"running_teardown_since,omitempty" json:"running_teardown_since,omitempty"`
+	LastTask         string `bson:"last_task" json:"last_task"`
+	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
 
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
@@ -143,6 +144,14 @@ type Host struct {
 
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+
+	// SSHKeyNames contains the names of the SSH key that have been distributed
+	// to this host.
+	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
+
+	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
+	// HomeVolumeSize is the size of the home volume in GB
+	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
 }
 
 type Tag struct {
@@ -168,7 +177,6 @@ const (
 	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
 )
 
-func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type IdleHostsByDistroID struct {
@@ -185,6 +193,7 @@ type HostGroup []Host
 type VolumeAttachment struct {
 	VolumeID   string `bson:"volume_id" json:"volume_id"`
 	DeviceName string `bson:"device_name" json:"device_name"`
+	IsHome     bool   `bson:"is_home" json:"is_home"`
 }
 
 // DockerOptions contains options for starting a container
@@ -207,6 +216,32 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
+func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+	}
+	return nil
+}
+
+// Validate checks that the settings from the config file are sane.
+func (opts *DockerOptions) Validate() error {
+	if opts.Image == "" {
+		return errors.New("Image must not be empty")
+	}
+
+	return nil
+}
+
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
@@ -226,10 +261,10 @@ type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
 	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
-	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown,omitempty"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup,omitempty"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
@@ -251,8 +286,8 @@ type newParentsNeededParams struct {
 }
 
 type ContainersOnParents struct {
-	ParentHost    Host
-	NumContainers int
+	ParentHost Host
+	Containers []Host
 }
 
 type HostModifyOptions struct {
@@ -282,11 +317,6 @@ type SpawnHostUsage struct {
 const (
 	MaxLCTInterval = 5 * time.Minute
 
-	// Potential init systems supported by a Linux host.
-	InitSystemSystemd = "systemd"
-	InitSystemSysV    = "sysv"
-	InitSystemUpstart = "upstart"
-
 	// Max number of spawn hosts with no expiration for user
 	DefaultUnexpirableHostsPerUser = 1
 	// Max total EBS volume size for user
@@ -294,6 +324,8 @@ const (
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
+
+	ErrorParentNotFound = "Parent not found"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -397,6 +429,20 @@ func (h *Host) SetProvisioning() error {
 }
 
 func (h *Host) SetDecommissioned(user string, logs string) error {
+	if h.HasContainers {
+		containers, err := h.GetContainers()
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting containers",
+			"host_id": h.Id,
+		}))
+		for _, c := range containers {
+			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error decommissioning container",
+				"host_id": c.Id,
+			}))
+		}
+	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 
@@ -941,9 +987,15 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		return false, errors.New("task has empty task ID, cannot update")
 	}
 
+	statuses := []string{evergreen.HostRunning}
+	// User data can start anytime after the instance is created, so the app
+	// server may not have marked it as running yet.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+		statuses = append(statuses, evergreen.HostStarting, evergreen.HostProvisioning)
+	}
 	selector := bson.M{
 		IdKey:          h.Id,
-		StatusKey:      evergreen.HostRunning,
+		StatusKey:      bson.M{"$in": statuses},
 		RunningTaskKey: bson.M{"$exists": false},
 	}
 
@@ -963,7 +1015,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 			grip.Debug(message.Fields{
 				"message": "found duplicate running task",
 				"task":    t.Id,
-				"host":    h.Id,
+				"host_id": h.Id,
 			})
 			return false, nil
 		}
@@ -988,11 +1040,11 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 // IsWaitingForAgent provides a local predicate for the logic for
 // whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.LegacyBootstrap() && h.NeedsNewAgent {
+	if h.Distro.LegacyBootstrap() && h.NeedsNewAgent {
 		return true
 	}
 
-	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
+	if !h.Distro.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
@@ -1087,28 +1139,10 @@ func (h *Host) SetReprovisioningLockedAtomically(locked bool) error {
 	return nil
 }
 
-// LegacyBootstrap returns whether the host was bootstrapped using the legacy
-// method.
-func (h *Host) LegacyBootstrap() bool {
-	return h.Distro.BootstrapSettings.Method == "" || h.Distro.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH
-}
-
-// LegacyCommunication returns whether the app server is communicating with this
-// host using the legacy method.
-func (h *Host) LegacyCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == "" || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodLegacySSH
-}
-
-// JasperCommunication returns whether or not the app server is communicating
-// with this host's Jasper service.
-func (h *Host) JasperCommunication() bool {
-	return h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC
-}
-
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
 // to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
-	if !h.LegacyBootstrap() {
+	if !h.Distro.LegacyBootstrap() {
 		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
 			return errors.Wrap(err, "error setting host needs new agent monitor")
 		}
@@ -1242,6 +1276,32 @@ func (h *Host) Remove() error {
 	)
 }
 
+// RemoveStrict deletes a host and errors if the host is not found
+func RemoveStrict(id string) error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: id})
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		return errors.Errorf("host %s not found", id)
+	}
+	return nil
+}
+
+// Replace overwrites an existing host document with a new one. If no existing host is found, the new one will be inserted anyway.
+func (h *Host) Replace() error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndReplace(ctx, bson.M{IdKey: h.Id}, h, options.FindOneAndReplace().SetUpsert(true))
+	err := result.Err()
+	if errors.Cause(err) == mongo.ErrNoDocuments {
+		return nil
+	}
+	return errors.Wrap(err, "error replacing host")
+}
+
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
 func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	if h.LastCommunicationTime.After(h.CreationTime) {
@@ -1275,7 +1335,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 		}
 
 		grip.Error(message.Fields{
-			"host":     h.Id,
+			"host_id":  h.Id,
 			"provider": h.Provider,
 			"distro":   h.Distro.Id,
 			"message":  "host may be poisoned",
@@ -1295,30 +1355,24 @@ func (h *Host) SetExtId() error {
 	)
 }
 
-// SetRunningTeardownGroup marks the host as running teardown_group for a task group, no-oping if it's already set to the same task
-func (h *Host) SetRunningTeardownGroup(taskID string) error {
-	if h.RunningTeardownForTask == taskID && !util.IsZeroTime(h.RunningTeardownSince) {
-		return nil
+// AddSSHKeyName adds the SSH key name for the host if it doesn't already have
+// it.
+func (h *Host) AddSSHKeyName(name string) error {
+	var update bson.M
+	if len(h.SSHKeyNames) == 0 {
+		update = bson.M{"$push": bson.M{SSHKeyNamesKey: name}}
+	} else {
+		update = bson.M{"$addToSet": bson.M{SSHKeyNamesKey: name}}
+	}
+	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
+		return errors.WithStack(err)
 	}
 
-	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
-		"$set": bson.M{
-			RunningTeardownForTaskKey: taskID,
-			RunningTeardownSinceKey:   time.Now(),
-		},
-	})
-}
-
-func (h *Host) ClearRunningTeardownGroup() error {
-	if h.RunningTeardownForTask == "" {
-		return nil
+	if !util.StringSliceContains(h.SSHKeyNames, name) {
+		h.SSHKeyNames = append(h.SSHKeyNames, name)
 	}
-	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
-		"$unset": bson.M{
-			RunningTeardownForTaskKey: "",
-			RunningTeardownSinceKey:   "",
-		},
-	})
+
+	return nil
 }
 
 func FindHostsToTerminate() ([]Host, error) {
@@ -1336,17 +1390,17 @@ func FindHostsToTerminate() ([]Host, error) {
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
-			{ // host.ByExpiredSince(time.Now())
+			{ // expired spawn hosts
 				StartedByKey: bson.M{"$ne": evergreen.User},
 				StatusKey: bson.M{
 					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 				},
 				ExpirationTimeKey: bson.M{"$lte": now},
 			},
-			{ // host.IsProvisioningFailure
+			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // host.ByUnprovisionedSince
+			{ // hosts that are taking too long to provision
 				"$or": []bson.M{
 					bson.M{ProvisionedKey: false},
 					bson.M{StatusKey: evergreen.HostProvisioning},
@@ -1356,7 +1410,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				StartedByKey:  evergreen.User,
 				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
 			},
-			{ // host.IsDecommissioned
+			{ // decommissioned hosts not running tasks
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
@@ -1459,6 +1513,26 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
+func (h *Host) GetActiveContainers() ([]Host, error) {
+	if !h.HasContainers {
+		return nil, errors.New("Host does not host containers")
+	}
+	query := db.Query(bson.M{
+		StatusKey: bson.M{
+			"$in": evergreen.UpHostStatus,
+		},
+		"$or": []bson.M{
+			{ParentIDKey: h.Id},
+			{ParentIDKey: h.Tag},
+		}})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
 // GetParent finds the parent of this container
 // errors if host is not a container or if parent cannot be found
 func (h *Host) GetParent() (*Host, error) {
@@ -1470,7 +1544,7 @@ func (h *Host) GetParent() (*Host, error) {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		return nil, errors.New("Parent not found")
+		return nil, errors.New(ErrorParentNotFound)
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
@@ -1479,8 +1553,7 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
-// IsIdleParent determines whether a host with containers has exclusively
-// terminated containers
+// IsIdleParent determines whether a host has only inactive containers
 func (h *Host) IsIdleParent() (bool, error) {
 	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
@@ -1492,7 +1565,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	}
 	query := db.Query(bson.M{
 		ParentIDKey: h.Id,
-		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 	})
 	num, err := Count(query)
 	if err != nil {
@@ -1500,6 +1573,18 @@ func (h *Host) IsIdleParent() (bool, error) {
 	}
 
 	return num == 0, nil
+}
+
+func (h *Host) UpdateParentIDs() error {
+	query := bson.M{
+		ParentIDKey: h.Tag,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ParentIDKey: h.Id,
+		},
+	}
+	return UpdateAll(query, update)
 }
 
 // For spawn hosts that have never been set unexpirable, this will
@@ -1579,9 +1664,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
-		SpawnOptionsKey: bson.M{
-			"$exists": true,
-		},
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -1715,30 +1798,28 @@ func (hosts HostGroup) Uphosts() HostGroup {
 // getNumContainersOnParents returns a slice of uphost parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
-func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
+func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	allParents, err := findUphostParentsByContainerPool(d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find running parent hosts")
 	}
 
-	numContainersOnParents := make([]ContainersOnParents, 0)
+	containersOnParents := make([]ContainersOnParents, 0)
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers, err := parent.GetContainers()
+		currentContainers, err := parent.GetActiveContainers()
 		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
-		if len(currentContainers) < parent.ContainerPoolSettings.MaxContainers {
-			numContainersOnParents = append(numContainersOnParents,
-				ContainersOnParents{
-					ParentHost:    parent,
-					NumContainers: len(currentContainers),
-				})
-		}
+		containersOnParents = append(containersOnParents,
+			ContainersOnParents{
+				ParentHost: parent,
+				Containers: currentContainers,
+			})
 	}
 
-	return numContainersOnParents, nil
+	return containersOnParents, nil
 }
 
 func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {
@@ -1878,51 +1959,6 @@ func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, 
 		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
 	}
 	return float64(containersAtStart+containersAtEnd) / 2, nil
-}
-
-// StaleRunningTaskIDs finds any running tasks whose last heartbeat was at least the specified threshold ago
-// and whose host thinks it's still running that task. Projects out everything but the ID and execution
-func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
-	var out []task.Task
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			task.StatusKey:        task.SelectorTaskInProgress,
-			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
-		}},
-		{"$lookup": bson.M{
-			"from": Collection,
-			"as":   "host",
-			"let":  bson.M{"id": "$" + task.IdKey},
-			"pipeline": []bson.M{
-				{
-					"$match": bson.M{
-						"$expr": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$$id", "$" + RunningTaskKey}},
-								{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
-									{"$not": []bson.M{{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}}}},
-									{"$eq": []string{"$" + RunningTeardownForTaskKey, ""}},
-									{"$and": []bson.M{
-										{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}},
-										{"$lt": []interface{}{"$" + RunningTeardownSinceKey, time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
-									}},
-								}},
-							},
-						},
-					},
-				},
-			},
-		}},
-		{"$unwind": "$host"},
-		{"$project": bson.M{
-			task.IdKey:        1,
-			task.ExecutionKey: 1,
-			"host":            1,
-		}},
-	}
-
-	err := db.Aggregate(task.Collection, pipeline, &out)
-	return out, err
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {
@@ -2196,6 +2232,16 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	)
 }
 
+func (h *Host) HomeVolume() *VolumeAttachment {
+	for _, vol := range h.Volumes {
+		if vol.IsHome {
+			return &vol
+		}
+	}
+
+	return nil
+}
+
 // FindHostWithVolume finds the host associated with the
 // specified volume ID.
 func FindHostWithVolume(volumeID string) (*Host, error) {
@@ -2207,4 +2253,23 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 		},
 	)
 	return FindOne(q)
+}
+
+// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
+// set of SSH keys as those in the global settings.
+func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+	if len(settings.SSHKeyPairs) == 0 {
+		return nil, nil
+	}
+
+	names := []string{}
+	for _, pair := range settings.SSHKeyPairs {
+		names = append(names, pair.Name)
+	}
+
+	return Find(db.Query(bson.M{
+		StatusKey:      evergreen.HostRunning,
+		ProviderKey:    evergreen.ProviderNameStatic,
+		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
+	}))
 }

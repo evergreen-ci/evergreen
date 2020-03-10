@@ -30,15 +30,15 @@ func TestHostBuildFromService(t *testing.T) {
 						Id:       ToStringPtr("testDistroId"),
 						Provider: ToStringPtr("testDistroProvider"),
 					},
-					Provisioned: true,
-					StartedBy:   ToStringPtr("testStarter"),
-					Type:        ToStringPtr("testType"),
-					User:        ToStringPtr("testUser"),
-					Status:      ToStringPtr("testStatus"),
+					Provisioned:  true,
+					StartedBy:    ToStringPtr("testStarter"),
+					InstanceType: ToStringPtr("testType"),
+					User:         ToStringPtr("testUser"),
+					Status:       ToStringPtr("testStatus"),
 					RunningTask: taskInfo{
 						Id:           ToStringPtr("testRunningTaskId"),
 						Name:         ToStringPtr("testRTName"),
-						DispatchTime: timeNow,
+						DispatchTime: &timeNow,
 						VersionId:    ToStringPtr("testVersionId"),
 						BuildId:      ToStringPtr("testBuildId"),
 					},
@@ -67,7 +67,7 @@ func TestHostBuildFromService(t *testing.T) {
 			{
 				ah: APIHost{
 					RunningTask: taskInfo{
-						DispatchTime: time.Time{},
+						DispatchTime: &time.Time{},
 					},
 				},
 				sh: host.Host{

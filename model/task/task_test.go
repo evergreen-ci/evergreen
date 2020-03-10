@@ -1306,158 +1306,6 @@ func TestFindVariantsWithTask(t *testing.T) {
 	assert.Equal(bvs[1], "bv1")
 }
 
-func TestUpdateBlockedDependencies(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	tasks := []Task{
-		{
-			Id:     "t0",
-			Status: evergreen.TaskFailed,
-		},
-		{
-			Id: "t1",
-			DependsOn: []Dependency{
-				{
-					TaskId: "t0",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t2",
-			DependsOn: []Dependency{
-				{
-					TaskId: "t1",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t3",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t2",
-					Status:       evergreen.TaskSucceeded,
-					Unattainable: true,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t4",
-			DependsOn: []Dependency{
-				{
-					TaskId: "t3",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-		},
-		{
-			Id: "t5",
-			DependsOn: []Dependency{
-				{
-					TaskId: "t0",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-		},
-	}
-	for _, task := range tasks {
-		assert.NoError(task.Insert())
-	}
-
-	assert.NoError(tasks[0].UpdateBlockedDependencies())
-	dbTask1, err := FindOneId(tasks[1].Id)
-	assert.NoError(err)
-	assert.True(dbTask1.DependsOn[0].Unattainable)
-	dbTask2, err := FindOneId(tasks[2].Id)
-	assert.NoError(err)
-	assert.True(dbTask2.DependsOn[0].Unattainable)
-	dbTask3, err := FindOneId(tasks[3].Id)
-	assert.NoError(err)
-	assert.True(dbTask3.DependsOn[0].Unattainable)
-	// We don't traverse past t3 which was already unattainable == true
-	dbTask4, err := FindOneId(tasks[4].Id)
-	assert.NoError(err)
-	assert.False(dbTask4.DependsOn[0].Unattainable)
-
-	// update more than one dependency (t1 and t5)
-	dbTask5, err := FindOneId(tasks[5].Id)
-	assert.NoError(err)
-	assert.True(dbTask5.DependsOn[0].Unattainable)
-}
-
-func TestUpdateUnblockedDependencies(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	tasks := []Task{
-		{Id: "t0"},
-		{
-			Id: "t1",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t0",
-					Unattainable: true,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t2",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t0",
-					Unattainable: true,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t3",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t2",
-					Unattainable: false,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-		{
-			Id: "t4",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t3",
-					Unattainable: true,
-				},
-			},
-			Status: evergreen.TaskUndispatched,
-		},
-	}
-
-	for _, task := range tasks {
-		assert.NoError(task.Insert())
-	}
-
-	assert.NoError(tasks[0].UpdateUnblockedDependencies())
-	dbTask1, err := FindOneId(tasks[1].Id)
-	assert.NoError(err)
-	assert.False(dbTask1.DependsOn[0].Unattainable)
-	dbTask2, err := FindOneId(tasks[2].Id)
-	assert.NoError(err)
-	assert.False(dbTask2.DependsOn[0].Unattainable)
-	dbTask3, err := FindOneId(tasks[3].Id)
-	assert.NoError(err)
-	assert.False(dbTask3.DependsOn[0].Unattainable)
-	// We don't traverse past the t3 which was already unattainable == false
-	dbTask4, err := FindOneId(tasks[4].Id)
-	assert.NoError(err)
-	assert.True(dbTask4.DependsOn[0].Unattainable)
-}
-
 func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1514,7 +1362,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := t1.findAllUnmarkedBlockedDependencies()
+	deps, err := t1.FindAllUnmarkedBlockedDependencies()
 	assert.NoError(err)
 	assert.Len(deps, 1)
 }
@@ -1552,7 +1400,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	unattainableTasks, err := t1.findAllMarkedUnattainableDependencies()
+	unattainableTasks, err := t1.FindAllMarkedUnattainableDependencies()
 	assert.NoError(err)
 	assert.Len(unattainableTasks, 1)
 }
@@ -1652,24 +1500,29 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
-func TestUpdateDependencies(t *testing.T) {
+func TestUpdateDependsOn(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	t1 := &Task{
-		Id:        "t1",
-		DependsOn: []Dependency{{TaskId: "t2"}},
-	}
+	t1 := &Task{Id: "t1"}
 	assert.NoError(t, t1.Insert())
+	t2 := &Task{
+		Id: "t2",
+		DependsOn: []Dependency{
+			{TaskId: "t1", Status: evergreen.TaskSucceeded},
+			{TaskId: "t5", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t, t2.Insert())
 
-	dependsOn := []Dependency{{TaskId: "t3"}}
-	assert.NoError(t, t1.UpdateDependencies(dependsOn))
-	assert.Len(t, t1.DependsOn, 2)
-	dbT1, err := FindOneId("t1")
+	var err error
+	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskFailed, []string{"t3", "t4"}))
+	t2, err = FindOneId("t2")
 	assert.NoError(t, err)
-	assert.Len(t, dbT1.DependsOn, 2)
+	assert.Len(t, t2.DependsOn, 2)
 
-	// If the task is out of sync with the db the update fails
-	t1.DependsOn = []Dependency{{TaskId: "t4"}}
-	assert.Error(t, t1.UpdateDependencies(dependsOn))
+	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{"t3", "t4"}))
+	t2, err = FindOneId("t2")
+	assert.NoError(t, err)
+	assert.Len(t, t2.DependsOn, 4)
 }
 
 func TestDisplayTaskCache(t *testing.T) {
@@ -1774,5 +1627,16 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	found, err = FindOneId(t3.Id)
 	require.NoError(t, err)
 	require.Equal(t, false, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
+	require.Equal(t, "", found.GenerateTasksError)
+
+	t4 := &Task{
+		Id: "t4",
+	}
+	dupError := errors.New("duplicate key error")
+	require.NoError(t, t4.Insert())
+	require.NoError(t, MarkGeneratedTasks(t4.Id, dupError))
+	found, err = FindOneId(t4.Id)
+	require.NoError(t, err)
+	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
 }

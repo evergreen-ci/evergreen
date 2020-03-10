@@ -35,11 +35,11 @@ func (m *CommandReplyMessage) Serialize() []byte {
 	m.header.WriteInto(buf)
 
 	loc := 16
-	loc += writeDocAt(loc, m.CommandReply, buf)
-	loc += writeDocAt(loc, m.Metadata, buf)
+	loc += writeDocAt(m.CommandReply, buf, loc)
+	loc += writeDocAt(m.Metadata, buf, loc)
 
 	for _, d := range m.OutputDocs {
-		loc += writeDocAt(loc, &d, buf)
+		loc += writeDocAt(&d, buf, loc)
 	}
 
 	return buf

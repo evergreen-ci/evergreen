@@ -90,7 +90,7 @@ phony += cli clis
 
 # start smoke test specific rules
 $(buildDir)/load-smoke-data:cmd/load-smoke-data/load-smoke-data.go
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags="-w" -o $@ $<
 $(buildDir)/set-var:cmd/set-var/set-var.go
 	$(gobin) build -o $@ $<
 $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
@@ -158,6 +158,7 @@ $(gopath)/bin:
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
+	@touch $@
 $(buildDir)/golangci-lint:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
@@ -261,6 +262,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/PuerkitoBio/rehttp/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/sys/
@@ -346,6 +348,10 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/ftdc
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/amboy
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/evergreen-ci/birch
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go
@@ -430,9 +436,9 @@ $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint $(testSrcFiles) .FORCE
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
 	@./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/golangci-lint .FORCE
+$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 	@./$< --output="$@" --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage

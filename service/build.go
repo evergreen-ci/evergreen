@@ -172,7 +172,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -192,7 +192,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !uis.isSuperUser(user) && !user.HasPermission(requiredPermission) { // TODO PM-1355 remove superuser check
+			if !user.HasPermission(requiredPermission) {
 				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set prior less than or equal to %v", priority, evergreen.MaxTaskPriority),
 					http.StatusUnauthorized)
 				return
@@ -218,7 +218,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err := commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, true)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

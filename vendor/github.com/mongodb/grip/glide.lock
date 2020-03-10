@@ -14,7 +14,7 @@ imports:
 - name: github.com/montanaflynn/stats
   version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
 - name: github.com/fuyufjh/splunk-hec-go
-  version: 69956d6a6cbd511dade209563c3256c204c9ae51
+  version: 10df423a9f3633e5395eaf8132da3a257251b189
 - name: github.com/andygrunwald/go-jira
   version: c8c6680f245f3721d613b773ea4ab9ee7741b828
 - name: github.com/google/go-github
@@ -33,8 +33,8 @@ imports:
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 - name: github.com/pkg/errors
   version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
-- name: github.com/satori/go.uuid
-  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+- name: github.com/google/uuid
+  version: c2e93f3ae59f2904160ceaab466009f965df46d6
 - name: golang.org/x/oauth2
   version: f047394b6d14284165300fd82dad67edb3a4d7f6
 - name: golang.org/x/sys

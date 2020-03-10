@@ -6,11 +6,13 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/oauth2/jwt"
 )
 
@@ -26,30 +28,29 @@ type gceManager struct {
 
 // GCESettings specifies the settings used to configure a host instance.
 type GCESettings struct {
-	Project string `mapstructure:"project_id"`
-	Zone    string `mapstructure:"zone"`
+	Project string `mapstructure:"project_id" json:"project_id" bson:"project_id"`
+	Zone    string `mapstructure:"zone" json:"zone" bson:"zone"`
 
-	ImageName   string `mapstructure:"image_name"`
-	ImageFamily string `mapstructure:"image_family"`
+	ImageName   string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	ImageFamily string `mapstructure:"image_family" json:"image_family" bson:"image_family"`
 
-	MachineName string `mapstructure:"instance_type"`
-	NumCPUs     int64  `mapstructure:"num_cpus"`
-	MemoryMB    int64  `mapstructure:"memory_mb"`
+	MachineName string `mapstructure:"instance_type" json:"instance_type" bson:"instance_type"`
+	NumCPUs     int64  `mapstructure:"num_cpus" json:"num_cpus" bson:"num_cpus"`
+	MemoryMB    int64  `mapstructure:"memory_mb" json:"memory_mb" bson:"memory_mb"`
 
-	DiskType   string `mapstructure:"disk_type"`
-	DiskSizeGB int64  `mapstructure:"disk_size_gb"`
+	DiskType   string `mapstructure:"disk_type" json:"disk_type" bson:"disk_type"`
+	DiskSizeGB int64  `mapstructure:"disk_size_gb" json:"disk_size_gb" bson:"disk_size_gb"`
 
 	// Network tags are used to configure network firewalls.
-	NetworkTags []string `mapstructure:"network_tags"`
+	NetworkTags []string `mapstructure:"network_tags" json:"network_tags" bson:"network_tags"`
 
 	// By default, GCE uses project-wide SSH keys. Project-wide keys should be manually
 	// added to the project metadata. These SSH keys are optional instance-wide keys.
-	SSHKeys sshKeyGroup `mapstructure:"ssh_keys"`
+	SSHKeys sshKeyGroup `mapstructure:"ssh_keys" json:"ssh_keys" bson:"ssh_keys"`
 }
 
 // Validate verifies a set of GCESettings.
 func (opts *GCESettings) Validate() error {
-
 	standardMachine := opts.MachineName != ""
 	customMachine := opts.NumCPUs > 0 && opts.MemoryMB > 0
 
@@ -65,6 +66,23 @@ func (opts *GCESettings) Validate() error {
 		return errors.New("Disk type must not be blank")
 	}
 
+	return nil
+}
+
+func (opts *GCESettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+	}
 	return nil
 }
 
@@ -126,7 +144,7 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 	s := &GCESettings{}
 	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
+		if err := s.FromDistroSettings(h.Distro, ""); err != nil {
 			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 		}
 	}
@@ -224,6 +242,10 @@ func (m *gceManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with gce provider")
 }
 
+func (m *gceManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with gce provider")
+}
+
 // GetDNSName returns the external IPv4 address of the host.
 func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	instance, err := m.client.GetInstance(host)
@@ -241,4 +263,9 @@ func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, e
 	}
 
 	return configs[0].NatIP, nil
+}
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *gceManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

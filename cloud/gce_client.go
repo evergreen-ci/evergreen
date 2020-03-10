@@ -67,7 +67,7 @@ func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, er
 
 	grip.Debug(message.Fields{
 		"message":      "creating instance",
-		"host":         h.Id,
+		"host_id":      h.Id,
 		"machine_type": machineType,
 	})
 
@@ -93,7 +93,7 @@ func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, er
 
 	grip.Debug(message.Fields{
 		"message":      "attaching boot disk",
-		"host":         h.Id,
+		"host_id":      h.Id,
 		"disk_size":    s.DiskSizeGB,
 		"disk_type":    diskType,
 		"source_image": imageURL,
@@ -114,7 +114,7 @@ func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, er
 
 	grip.Debug(message.Fields{
 		"message":  "attaching metadata items",
-		"host":     h.Id,
+		"host_id":  h.Id,
 		"ssh_keys": keys,
 	})
 

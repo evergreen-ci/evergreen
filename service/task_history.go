@@ -89,6 +89,10 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if repo == nil {
+		gimlet.WriteTextResponse(w, http.StatusNotFound, "no history found for project")
+		return
+	}
 	buildVariants, err := task.FindVariantsWithTask(taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

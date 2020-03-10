@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sam-falvo/mbox"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -28,6 +26,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"github.com/sam-falvo/mbox"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -423,7 +422,8 @@ func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
 			n, err := reader.Read(curBytes)
 			if err != nil {
 				if err == io.EOF { // finished reading body of this patch
-					summaries, err := thirdparty.GetPatchSummaries(string(buffer))
+					var summaries []patch.Summary
+					summaries, err = thirdparty.GetPatchSummaries(string(buffer))
 					if err != nil {
 						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
 					}

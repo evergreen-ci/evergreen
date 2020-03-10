@@ -24,12 +24,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -47,6 +48,7 @@ type depGraphOrderedLocal struct {
 	numStarted int
 	id         string
 	channel    chan amboy.Job
+	dispatcher Dispatcher
 	tasks      struct {
 		m         map[string]amboy.Job
 		ids       map[string]int64
@@ -62,6 +64,12 @@ type depGraphOrderedLocal struct {
 
 // NewLocalOrdered constructs an LocalOrdered object. The "workers"
 // argument is passed to a default pool.SimplePool object.
+//
+// The ordered queue requires that users add all tasks to the queue
+// before starting it, and does not accept tasks after starting.
+//
+// Like other ordered in memory queues, this implementation does not
+// support scoped locks.
 func NewLocalOrdered(workers int) amboy.Queue {
 	q := &depGraphOrderedLocal{
 		channel: make(chan amboy.Job, workers*10),
@@ -71,10 +79,10 @@ func NewLocalOrdered(workers int) amboy.Queue {
 	q.tasks.nodes = make(map[int64]amboy.Job)
 	q.tasks.completed = make(map[string]bool)
 	q.tasks.graph = simple.NewDirectedGraph()
-	q.id = fmt.Sprintf("queue.local.ordered.graph.%s", uuid.NewV4().String())
+	q.id = fmt.Sprintf("queue.local.ordered.graph.%s", uuid.New().String())
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
-
+	q.dispatcher = NewDispatcher(q)
 	return q
 }
 
@@ -105,7 +113,7 @@ func (q *depGraphOrderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	}
 
 	if _, ok := q.tasks.m[name]; ok {
-		return errors.Errorf("cannot add %s because duplicate job ids are not allowed", name)
+		return amboy.NewDuplicateJobErrorf("cannot add %s because duplicate job ids are not allowed", name)
 	}
 
 	node := q.tasks.graph.NewNode()
@@ -168,6 +176,13 @@ func (q *depGraphOrderedLocal) Next(ctx context.Context) amboy.Job {
 	case <-ctx.Done():
 		return nil
 	case job := <-q.channel:
+		grip.Error(message.WrapError(q.dispatcher.Dispatch(ctx, job),
+			message.Fields{
+				"job":    job.ID(),
+				"event":  "improperly dispatched job",
+				"impact": "possible duplicate execution",
+				"queue":  q.ID(),
+			}))
 		return job
 	}
 }
@@ -404,6 +419,7 @@ func (q *depGraphOrderedLocal) Complete(ctx context.Context, j amboy.Job) {
 		return
 	}
 	grip.Debugf("marking job (%s) as complete", j.ID())
+	q.dispatcher.Complete(ctx, j)
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 	q.tasks.completed[j.ID()] = true

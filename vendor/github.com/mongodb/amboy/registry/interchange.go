@@ -17,6 +17,7 @@ type JobInterchange struct {
 	Version    int                    `json:"version" bson:"version" yaml:"version"`
 	Priority   int                    `json:"priority" bson:"priority" yaml:"priority"`
 	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
+	Scopes     []string               `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
 	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
 	Job        *rawJob                `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
 	Dependency *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
@@ -92,6 +93,7 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	job.SetPriority(j.Priority)
 	job.SetStatus(j.Status)
 	job.UpdateTimeInfo(j.TimeInfo)
+	job.SetScopes(j.Scopes)
 
 	return job, nil
 }

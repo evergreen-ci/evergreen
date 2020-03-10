@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
@@ -37,7 +37,7 @@ type projectContext struct {
 
 	// AllProjects is a list of all available projects, limited to only the set of fields
 	// necessary for display. If user is logged in, this will include private projects.
-	AllProjects []UIProjectFields
+	AllProjects []restModel.UIProjectFields
 
 	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
 	AuthRedirect bool
@@ -101,24 +101,6 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 	return uis.Settings
 }
 
-// requireAdmin takes in a request handler and returns a wrapped version which verifies that requests are
-// authenticated and that the user is either a super user or is part of the project context's project's admins.
-func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		// get the project context
-		projCtx := MustHaveProjectContext(r)
-		if dbUser := gimlet.GetUser(ctx); dbUser != nil {
-			if uis.isSuperUser(dbUser) || isAdmin(dbUser, projCtx.ProjectRef) {
-				next(w, r)
-				return
-			}
-		}
-
-		uis.RedirectToLogin(w, r)
-	}
-}
-
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
@@ -136,40 +118,12 @@ func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// requireSuperUser takes a request handler and returns a wrapped version which verifies that
-// the requester is authenticated as a superuser. For a requester who isn't a super user, the
-// request will be redirected to the login page instead.
-func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.Settings.SuperUsers) == 0 {
-			f := requireUser(next, uis.RedirectToLogin) // Still must be user to proceed
-			f(w, r)
-			return
-		}
-
-		usr := gimlet.GetUser(r.Context())
-		if usr != nil && uis.isSuperUser(usr) {
-			next(w, r)
-			return
-		}
-		http.Error(w, "This action requires superuser security", http.StatusUnauthorized)
-	}
-}
-
 func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return requireUser(next, uis.RedirectToLogin)
 }
 
-// isSuperUser verifies that a given user has super user permissions.
-// A user has these permission if they are in the super users list or if the list is empty,
-// in which case all users are super users.
-func (uis *UIServer) isSuperUser(u gimlet.User) bool {
-	if util.StringSliceContains(uis.Settings.SuperUsers, u.Username()) ||
-		len(uis.Settings.SuperUsers) == 0 {
-		return true
-	}
-
-	return false
+func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(next, nil)
 }
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
@@ -193,7 +147,61 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
-	return util.StringSliceContains(project.Admins, u.Username())
+	return util.StringSliceContains(project.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
+		Resource:      project.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+}
+
+func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := gimlet.GetUser(r.Context())
+		hostID := gimlet.GetVars(r)["host_id"]
+
+		h, err := uis.getHostFromCache(hostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
+			return
+		}
+		if h.owner != user.Username() {
+			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+func (uis *UIServer) vsCodeRunning(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hostID := gimlet.GetVars(r)["host_id"]
+		h, err := uis.getHostFromCache(hostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("can't get host '%s'", hostID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("host '%s' does not exist", hostID))
+			return
+		}
+
+		if !h.isVirtualWorkstation {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not a virtual workstation", hostID))
+			return
+		}
+
+		if !h.isRunning {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' is not running", hostID))
+		}
+
+		next(w, r)
+	}
 }
 
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
@@ -204,11 +212,10 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 		querySep = "?"
 	}
 	path := "/login#?"
-	if uis.UserManager.IsRedirect() {
-		path = "login/redirect?"
+	if uis.env.UserManager().IsRedirect() {
+		path = "/login/redirect?"
 	}
-	location := fmt.Sprintf("%v%vredirect=%v%v%v",
-		uis.Settings.Ui.Url,
+	location := fmt.Sprintf("%sredirect=%s%s%s",
 		path,
 		url.QueryEscape(r.URL.Path),
 		querySep,
@@ -232,17 +239,15 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 				uis.RedirectToLogin(w, r)
 				return
 			}
-			if evergreen.AclCheckingIsEnabled {
-				opts := gimlet.PermissionOpts{
-					Resource:      projCtx.ProjectRef.Identifier,
-					ResourceType:  evergreen.ProjectResourceType,
-					Permission:    evergreen.PermissionTasks,
-					RequiredLevel: evergreen.TasksView.Value,
-				}
-				if !usr.HasPermission(opts) {
-					uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
-					return
-				}
+			opts := gimlet.PermissionOpts{
+				Resource:      projCtx.ProjectRef.Identifier,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: evergreen.TasksView.Value,
+			}
+			if !usr.HasPermission(opts) {
+				uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+				return
 			}
 		}
 
@@ -260,15 +265,21 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 // populateProjectRefs loads all project refs into the context. If includePrivate is true,
 // all available projects will be included, otherwise only public projects will be loaded.
 // Sets IsAdmin to true if the user id is located in a project's admin list.
-func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, user gimlet.User) error {
+func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.User) error {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return err
 	}
-	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
+	pc.AllProjects = make([]restModel.UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
-		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
+		isAdmin := user != nil && user.HasPermission(gimlet.PermissionOpts{
+			Resource:      p.Identifier,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+		if includePrivate && isAdmin {
 			pc.IsAdmin = true
 		}
 
@@ -276,7 +287,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 			continue
 		}
 		if !p.Private || includePrivate {
-			uiProj := UIProjectFields{
+			uiProj := restModel.UIProjectFields{
 				DisplayName: p.DisplayName,
 				Identifier:  p.Identifier,
 				Repo:        p.Repo,
@@ -322,34 +333,31 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
-	pc := projectContext{AuthRedirect: uis.UserManager.IsRedirect()}
-	isSuperUser := (dbUser != nil) && auth.IsSuperUser(uis.Settings.SuperUsers, dbUser)
-	err := pc.populateProjectRefs(dbUser != nil, isSuperUser, dbUser)
+	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
+	err := pc.populateProjectRefs(dbUser != nil, dbUser)
 	if err != nil {
 		return pc, err
 	}
 
 	projectId := uis.getRequestProjectId(r)
-	if evergreen.AclCheckingIsEnabled {
-		if dbUser == nil {
-			dbUser = &user.DBUser{
-				SystemRoles: evergreen.UnauthedUserRoles,
-			}
+	if dbUser == nil {
+		dbUser = &user.DBUser{
+			SystemRoles: evergreen.UnauthedUserRoles,
 		}
-		opts := gimlet.PermissionOpts{
-			Resource:      projectId,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionTasks,
-			RequiredLevel: evergreen.TasksView.Value,
-		}
-		if !dbUser.HasPermission(opts) {
-			projectId = ""
-		}
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksView.Value,
+	}
+	if !dbUser.HasPermission(opts) {
+		projectId = ""
 	}
 
 	// If we still don't have a default projectId, just use the first
 	// project in the list that the user has read access to.
-	if projectId == "" && evergreen.AclCheckingIsEnabled {
+	if projectId == "" {
 		for _, p := range pc.AllProjects {
 			opts := gimlet.PermissionOpts{
 				Resource:      p.Identifier,

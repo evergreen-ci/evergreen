@@ -58,6 +58,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if data.Alias == evergreen.CommitQueueAlias && len(patchString) != 0 && !patch.IsMailboxDiff(patchString) {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
+		return
+	}
+
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
@@ -160,6 +165,13 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
+
+	if p.Alias == evergreen.CommitQueueAlias && len(data.PatchString) != 0 && !patch.IsMailboxDiff(data.PatchString) {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
+			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
+		return
+	}
+
 	moduleName, githash, message := data.Module, data.Githash, data.Message
 	patchContent := string(data.PatchBytes)
 	if patchContent == "" {
@@ -316,7 +328,8 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		_, projectYaml, err := model.GetPatchedProject(ctx, p, githubOauthToken)
+		var projectYaml string
+		_, projectYaml, err = model.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

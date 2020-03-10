@@ -34,10 +34,6 @@ import (
 // between the service and the API layers, allowing for changes in the
 // service architecture without forcing changes to the API.
 type Connector interface {
-	// Get and Set SuperUsers provide access to the list of API super users.
-	GetSuperUsers() []string
-	SetSuperUsers([]string)
-
 	// Get and Set URL provide access to the main url string of the API.
 	GetURL() string
 	SetURL(string)
@@ -77,8 +73,8 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
-	// Find project variables matching given projectId.
-	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
+	// Find project variables matching given projectId. If bool is set, returns only redacted values.
+	FindProjectVarsById(string, bool) (*restModel.APIProjectVars, error)
 	// UpdateProjectVars updates the project using the variables given in the model.ggg
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars) error
@@ -88,8 +84,8 @@ type Connector interface {
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
-	CreateProject(projectRef *model.ProjectRef) error
-	UpdateProject(projectRef *model.ProjectRef) error
+	CreateProject(*model.ProjectRef, *user.DBUser) error
+	UpdateProject(*model.ProjectRef) error
 
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.
@@ -124,13 +120,18 @@ type Connector interface {
 	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
-
+	FindTestsByTaskIdFilterSortPaginate(string, string, string, string, int, int, int, int) ([]testresult.TestResult, error)
+	FindTasksByVersion(string, string, []string, int, int, int) ([]task.Task, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)
+
+	// FindHostsInRange is a method to find a filtered list of hosts
+	FindHostsInRange(restModel.APIHostParams, string) ([]host.Host, error)
+
 	FindHostById(string) (*host.Host, error)
 
 	// FindHostByIdWithOwner finds a host with given host ID that was
@@ -145,7 +146,7 @@ type Connector interface {
 	FindHostWithVolume(string) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(*restModel.HostRequestOptions, *user.DBUser) (*host.Host, error)
+	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
 
 	FindVolumeById(string) (*host.Volume, error)
 	FindVolumesByUser(string) ([]host.Volume, error)
@@ -201,7 +202,7 @@ type Connector interface {
 	RestartVersion(string, string) error
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
 	SetPatchPriority(string, int64) error
-	SetPatchActivated(string, string, bool) error
+	SetPatchActivated(context.Context, string, string, bool, *evergreen.Settings) error
 
 	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
 	GetEvergreenSettings() (*evergreen.Settings, error)
@@ -298,6 +299,7 @@ type Connector interface {
 	CommitQueueRemoveItem(string, string) (bool, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
+	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 
 	// GetDockerLogs returns logs for the given docker container

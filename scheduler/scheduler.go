@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -223,6 +222,7 @@ func checkDependenciesMet(t *task.Task, cache map[string]task.Task) bool {
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
+// The pool parameter is assumed to be the one from the distro passed in
 func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
 	startTime := time.Now()
 
@@ -231,7 +231,6 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	}
 	numHostsToSpawn := newHostsNeeded
 	hostsSpawned := []host.Host{}
-	distroStartTime := time.Now()
 
 	if ctx.Err() != nil {
 		return nil, errors.New("scheduling run canceled")
@@ -240,36 +239,26 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	// if distro is container distro, check if there are enough parent hosts to support new containers
 	var newParentHosts []host.Host
 	if pool != nil {
-		var err error
-		// only want to spawn amount of parents allowed based on pool size
-		newParentHosts, numHostsToSpawn, err = host.InsertParentIntentsAndGetNumHostsToSpawn(pool, newHostsNeeded, false)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not generate new parents hosts needed")
-		}
-		if len(newParentHosts) > 0 {
-			grip.Info(message.Fields{
-				"runner":          RunnerName,
-				"distro":          d.Id,
-				"pool":            pool.Id,
-				"pool_distro":     pool.Distro,
-				"num_new_parents": len(newParentHosts),
-				"operation":       "spawning new parents",
-				"duration_secs":   time.Since(distroStartTime).Seconds(),
-			})
-		}
-	}
-
-	// create intent documents for container hosts
-	if d.ContainerPool != "" {
 		hostOptions, err := getCreateOptionsFromDistro(d)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 		}
-		containerIntents, err := host.GenerateContainerHostIntents(d, numHostsToSpawn, *hostOptions)
+		newContainers, newParents, err := host.MakeContainersAndParents(d, pool, newHostsNeeded, *hostOptions)
 		if err != nil {
-			return nil, errors.Wrap(err, "error generating container intent hosts")
+			return nil, errors.Wrapf(err, "Error creating container intents for distro %s", d.Id)
 		}
-		hostsSpawned = append(hostsSpawned, containerIntents...)
+		hostsSpawned = append(hostsSpawned, newContainers...)
+		hostsSpawned = append(hostsSpawned, newParents...)
+		grip.Info(message.Fields{
+			"runner":             RunnerName,
+			"distro":             d.Id,
+			"pool":               pool.Id,
+			"pool_distro":        pool.Distro,
+			"num_new_parents":    len(newParents),
+			"num_new_containers": len(newContainers),
+			"operation":          "spawning new parents",
+			"duration_secs":      time.Since(startTime).Seconds(),
+		})
 	} else { // create intent documents for regular hosts
 		for i := 0; i < numHostsToSpawn; i++ {
 			intent, err := generateIntentHost(d, pool)
@@ -296,28 +285,19 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 }
 
 func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
-	dockerOptions, err := getDockerOptionsFromProviderSettings(*d.ProviderSettings)
-	if err != nil {
+	dockerOptions := &host.DockerOptions{}
+	if err := dockerOptions.FromDistroSettings(d, ""); err != nil {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
+	if err := dockerOptions.Validate(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	hostOptions := host.CreateOptions{
 		UserName:      evergreen.User,
 		DockerOptions: *dockerOptions,
 	}
 	return &hostOptions, nil
-}
-
-func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*host.DockerOptions, error) {
-	dockerOptions := &host.DockerOptions{}
-	if settings != nil {
-		if err := mapstructure.Decode(settings, dockerOptions); err != nil {
-			return nil, errors.Wrap(err, "Error decoding params")
-		}
-	}
-	if dockerOptions.Image == "" {
-		return nil, errors.New("docker image cannot be empty")
-	}
-	return dockerOptions, nil
 }
 
 // generateIntentHost creates a host intent document for a regular host

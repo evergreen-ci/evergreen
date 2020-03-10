@@ -25,18 +25,21 @@ type patchChangeStatusHandler struct {
 	Priority  *int64 `json:"priority"`
 
 	patchId string
+	env     evergreen.Environment
 	sc      data.Connector
 }
 
-func makeChangePatchStatus(sc data.Connector) gimlet.RouteHandler {
+func makeChangePatchStatus(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc: sc,
+		sc:  sc,
+		env: env,
 	}
 }
 
 func (p *patchChangeStatusHandler) Factory() gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc: p.sc,
+		sc:  p.sc,
+		env: p.env,
 	}
 }
 
@@ -61,9 +64,14 @@ func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
+	foundPatch, err := p.sc.FindPatchById(p.patchId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
 	if p.Priority != nil {
 		priority := *p.Priority
-		if ok := validPriority(priority, user, p.sc); !ok {
+		if ok := validPriority(priority, *foundPatch.ProjectId, user, p.sc); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
@@ -75,13 +83,11 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	if p.Activated != nil {
-		if err := p.sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated); err != nil {
+		ctx, cancel := p.env.Context()
+		defer cancel()
+		if err := p.sc.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
-	}
-	foundPatch, err := p.sc.FindPatchById(p.patchId)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	return gimlet.NewJSONResponse(foundPatch)

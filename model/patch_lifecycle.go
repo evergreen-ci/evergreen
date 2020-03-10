@@ -92,13 +92,15 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	return AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, "")
+	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, "")
+	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	return AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, "")
+	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, "")
+	return errors.Wrap(err, "can't add new tasks")
 }
 
 // IncludePatchDependencies takes a project and a slice of variant/task pairs names
@@ -323,13 +325,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Message:             p.Description,
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
-		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
 	}
+	intermediateProject.CreateTime = patchVersion.CreateTime
 
 	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
@@ -386,7 +388,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DistroAliases:  distroAliases,
 			TaskCreateTime: createTime,
 		}
-		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
+		var build *build.Build
+		var tasks task.Tasks
+		build, tasks, err = CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

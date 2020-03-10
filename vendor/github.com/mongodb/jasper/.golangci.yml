@@ -1,11 +1,10 @@
 ---
-# TODO: cli.RunCMD() is excessively complicated and gocognit complains.
 linters:
   disable-all: true
   enable:
     - deadcode
     - errcheck
-    # - gocognit
+    - gocognit
     - goconst
     - gofmt
     - goimports

@@ -62,6 +62,8 @@ func WriteResponse(rw http.ResponseWriter, resp Responder) {
 		WriteYAMLResponse(rw, resp.Status(), resp.Data())
 	case BINARY:
 		WriteBinaryResponse(rw, resp.Status(), resp.Data())
+	case CSV:
+		WriteCSVResponse(rw, resp.Status(), resp.Data())
 	}
 }
 

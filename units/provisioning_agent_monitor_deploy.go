@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,13 +15,14 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
 const (
 	agentMonitorDeployJobName = "agent-monitor-deploy"
-	agentMonitorPutRetries    = 75
+	agentMonitorPutRetries    = 25
 )
 
 func init() {
@@ -77,7 +77,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	if disabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
-			"host":     j.HostID,
+			"host_id":  j.HostID,
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
 		})
@@ -106,7 +106,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "needs new agent monitor flag is already false, not deploying new agent monitor",
 			"distro":  j.host.Distro.Id,
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"job":     j.ID(),
 		}))
 		return
@@ -114,7 +114,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -133,7 +133,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "could not check whether host can retry agent monitor deploy",
-					"host":    j.host.Id,
+					"host_id": j.host.Id,
 					"distro":  j.host.Distro.Id,
 					"job":     j.ID(),
 				}))
@@ -155,7 +155,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 				grip.Info(message.WrapError(err, message.Fields{
 					"message": "problem setting needs new agent monitor flag to true",
 					"distro":  j.host.Distro.Id,
-					"host":    j.host.Id,
+					"host_id": j.host.Id,
 					"job":     j.ID(),
 				}))
 			}
@@ -163,6 +163,16 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}()
 
 	settings := j.env.Settings()
+
+	var alive bool
+	alive, err = j.checkAgentMonitor(ctx)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if alive {
+		return
+	}
 
 	if err = j.fetchClient(ctx, settings); err != nil {
 		j.AddError(err)
@@ -192,7 +202,7 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 	job := NewDecoHostNotifyJob(j.env, j.host, nil, reason)
 	grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
 		"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
-		"host":    j.host.Id,
+		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
 	}))
 
@@ -210,30 +220,53 @@ func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
 	return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentMonitorPutRetries, nil
 }
 
+// checkAgentMonitor returns whether or not the agent monitor is already
+// running.
+func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, error) {
+	var alive bool
+	err := j.host.WithAgentMonitor(ctx, j.env, func(procs []jasper.Process) error {
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				alive = true
+				break
+			}
+		}
+
+		return nil
+	})
+	return alive, errors.Wrap(err, "could not check agent monitor status")
+}
+
 // fetchClient fetches the client on the host through the host's Jasper service.
 func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message":       "fetching latest evergreen binary for agent monitor",
-		"host":          j.host.Id,
+		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
 		"communication": j.host.Distro.BootstrapSettings.Communication,
 		"job":           j.ID(),
 	})
 
 	opts := &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.CurlCommand(settings)},
+		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.CurlCommand(settings)},
 	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+	defer cancel()
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
-			"host":          j.host.Id,
+			"host_id":       j.host.Id,
 			"distro":        j.host.Distro.Id,
-			"output":        output,
+			"logs":          output,
 			"communication": j.host.Distro.BootstrapSettings.Communication,
 			"job":           j.ID(),
 		}))
 		return errors.WithStack(err)
+	}
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
 	}
 
 	return nil
@@ -244,21 +277,21 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message":       "running setup script on host",
-		"host":          j.host.Id,
+		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
 		"communication": j.host.Distro.BootstrapSettings.Communication,
 		"job":           j.ID(),
 	})
 
 	opts := &options.Create{
-		Args: []string{filepath.Join(j.host.Distro.BootstrapSettings.RootDir, j.host.Distro.BootstrapSettings.ShellPath), "-l", "-c", j.host.SetupCommand()},
+		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.SetupCommand()},
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		reason := "error running setup script on host"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": reason,
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"logs":    output,
 			"job":     j.ID(),
@@ -283,10 +316,10 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
+	if _, err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
-			"host":    j.host.Id,
+			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
@@ -303,7 +336,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 	m := message.Fields{
 		"message":  "starting agent monitor on host",
-		"host":     j.host.Host,
+		"host_id":  j.host.Host,
 		"distro":   j.host.Distro.Id,
 		"provider": j.host.Distro.Provider,
 		"job":      j.ID(),

@@ -109,9 +109,13 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     maxIdx = _.max(allLevels);
 
-    const levelsMeta = threadMode === MAXONLY
-      ? [{ name: 'MAX', idx: maxIdx, color: '#484848', isActive: true }]
-      : _.map(allLevels, function (d, i) {
+    const levelsMeta = threadMode === MAXONLY ? [{
+        name: 'MAX',
+        idx: maxIdx,
+        color: '#484848',
+        isActive: true
+      }] :
+      _.map(allLevels, function (d, i) {
         const data = {
           name: d,
           idx: i,
@@ -130,6 +134,9 @@ mciModule.factory('DrawPerfTrendChart', function (
     function updateActiveLevels() {
       activeLevels = levelsMeta.filter(meta => meta.isActive);
       activeLevelNames = activeLevels.map(level => level.name)
+      if (params.updateThreadLevels) {
+        params.updateThreadLevels(_.pluck(activeLevels, "name"));
+      }
     }
 
     updateActiveLevels();
@@ -200,7 +207,9 @@ mciModule.factory('DrawPerfTrendChart', function (
       changePointForLevel = [];
       _.each(visibleChangePoints, function (point) {
         point.bfs = _.chain(buildFailures).filter((bf) => bf.revisions.includes(point.suspect_revision)).value() || [];
-        const level = _.findWhere(levelsMeta, { name: point.thread_level });
+        const level = _.findWhere(levelsMeta, {
+          name: point.thread_level
+        });
         const levels = level ? [level] : levelsMeta;
 
         _.each(levels, function (level) {
@@ -235,9 +244,9 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     // Obtains value extractor fn for given `level` and series `item`
     // The obtained function is curried, so you should call it as fn(level)(item)
-    const getValueFor = threadMode === MAXONLY
-      ? PerfChartService.getValueForMaxOnly
-      : PerfChartService.getValueForAllLevels;
+    const getValueFor = threadMode === MAXONLY ?
+      PerfChartService.getValueForMaxOnly :
+      PerfChartService.getValueForAllLevels;
 
     // When there are more than one value in opsValues item
     const hasValues = _.all(opsValues, function (d) {
@@ -260,7 +269,9 @@ mciModule.factory('DrawPerfTrendChart', function (
       // For each active thread level extract values
       // including undefined values for missing data
       return _.map(activeLevelNames, function (d) {
-        const result = _.findWhere(sample.threadResults, { threadLevel: d });
+        const result = _.findWhere(sample.threadResults, {
+          threadLevel: d
+        });
         return result && (result[cfg.valueAttr]);
       })
     }
@@ -484,7 +495,9 @@ mciModule.factory('DrawPerfTrendChart', function (
     const chartG = svg.append('svg:g')
       .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top));
 
-    const linesG = chartG.append('g').attr({ class: 'lines-g' });
+    const linesG = chartG.append('g').attr({
+      class: 'lines-g'
+    });
 
     function redrawLines() {
       const lines = linesG.selectAll('path')
@@ -525,9 +538,9 @@ mciModule.factory('DrawPerfTrendChart', function (
         const commitCircle = chartG
           .selectAll('circle.current')
           .data(
-            threadMode === MAXONLY
-              ? activeLevels
-              : threadLevelsForSample(series[currentItemIdx], activeLevels)
+            threadMode === MAXONLY ?
+            activeLevels :
+            threadLevelsForSample(series[currentItemIdx], activeLevels)
           );
 
         commitCircle
@@ -624,7 +637,9 @@ mciModule.factory('DrawPerfTrendChart', function (
 
       // Create new elements (ref. line groups)
       refLinesG
-        .attr({ class: (_, idx) => 'cmp-' + idx })
+        .attr({
+          class: (_, idx) => 'cmp-' + idx
+        })
         .each(drawRefLines);
 
       // Remove unused elements (ref. line groups)
@@ -695,17 +710,31 @@ mciModule.factory('DrawPerfTrendChart', function (
           'stroke-width': '4',
         });
 
-      changePointSegments.select('line')
+        // Walk backwards and find the index of the first non-null value.
+        const changePointIndex = (index, getValueFor) => {
+          while(getValueFor(index) == null) {
+            if (index <= 0) {
+              index = 0;
+              break;
+            }
+            index -= 1;
+          }
+          return index;
+        };
+
+        changePointSegments.select('line')
         .transition()
         .attr({
           x1: function (d) {
-            return xScale(d.changePoint._meta.firstRevIdx)
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
+            return xScale(index)
+          },
+          y1: function (d) {
+            const index = changePointIndex(d.changePoint._meta.firstRevIdx, (index) => getValueFor(d.level)(series[index]))
+            return yScale(getValueFor(d.level)(series[index]))
           },
           x2: function (d) {
             return xScale(d.changePoint._meta.lastRevIdx)
-          },
-          y1: function (d) {
-            return yScale(getValueFor(d.level)(series[d.changePoint._meta.firstRevIdx]))
           },
           y2: function (d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
@@ -713,11 +742,8 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
         .style({
           stroke: (d) =>
-            d.changePoint.processed_type === PROCESSED_TYPE.NONE ? 'red' :
-              d.changePoint.processed_type === PROCESSED_TYPE.ACKNOWLEDGED ? 'green' :
-                d.changePoint.processed_type === PROCESSED_TYPE.HIDDEN ? 'darkblue' :
-                  'cyan' // cyan for invalid processed_type
-          ,
+            d.changePoint.processed_type === PROCESSED_TYPE.NONE ? 'red' : d.changePoint.processed_type === PROCESSED_TYPE.ACKNOWLEDGED ? 'green' : d.changePoint.processed_type === PROCESSED_TYPE.HIDDEN ? 'darkblue' : 'cyan' // cyan for invalid processed_type
+            ,
         });
 
       changePointSegments.exit().remove();
@@ -740,7 +766,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           fill: function (d) {
             return d.count === 1 ? 'yellow' :
               d.count === 2 ? 'orange' :
-                'red'
+              'red'
           },
         });
 
@@ -772,7 +798,9 @@ mciModule.factory('DrawPerfTrendChart', function (
     redrawChangePoints();
 
     chartG.append('g')
-      .attr({ class: 'change-point-info' });
+      .attr({
+        class: 'change-point-info'
+      });
 
     // -- REGULAR POINT HOVER --
     // Contains elements for hover behavior
@@ -905,8 +933,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       .data(
         _.filter(cfg.toolTip.labels, function (d) {
           return d.nonStat !== true
-        }
-        )
+        })
       )
       .enter()
       .append('g')
@@ -917,7 +944,9 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     const nonStatToolTipItem = toolTipContentG
       .selectAll('g.non-stat')
-      .data(_.where(cfg.toolTip.labels, { nonStat: true }))
+      .data(_.where(cfg.toolTip.labels, {
+        nonStat: true
+      }))
       .enter()
       .append('g')
       .attr({
@@ -1032,7 +1061,10 @@ mciModule.factory('DrawPerfTrendChart', function (
             return d3Translate.apply(
               null,
               fit(
-                [[0, cfg.effectiveWidth], [0, cfg.effectiveHeight]],
+                [
+                  [0, cfg.effectiveWidth],
+                  [0, cfg.effectiveHeight]
+                ],
                 [mousePos[0] + 10, mousePos[1]], // 10 for extra offset
                 [
                   cfg.toolTip.width + cfg.toolTip.margin * 2 + 20, // 20 for extra offset
@@ -1047,9 +1079,9 @@ mciModule.factory('DrawPerfTrendChart', function (
     function changePointMouseOver(point) {
       function extractToolTipValue(item, obj) {
         // Get raw value of the stat item
-        const rawValue = _.isFunction(item.key)
-          ? item.key(obj)
-          : obj[item.key];
+        const rawValue = _.isFunction(item.key) ?
+          item.key(obj) :
+          obj[item.key];
         // Apply formatting if defined
         return item.formatter ? item.formatter(rawValue) : rawValue
       }
@@ -1156,9 +1188,8 @@ mciModule.factory('DrawPerfTrendChart', function (
 
       // List of per thread level values for selected item
       let values = _.filter(
-        threadMode === MAXONLY
-          ? [item.threadResults[maxLevelIdx(idx)][cfg.valueAttr]]
-          : _.filter(getOpsValues(item))
+        threadMode === MAXONLY ? [item.threadResults[maxLevelIdx(idx)][cfg.valueAttr]] :
+        _.filter(getOpsValues(item))
       );
 
       // If there are no values for current metric, skip
@@ -1173,9 +1204,9 @@ mciModule.factory('DrawPerfTrendChart', function (
       focusG.attr('transform', d3Translate(x, 0));
 
       // Add/Remove tooltip items (some data samples may not contain all thread levels)
-      updateTooltip(threadMode === MAXONLY
-        ? activeLevels
-        : threadLevelsForSample(item, activeLevels)
+      updateTooltip(threadMode === MAXONLY ?
+        activeLevels :
+        threadLevelsForSample(item, activeLevels)
       );
 
       focusedPointsRef.attr({

@@ -271,6 +271,21 @@ func (m *mongoBackedRoleManager) DeleteScope(scope gimlet.Scope) error {
 	return m.retryTransaction(updateFunc)
 }
 
+func (m *mongoBackedRoleManager) GetScope(ctx context.Context, id string) (*gimlet.Scope, error) {
+	var err error
+	scopeCollection := m.client.Database(m.db).Collection(m.scopeColl)
+	result := scopeCollection.FindOne(ctx, bson.M{"_id": id})
+	if err = result.Err(); err != nil {
+		return nil, err
+	}
+	scope := &gimlet.Scope{}
+	err = result.Decode(scope)
+	if err != nil {
+		return nil, err
+	}
+	return scope, nil
+}
+
 func (m *mongoBackedRoleManager) AddResourceToScope(scope, resource string) error {
 	toUpdate, err := m.findParentsOfScope(scope)
 	if err != nil {
@@ -611,6 +626,14 @@ func (m *inMemoryRoleManager) DeleteScope(scope gimlet.Scope) error {
 	return nil
 }
 
+func (m *inMemoryRoleManager) GetScope(_ context.Context, id string) (*gimlet.Scope, error) {
+	scope, found := m.scopes[id]
+	if !found {
+		return nil, nil
+	}
+	return &scope, nil
+}
+
 func (m *inMemoryRoleManager) AddResourceToScope(scopeId, resource string) error {
 	baseScope, found := m.scopes[scopeId]
 	if !found {
@@ -741,6 +764,59 @@ func (b *base) isValidPermission(permission string) bool {
 	return valid
 }
 
+func (b *base) IsValidPermissions(permissions gimlet.Permissions) error {
+	catcher := grip.NewBasicCatcher()
+	for permission := range permissions {
+		catcher.AddWhen(!b.isValidPermission(permission), errors.Errorf("'%s' is not a valid permission", permission))
+	}
+	return catcher.Resolve()
+}
+
+type PermissionSummary struct {
+	Type        string                  `json:"type"`
+	Permissions PermissionsForResources `json:"permissions"`
+}
+
+type PermissionsForResources map[string]gimlet.Permissions
+
+func PermissionSummaryForRoles(ctx context.Context, rolesIDs []string, rm gimlet.RoleManager) ([]PermissionSummary, error) {
+	roles, err := rm.GetRoles(rolesIDs)
+	if err != nil {
+		return nil, err
+	}
+	summary := []PermissionSummary{}
+	highestPermissions := map[string]PermissionsForResources{}
+	for _, role := range roles {
+		scope, err := rm.GetScope(ctx, role.Scope)
+		if err != nil {
+			return nil, err
+		}
+		resourceType := scope.Type
+		highestPermissionsForType, exists := highestPermissions[resourceType]
+		if !exists {
+			highestPermissionsForType = PermissionsForResources{}
+		}
+		for _, resource := range scope.Resources {
+			highestPermissionsForResource, exists := highestPermissions[resourceType][resource]
+			if !exists {
+				highestPermissionsForResource = gimlet.Permissions{}
+			}
+			for permission, level := range role.Permissions {
+				highestLevel, exists := highestPermissionsForResource[permission]
+				if !exists || level > highestLevel {
+					highestPermissionsForResource[permission] = level
+				}
+			}
+			highestPermissionsForType[resource] = highestPermissionsForResource
+		}
+		highestPermissions[resourceType] = highestPermissionsForType
+	}
+	for resourceType, permissionsForType := range highestPermissions {
+		summary = append(summary, PermissionSummary{Type: resourceType, Permissions: permissionsForType})
+	}
+	return summary, nil
+}
+
 // HighestPermissionsForRoles takes in a list of roles and returns an aggregated list of the highest
 // levels for all permissions
 func HighestPermissionsForRoles(rolesIDs []string, rm gimlet.RoleManager, opts gimlet.PermissionOpts) (gimlet.Permissions, error) {
@@ -806,6 +882,9 @@ func HighestPermissionsForRolesAndResourceType(roleIDs []string, resourceType st
 }
 
 func MakeRoleWithPermissions(rm gimlet.RoleManager, resourceType string, resources []string, permissions gimlet.Permissions) (*gimlet.Role, error) {
+	if err := rm.IsValidPermissions(permissions); err != nil {
+		return nil, err
+	}
 	existing, err := rm.FindRoleWithPermissions(resourceType, resources, permissions)
 	if err != nil {
 		return nil, err

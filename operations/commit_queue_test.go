@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -36,9 +37,10 @@ func TestCommitQueueSuite(t *testing.T) {
 
 func (s *CommitQueueSuite) SetupSuite() {
 	s.ctx = context.Background()
+	testutil.DisablePermissionsForTests()
 
 	var err error
-	s.server, err = service.CreateTestServer(testConfig, nil)
+	s.server, err = service.CreateTestServer(testConfig, nil, false)
 	s.Require().NoError(err)
 
 	settings := ClientSettings{
@@ -60,6 +62,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 }
 
 func (s *CommitQueueSuite) TearDownSuite() {
+	testutil.EnablePermissionsForTests()
 	s.server.Close()
 	s.client.Close()
 }

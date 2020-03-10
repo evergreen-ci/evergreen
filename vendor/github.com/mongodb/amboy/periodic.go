@@ -23,11 +23,12 @@ type QueueOperation func(context.Context, Queue) error
 // The theshold, if ResepectThreshold is set, causes the periodic
 // scheduler to noop if there are more than that many pending jobs.
 type QueueOperationConfig struct {
-	ContinueOnError  bool `bson:"continue_on_error" json:"continue_on_error" yaml:"continue_on_error"`
-	LogErrors        bool `bson:"log_errors" json:"log_errors" yaml:"log_errors"`
-	DebugLogging     bool `bson:"debug_logging" json:"debug_logging" yaml:"debug_logging"`
-	RespectThreshold bool `bson:"respect_threshold" json:"respect_threshold" yaml:"respect_threshold"`
-	Threshold        int  `bson:"threshold" json:"threshold" yaml:"threshold"`
+	ContinueOnError             bool `bson:"continue_on_error" json:"continue_on_error" yaml:"continue_on_error"`
+	LogErrors                   bool `bson:"log_errors" json:"log_errors" yaml:"log_errors"`
+	DebugLogging                bool `bson:"debug_logging" json:"debug_logging" yaml:"debug_logging"`
+	RespectThreshold            bool `bson:"respect_threshold" json:"respect_threshold" yaml:"respect_threshold"`
+	EnableDuplicateJobReporting bool `bson:"enable_duplicate_reporting" json:"enable_duplicate_reporting" yaml:"enable_duplicate_reporting"`
+	Threshold                   int  `bson:"threshold" json:"threshold" yaml:"threshold"`
 }
 
 // ScheduleJobFactory produces a QueueOpertion that calls a single
@@ -149,6 +150,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				grip.InfoWhen(conf.DebugLogging, message.Fields{
 					"message":       "exiting interval job scheduler",
 					"num_intervals": count,
+					"queue":         "single",
 					"reason":        "operation canceled",
 					"conf":          conf,
 				})
@@ -170,6 +172,10 @@ func scheduleOp(ctx context.Context, q Queue, op QueueOperation, conf QueueOpera
 	}
 
 	if err := errors.Wrap(op(ctx, q), "problem encountered during periodic job scheduling"); err != nil {
+		if !conf.EnableDuplicateJobReporting && IsDuplicateJobError(err) {
+			return nil
+		}
+
 		if conf.ContinueOnError {
 			grip.WarningWhen(conf.LogErrors, err)
 		} else {

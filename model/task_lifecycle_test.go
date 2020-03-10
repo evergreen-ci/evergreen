@@ -2156,6 +2156,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
+	assert.True(b.Tasks[1].Blocked)
 
 	e, err := event.FindUnprocessedEvents()
 	assert.NoError(err)
@@ -2776,4 +2777,205 @@ tasks:
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
+}
+
+func TestUpdateBlockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection))
+
+	b := build.Build{Id: "build0"}
+	tasks := []task.Task{
+		{
+			Id:      "t0",
+			BuildId: b.Id,
+			Status:  evergreen.TaskFailed,
+		},
+		{
+			Id:      "t1",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "t0",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t2",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t3",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t2",
+					Status:       evergreen.TaskSucceeded,
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t4",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "t3",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+		{
+			Id:      "t5",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "t0",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+	}
+	for _, t := range tasks {
+		assert.NoError(t.Insert())
+		b.Tasks = append(b.Tasks, build.TaskCache{Id: t.Id, Blocked: t.Blocked()})
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
+	dbBuild, err := build.FindOneId(b.Id)
+	assert.NoError(err)
+	require.Len(t, dbBuild.Tasks, 6)
+	assert.False(dbBuild.Tasks[0].Blocked)
+
+	dbTask1, err := task.FindOneId(tasks[1].Id)
+	assert.NoError(err)
+	assert.True(dbTask1.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[1].Blocked)
+
+	dbTask2, err := task.FindOneId(tasks[2].Id)
+	assert.NoError(err)
+	assert.True(dbTask2.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[2].Blocked)
+
+	dbTask3, err := task.FindOneId(tasks[3].Id)
+	assert.NoError(err)
+	assert.True(dbTask3.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[3].Blocked)
+
+	// We don't traverse past t3 which was already unattainable == true
+	dbTask4, err := task.FindOneId(tasks[4].Id)
+	assert.NoError(err)
+	assert.False(dbTask4.DependsOn[0].Unattainable)
+	assert.False(dbBuild.Tasks[4].Blocked)
+
+	// update more than one dependency (t1 and t5)
+	dbTask5, err := task.FindOneId(tasks[5].Id)
+	assert.NoError(err)
+	assert.True(dbTask5.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[5].Blocked)
+
+}
+
+func TestUpdateUnblockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection))
+	b := build.Build{Id: "build0"}
+	tasks := []task.Task{
+		{Id: "t0", BuildId: b.Id},
+		{Id: "t1", BuildId: b.Id, Status: evergreen.TaskFailed},
+		{
+			Id:      "t2",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t0",
+					Unattainable: true,
+				},
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t3",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t0",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t4",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t3",
+					Unattainable: false,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+		{
+			Id:      "t5",
+			BuildId: b.Id,
+			DependsOn: []task.Dependency{
+				{
+					TaskId:       "t4",
+					Unattainable: true,
+				},
+			},
+			Status: evergreen.TaskUndispatched,
+		},
+	}
+
+	for _, t := range tasks {
+		assert.NoError(t.Insert())
+		b.Tasks = append(b.Tasks, build.TaskCache{Id: t.Id, Blocked: t.Blocked()})
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
+	dbBuild, err := build.FindOneId(b.Id)
+	assert.NoError(err)
+	require.Len(t, dbBuild.Tasks, 6)
+	assert.False(dbBuild.Tasks[0].Blocked)
+	assert.False(dbBuild.Tasks[1].Blocked)
+
+	// this task should still be marked blocked because t1 is unattainable
+	dbTask2, err := task.FindOneId(tasks[2].Id)
+	assert.NoError(err)
+	assert.False(dbTask2.DependsOn[0].Unattainable)
+	assert.True(dbTask2.DependsOn[1].Unattainable)
+	assert.True(dbBuild.Tasks[2].Blocked)
+
+	dbTask3, err := task.FindOneId(tasks[3].Id)
+	assert.NoError(err)
+	assert.False(dbTask3.DependsOn[0].Unattainable)
+	assert.False(dbBuild.Tasks[3].Blocked)
+
+	dbTask4, err := task.FindOneId(tasks[4].Id)
+	assert.NoError(err)
+	assert.False(dbTask4.DependsOn[0].Unattainable)
+	assert.False(dbBuild.Tasks[4].Blocked)
+
+	// We don't traverse past the t4 which was already unattainable == false
+	dbTask5, err := task.FindOneId(tasks[5].Id)
+	assert.NoError(err)
+	assert.True(dbTask5.DependsOn[0].Unattainable)
+	assert.True(dbBuild.Tasks[5].Blocked)
 }

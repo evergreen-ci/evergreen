@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	itemFlagName        = "item"
-	pauseFlagName       = "pause"
-	resumeFlagName      = "resume"
-	descriptionFlagName = "description"
+	itemFlagName    = "item"
+	pauseFlagName   = "pause"
+	resumeFlagName  = "resume"
+	commitsFlagName = "commits"
 )
 
 func CommitQueue() cli.Command {
@@ -104,7 +104,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitsFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(resumeFlagName, "r", patchFinalizeFlagName, "f"),
 				Usage: "resume testing a preexisting item with `ID`",
@@ -113,16 +113,15 @@ func mergeCommand() cli.Command {
 				Name:  pauseFlagName,
 				Usage: "wait to enqueue an item until finalized",
 			},
-			cli.StringFlag{
-				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
-				Usage: "commit message",
-			},
 			cli.BoolFlag{
 				Name:  forceFlagName,
 				Usage: "force item to front of queue",
 			},
 		)),
-		Before: setPlainLogger,
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -130,9 +129,9 @@ func mergeCommand() cli.Command {
 			params := mergeParams{
 				projectID:   c.String(projectFlagName),
 				ref:         c.String(refFlagName),
+				commits:     c.String(commitsFlagName),
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
-				message:     c.String(messageFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
@@ -162,23 +161,19 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(descriptionFlagName, "d"),
-				Usage: "commit message",
-			},
-		)),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
 			setPlainLogger,
+			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			params := moduleParams{
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
-				message:     c.String(descriptionFlagName),
+				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 			}
@@ -217,15 +212,11 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
-		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromStringPtr(item.Issue))
-		if author != "" {
-			grip.Infof("Author: %s", author)
-		}
 		if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
-			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
+			listPRCommitQueueItem(item, projectRef, uiServerHost)
 		}
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
-			listCLICommitQueueItem(ctx, item, ac, uiServerHost)
+			listCLICommitQueueItem(item, ac, uiServerHost)
 		}
 		listModules(item)
 	}
@@ -233,7 +224,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	return nil
 }
 
-func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
+func listPRCommitQueueItem(item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
 	issue := restModel.FromStringPtr(item.Issue)
 	prDisplay := `
            PR # : %s
@@ -250,14 +241,17 @@ func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueIte
 	grip.Info("\n")
 }
 
-func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
+func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
 	issue := restModel.FromStringPtr(item.Issue)
 	p, err := ac.GetPatch(issue)
 	if err != nil {
-		grip.Error(message.WrapError(err, "\terror getting patch"))
+		grip.Error(message.WrapErrorf(err, "\terror getting patch for issue '%s'", issue))
 		return
 	}
 
+	if p.Author != "" {
+		grip.Infof("Author: %s", p.Author)
+	}
 	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
@@ -290,10 +284,10 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 
 type mergeParams struct {
 	projectID   string
+	commits     string
 	ref         string
 	id          string
 	pause       bool
-	message     string
 	skipConfirm bool
 	large       bool
 	force       bool
@@ -321,7 +315,6 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
-		Description: p.message,
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
@@ -341,7 +334,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("CLI commit queue not enabled for project")
 	}
 
-	commitCount, err := gitCommitCount(ref.Branch, p.ref)
+	commitCount, err := gitCommitCount(ref.Branch, p.ref, p.commits)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
@@ -349,17 +342,20 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.New("patch aborted")
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref, true)
+	if err = isValidCommitsFormat(p.commits); err != nil {
+		return err
+	}
+
+	diffData, err := loadGitData(ref.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
 
-	if p.message == "" && commitCount != 0 {
-		message, err := gitCommitMessages(ref.Branch, p.ref)
+	if commitCount > 0 {
+		patchParams.Description, err = gitCommitMessages(ref.Branch, p.ref, p.commits)
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
 		}
-		patchParams.Description = message
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
@@ -376,7 +372,7 @@ type moduleParams struct {
 	patchID     string
 	module      string
 	ref         string
-	message     string
+	commits     string
 	large       bool
 	skipConfirm bool
 }
@@ -386,33 +382,40 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return err
 	}
-
-	moduleBranch, err := getModuleBranch(p.module, proj)
+	module, err := proj.GetModuleByName(p.module)
 	if err != nil {
-		return errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+		return errors.Wrapf(err, "could not find module '%s'", p.module)
 	}
 
-	commitCount, err := gitCommitCount(moduleBranch, p.ref)
+	commitCount, err := gitCommitCount(module.Branch, p.ref, p.commits)
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
 	if commitCount == 0 {
 		return errors.New("No commits for module")
 	}
-	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
-		return errors.New("patch aborted")
+	if commitCount > 1 && !confirm("Commit queue module patch has multiple commits. Continue? (y/n):", false) {
+		return errors.New("module patch aborted")
 	}
 
-	if p.message == "" {
-		message, err := gitCommitMessages(moduleBranch, p.ref)
+	patch, err := rc.GetPatch(p.patchID)
+	if err != nil {
+		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
+	}
+
+	if err = isValidCommitsFormat(p.commits); err != nil {
+		return err
+	}
+
+	message := ""
+	if patch.Description == "" {
+		message, err = gitCommitMessages(module.Branch, p.ref, p.commits)
 		if err != nil {
-			return errors.Wrap(err, "can't get commit messages")
+			return errors.Wrap(err, "can't get module commit messages")
 		}
-
-		p.message = message
 	}
 
-	diffData, err := loadGitData(moduleBranch, p.ref, true)
+	diffData, err := loadGitData(module.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
 	}
@@ -428,17 +431,16 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	params := UpdatePatchModuleParams{
-		patchID:   p.patchID,
-		module:    p.module,
-		patch:     diffData.fullPatch,
-		base:      diffData.base,
-		message:   p.message,
-		formatted: true,
+		patchID: p.patchID,
+		module:  p.module,
+		patch:   diffData.fullPatch,
+		base:    diffData.base,
+		message: message,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info("Module updated.")
+	grip.Info("Module updated")
 	return nil
 }

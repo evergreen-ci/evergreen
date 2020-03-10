@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script>
-	window.auth_is_ldap = {{.AuthIsLDAP}};
+	window.validDefaultLoggers = {{.ValidDefaultLoggers}};
+	window.can_clear_tokens = {{.CanClearTokens}};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
@@ -61,9 +62,13 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('api')">API Config</li>
 						<li class="link" ng-click="scrollTo('ui')">UI Config</li>
 						<div>Authentication</div>
+						<li class="link" ng-click="scrollTo('auth')">Global Config</li>
 						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
-						<li class="link" ng-click="scrollTo('github')">Github</li>
+						<li class="link" ng-click="scrollTo('okta')">Okta</li>
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
+						<li class="link" ng-click="scrollTo('only_api')">API-Only</li>
+						<li class="link" ng-click="scrollTo('github')">Github</li>
+						<li class="link" ng-click="scrollTo('multi')">Multi</li>
 						<div>External Communication</div>
 						<li class="link" ng-click="scrollTo('jira')">Jira</li>
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
@@ -276,9 +281,18 @@ Admin Settings
 				    </td>
 				  </tr>
 				  <tr>
-				    <td>Disaster Recovery Backup Disabled</td>
+				    <td>Disaster Recovery Backup</td>
 				    <td colspan="2">
 				      <md-radio-group data-ng-model="Settings.service_flags.dr_backup_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Background reauthorization</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.background_reauth_disabled" layout="row">
 					<md-radio-button data-ng-value="false"></md-radio-button>
 					<md-radio-button data-ng-value="true"></md-radio-button>
 				      </md-radio-group>
@@ -527,8 +541,12 @@ Admin Settings
 										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.patch_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Time In Queue Factor (0 to 100 inclusive)</label>
-										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.time_in_queue_factor">
+										<label>Patch Time In Queue Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.patch_time_in_queue_factor">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Mainline Time In Queue Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.mainline_time_in_queue_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Expected Runtime Factor (0 to 100 inclusive)</label>
@@ -677,10 +695,39 @@ Admin Settings
 
 						</section>
 
+						<section layout="row" flex>
+							<md-card flex=50 id="auth" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Global Config</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<label>Preferred Auth Type</label>
+									<md-radio-group data-ng-model="Settings.auth.preferred_type" layout="row">
+										<md-radio-button value="ldap">LDAP</md-radio-button>
+										<md-radio-button value="okta">Okta</md-radio-button>
+										<md-radio-button value="naive">Naive</md-radio-button>
+										<md-radio-button value="github">Github</md-radio-button>
+										<md-radio-button value="only_api">API-only</md-radio-button>
+										<md-radio-button value="multi">Multi</md-radio-button>
+										<md-radio-button value="">None</md-radio-button>
+									</md-radio-group>
+									<br />
+									<md-input-container class="control" style="width:45%;">
+										<label>Background Reauth (Minutes)</label>
+										<input type="number" ng-model="Settings.auth.background_reauth_minutes">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
+						</section>
 
 						<section layout="row" flex>
-
-							<md-card flex=50 id="ldap">
+							<md-card flex=50 id="ldap" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
 										<span>LDAP Authentication</span>
@@ -722,7 +769,41 @@ Admin Settings
 										<label>Group OU Name</label>
 										<input type="text" ng-model="Settings.auth.ldap.group_ou">
 									</md-input-container>
-									<div><button ng-show="auth_is_ldap" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
+									<div><button ng-show="can_clear_tokens" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
+								</md-card-content>
+							</md-card>
+
+							<md-card flex=50 id="okta" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Okta Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','okta')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client ID</label>
+										<input type="text" ng-model="Settings.auth.okta.client_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Client Secret</label>
+										<input type="text" ng-model="Settings.auth.okta.client_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Issuer</label>
+										<input type="text" ng-model="Settings.auth.okta.issuer">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>User Group</label>
+										<input type="text" ng-model="Settings.auth.okta.user_group">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Expire User Session After Minutes</label>
+										<input type="number" ng-model="Settings.auth.okta.expire_after_minutes">
+									</md-input-container>
+									<div><button ng-show="can_clear_tokens" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
 								</md-card-content>
 							</md-card>
 
@@ -740,7 +821,7 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
-									<md-chips md-transform-chip="transformNaiveUser($chip)" ng-model="Settings.auth.naive.users" placeholder="Enter a user in json format">
+									<md-chips md-transform-chip="chipToUserJSON($chip)" ng-model="Settings.auth.naive.users" placeholder="Enter a user in json format">
 										<md-chip-template>
 											username:[[$chip.username]], password:[[$chip.password]], display_name:[[$chip.display_name]],
 											email:[[$chip.email]]
@@ -749,7 +830,31 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="github">
+							<md-card flex=50 id="only_api" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>API-Only Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','only_api')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-chips md-transform-chip="chipToUserJSON($chip)"
+										ng-model="tempOnlyAPIUsers" ng-change="onAPIOnlyUsersChanged()" placeholder="Enter a user in json format (specify username, key, and roles)">
+										<md-chip-template>
+											username:[[$chip.username]], key:[[$chip.key]], roles:[[$chip.roles]]
+										</md-chip-template>
+									</md-chips>
+                  <label class="icon fa fa-warning distro-error"
+                    ng-show="apiOnlyUserMissingKey"> Missing API keys will be auto-generated on save<br></label>
+								</md-card-content>
+							</md-card>
+
+						</section>
+
+						<section layout="row" flex>
+							<md-card flex=50 id="github" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Github Authentication</span>
@@ -777,7 +882,64 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
+							<md-card flex=50 id="multi" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Multi Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','multi')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<div class="control">
+                    <label>Read-Write</label>
+                    <table>
+                    <tbody ng-repeat="auth in tempMultiAuthReadWrite track by $index">
+                      <tr>
+                      <td>
+                        <input type="text" ng-model="tempMultiAuthReadWrite[$index]" class="form-control">
+                      </td>
+                      <td>
+                        <a ng-click="removeMultiAuthReadWrite($index)">
+                          <i class="fa fa-trash" style="margin-left:10px"></i>
+                        </a>
+                      </td>
+                      <td>
+                      <label class="icon fa fa-warning distro-error"
+                        ng-show="tempMultiAuthReadWrite && invalidAuth(auth)">Valid values: [[validAuthKinds.join(", ")]]<br></label>
+                      </td>
+                      </tr>
+                    </tbody>
+                    </table>
+                    <button type="button" class="md-raised md-button"
+                      ng-click="addMultiAuthReadWrite()"><i class="fa fa-plus"></i>Add Read-Write Auth</button>
+                  </div>
+                  <div>
+                    <label>Read-Only</label>
+                    <table>
+                    <tbody ng-repeat="auth in tempMultiAuthReadOnly track by $index">
+                      <tr>
+                      <td>
+                        <input type="text" ng-model="tempMultiAuthReadOnly[$index]" class="form-control">
+                      </td>
+                      <td>
+                        <a ng-click="removeMultiAuthReadOnly($index)">
+                          <i class="fa fa-trash" style="margin-left:10px"></i>
+                        </a>
+                      </td>
+                      <td>
+                      <label class="icon fa fa-warning distro-error"
+                        ng-show="tempMultiAuthReadOnly && invalidAuth(auth)">Valid values: [[validAuthKinds.join(", ")]]<br></label>
+                      </td>
+                      </tr>
+                    </tbody>
+                    </table>
+                    <button type="button" class="md-raised md-button"
+                      ng-click="addMultiAuthReadOnly()"><i class="fa fa-plus"></i>Add Read-Write Auth</button>
+                  </div>
+								</md-card-content>
+							</md-card>
 						</section>
 
 						<section layout="row" flex>
@@ -1019,6 +1181,12 @@ Admin Settings
 									</md-button>
 								</md-card-title>
 								<md-card-content>
+									<md-input-container class="control" style="width:60%;">
+									        <label>Default logger</label>
+										<md-select ng-model="Settings.logger_config.default_logger">
+										        <md-option ng-repeat="logger in validDefaultLoggers" value="[[logger]]">[[logger]]</md-option>
+										</md-select>
+									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Default level</label>
 										<input type="text" ng-model="Settings.logger_config.default_level">
@@ -1382,33 +1550,24 @@ Admin Settings
 										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false"  md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Superusers</label>
-										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
-									<md-input-container class="control" sstyle="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Total Spawn Hosts per user</label>
 										<input type="number" ng-model="Settings.spawn_hosts_per_user">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Unexpirable Spawn Hosts per user</label>
 										<input type="number" ng-model="Settings.unexpirable_hosts_per_user">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
-										<md-checkbox ng-model="Settings.acl_enabled">
-											ACL Enabled
-										</md-checkbox>
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1428,6 +1587,43 @@ Admin Settings
 									<md-chips md-transform-chip="addCredential($chip)" ng-model="tempCredentials" placeholder="Enter each line as a key:value">
 									</md-chips>
 								</md-card-content>
+							<md-card-content>
+								<label>SSH Keys</label>
+								<md-list>
+									<md-list-item ng-repeat="pair in tempSSHKeyPairs">
+										<div class="md-list-item-text" style="width:100%;">
+											<p style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;"><b>[[pair.name]]</b></p>
+											<p style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">[[pair.public]]</p>
+										</div>
+									</md-list-item>
+								</md-list>
+								<md-input-container class="control" style="width:45%;">
+									<label>Name</label>
+									<input type="text" ng-model="newSSHKeyPair.name" />
+								</md-input-container>
+								<md-input-container class="control" style="width:45%;">
+									<label>Public Key</label>
+									<input ng-model="newSSHKeyPair.public" ng-required="newSSHKeyPair.name && newSSHKeyPair.name.length !== 0"/>
+								</md-input-container>
+								<md-input-container class="control" style="width:90%;">
+									<label>Private Key</label>
+									<textarea ng-model="newSSHKeyPair.private" ng-required="newSSHKeyPair.name && newSSHKeyPair.name.length !== 0" wrap="off" rows="1"></textarea>
+								</md-input-container>
+							</md-card-content>
+							<md-button type="submit" class="md-raised" ng-click="addSSHKeyPair()" style="width:20%;">Add SSH Key</md-button>
+							<label class="icon fa fa-warning distro-error" ng-show="tempSSHKeyPairs.length !== 0 && tempSSHKeyPairs.length !== Settings.ssh_key_pairs.length"> SSH key will not be updated until app server is restarted.<br></label>
+
+							<md-card-content>
+								<md-input-container class="control">
+									<label>SSH Key Directory</label>
+									<input type=text ng-model="Settings.ssh_key_directory" placeholder="Path to the directory containing each server's SSH key files"/>
+								</md-input-container>
+								<md-input-container class="control">
+									<label>Authorized Keys File</label>
+									<input type=text ng-model="Settings.authorized_keys_file" placeholder="Path where authorized SSH keys are stored on static hosts"/>
+								</md-input-container>
+							</md-card-content>
+
 							</md-card>
 
 							<md-card flex=50 id="expansions">
@@ -1445,7 +1641,7 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="host_jasper" style="max-width:49%">
+							<md-card flex=50 id="host_jasper">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Host Jasper</span>

@@ -31,16 +31,13 @@ func (m *deleteMessage) Serialize() []byte {
 	m.header.WriteInto(buf)
 
 	loc := 16
+	loc += writeInt32(0, buf, loc)
 
-	writeInt32(0, buf, loc)
-	loc += 4
+	loc += writeCString(m.Namespace, buf, loc)
 
-	writeCString(m.Namespace, buf, &loc)
+	loc += writeInt32(m.Flags, buf, loc)
 
-	writeInt32(m.Flags, buf, loc)
-	loc += 4
-
-	loc += writeDocAt(loc, m.Filter, buf)
+	loc += writeDocAt(m.Filter, buf, loc)
 
 	return buf
 }

@@ -8,6 +8,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+func FindApplicableDistroIDs(id string) ([]string, error) {
+	d, err := FindOne(ById(id).WithFields(AliasesKey))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	out := []string{id}
+	out = append(out, d.Aliases...)
+
+	return out, nil
+}
+
 type byPoolSize []Distro
 
 func (ps byPoolSize) Len() int      { return len(ps) }

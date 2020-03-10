@@ -119,7 +119,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 				"op_id":   id,
 				"message": "found running host with incorrect status",
 				"status":  h.Status,
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			})
 			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
@@ -129,7 +129,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		grip.Info(message.Fields{
 			"op_id":   id,
 			"message": "host terminated externally",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		})
 
@@ -142,7 +142,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		grip.Error(message.WrapError(err, message.Fields{
 			"op_id":   id,
 			"message": "error setting host status to terminated in db",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 
@@ -151,7 +151,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		grip.Error(message.WrapError(err, message.Fields{
 			"op_id":   id,
 			"message": "can't clear stranded tasks",
-			"host":    h.Id,
+			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 		}))
 
@@ -160,7 +160,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",
 			"op_id":        id,
-			"host":         h.Id,
+			"host_id":      h.Id,
 			"distro":       h.Distro.Id,
 			"host_status":  h.Status,
 			"cloud_status": cloudStatus,

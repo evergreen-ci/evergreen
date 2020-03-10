@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
-	"os/exec"
+	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	jcli "github.com/mongodb/jasper/cli"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -75,6 +76,88 @@ func TestClientURL(t *testing.T) {
 	h.Distro.Arch = distro.ArchLinuxAmd64
 	expected = "www.example.com/clients/linux_amd64/evergreen"
 	assert.Equal(t, expected, h.ClientURL(settings))
+}
+
+func TestGetSSHOptions(t *testing.T) {
+	defaultKeyName := "key_name"
+	defaultKeyPath := "/path/to/key/file"
+
+	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
+		exists := map[string]bool{}
+		for i := 0; i < len(actual); i += 2 {
+			exists[actual[i]+actual[i+1]] = true
+		}
+		for i := 0; i < len(expected); i += 2 {
+			assert.True(t, exists[expected[i]+expected[i+1]])
+		}
+	}
+	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
+		"ReturnsExpectedArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"IncludesMultipleIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			keyName := "key_file"
+			keyFile, err := ioutil.TempFile(settings.SSHKeyDirectory, keyName)
+			require.NoError(t, err)
+			assert.NoError(t, keyFile.Close())
+			defer func() {
+				assert.NoError(t, os.RemoveAll(keyFile.Name()))
+			}()
+
+			key := evergreen.SSHKeyPair{Name: filepath.Base(keyFile.Name())}
+			settings.SSHKeyPairs = []evergreen.SSHKeyPair{key}
+
+			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"IgnoresNonexistentIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent"}
+			settings.SSHKeyPairs = []evergreen.SSHKeyPair{nonexistentKey}
+
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"FailsWithoutIdentityFile": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHKey = ""
+
+			_, err := h.GetSSHOptions(settings)
+			assert.Error(t, err)
+		},
+		"IncludesAdditionalArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHOptions = []string{"UserKnownHostsFile=/path/to/file"}
+
+			expected := []string{"-i", defaultKeyPath, "-o", h.Distro.SSHOptions[0]}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			sshKeyDir, err := ioutil.TempDir("", "ssh_key_directory")
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(sshKeyDir))
+			}()
+			testCase(t, &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					SSHKey: defaultKeyName,
+				},
+			}, &evergreen.Settings{
+				Keys: map[string]string{
+					defaultKeyName: defaultKeyPath,
+				},
+				SSHKeyDirectory: sshKeyDir,
+			})
+		})
+	}
 }
 
 func TestJasperCommands(t *testing.T) {
@@ -151,13 +234,19 @@ func TestJasperCommands(t *testing.T) {
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID}
+			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID, TaskId: "task_id"}
 			require.NoError(t, h.Insert())
 
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			require.NoError(t, err)
+
+			bashSetupSpawnHost := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				&options.Command{Commands: [][]string{bashSetupSpawnHost}})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -169,6 +258,7 @@ func TestJasperCommands(t *testing.T) {
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				setupSpawnHost,
+				getTaskData,
 				markDone,
 			}
 
@@ -231,6 +321,9 @@ func TestJasperCommands(t *testing.T) {
 				Distro: distro.Distro{
 					Arch: distro.ArchLinuxAmd64,
 					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						Communication:         distro.CommunicationMethodRPC,
+						ShellPath:             "/bin/bash",
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
 						Env: []distro.EnvVar{
@@ -363,7 +456,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SetupSpawnHostCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -664,7 +757,8 @@ func TestJasperProcess(t *testing.T) {
 		},
 		"StartJasperProcessPasses": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.NoError(t, err)
 			}))
 		},
 		"RunJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
@@ -686,7 +780,8 @@ func TestJasperProcess(t *testing.T) {
 		"StartJasperProcessFailsIfProcessCreationFails": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jmock.Manager, h *Host, opts *options.Create) {
 			manager.FailCreate = true
 			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
-				assert.Error(t, h.StartJasperProcess(ctx, env, opts))
+				_, err := h.StartJasperProcess(ctx, env, opts)
+				assert.Error(t, err)
 			}))
 		},
 	} {
@@ -748,21 +843,6 @@ func TestBufferedWriteFileCommands(t *testing.T) {
 func TestTearDownDirectlyCommand(t *testing.T) {
 	cmd := TearDownDirectlyCommand()
 	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
-}
-
-func TestInitSystemCommand(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("init system test is relevant to Linux only")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", initSystemCommand())
-	res, err := cmd.Output()
-	require.NoError(t, err)
-	initSystem := strings.TrimSpace(string(res))
-	assert.Contains(t, []string{InitSystemSystemd, InitSystemSysV, InitSystemUpstart}, initSystem)
 }
 
 func TestBuildLocalJasperClientRequest(t *testing.T) {
@@ -844,9 +924,6 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, cmd, string(expectedCmd))
 
-	expectedEnv, err := json.Marshal(buildAgentEnv(settings))
-	require.NoError(t, err)
-	assert.Contains(t, cmd, string(expectedEnv))
 	assert.Contains(t, cmd, evergreen.AgentMonitorTag)
 }
 
@@ -947,7 +1024,7 @@ func TestStopAgentMonitor(t *testing.T) {
 	}
 }
 
-func TestSetupSpawnHostCommands(t *testing.T) {
+func TestSpawnHostSetupCommands(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, user.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
@@ -962,6 +1039,8 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 			WorkDir: "/dir",
 			User:    "user",
 			BootstrapSettings: distro.BootstrapSettings{
+				Method:                distro.BootstrapMethodUserData,
+				Communication:         distro.CommunicationMethodRPC,
 				JasperCredentialsPath: "/jasper_credentials_path",
 			},
 		},
@@ -982,23 +1061,16 @@ func TestSetupSpawnHostCommands(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.SetupSpawnHostCommands(settings)
+	cmd, err := h.SpawnHostSetupCommands(settings)
 	require.NoError(t, err)
 
-	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.profile || true; echo 'export PATH="${PATH}:/home/user/cli_bin"' >> /home/user/.bash_profile || true)`
+	expected := "mkdir -m 777 -p /home/user/cli_bin" +
+		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/cli_bin/.evergreen.yml" +
+		" && cp /home/user/evergreen /home/user/cli_bin" +
+		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
+		" && chown -R user /home/user/cli_bin" +
+		" && chmod +x /home/user/cli_bin/evergreen"
 	assert.Equal(t, expected, cmd)
-
-	h.ProvisionOptions.TaskId = "task_id"
-	cmd, err = h.SetupSpawnHostCommands(settings)
-	assert.Contains(t, cmd, expected)
-	require.NoError(t, err)
-	fetchCmd := []string{"/home/user/evergreen", "-c", "/home/user/cli_bin/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/dir"}
-	currIndex := 0
-	for _, arg := range fetchCmd {
-		foundIndex := strings.Index(cmd[currIndex:], arg)
-		require.NotEqual(t, foundIndex, -1)
-		currIndex += foundIndex
-	}
 }
 
 func TestMarkUserDataDoneCommands(t *testing.T) {

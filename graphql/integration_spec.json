@@ -1,5 +1,81 @@
 {
   "setupData": {
+    "roles": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted_task_access",
+        "scope": "unrestrictedTaskAccess",
+        "permissions": {
+          "project_tasks": 55
+        }
+      }
+    ],
+    "scopes": [
+      {
+        "_id": "unrestrictedTaskAccess",
+        "name": "unrestricted access",
+        "type": "project",
+        "resources": ["curator"]
+      }
+    ],
+    "builds": [
+      {
+        "_id": "some_thang",
+        "create_time": "2019-07-10T22:05:08.973Z",
+        "start_time": "2019-07-21T00:39:42.274Z",
+        "finish_time": "0001-01-01T00:00:00Z",
+        "version": "5d2661149dbe326298fee2a3",
+        "branch": "mci",
+        "gitspec": "",
+        "build_variant": "ubuntu1604-docker",
+        "build_number": "1798",
+        "status": "failed",
+        "activated": false,
+        "activated_by": "",
+        "activated_time": "1970-01-01T00:00:00Z",
+        "order": 4129,
+        "tasks": [
+          {
+            "id": "wuzzup",
+            "d": "dist",
+            "s": "undispatched",
+            "ed": {},
+            "st": "1970-01-01T00:00:00Z",
+            "tt": 0,
+            "a": false
+          },
+          {
+            "id": "wuzzup-activated",
+            "d": "dist",
+            "s": "undispatched",
+            "ed": {},
+            "st": "1970-01-01T00:00:00Z",
+            "tt": 0,
+            "a": false
+          }
+        ],
+        "time_taken": 0,
+        "display_name": "Ubuntu 16.04 (Docker)",
+        "predicted_makespan": 0,
+        "actual_makespan": 0,
+        "r": "ad_hoc"
+      }
+    ],
+    "commit_queue": [
+      {
+        "_id": "mci",
+        "processing": false,
+        "time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "queue": [
+          {
+            "issue": "nothing",
+            "version": "something",
+            "enqueue_time": { "$date": "2018-01-12T00:01:36.796Z" },
+            "modules": [{ "module": "mod", "issue": "none" }]
+          }
+        ]
+      }
+    ],
     "patches": [
       {
         "_id": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
@@ -63,12 +139,1516 @@
           }
         ],
         "activated": false
+      },
+      {
+        "_id": { "$oid": "9a1f8ab8834b87d7b5d251a5" },
+        "desc": "patch-to-duration-time-resolver",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" }
+      },
+      {
+        "_id": { "$oid": "9e1f8ab8834b87d7b5d251a5" },
+        "desc": "patch-to-test-time-resolver",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-13T17:42:19Z" },
+        "finish_time": { "$date": "2020-02-14T18:03:19Z" }
+      }
+    ],
+    "artifact_files": [
+      {
+        "task": "exec1",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "awesome_test!!!",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      },
+      {
+        "task": "exec2",
+        "task_name": "wuzzup-activated",
+        "build": "some_thang",
+        "files": [
+          {
+            "name": "THIS IS REALLY COOL",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "really cool test file",
+            "link": "www.wikipedia.com",
+            "visibility": "the whole world",
+            "fetch_ignore": false
+          },
+          {
+            "name": "PRIVATE TEST FILEEEEEE",
+            "link": "stuffff",
+            "visibility": "none",
+            "fetch_ignore": false
+          }
+        ],
+        "execution": 5
+      }
+    ],
+    "tasks": [
+      {
+        "_id": "task-with-fake-old-id",
+        "old_task_id": "not a real thing",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "nothing that actually exists",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "task-without-legit-exec-tasks",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "id",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["fake-exec-task"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "wuzzup-activated",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "curator",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "started",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["exec1", "exec2"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec1",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "logkeeper",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 1 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "something",
+        "status": "pass",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "exec2",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "logkeeper",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": true,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec 2 display!!",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "merge_test",
+        "status": "started",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": false,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "_id": "wuzzup",
+        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "version": "version",
+        "branch": "mci",
+        "gitspec": "revise",
+        "priority": 5,
+        "task_group": "grp",
+        "task_group_max_hosts": 100,
+        "activated": false,
+        "activated_by": "someone",
+        "build_id": "some_thang",
+        "distro": "distro",
+        "build_variant": "variant",
+        "depends_on": [],
+        "display_name": "exec1 display name",
+        "host_id": "host",
+        "restarts": 5,
+        "execution": 5,
+        "order": 5,
+        "r": "merge_test",
+        "status": "started",
+        "details": {
+          "status": "status",
+          "type": "type",
+          "desc": "description",
+          "timed_out": false
+        },
+        "display_only": true,
+        "execution_tasks": ["exec1"],
+        "generate_task": false,
+        "generated_by": "something"
+      },
+      {
+        "id": "adlkasdkd;slfkjak;dlsfj;aklfd",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T19:10:02Z",
+        "scheduledTime": "2020-02-12T19:10:01Z",
+        "activatedTime": "2020-02-12T19:10:01Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 218556,
+        "startTime": "2020-02-12T19:10:02Z",
+        "finishTime": "2020-02-12T19:13:41Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 11,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "akdjfjodej47565jhflkld",
+        "createTime": "2020-02-12T16:58:19Z",
+        "ingestTime": "2020-02-12T18:26:36Z",
+        "dispatchTime": "2020-02-12T18:27:02Z",
+        "scheduledTime": "2020-02-12T18:27:02Z",
+        "activatedTime": "2020-02-12T18:26:36Z",
+        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "timeTaken": 159811,
+        "startTime": "2020-02-12T18:27:02Z",
+        "finishTime": "2020-02-12T18:29:42Z",
+        "projectId": "spruce",
+        "revision": "bc288b6c33ce4f289d5bb1b9468abe3bb2e8cbb1",
+        "priority": 0,
+        "taskGroup": "",
+        "taskGroupMaxHosts": 0
+      },
+      {
+        "id": "task-for-testing-duration-resolver-1",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:13Z" },
+        "finish_time": { "$date": "2020-02-14T22:23:59Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 166715
+      },
+      {
+        "id": "task-for-testing-duration-resolver-2",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:14Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:26Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 72328
+      },
+      {
+        "id": "task-for-testing-duration-resolver-3",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:11Z" },
+        "finish_time": { "$date": "2020-02-14T22:24:50Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 219230
+      },
+      {
+        "id": "task-for-testing-duration-resolver-4",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:13Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:19Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 65589
+      },
+      {
+        "id": "task-for-testing-duration-resolver-5",
+        "create_time": { "$date": "2020-02-12T16:58:19Z" },
+        "start_time": { "$date": "2020-02-14T22:21:15Z" },
+        "finish_time": { "$date": "2020-02-14T22:22:24Z" },
+        "version": "9a1f8ab8834b87d7b5d251a5",
+        "time_taken": 69532
+      }
+    ],
+    "testresults": [
+      {
+        "_id": { "$oid": "19ef7a20a7798219e191d00e" },
+        "status": "a",
+        "test_file": "b",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 10,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "https://original-url.com",
+        "url_raw": "https://original-raw-url.com"
+      },
+      {
+        "_id": { "$oid": "29ef7a20a7798219e191d00e" },
+        "status": "c",
+        "test_file": "apple",
+        "log_id": "",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 20,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "",
+        "url_raw": ""
+      },
+      {
+        "_id": { "$oid": "39ef7a20a7798219e191d00e" },
+        "status": "b",
+        "test_file": "d",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 40,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "",
+        "url_raw": ""
+      },
+      {
+        "_id": { "$oid": "49ef7a20a7798219e191d00e" },
+        "status": "dog",
+        "test_file": "c",
+        "log_id": "59ef7a2097b1d3148d0004f1",
+        "line_num": 126,
+        "exit_code": 0,
+        "start": 0,
+        "end": 30,
+        "task_id": "exec1",
+        "task_execution": 5,
+        "url": "/url/without/scheme/host",
+        "url_raw": "/raw/url/without/scheme/host"
+      }
+    ],
+    "project_ref": [
+      {
+        "_id": { "$oid": "5723cdaa7bd5c9f79a7fc666" },
+        "batch_time": 1200,
+        "branch_name": "master",
+        "display_name": "Evergreen Self-Tests",
+        "enabled": true,
+        "file_name": "mci",
+        "identifier": "mci",
+        "owner_name": "evergreen-ci",
+        "private": false,
+        "remote": true,
+        "remote_path": "self-tests.yml",
+        "repo_kind": "github",
+        "repo_name": "evergreen",
+        "source_kind": "github",
+        "tracked": true,
+        "local_config": "",
+        "deactivate_previous": true,
+        "repotracker_error": {
+          "exists": false,
+          "invalid_revision": "",
+          "merge_base_revision": ""
+        },
+        "admins": ["john.liu"],
+        "tracks_push_events": true,
+        "pr_testing_enabled": false,
+        "patching_disabled": false,
+        "notify_on_failure": true,
+        "jira": {
+          "failing_tasks_field": "customfield_12950",
+          "failing_tests_field": "",
+          "failing_variant_field": "customfield_14277",
+          "failing_revision_field": "customfield_14851",
+          "project_field": "customfield_14278"
+        },
+        "triggers": [],
+        "files_ignored_from_cache": null,
+        "disabled_stats_cache": false,
+        "commit_queue_config_file": "",
+        "commit_queue_enabled": false,
+        "commit_queue_merge_method": "",
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "CLI"
+        },
+        "periodic_builds": [],
+        "repotracker_disabled": false
+      },
+      {
+        "_id": { "$oid": "5723cdaa7bd5c9f79a7fc782" },
+        "owner_name": "evergreen-ci",
+        "repo_name": "logkeeper",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": ".evg.yml",
+        "identifier": "logkeeper",
+        "display_name": "Logkeeper",
+        "local_config": "",
+        "deactivate_previous": true,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": {
+          "exists": false,
+          "invalid_revision": "",
+          "merge_base_revision": ""
+        },
+        "tracks_push_events": true,
+        "pr_testing_enabled": true,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "572cf4126685d46c3c16a704" },
+        "owner_name": "mongodb",
+        "repo_name": "curator",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 300,
+        "remote_path": "evergreen.yaml",
+        "identifier": "curator",
+        "display_name": "Curator",
+        "local_config": "",
+        "deactivate_previous": true,
+        "tracked": true,
+        "admins": ["sam.kleinman"],
+        "repotracker_error": null,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "periodic_builds": [],
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "575ee9786685d46c3c31acc8" },
+        "owner_name": "hello it's me",
+        "repo_name": "amboy",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 300,
+        "remote_path": "evergreen.yaml",
+        "identifier": "amboy",
+        "display_name": "Not Amboy",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": ["sam.kleinman"],
+        "repotracker_error": {
+          "exists": false,
+          "invalid_revision": "",
+          "merge_base_revision": ""
+        },
+        "triggers": [],
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "57d9c0c9575282e6b7fd4abe" },
+        "owner_name": "mongodb",
+        "repo_name": "greenbay",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "Greenbay",
+        "display_name": "Greenbay",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": null,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "periodic_builds": [],
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "58adb7affaeb60e9151fe750" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "grip",
+        "display_name": "Grip (Logging)",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": null,
+        "tracks_push_events": true,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "59a455a9f4fd67f4567a4f79" },
+        "owner_name": "bsamek",
+        "repo_name": "mongo",
+        "branch_name": "MCI-2614",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 1440,
+        "remote_path": "etc/system_perf.yml",
+        "identifier": "sys-perf",
+        "display_name": "System Performance (master)",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": null,
+        "jira": {
+          "failing_tasks_field": "",
+          "failing_tests_field": "",
+          "failing_variant_field": "",
+          "failing_revision_field": "",
+          "project_field": ""
+        },
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5a05e2a5a2c574da3bfbadf2" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernietest20171110",
+        "display_name": "test display name update",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": null,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "triggers": [],
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "5a05e2bba2c574da3bfbb261" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernietest2017111002",
+        "display_name": "Grip (Logging)",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracked": true,
+        "admins": [],
+        "repotracker_error": null,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "notify_on_failure": false,
+        "patching_disabled": false,
+        "periodic_builds": [],
+        "pr_testing_enabled": false,
+        "tracks_push_events": false,
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5b4787e710b1a2e1813a6272" },
+        "owner_name": "evergreen-ci",
+        "repo_name": "lobster",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 3600,
+        "remote_path": ".evergreen.yml",
+        "identifier": "lobster",
+        "display_name": "Lobster",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": true,
+        "pr_testing_enabled": false,
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5c018817f7cc44870a1074d2" },
+        "owner_name": "john-m-liu",
+        "repo_name": "evergreen",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 1200,
+        "remote_path": "foo.yml",
+        "identifier": "john_test",
+        "display_name": "john test",
+        "local_config": "",
+        "deactivate_previous": true,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["john.liu", "william.banfield"],
+        "notify_on_failure": true,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": [],
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "5c9ce3ecbedb55a6ed467d3c" },
+        "owner_name": "evergreen-ci",
+        "repo_name": "evergreen",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 1200,
+        "remote_path": "self-tests.yml",
+        "identifier": "clone-of-mci-to-test-a-thing",
+        "display_name": "Evergreen Self-Tests",
+        "local_config": "",
+        "deactivate_previous": true,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "merge_action": "github",
+          "status_action": "github"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["john.liu"],
+        "notify_on_failure": true,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5ca4dad4bedb55a6ed6e1321" },
+        "owner_name": "annie.black",
+        "repo_name": "buildhost-configuration",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "self-tests.yml",
+        "identifier": "buildhost-test",
+        "display_name": "buildhost-test",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "merge_action": "github",
+          "status_action": "github"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5ce2f66bb6913bed0ce14e2e" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernie-copy",
+        "display_name": "test display name update",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["annie.black"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "triggers": [
+          {
+            "project": "ernie-copy2",
+            "level": "task",
+            "definition_id": "bb0a71bdbcc0b25803380bd4eb4bdb9a",
+            "command": "make go-test-config",
+            "generate_file": "go-test-config.json"
+          },
+          {
+            "project": "ernie-copy3",
+            "level": "task",
+            "definition_id": "45c242d5e398741eeba433a0f34526e5",
+            "date_cutoff": 1,
+            "config_file": "self-tests.yml"
+          }
+        ],
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "5ce303c3d3fd7b2021d75387" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernie-copy2",
+        "display_name": "test display name update",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "triggers": [
+          {
+            "project": "ernie-copy3",
+            "level": "task",
+            "definition_id": "29bc7e2f11b70383ea6997b381135d39",
+            "config_file": "self-tests.yml"
+          }
+        ]
+      },
+      {
+        "_id": { "$oid": "5ce3099617a2629f59c10d65" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernie-copy3",
+        "display_name": "test display name update",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5ce3ff102bef611fe7fc065f" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yaml",
+        "identifier": "ernie-copy4",
+        "display_name": "test display name update",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5cf19e13cef1a85b8f251690" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-test",
+        "display_name": "something temporary",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": [],
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "5d0934035202c9202ba5c649" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-test-copy",
+        "display_name": "something temporary",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5d09342ac14c0c478420171a" },
+        "owner_name": "evergreen-ci",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-copy2",
+        "display_name": "something temporary",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": [],
+        "periodic_builds": []
+      },
+      {
+        "_id": { "$oid": "5d093826e0ddf98b03800cf7" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-copy3",
+        "display_name": "something temporary",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5d094305d5290ee78772ea9d" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-copy4",
+        "display_name": "something temporary",
+        "local_config": "",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5d923f1320882ec04d4fff67" },
+        "owner_name": "tzembo",
+        "repo_name": "evergreen",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 1200,
+        "remote_path": "foo.yml",
+        "identifier": "thomas-test",
+        "display_name": "thomas test",
+        "deactivate_previous": true,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["thomas.zembowicz", "annie.black"],
+        "notify_on_failure": true,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5da89aa2ce6ce31e950fc33c" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-copy-vars",
+        "display_name": "something temporary",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": null
+      },
+      {
+        "_id": { "$oid": "5da89aebc4be95afdb141e89" },
+        "owner_name": "something crazy",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie-copy5",
+        "display_name": "something temporary",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["annie.black"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5da89b9180cf9439e231976d" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie_api_copy",
+        "display_name": "something temporary",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null
+      },
+      {
+        "_id": { "$oid": "5db6ee1b24be490956065d15" },
+        "owner_name": "mongodb",
+        "repo_name": "grip",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 0,
+        "remote_path": "evergreen.yml",
+        "identifier": "annie_api_copy2",
+        "display_name": "something temporary",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": [],
+        "notify_on_failure": false,
+        "repotracker_error": null
+      },
+      {
+        "_id": { "$oid": "5db6ef7924be490956065d16" },
+        "owner_name": "rongodb",
+        "repo_name": "v20380713",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "ron_two_via_postman",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5db6f314d12573b6dda24d6a" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "ron_test_copy_1",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5db6f7160d5636ef04287494" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "qa-template",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": [],
+        "repotracker_disabled": false
+      },
+      {
+        "_id": { "$oid": "5db6fff2821fc02e8c38b8e2" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "qa-template-copy-for-testing",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5db711206f1c4ada8c768977" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "ron_test_output",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
+      },
+      {
+        "_id": { "$oid": "5db757ecb2e2e54d509b99ed" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "master",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "ron_three",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "admins": ["ron.neuman"],
+        "notify_on_failure": false,
+        "repotracker_error": null
+      },
+      {
+        "_id": { "$oid": "5dbc3f6641fc03a014d2fff4" },
+        "owner_name": "rongodb",
+        "repo_name": "ron_repo_1",
+        "branch_name": "v13071978",
+        "repo_kind": "github",
+        "enabled": false,
+        "private": false,
+        "batch_time": 100,
+        "remote_path": ".evergreen.yml",
+        "identifier": "qa-template-for-testing",
+        "display_name": "1st project to be moved around",
+        "deactivate_previous": false,
+        "tracks_push_events": false,
+        "pr_testing_enabled": false,
+        "commit_queue": {
+          "enabled": false,
+          "merge_method": "squash",
+          "patch_type": "PR"
+        },
+        "tracked": true,
+        "patching_disabled": false,
+        "repotracker_disabled": false,
+        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
+        "notify_on_failure": false,
+        "repotracker_error": null,
+        "disabled_stats_cache": false,
+        "files_ignored_from_cache": null,
+        "periodic_builds": [],
+        "triggers": []
       }
     ]
   },
   "tests": [
     {
-      "query_file": "patch1.graphql",
+      "query_file": "user-patches.graphql",
       "result": {
         "data": {
           "userPatches": [
@@ -81,9 +1661,6 @@
               "author": "testuser",
               "version": "",
               "status": "created",
-              "createTime": "2018-01-10T19:01:36-05:00",
-              "startTime": null,
-              "finishTime": null,
               "tasks": ["test-auth"],
               "activated": false,
               "alias": "",
@@ -94,6 +1671,928 @@
             }
           ]
         }
+      }
+    },
+    {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e1f8ab8834b87d7b5d251a5",
+            "description": "mydesc",
+            "projectID": "mci",
+            "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
+            "patchNumber": 1,
+            "author": "testuser",
+            "version": "",
+            "status": "created",
+            "tasks": ["test-auth"],
+            "activated": false,
+            "alias": "",
+            "variants": ["rhel62"],
+            "variantsTasks": [
+              { "name": "rhel62", "tasks": ["test-model-host"] }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "400 (Bad Request): id 'i-dont-exist' is not a valid patch id",
+            "path": ["patch"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task1.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "logs": {
+              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
+              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
+              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+            },
+            "id": "wuzzup",
+            "createTime": "2018-01-10T19:01:36-05:00",
+            "ingestTime": "2018-01-10T19:01:36-05:00",
+            "dispatchTime": "2018-01-10T19:01:36-05:00",
+            "scheduledTime": "2018-01-10T19:01:36-05:00",
+            "startTime": "2018-01-10T19:01:36-05:00",
+            "finishTime": "2018-01-10T19:01:36-05:00",
+            "activatedTime": "2018-01-10T19:01:36-05:00",
+            "version": "version",
+            "projectId": "mci",
+            "revision": "revise",
+            "priority": 5,
+            "taskGroup": "grp",
+            "taskGroupMaxHosts": 100,
+            "activated": false,
+            "activatedBy": "someone",
+            "buildId": "some_thang",
+            "distroId": "distro",
+            "buildVariant": "variant",
+            "dependsOn": null,
+            "displayName": "exec1 display name",
+            "hostId": "host",
+            "restarts": 5,
+            "execution": 5,
+            "order": 5,
+            "requester": "merge_test",
+            "status": "started",
+            "details": {
+              "status": "status",
+              "type": "type",
+              "description": "description",
+              "timedOut": false
+            },
+            "displayOnly": true,
+            "executionTasks": ["exec1"],
+            "generateTask": false,
+            "generatedBy": "something"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "a" },
+            { "status": "b" },
+            { "status": "c" },
+            { "status": "dog" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestStatusDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "status": "dog" },
+            { "status": "c" },
+            { "status": "b" },
+            { "status": "a" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestNameDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "d" },
+            { "testFile": "c" },
+            { "testFile": "b" },
+            { "testFile": "apple" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationDesc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 40 },
+            { "duration": 30 },
+            { "duration": 20 },
+            { "duration": 10 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDurationAsc.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "duration": 10 },
+            { "duration": 20 },
+            { "duration": 30 },
+            { "duration": 40 }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatus.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "status": "dog" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterTestFile.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "apple" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterNoResults.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr1.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestFilterStatusSubstr2.graphql",
+      "result": {
+        "data": {
+          "taskTests": []
+        }
+      }
+    },
+    {
+      "query_file": "taskTestPageLimit.graphql",
+      "result": {
+        "data": {
+          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+        }
+      }
+    },
+    {
+      "query_file": "taskTestDefaultParams.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            { "testFile": "apple" },
+            { "testFile": "b" },
+            { "testFile": "c" },
+            { "testFile": "d" }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "addFavoriteProject": {
+            "identifier": "buildhost-test",
+            "displayName": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "add-favorite-project-mutation.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot add duplicate project 'buildhost-test'",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "add-favorite-project-that-does-not-exist.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'i-dont-exist'",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "projects1.graphql",
+      "result": {
+        "data": {
+          "projects": {
+            "favorites": [
+              {
+                "identifier": "buildhost-test",
+                "repo": "buildhost-configuration",
+                "owner": "annie.black",
+                "displayName": "buildhost-test"
+              }
+            ],
+            "otherProjects": [
+              {
+                "name": "bsamek/mongo",
+                "projects": [
+                  {
+                    "identifier": "sys-perf",
+                    "repo": "mongo",
+                    "owner": "bsamek",
+                    "displayName": "System Performance (master)"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/evergreen",
+                "projects": [
+                  {
+                    "identifier": "mci",
+                    "repo": "evergreen",
+                    "owner": "evergreen-ci",
+                    "displayName": "Evergreen Self-Tests"
+                  },
+                  {
+                    "identifier": "clone-of-mci-to-test-a-thing",
+                    "repo": "evergreen",
+                    "owner": "evergreen-ci",
+                    "displayName": "Evergreen Self-Tests"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/grip",
+                "projects": [
+                  {
+                    "identifier": "annie-copy2",
+                    "repo": "grip",
+                    "owner": "evergreen-ci",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/lobster",
+                "projects": [
+                  {
+                    "identifier": "lobster",
+                    "repo": "lobster",
+                    "owner": "evergreen-ci",
+                    "displayName": "Lobster"
+                  }
+                ]
+              },
+              {
+                "name": "evergreen-ci/logkeeper",
+                "projects": [
+                  {
+                    "identifier": "logkeeper",
+                    "repo": "logkeeper",
+                    "owner": "evergreen-ci",
+                    "displayName": "Logkeeper"
+                  }
+                ]
+              },
+              {
+                "name": "hello it's me/amboy",
+                "projects": [
+                  {
+                    "identifier": "amboy",
+                    "repo": "amboy",
+                    "owner": "hello it's me",
+                    "displayName": "Not Amboy"
+                  }
+                ]
+              },
+              {
+                "name": "john-m-liu/evergreen",
+                "projects": [
+                  {
+                    "identifier": "john_test",
+                    "repo": "evergreen",
+                    "owner": "john-m-liu",
+                    "displayName": "john test"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/curator",
+                "projects": [
+                  {
+                    "identifier": "curator",
+                    "repo": "curator",
+                    "owner": "mongodb",
+                    "displayName": "Curator"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/greenbay",
+                "projects": [
+                  {
+                    "identifier": "Greenbay",
+                    "repo": "greenbay",
+                    "owner": "mongodb",
+                    "displayName": "Greenbay"
+                  }
+                ]
+              },
+              {
+                "name": "mongodb/grip",
+                "projects": [
+                  {
+                    "identifier": "grip",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "Grip (Logging)"
+                  },
+                  {
+                    "identifier": "ernietest20171110",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernietest2017111002",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "Grip (Logging)"
+                  },
+                  {
+                    "identifier": "ernie-copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy2",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy3",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "ernie-copy4",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "test display name update"
+                  },
+                  {
+                    "identifier": "annie-test",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-test-copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy3",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy4",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie-copy-vars",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie_api_copy",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  },
+                  {
+                    "identifier": "annie_api_copy2",
+                    "repo": "grip",
+                    "owner": "mongodb",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "rongodb/ron_repo_1",
+                "projects": [
+                  {
+                    "identifier": "ron_test_copy_1",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template-copy-for-testing",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "ron_test_output",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "ron_three",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  },
+                  {
+                    "identifier": "qa-template-for-testing",
+                    "repo": "ron_repo_1",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  }
+                ]
+              },
+              {
+                "name": "rongodb/v20380713",
+                "projects": [
+                  {
+                    "identifier": "ron_two_via_postman",
+                    "repo": "v20380713",
+                    "owner": "rongodb",
+                    "displayName": "1st project to be moved around"
+                  }
+                ]
+              },
+              {
+                "name": "something crazy/grip",
+                "projects": [
+                  {
+                    "identifier": "annie-copy5",
+                    "repo": "grip",
+                    "owner": "something crazy",
+                    "displayName": "something temporary"
+                  }
+                ]
+              },
+              {
+                "name": "tzembo/evergreen",
+                "projects": [
+                  {
+                    "identifier": "thomas-test",
+                    "repo": "evergreen",
+                    "owner": "tzembo",
+                    "displayName": "thomas test"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "remove-favorite-project-mutation.graphql",
+      "result": {
+        "data": {
+          "removeFavoriteProject": {
+            "identifier": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black",
+            "displayName": "buildhost-test"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "schedule-task-mutation.graphql",
+      "result": {
+        "data": {
+          "scheduleTask": {
+            "activated": true,
+            "activatedBy": "testuser"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "unschedule-task-mutation.graphql",
+      "result": {
+        "data": {
+          "unscheduleTask": {
+            "activated": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-display.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            },
+            {
+              "taskName": "exec 2 display!!",
+              "files": [
+                {
+                  "name": "THIS IS REALLY COOL",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                },
+                {
+                  "name": "really cool test file",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-1.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": null,
+              "finished": null,
+              "submittedAt": "January 10, 2018, 7:01PM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-time-2.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "February 13, 2020, 12:42PM",
+              "finished": "February 14, 2020, 1:03PM",
+              "submittedAt": "February 12, 2020, 11:58AM"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-exec.graphql",
+      "result": {
+        "data": {
+          "taskFiles": [
+            {
+              "taskName": "exec 1 display!!",
+              "files": [
+                {
+                  "name": "awesome_test!!!",
+                  "link": "www.wikipedia.com",
+                  "visibility": "the whole world"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task-files-query-err1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id NOT-A-REAL-TASKID",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-err2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find old task with id task-with-fake-old-id",
+            "path": ["taskFiles"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "task-files-query-empty.graphql",
+      "result": {
+        "data": { "taskFiles": [] }
+      }
+    },
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-empty-str.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
+              "id": "29ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-use-original-url-when-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://original-url.com",
+                "rawDisplayURL": "https://original-raw-url.com"
+              },
+              "id": "19ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-logs-prepend-api_url-when-scheme-and-host-not-provided.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
+                "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
+              },
+              "id": "49ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-html-url-with-line-num-and-log-id-when-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-formats-raw-url-with-query-param-and-log-id-when-raw-url-empty.graphql",
+      "result": {
+        "data": {
+          "taskTests": [
+            {
+              "logs": {
+                "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=1"
+              },
+              "id": "39ef7a20a7798219e191d00e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_test-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "cannot find task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
+            "path": ["taskTests"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "taskTests": null }
+      }
+    },
+    {
+      "query_file": "patch-duration-query.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "makespan": "3m39s",
+              "timeTaken": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "set_priority-success.graphql",
+      "result": {
+        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
+      }
+    },
+    {
+      "query_file": "set_priority-nonexistent-task_id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-no-permission.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
+            "path": ["setTaskPriority"],
+            "extensions": { "code": "FORBIDDEN" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "set_priority-has-permission.graphql",
+      "result": {
+        "data": {
+          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
+        }
+      }
+    },
+    {
+      "query_file": "abort_task-success.graphql",
+      "result": {
+        "data": { "abortTask": { "activated": false, "aborted": true } }
+      }
+    },
+    {
+      "query_file": "abort_task-success-remove-commit-queue.graphql",
+      "result": {
+        "data": { "abortTask": { "activated": false, "aborted": true } }
+      }
+    },
+    {
+      "query_file": "abort_task-fail-remove-commit-queue.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to remove commit queue item for project exec2, version version: can't get commit queue for id 'logkeeper': document not found",
+            "path": ["abortTask"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-fail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error aborting task exec1: Task 'exec1' is currently 'pass' - cannot abort task in this status",
+            "path": ["abortTask"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-task-not-found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task by id not-for-real-task-id: 404 (Not Found): task with id not-for-real-task-id not found",
+            "path": ["abortTask"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "abort_task-project-not-found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "could not find project 'nothing that actually exists'",
+            "path": ["abortTask"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
       }
     }
   ]

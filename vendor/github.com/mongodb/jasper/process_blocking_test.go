@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/internal/executor"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -398,7 +398,7 @@ func TestBlockingProcess(t *testing.T) {
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
-					id := uuid.Must(uuid.NewV4()).String()
+					id := uuid.New().String()
 					proc := &blockingProcess{
 						id:   id,
 						ops:  make(chan func(executor.Executor), 1),

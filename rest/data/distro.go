@@ -63,7 +63,6 @@ func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 			}
 		}
 	}
-
 	err := new.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -136,7 +135,10 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	// DistroCost model.
 	dc := res[0]
 	dc.Provider = d.Provider
-	dc.ProviderSettings = *(d.ProviderSettings)
+	if d.ProviderSettings != nil {
+		dc.ProviderSettings = *(d.ProviderSettings)
+	}
+	// TODO: handle multiple regions in ProviderSettingsList
 
 	return &dc, nil
 }

@@ -1,15 +1,14 @@
-mciModule.factory('TestSample', function() {
-  return function(sample){
+mciModule.factory('TestSample', function () {
+  return function (sample) {
     this.sample = sample;
     this._threads = null;
-    this._maxes = {};
 
-    this.threads = function(){
-      if(this._threads == null){
+    this.threads = function () {
+      if (this._threads == null) {
         this._threads = _.uniq(
           _.filter(
             _.flatten(
-              _.map(this.sample.data.results, function(x){
+              _.map(this.sample.data.results, function (x) {
                 return _.keys(x.results)
               }), true
             ), numericFilter
@@ -19,7 +18,7 @@ mciModule.factory('TestSample', function() {
       return this._threads;
     }
 
-    this.testNames = function(){
+    this.testNames = function () {
       var tests = _.pluck(this.sample.data.results, "name");
       if (tests.length === 0) {
         tests = _.pluck(_.pluck(this.sample, "info"), "test_name");
@@ -27,20 +26,23 @@ mciModule.factory('TestSample', function() {
       return tests
     }
 
-    this.getLegendName = function(){
-      if(!!this.sample.tag){
+    this.getLegendName = function () {
+      if (!!this.sample.tag) {
         return this.sample.tag
       }
-      return this.sample.revision.substring(0,7)
+      return this.sample.revision.substring(0, 7)
     }
 
     // Returns only the keys that have results stored in them
-    this.resultKeys = function(testName){
+    this.resultKeys = function (testName) {
       var testInfo = this.resultForTest(testName);
-      return _.pluck(_(testInfo.results).pairs().filter(function(x){return typeof(x[1]) == "object"}), 0)
+      // FIXME: questionable null handling. see https://github.com/evergreen-ci/evergreen/pull/3103/files#r375279754
+      return _.pluck(_(testInfo.results).pairs().filter(function (x) {
+        return typeof (x[1]) == "object"
+      }), 0)
     }
 
-    this.threadsVsOps = function(testName) {
+    this.threadsVsOps = function (testName) {
       var testInfo = this.resultForTest(testName);
       var result = [];
       if (!testInfo)
@@ -49,7 +51,9 @@ mciModule.factory('TestSample', function() {
 
       var keys = this.resultKeys(testName)
       for (var j = 0; j < keys.length; j++) {
-        let value = {threads: parseInt(keys[j])};
+        let value = {
+          threads: parseInt(keys[j])
+        };
         for (key in series[keys[j]]) {
           value[key] = series[keys[j]][key];
         }
@@ -59,19 +63,23 @@ mciModule.factory('TestSample', function() {
       return result;
     }
 
-    this.resultForTest = function(testName){
+    this.resultForTest = function (testName) {
       return _.findWhere(
-        this.sample.data.results, {name: testName}
+        this.sample.data.results, {
+          name: testName
+        }
       );
     }
 
-    this.maxThroughputForTest = function(testName, metric){
-      if(!_.has(this._maxes, testName)){
-        var d = this.resultForTest(testName);
-        if(!d){
-          return;
-        }
-        this._maxes[testName] = _.max(
+    this.maxThroughputForTest = function (testName, metric, threadLevel) {
+      const d = this.resultForTest(testName);
+      if (!d) {
+        return null;
+      }
+      if (threadLevel > 0) {
+        return d.results[threadLevel][metric];
+      } else {
+        return _.max(
           _.filter(
             _.pluck(
               _.values(d.results), metric
@@ -79,7 +87,6 @@ mciModule.factory('TestSample', function() {
           )
         );
       }
-      return this._maxes[testName];
     }
   }
 })

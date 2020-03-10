@@ -4,15 +4,21 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
 type ProviderSettings interface {
 	Validate() error
+
+	// If zone is specified, returns the provider settings for that region.
+	// This is currently only being implemented for EC2 hosts.
+	FromDistroSettings(distro.Distro, string) error
 }
 
 //Manager is an interface which handles creating new hosts or modifying
@@ -67,9 +73,16 @@ type Manager interface {
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
 
+	// CheckInstanceType determines if the given instance type is available in the current region.
+	CheckInstanceType(context.Context, string) error
+
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
+
+	// AddSSHKey adds an SSH key for this manager's hosts. Adding an existing
+	// key is a no-op.
+	AddSSHKey(context.Context, evergreen.SSHKeyPair) error
 }
 
 type ContainerManager interface {
@@ -104,6 +117,26 @@ type ManagerOpts struct {
 	Region         string
 	ProviderKey    string
 	ProviderSecret string
+}
+
+func GetSettings(provider string) (ProviderSettings, error) {
+	switch provider {
+	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2Fleet:
+		return &EC2ProviderSettings{}, nil
+	case evergreen.ProviderNameStatic:
+		return &StaticSettings{}, nil
+	case evergreen.ProviderNameMock:
+		return &MockProviderSettings{}, nil
+	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
+		return &dockerSettings{}, nil
+	case evergreen.ProviderNameOpenstack:
+		return &openStackSettings{}, nil
+	case evergreen.ProviderNameGce:
+		return &GCESettings{}, nil
+	case evergreen.ProviderNameVsphere:
+		return &vsphereSettings{}, nil
+	}
+	return nil, errors.Errorf("invalid provider name %s", provider)
 }
 
 // GetManager returns an implementation of Manager for the given manager options.
@@ -183,8 +216,16 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
+	if len(d.ProviderSettingsList) > 1 {
+		return ManagerOpts{}, errors.Errorf("distro should be modified to have only one provider settings")
+	}
 	if IsEc2Provider(d.Provider) {
-		return getEC2ManagerOptions(d.Provider, d.ProviderSettings)
+		s := &EC2ProviderSettings{}
+		if err := s.FromDistroSettings(d, ""); err != nil {
+			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
+		}
+
+		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
 		return getMockManagerOptions(d.Provider, d.ProviderSettings)
@@ -199,4 +240,42 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 		return cm, nil
 	}
 	return nil, errors.New("Error converting manager to container manager")
+}
+
+// If ProviderSettings is populated, then it was modified via UI and we should save this to the list.
+// Otherwise, repopulate ProviderSettings from the list to maintain the UI. This is only necessary temporarily.
+func UpdateProviderSettings(d *distro.Distro) error {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
+		if err := CreateSettingsListFromLegacy(d); err != nil {
+			return errors.Wrapf(err, "error creating new settings list for distro '%s'", d.Id)
+		}
+	} else if len(d.ProviderSettingsList) > 0 {
+		region := ""
+		if len(d.ProviderSettingsList) > 1 {
+			region = evergreen.DefaultEC2Region
+		}
+		doc, err := d.GetProviderSettingByRegion(region)
+		if err != nil {
+			return errors.Wrapf(err, "unable to get default provider settings for distro '%s'", d.Id)
+		}
+		docMap := doc.ExportMap()
+		d.ProviderSettings = &docMap
+	}
+	return nil
+}
+
+func CreateSettingsListFromLegacy(d *distro.Distro) error {
+	bytes, err := bson.Marshal(d.ProviderSettings)
+	if err != nil {
+		return errors.Wrap(err, "error marshalling provider setting into bson")
+	}
+	doc := &birch.Document{}
+	if err := doc.UnmarshalBSON(bytes); err != nil {
+		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+	}
+	if IsEc2Provider(d.Provider) {
+		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
+	}
+	d.ProviderSettingsList = []*birch.Document{doc}
+	return nil
 }

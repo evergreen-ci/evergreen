@@ -84,9 +84,8 @@ var (
 	LastContainerFinishTimeKey   = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey              = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
-	RunningTeardownForTaskKey    = bsonutil.MustHaveTag(Host{}, "RunningTeardownForTask")
-	RunningTeardownSinceKey      = bsonutil.MustHaveTag(Host{}, "RunningTeardownSince")
 	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
+	SSHKeyNamesKey               = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
@@ -683,6 +682,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
 				},
 				{
+					task.StatusKey:       evergreen.TaskDispatched,
+					task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
+				},
+				{
 					task.StatusKey:        evergreen.TaskUndispatched,
 					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
 					task.LastHeartbeatKey: bson.M{"$ne": util.ZeroTime},
@@ -742,7 +745,9 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 // recently.
 func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	// Agent monitors should have a longer grace period than agents until they
+	// are considered unreachable.
+	cutoffTime := currentTime.Add(-3 * MaxLCTInterval)
 	return bson.M{
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -958,6 +963,56 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 
 	var query db.Q
 	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error querying database")
+	}
+	return hosts, nil
+}
+
+type HostsInRangeParams struct {
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	User          string
+	Distro        string
+	Status        string
+	Region        string
+	UserSpawned   bool
+}
+
+func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
+	var statusMatch interface{}
+	if params.Status != "" {
+		statusMatch = params.Status
+	} else {
+		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
+	}
+
+	createTimeFilter := bson.M{"$gt": params.CreatedAfter}
+	if !util.IsZeroTime(params.CreatedBefore) {
+		createTimeFilter["$lt"] = params.CreatedBefore
+	}
+
+	filter := bson.M{
+		StatusKey:     statusMatch,
+		CreateTimeKey: createTimeFilter,
+	}
+
+	if params.User != "" {
+		filter[StartedByKey] = params.User
+	}
+	if params.Distro != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = params.Distro
+	}
+
+	if params.UserSpawned {
+		filter[UserHostKey] = true
+	}
+
+	if params.Region != "" {
+		filter[bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey)] = params.Region
+	}
+
+	hosts, err := Find(db.Query(filter))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
 	}

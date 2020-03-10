@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // vsphereManager implements the Manager interface for vSphere.
@@ -21,13 +23,12 @@ type vsphereManager struct {
 
 // vsphereSettings specifies the settings used to configure a host instance.
 type vsphereSettings struct {
-	Template string `mapstructure:"template"`
+	Template     string `mapstructure:"template" json:"template" bson:"template"`
+	Datastore    string `mapstructure:"datastore" json:"datastore" bson:"datastore"`
+	ResourcePool string `mapstructure:"resource_pool" json:"resource_pool" bson:"resource_pool"`
 
-	Datastore    string `mapstructure:"datastore"`
-	ResourcePool string `mapstructure:"resource_pool"`
-
-	NumCPUs  int32 `mapstructure:"num_cpus"`
-	MemoryMB int64 `mapstructure:"memory_mb"`
+	NumCPUs  int32 `mapstructure:"num_cpus" json:"num_cpus" bson:"num_cpus"`
+	MemoryMB int64 `mapstructure:"memory_mb" json:"memory_mb" bson:"memory_mb"`
 }
 
 // Validate verifies a set of ProviderSettings.
@@ -48,6 +49,23 @@ func (opts *vsphereSettings) Validate() error {
 		return errors.New("memory in Mb must be non-negative")
 	}
 
+	return nil
+}
+
+func (opts *vsphereSettings) FromDistroSettings(d distro.Distro, _ string) error {
+	if len(d.ProviderSettingsList) != 0 {
+		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := bson.Unmarshal(bytes, opts); err != nil {
+			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		}
+	} else if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
+		}
+	}
 	return nil
 }
 
@@ -91,10 +109,8 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	}
 
 	s := &vsphereSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
-		}
+	if err := s.FromDistroSettings(h.Distro, ""); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := s.Validate(); err != nil {
@@ -196,6 +212,10 @@ func (m *vsphereManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volumes with vsphere provider")
 }
 
+func (m *vsphereManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with vsphere provider")
+}
+
 // GetDNSName returns the IPv4 address of the host.
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ip, err := m.client.GetIP(ctx, h)
@@ -210,4 +230,9 @@ func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, 
 // TODO: implement payment information for vSphere
 func (m *vsphereManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *vsphereManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
 }

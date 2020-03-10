@@ -72,7 +72,7 @@ func (c *SlackConfig) ValidateAndDefault() error {
 			return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
 		}
 
-		if !level.IsValidPriority(level.FromString(c.Level)) {
+		if !level.FromString(c.Level).IsValid() {
 			return errors.Errorf("%s is not a valid priority", c.Level)
 		}
 	}

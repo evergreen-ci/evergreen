@@ -6,9 +6,7 @@ body{ background: #f5f6f7; }
 window.plugins = {{.PluginContent.Data}};
 window.jiraHost = {{.JiraHost}};
 window.hasBanner = {{ne .Banner ""}};
-window.isAdmin = {{.IsProjectAdmin}};
 window.user = {{.User}};
-window.acl_enabled = {{.ACLEnabled}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
@@ -143,7 +141,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
                       </li>
-                      <li ng-show="!task.override_dependencies && task.depends_on && task.depends_on.length > 0 && (isAdmin || (acl_enabled && permissions.project_tasks>=30))">
+                      <li ng-show="!task.override_dependencies && task.depends_on && task.depends_on.length > 0 && permissions.project_tasks>=30">
                         <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>
@@ -505,7 +503,8 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
     </div>
     <div class="row">
       <div class="col-lg-12">
-        <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
+        <pre ng-show="currentLogs != eventLogs && logs.length && !buildlogger"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
+        <pre ng-show="currentLogs != eventLogs && logs.length && buildlogger"><span ng-repeat="element in logs" class="severity-[[ element.s ]]" ng-bind-html="(element.m | escapeHtml) + '\n' | linkify | ansi"></span></pre>
         {{if .User}}
         <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
         {{else}}

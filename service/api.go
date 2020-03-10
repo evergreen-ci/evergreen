@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -43,17 +43,13 @@ type APIServer struct {
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
 func NewAPIServer(env evergreen.Environment, queue amboy.Queue) (*APIServer, error) {
 	settings := env.Settings()
-	authManager, _, err := auth.LoadUserManager(settings.AuthConfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	as := &APIServer{
-		UserManager:         authManager,
+		UserManager:         env.UserManager(),
 		Settings:            *settings,
 		env:                 env,
 		queue:               queue,
@@ -198,13 +194,13 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" {
-		pp, err := model.ParserProjectFindOneById(t.Version)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+
+	pp, err := model.ParserProjectFindOneById(t.Version)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		config, err := yaml.Marshal(pp)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -324,6 +320,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		TaskDisplayName: t.DisplayName,
 		BuildId:         t.BuildId,
 		Execution:       t.Execution,
+		CreateTime:      time.Now(),
 	}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
@@ -451,10 +448,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
-	syntaxErrs := validator.CheckProjectSyntax(project)
-	semanticErrs := validator.CheckProjectSemantics(project)
-	if len(syntaxErrs)+len(semanticErrs) != 0 {
-		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))
+
+	errs := validator.CheckYamlStrict(yamlBytes)
+	errs = append(errs, validator.CheckProjectSyntax(project)...)
+	errs = append(errs, validator.CheckProjectSemantics(project)...)
+	if len(errs) > 0 {
+		gimlet.WriteJSONError(w, errs)
 		return
 	}
 	gimlet.WriteJSON(w, validator.ValidationErrors{})
@@ -516,8 +515,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/validate").Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
-	app.AddRoute("/runtimes/").Handler(as.listRuntimes).Get()
-	app.AddRoute("/runtimes/timeout/{seconds:\\d*}").Handler(as.lateRuntimes).Get()
 	app.AddRoute("/status/consistent_task_assignment").Handler(as.consistentTaskAssignment).Get()
 	app.AddRoute("/status/stuck_hosts").Handler(as.getStuckHosts).Get()
 	app.AddRoute("/status/info").Handler(as.serviceStatusSimple).Get()
@@ -547,6 +544,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
 
 	// Agent routes
+	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
 	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Buildlogger).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()

@@ -106,20 +106,35 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 
 // checkHostHealth checks that host is running.
 func checkHostHealth(h *host.Host) bool {
-	if h.Status != evergreen.HostRunning {
-		grip.Info(message.Fields{
-			"message": "host is not running, so agent should exit",
-			"host_id": h.Id,
-		})
-		return true
+	if h.Status == evergreen.HostRunning {
+		return false
 	}
-	return false
+
+	// User data can start anytime after the instance is created, so the app
+	// server may not have marked it as running yet.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData &&
+		util.StringSliceContains([]string{
+			evergreen.HostStarting,
+			evergreen.HostProvisioning,
+		}, h.Status) {
+		return false
+	}
+
+	grip.Info(message.Fields{
+		"message":                 "host is not running, so agent should exit",
+		"status":                  h.Status,
+		"bootstrap_method":        h.Distro.BootstrapSettings.Method,
+		"bootstrap_communication": h.Distro.BootstrapSettings.Communication,
+		"host_id":                 h.Id,
+	})
+
+	return true
 }
 
 // agentRevisionIsOld checks that the agent revision is current.
 func agentRevisionIsOld(h *host.Host) bool {
 	if h.AgentRevision != evergreen.BuildRevision {
-		grip.InfoWhen(h.LegacyBootstrap(), message.Fields{
+		grip.InfoWhen(h.Distro.LegacyBootstrap(), message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
 			"agent_revision": evergreen.BuildRevision,
@@ -243,19 +258,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the bookkeeping entry for the task
-	err = task.UpdateExpectedDuration(t, t.TimeTaken)
-	if err != nil {
-		grip.Warning(message.WrapError(err, "problem updating expected duration"))
-	}
-
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
-				"host":      currentHost.Id,
+				"host_id":   currentHost.Id,
 				"operation": "next_task",
 				"revision":  evergreen.BuildRevision,
 			}))
@@ -296,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
-				"host":      currentHost.Id,
+				"host_id":   currentHost.Id,
 				"operation": "next_task",
 				"revision":  evergreen.BuildRevision,
 			}))
@@ -324,7 +333,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 	if err := h.StopAgentMonitor(ctx, env); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "problem stopping agent monitor",
-			"host":      h.Id,
+			"host_id":   h.Id,
 			"operation": "next_task",
 			"revision":  evergreen.BuildRevision,
 		}))
@@ -539,24 +548,17 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	// The agent may start before the host has been fully provisioned by the app
-	// server, so no-op until the app server is done provisioning.
-	if !h.Provisioned {
-		gimlet.WriteJSON(w, apimodels.NextTaskResponse{ShouldExit: true})
-		return
-	}
-
 	if h.AgentStartTime.IsZero() {
 		if err := h.SetAgentStartTime(); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not set host's agent start time for first contact",
-				"host":    h.Id,
+				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			}))
 		} else {
 			grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
 				"message":                   "agent initiated first contact with server",
-				"host":                      h.Id,
+				"host_id":                   h.Id,
 				"distro":                    h.Distro.Id,
 				"provisioning":              h.Distro.BootstrapSettings.Method,
 				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
@@ -566,13 +568,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
-		"host":         h.Id,
+		"host_id":      h.Id,
 		"distro":       h.Distro.Id,
 		"provisioning": h.Distro.BootstrapSettings.Method,
 		"operation":    "next_task",
 	}))
 
-	stoppedAgentMonitor := (h.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
+	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
 		h.NeedsReprovision == host.ReprovisionJasperRestart)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
@@ -587,31 +589,32 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
+		response.ShouldExit = true
+
 		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
-				"host":      h.Id,
+				"host_id":   h.Id,
 				"operation": "next_task",
 				"revision":  evergreen.BuildRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			gimlet.WriteJSON(w, response)
 			return
 		}
 
 		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":      h.Id,
+				"host_id":   h.Id,
 				"operation": "next_task",
 				"message":   "problem indicating that host needs new agent or agent monitor deploy",
 				"source":    "database error",
 				"revision":  evergreen.BuildRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			gimlet.WriteJSON(w, response)
 			return
 		}
-		response.ShouldExit = true
 		gimlet.WriteJSON(w, response)
 		return
 	}
@@ -735,7 +738,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 		if isOldAgent {
 			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{
-					"host":      h.Id,
+					"host_id":   h.Id,
 					"operation": "next_task",
 					"message":   "problem indicating that host needs new agent",
 					"source":    "database error",
@@ -746,7 +749,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 			}
 		}
 		grip.Info(message.WrapError(err, message.Fields{
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"operation":     "next_task",
 			"message":       "unable to unmarshal next task details",
 			"host_revision": h.AgentRevision,
@@ -783,7 +786,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// Non-legacy hosts deploying agents via the agent monitor may be
 	// running an agent on the current revision, but the database host has
 	// yet to be updated.
-	if !h.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
+	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
 		err := h.SetAgentRevision(details.AgentRevision)
 		if err == nil {
 			event.LogHostAgentDeployed(h.Id)
@@ -792,7 +795,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "problem updating host agent revision",
 			"operation":     "next_task",
-			"host":          h.Id,
+			"host_id":       h.Id,
 			"source":        "database error",
 			"host_revision": details.AgentRevision,
 			"revsision":     evergreen.BuildRevision,
@@ -802,7 +805,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	if details.TaskGroup == "" {
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":      h.Id,
+				"host_id":   h.Id,
 				"operation": "next_task",
 				"message":   "problem indicating that host needs new agent",
 				"source":    "database error",
@@ -814,7 +817,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 		}
 		if err := h.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host":      h.Id,
+				"host_id":   h.Id,
 				"operation": "next_task",
 				"message":   "problem unsetting running task",
 				"source":    "database error",

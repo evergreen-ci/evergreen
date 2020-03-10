@@ -50,9 +50,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Author = ToStringPtr(v.Author)
 	apiPatch.Version = ToStringPtr(v.Version)
 	apiPatch.Status = ToStringPtr(v.Status)
-	apiPatch.CreateTime = &v.CreateTime
-	apiPatch.StartTime = &v.StartTime
-	apiPatch.FinishTime = &v.FinishTime
+	apiPatch.CreateTime = ToTimePtr(v.CreateTime)
+	apiPatch.StartTime = ToTimePtr(v.StartTime)
+	apiPatch.FinishTime = ToTimePtr(v.FinishTime)
 	builds := make([]*string, 0)
 	for _, b := range v.BuildVariants {
 		builds = append(builds, ToStringPtr(b))
@@ -96,11 +96,11 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	res.Status = FromStringPtr(apiPatch.Status)
 	res.Alias = FromStringPtr(apiPatch.Alias)
 	res.Activated = apiPatch.Activated
-	res.CreateTime, err = ParseTime(apiPatch.CreateTime.Format(APITimeFormat))
+	res.CreateTime, err = FromTimePtr(apiPatch.CreateTime)
 	catcher.Add(err)
-	res.StartTime, err = ParseTime(apiPatch.StartTime.Format(APITimeFormat))
+	res.StartTime, err = FromTimePtr(apiPatch.StartTime)
 	catcher.Add(err)
-	res.FinishTime, err = ParseTime(apiPatch.FinishTime.Format(APITimeFormat))
+	res.FinishTime, err = FromTimePtr(apiPatch.FinishTime)
 	catcher.Add(err)
 
 	builds := make([]string, len(apiPatch.Variants))

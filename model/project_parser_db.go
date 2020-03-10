@@ -1,8 +1,6 @@
 package model
 
 import (
-	"strings"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -44,16 +42,27 @@ var (
 	ParserProjectExecTimeoutSecsKey   = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
 	ParserProjectLoggersKey           = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
 	ParserProjectAxesKey              = bsonutil.MustHaveTag(ParserProject{}, "Axes")
+	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
-// ProjectById returns the parser project for the version
+// ParserProjectFindOneById returns the parser project for the version
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
+	return ParserProjectFindOne(ParserProjectById(id))
+}
+
+// ParserProjectFindOne finds a parser project with a given query.
+func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
-	err := db.FindOneQ(ParserProjectCollection, db.Query(bson.M{ParserProjectIdKey: id}), project)
+	err := db.FindOneQ(ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return project, err
+}
+
+// ParserProjectById returns a query to find a parser project by id.
+func ParserProjectById(id string) db.Q {
+	return db.Query(bson.M{ParserProjectIdKey: id})
 }
 
 // UpdateOne updates one project
@@ -96,6 +105,7 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 			ParserProjectLoggersKey:           pp.Loggers,
 			ParserProjectAxesKey:              pp.Axes,
 			ParserProjectConfigNumberKey:      pp.ConfigUpdateNumber,
+			ParserProjectCreateTimeKey:        pp.CreateTime,
 		},
 	}
 }
@@ -114,17 +124,18 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 	return q
 }
 
-// TryInsert suppresses the error of inserting if it's a duplicate key error and attempts to
-// upsert if config number matches
+// TryUpsert suppresses the error of inserting if it's a duplicate key error
+// and attempts to upsert if config number matches.
 func (pp *ParserProject) TryUpsert() error {
 	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
-	if isValidErr(err) {
+	if !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "database error upserting parser project")
 	}
 
 	// log this error but don't return it
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message":                      "parser project not upserted",
+		"operation":                    "TryUpsert",
 		"version":                      pp.Id,
 		"attempted_to_update_with_num": pp.ConfigUpdateNumber,
 	}))
@@ -135,34 +146,15 @@ func (pp *ParserProject) TryUpsert() error {
 // UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
 // existing config number is less than or equal to the new config number.
 // If shouldEqual, only update if the config update number matches.
-func (pp *ParserProject) UpsertWithConfigNumber(num int, shouldEqual bool) error {
+func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
 	}
-	pp.ConfigUpdateNumber = num + 1
-	q := bson.M{ParserProjectIdKey: pp.Id}
-	if shouldEqual { // guarantee that the config number hasn't changed
-		q = checkConfigNumberQuery(pp.Id, num)
-	}
-
-	err := ParserProjectUpsertOne(q, setAllFieldsUpdate(pp))
-	if isValidErr(err) {
+	expectedNum := pp.ConfigUpdateNumber
+	pp.ConfigUpdateNumber = updateNum
+	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), setAllFieldsUpdate(pp)); err != nil {
+		// expose all errors to check duplicate key errors for a race
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
-	// log this error but don't return it
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message":                      "parser project not upserted",
-		"version":                      pp.Id,
-		"attempted_to_update_with_num": num + 1,
-	}))
 	return nil
-}
-
-// return true if this is an error we want to expose
-func isValidErr(err error) bool {
-	if err == nil || adb.ResultsNotFound(err) || strings.Contains(err.Error(), "duplicate key error") {
-		return false
-	}
-
-	return true
 }

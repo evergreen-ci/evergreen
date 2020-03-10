@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -17,7 +18,10 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -105,7 +109,7 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
 		"host3": hostStatus{Status: "decommissioned"},
-		"host4": hostStatus{Status: "terminated"},
+		"host2": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -328,7 +332,7 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.Equal(apiHost.HostURL, model.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
 	s.Equal(apiHost.StartedBy, model.ToStringPtr(host.StartedBy))
-	s.Equal(apiHost.Type, model.ToStringPtr(host.InstanceType))
+	s.Equal(apiHost.Provider, model.ToStringPtr(host.Provider))
 	s.Equal(apiHost.User, model.ToStringPtr(host.User))
 	s.Equal(apiHost.Status, model.ToStringPtr(host.Status))
 	s.Equal(apiHost.UserHost, host.UserHost)
@@ -781,12 +785,90 @@ func getMockHostsConnector() *data.MockConnector {
 					APIKey: "user1-key",
 				},
 				"root": {
-					Id:     "root",
-					APIKey: "root-key",
+					Id:          "root",
+					APIKey:      "root-key",
+					SystemRoles: []string{"root"},
 				},
 			},
 		},
 	}
-	connector.SetSuperUsers([]string{"root"})
+	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
+	cmd := map[string]string{
+		"create": evergreen.ScopeCollection,
+	}
+	grip.Error(evergreen.GetEnvironment().DB().RunCommand(nil, cmd).Err())
+	rm := evergreen.GetEnvironment().RoleManager()
+	grip.Error(rm.AddScope(gimlet.Scope{
+		ID:        "root",
+		Resources: []string{windowsDistro.Id},
+		Type:      evergreen.DistroResourceType,
+	}))
+	grip.Error(rm.UpdateRole(gimlet.Role{
+		ID:    "root",
+		Scope: "root",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+		},
+	}))
 	return connector
+}
+
+func TestHostFilterGetHandler(t *testing.T) {
+	connector := &data.MockConnector{
+		MockHostConnector: data.MockHostConnector{
+			CachedHosts: []host.Host{
+				{
+					Id:           "h0",
+					StartedBy:    "user0",
+					Status:       evergreen.HostTerminated,
+					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:           "h1",
+					StartedBy:    "user0",
+					Status:       evergreen.HostRunning,
+					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+				},
+				{
+					Id:           "h2",
+					StartedBy:    "user1",
+					Status:       evergreen.HostRunning,
+					CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+					Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+				},
+			},
+		},
+	}
+
+	handler := hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{Status: evergreen.HostTerminated},
+	}
+	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts := resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h0", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+
+	handler = hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{Distro: "ubuntu-1604"},
+	}
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts = resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h1", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+
+	handler = hostFilterGetHandler{
+		sc:     connector,
+		params: model.APIHostParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
+	}
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user1"}))
+	assert.Equal(t, http.StatusOK, resp.Status())
+	hosts = resp.Data().([]interface{})
+	require.Len(t, hosts, 1)
+	assert.Equal(t, "h2", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }

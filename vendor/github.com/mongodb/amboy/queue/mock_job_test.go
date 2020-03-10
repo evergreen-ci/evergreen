@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -42,6 +43,7 @@ func (e *mockJobRunEnv) Reset() {
 func init() {
 	mockJobCounters = &mockJobRunEnv{}
 	registry.AddJobType("mock", func() amboy.Job { return newMockJob() })
+	registry.AddJobType("sleep", func() amboy.Job { return newSleepJob() })
 }
 
 //
@@ -69,12 +71,38 @@ func (j *mockJob) Run(_ context.Context) {
 }
 
 type sleepJob struct {
-	sleep time.Duration
+	Sleep time.Duration
 	job.Base
 }
 
-func (j *sleepJob) Run(_ context.Context) {
+func newSleepJob() *sleepJob {
+	j := &sleepJob{
+		Base: job.Base{
+			JobType: amboy.JobType{
+				Name:    "sleep",
+				Version: 0,
+			},
+		},
+	}
+	j.SetDependency(dependency.NewAlways())
+	j.SetID(uuid.New().String())
+	return j
+}
+
+func (j *sleepJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	time.Sleep(j.sleep)
+	if j.Sleep == 0 {
+		return
+	}
+
+	timer := time.NewTimer(j.Sleep)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return
+	case <-ctx.Done():
+		return
+	}
 }

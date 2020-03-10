@@ -110,7 +110,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"operation": j.Type().Name,
 		"id":        j.ID(),
 		"task":      t.Id,
-		"host":      t.HostId,
+		"host_id":   t.HostId,
 	}
 
 	err = cleanUpTimedOutTask(ctx, env, j.ID(), t)
@@ -157,7 +157,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 			grip.Error(message.Fields{
 				"message":   "no entry found for host",
 				"task":      t.Id,
-				"host":      t.HostId,
+				"host_id":   t.HostId,
 				"operation": "cleanup timed out task",
 			})
 		}
@@ -271,7 +271,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	for _, t := range tasks {
 		taskIDs[t.Id] = t.Execution
 	}
-	tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
+	tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold).WithFields(task.IdKey, task.ExecutionKey))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
 		return
