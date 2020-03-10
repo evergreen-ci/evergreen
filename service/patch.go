@@ -1,29 +1,20 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
-
-type patchVariantsTasksRequest struct {
-	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Variants      []string             `json:"variants"`                 // old format
-	Tasks         []string             `json:"tasks"`                    // old format
-	Description   string               `json:"description"`
-}
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
@@ -113,12 +104,12 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	if curUser == nil {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
 	}
-	patchUpdateReq := patchVariantsTasksRequest{}
+	patchUpdateReq := graphql.PatchVariantsTasksRequest{}
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := SchedulePatch(r.Context(), projCtx, patchUpdateReq)
+	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
@@ -129,111 +120,6 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		VersionId string `json:"version"`
 	}{versionId})
 
-}
-
-// SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
-// success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, projCtx projectContext, patchUpdateReq patchVariantsTasksRequest) (error, int, string, string) {
-	var err error
-	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
-	if err != nil {
-		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
-	}
-
-	// Unmarshal the project config and set it in the project context
-	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
-		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
-	}
-
-	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
-		"source":     "ui_update_patch",
-		"message":    "legacy structure is being used",
-		"update_req": patchUpdateReq,
-		"patch_id":   projCtx.Patch.Id.Hex(),
-		"version":    projCtx.Patch.Version,
-	})
-
-	tasks := model.TaskVariantPairs{}
-	if len(patchUpdateReq.VariantsTasks) > 0 {
-		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	} else {
-		for _, v := range patchUpdateReq.Variants {
-			for _, t := range patchUpdateReq.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
-				}
-			}
-		}
-	}
-
-	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
-
-	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
-		return err, http.StatusBadRequest, "", ""
-	}
-
-	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
-		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
-	}
-
-	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
-		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
-	}
-
-	if projCtx.Patch.Version != "" {
-		projCtx.Patch.Activated = true
-		// This patch has already been finalized, just add the new builds and tasks
-		if projCtx.Version == nil {
-			return errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version), http.StatusInternalServerError, "", ""
-		}
-
-		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(context.Background(), projCtx.Patch, projCtx.Version, project, tasks)
-		if err != nil {
-			return errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id), http.StatusInternalServerError, "", ""
-		}
-
-		err := model.AddNewBuildsForPatch(ctx, projCtx.Patch, projCtx.Version, project, tasks)
-		if err != nil {
-			return errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id), http.StatusInternalServerError, "", ""
-		}
-
-		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", projCtx.Version.Id
-
-	} else {
-		env := evergreen.GetEnvironment()
-		githubOauthToken, err := env.Settings().GetGithubOauthToken()
-		if err != nil {
-			return err, http.StatusBadRequest, "", ""
-		}
-		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks())
-		if err != nil {
-			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
-		}
-
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-
-		requester := projCtx.Patch.GetRequester()
-		ver, err := model.FinalizePatch(ctx, projCtx.Patch, requester, githubOauthToken)
-		if err != nil {
-			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
-		}
-
-		if projCtx.Patch.IsGithubPRPatch() {
-			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
-			if err := env.LocalQueue().Put(ctx, job); err != nil {
-				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
-			}
-		}
-
-		return nil, http.StatusOK, "Patch builds are scheduled.", ver.Id
-	}
 }
 
 func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
