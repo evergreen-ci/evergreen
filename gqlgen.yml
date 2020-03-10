@@ -21,7 +21,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
-  TaskLogs:
+  TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
@@ -35,3 +35,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUser
+  TaskEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEventLogEntry
+  TaskEventLogData:
+    model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
+  LogMessage:
+    model: github.com/evergreen-ci/evergreen/apimodels.LogMessage

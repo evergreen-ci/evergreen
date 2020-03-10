@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -23,9 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
-	"github.com/evergreen-ci/timber/fetcher"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -126,7 +122,7 @@ type uiTestResult struct {
 }
 
 type logData struct {
-	Buildlogger chan apimodels.BuildloggerLogLine
+	Buildlogger chan apimodels.LogMessage
 	Data        chan apimodels.LogMessage
 	User        gimlet.User
 }
@@ -523,7 +519,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	if defaultLogger == model.BuildloggerLogSender {
 		var logReader io.ReadCloser
-		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
+		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution)
 		if err == nil {
 			defer func() {
 				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -531,7 +527,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 					"message": "failed to close buildlogger log ReadCloser",
 				}))
 			}()
-			gimlet.WriteJSON(w, readBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
+			gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 			return
 		}
 		grip.Error(message.WrapError(err, message.Fields{
@@ -584,7 +580,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := logData{Buildlogger: make(chan apimodels.BuildloggerLogLine, 1024), User: usr}
+	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	defaultLogger, err := getDefaultLogger(projCtx)
@@ -593,7 +589,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
+		logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution)
 		if err == nil {
 			defer func() {
 				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -626,7 +622,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go readBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
+	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
@@ -641,34 +637,6 @@ func getDefaultLogger(projCtx projectContext) (string, error) {
 	}
 
 	return defaultLogger, nil
-}
-
-func (uis *UIServer) getBuildloggerLogs(ctx context.Context, projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
-	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting auth token cookie for user")
-	}
-
-	opts := fetcher.GetOptions{
-		BaseURL:       fmt.Sprintf("https://%s", uis.env.Settings().LoggerConfig.BuildloggerBaseURL),
-		Cookie:        userCookie,
-		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
-		PrintTime:     true,
-		PrintPriority: true,
-		Tail:          tail,
-	}
-	switch logType {
-	case apimodels.TaskLogPrefix:
-		opts.ProcessName = evergreen.LogTypeTask
-	case apimodels.SystemLogPrefix:
-		opts.ProcessName = evergreen.LogTypeSystem
-	case apimodels.AgentLogPrefix:
-		opts.ProcessName = evergreen.LogTypeAgent
-	}
-
-	logReader, err := fetcher.Logs(ctx, opts)
-	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
 }
 
 // avoids type-checking json params for the below function
@@ -878,85 +846,5 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
-	}
-}
-
-func readBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []apimodels.BuildloggerLogLine {
-	lines := []apimodels.BuildloggerLogLine{}
-	lineChan := make(chan apimodels.BuildloggerLogLine, 1024)
-	go readBuildloggerToChan(ctx, taskID, r, lineChan)
-
-	for {
-		line, more := <-lineChan
-		if !more {
-			break
-		}
-
-		lines = append(lines, line)
-	}
-
-	return lines
-}
-
-func readBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- apimodels.BuildloggerLogLine) {
-	var (
-		line string
-		err  error
-	)
-
-	defer close(lines)
-	if r == nil {
-		return
-	}
-
-	reader := bufio.NewReader(r)
-	for err == nil {
-		line, err = reader.ReadString('\n')
-		if err != nil && err != io.EOF {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"task_id": taskID,
-				"message": "problem reading buildlogger log lines",
-			}))
-			return
-		}
-
-		severity := int(level.Info)
-		if strings.HasPrefix(line, "[P: ") {
-			severity, err = strconv.Atoi(strings.TrimSpace(line[3:6]))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"task_id": taskID,
-					"message": "problem reading buildlogger log line severity",
-				}))
-				err = nil
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			grip.Error(message.WrapError(ctx.Err(), message.Fields{
-				"task_id": taskID,
-				"message": "context error while reading buildlogger log lines",
-			}))
-		case lines <- apimodels.BuildloggerLogLine{
-			Message:  strings.TrimSuffix(line, "\n"),
-			Severity: getSeverityMapping(severity),
-		}:
-		}
-	}
-}
-
-func getSeverityMapping(s int) string {
-	switch {
-	case s >= int(level.Error):
-		return apimodels.LogErrorPrefix
-	case s >= int(level.Warning):
-		return apimodels.LogWarnPrefix
-	case s >= int(level.Info):
-		return apimodels.LogInfoPrefix
-	case s < int(level.Info):
-		return apimodels.LogDebugPrefix
-	default:
-		return apimodels.LogInfoPrefix
 	}
 }
