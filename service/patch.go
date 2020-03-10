@@ -118,7 +118,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := uis.SchedulePatch(r.Context(), projCtx, patchUpdateReq)
+	err, status, successMessage, versionId := SchedulePatch(r.Context(), projCtx, patchUpdateReq)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
@@ -133,7 +133,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 
 // SchedulePatch schedules a patch, returning an error, an http status code,
 // an optional success message, and an optional version ID.
-func (uis *UIServer) SchedulePatch(ctx context.Context, projCtx projectContext, patchUpdateReq patchVariantsTasksRequest) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, projCtx projectContext, patchUpdateReq patchVariantsTasksRequest) (error, int, string, string) {
 	var err error
 	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
@@ -204,7 +204,8 @@ func (uis *UIServer) SchedulePatch(ctx context.Context, projCtx projectContext, 
 		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", projCtx.Version.Id
 
 	} else {
-		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
+		env := evergreen.GetEnvironment()
+		githubOauthToken, err := env.Settings().GetGithubOauthToken()
 		if err != nil {
 			return err, http.StatusBadRequest, "", ""
 		}
@@ -226,7 +227,7 @@ func (uis *UIServer) SchedulePatch(ctx context.Context, projCtx projectContext, 
 
 		if projCtx.Patch.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
-			if err := uis.queue.Put(ctx, job); err != nil {
+			if err := env.LocalQueue().Put(ctx, job); err != nil {
 				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
 			}
 		}
