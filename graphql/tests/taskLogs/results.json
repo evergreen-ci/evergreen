@@ -21,6 +21,7 @@
                 "data": {
                   "hostId": "",
                   "jiraIssue": "",
+                  "jiraLink": "",
                   "priority": 0,
                   "status": "",
                   "timestamp": "2020-03-03T10:45:16-05:00",
@@ -33,6 +34,7 @@
                 "data": {
                   "hostId": "i-08f7b38b217d21c13",
                   "jiraIssue": "",
+                  "jiraLink": "",
                   "priority": 0,
                   "status": "",
                   "timestamp": null,
@@ -44,7 +46,8 @@
                 "eventType": "TASK_STARTED",
                 "data": {
                   "hostId": "hostid",
-                  "jiraIssue": "https:///browse/an_issue",
+                  "jiraIssue": "an_issue",
+                  "jiraLink": "https:///browse/an_issue",
                   "priority": 55,
                   "status": "success",
                   "timestamp": "2020-03-03T10:45:27-05:00",
@@ -57,6 +60,7 @@
                 "data": {
                   "hostId": "",
                   "jiraIssue": "",
+                  "jiraLink": "",
                   "priority": 0,
                   "status": "success",
                   "timestamp": null,

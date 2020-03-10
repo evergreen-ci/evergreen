@@ -15,6 +15,7 @@ query {
       data {
         hostId
         jiraIssue
+        jiraLink
         priority
         status
         timestamp
