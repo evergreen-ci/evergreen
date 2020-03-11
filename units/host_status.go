@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -35,6 +36,8 @@ func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyJobName, id))
 	j.env = env
 	j.SetPriority(1)
+	// Jobs never appear to exceed 1 minute, but add a bunch of padding.
+	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 10 * time.Minute})
 	return j
 }
 
@@ -68,6 +71,10 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		return
 	}
 	for clientOpts, hosts := range startingHostsByClient {
+		if ctx.Err() != nil {
+			j.AddError(ctx.Err())
+			return
+		}
 		if len(hosts) == 0 {
 			continue
 		}
