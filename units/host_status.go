@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -53,8 +54,11 @@ func makeCloudHostReadyJob() *cloudHostReadyJob {
 }
 
 func (j *cloudHostReadyJob) Run(ctx context.Context) {
+	// Jobs never appear to exceed 1 minute, but add a bunch of padding.
+	const timeout = 10 * time.Minute
+
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()
 	defer j.MarkComplete()
 	if j.env == nil {
@@ -68,6 +72,10 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		return
 	}
 	for clientOpts, hosts := range startingHostsByClient {
+		if ctx.Err() != nil {
+			j.AddError(ctx.Err())
+			return
+		}
 		if len(hosts) == 0 {
 			continue
 		}
