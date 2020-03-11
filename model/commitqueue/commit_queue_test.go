@@ -107,11 +107,8 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 	s.NoError(err)
 
 	item := s.q.Queue[0]
-	s.Equal("c123", item.Issue)
-	s.Equal("", s.q.Queue[0].Version)
 	item.Version = "my_version"
 	s.NoError(s.q.UpdateVersion(item))
-	s.Equal("my_version", s.q.Queue[0].Version)
 
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
