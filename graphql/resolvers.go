@@ -595,12 +595,20 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	patch, err := SchedulePatch(ctx, r, patchID)
+	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
-		return nil, err
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version for `%s`: %s", patchID, err))
+	}
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
+	}
+	scheduledPatch, err := r.sc.FindVersionById(versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version for `%s`: %s", patchID, err))
 	}
 	apiPatch := restModel.APIPatch{}
-	if err = apiPatch.BuildFromService(*patch); err != nil {
+	if err = apiPatch.BuildFromService(scheduledPatch); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building patch from service: %s", err.Error()))
 	}
 	return &apiPatch, nil
