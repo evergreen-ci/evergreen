@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type (
@@ -24,6 +24,8 @@ type (
 		OperationName string                 `json:"operationName"`
 		Variables     map[string]interface{} `json:"variables"`
 		Extensions    map[string]interface{} `json:"extensions"`
+
+		ReadTime TraceTiming `json:"-"`
 	}
 
 	GraphExecutor interface {

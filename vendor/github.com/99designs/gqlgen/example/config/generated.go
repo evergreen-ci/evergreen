@@ -12,8 +12,8 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	gqlparser "github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
@@ -221,7 +221,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-var parsedSchema = gqlparser.MustLoadSchema(
+var sources = []*ast.Source{
 	&ast.Source{Name: "schema.graphql", Input: `directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
@@ -232,7 +232,7 @@ type Query {
 type Mutation {
   createTodo(input: NewTodo!): Todo!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "todo.graphql", Input: `type Todo {
   id: ID! @goField(forceResolver: true)
   databaseId: Int!
@@ -245,15 +245,15 @@ input NewTodo {
   text: String!
   userId: String!
 }
-
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "user.graphql", Input: `type User
 @goModel(model:"github.com/99designs/gqlgen/example/config.User") {
   id: ID!
   name: String! @goField(name:"FullName")
 }
-`},
-)
+`, BuiltIn: false},
+}
+var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 

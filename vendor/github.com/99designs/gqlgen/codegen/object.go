@@ -8,7 +8,7 @@ import (
 
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 type GoFieldType int
@@ -82,7 +82,12 @@ func (b *builder) buildObject(typ *ast.Definition) (*Object, error) {
 }
 
 func (o *Object) Reference() types.Type {
-	switch o.Type.(type) {
+	switch v := o.Type.(type) {
+	case *types.Named:
+		_, isInterface := v.Underlying().(*types.Interface)
+		if isInterface {
+			return o.Type
+		}
 	case *types.Pointer, *types.Slice, *types.Map:
 		return o.Type
 	}
