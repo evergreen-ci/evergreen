@@ -125,8 +125,6 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
-smoke-start-server:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web
 # end smoke test rules
 
 ######################################################################
