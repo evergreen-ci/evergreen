@@ -168,6 +168,14 @@ func extractTarArcive(ctx context.Context, tarReader *tar.Reader, rootPath strin
 			if err = os.MkdirAll(localDir, 0755); err != nil {
 				return errors.WithStack(err)
 			}
+		} else if hdr.Typeflag == tar.TypeLink {
+			if err = os.Link(hdr.Name, hdr.Linkname); err != nil {
+				return errors.WithStack(err)
+			}
+		} else if hdr.Typeflag == tar.TypeSymlink {
+			if err = os.Symlink(hdr.Name, hdr.Linkname); err != nil {
+				return errors.WithStack(err)
+			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
 			// this tar entry is a regular file (not a dir or link)
 			// first, ensure the file's parent directory exists

@@ -1,29 +1,20 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
-
-type patchVariantsTasksRequest struct {
-	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Variants      []string             `json:"variants"`                 // old format
-	Tasks         []string             `json:"tasks"`                    // old format
-	Description   string               `json:"description"`
-}
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
@@ -104,146 +95,31 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
-func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
+func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Patch == nil {
-		http.Error(w, "patch not found", http.StatusNotFound)
-		return
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("patch not found"))
 	}
 	curUser := gimlet.GetUser(r.Context())
 	if curUser == nil {
-		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
-		return
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
 	}
-	// grab patch again, as the diff  was excluded
-	var err error
-	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
+	patchUpdateReq := graphql.PatchVariantsTasksRequest{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
+	}
+
+	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
+		uis.LoggedError(w, r, status, err)
 		return
 	}
 
-	// Unmarshal the project config and set it in the project context
-	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
-	}
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(successMessage))
+	gimlet.WriteJSON(w, struct {
+		VersionId string `json:"version"`
+	}{versionId})
 
-	patchUpdateReq := patchVariantsTasksRequest{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
-		"source":     "ui_update_patch",
-		"message":    "legacy structure is being used",
-		"update_req": patchUpdateReq,
-		"patch_id":   projCtx.Patch.Id.Hex(),
-		"version":    projCtx.Patch.Version,
-	})
-
-	tasks := model.TaskVariantPairs{}
-	if len(patchUpdateReq.VariantsTasks) > 0 {
-		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	} else {
-		for _, v := range patchUpdateReq.Variants {
-			for _, t := range patchUpdateReq.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
-				}
-			}
-		}
-	}
-
-	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
-
-	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error setting description"))
-		return
-	}
-
-	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error setting description"))
-		return
-	}
-
-	if projCtx.Patch.Version != "" {
-		projCtx.Patch.Activated = true
-		// This patch has already been finalized, just add the new builds and tasks
-		if projCtx.Version == nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
-			return
-		}
-
-		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(context.Background(), projCtx.Patch, projCtx.Version, project, tasks)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id))
-			return
-		}
-
-		err := model.AddNewBuildsForPatch(r.Context(), projCtx.Patch, projCtx.Version, project, tasks)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id))
-			return
-		}
-
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
-		gimlet.WriteJSON(w, struct {
-			VersionId string `json:"version"`
-		}{projCtx.Version.Id})
-
-	} else {
-		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
-		if err != nil {
-			gimlet.WriteJSONError(w, err)
-			return
-		}
-		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks())
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error setting patch variants and tasks"))
-			return
-		}
-
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
-
-		requester := projCtx.Patch.GetRequester()
-		ver, err := model.FinalizePatch(ctx, projCtx.Patch, requester, githubOauthToken)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error finalizing patch"))
-			return
-		}
-
-		if projCtx.Patch.IsGithubPRPatch() {
-			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
-			if err := uis.queue.Put(ctx, job); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError,
-					errors.Wrap(err, "Error adding github status update job to queue"))
-				return
-			}
-		}
-
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
-		gimlet.WriteJSON(w, struct {
-			VersionId string `json:"version"`
-		}{ver.Id})
-	}
 }
 
 func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {

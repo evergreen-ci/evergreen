@@ -14,6 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -243,4 +246,69 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	dbUser, err = user.FindOneById(s.u.Id)
 	s.NoError(err)
 	s.Len(dbUser.Roles(), 1)
+}
+
+func TestDeleteUserPermissions(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	env := evergreen.GetEnvironment()
+	rm := env.RoleManager()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	u := user.DBUser{
+		Id:          "user",
+		SystemRoles: []string{"role1", "role2", "role3"},
+	}
+	require.NoError(t, u.Insert())
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3"}))
+	handler := userPermissionsDeleteHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+	ctx := context.Background()
+
+	body := `{ "resource_type": "project" }`
+	request, err := http.NewRequest(http.MethodDelete, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	dbUser, err := user.FindOneById(u.Id)
+	require.NoError(t, err)
+	assert.Len(t, dbUser.SystemRoles, 1)
+	assert.Equal(t, "role3", dbUser.SystemRoles[0])
+
+	body = `{ "resource_type": "all" }`
+	request, err = http.NewRequest(http.MethodDelete, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	dbUser, err = user.FindOneById(u.Id)
+	require.NoError(t, err)
+	assert.Len(t, dbUser.SystemRoles, 0)
+}
+
+func TestGetUserPermissions(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	env := evergreen.GetEnvironment()
+	rm := env.RoleManager()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	u := user.DBUser{
+		Id:          "user",
+		SystemRoles: []string{"role1"},
+	}
+	require.NoError(t, u.Insert())
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	handler := userPermissionsGetHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+
+	resp := handler.Run(context.Background())
+	assert.Equal(t, http.StatusOK, resp.Status())
+	data := resp.Data().([]rolemanager.PermissionSummary)
+	assert.Len(t, data, 1)
+	assert.Equal(t, "project", data[0].Type)
+	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource1"][evergreen.PermissionProjectSettings])
 }

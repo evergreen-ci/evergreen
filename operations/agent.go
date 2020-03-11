@@ -111,7 +111,7 @@ func Agent() cli.Command {
 
 			go hardShutdownForSignals(ctx, cancel)
 
-			sender, err := agt.GetSender(ctx, opts.LogPrefix, "init")
+			sender, err := agt.GetSender(ctx, opts.LogPrefix)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring logger")
 			}
@@ -119,6 +119,7 @@ func Agent() cli.Command {
 			if err = grip.SetSender(sender); err != nil {
 				return errors.Wrap(err, "problem setting up logger")
 			}
+			agt.SetDefaultLogger(sender)
 
 			err = agt.Start(ctx)
 			grip.Emergency(err)

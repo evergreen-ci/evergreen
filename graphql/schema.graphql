@@ -22,6 +22,7 @@ type Query {
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!
+  taskLogs(taskId: String!): RecentTaskLogs!
 }
 
 type Mutation {
@@ -102,7 +103,7 @@ type VariantTask {
   tasks: [String!]!
 }
 
-type TaskLogs {
+type TaskLogLinks {
   allLogLink: String
   agentLogLink: String
   systemLogLink: String
@@ -147,7 +148,7 @@ type Task {
   priority: Int
   taskGroup: String
   taskGroupMaxHosts: Int
-  logs: TaskLogs!
+  logs: TaskLogLinks!
   activated: Boolean!
   activatedBy: String
   buildId: String!
@@ -197,6 +198,37 @@ type File {
 
 type User {
   displayName: String!
+}
+
+type RecentTaskLogs {
+  eventLogs: [TaskEventLogEntry!]!
+  taskLogs: [LogMessage!]!
+  systemLogs: [LogMessage!]!
+  agentLogs: [LogMessage!]!
+}
+
+type TaskEventLogData {
+  hostId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type TaskEventLogEntry {
+  timestamp: Time
+  eventType: String
+  data: TaskEventLogData
+}
+
+type LogMessage {
+  type: String
+  severity: String
+  message: String
+  timestamp: Time
+  version: Int
 }
 
 scalar Time

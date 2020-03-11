@@ -70,6 +70,12 @@ func bbGetTask(taskId string, execution string) (*task.Task, error) {
 	if t == nil {
 		return nil, errors.Errorf("No task found for taskId: %s and execution: %s", taskId, execution)
 	}
+	if t.DisplayOnly {
+		t.LocalTestResults, err = t.GetTestResultsForDisplayTask()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Problem finding test results for display task '%s'", t.Id)
+		}
+	}
 	return t, nil
 }
 

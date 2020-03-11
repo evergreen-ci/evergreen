@@ -69,6 +69,7 @@ func RemoveTaskQueues(distroID string) error {
 	return catcher.Resolve()
 }
 
+// GetQueueCollection returns the collection associated with this queue.
 func (q *DistroQueueInfo) GetQueueCollection() string {
 	if q.AliasQueue {
 		return TaskAliasQueuesCollection
@@ -77,7 +78,7 @@ func (q *DistroQueueInfo) GetQueueCollection() string {
 	return TaskQueuesCollection
 }
 
-// represents the next n tasks to be run on hosts of the distro
+// TaskQueue represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
 	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Distro          string           `bson:"distro" json:"distro"`
@@ -509,6 +510,39 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 	return (results[0].Index + 1), err
 }
 
+// FindEnqueuedTaskIDs finds all tasks IDs that are already in a task queue for
+// a given collection.
+func FindEnqueuedTaskIDs(taskIDs []string, coll string) ([]string, error) {
+	var results []struct {
+		ID string `bson:"task_id"`
+	}
+	queueItemIdKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			queueItemIdKey: bson.M{"$in": taskIDs}}},
+		{"$unwind": bson.M{
+			"path": "$" + taskQueueQueueKey}},
+		{"$match": bson.M{
+			queueItemIdKey: bson.M{"$in": taskIDs},
+		}},
+		{"$project": bson.M{
+			taskQueueIdKey: 0,
+			"task_id":      "$" + queueItemIdKey,
+		}},
+	}
+
+	err := db.Aggregate(coll, pipeline, &results)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	ids := []string{}
+	for _, res := range results {
+		ids = append(ids, res.ID)
+	}
+	return ids, nil
+}
+
 func FindAllTaskQueues() ([]TaskQueue, error) {
 	taskQueues := []TaskQueue{}
 	err := db.FindAll(
@@ -706,4 +740,48 @@ func dequeue(taskId, distroId string) error {
 			},
 		},
 	))
+}
+
+type DuplicateEnqueuedTasksResult struct {
+	TaskID    string   `bson:"_id"`
+	DistroIDs []string `bson:"distros"`
+}
+
+func FindDuplicateEnqueuedTasks(coll string) ([]DuplicateEnqueuedTasksResult, error) {
+	var res []DuplicateEnqueuedTasksResult
+	taskIDKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
+	unwindTaskQueue := bson.M{
+		"$unwind": "$" + taskQueueQueueKey,
+	}
+	countTaskOccurrences := bson.M{
+		"$group": bson.M{
+			"_id":     "$" + taskIDKey,
+			"distros": bson.M{"$addToSet": "$" + taskQueueDistroKey},
+			"count":   bson.M{"$sum": 1},
+		},
+	}
+	includeNumQueues := bson.M{
+		"$project": bson.M{
+			"_id":                1,
+			"distros":            1,
+			"count":              1,
+			"num_unique_distros": bson.M{"$size": "$distros"},
+		},
+	}
+	matchDuplicateTasks := bson.M{
+		"$match": bson.M{
+			"count":              bson.M{"$gt": 1},
+			"num_unique_distros": bson.M{"$gt": 1},
+		},
+	}
+	pipeline := append([]bson.M{},
+		unwindTaskQueue,
+		countTaskOccurrences,
+		includeNumQueues,
+		matchDuplicateTasks,
+	)
+	if err := db.Aggregate(coll, pipeline, &res); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return res, nil
 }

@@ -277,6 +277,5 @@ func CreateSettingsListFromLegacy(d *distro.Distro) error {
 		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
-	d.ProviderSettings = nil
 	return nil
 }

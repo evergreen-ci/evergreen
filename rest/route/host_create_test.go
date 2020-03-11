@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -224,7 +223,6 @@ func TestMakeIntentHost(t *testing.T) {
 	doc2 := d.ProviderSettingsList[0].Copy().Set(birch.EC.String("region", "us-west-1")).Set(birch.EC.String("ami", "ami-987654"))
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc2)
 	require.NoError(d.Update())
-	grip.Debug(d.ProviderSettingsList[1])
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",

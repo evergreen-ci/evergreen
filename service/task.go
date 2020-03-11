@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -23,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
-	"github.com/evergreen-ci/timber/fetcher"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -125,7 +122,7 @@ type uiTestResult struct {
 }
 
 type logData struct {
-	Buildlogger chan string
+	Buildlogger chan apimodels.LogMessage
 	Data        chan apimodels.LogMessage
 	User        gimlet.User
 }
@@ -522,10 +519,15 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	if defaultLogger == model.BuildloggerLogSender {
 		var logReader io.ReadCloser
-		logReader, err = uis.getBuildloggerLogs(r.Context(), projCtx, r, logType, DefaultLogMessages, execution)
+		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution)
 		if err == nil {
-			gimlet.WriteText(w, logReader)
-			grip.Warning(logReader.Close())
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+			gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 			return
 		}
 		grip.Error(message.WrapError(err, message.Fields{
@@ -578,7 +580,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := logData{Buildlogger: make(chan string, 1024), User: usr}
+	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	defaultLogger, err := getDefaultLogger(projCtx)
@@ -587,9 +589,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err = uis.getBuildloggerLogs(ctx, projCtx, r, logType, 0, execution)
+		logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution)
 		if err == nil {
-			defer logReader.Close()
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id": projCtx.Task.Id,
+					"message": "failed to close buildlogger log ReadCloser",
+				}))
+			}()
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task_id": projCtx.Task.Id,
@@ -615,27 +622,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		defer close(data.Buildlogger)
-		if logReader == nil {
-			return
-		}
-
-		reader := bufio.NewReader(logReader)
-		var line string
-		var err error
-		for err == nil {
-			line, err = reader.ReadString('\n')
-			if err != nil && err != io.EOF {
-				grip.Error(message.WrapError(err, message.Fields{
-					"task_id": projCtx.Task.Id,
-					"message": "problem reading buildlogger log lines",
-				}))
-				return
-			}
-			data.Buildlogger <- strings.TrimSuffix(line, "\n")
-		}
-	}()
+	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
@@ -650,34 +637,6 @@ func getDefaultLogger(projCtx projectContext) (string, error) {
 	}
 
 	return defaultLogger, nil
-}
-
-func (uis *UIServer) getBuildloggerLogs(ctx context.Context, projCtx projectContext, r *http.Request, logType string, tail, execution int) (io.ReadCloser, error) {
-	userCookie, err := r.Cookie(evergreen.AuthTokenCookie)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting auth token cookie for user")
-	}
-
-	opts := fetcher.GetOptions{
-		BaseURL:       fmt.Sprintf("https://%s", uis.env.Settings().LoggerConfig.BuildloggerBaseURL),
-		Cookie:        userCookie,
-		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
-		PrintTime:     true,
-		PrintPriority: true,
-		Tail:          tail,
-	}
-	switch logType {
-	case apimodels.TaskLogPrefix:
-		opts.ProcessName = evergreen.LogTypeTask
-	case apimodels.SystemLogPrefix:
-		opts.ProcessName = evergreen.LogTypeSystem
-	case apimodels.AgentLogPrefix:
-		opts.ProcessName = evergreen.LogTypeAgent
-	}
-
-	logReader, err := fetcher.Logs(ctx, opts)
-	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", projCtx.Task.Id)
 }
 
 // avoids type-checking json params for the below function
