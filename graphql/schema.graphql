@@ -209,6 +209,7 @@ type RecentTaskLogs {
 type TaskEventLogData {
   hostId: String
   jiraIssue: String
+  jiraLink: String
   priority: Int
   status: String
   timestamp: Time

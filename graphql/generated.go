@@ -192,6 +192,7 @@ type ComplexityRoot struct {
 	TaskEventLogData struct {
 		HostId    func(childComplexity int) int
 		JiraIssue func(childComplexity int) int
+		JiraLink  func(childComplexity int) int
 		Priority  func(childComplexity int) int
 		Status    func(childComplexity int) int
 		Timestamp func(childComplexity int) int
@@ -1068,6 +1069,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEventLogData.JiraIssue(childComplexity), true
 
+	case "TaskEventLogData.jiraLink":
+		if e.complexity.TaskEventLogData.JiraLink == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogData.JiraLink(childComplexity), true
+
 	case "TaskEventLogData.priority":
 		if e.complexity.TaskEventLogData.Priority == nil {
 			break
@@ -1478,6 +1486,7 @@ type TaskEndDetail {
 type TaskEventLogData {
 	hostId: String
 	jiraIssue: String
+	jiraLink: String
 	priority: Int
 	status: String
 	timestamp: Time
@@ -5357,6 +5366,37 @@ func (ec *executionContext) _TaskEventLogData_jiraIssue(ctx context.Context, fie
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskEventLogData_jiraLink(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEventLogData_priority(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8206,6 +8246,8 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskEventLogData_hostId(ctx, field, obj)
 		case "jiraIssue":
 			out.Values[i] = ec._TaskEventLogData_jiraIssue(ctx, field, obj)
+		case "jiraLink":
+			out.Values[i] = ec._TaskEventLogData_jiraLink(ctx, field, obj)
 		case "priority":
 			out.Values[i] = ec._TaskEventLogData_priority(ctx, field, obj)
 		case "status":

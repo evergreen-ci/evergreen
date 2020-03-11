@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/pkg/errors"
 )
@@ -19,21 +20,27 @@ type APIEventLogEntry struct {
 }
 
 type TaskEventData struct {
-	Execution int     `bson:"execution" json:"execution"`
-	HostId    *string `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	UserId    *string `bson:"u_id,omitempty" json:"user_id,omitempty"`
-	Status    *string `bson:"s,omitempty" json:"status,omitempty"`
-	JiraIssue *string `bson:"jira,omitempty" json:"jira,omitempty"`
-
+	Execution int        `bson:"execution" json:"execution"`
+	HostId    *string    `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	UserId    *string    `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status    *string    `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue *string    `bson:"jira,omitempty" json:"jira,omitempty"`
+	JiraLink  *string    `bson:"jira_link,omitempty" json:"jira_link,omitempty"`
 	Timestamp *time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
 func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
+	jiraHost := evergreen.GetEnvironment().Settings().Jira.GetHostURL()
+	jiraLink := ""
+	if len(v.JiraIssue) != 0 {
+		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue
+	}
 	el.Execution = v.Execution
 	el.HostId = ToStringPtr(v.HostId)
 	el.UserId = ToStringPtr(v.UserId)
 	el.JiraIssue = ToStringPtr(v.JiraIssue)
+	el.JiraLink = ToStringPtr(jiraLink)
 	el.Status = ToStringPtr(v.Status)
 	el.Timestamp = ToTimePtr(v.Timestamp)
 	el.Priority = v.Priority
