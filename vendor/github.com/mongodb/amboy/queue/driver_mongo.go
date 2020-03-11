@@ -775,7 +775,7 @@ RETRY:
 					continue CURSOR
 				}
 
-				if err := d.dispatcher.Dispatch(ctx, job); err != nil {
+				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
 					job = nil
 					continue CURSOR
 				}

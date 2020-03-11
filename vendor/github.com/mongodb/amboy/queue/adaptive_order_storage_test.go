@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/mongodb/amboy"
@@ -59,9 +60,10 @@ func (s *AdaptiveOrderItemsSuite) TestAddMethodPutsJobInCorrectQueue() {
 	j := job.NewShellJob("echo false", "makefile")
 
 	s.NoError(s.items.add(j))
+	fmt.Printf("%+v\n", s.items)
 	s.Len(s.items.jobs, 1)
-	s.Len(s.items.ready, 0)
-	s.Len(s.items.passed, 1)
+	s.Len(s.items.ready, 1)
+	s.Len(s.items.passed, 0)
 
 	j2 := job.NewShellJob("echo foo", "")
 	blockedDep := dependency.NewMock()
@@ -69,9 +71,10 @@ func (s *AdaptiveOrderItemsSuite) TestAddMethodPutsJobInCorrectQueue() {
 	j2.SetDependency(blockedDep)
 	s.Len(s.items.waiting, 0)
 	s.NoError(s.items.add(j2))
+	fmt.Printf("%+v\n", s.items)
 	s.Len(s.items.jobs, 2)
-	s.Len(s.items.ready, 0)
-	s.Len(s.items.passed, 1)
+	s.Len(s.items.ready, 1)
+	s.Len(s.items.passed, 0)
 	s.Len(s.items.waiting, 1)
 
 	j3 := job.NewShellJob("echo wat", "")
@@ -80,9 +83,10 @@ func (s *AdaptiveOrderItemsSuite) TestAddMethodPutsJobInCorrectQueue() {
 	j3.SetDependency(unresolvedDep)
 	s.Len(s.items.stalled, 0)
 	s.NoError(s.items.add(j3))
+	fmt.Printf("%+v\n", s.items)
 	s.Len(s.items.jobs, 3)
-	s.Len(s.items.ready, 0)
-	s.Len(s.items.passed, 1)
+	s.Len(s.items.ready, 1)
+	s.Len(s.items.passed, 0)
 	s.Len(s.items.waiting, 1)
 	s.Len(s.items.stalled, 1)
 }

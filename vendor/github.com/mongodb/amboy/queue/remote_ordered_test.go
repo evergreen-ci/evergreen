@@ -54,7 +54,9 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 		if err := client.Connect(ctx); err != nil {
 			return err
 		}
-		defer client.Disconnect(ctx)
+		defer func() {
+			s.NoError(client.Disconnect(ctx))
+		}()
 
 		return client.Database("amboy_test").Collection(addJobsSuffix(name)).Drop(ctx)
 	}
