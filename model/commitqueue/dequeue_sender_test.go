@@ -44,5 +44,5 @@ func TestCommitQueueDequeueLogger(t *testing.T) {
 	q, err = FindOneId("mci")
 	assert.NoError(err)
 	assert.False(q.Processing)
-	assert.Equal("2", q.Next().Issue)
+	assert.Equal("2", q.Queue[0].Issue)
 }

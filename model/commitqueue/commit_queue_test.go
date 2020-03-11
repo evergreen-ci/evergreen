@@ -56,17 +56,17 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Require().NoError(err)
 	s.Equal(0, pos)
 	s.Require().Len(s.q.Queue, 1)
-	s.Equal("c123", s.q.Next().Issue)
+	s.Equal("c123", s.q.Queue[0].Issue)
 	s.NotEqual(-1, s.q.FindItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
-	s.Equal(sampleCommitQueueItem.Issue, dbq.Next().Issue)
+	s.Equal(sampleCommitQueueItem.Issue, dbq.Queue[0].Issue)
 
 	// Ensure EnqueueTime set
-	s.False(dbq.Next().EnqueueTime.IsZero())
+	s.False(dbq.Queue[0].EnqueueTime.IsZero())
 
 	s.NotEqual(-1, dbq.FindItem("c123"))
 }
@@ -106,28 +106,19 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 	_, err := s.q.Enqueue(sampleCommitQueueItem)
 	s.NoError(err)
 
-	item := s.q.Next()
+	item := s.q.Queue[0]
 	s.Equal("c123", item.Issue)
-	s.Equal("", s.q.Next().Version)
+	s.Equal("", s.q.Queue[0].Version)
 	item.Version = "my_version"
-	s.NoError(s.q.UpdateVersion(*item))
-	s.Equal("my_version", s.q.Next().Version)
+	s.NoError(s.q.UpdateVersion(item))
+	s.Equal("my_version", s.q.Queue[0].Version)
 
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
 
-	s.Equal(item.Issue, dbq.Next().Issue)
-	s.Equal(item.Version, dbq.Next().Version)
-}
-
-func (s *CommitQueueSuite) TestNext() {
-	pos, err := s.q.Enqueue(sampleCommitQueueItem)
-	s.NoError(err)
-	s.Equal(0, pos)
-	s.Len(s.q.Queue, 1)
-	s.Require().NotNil(s.q.Next())
-	s.Equal("c123", s.q.Next().Issue)
+	s.Equal(item.Issue, dbq.Queue[0].Issue)
+	s.Equal(item.Version, dbq.Queue[0].Version)
 }
 
 func (s *CommitQueueSuite) TestRemoveOne() {
@@ -170,8 +161,8 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	found, err = s.q.Remove("c123")
 	s.True(found)
 	s.NoError(err)
-	s.NotNil(s.q.Next())
-	s.Equal(s.q.Next().Issue, "e345")
+	s.NotNil(s.q.Queue[0])
+	s.Equal(s.q.Queue[0].Issue, "e345")
 	s.False(s.q.Processing)
 }
 
@@ -299,7 +290,7 @@ func TestPreventMergeForItemPR(t *testing.T) {
 		Version: patchID,
 	}
 
-	assert.NoError(t, preventMergeForItem(PRPatchType, false, &item))
+	assert.NoError(t, preventMergeForItem(PRPatchType, false, item))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
@@ -320,7 +311,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, mergeTask.Insert())
 
 	// Without a corresponding version
-	assert.NoError(t, preventMergeForItem(CLIPatchType, false, &item))
+	assert.NoError(t, preventMergeForItem(CLIPatchType, false, item))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, subscriptions)
@@ -330,7 +321,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	assert.Equal(t, int64(0), mergeTask.Priority)
 
 	// With a corresponding version
-	assert.NoError(t, preventMergeForItem(CLIPatchType, true, &item))
+	assert.NoError(t, preventMergeForItem(CLIPatchType, true, item))
 	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
