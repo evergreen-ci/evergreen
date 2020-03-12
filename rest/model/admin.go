@@ -1378,7 +1378,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		subnet, ok := i.(evergreen.Subnet)
 		if !ok {
-			return nil, errors.New("Unable to convert key to EC2Key")
+			return nil, errors.New("Unable to convert APISubnet to Subnet")
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}

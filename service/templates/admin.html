@@ -1355,7 +1355,7 @@ Admin Settings
 														<input class="control" type="text" ng-model="subnet.az" placeholder="Availability Zone">
 													</md-input-container>
 													<md-input-container class="control" flex=50>
-														<input class="control" type="text" ng-model="subnet.subnetID" placeholder="Subnet ID">
+														<input class="control" type="text" ng-model="subnet.subnet_id" placeholder="Subnet ID">
 													</md-input-container>
 													<div style="margin-top: 1%;">
 														<button class="btn btn-default btn-danger" type="button" style="float: left" ng-click="deleteSubnet(index)">
@@ -1370,7 +1370,7 @@ Admin Settings
 												</md-input-container>
 
 												<md-input-container class="control" flex=50>
-													<input class="control" type="text" ng-model="new_subnet.subnetID" placeholder="Subnet ID">
+													<input class="control" type="text" ng-model="new_subnet.subnet_id" placeholder="Subnet ID">
 												</md-input-container>
 												<div style="margin-top: 1%;">
 													<button class="plus-button btn btn-primary" ng-disabled="!validSubnet(new_subnet)" type="button" style="float: left" ng-click="addSubnet()">

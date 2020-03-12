@@ -136,7 +136,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 
-	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(d, so.Region, so.HomeVolumeID)
+	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get new provider settings")
 	}
@@ -302,7 +302,7 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	return newExp, nil
 }
 
-func modifySpawnHostProviderSettings(d distro.Distro, region, volumeID string) ([]*birch.Document, error) {
+func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settings, region, volumeID string) ([]*birch.Document, error) {
 	ec2Settings := EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(d, region); err != nil {
 		return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
@@ -314,11 +314,15 @@ func modifySpawnHostProviderSettings(d distro.Distro, region, volumeID string) (
 			return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
 		}
 
-		env := evergreen.GetEnvironment()
-		for _, subnet := range env.Settings().Providers.AWS.Subnets {
+		azFound := false
+		for _, subnet := range settings.Providers.AWS.Subnets {
 			if subnet.AZ == volume.AvailabilityZone {
+				azFound = true
 				ec2Settings.SubnetId = subnet.SubnetID
 			}
+		}
+		if !azFound {
+			return nil, errors.Errorf("no subnet found for AZ '%s'", volume.AvailabilityZone)
 		}
 	}
 
