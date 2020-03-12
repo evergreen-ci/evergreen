@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -78,15 +79,28 @@ func main() {
 
 		collName := strings.Split(filepath.Base(fn), ".")[0]
 		collection := db.Collection(collName)
-		if collName == "task_logg" {
+		// task_logg collection belongs to the logs db
+		if collName == model.TaskLogCollection {
 			collection = logsDb.Collection(collName)
 		}
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
-			doc := bson.D{}
 			count++
-			if err = bson.UnmarshalExtJSON(scanner.Bytes(), false, &doc); err != nil {
+			bytes := scanner.Bytes()
+			// if the current collection is task_logg, delete from the collection the id that
+			// is about to be inserted so we can avoid dropping the collection completely.
+			if collName == model.TaskLogCollection {
+				taskLog := model.TaskLog{}
+				if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
+					catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s into TaskLog struct", count, fn))
+					continue
+				}
+				_, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id})
+				catcher.Add(err)
+			}
+			doc := bson.D{}
+			if err = bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
 				continue
 			}
