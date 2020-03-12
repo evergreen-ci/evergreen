@@ -98,7 +98,7 @@ func (s *EC2ProviderSettings) Validate() error {
 
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if len(d.ProviderSettingsList) != 0 {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {
 			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
@@ -110,7 +110,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := bson.Unmarshal(bytes, s); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
-	} else if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
+	} else if len(d.ProviderSettingsList) != 0 {
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}

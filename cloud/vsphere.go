@@ -53,7 +53,7 @@ func (opts *vsphereSettings) Validate() error {
 }
 
 func (opts *vsphereSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
@@ -61,7 +61,7 @@ func (opts *vsphereSettings) FromDistroSettings(d distro.Distro, _ string) error
 		if err := bson.Unmarshal(bytes, opts); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
-	} else if d.ProviderSettings != nil {
+	} else if len(d.ProviderSettingsList) != 0 {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
 		}
