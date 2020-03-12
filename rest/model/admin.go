@@ -1273,8 +1273,32 @@ func (a *APIEC2Key) ToService() (interface{}, error) {
 	return res, nil
 }
 
+type APISubnet struct {
+	AZ       *string `json:"az"`
+	SubnetID *string `json:"subnet_id"`
+}
+
+func (a *APISubnet) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.Subnet:
+		a.AZ = ToStringPtr(v.AZ)
+		a.SubnetID = ToStringPtr(v.SubnetID)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APISubnet) ToService() (interface{}, error) {
+	res := evergreen.Subnet{}
+	res.AZ = FromStringPtr(a.AZ)
+	res.SubnetID = FromStringPtr(a.SubnetID)
+	return res, nil
+}
+
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key `json:"ec2_keys"`
+	Subnets              []APISubnet `json:"subnets"`
 	S3Key                *string     `json:"s3_key"`
 	S3Secret             *string     `json:"s3_secret"`
 	Bucket               *string     `json:"bucket"`
@@ -1294,6 +1318,15 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.EC2Keys = append(a.EC2Keys, apiKey)
 		}
+
+		for _, subnet := range v.Subnets {
+			apiSubnet := APISubnet{}
+			if err := apiSubnet.BuildFromService(subnet); err != nil {
+				return err
+			}
+			a.Subnets = append(a.Subnets, apiSubnet)
+		}
+
 		a.S3Key = ToStringPtr(v.S3Key)
 		a.S3Secret = ToStringPtr(v.S3Secret)
 		a.Bucket = ToStringPtr(v.Bucket)
@@ -1336,6 +1369,18 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 			return nil, errors.New("Unable to convert key to EC2Key")
 		}
 		config.EC2Keys = append(config.EC2Keys, key)
+	}
+
+	for _, s := range a.Subnets {
+		i, err := s.ToService()
+		if err != nil {
+			return nil, err
+		}
+		subnet, ok := i.(evergreen.Subnet)
+		if !ok {
+			return nil, errors.New("Unable to convert key to EC2Key")
+		}
+		config.Subnets = append(config.Subnets, subnet)
 	}
 
 	for _, t := range a.AllowedInstanceTypes {
