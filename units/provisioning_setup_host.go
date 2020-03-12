@@ -840,12 +840,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
 			}
 			if sourceHost != nil {
-				if sourceHost.Status != evergreen.HostTerminated {
-					return errors.Errorf("source host '%s' is not terminated", sourceHost.Id)
-				}
-				if err = sourceHost.RemoveVolumeFromHost(h.HomeVolumeID); err != nil {
-					return errors.Wrapf(err, "can't remove volume '%s' from source host '%s'", h.HomeVolumeID)
-				}
+				return errors.Errorf("volume '%s' is already attached to host '%s'", h.HomeVolumeID, sourceHost.Id)
 			}
 		} else {
 			// create the volume
