@@ -130,7 +130,7 @@ type ComplexityRoot struct {
 		Task        func(childComplexity int, taskID string) int
 		TaskFiles   func(childComplexity int, taskID string) int
 		TaskLogs    func(childComplexity int, taskID string) int
-		TaskTests   func(childComplexity int, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) int
+		TaskTests   func(childComplexity int, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User        func(childComplexity int) int
 		UserPatches func(childComplexity int, userID string) int
 	}
@@ -266,7 +266,7 @@ type QueryResolver interface {
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error)
-	TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*model.APITest, error)
+	TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*model.APITest, error)
 	TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
 	User(ctx context.Context) (*model.APIUser, error)
 	TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error)
@@ -719,7 +719,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["status"].(*string)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -1370,7 +1370,7 @@ var sources = []*ast.Source{
     page: Int = 0
     limit: Int = 0
     testName: String = ""
-    status: String = ""
+    statuses: [String!]! = []
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!
@@ -1845,14 +1845,14 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 		}
 	}
 	args["testName"] = arg5
-	var arg6 *string
-	if tmp, ok := rawArgs["status"]; ok {
-		arg6, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg6 []string
+	if tmp, ok := rawArgs["statuses"]; ok {
+		arg6, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["status"] = arg6
+	args["statuses"] = arg6
 	return args, nil
 }
 
@@ -3700,7 +3700,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["status"].(*string))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

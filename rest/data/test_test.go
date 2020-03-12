@@ -128,39 +128,39 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "test_file", 1, 0, 0, 0)
+		foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "test_file", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, numTests)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "pass", "test_file", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{"pass"}, "test_file", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, numTests/2)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "fail", "test_file", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{"fail"}, "test_file", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, numTests/2)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "TestSuite/TestNum1", "", "test_file", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "TestSuite/TestNum1", []string{}, "test_file", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 1)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "TestSuite/TestNum2", "", "test_file", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "TestSuite/TestNum2", []string{}, "test_file", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 1)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "test_file", 1, 0, 5, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "test_file", 1, 0, 5, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 5)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "test_file", 1, 1, 5, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "test_file", 1, 1, 5, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 5)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "test_file", 1, 2, 5, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "test_file", 1, 2, 5, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 0)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "test_file", -1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "test_file", -1, 0, 0, 0)
 		assert.NoError(err)
 
 		for i := range foundTests {
@@ -168,31 +168,31 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 		}
 		assert.Len(foundTests, 10)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "duration", -1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "duration", -1, 0, 0, 0)
 		assert.NoError(err)
 		for i, test := range foundTests {
 			assert.True(test.EndTime == float64(last-i))
 		}
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "", "duration", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{}, "duration", 1, 0, 0, 0)
 		assert.NoError(err)
 		for i, test := range foundTests {
 			assert.True(test.EndTime == float64(i))
 		}
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "pa", "duration", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{"pa"}, "duration", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 0)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", "not_a_real_status", "duration", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "", []string{"not_a_real_status"}, "duration", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 0)
 
-		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "fail", "pass", "duration", 1, 0, 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(taskId, "fail", []string{"pass"}, "duration", 1, 0, 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, 0)
 	}
-	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate("fake_task", "", "", "duration", 1, 0, 0, 0)
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate("fake_task", "", []string{}, "duration", 1, 0, 0, 0)
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 	apiErr, ok := err.(gimlet.ErrorResponse)
