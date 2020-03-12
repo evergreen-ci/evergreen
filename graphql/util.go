@@ -247,9 +247,14 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) *Patch
 	p.Description = *r.Description
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{
-			Variant:      vt.Variant,
-			Tasks:        vt.Tasks,
-			DisplayTasks: vt.DisplayTasks,
+			Variant: vt.Variant,
+			Tasks:   vt.Tasks,
+		}
+		for _, displayTask := range vt.DisplayTasks {
+			dt := patch.DisplayTask{}
+			dt.Name = displayTask.Name
+			dt.ExecTasks = displayTask.ExecTasks
+			variantTasks.DisplayTasks = append(variantTasks.DisplayTasks, dt)
 		}
 		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
 	}

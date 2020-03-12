@@ -594,7 +594,9 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return &apiTask, nil
 }
 
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
+	patchUpdateReq := PatchVariantsTasksRequest{}
+	patchUpdateReq.BuildFromGqlInput(reconfigure)
 
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
