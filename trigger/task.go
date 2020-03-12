@@ -139,9 +139,6 @@ type taskTriggers struct {
 }
 
 func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
-		return nil, nil
-	}
 	if t.task.Aborted {
 		return nil, nil
 	}
@@ -363,6 +360,10 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 }
 
 func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.data.Status != evergreen.TaskSucceeded && !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
@@ -371,6 +372,10 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
 		return nil, nil
 	}
@@ -382,6 +387,10 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.data.Status != evergreen.TaskSucceeded {
 		return nil, nil
 	}
@@ -390,6 +399,10 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -405,6 +418,10 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 }
 
 func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -420,6 +437,10 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -435,6 +456,10 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	shouldNotify, alert, err := isTaskRegression(sub, t.task)
 	if err != nil {
 		return nil, err
@@ -560,6 +585,9 @@ func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTas
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
 
 	thresholdString, ok := sub.TriggerData[event.TaskDurationKey]
 	if !ok {
@@ -578,6 +606,10 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 }
 
 func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
 	if t.task.Status != evergreen.TaskSucceeded {
 		return nil, nil
 	}
@@ -688,6 +720,18 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 }
 
 func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	if t.task.DisplayOnly {
+		results, err := t.task.GetTestResultsForDisplayTask()
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get test results for display task")
+		}
+		t.task.LocalTestResults = results
+	}
+
 	if !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
@@ -700,35 +744,22 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	currentTask := t.task
-	var previousCompleteTask *task.Task
-	if t.task.IsPartOfDisplay() {
-		var err error
-		currentTask, err = t.task.GetDisplayTask()
-		if err != nil {
-			return nil, errors.Wrapf(err, "can't get display task for '%s'", t.task)
-		}
-
-		previousCompleteTask, err = task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
-			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
-		if err != nil {
-			return nil, errors.Wrap(err, "error fetching previous task")
-		}
-		if previousCompleteTask != nil {
+	previousCompleteTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
+	}
+	if previousCompleteTask != nil {
+		if previousCompleteTask.DisplayOnly {
 			results, err := previousCompleteTask.GetTestResultsForDisplayTask()
 			if err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for '%s'", previousCompleteTask.Id)
+				return nil, errors.Wrapf(err, "can't get test results for previous display task '%s'", previousCompleteTask.Id)
 			}
 			t.oldTestResults = mapTestResultsByTestFile(results)
-		}
-	} else {
-		var err error
-		previousCompleteTask, err = task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(currentTask.RevisionOrderNumber,
-			task.CompletedStatuses, currentTask.BuildVariant, currentTask.DisplayName, currentTask.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
-		if err != nil {
-			return nil, errors.Wrap(err, "error fetching previous task")
-		}
-		if previousCompleteTask != nil {
+		} else {
+			if err := previousCompleteTask.MergeNewTestResults(); err != nil {
+				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
+			}
 			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
 		}
 	}
@@ -754,17 +785,17 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, currentTask, &test)
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, t.task, &test)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		if shouldInclude {
-			orderNumber := currentTask.RevisionOrderNumber
+			orderNumber := t.task.RevisionOrderNumber
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, currentTask.Id, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
