@@ -51,12 +51,6 @@ func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 		return errors.Errorf("message of type *DequeueItem is really of type %T", m)
 	}
 
-	status := evergreen.MergeTestSucceeded
-	if dequeue.Status == evergreen.PatchFailed {
-		status = evergreen.MergeTestFailed
-	}
-	event.LogCommitQueueConcludeTest(dequeue.Item, status)
-
 	queue, err := FindOneId(dequeue.ProjectID)
 	if err != nil {
 		return errors.Wrapf(err, "no matching commit queue for project %s", dequeue.ProjectID)
@@ -69,6 +63,12 @@ func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 	if !found {
 		return errors.Errorf("item %s not found on queue %s", dequeue.Item, dequeue.ProjectID)
 	}
+
+	status := evergreen.MergeTestSucceeded
+	if dequeue.Status == evergreen.PatchFailed {
+		status = evergreen.MergeTestFailed
+	}
+	event.LogCommitQueueConcludeTest(dequeue.Item, status)
 
 	if err = queue.SetProcessing(false); err != nil {
 		return errors.Wrap(err, "can't set processing to false")

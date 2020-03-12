@@ -243,16 +243,17 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
-	handler.createHost.Region = "us-west-1"
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	assert.NoError(err)
-	assert.NotNil(h)
-	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Nil(h.Distro.ProviderSettings)
-	require.Len(h.Distro.ProviderSettingsList, 1)
-	ec2Settings2 = &cloud.EC2ProviderSettings{}
-	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
-	assert.Equal(ec2Settings2.AMI, "ami-987654")
+	// TODO: uncomment this test when off of legacy
+	//handler.createHost.Region = "us-west-1"
+	//h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	//assert.NoError(err)
+	//assert.NotNil(h)
+	//assert.Equal("archlinux-test", h.Distro.Id)
+	//assert.Nil(h.Distro.ProviderSettings)
+	//require.Len(h.Distro.ProviderSettingsList, 1)
+	//ec2Settings2 = &cloud.EC2ProviderSettings{}
+	//assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
+	//assert.Equal(ec2Settings2.AMI, "ami-987654")
 }
 
 func TestHostCreateDocker(t *testing.T) {
