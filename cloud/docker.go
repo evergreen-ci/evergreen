@@ -45,17 +45,17 @@ func (settings *dockerSettings) Validate() error {
 }
 
 func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+	} else if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
 		}
 		if err := bson.Unmarshal(bytes, s); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
-		}
-	} else if d.ProviderSettings != nil {
-		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
 	}
 	return nil
