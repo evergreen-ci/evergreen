@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -135,10 +136,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 
-	// remove extraneous provider settings from the host's saved distro document
-	if err := d.RemoveExtraneousProviderSettings(so.Region); err != nil {
-		return nil, errors.WithStack(err)
+	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(d, so.Region, so.HomeVolumeID)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get new provider settings")
 	}
+	d.ProviderSettings = nil
 
 	if so.InstanceType != "" {
 		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
@@ -298,4 +300,32 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	}
 
 	return newExp, nil
+}
+
+func modifySpawnHostProviderSettings(d distro.Distro, region, volumeID string) ([]*birch.Document, error) {
+	ec2Settings := EC2ProviderSettings{}
+	if err := ec2Settings.FromDistroSettings(d, region); err != nil {
+		return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
+	}
+
+	if volumeID != "" {
+		volume, err := host.FindVolumeByID(volumeID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
+		}
+
+		env := evergreen.GetEnvironment()
+		for _, subnet := range env.Settings().Providers.AWS.Subnets {
+			if subnet.AZ == volume.AvailabilityZone {
+				ec2Settings.SubnetId = subnet.SubnetID
+			}
+		}
+	}
+
+	doc, err := ec2Settings.ToDocument()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't convert ec2Settings back to doc")
+	}
+
+	return []*birch.Document{doc}, nil
 }
