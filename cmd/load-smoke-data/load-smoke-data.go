@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -41,12 +41,14 @@ func main() {
 	wd, err := os.Getwd()
 	grip.EmergencyFatal(err)
 	var (
-		path   string
-		dbName string
+		path       string
+		dbName     string
+		logsDbName string
 	)
 
 	flag.StringVar(&path, "path", filepath.Join(wd, "testdata", "smoke"), "load data from json files from these paths")
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
+	flag.StringVar(&logsDbName, "logsDbName", "logs", "logs database name for directory")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,6 +59,9 @@ func main() {
 
 	db := client.Database(dbName)
 	grip.EmergencyFatal(db.Drop(ctx))
+
+	logsDb := client.Database(logsDbName)
+	grip.EmergencyFatal(logsDb.Drop(ctx))
 
 	var file *os.File
 	files, err := getFiles(path)
@@ -73,7 +78,9 @@ func main() {
 
 		collName := strings.Split(filepath.Base(fn), ".")[0]
 		collection := db.Collection(collName)
-
+		if collName == "task_logg" {
+			collection = logsDb.Collection(collName)
+		}
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
