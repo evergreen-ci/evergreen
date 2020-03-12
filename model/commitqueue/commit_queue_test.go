@@ -118,6 +118,23 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 	s.Equal(item.Version, dbq.Queue[0].Version)
 }
 
+func (s *CommitQueueSuite) TestNext() {
+	// nothing is enqueued
+	next, valid := s.q.Next()
+	s.False(valid)
+	s.Empty(next.Issue)
+
+	// enqueue something
+	pos, err := s.q.Enqueue(sampleCommitQueueItem)
+	s.NoError(err)
+	s.Equal(0, pos)
+
+	// get it off the queue
+	next, valid = s.q.Next()
+	s.True(valid)
+	s.Equal("c123", next.Issue)
+}
+
 func (s *CommitQueueSuite) TestRemoveOne() {
 	item := sampleCommitQueueItem
 	pos, err := s.q.Enqueue(item)

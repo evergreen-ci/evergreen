@@ -68,10 +68,10 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 }
 
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
-	if len(cq.Queue) == 0 {
+	nextItem, valid := cq.Next()
+	if !valid {
 		return
 	}
-	nextItem := cq.Queue[0]
 
 	// unstuck the queue if the patch is done.
 	if !patch.IsValidId(nextItem.Issue) {
@@ -156,10 +156,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
 		return
 	}
-	if len(cq.Queue) == 0 {
+	nextItem, valid := cq.Next()
+	if !valid {
 		return
 	}
-	nextItem := cq.Queue[0]
+
 	if cq.Processing {
 		grip.Info(message.Fields{
 			"source":             "commit queue",

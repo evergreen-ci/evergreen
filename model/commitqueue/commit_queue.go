@@ -102,6 +102,14 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	return 1, nil
 }
 
+func (q *CommitQueue) Next() (CommitQueueItem, bool) {
+	if len(q.Queue) == 0 {
+		return CommitQueueItem{}, false
+	}
+
+	return q.Queue[0], true
+}
+
 func (q *CommitQueue) Remove(issue string) (bool, error) {
 	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
@@ -208,10 +216,10 @@ func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
 	}
 
-	if len(cq.Queue) == 0 {
+	head, valid := cq.Next()
+	if !valid {
 		return false, nil
 	}
-	head := cq.Queue[0]
 
 	removed, err := cq.Remove(item)
 	if err != nil {
