@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/99designs/gqlgen/internal/code"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,6 +16,9 @@ func TestToGo(t *testing.T) {
 	require.Equal(t, "ToCamel", ToGo("toCamel"))
 	require.Equal(t, "ToCamel", ToGo("ToCamel"))
 	require.Equal(t, "ToCamel", ToGo("to-camel"))
+	require.Equal(t, "ToCamel", ToGo("-to-camel"))
+	require.Equal(t, "ToCamel", ToGo("_to-camel"))
+	require.Equal(t, "_", ToGo("_"))
 
 	require.Equal(t, "RelatedURLs", ToGo("RelatedURLs"))
 	require.Equal(t, "ImageIDs", ToGo("ImageIDs"))
@@ -61,6 +66,7 @@ func TestToGoPrivate(t *testing.T) {
 	require.Equal(t, "id", ToGoPrivate("ID"))
 	require.Equal(t, "id", ToGoPrivate("id"))
 	require.Equal(t, "", ToGoPrivate(""))
+	require.Equal(t, "_", ToGoPrivate("_"))
 }
 
 func Test_wordWalker(t *testing.T) {
@@ -110,7 +116,7 @@ func TestTemplateOverride(t *testing.T) {
 	}
 	defer f.Close()
 	defer os.RemoveAll(f.Name())
-	err = Render(Options{Template: "hello", Filename: f.Name()})
+	err = Render(Options{Template: "hello", Filename: f.Name(), Packages: &code.Packages{}})
 	if err != nil {
 		t.Fatal(err)
 	}

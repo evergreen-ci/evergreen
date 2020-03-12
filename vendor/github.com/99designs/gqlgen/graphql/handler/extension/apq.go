@@ -6,13 +6,16 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/99designs/gqlgen/graphql/errcode"
+
+	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/mitchellh/mapstructure"
 )
 
 const errPersistedQueryNotFound = "PersistedQueryNotFound"
+const errPersistedQueryNotFoundCode = "PERSISTED_QUERY_NOT_FOUND"
 
 // AutomaticPersistedQuery saves client upload by optimistically sending only the hashes of queries, if the server
 // does not yet know what the query is for the hash it will respond telling the client to send the query along with the
@@ -69,9 +72,11 @@ func (a AutomaticPersistedQuery) MutateOperationParameters(ctx context.Context, 
 	fullQuery := false
 	if rawParams.Query == "" {
 		// client sent optimistic query hash without query string, get it from the cache
-		query, ok := a.Cache.Get(extension.Sha256)
+		query, ok := a.Cache.Get(ctx, extension.Sha256)
 		if !ok {
-			return gqlerror.Errorf(errPersistedQueryNotFound)
+			err := gqlerror.Errorf(errPersistedQueryNotFound)
+			errcode.Set(err, errPersistedQueryNotFoundCode)
+			return err
 		}
 		rawParams.Query = query.(string)
 	} else {
@@ -79,7 +84,7 @@ func (a AutomaticPersistedQuery) MutateOperationParameters(ctx context.Context, 
 		if computeQueryHash(rawParams.Query) != extension.Sha256 {
 			return gqlerror.Errorf("provided APQ hash does not match query")
 		}
-		a.Cache.Add(extension.Sha256, rawParams.Query)
+		a.Cache.Add(ctx, extension.Sha256, rawParams.Query)
 		fullQuery = true
 	}
 

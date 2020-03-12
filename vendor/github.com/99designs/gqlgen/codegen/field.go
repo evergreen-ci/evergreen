@@ -11,7 +11,7 @@ import (
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/99designs/gqlgen/codegen/templates"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 type Field struct {
@@ -97,6 +97,18 @@ func (b *builder) bindField(obj *Object, f *Field) (errret error) {
 		f.GoFieldType = GoFieldMethod
 		f.GoReceiverName = "ec"
 		f.GoFieldName = "introspectType"
+		return nil
+	case f.Name == "_entities":
+		f.GoFieldType = GoFieldMethod
+		f.GoReceiverName = "ec"
+		f.GoFieldName = "__resolve_entities"
+		f.MethodHasContext = true
+		return nil
+	case f.Name == "_service":
+		f.GoFieldType = GoFieldMethod
+		f.GoReceiverName = "ec"
+		f.GoFieldName = "__resolve__service"
+		f.MethodHasContext = true
 		return nil
 	case obj.Root:
 		f.IsResolver = true
@@ -184,25 +196,12 @@ func (b *builder) bindField(obj *Object, f *Field) (errret error) {
 	}
 }
 
-func (b *builder) findBindTarget(in types.Type, name string) (types.Object, error) {
-	switch t := in.(type) {
-	case *types.Named:
-		if _, ok := t.Underlying().(*types.Interface); ok {
-			return nil, errors.New("can't bind to an interface at root")
-		}
-	case *types.Interface:
-		return nil, errors.New("can't bind to an interface at root")
-	}
-
-	return b.findBindTargetRecur(in, name)
-}
-
-// findBindTargetRecur attempts to match the name to a field or method on a Type
+// findBindTarget attempts to match the name to a field or method on a Type
 // with the following priorites:
 // 1. Any Fields with a struct tag (see config.StructTag). Errors if more than one match is found
 // 2. Any method or field with a matching name. Errors if more than one match is found
 // 3. Same logic again for embedded fields
-func (b *builder) findBindTargetRecur(t types.Type, name string) (types.Object, error) {
+func (b *builder) findBindTarget(t types.Type, name string) (types.Object, error) {
 	// NOTE: a struct tag will override both methods and fields
 	// Bind to struct tag
 	found, err := b.findBindStructTagTarget(t, name)
@@ -354,7 +353,7 @@ func (b *builder) findBindStructEmbedsTarget(strukt *types.Struct, name string) 
 			fieldType = ptr.Elem()
 		}
 
-		f, err := b.findBindTargetRecur(fieldType, name)
+		f, err := b.findBindTarget(fieldType, name)
 		if err != nil {
 			return nil, err
 		}
@@ -376,7 +375,7 @@ func (b *builder) findBindInterfaceEmbedsTarget(iface *types.Interface, name str
 	for i := 0; i < iface.NumEmbeddeds(); i++ {
 		embeddedType := iface.EmbeddedType(i)
 
-		f, err := b.findBindTargetRecur(embeddedType, name)
+		f, err := b.findBindTarget(embeddedType, name)
 		if err != nil {
 			return nil, err
 		}
@@ -469,7 +468,7 @@ func (f *Field) ShortResolverDeclaration() string {
 	res := "(ctx context.Context"
 
 	if !f.Object.Root {
-		res += fmt.Sprintf(", obj *%s", templates.CurrentImports.LookupType(f.Object.Type))
+		res += fmt.Sprintf(", obj %s", templates.CurrentImports.LookupType(f.Object.Reference()))
 	}
 	for _, arg := range f.Args {
 		res += fmt.Sprintf(", %s %s", arg.VarName, templates.CurrentImports.LookupType(arg.TypeReference.GO))

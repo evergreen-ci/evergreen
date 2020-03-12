@@ -15,8 +15,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	gqlparser "github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
@@ -1349,203 +1349,244 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-var parsedSchema = gqlparser.MustLoadSchema(
-	&ast.Source{Name: "schema.graphql", Input: `scalar Duration
-type File {
-	name: String!
-	link: String!
-	visibility: String!
+var sources = []*ast.Source{
+	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
+  userPatches(userId: String!): [Patch!]!
+  patch(id: String!): Patch!
+  task(taskId: String!): Task
+  projects: Projects!
+  patchTasks(
+    patchId: String!
+    sortBy: TaskSortCategory = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    statuses: [String!]! = []
+  ): [TaskResult!]!
+  taskTests(
+    taskId: String!
+    sortCategory: TestSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    status: String = ""
+  ): [TestResult!]
+  taskFiles(taskId: String!): [GroupedFiles!]!
+  user: User!
+  taskLogs(taskId: String!): RecentTaskLogs!
 }
-type GroupedFiles {
-	taskName: String
-	files: [File!]
-}
-type GroupedProjects {
-	name: String!
-	projects: [Project!]!
-}
-type LogMessage {
-	type: String
-	severity: String
-	message: String
-	timestamp: Time
-	version: Int
-}
+
 type Mutation {
-	addFavoriteProject(identifier: String!): Project!
-	removeFavoriteProject(identifier: String!): Project!
-	scheduleTask(taskId: String!): Task!
-	unscheduleTask(taskId: String!): Task!
-	abortTask(taskId: String!): Task!
-	setTaskPriority(taskId: String!, priority: Int!): Task!
+  addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
+  scheduleTask(taskId: String!): Task!
+  unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task!
+  setTaskPriority(taskId: String!, priority: Int!): Task!
 }
-type Patch {
-	id: ID!
-	description: String!
-	projectID: String!
-	githash: String!
-	patchNumber: Int!
-	author: String!
-	version: String!
-	status: String!
-	variants: [String!]!
-	tasks: [String!]!
-	variantsTasks: [VariantTask]!
-	activated: Boolean!
-	alias: String!
-	duration: PatchDuration
-	time: PatchTime
-	taskCount: Int
-}
-type PatchDuration {
-	makespan: String
-	timeTaken: String
-	time: PatchTime
-}
-type PatchTime {
-	started: String
-	finished: String
-	submittedAt: String!
-}
-type Project {
-	identifier: String!
-	displayName: String!
-	repo: String!
-	owner: String!
-}
-type Projects {
-	favorites: [Project!]!
-	otherProjects: [GroupedProjects!]!
-}
-type Query {
-	userPatches(userId: String!): [Patch!]!
-	patch(id: String!): Patch!
-	task(taskId: String!): Task
-	projects: Projects!
-	patchTasks(patchId: String!, sortBy: TaskSortCategory = STATUS, sortDir: SortDirection = ASC, page: Int = 0, limit: Int = 0, statuses: [String!]! = []): [TaskResult!]!
-	taskTests(taskId: String!, sortCategory: TestSortCategory = TEST_NAME, sortDirection: SortDirection = ASC, page: Int = 0, limit: Int = 0, testName: String = "", status: String = ""): [TestResult!]
-	taskFiles(taskId: String!): [GroupedFiles!]!
-	user: User!
-	taskLogs(taskId: String!): RecentTaskLogs!
-}
-type RecentTaskLogs {
-	eventLogs: [TaskEventLogEntry!]!
-	taskLogs: [LogMessage!]!
-	systemLogs: [LogMessage!]!
-	agentLogs: [LogMessage!]!
-}
-enum SortDirection {
-	ASC
-	DESC
-}
-type Task {
-	id: String!
-	createTime: Time
-	ingestTime: Time
-	dispatchTime: Time
-	scheduledTime: Time
-	startTime: Time
-	finishTime: Time
-	activatedTime: Time
-	version: String!
-	projectId: String!
-	revision: String
-	priority: Int
-	taskGroup: String
-	taskGroupMaxHosts: Int
-	logs: TaskLogLinks!
-	activated: Boolean!
-	activatedBy: String
-	buildId: String!
-	distroId: String!
-	buildVariant: String!
-	dependsOn: [String!]
-	displayName: String!
-	hostId: String
-	restarts: Int
-	execution: Int
-	order: Int
-	requester: String!
-	status: String!
-	details: TaskEndDetail
-	timeTaken: Duration
-	expectedDuration: Duration
-	displayOnly: Boolean
-	executionTasks: [String!]
-	generateTask: Boolean
-	generatedBy: String
-	aborted: Boolean
-	patchNumber: Int
-}
-type TaskEndDetail {
-	status: String!
-	type: String!
-	description: String
-	timedOut: Boolean
-}
-type TaskEventLogData {
-	hostId: String
-	jiraIssue: String
-	jiraLink: String
-	priority: Int
-	status: String
-	timestamp: Time
-	userId: String
-}
-type TaskEventLogEntry {
-	timestamp: Time
-	eventType: String
-	data: TaskEventLogData
-}
-type TaskLogLinks {
-	allLogLink: String
-	agentLogLink: String
-	systemLogLink: String
-	taskLogLink: String
-}
-type TaskResult {
-	id: ID!
-	displayName: String!
-	version: String!
-	status: String!
-	baseStatus: String!
-	buildVariant: String!
-}
+
 enum TaskSortCategory {
-	NAME
-	STATUS
-	BASE_STATUS
-	VARIANT
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
 }
-type TestLog {
-	htmlDisplayURL: String
-	rawDisplayURL: String
-}
-type TestResult {
-	id: String!
-	status: String!
-	testFile: String!
-	logs: TestLog!
-	exitCode: Int
-	startTime: Time
-	duration: Float
-	endTime: Time
-}
+
 enum TestSortCategory {
-	STATUS
-	DURATION
-	TEST_NAME
+  STATUS
+  DURATION
+  TEST_NAME
 }
-scalar Time
-type User {
-	displayName: String!
+
+enum SortDirection {
+  ASC
+  DESC
 }
+
+type GroupedFiles {
+  taskName: String
+  files: [File!]
+}
+
+type Patch {
+  id: ID!
+  description: String!
+  projectID: String!
+  githash: String!
+  patchNumber: Int!
+  author: String!
+  version: String!
+  status: String!
+  variants: [String!]!
+  tasks: [String!]!
+  variantsTasks: [VariantTask]!
+  activated: Boolean!
+  alias: String!
+  duration: PatchDuration
+  time: PatchTime
+  taskCount: Int
+}
+
+type TaskResult {
+  id: ID!
+  displayName: String!
+  version: String!
+  status: String!
+  baseStatus: String!
+  buildVariant: String!
+}
+
+type PatchDuration {
+  makespan: String
+  timeTaken: String
+  time: PatchTime
+}
+
+type PatchTime {
+  started: String
+  finished: String
+  submittedAt: String!
+}
+
 type VariantTask {
-	name: String!
-	tasks: [String!]!
+  name: String!
+  tasks: [String!]!
 }
-`},
-)
+
+type TaskLogLinks {
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+}
+
+type TaskEndDetail {
+  status: String!
+  type: String!
+  description: String
+  timedOut: Boolean
+}
+
+type TestResult {
+  id: String!
+  status: String!
+  testFile: String!
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  duration: Float
+  endTime: Time
+}
+
+type TestLog {
+  htmlDisplayURL: String
+  rawDisplayURL: String
+}
+
+type Task {
+  id: String!
+  createTime: Time
+  ingestTime: Time
+  dispatchTime: Time
+  scheduledTime: Time
+  startTime: Time
+  finishTime: Time
+  activatedTime: Time
+  version: String!
+  projectId: String!
+  revision: String
+  priority: Int
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  logs: TaskLogLinks!
+  activated: Boolean!
+  activatedBy: String
+  buildId: String!
+  distroId: String!
+  buildVariant: String!
+  dependsOn: [String!]
+  displayName: String!
+  hostId: String
+  restarts: Int
+  execution: Int
+  order: Int
+  requester: String!
+  status: String!
+  details: TaskEndDetail
+  timeTaken: Duration
+  expectedDuration: Duration
+  displayOnly: Boolean
+  executionTasks: [String!]
+  generateTask: Boolean
+  generatedBy: String
+  aborted: Boolean
+  patchNumber: Int
+}
+
+type Projects {
+  favorites: [Project!]!
+  otherProjects: [GroupedProjects!]!
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project!]!
+}
+
+type Project {
+  identifier: String!
+  displayName: String!
+  repo: String!
+  owner: String!
+}
+
+type File {
+  name: String!
+  link: String!
+  visibility: String!
+}
+
+type User {
+  displayName: String!
+}
+
+type RecentTaskLogs {
+  eventLogs: [TaskEventLogEntry!]!
+  taskLogs: [LogMessage!]!
+  systemLogs: [LogMessage!]!
+  agentLogs: [LogMessage!]!
+}
+
+type TaskEventLogData {
+  hostId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type TaskEventLogEntry {
+  timestamp: Time
+  eventType: String
+  data: TaskEventLogData
+}
+
+type LogMessage {
+  type: String
+  severity: String
+  message: String
+  timestamp: Time
+  version: Int
+}
+
+scalar Time
+scalar Duration
+`, BuiltIn: false},
+}
+var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 

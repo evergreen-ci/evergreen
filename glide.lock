@@ -176,10 +176,10 @@ imports:
 
   # GraphQL deps
   - name: github.com/99designs/gqlgen
-    version: f869f5a85385745d5854daaa25eab5571b04b245
+    version: a538119155cf1ce66094a5a1ba1a201905d3e832
 
   - name: github.com/vektah/gqlparser
-    version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
+    version: d7ac1ee3e4535f7c6040c59dbf429da51e00eb4b
   - name: github.com/gorilla/websocket
     version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
   - name: github.com/agnivade/levenshtein
