@@ -835,7 +835,8 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 			if volume == nil {
 				return errors.Errorf("volume '%s' does not exist", h.HomeVolumeID)
 			}
-			sourceHost, err := host.FindHostWithVolume(h.HomeVolumeID)
+			var sourceHost *host.Host
+			sourceHost, err = host.FindHostWithVolume(h.HomeVolumeID)
 			if err != nil {
 				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
 			}

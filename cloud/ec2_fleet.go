@@ -471,7 +471,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 }
 
 func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
-	subnets := m.env.Settings().Providers.AWS.Subnets
+	subnets := m.settings.Providers.AWS.Subnets
 	if len(subnets) > 0 {
 		overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 		for _, subnet := range subnets {
