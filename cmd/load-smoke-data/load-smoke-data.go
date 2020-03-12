@@ -62,7 +62,6 @@ func main() {
 	grip.EmergencyFatal(db.Drop(ctx))
 
 	logsDb := client.Database(logsDbName)
-	grip.EmergencyFatal(logsDb.Drop(ctx))
 
 	var file *os.File
 	files, err := getFiles(path)
