@@ -30,15 +30,20 @@ func (h POST) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecu
 	w.Header().Set("Content-Type", "application/json")
 
 	var params *graphql.RawParams
+	start := graphql.Now()
 	if err := jsonDecode(r.Body, &params); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		writeJsonErrorf(w, "json body could not be decoded: "+err.Error())
 		return
 	}
+	params.ReadTime = graphql.TraceTiming{
+		Start: start,
+		End:   graphql.Now(),
+	}
 
 	rc, err := exec.CreateOperationContext(r.Context(), params)
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.WriteHeader(statusFor(err))
 		resp := exec.DispatchError(graphql.WithOperationContext(r.Context(), rc), err)
 		writeJson(w, resp)
 		return

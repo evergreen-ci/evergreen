@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/gorilla/websocket"
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 const (
@@ -147,6 +148,7 @@ func (c *wsConnection) run() {
 	}
 
 	for {
+		start := graphql.Now()
 		message := c.readOp()
 		if message == nil {
 			return
@@ -154,19 +156,14 @@ func (c *wsConnection) run() {
 
 		switch message.Type {
 		case startMsg:
-			if !c.subscribe(message) {
-				return
-			}
+			c.subscribe(start, message)
 		case stopMsg:
 			c.mu.Lock()
 			closer := c.active[message.ID]
 			c.mu.Unlock()
-			if closer == nil {
-				c.sendError(message.ID, gqlerror.Errorf("%s is not running, cannot stop", message.ID))
-				continue
+			if closer != nil {
+				closer()
 			}
-
-			closer()
 		case connectionTerminateMsg:
 			c.close(websocket.CloseNormalClosure, "terminated")
 			return
@@ -190,19 +187,32 @@ func (c *wsConnection) keepAlive(ctx context.Context) {
 	}
 }
 
-func (c *wsConnection) subscribe(message *operationMessage) bool {
+func (c *wsConnection) subscribe(start time.Time, message *operationMessage) {
 	ctx := graphql.StartOperationTrace(c.ctx)
 	var params *graphql.RawParams
 	if err := jsonDecode(bytes.NewReader(message.Payload), &params); err != nil {
-		c.sendConnectionError("invalid json")
-		return false
+		c.sendError(message.ID, &gqlerror.Error{Message: "invalid json"})
+		c.complete(message.ID)
+		return
+	}
+
+	params.ReadTime = graphql.TraceTiming{
+		Start: start,
+		End:   graphql.Now(),
 	}
 
 	rc, err := c.exec.CreateOperationContext(ctx, params)
 	if err != nil {
 		resp := c.exec.DispatchError(graphql.WithOperationContext(ctx, rc), err)
-		c.sendError(message.ID, resp.Errors...)
-		return false
+		switch errcode.GetErrorKind(err) {
+		case errcode.KindProtocol:
+			c.sendError(message.ID, resp.Errors...)
+		default:
+			c.sendResponse(message.ID, &graphql.Response{Errors: err})
+		}
+
+		c.complete(message.ID)
+		return
 	}
 
 	ctx = graphql.WithOperationContext(ctx, rc)
@@ -230,25 +240,31 @@ func (c *wsConnection) subscribe(message *operationMessage) bool {
 				break
 			}
 
-			b, err := json.Marshal(response)
-			if err != nil {
-				panic(err)
-			}
-			c.write(&operationMessage{
-				Payload: b,
-				ID:      message.ID,
-				Type:    dataMsg,
-			})
+			c.sendResponse(message.ID, response)
 		}
-		c.write(&operationMessage{ID: message.ID, Type: completeMsg})
+		c.complete(message.ID)
 
 		c.mu.Lock()
 		delete(c.active, message.ID)
 		c.mu.Unlock()
 		cancel()
 	}()
+}
 
-	return true
+func (c *wsConnection) sendResponse(id string, response *graphql.Response) {
+	b, err := json.Marshal(response)
+	if err != nil {
+		panic(err)
+	}
+	c.write(&operationMessage{
+		Payload: b,
+		ID:      id,
+		Type:    dataMsg,
+	})
+}
+
+func (c *wsConnection) complete(id string) {
+	c.write(&operationMessage{ID: id, Type: completeMsg})
 }
 
 func (c *wsConnection) sendError(id string, errors ...*gqlerror.Error) {
@@ -274,8 +290,10 @@ func (c *wsConnection) sendConnectionError(format string, args ...interface{}) {
 
 func (c *wsConnection) readOp() *operationMessage {
 	_, r, err := c.conn.NextReader()
-	if err != nil {
-		c.sendConnectionError("invalid json")
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
+		return nil
+	} else if err != nil {
+		c.sendConnectionError("invalid json: %T %s", err, err.Error())
 		return nil
 	}
 	message := operationMessage{}

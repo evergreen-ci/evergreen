@@ -56,6 +56,8 @@ func (f MultipartForm) maxMemory() int64 {
 func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.GraphExecutor) {
 	w.Header().Set("Content-Type", "application/json")
 
+	start := graphql.Now()
+
 	var err error
 	if r.ContentLength > f.maxUploadSize() {
 		writeJsonError(w, "failed to parse multipart form, request body too large")
@@ -105,9 +107,10 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 
 		if len(paths) == 1 {
 			upload = graphql.Upload{
-				File:     file,
-				Size:     header.Size,
-				Filename: header.Filename,
+				File:        file,
+				Size:        header.Size,
+				Filename:    header.Filename,
+				ContentType: header.Header.Get("Content-Type"),
 			}
 
 			if err := params.AddUpload(upload, key, paths[0]); err != nil {
@@ -125,9 +128,10 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 				}
 				for _, path := range paths {
 					upload = graphql.Upload{
-						File:     &bytesReader{s: &fileBytes, i: 0, prevRune: -1},
-						Size:     header.Size,
-						Filename: header.Filename,
+						File:        &bytesReader{s: &fileBytes, i: 0, prevRune: -1},
+						Size:        header.Size,
+						Filename:    header.Filename,
+						ContentType: header.Header.Get("Content-Type"),
 					}
 
 					if err := params.AddUpload(upload, key, path); err != nil {
@@ -171,9 +175,10 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 					}
 					defer pathTmpFile.Close()
 					upload = graphql.Upload{
-						File:     pathTmpFile,
-						Size:     header.Size,
-						Filename: header.Filename,
+						File:        pathTmpFile,
+						Size:        header.Size,
+						Filename:    header.Filename,
+						ContentType: header.Header.Get("Content-Type"),
 					}
 
 					if err := params.AddUpload(upload, key, path); err != nil {
@@ -186,10 +191,15 @@ func (f MultipartForm) Do(w http.ResponseWriter, r *http.Request, exec graphql.G
 		}
 	}
 
+	params.ReadTime = graphql.TraceTiming{
+		Start: start,
+		End:   graphql.Now(),
+	}
+
 	rc, gerr := exec.CreateOperationContext(r.Context(), &params)
 	if gerr != nil {
 		resp := exec.DispatchError(graphql.WithOperationContext(r.Context(), rc), gerr)
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.WriteHeader(statusFor(gerr))
 		writeJson(w, resp)
 		return
 	}
