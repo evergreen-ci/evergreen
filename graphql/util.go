@@ -241,3 +241,14 @@ type PatchVariantsTasksRequest struct {
 	Tasks         []string             `json:"tasks"`                    // old format
 	Description   string               `json:"description"`
 }
+
+// BuildFromGqlInput takes a PatchReconfigure gql type and returns a PatchVariantsTasksRequest type
+func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) *PatchVariantsTasksRequest {
+	p.Description = *r.Description
+	for _, vt := range r.variantTasks {
+		variantTasks := patch.VariantTasks{}
+
+	}
+
+	return p
+}

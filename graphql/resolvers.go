@@ -595,6 +595,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version for `%s`: %s", patchID, err))
