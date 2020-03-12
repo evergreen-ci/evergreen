@@ -751,13 +751,14 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 	if previousCompleteTask != nil {
 		if previousCompleteTask.DisplayOnly {
-			results, err := previousCompleteTask.GetTestResultsForDisplayTask()
+			var results []task.TestResult
+			results, err = previousCompleteTask.GetTestResultsForDisplayTask()
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get test results for previous display task '%s'", previousCompleteTask.Id)
 			}
 			t.oldTestResults = mapTestResultsByTestFile(results)
 		} else {
-			if err := previousCompleteTask.MergeNewTestResults(); err != nil {
+			if err = previousCompleteTask.MergeNewTestResults(); err != nil {
 				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
 			}
 			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
@@ -771,7 +772,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		hasFailingTest = true
-		match, err := testMatchesRegex(test.TestFile, sub)
+		var match bool
+		match, err = testMatchesRegex(test.TestFile, sub)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
