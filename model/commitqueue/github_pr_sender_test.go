@@ -64,5 +64,5 @@ func (s *GitHubPRSenderSuite) TestDequeueFromCommitQueue() {
 	s.NoError(dequeueFromCommitQueue("mci", "1"))
 	cq, err := FindOneId("mci")
 	s.NoError(err)
-	s.Equal("2", cq.Next().Issue)
+	s.Equal("2", cq.Queue[0].Issue)
 }
