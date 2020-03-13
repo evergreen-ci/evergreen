@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -155,6 +156,9 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 				staticHost.Status = evergreen.HostRunning
 			} else {
 				staticHost.Status = evergreen.HostProvisioning
+			}
+			if dbHost != nil {
+				event.LogHostStatusChanged(dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
 			}
 		} else {
 			staticHost.Status = dbHost.Status
