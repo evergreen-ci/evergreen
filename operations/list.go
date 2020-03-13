@@ -331,7 +331,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		}
 
 		if len(aliases) > 0 {
-			fmt.Printf("\n%d distro aliases:", len(aliases))
+			fmt.Printf("\n%d distro aliases:\n", len(aliases))
 			for a, names := range aliases {
 				fmt.Println(a, "=>", names)
 			}
