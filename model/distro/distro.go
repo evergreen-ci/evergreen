@@ -531,22 +531,6 @@ func (distros DistroGroup) GetDistroIds() []string {
 	return ids
 }
 
-func (d *Distro) RemoveExtraneousProviderSettings(region string) error {
-	doc, err := d.GetProviderSettingByRegion(region)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":       "provider list missing region",
-			"distro":        d.Id,
-			"region":        region,
-			"settings_list": d.ProviderSettingsList,
-		}))
-		return errors.Wrapf(err, "error getting provider settings by region")
-	}
-	d.ProviderSettingsList = []*birch.Document{doc}
-	d.ProviderSettings = nil
-	return nil
-}
-
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
 	// check legacy case
 	if (region == "" || region == evergreen.DefaultEC2Region) && len(d.ProviderSettingsList) == 0 {
