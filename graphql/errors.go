@@ -17,8 +17,6 @@ const (
 	Forbidden GqlError = "FORBIDDEN"
 	// ResourceNotFound conveys the requested resource does not exist
 	ResourceNotFound GqlError = "RESOURCE_NOT_FOUND"
-	// BadRequest error is due to a malformed request from the client, e.g. incorrect param name in a resolver
-	BadRequest GqlError = "BAD_REQUEST"
 )
 
 // Send sends a gql error to the client formatted with
@@ -30,8 +28,6 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 		return formError(ctx, message, Forbidden)
 	case ResourceNotFound:
 		return formError(ctx, message, ResourceNotFound)
-	case BadRequest:
-		return formError(ctx, message, BadRequest)
 	default:
 		return gqlerror.ErrorPathf(graphql.GetResolverContext(ctx).Path(), message)
 	}
