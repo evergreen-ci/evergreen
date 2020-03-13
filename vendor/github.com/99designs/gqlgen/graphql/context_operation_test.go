@@ -5,12 +5,27 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func TestGetOperationContext(t *testing.T) {
 	rc := &OperationContext{}
-	require.Equal(t, rc, GetOperationContext(WithOperationContext(context.Background(), rc)))
+
+	t.Run("with operation context", func(t *testing.T) {
+		ctx := WithOperationContext(context.Background(), rc)
+
+		require.True(t, HasOperationContext(ctx))
+		require.Equal(t, rc, GetOperationContext(ctx))
+	})
+
+	t.Run("without operation context", func(t *testing.T) {
+		ctx := context.Background()
+
+		require.False(t, HasOperationContext(ctx))
+		require.Panics(t, func() {
+			GetOperationContext(ctx)
+		})
+	})
 }
 
 func TestCollectAllFields(t *testing.T) {

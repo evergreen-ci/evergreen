@@ -127,11 +127,11 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 	for n, sender := range s.senders {
 		s.NoError(sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Alert}))
 		for _, l := range levels {
-			s.True(sender.Level().Valid(), string(n))
-			s.False(l.Valid(), string(n))
-			s.Error(sender.SetLevel(l), string(n))
-			s.True(sender.Level().Valid(), string(n))
-			s.NotEqual(sender.Level(), l, string(n))
+			s.True(sender.Level().Valid(), n)
+			s.False(l.Valid(), n)
+			s.Error(sender.SetLevel(l), n)
+			s.True(sender.Level().Valid(), n)
+			s.NotEqual(sender.Level(), l, n)
 		}
 
 	}
@@ -153,7 +153,7 @@ func (s *SenderSuite) TestFlush() {
 
 func (s *SenderSuite) TestCloserShouldUsusallyNoop() {
 	for t, sender := range s.senders {
-		s.NoError(sender.Close(), string(t))
+		s.NoError(sender.Close(), t)
 	}
 }
 

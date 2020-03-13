@@ -8,12 +8,14 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/99designs/gqlgen/plugin/modelgen/out"
 	"github.com/stretchr/testify/require"
 )
 
 func TestModelGeneration(t *testing.T) {
 	cfg, err := config.LoadConfig("testdata/gqlgen.yml")
 	require.NoError(t, err)
+	require.NoError(t, cfg.Init())
 	p := Plugin{
 		MutateHook: mutateHook,
 	}
@@ -61,6 +63,10 @@ func TestModelGeneration(t *testing.T) {
 		for _, tag := range expectedTags {
 			require.True(t, strings.Contains(fileText, tag))
 		}
+	})
+
+	t.Run("concrete types implement interface", func(t *testing.T) {
+		var _ out.FooBarer = out.FooBarr{}
 	})
 }
 

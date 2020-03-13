@@ -13,7 +13,7 @@
 // messages are dispatched to queues immediately upon receipt. The
 // grip/send.NewBufferedSender implementation has these property.
 //
-// The multi-sender implementation provded by this method creates a
+// The multi-sender implementation provided by this method creates a
 // single job for every message. If you want to have a single Job for
 // every message, use the grip/send.MakeMultiSender in combination
 // with the single sender.

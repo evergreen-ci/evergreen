@@ -68,18 +68,18 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 }
 
 func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
-	//unstuck the queue if the patch is done.
-	nextItem := cq.Next()
-	if nextItem == nil {
+	nextItem, valid := cq.Next()
+	if !valid {
 		return
 	}
-	patchIdString := nextItem.Issue
-	if !patch.IsValidId(patchIdString) {
+
+	// unstuck the queue if the patch is done.
+	if !patch.IsValidId(nextItem.Issue) {
 		j.dequeue(cq, nextItem)
-		j.logError(errors.Errorf("The Patch id '%s' is not an object id", patchIdString), "The patch was removed from the queue.", nextItem)
+		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey))
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return
@@ -90,7 +90,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		return
 	}
 
-	//patchisdone
+	// patch is done
 	if !util.IsZeroTime(patchDoc.FinishTime) {
 		j.dequeue(cq, nextItem)
 		status := evergreen.MergeTestSucceeded
@@ -156,10 +156,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
 		return
 	}
-	nextItem := cq.Next()
-	if nextItem == nil {
+	nextItem, valid := cq.Next()
+	if !valid {
 		return
 	}
+
 	if cq.Processing {
 		grip.Info(message.Fields{
 			"source":             "commit queue",
@@ -168,9 +169,9 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
-		//if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
-		//It's okay if this gets to it before the notification does, since that will
-		//check if the item is still on the queue before removing it.
+		// if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
+		// It's okay if this gets to it before the notification does, since that will
+		// check if the item is still on the queue before removing it.
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
 		}
@@ -217,7 +218,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	})
 }
 
-func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		j.logError(err, "PR not valid for merge", nextItem)
@@ -300,7 +301,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 	}
 	nextItem.Version = patchDoc.Id.Hex()
-	if err = cq.UpdateVersion(*nextItem); err != nil {
+	if err = cq.UpdateVersion(nextItem); err != nil {
 		j.logError(err, "problem saving version", nextItem)
 	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
@@ -325,7 +326,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
@@ -374,7 +375,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.CommitQueueItem) {
+func (j *commitQueueJob) logError(err error, msg string, item commitqueue.CommitQueueItem) {
 	if err == nil {
 		return
 	}
@@ -388,7 +389,7 @@ func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.Commi
 	}))
 }
 
-func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item *commitqueue.CommitQueueItem) {
+func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item commitqueue.CommitQueueItem) {
 	_, err := cq.Remove(item.Issue)
 	j.logError(err, fmt.Sprintf("error dequeuing item '%s'", item.Issue), item)
 }
@@ -425,7 +426,7 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 	return pr, false, nil
 }
 
-func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.CommitQueueItem, projectConfig *model.Project) ([]*github.PullRequest, []patch.ModulePatch, bool, error) {
+func getModules(ctx context.Context, githubToken string, nextItem commitqueue.CommitQueueItem, projectConfig *model.Project) ([]*github.PullRequest, []patch.ModulePatch, bool, error) {
 	var modulePRs []*github.PullRequest
 	var modulePatches []patch.ModulePatch
 	for _, mod := range nextItem.Modules {

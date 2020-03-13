@@ -1,13 +1,3 @@
-loggers:
-  task:
-    - type: logkeeper
-    - type: evergreen
-  agent:
-    - type: logkeeper
-    - type: evergreen
-  system:
-    - type: logkeeper
-    - type: evergreen
 #######################################
 #         YAML Templates              #
 #######################################
@@ -219,8 +209,8 @@ post:
     type: setup
     params:
       files:
-        - "gopath/src/github.com/mongodb/amboy/build/test.*.out"
-        - "gopath/src/github.com/mongodb/amboy/build/race.*.out"
+        - "gopath/src/github.com/mongodb/amboy/build/output.*.test"
+        - "gopath/src/github.com/mongodb/amboy/build/output.*.race"
         - "gopath/src/github.com/mongodb/amboy/build/output.*"
   - command: shell.exec
     type: setup
@@ -309,7 +299,6 @@ buildvariants:
     run_on:
       - windows-64-vs2017-compile
       - windows-64-vs2017-test
-      - windows-64-vs2017-compile-m5
       - windows-64-vs2015-compile
       - windows-64-vs2015-large
       - windows-64-vs2015-small

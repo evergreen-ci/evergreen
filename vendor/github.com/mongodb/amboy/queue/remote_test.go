@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -44,7 +45,9 @@ func TestRemoteUnorderedMongoSuite(t *testing.T) {
 
 	err = client.Connect(ctx)
 	require.NoError(t, err)
-	defer client.Disconnect(ctx)
+	defer func() {
+		assert.NoError(t, client.Disconnect(ctx))
+	}()
 
 	require.NoError(t, client.Database(opts.DB).Drop(ctx))
 

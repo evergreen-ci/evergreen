@@ -6,11 +6,12 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
+
+	"github.com/99designs/gqlgen/internal/code"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -45,7 +46,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("unwalkable path", func(t *testing.T) {
 		_, err := LoadConfig("testdata/cfg/unwalkable.yml")
 		if runtime.GOOS == "windows" {
-			require.EqualError(t, err, "failed to walk schema at root not_walkable/: FindFirstFile not_walkable/: The parameter is incorrect.")
+			require.EqualError(t, err, "failed to walk schema at root not_walkable/: CreateFile not_walkable/: The system cannot find the file specified.")
 		} else {
 			require.EqualError(t, err, "failed to walk schema at root not_walkable/: lstat not_walkable/: no such file or directory")
 		}
@@ -107,33 +108,78 @@ func TestReferencedPackages(t *testing.T) {
 
 func TestConfigCheck(t *testing.T) {
 	t.Run("invalid config format due to conflicting package names", func(t *testing.T) {
-		config, err := LoadConfig("testdata/cfg/conflictedPackages.yml")
-		require.NoError(t, err)
+		config := Config{
+			Exec:  PackageConfig{Filename: "generated/exec.go", Package: "graphql"},
+			Model: PackageConfig{Filename: "generated/models.go"},
+		}
 
-		err = config.normalize()
-		require.NoError(t, err)
+		require.EqualError(t, config.check(), "exec and model define the same import path (github.com/99designs/gqlgen/codegen/config/generated) with different package names (graphql vs generated)")
+	})
 
-		err = config.Check()
-		require.EqualError(t, err, "filenames exec.go and models.go are in the same directory but have different package definitions")
+	t.Run("federation must be in exec package", func(t *testing.T) {
+		config := Config{
+			Exec:       PackageConfig{Filename: "generated/exec.go"},
+			Federation: PackageConfig{Filename: "anotherpkg/federation.go"},
+		}
+
+		require.EqualError(t, config.check(), "federation and exec must be in the same package")
+	})
+
+	t.Run("federation must have same package name as exec", func(t *testing.T) {
+		config := Config{
+			Exec:       PackageConfig{Filename: "generated/exec.go"},
+			Federation: PackageConfig{Filename: "generated/federation.go", Package: "federation"},
+		}
+
+		require.EqualError(t, config.check(), "exec and federation define the same import path (github.com/99designs/gqlgen/codegen/config/generated) with different package names (generated vs federation)")
+	})
+
+	t.Run("deprecated federated flag raises an error", func(t *testing.T) {
+		config := Config{
+			Exec:      PackageConfig{Filename: "generated/exec.go"},
+			Federated: true,
+		}
+
+		require.EqualError(t, config.check(), "federated has been removed, instead use\nfederation:\n    filename: path/to/federated.go")
 	})
 }
 
 func TestAutobinding(t *testing.T) {
-	cfg := Config{
-		Models: TypeMap{},
-		AutoBind: []string{
-			"github.com/99designs/gqlgen/example/chat",
-			"github.com/99designs/gqlgen/example/scalars/model",
-		},
-	}
+	t.Run("valid paths", func(t *testing.T) {
+		cfg := Config{
+			Models: TypeMap{},
+			AutoBind: []string{
+				"github.com/99designs/gqlgen/example/chat",
+				"github.com/99designs/gqlgen/example/scalars/model",
+			},
+			Packages: &code.Packages{},
+		}
 
-	s := gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
-		scalar Banned 
-		type Message { id: ID }
-	`})
+		cfg.Schema = gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
+			scalar Banned
+			type Message { id: ID }
+		`})
 
-	require.NoError(t, cfg.Autobind(s))
+		require.NoError(t, cfg.autobind())
 
-	require.Equal(t, "github.com/99designs/gqlgen/example/scalars/model.Banned", cfg.Models["Banned"].Model[0])
-	require.Equal(t, "github.com/99designs/gqlgen/example/chat.Message", cfg.Models["Message"].Model[0])
+		require.Equal(t, "github.com/99designs/gqlgen/example/scalars/model.Banned", cfg.Models["Banned"].Model[0])
+		require.Equal(t, "github.com/99designs/gqlgen/example/chat.Message", cfg.Models["Message"].Model[0])
+	})
+
+	t.Run("with file path", func(t *testing.T) {
+		cfg := Config{
+			Models: TypeMap{},
+			AutoBind: []string{
+				"../chat",
+			},
+			Packages: &code.Packages{},
+		}
+
+		cfg.Schema = gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
+			scalar Banned
+			type Message { id: ID }
+		`})
+
+		require.EqualError(t, cfg.autobind(), "unable to load ../chat - make sure you're using an import path to a package that exists")
+	})
 }

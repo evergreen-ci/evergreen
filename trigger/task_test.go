@@ -1190,12 +1190,14 @@ func (s *taskSuite) TestBuildBreak() {
 }
 
 func TestTaskRegressionByTestDisplayTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, alertrecord.Collection, build.Collection, model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert())
 	projectRef := model.ProjectRef{Identifier: "p0"}
 	require.NoError(t, projectRef.Insert())
+	v := model.Version{Id: "v0", Revision: "abcdef01"}
+	require.NoError(t, v.Insert())
 
 	tasks := []task.Task{
 		{
@@ -1204,30 +1206,21 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			ExecutionTasks:      []string{"et0_0", "et1_0"},
 			RevisionOrderNumber: 1,
 			BuildVariant:        "bv0",
+			BuildId:             "b0",
 			Project:             "p0",
+			Version:             "v0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
 			DisplayOnly:         true,
 		},
 		{
-			Id:                  "et0_0",
-			DisplayName:         "et0",
-			RevisionOrderNumber: 1,
-			BuildId:             "b0",
-			Project:             "p0",
-			Status:              evergreen.TaskFailed,
-			Requester:           evergreen.RepotrackerVersionRequester,
-			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
+			Id:          "et0_0",
+			DisplayName: "et0",
 		},
 		{
-			Id:                  "et1_0",
-			DisplayName:         "et1",
-			RevisionOrderNumber: 1,
-			BuildId:             "b0",
-			Project:             "p0",
-			Status:              evergreen.TaskSucceeded,
-			Requester:           evergreen.RepotrackerVersionRequester,
+			Id:          "et1_0",
+			DisplayName: "et1",
 		},
 		{
 			Id:                  "dt0_1",
@@ -1236,29 +1229,19 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			RevisionOrderNumber: 2,
 			BuildVariant:        "bv0",
 			Project:             "p0",
+			BuildId:             "b0",
+			Version:             "v0",
 			Status:              evergreen.TaskFailed,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			DisplayOnly:         true,
 		},
 		{
-			Id:                  "et0_1",
-			DisplayName:         "et0",
-			RevisionOrderNumber: 2,
-			BuildId:             "b0",
-			Project:             "p0",
-			Status:              evergreen.TaskFailed,
-			Requester:           evergreen.RepotrackerVersionRequester,
-			LocalTestResults:    []task.TestResult{{TestFile: "f1", Status: evergreen.TestFailedStatus}},
+			Id:          "et0_1",
+			DisplayName: "et0",
 		},
 		{
-			Id:                  "et1_1",
-			DisplayName:         "et1",
-			RevisionOrderNumber: 2,
-			BuildId:             "b0",
-			Project:             "p0",
-			Status:              evergreen.TaskFailed,
-			Requester:           evergreen.RepotrackerVersionRequester,
-			LocalTestResults:    []task.TestResult{{TestFile: "f0", Status: evergreen.TestFailedStatus}},
+			Id:          "et1_1",
+			DisplayName: "et1",
 		},
 	}
 	for _, task := range tasks {
@@ -1268,32 +1251,40 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	testResults := []testresult.TestResult{
 		{TaskID: "et0_0", TestFile: "f0", Status: evergreen.TestFailedStatus},
 		{TaskID: "et1_0", TestFile: "f1", Status: evergreen.TestSucceededStatus},
+		{TaskID: "et1_1", TestFile: "f0", Status: evergreen.TestFailedStatus},
 	}
 
 	for _, result := range testResults {
 		require.NoError(t, result.Insert())
 	}
 
-	// trigger for the first run of this display task
-	tr := taskTriggers{
-		task:  &tasks[1],
-		event: &event.EventLogEntry{ID: "e0"},
-	}
-	notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
-	assert.NoError(t, err)
-	assert.NotNil(t, notification)
-	assert.Equal(t, "et0_0", notification.Metadata.TaskID)
+	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}}
+	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
 
-	// trigger for the second run of the display task for a different execution task that contains the same test
-	tr.task = &tasks[5]
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
+	// don't alert for an execution task
+	tr.task = &tasks[1]
+	notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.Nil(t, notification)
 
-	// trigger for the second run of the display task for the same execution task that triggered before, for a different test
-	tr.task = &tasks[4]
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: event.Subscriber{Type: event.JIRACommentSubscriberType}, Trigger: "t1"})
+	// alert for the first run of this display task with failing execution task et0, failing test f0
+	tr.task = &tasks[0]
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.NotNil(t, notification)
-	assert.Equal(t, "et0_1", notification.Metadata.TaskID)
+	assert.Equal(t, "dt0_0", notification.Metadata.TaskID)
+
+	// don't alert on the second run of the display task for a different execution task (et1) that contains the same test (f0)
+	tr.task = &tasks[3]
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.Nil(t, notification)
+
+	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
+	newResult := testresult.TestResult{TaskID: "et0_1", TestFile: "f1", Status: evergreen.TestFailedStatus}
+	assert.NoError(t, newResult.Insert())
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.NotNil(t, notification)
+	assert.Equal(t, "dt0_1", notification.Metadata.TaskID)
 }

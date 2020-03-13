@@ -93,7 +93,6 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	job.SetPriority(j.Priority)
 	job.SetStatus(j.Status)
 	job.UpdateTimeInfo(j.TimeInfo)
-	job.SetScopes(j.Scopes)
 
 	return job, nil
 }

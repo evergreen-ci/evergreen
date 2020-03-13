@@ -478,7 +478,8 @@ func TestQueueSmoke(t *testing.T) {
 								}
 
 								for i := 0; i < 25; i++ {
-									j, ok := q.Get(ctx, j.ID())
+									var ok bool
+									j, ok = q.Get(ctx, j.ID())
 									require.True(t, ok)
 									require.NoError(t, j.Lock(q.ID()))
 									require.NoError(t, q.Save(ctx, j))

@@ -30,14 +30,6 @@ func TestImportPathForDir(t *testing.T) {
 	}
 }
 
-func TestNameForPackage(t *testing.T) {
-	assert.Equal(t, "api", NameForPackage("github.com/99designs/gqlgen/api"))
-
-	// does not contain go code, should still give a valid name
-	assert.Equal(t, "docs", NameForPackage("github.com/99designs/gqlgen/docs"))
-	assert.Equal(t, "github_com", NameForPackage("github.com"))
-}
-
 func TestNameForDir(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

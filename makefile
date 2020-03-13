@@ -125,8 +125,6 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	pkill -f $<
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
-smoke-start-server:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web
 # end smoke test rules
 
 ######################################################################
@@ -352,6 +350,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
+	mkdir vendor/github.com/vektah/gqlparser/.v2 && pushd vendor/github.com/vektah/gqlparser && mv * .v2 && mv .v2 v2 && popd
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go
@@ -451,6 +450,9 @@ clean:
 	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
+
+gqlgen:
+	go run vendor/github.com/99designs/gqlgen/main.go
 # end dependency targets
 
 

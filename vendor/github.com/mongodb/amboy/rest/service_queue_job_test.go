@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 type JobStatusSuite struct {
 	service *QueueService
 	require *require.Assertions
+	j       amboy.Job
 	jobName string
 	closer  context.CancelFunc
 	suite.Suite
@@ -116,4 +118,19 @@ func (s *JobStatusSuite) TestRequestValidJobStatus() {
 	s.True(jst.Exists)
 	s.True(jst.Completed)
 	s.Equal("", jst.Error)
+}
+
+func (s *JobStatusSuite) TestMarkJobComplete() {
+	router, err := s.service.App().Handler()
+	s.Require().NoError(err)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/v1/job/mark_complete/%s", s.jobName), nil)
+	router.ServeHTTP(w, req)
+	s.Equal(http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", fmt.Sprintf("http://example.com/v1/job/mark_complete/%s", "DNE"), nil)
+	router.ServeHTTP(w, req)
+	s.Equal(http.StatusBadRequest, w.Code)
 }

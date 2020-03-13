@@ -17,8 +17,8 @@ import (
 	invalid_packagename "github.com/99designs/gqlgen/codegen/testserver/invalid-packagename"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	gqlparser "github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
@@ -39,6 +39,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	BackedByInterface() BackedByInterfaceResolver
 	Errors() ErrorsResolver
 	ForcedResolver() ForcedResolverResolver
 	ModelMethods() ModelMethodsResolver
@@ -52,24 +53,15 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	Custom func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	Directive1 func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	Directive2 func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	Length func(ctx context.Context, obj interface{}, next graphql.Resolver, min int, max *int, message *string) (res interface{}, err error)
-
-	Logged func(ctx context.Context, obj interface{}, next graphql.Resolver, id string) (res interface{}, err error)
-
-	MakeNil func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	MakeTypedNil func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	Range func(ctx context.Context, obj interface{}, next graphql.Resolver, min *int, max *int) (res interface{}, err error)
-
-	ToNull func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
+	Custom        func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Directive1    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Directive2    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Length        func(ctx context.Context, obj interface{}, next graphql.Resolver, min int, max *int, message *string) (res interface{}, err error)
+	Logged        func(ctx context.Context, obj interface{}, next graphql.Resolver, id string) (res interface{}, err error)
+	MakeNil       func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	MakeTypedNil  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Range         func(ctx context.Context, obj interface{}, next graphql.Resolver, min *int, max *int) (res interface{}, err error)
+	ToNull        func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	Unimplemented func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
@@ -98,6 +90,12 @@ type ComplexityRoot struct {
 		ID func(childComplexity int) int
 	}
 
+	BackedByInterface struct {
+		ID                      func(childComplexity int) int
+		ThisShouldBind          func(childComplexity int) int
+		ThisShouldBindWithError func(childComplexity int) int
+	}
+
 	Cat struct {
 		CatBreed func(childComplexity int) int
 		Species  func(childComplexity int) int
@@ -110,6 +108,17 @@ type ComplexityRoot struct {
 	Circle struct {
 		Area   func(childComplexity int) int
 		Radius func(childComplexity int) int
+	}
+
+	ConcreteNodeA struct {
+		Child func(childComplexity int) int
+		ID    func(childComplexity int) int
+		Name  func(childComplexity int) int
+	}
+
+	ConcreteNodeInterface struct {
+		Child func(childComplexity int) int
+		ID    func(childComplexity int) int
 	}
 
 	ContentPost struct {
@@ -271,6 +280,8 @@ type ComplexityRoot struct {
 		NestedOutputs                    func(childComplexity int) int
 		NoShape                          func(childComplexity int) int
 		NoShapeTypedNil                  func(childComplexity int) int
+		Node                             func(childComplexity int) int
+		NotAnInterface                   func(childComplexity int) int
 		NullableArg                      func(childComplexity int, arg *int) int
 		OptionalUnion                    func(childComplexity int) int
 		Overlapping                      func(childComplexity int) int
@@ -322,7 +333,7 @@ type ComplexityRoot struct {
 	ValidType struct {
 		DifferentCase      func(childComplexity int) int
 		DifferentCaseOld   func(childComplexity int) int
-		ValidArgs          func(childComplexity int, breakArg string, defaultArg string, funcArg string, interfaceArg string, selectArg string, caseArg string, deferArg string, goArg string, mapArg string, structArg string, chanArg string, elseArg string, gotoArg string, packageArg string, switchArg string, constArg string, fallthroughArg string, ifArg string, rangeArg string, typeArg string, continueArg string, forArg string, importArg string, returnArg string, varArg string, _Arg string) int
+		ValidArgs          func(childComplexity int, breakArg string, defaultArg string, funcArg string, interfaceArg string, selectArg string, caseArg string, deferArg string, goArg string, mapArg string, structArg string, chanArg string, elseArg string, gotoArg string, packageArg string, switchArg string, constArg string, fallthroughArg string, ifArg string, rangeArg string, typeArg string, continueArg string, forArg string, importArg string, returnArg string, varArg string, _ string) int
 		ValidInputKeywords func(childComplexity int, input *ValidInput) int
 	}
 
@@ -347,6 +358,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type BackedByInterfaceResolver interface {
+	ID(ctx context.Context, obj BackedByInterface) (string, error)
+}
 type ErrorsResolver interface {
 	A(ctx context.Context, obj *Errors) (*Error, error)
 	B(ctx context.Context, obj *Errors) (*Error, error)
@@ -408,8 +422,10 @@ type QueryResolver interface {
 	EnumInInput(ctx context.Context, input *InputWithEnumValue) (EnumTest, error)
 	Shapes(ctx context.Context) ([]Shape, error)
 	NoShape(ctx context.Context) (Shape, error)
+	Node(ctx context.Context) (Node, error)
 	NoShapeTypedNil(ctx context.Context) (Shape, error)
 	Animal(ctx context.Context) (Animal, error)
+	NotAnInterface(ctx context.Context) (BackedByInterface, error)
 	Issue896a(ctx context.Context) ([]*CheckIssue896, error)
 	MapStringInterface(ctx context.Context, in map[string]interface{}) (map[string]interface{}, error)
 	MapNestedStringInterface(ctx context.Context, in *NestedMapInput) (map[string]interface{}, error)
@@ -519,6 +535,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.B.ID(childComplexity), true
 
+	case "BackedByInterface.id":
+		if e.complexity.BackedByInterface.ID == nil {
+			break
+		}
+
+		return e.complexity.BackedByInterface.ID(childComplexity), true
+
+	case "BackedByInterface.thisShouldBind":
+		if e.complexity.BackedByInterface.ThisShouldBind == nil {
+			break
+		}
+
+		return e.complexity.BackedByInterface.ThisShouldBind(childComplexity), true
+
+	case "BackedByInterface.thisShouldBindWithError":
+		if e.complexity.BackedByInterface.ThisShouldBindWithError == nil {
+			break
+		}
+
+		return e.complexity.BackedByInterface.ThisShouldBindWithError(childComplexity), true
+
 	case "Cat.catBreed":
 		if e.complexity.Cat.CatBreed == nil {
 			break
@@ -553,6 +590,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Circle.Radius(childComplexity), true
+
+	case "ConcreteNodeA.child":
+		if e.complexity.ConcreteNodeA.Child == nil {
+			break
+		}
+
+		return e.complexity.ConcreteNodeA.Child(childComplexity), true
+
+	case "ConcreteNodeA.id":
+		if e.complexity.ConcreteNodeA.ID == nil {
+			break
+		}
+
+		return e.complexity.ConcreteNodeA.ID(childComplexity), true
+
+	case "ConcreteNodeA.name":
+		if e.complexity.ConcreteNodeA.Name == nil {
+			break
+		}
+
+		return e.complexity.ConcreteNodeA.Name(childComplexity), true
+
+	case "ConcreteNodeInterface.child":
+		if e.complexity.ConcreteNodeInterface.Child == nil {
+			break
+		}
+
+		return e.complexity.ConcreteNodeInterface.Child(childComplexity), true
+
+	case "ConcreteNodeInterface.id":
+		if e.complexity.ConcreteNodeInterface.ID == nil {
+			break
+		}
+
+		return e.complexity.ConcreteNodeInterface.ID(childComplexity), true
 
 	case "Content_Post.foo":
 		if e.complexity.ContentPost.Foo == nil {
@@ -1194,6 +1266,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.NoShapeTypedNil(childComplexity), true
 
+	case "Query.node":
+		if e.complexity.Query.Node == nil {
+			break
+		}
+
+		return e.complexity.Query.Node(childComplexity), true
+
+	case "Query.notAnInterface":
+		if e.complexity.Query.NotAnInterface == nil {
+			break
+		}
+
+		return e.complexity.Query.NotAnInterface(childComplexity), true
+
 	case "Query.nullableArg":
 		if e.complexity.Query.NullableArg == nil {
 			break
@@ -1596,7 +1682,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-var parsedSchema = gqlparser.MustLoadSchema(
+var sources = []*ast.Source{
 	&ast.Source{Name: "builtinscalar.graphql", Input: `
 """
 Since gqlgen defines default implementation for a Map scalar, this tests that the builtin is _not_
@@ -1605,7 +1691,7 @@ added to the TypeMap
 type Map {
     id: ID!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "complexity.graphql", Input: `extend type Query {
     overlapping: OverlappingFields
 }
@@ -1617,7 +1703,7 @@ type OverlappingFields {
   newFoo: Int!
   new_foo: Int!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "directive.graphql", Input: `directive @length(min: Int!, max: Int, message: String) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 directive @range(min: Int = 0, max: Int) on ARGUMENT_DEFINITION
 directive @custom on ARGUMENT_DEFINITION
@@ -1668,7 +1754,7 @@ type ObjectDirectives {
 type ObjectDirectivesWithCustomGoModel {
     nullableText: String @toNull
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "embedded.graphql", Input: `extend type Query {
     embeddedCase1: EmbeddedCase1
     embeddedCase2: EmbeddedCase2
@@ -1686,7 +1772,7 @@ type EmbeddedCase2 @goModel(model:"testserver.EmbeddedCase2") {
 type EmbeddedCase3 @goModel(model:"testserver.EmbeddedCase3") {
     unexportedEmbeddedInterfaceExportedMethod: String!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "enum.graphql", Input: `enum EnumTest {
     OK
     NG
@@ -1699,16 +1785,24 @@ input InputWithEnumValue {
 extend type Query {
     enumInInput(input: InputWithEnumValue): EnumTest!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "interfaces.graphql", Input: `extend type Query {
     shapes: [Shape]
     noShape: Shape @makeNil
+    node: Node!
     noShapeTypedNil: Shape @makeTypedNil
     animal: Animal @makeTypedNil
+    notAnInterface: BackedByInterface
 }
 
 interface Animal {
     species: String!
+}
+
+type BackedByInterface {
+    id: String!
+    thisShouldBind: String!
+    thisShouldBindWithError: String!
 }
 
 type Dog implements Animal {
@@ -1737,7 +1831,24 @@ union ShapeUnion @goModel(model:"testserver.ShapeUnion") = Circle | Rectangle
 
 directive @makeNil on FIELD_DEFINITION
 directive @makeTypedNil on FIELD_DEFINITION
-`},
+
+interface Node {
+    id: ID!
+    child: Node!
+}
+
+type ConcreteNodeA implements Node {
+    id: ID!
+    child: Node!
+    name: String!
+}
+
+""" Implements the Node interface with another interface """
+type ConcreteNodeInterface implements Node {
+    id: ID!
+    child: Node!
+}
+`, BuiltIn: false},
 	&ast.Source{Name: "issue896.graphql", Input: `# This example should build stable output. If the file content starts
 # alternating nondeterministically between two outputs, then see
 # https://github.com/99designs/gqlgen/issues/896.
@@ -1756,7 +1867,7 @@ extend type Query {
 extend type Subscription {
   issue896b: [CheckIssue896] # Note the "!" or lack thereof.
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "loops.graphql", Input: `type LoopA {
     b: LoopB!
 }
@@ -1764,7 +1875,7 @@ extend type Subscription {
 type LoopB {
     a: LoopA!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "maps.graphql", Input: `extend type Query {
     mapStringInterface(in: MapStringInterfaceInput): MapStringInterfaceType
     mapNestedStringInterface(in: NestedMapInput): MapStringInterfaceType
@@ -1783,7 +1894,7 @@ input MapStringInterfaceInput @goModel(model: "map[string]interface{}") {
 input NestedMapInput {
     map: MapStringInterfaceInput
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "nulls.graphql", Input: `extend type Query {
     errorBubble: Error
     errors: Errors
@@ -1804,7 +1915,7 @@ type Error {
     errorOnRequiredField: String!
     nilOnRequiredField: String!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "panics.graphql", Input: `extend type Query {
     panics: Panics
 }
@@ -1817,7 +1928,7 @@ type Panics {
 }
 
 scalar MarshalPanic
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "primitive_objects.graphql", Input: `extend type Query {
     primitiveObject: [Primitive!]!
     primitiveStringObject: [PrimitiveString!]!
@@ -1833,7 +1944,7 @@ type PrimitiveString {
     doubled: String!
     len: Int!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "scalar_default.graphql", Input: `extend type Query {
     defaultScalar(arg: DefaultScalarImplementation! = "default"): DefaultScalarImplementation!
 }
@@ -1844,7 +1955,7 @@ scalar DefaultScalarImplementation
 type EmbeddedDefaultScalar {
     value: DefaultScalarImplementation
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schema.graphql", Input: `directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
@@ -1943,7 +2054,7 @@ enum Status {
 }
 
 scalar Time
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "slices.graphql", Input: `extend type Query {
     slices: Slices
     scalarSlice: Bytes!
@@ -1957,7 +2068,7 @@ type Slices {
 }
 
 scalar Bytes
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "typefallback.graphql", Input: `extend type Query {
     fallback(arg: FallbackToStringEncoding!): FallbackToStringEncoding!
 }
@@ -1967,7 +2078,7 @@ enum FallbackToStringEncoding {
     B
     C
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "useptr.graphql", Input: `type A {
     id: ID!
 }
@@ -1981,7 +2092,7 @@ union TestUnion = A | B
 extend type Query {
     optionalUnion: TestUnion
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "validtypes.graphql", Input: `extend type Query {
     validType: ValidType
 }
@@ -2060,7 +2171,7 @@ type Content_Post {
 }
 
 union Content_Child = Content_User | Content_Post
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "weird_type_cases.graphql", Input: `# regression test for https://github.com/99designs/gqlgen/issues/583
 
 type asdfIt { id: ID! }
@@ -2069,7 +2180,7 @@ type AIt { id: ID! }
 type XXIt { id: ID! }
 type AbIt { id: ID! }
 type XxIt { id: ID! }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "wrapped_type.graphql", Input: `# regression test for https://github.com/99designs/gqlgen/issues/721
 
 extend type Query {
@@ -2079,8 +2190,9 @@ extend type Query {
 
 type WrappedStruct { name: String! }
 scalar WrappedScalar
-`},
-)
+`, BuiltIn: false},
+}
+var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 
@@ -3234,6 +3346,99 @@ func (ec *executionContext) _B_id(ctx context.Context, field graphql.CollectedFi
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _BackedByInterface_id(ctx context.Context, field graphql.CollectedField, obj BackedByInterface) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BackedByInterface",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.BackedByInterface().ID(rctx, obj)
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BackedByInterface_thisShouldBind(ctx context.Context, field graphql.CollectedField, obj BackedByInterface) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BackedByInterface",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThisShouldBind(), nil
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BackedByInterface_thisShouldBindWithError(ctx context.Context, field graphql.CollectedField, obj BackedByInterface) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BackedByInterface",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThisShouldBindWithError()
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Cat_species(ctx context.Context, field graphql.CollectedField, obj *Cat) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3378,6 +3583,161 @@ func (ec *executionContext) _Circle_area(ctx context.Context, field graphql.Coll
 	res := resTmp.(float64)
 	fc.Result = res
 	return ec.marshalOFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ConcreteNodeA_id(ctx context.Context, field graphql.CollectedField, obj *ConcreteNodeA) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ConcreteNodeA",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ConcreteNodeA_child(ctx context.Context, field graphql.CollectedField, obj *ConcreteNodeA) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ConcreteNodeA",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Child()
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(Node)
+	fc.Result = res
+	return ec.marshalNNode2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐNode(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ConcreteNodeA_name(ctx context.Context, field graphql.CollectedField, obj *ConcreteNodeA) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ConcreteNodeA",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ConcreteNodeInterface_id(ctx context.Context, field graphql.CollectedField, obj ConcreteNodeInterface) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ConcreteNodeInterface",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID(), nil
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ConcreteNodeInterface_child(ctx context.Context, field graphql.CollectedField, obj ConcreteNodeInterface) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ConcreteNodeInterface",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Child()
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(Node)
+	fc.Result = res
+	return ec.marshalNNode2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐNode(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Content_Post_foo(ctx context.Context, field graphql.CollectedField, obj *ContentPost) (ret graphql.Marshaler) {
@@ -6010,6 +6370,37 @@ func (ec *executionContext) _Query_noShape(ctx context.Context, field graphql.Co
 	return ec.marshalOShape2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐShape(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_node(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Node(rctx)
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(Node)
+	fc.Result = res
+	return ec.marshalNNode2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐNode(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_noShapeTypedNil(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6104,6 +6495,34 @@ func (ec *executionContext) _Query_animal(ctx context.Context, field graphql.Col
 	res := resTmp.(Animal)
 	fc.Result = res
 	return ec.marshalOAnimal2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐAnimal(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_notAnInterface(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp := ec._fieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NotAnInterface(rctx)
+	})
+
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(BackedByInterface)
+	fc.Result = res
+	return ec.marshalOBackedByInterface2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐBackedByInterface(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_issue896a(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9058,6 +9477,25 @@ func (ec *executionContext) _Content_Child(ctx context.Context, sel ast.Selectio
 	}
 }
 
+func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj Node) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case *ConcreteNodeA:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ConcreteNodeA(ctx, sel, obj)
+	case ConcreteNodeInterface:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ConcreteNodeInterface(ctx, sel, obj)
+	default:
+		panic(fmt.Errorf("unexpected type %T", obj))
+	}
+}
+
 func (ec *executionContext) _Shape(ctx context.Context, sel ast.SelectionSet, obj Shape) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -9278,6 +9716,52 @@ func (ec *executionContext) _B(ctx context.Context, sel ast.SelectionSet, obj *B
 	return out
 }
 
+var backedByInterfaceImplementors = []string{"BackedByInterface"}
+
+func (ec *executionContext) _BackedByInterface(ctx context.Context, sel ast.SelectionSet, obj BackedByInterface) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, backedByInterfaceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BackedByInterface")
+		case "id":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BackedByInterface_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "thisShouldBind":
+			out.Values[i] = ec._BackedByInterface_thisShouldBind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "thisShouldBindWithError":
+			out.Values[i] = ec._BackedByInterface_thisShouldBindWithError(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var catImplementors = []string{"Cat", "Animal"}
 
 func (ec *executionContext) _Cat(ctx context.Context, sel ast.SelectionSet, obj *Cat) graphql.Marshaler {
@@ -9349,6 +9833,75 @@ func (ec *executionContext) _Circle(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Circle_radius(ctx, field, obj)
 		case "area":
 			out.Values[i] = ec._Circle_area(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var concreteNodeAImplementors = []string{"ConcreteNodeA", "Node"}
+
+func (ec *executionContext) _ConcreteNodeA(ctx context.Context, sel ast.SelectionSet, obj *ConcreteNodeA) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, concreteNodeAImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ConcreteNodeA")
+		case "id":
+			out.Values[i] = ec._ConcreteNodeA_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "child":
+			out.Values[i] = ec._ConcreteNodeA_child(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._ConcreteNodeA_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var concreteNodeInterfaceImplementors = []string{"ConcreteNodeInterface", "Node"}
+
+func (ec *executionContext) _ConcreteNodeInterface(ctx context.Context, sel ast.SelectionSet, obj ConcreteNodeInterface) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, concreteNodeInterfaceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ConcreteNodeInterface")
+		case "id":
+			out.Values[i] = ec._ConcreteNodeInterface_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "child":
+			out.Values[i] = ec._ConcreteNodeInterface_child(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10648,6 +11201,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_noShape(ctx, field)
 				return res
 			})
+		case "node":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_node(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "noShapeTypedNil":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -10668,6 +11235,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_animal(ctx, field)
+				return res
+			})
+		case "notAnInterface":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_notAnInterface(ctx, field)
 				return res
 			})
 		case "issue896a":
@@ -11734,6 +12312,16 @@ func (ec *executionContext) marshalNMarshalPanic2ᚕgithubᚗcomᚋ99designsᚋg
 	return ret
 }
 
+func (ec *executionContext) marshalNNode2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐNode(ctx context.Context, sel ast.SelectionSet, v Node) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Node(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPrimitive2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐPrimitive(ctx context.Context, sel ast.SelectionSet, v Primitive) graphql.Marshaler {
 	return ec._Primitive(ctx, sel, &v)
 }
@@ -12270,6 +12858,13 @@ func (ec *executionContext) marshalOAutobind2ᚖgithubᚗcomᚋ99designsᚋgqlge
 		return graphql.Null
 	}
 	return ec._Autobind(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOBackedByInterface2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐBackedByInterface(ctx context.Context, sel ast.SelectionSet, v BackedByInterface) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._BackedByInterface(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {

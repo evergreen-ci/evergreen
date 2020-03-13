@@ -125,7 +125,7 @@ imports:
   - name: github.com/mongodb/grip
     version: 505d1051058d81836ddb3cb839ba06009588a14e
   - name: github.com/mongodb/amboy
-    version: df24672ec6aa73d93b329b156128e645fb34ee79
+    version: 8f70457166d7c55c692421650fc3dbd3a8ef7ba4
   - name: github.com/evergreen-ci/gimlet
     version: 62e03be7c89a3c538aa8b10e99faee3a34399852
   - name: github.com/evergreen-ci/shrub
@@ -176,10 +176,10 @@ imports:
 
   # GraphQL deps
   - name: github.com/99designs/gqlgen
-    version: f869f5a85385745d5854daaa25eab5571b04b245
+    version: a538119155cf1ce66094a5a1ba1a201905d3e832
 
   - name: github.com/vektah/gqlparser
-    version: 6b4a7854a7ef7ee3f626490d1e2d22a823828fc6
+    version: d7ac1ee3e4535f7c6040c59dbf429da51e00eb4b
   - name: github.com/gorilla/websocket
     version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
   - name: github.com/agnivade/levenshtein

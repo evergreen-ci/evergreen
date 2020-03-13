@@ -69,6 +69,9 @@ func GetSeverityMapping(s int) string {
 // GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
 func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
+	if usr == nil {
+		return nil, errors.New("error getting user from context")
+	}
 	opts := fetcher.GetOptions{
 		BaseURL:       fmt.Sprintf("https://%s", buildloggerBaseURL),
 		UserKey:       usr.GetAPIKey(),

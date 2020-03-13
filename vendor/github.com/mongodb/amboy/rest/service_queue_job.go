@@ -99,6 +99,22 @@ func (s *QueueService) WaitJob(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSONResponse(w, code, response)
 }
 
+// MarkJobComplete marks a single job complete. If the job does not exist, it
+// returns a 404 (StatusNotFound).
+func (s *QueueService) MarkJobComplete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	name := gimlet.GetVars(r)["name"]
+
+	j, exists := s.queue.Get(ctx, name)
+	if !exists {
+		gimlet.WriteTextError(w, fmt.Sprintf("cannot recover job with name '%s'", name))
+		return
+	}
+
+	s.queue.Complete(ctx, j)
+	gimlet.WriteText(w, fmt.Sprintf("job with name '%s' marked complete", name))
+}
+
 func parseTimeout(r *http.Request) (time.Duration, error) {
 	var err error
 

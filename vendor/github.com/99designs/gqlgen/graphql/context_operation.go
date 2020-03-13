@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // Deprecated: Please update all references to OperationContext instead
@@ -60,6 +60,14 @@ func GetOperationContext(ctx context.Context) *OperationContext {
 
 func WithOperationContext(ctx context.Context, rc *OperationContext) context.Context {
 	return context.WithValue(ctx, operationCtx, rc)
+}
+
+// HasOperationContext checks if the given context is part of an ongoing operation
+//
+// Some errors can happen outside of an operation, eg json unmarshal errors.
+func HasOperationContext(ctx context.Context) bool {
+	_, ok := ctx.Value(operationCtx).(*OperationContext)
+	return ok
 }
 
 // This is just a convenient wrapper method for CollectFields

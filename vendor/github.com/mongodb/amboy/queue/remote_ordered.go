@@ -49,7 +49,6 @@ func newSimpleRemoteOrdered(size int) remoteQueue {
 func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 	var err error
 	start := time.Now()
-	count := 1
 	for {
 		select {
 		case <-ctx.Done():
@@ -84,9 +83,8 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 			id := job.ID()
 			switch dep.State() {
 			case dependency.Ready:
-				grip.Debugf("returning job %s from remote source, count = %d; duration = %s",
-					id, count, time.Since(start))
-				count++
+				grip.Debugf("returning job %s from remote source, duration = %s",
+					id, time.Since(start))
 				return job
 			case dependency.Passed:
 				q.addBlocked(job.ID())

@@ -13,8 +13,8 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	gqlparser "github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
@@ -40,19 +40,13 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	EnumLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	FieldLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	InputLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
+	EnumLogging      func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	FieldLogging     func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	InputLogging     func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	InterfaceLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	ObjectLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	ScalarLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-
-	UnionLogging func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	ObjectLogging    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	ScalarLogging    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	UnionLogging     func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -218,27 +212,27 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-var parsedSchema = gqlparser.MustLoadSchema(
+var sources = []*ast.Source{
 	&ast.Source{Name: "schemas/enum-extension.graphql", Input: `directive @enumLogging on ENUM
 
 extend enum State @enumLogging
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/input-object-extension.graphql", Input: `directive @inputLogging on INPUT_OBJECT
 
 extend input TodoInput @inputLogging
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/interface-extension.graphql", Input: `directive @interfaceLogging on INTERFACE
 
 extend interface Node @interfaceLogging
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/object-extension.graphql", Input: `directive @objectLogging on OBJECT
 
 extend type Todo @objectLogging
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/scalar-extension.graphql", Input: `directive @scalarLogging on SCALAR
 
 extend scalar ID @scalarLogging
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/schema-extension.graphql", Input: `extend schema {
   mutation: MyMutation
 }
@@ -254,7 +248,7 @@ type MyMutation {
 input TodoInput {
   text: String!
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/schema.graphql", Input: `# GraphQL schema example
 #
 # https://gqlgen.com/getting-started/
@@ -283,18 +277,19 @@ enum State {
   NOT_YET
   DONE
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/type-extension.graphql", Input: `directive @fieldLogging on FIELD_DEFINITION
 
 extend type Todo {
   verified: Boolean! @fieldLogging
 }
-`},
+`, BuiltIn: false},
 	&ast.Source{Name: "schemas/union-extension.graphql", Input: `directive @unionLogging on UNION
 
 extend union Data @unionLogging
-`},
-)
+`, BuiltIn: false},
+}
+var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 
