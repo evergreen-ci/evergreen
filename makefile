@@ -450,9 +450,6 @@ clean:
 	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
-
-gqlgen:
-	go run vendor/github.com/99designs/gqlgen/main.go
 # end dependency targets
 
 
