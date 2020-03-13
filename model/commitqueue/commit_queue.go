@@ -215,6 +215,9 @@ func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
 	}
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", projectId)
+	}
 
 	head, valid := cq.Next()
 	if !valid {

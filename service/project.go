@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -391,15 +390,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = commitqueue.FindOneId(responseRef.Identifier)
+		cq, err := commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
-			if adb.ResultsNotFound(err) {
-				cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
-				if err = commitqueue.InsertQueue(cq); err != nil {
-					uis.LoggedError(w, r, http.StatusInternalServerError, err)
-					return
-				}
-			} else {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		if cq == nil {
+			cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+			if err = commitqueue.InsertQueue(cq); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
