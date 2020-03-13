@@ -141,6 +141,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "can't find project for queue id %s", j.QueueID))
 		return
 	}
+	if projectRef == nil {
+		j.AddError(errors.Errorf("no project found for queue id %s", j.QueueID))
+		return
+	}
 	if !projectRef.CommitQueue.Enabled {
 		grip.Info(message.Fields{
 			"source":  "commit queue",
@@ -154,6 +158,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	cq, err := commitqueue.FindOneId(j.QueueID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
+		return
+	}
+	if cq == nil {
+		j.AddError(errors.Errorf("no commit queue found for id %s", j.QueueID))
 		return
 	}
 	nextItem, valid := cq.Next()
@@ -237,11 +245,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		j.dequeue(cq, nextItem)
-		return
-	}
-	if patchDoc == nil {
-		j.logError(err, "patch not found", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
