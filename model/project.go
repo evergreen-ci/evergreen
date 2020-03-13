@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1082,11 +1081,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
-	pp.Print("VARRRRIANT")
-	pp.Print(variant)
 	bv := p.FindBuildVariant(variant)
-	pp.Print("BUILD VARIANTTT")
-	pp.Print(bv)
 	if bv == nil {
 		return nil
 	}
@@ -1095,8 +1090,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	for _, tg := range p.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	pp.Print("TG MAPPP")
-	pp.Print(tgMap)
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
@@ -1129,8 +1122,6 @@ func (bv *BuildVariant) GetDisplayTaskNamek(execTask string) string {
 }
 
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
-	pp.Println("PROJJJECTTT")
-	pp.Println(p)
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
 			return &b

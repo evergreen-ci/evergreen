@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -259,7 +258,5 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) *Patch
 		}
 		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
 	}
-	fmt.Println("PATCH VARIANTS TASK REQUESTTT")
-	pp.Print(p)
 	return p
 }
