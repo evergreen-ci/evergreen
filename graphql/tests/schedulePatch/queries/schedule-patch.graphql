@@ -10,7 +10,6 @@ mutation {
   ) {
     id
     status
-    version
     activated
     tasks
     variants
