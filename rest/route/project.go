@@ -393,7 +393,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.projectID))
 	}
-	if err = h.sc.UpdateProjectVars(h.projectID, &apiProjectRef.Variables); err != nil { // destructively modifies apiProjectRef.Variables
+	if err = h.sc.UpdateProjectVars(h.projectID, &apiProjectRef.Variables, false); err != nil { // destructively modifies apiProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.projectID))
 	}
 	if err = h.sc.UpdateProjectAliases(h.projectID, apiProjectRef.Aliases); err != nil {
@@ -585,7 +585,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	variables, err := h.sc.FindProjectVarsById(h.projectID, false)
+	variables, err := h.sc.FindProjectVarsById(h.projectID, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

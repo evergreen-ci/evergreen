@@ -154,16 +154,15 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) RedactedOnly() *ProjectVars {
+func (projectVars *ProjectVars) PublicVarsOnly() *ProjectVars {
 	res := ProjectVars{
 		Id:          projectVars.Id,
 		Vars:        map[string]string{},
 		PrivateVars: map[string]bool{},
 	}
 	for name, isPrivate := range projectVars.PrivateVars {
-		if val, ok := projectVars.Vars[name]; ok && isPrivate {
+		if val, ok := projectVars.Vars[name]; ok && !isPrivate {
 			res.Vars[name] = val
-			res.PrivateVars[name] = true
 		}
 	}
 	return &res
