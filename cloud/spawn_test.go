@@ -4,8 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRDPPasswordValidation(t *testing.T) {
@@ -72,4 +76,27 @@ func TestMakeExtendedHostExpirationFailsPastMax(t *testing.T) {
 	assert.Zero(expTime)
 	assert.Error(err)
 	assert.Contains(err.Error(), "cannot be extended more than")
+}
+
+func TestModifySpawnHostProviderSettings(t *testing.T) {
+	require.NoError(t, db.Clear(host.VolumesCollection))
+
+	vol := host.Volume{
+		ID:               "v0",
+		AvailabilityZone: "us-east-1a",
+	}
+	require.NoError(t, vol.Insert())
+
+	config := evergreen.Settings{}
+	config.Providers.AWS.Subnets = []evergreen.Subnet{{AZ: "us-east-1a", SubnetID: "new_id"}}
+
+	d := distro.Distro{
+		ProviderSettings: &map[string]interface{}{
+			"subnet_id": "old_id",
+		},
+	}
+
+	settingsList, err := modifySpawnHostProviderSettings(d, &config, "", vol.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, "new_id", settingsList[0].LookupElement("subnet_id").Value().StringValue())
 }

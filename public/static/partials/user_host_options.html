@@ -84,10 +84,36 @@
       </p>
     </div>
     <div style="padding-bottom:5px;" ng-show="selectedDistro.virtual_workstation_allowed">
-      <input type="checkbox" ng-model="$parent.is_virtual_workstation"> Virtual Workstation </input>
-      <div ng-show="$parent.is_virtual_workstation">
-        <label> Volume size (GB) </label>
-        <input type="number" ng-model="$parent.home_volume_size" min="1" max="10000"></input>
+      <input type="checkbox" ng-model="$parent.isVirtualWorkstation"> Virtual Workstation </input>
+      <div ng-show="$parent.isVirtualWorkstation">
+        <div class="dropdown">
+          <button class="btn btn-link btn-dropdown" data-toggle="dropdown">
+            <span class="semi-muted">
+             Volume:
+            </span>
+            <strong>
+              [[ homeVolumeID ? homeVolumeID : "New Volume" ]]
+              <span class="fa fa-caret-down"></span>
+            </strong>
+          </button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="volumes">
+            <li role="presentation" class="dropdown-header">Home Volume</li>
+            <li role="presentation">
+              <a role="menuitem" ng-click="setVolume()">
+                New Volume
+              </a>
+            </li>
+            <li role="presentation" ng-repeat="volume in $parent.availableVolumes">
+              <a role="menuitem" ng-click="setVolume(volume)">
+                [[ volume.volume_id ]]
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div ng-show="!$parent.homeVolumeID">
+          <label> Volume size (GB) </label>
+          <input type="number" ng-model="$parent.homeVolumeSize" min="1" max="10000"></input>
+        </div>
       </div>
     </div>
     <div id="userData" style="padding-bottom:5px;">

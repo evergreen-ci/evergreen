@@ -37,6 +37,7 @@ type HostRequestOptions struct {
 	NoExpiration         bool       `json:"no_expiration"`
 	IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
 	HomeVolumeSize       int        `json:"home_volume_size"`
+	HomeVolumeID         string     `json:"home_volume_id"`
 }
 
 type DistroInfo struct {

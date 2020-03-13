@@ -200,7 +200,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       };
     }
     if ($scope.Settings.providers.aws.ec2_keys === undefined || $scope.Settings.providers.aws.ec2_keys === null) {
-        $scope.Settings.providers.aws = {"ec2_keys": []}
+        $scope.Settings.providers.aws.ec2_keys = []
     }
     if (!$scope.validEC2Credentials($scope.new_item)){
         $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
@@ -213,6 +213,34 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.deleteEC2Credential = function(index){
     $scope.Settings.providers.aws.ec2_keys.splice(index, 1);
+  }
+
+  $scope.addSubnet = function(){
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {"subnets": []}
+      };
+    }
+    if ($scope.Settings.providers.aws.subnets == null) {
+        $scope.Settings.providers.aws.subnets = []
+    }
+
+    if (!$scope.validSubnet($scope.new_subnet)){
+        $scope.invalidSubnet = "Availability zone and subnet ID are required.";
+        return
+    }
+
+    $scope.Settings.providers.aws.subnets.push($scope.new_subnet);
+    $scope.new_subnet = {};
+    $scope.invalidSubnet = "";
+  }
+
+  $scope.deleteSubnet = function(index){
+    $scope.Settings.providers.aws.subnets.splice(index, 1);
+  }
+
+  $scope.validSubnet = function(subnet){
+    return subnet && subnet.az && subnet.subnet_id;
   }
 
   $scope.clearAllUserTokens = function(){
