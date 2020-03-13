@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -596,12 +595,8 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
-	fmt.Println("RECONFIGUREEE")
-	pp.Println(reconfigure)
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(reconfigure)
-	fmt.Println("PATCH UPDATE REQ")
-	fmt.Println(patchUpdateReq)
 
 	// do not need to check error after fetching version bc version can be nil
 	version, _ := r.sc.FindVersionById(patchID)

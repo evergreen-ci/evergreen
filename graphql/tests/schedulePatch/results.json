@@ -1,12 +1,22 @@
 {
   "tests": [
     {
-      "query_file": "taskCount.graphql",
+      "query_file": "schedule-patch.graphql",
       "result": {
         "data": {
-          "patch": {
-            "id": "5e4ff3abe3c3317e352062e4",
-            "taskCount": 6
+          "schedulePatch": {
+            "id": "5e6bb9e23066155a993e0f1a",
+            "status": "created",
+            "version": "5e6bb9e23066155a993e0f1a",
+            "activated": true,
+            "tasks": ["test-graphql"],
+            "variants": ["ubuntu1604"],
+            "variantsTasks": [
+              {
+                "name": "ubuntu1604",
+                "tasks": ["test-graphql"]
+              }
+            ]
           }
         }
       }

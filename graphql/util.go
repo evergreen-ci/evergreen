@@ -156,10 +156,8 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 
 	tasks := model.TaskVariantPairs{}
 	if len(patchUpdateReq.VariantsTasks) > 0 {
-		fmt.Println("1111111111")
 		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 	} else {
-		fmt.Println("222222222")
 		for _, v := range patchUpdateReq.Variants {
 			for _, t := range patchUpdateReq.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
