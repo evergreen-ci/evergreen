@@ -826,15 +826,34 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				h.Id, h.Provider)
 		}
 
-		// create the volume
-		volume, err := cloudMgr.CreateVolume(ctx, &host.Volume{
-			Size:             h.HomeVolumeSize,
-			AvailabilityZone: h.Zone,
-			CreatedBy:        h.StartedBy,
-			Type:             evergreen.DefaultEBSType,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+		var volume *host.Volume
+		if h.HomeVolumeID != "" {
+			volume, err = host.FindVolumeByID(h.HomeVolumeID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get volume '%s'", h.HomeVolumeID)
+			}
+			if volume == nil {
+				return errors.Errorf("volume '%s' does not exist", h.HomeVolumeID)
+			}
+			var sourceHost *host.Host
+			sourceHost, err = host.FindHostWithVolume(h.HomeVolumeID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
+			}
+			if sourceHost != nil {
+				return errors.Errorf("volume '%s' is already attached to host '%s'", h.HomeVolumeID, sourceHost.Id)
+			}
+		} else {
+			// create the volume
+			volume, err = cloudMgr.CreateVolume(ctx, &host.Volume{
+				Size:             h.HomeVolumeSize,
+				AvailabilityZone: h.Zone,
+				CreatedBy:        h.StartedBy,
+				Type:             evergreen.DefaultEBSType,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+			}
 		}
 
 		// attach to the host
@@ -888,11 +907,19 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	cmd = client.CreateCommand(ctx).Sudo(true)
-	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	// skip formatting if the volume already contains a filesystem
+	cmdOut := util.NewMBCappedWriter()
+	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("file -s /dev/%s", deviceName)).SetOutputWriter(cmdOut).Run(ctx); err != nil {
+		return errors.Wrap(err, "problem checking for formatted device")
+	}
+	if strings.TrimSpace(cmdOut.String()) == fmt.Sprintf("%s: data", deviceName) {
+		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	}
+
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("chown -R %s:%s %s/%s", h.User, h.User, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
