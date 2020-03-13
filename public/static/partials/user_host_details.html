@@ -41,7 +41,7 @@
             <div class="entry"ng-show="curHostData.zone">
               <strong>Availability Zone</strong> <span>[[curHostData.zone]]</span>
             </div>
-            <div class="entry" ng-show="curHostData.is_virtual_workstation">
+            <div class="entry" ng-show="curHostData.is_virtual_workstation && curHostData.status == 'running'">
               <strong>IDE</strong> <span> <a href="/host/[[curHostData.id]]/ide/" target="_blank">Open IDE</a> </span>
             </div>
             <div class ="entry" ng-show="curHostData.userdata">

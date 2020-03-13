@@ -67,9 +67,15 @@ type EC2Key struct {
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 }
 
+type Subnet struct {
+	AZ       string `bson:"az" json:"az" yaml:"az"`
+	SubnetID string `bson:"subnet_id" json:"subnet_id" yaml:"subnet_id"`
+}
+
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
+	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	S3Key                string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
 	S3Secret             string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`

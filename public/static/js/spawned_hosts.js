@@ -16,9 +16,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
-    $scope.is_virtual_workstation = false;
-    $scope.home_volume_size = 500;
+    $scope.isVirtualWorkstation = false;
+    $scope.homeVolumeSize = 500;
+    $scope.homeVolumeID;
     $scope.allowedInstanceTypes = [];
+    $scope.availableVolumes = [];
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24 * 7;
@@ -248,13 +250,27 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
+    $scope.fetchAvailableVolumes = function () {
+      mciSpawnRestService.getAvailableVolumes(
+        {
+          success: function (resp) {
+            $scope.setAvailableVolumes(resp.data);
+          },
+          error: function (resp) {
+            notificationService.pushNotification('Error fetching available volumes: ' + resp.data.error, 'errorHeader');
+          }
+        }
+      );
+    };
+
     $scope.spawnHost = function () {
       $scope.spawnReqSent = true;
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
-      $scope.spawnInfo.is_virtual_workstation = $scope.is_virtual_workstation;
-      $scope.spawnInfo.home_volume_size = $scope.home_volume_size;
+      $scope.spawnInfo.is_virtual_workstation = $scope.isVirtualWorkstation;
+      $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
+      $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
@@ -428,12 +444,27 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }
 
       // clear home volume settings when switching between distros
-      $scope.is_virtual_workstation = false
-      $scope.home_volume_size = 500
+      $scope.isVirtualWorkstation = false
+      $scope.homeVolumeSize = 500
     };
 
     $scope.setRegion = function(region) {
       $scope.selectedRegion = region;
+    }
+
+    $scope.setVolume = function (volume) {
+      if (volume) {
+        $scope.homeVolumeID = volume.volume_id;
+      } else {
+        $scope.homeVolumeID = "";
+      }
+    }
+
+    $scope.setAvailableVolumes = function(volumes) {
+      $scope.availableVolumes = volumes;
+      if (volumes.length > 0) {
+        $scope.homeVolumeID = volumes[0].volume_id;
+      }
     }
 
     // set the spawn host update instance type based on user selection
@@ -578,6 +609,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       switch ($scope.modalOption) {
         case 'spawnHost':
           $scope.fetchUserKeys();
+          $scope.fetchAvailableVolumes();
           if ($scope.spawnableDistros.length == 0) {
             $scope.fetchSpawnableDistros();
           }
