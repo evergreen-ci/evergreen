@@ -240,6 +240,11 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, nextItem)
 		return
 	}
+	if patchDoc == nil {
+		j.logError(err, "patch not found", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
 
 	patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
 	if err != nil {
@@ -330,6 +335,11 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+	if patchDoc == nil {
+		j.logError(err, "patch not found", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}

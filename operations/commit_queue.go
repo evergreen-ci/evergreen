@@ -245,7 +245,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	issue := restModel.FromStringPtr(item.Issue)
 	p, err := ac.GetPatch(issue)
 	if err != nil {
-		grip.Error(message.WrapErrorf(err, "\terror getting patch for issue '%s'", issue))
+		grip.Errorf("Error getting patch for issue '%s': %v", issue, err.Error())
 		return
 	}
 

@@ -142,6 +142,53 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.Contains(stringOut, patchURL)
 }
 
+func (s *CommitQueueSuite) TestListContentsMissingPatch() {
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
+	p1 := patch.Patch{
+		Id:          bson.NewObjectId(),
+		Project:     "mci",
+		Author:      "annie.black",
+		Activated:   true,
+		Description: "fix things",
+		CreateTime:  time.Now(),
+		Status:      evergreen.TaskDispatched,
+	}
+	s.NoError(p1.Insert())
+	pRef := &model.ProjectRef{
+		Identifier:  "mci",
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
+	}
+	s.Require().NoError(pRef.Insert())
+
+	fakeIssue := "not-a-real-issue"
+	cq := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue: []commitqueue.CommitQueueItem{
+			{Issue: fakeIssue},
+			{Issue: p1.Id.Hex()},
+		},
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq))
+
+	origStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
+	ac, _, err := s.conf.getLegacyClients()
+	s.NoError(err)
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(w.Close())
+	os.Stdout = origStdout
+	out, _ := ioutil.ReadAll(r)
+	stringOut := string(out[:])
+
+	s.Contains(stringOut, "Project: mci")
+	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
+	s.Contains(stringOut, "0:")
+	s.Contains(stringOut, fmt.Sprintf("Error getting patch for issue '%s'", fakeIssue))
+	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
+}
+
 func (s *CommitQueueSuite) TestListContentsForPRs() {
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
 	cq := &commitqueue.CommitQueue{
