@@ -143,7 +143,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 }
 
 func (s *CommitQueueSuite) TestListContentsMissingPatch() {
-	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection, patch.Collection))
 	p1 := patch.Patch{
 		Id:          bson.NewObjectId(),
 		Project:     "mci",
