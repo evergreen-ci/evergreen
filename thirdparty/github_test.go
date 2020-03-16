@@ -94,7 +94,14 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", time.Time{}, 0)
+	s.NoError(err)
+	s.Len(githubCommits, 3)
+}
+
+func (s *githubSuite) TestGetGithubCommitsUntil() {
+	until := time.Date(2013, time.May, 17, 15, 40, 0, 0, time.UTC)
+	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", until, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 3)
 }

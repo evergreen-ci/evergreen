@@ -17,6 +17,7 @@ var (
 	ProjectNameKey      = bsonutil.MustHaveTag(Manifest{}, "ProjectName")
 	ModulesKey          = bsonutil.MustHaveTag(Manifest{}, "Modules")
 	ManifestBranchKey   = bsonutil.MustHaveTag(Manifest{}, "Branch")
+	IsBaseKey           = bsonutil.MustHaveTag(Manifest{}, "IsBase")
 	ModuleBranchKey     = bsonutil.MustHaveTag(Module{}, "Branch")
 	ModuleRevisionKey   = bsonutil.MustHaveTag(Module{}, "Revision")
 	OwnerKey            = bsonutil.MustHaveTag(Module{}, "Owner")
@@ -49,6 +50,14 @@ func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
+func ByBaseProjectAndRevision(project, revision string) db.Q {
+	return db.Query(bson.M{
+		ProjectNameKey:      project,
+		ManifestRevisionKey: revision,
+		IsBaseKey:           true,
+	})
+}
+
 func ByProjectAndRevision(project, revision string) db.Q {
 	return db.Query(bson.M{
 		ProjectNameKey:      project,
@@ -61,31 +70,43 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding manifest")
 	}
+	if manifest != nil {
+		return manifest, nil
+	}
 
 	// the version wasn't from the repotracker
+	// find the base commit's manifest
+	manifest, err = FindOne(ByBaseProjectAndRevision(project, revision))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding manifest")
+	}
 	if manifest == nil {
+		// check for a legacy manifest
 		manifest, err = FindOne(ByProjectAndRevision(project, revision))
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding manifest")
 		}
-		if manifest != nil {
-			if evergreen.IsPatchRequester(requester) {
-				var p *patch.Patch
-				p, err = patch.FindOne(patch.ById(patch.NewId(versionID)))
-				if err != nil {
-					return nil, errors.Wrapf(err, "can't get patch for '%s'", versionID)
-				}
-				if p == nil {
-					return nil, errors.Errorf("no corresponding patch with id '%s'", versionID)
-				}
-				manifest.ModuleOverrides = make(map[string]string)
-				for _, patchModule := range p.Patches {
-					if patchModule.ModuleName != "" && patchModule.Githash != "" {
-						manifest.ModuleOverrides[patchModule.ModuleName] = patchModule.Githash
-					}
-				}
+		if manifest == nil {
+			return nil, nil
+		}
+	}
+
+	if evergreen.IsPatchRequester(requester) {
+		var p *patch.Patch
+		p, err = patch.FindOne(patch.ById(patch.NewId(versionID)))
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get patch for '%s'", versionID)
+		}
+		if p == nil {
+			return nil, errors.Errorf("no corresponding patch with id '%s'", versionID)
+		}
+		manifest.ModuleOverrides = make(map[string]string)
+		for _, patchModule := range p.Patches {
+			if patchModule.ModuleName != "" && patchModule.Githash != "" {
+				manifest.ModuleOverrides[patchModule.ModuleName] = patchModule.Githash
 			}
 		}
 	}
+
 	return manifest, err
 }
