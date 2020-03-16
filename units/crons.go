@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -953,7 +952,8 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			}))
 			return errors.WithStack(err)
 		}
-		hosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
+
+		expiringHosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "Jasper service restart",
@@ -962,15 +962,29 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			}))
 			return errors.Wrap(err, "problem finding hosts with expiring credentials")
 		}
-
-		ts := util.RoundPartOfHour(15).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
-		for _, h := range hosts {
+		for _, h := range expiringHosts {
 			if err := h.SetNeedsJasperRestart(); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
 				continue
 			}
-			event.LogHostJasperRestarting(h.Id, evergreen.User)
+		}
+		if catcher.HasErrors() {
+			return errors.Wrap(catcher.Resolve(), "error updating host with expiring credentials")
+		}
+
+		hosts, err := host.FindByNeedsJasperRestart()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "Jasper service restart",
+				"cron":      jasperRestartJobName,
+				"impact":    "existing hosts will not have their Jasper services restarted",
+			}))
+			return errors.Wrap(err, "problem finding hosts that need their Jasper service restarted")
+		}
+
+		ts := util.RoundPartOfHour(15).Format(TSFormat)
+		for _, h := range hosts {
 			expiration, err := h.JasperCredentialsExpiration(ctx, env)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))

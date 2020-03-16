@@ -184,16 +184,10 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, msg)
 		gimlet.WriteJSON(w, HostStatusWriteConfirm)
 	case "restartJasper":
-		if h.NeedsReprovision != host.ReprovisionNone {
-			PushFlash(uis.CookieStore, r, w, NewErrorFlash(HostRestartJasperAlreadyReprovisioning))
-			gimlet.WriteJSON(w, HostRestartJasperAlreadyReprovisioning)
-			return
-		}
 		if err = h.SetNeedsJasperRestart(); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
 			return
 		}
-		event.LogHostJasperRestarting(h.Id, u.Username())
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(HostRestartJasperConfirm))
 		gimlet.WriteJSON(w, HostRestartJasperConfirm)
 	default:
@@ -260,13 +254,9 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			if h.NeedsReprovision != host.ReprovisionNone {
-				return nil
-			}
 			if modifyErr := h.SetNeedsJasperRestart(); err != nil {
 				return modifyErr
 			}
-			event.LogHostJasperRestarting(h.Id, user.Username())
 			return nil
 		})
 		if err != nil {

@@ -460,6 +460,23 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 		HasContainersKey:    bson.M{"$ne": true},
 		ParentIDKey:         bson.M{"$exists": false},
 		NeedsReprovisionKey: bson.M{"$in": []ReprovisionType{ReprovisionToNew, ReprovisionToLegacy}},
+		"$or": []bson.M{
+			bson.M{NeedsNewAgentKey: true},
+			bson.M{NeedsNewAgentMonitorKey: true},
+		},
+	}))
+}
+
+// FindByNeedsJasperRestart finds all hosts that are ready and waiting to
+// restart their Jasper service.
+func FindByNeedsJasperRestart() ([]Host, error) {
+	return Find(db.Query(bson.M{
+		StatusKey:               bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		RunningTaskKey:          bson.M{"$exists": false},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+		NeedsReprovisionKey:     ReprovisionJasperRestart,
+		NeedsNewAgentMonitorKey: true,
 	}))
 }
 
