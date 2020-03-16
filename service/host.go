@@ -184,11 +184,17 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, msg)
 		gimlet.WriteJSON(w, HostStatusWriteConfirm)
 	case "restartJasper":
+		if h.NeedsReprovision != host.ReprovisionNone {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(HostRestartJasperAlreadyReprovisioning))
+			gimlet.WriteJSON(w, HostRestartJasperAlreadyReprovisioning)
+			return
+		}
 		if err = h.SetNeedsJasperRestart(); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("marked host as needing Jasper service restarted"))
+		event.LogHostJasperRestarting(h.Id, u.Username())
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(HostRestartJasperConfirm))
 		gimlet.WriteJSON(w, HostRestartJasperConfirm)
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
@@ -253,7 +259,16 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "unable to get user permissions")))
 			return
 		}
-		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, (*host.Host).SetNeedsJasperRestart)
+		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+			if h.NeedsReprovision != host.ReprovisionNone {
+				return nil
+			}
+			if modifyErr := h.SetNeedsJasperRestart(); err != nil {
+				return modifyErr
+			}
+			event.LogHostJasperRestarting(h.Id, user.Username())
+			return nil
+		})
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking selected hosts as needing Jasper service restarted")))
 			return

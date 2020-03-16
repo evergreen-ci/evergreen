@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -200,13 +201,16 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		} else if shouldRestartJasper {
 			catcher := grip.NewBasicCatcher()
 			for _, h := range hosts {
-				catcher.Wrapf(h.SetNeedsJasperRestart(), "could not mark host '%s' as needing Jasper service restarted", h.Id)
+				if err = h.SetNeedsJasperRestart(); err != nil {
+					catcher.Wrapf(err, "could not mark host '%s' as needing Jasper service restarted", h.Id)
+					continue
+				}
 				event.LogHostJasperRestarting(h.Id, u.Username())
 			}
 			if catcher.HasErrors() {
 				message := fmt.Sprintf("error marking hosts as needing Jasper service restarted: %s", err.Error())
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-				http.Error(w, message, http.StatusInternalServerError)
+				gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking hosts as needing Jasper service restarted")))
 				return
 			}
 		}

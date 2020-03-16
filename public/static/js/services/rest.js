@@ -142,7 +142,7 @@ mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function (
         data: data
       };
       config.data['action'] = action;
-      baseSvc.putResource(resource, [hostId], config, callbacks);
+      baseSvc.putResource(resource, [hostID], config, callbacks);
     };
 
     return service;

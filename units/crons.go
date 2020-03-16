@@ -963,7 +963,7 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return errors.Wrap(err, "problem finding hosts with expiring credentials")
 		}
 
-		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		ts := util.RoundPartOfHour(15).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			if err := h.SetNeedsJasperRestart(); err != nil {

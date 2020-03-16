@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	jcli "github.com/mongodb/jasper/cli"
@@ -1315,4 +1316,9 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 	fn()
 
 	return errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test")
+}
+
+func TestKim(t *testing.T) {
+	h := &Host{Id: "foo"}
+	pp.Println(h.SetNeedsJasperRestart())
 }

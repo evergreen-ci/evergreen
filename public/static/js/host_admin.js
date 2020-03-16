@@ -32,6 +32,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
     hostRestService.setRestartJasper(
       $scope.host.id,
       'restartJasper',
+      {},
       {
         success: function(resp) {
           window.location.reload();
@@ -52,16 +53,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
     $scope.modalOpen = true;
     var modal = $('#admin-modal').modal('show');
 
-    if (opt === "statusChange") {
-      modal.on('shown.bs.modal', function() {
-        $scope.modalOpen = true;
-      });
-
-      modal.on('hide.bs.modal', function() {
-        $scope.modalOpen = false;
-      });
-    }
-    if (opt === "restartJasper") {
+    if (opt === 'statusChange' || opt === 'restartJasper') {
       modal.on('shown.bs.modal', function() {
         $scope.modalOpen = true;
       });
@@ -90,5 +82,21 @@ mciModule.directive('adminUpdateStatus', function() {
   return {
     restrict: 'E',
     templateUrl: '/static/partials/host_status_update.html'
+  };
+});
+
+mciModule.directive('adminRestartJasper', function() {
+  return {
+    restrict: 'E',
+    template: 
+    '<div class="row">' +
+      '<div class="col-lg-12">' +
+        'Restart host Jasper service?' +
+        '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setRestartJasper()" ng-disabled="noClose">' +
+          '<span ng-if="!noClose">Yes</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>'
   };
 });

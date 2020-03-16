@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	InvalidStatusError             = "'%v' is not a valid status"
-	DecommissionStaticHostError    = "Cannot decommission static hosts"
-	HostTerminationQueueingError   = "Error starting background job for host termination"
-	HostUpdateError                = "Error updating host"
-	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
-	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
-	HostStatusWriteConfirm         = "Successfully updated host status"
-	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
-	UnrecognizedAction             = "Unrecognized action: %v"
+	InvalidStatusError                     = "'%v' is not a valid status"
+	DecommissionStaticHostError            = "Cannot decommission static hosts"
+	HostTerminationQueueingError           = "Error starting background job for host termination"
+	HostUpdateError                        = "Error updating host"
+	HostTerminationQueueingSuccess         = "Host %v successfully queued for termination"
+	HostStatusUpdateSuccess                = "Host status successfully updated from '%v' to '%v'"
+	HostStatusWriteConfirm                 = "Successfully updated host status"
+	HostRestartJasperConfirm               = "Successfully marked host as needing Jasper service restarted"
+	HostRestartJasperAlreadyReprovisioning = "Cannot restart host's Jasper service because it is already reprovisioning"
+	UnrecognizedAction                     = "Unrecognized action: %v"
 )
 
 func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.DBUser) (string, error) {

@@ -49,6 +49,7 @@ Evergreen - Hosts
         </div>
         <admin-modal>
           <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
+          <admin-restart-jasper ng-if="adminOption === 'restartJasper'"></admin-restart-jasper>
         </admin-modal>
       </div>
     {{end}}
