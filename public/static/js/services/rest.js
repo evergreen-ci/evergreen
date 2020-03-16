@@ -137,6 +137,14 @@ mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function (
         baseSvc.putResource(resource, [hostId], config, callbacks);
     };
 
+    service.setRestartJasper = function(hostID, action, data, callbacks) {
+      var config = {
+        data: data
+      };
+      config.data['action'] = action;
+      baseSvc.putResource(resource, [hostId], config, callbacks);
+    };
+
     return service;
 }]);
 
@@ -152,6 +160,15 @@ mciServices.rest.factory('mciHostsRestService', ['mciBaseRestService', function 
         config.data['action'] = action;
         config.data['host_ids'] = hostIds;
         baseSvc.putResource(resource, [], config, callbacks);
+    };
+
+    service.setRestartJasper = function(hostIDs, action, data, callbacks) {
+      var config = {
+        data: data
+      };
+      config.data['action'] = action;
+      config.data['host_ids'] = hostIDs,
+      baseSvc.putResource(resource, [], config, callbacks);
     };
 
     return service;

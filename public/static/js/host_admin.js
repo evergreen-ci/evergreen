@@ -28,6 +28,21 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
     );
   };
 
+  $scope.setRestartJasper = function() {
+    hostRestService.setRestartJasper(
+      $scope.host.id,
+      'restartJasper',
+      {
+        success: function(resp) {
+          window.location.reload();
+        },
+        error: function(resp) {
+          notifier.pushNotification('Error marking host as needing Jasper restarted: ' + resp.data, 'errorModal');
+        }
+      }
+    );
+  };
+
   $scope.setHostStatus = function(status) {
     $scope.newStatus = status;
   };
@@ -46,11 +61,23 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
         $scope.modalOpen = false;
       });
     }
+    if (opt === "restartJasper") {
+      modal.on('shown.bs.modal', function() {
+        $scope.modalOpen = true;
+      });
+
+      modal.on('hide.bs.modal', function() {
+        $scope.modalOpen = false;
+      });
+    }
 
     $(document).keyup(function(ev) {
       if ($scope.modalOpen && ev.keyCode === 13) {
         if ($scope.adminOption === 'statusChange') {
           $scope.updateStatus();
+          $('#admin-modal').modal('hide');
+        } else if ($scope.adminOption === 'restartJasper') {
+          $scope.setRestartJasper();
           $('#admin-modal').modal('hide');
         }
       }

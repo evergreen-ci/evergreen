@@ -22,6 +22,7 @@ const (
 	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
 	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
 	HostStatusWriteConfirm         = "Successfully updated host status"
+	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 

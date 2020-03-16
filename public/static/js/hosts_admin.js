@@ -25,6 +25,21 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
     );
   };
 
+  $scope.setRestartJasper = function() {
+    hostsRestService.setRestartJasper(
+      $scope.host.id,
+      'restartJasper',
+      {
+        success: function(resp) {
+          window.location.reload();
+        },
+        error: function(resp) {
+          notifier.pushNotification('Error marking host as needing Jasper restarted: ' + resp.data, 'errorModal');
+        }
+      }
+    );
+  };
+
   $scope.setHostStatus = function(status) {
     $scope.newStatus = status;
   };
