@@ -854,10 +854,6 @@ func (h *Host) MarkAsReprovisioning() error {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
 	}
 
-	if h.NeedsReprovision == ReprovisionToLegacy || h.NeedsReprovision == ReprovisionToNew {
-		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
-	}
-
 	h.AgentStartTime = util.ZeroTime
 	h.Provisioned = false
 	h.Status = evergreen.HostProvisioning

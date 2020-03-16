@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -969,6 +970,7 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
 				continue
 			}
+			event.LogHostJasperRestarting(h.Id, evergreen.User)
 			expiration, err := h.JasperCredentialsExpiration(ctx, env)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
