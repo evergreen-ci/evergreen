@@ -84,8 +84,8 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               <div class="col-sm-8">
                 <select class="form-control" ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select>
               </div>
-              <label for="region" class="col-sm-4 control-label">AWS Default Region</label>
-              <div class="col-sm-8">
+              <label for="region" class="col-sm-4 control-label" style="margin-top: 8px;">AWS Default Region</label>
+              <div class="col-sm-8" style="margin-top: 8px;">
                 <select class="form-control" ng-model="new_region" ng-options="region for region in userConf.regions"></select>
               </div>
             </div>
