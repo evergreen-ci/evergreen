@@ -33,6 +33,7 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 
 type APIUserSettings struct {
 	Timezone         *string                     `json:"timezone"`
+	Region           *string                     `json:"region"`
 	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
 	GithubUser       *APIGithubUser              `json:"github_user"`
 	SlackUsername    *string                     `json:"slack_username"`
@@ -48,6 +49,7 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.UserSettings:
 		s.Timezone = ToStringPtr(v.Timezone)
+		s.Region = ToStringPtr(v.Region)
 		s.SlackUsername = ToStringPtr(v.SlackUsername)
 		s.UseSpruceOptions = &APIUseSpruceOptions{
 			PatchPage: v.UseSpruceOptions.PatchPage,
@@ -91,6 +93,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	}
 	return user.UserSettings{
 		Timezone:         FromStringPtr(s.Timezone),
+		Region:           FromStringPtr(s.Region),
 		SlackUsername:    FromStringPtr(s.SlackUsername),
 		GithubUser:       githubUser,
 		Notifications:    preferences,

@@ -1,5 +1,6 @@
 mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, $q, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
+    $scope.region = $window.region;
     $scope.hosts = null;
     $scope.modalOpen = false;
     $scope.spawnTask = $window.spawnTask;
@@ -272,7 +273,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
       $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
-      $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
@@ -439,8 +439,20 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.selectedDistro = spawnableDistro;
       $scope.spawnInfo.distroId = spawnableDistro.name;
 
-      if ($scope.selectedDistro.regions.length > 0) {
-        $scope.selectedRegion = $scope.selectedDistro.regions[0];
+      // if multiple regions, preference the user region
+      if ($scope.selectedDistro.regions.length > 1) {
+        if ($scope.region !== "") {
+          for (let i=0; i < $scope.selectedDistro.regions.length; i++) {
+            // valid region
+            if ($scope.region === $scope.selectedDistro.regions[i]) {
+              $scope.selectedRegion = $scope.region;
+            }
+          }
+        }
+        // if preferred region not configured for this distro, default to the first region in this list
+        if ($scope.selectedRegion === undefined) {
+          $scope.selectedRegion = $scope.selectedDistro.regions[0];
+        }
       }
 
       // clear home volume settings when switching between distros

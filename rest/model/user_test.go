@@ -10,6 +10,7 @@ import (
 func TestFullUserSettings(t *testing.T) {
 	settings := user.UserSettings{
 		Timezone:      "east",
+		Region:        "us-west-1",
 		SlackUsername: "me",
 		UseSpruceOptions: user.UseSpruceOptions{
 			PatchPage: true,
