@@ -401,7 +401,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       mciDistroRestService.modifyDistro(
         $scope.activeDistro._id,
         $scope.activeDistro,
-        $scope.shouldDeco, {
+        $scope.shouldDeco, $scope.shouldRestartJasper, {
           success: function (resp) {
             $window.location.reload(true);
           },

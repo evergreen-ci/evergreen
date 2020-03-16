@@ -90,6 +90,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["distro_id"]
 	shouldDeco := r.FormValue("deco") == "true"
+	shouldRestartJasper := r.FormValue("restart_jasper") == "true"
 
 	u := MustHaveUser(r)
 
@@ -176,7 +177,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shouldDeco {
+	if shouldDeco || shouldRestartJasper {
 		hosts, err := host.Find(host.ByDistroId(newDistro.Id))
 		if err != nil {
 			message := fmt.Sprintf("error finding hosts: %s", err.Error())
@@ -184,15 +185,29 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, message, http.StatusInternalServerError)
 			return
 		}
-		err = host.DecommissionHostsWithDistroId(newDistro.Id)
-		if err != nil {
-			message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
-			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-			http.Error(w, message, http.StatusInternalServerError)
-			return
-		}
-		for _, h := range hosts {
-			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
+
+		if shouldDeco {
+			err = host.DecommissionHostsWithDistroId(newDistro.Id)
+			if err != nil {
+				message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+				http.Error(w, message, http.StatusInternalServerError)
+				return
+			}
+			for _, h := range hosts {
+				event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
+			}
+		} else if shouldRestartJasper {
+			catcher := grip.NewBasicCatcher()
+			for _, h := range hosts {
+				catcher.Wrapf(h.SetNeedsJasperRestart(), "could not mark host '%s' as needing Jasper restarted", h.Id)
+			}
+			if catcher.HasErrors() {
+				message := fmt.Sprintf("error marking hosts as needing Jasper restarted: %s", err.Error())
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+				http.Error(w, message, http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 

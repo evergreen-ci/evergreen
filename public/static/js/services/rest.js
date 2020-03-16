@@ -357,11 +357,12 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
         baseSvc.putResource(resource, [], config, callbacks);
     }
 
-    service.modifyDistro = function (distroId, data, shouldDeco, callbacks) {
+    service.modifyDistro = function (distroId, data, shouldDeco, shouldRestartJasper, callbacks) {
         var config = {
             data: data,
             params: {
-                deco: shouldDeco
+                deco: shouldDeco,
+                restart_jasper: shouldRestartJasper
             }
         };
         baseSvc.postResource(resource, [distroId], config, callbacks);
