@@ -18,7 +18,7 @@ type Query {
     page: Int = 0
     limit: Int = 0
     testName: String = ""
-    status: String = ""
+    statuses: [String!]! = []
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!

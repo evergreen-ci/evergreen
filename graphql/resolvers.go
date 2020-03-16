@@ -328,7 +328,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return taskResults, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*restModel.APITest, error) {
 
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
@@ -374,11 +374,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if limit != nil {
 		limitParam = *limit
 	}
-	statusParam := ""
-	if status != nil {
-		statusParam = *status
+	statusesParam := []string{}
+	if statuses != nil {
+		statusesParam = statuses
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
