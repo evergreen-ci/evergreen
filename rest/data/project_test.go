@@ -357,18 +357,20 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
-	res, err := s.ctx.FindProjectVarsById(projectId, false)
+	// redact private variables
+	res, err := s.ctx.FindProjectVarsById(projectId, true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
 	s.Equal("", res.Vars["b"])
 	s.True(res.PrivateVars["b"])
 
-	res, err = s.ctx.FindProjectVarsById(projectId, true)
+	// not redacted
+	res, err = s.ctx.FindProjectVarsById(projectId, false)
 	s.NoError(err)
 	s.Require().NotNil(res)
+	s.Equal("1", res.Vars["a"])
 	s.Equal("3", res.Vars["b"])
-	s.Equal("", res.Vars["a"]) // not returned bc not private
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
@@ -379,7 +381,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars))
+	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars, false))
 	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
 	_, ok := newVars.Vars["a"]
@@ -391,7 +393,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.False(ok)
 
 	// successful upsert
-	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars))
+	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars, false))
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
