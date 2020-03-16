@@ -389,8 +389,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable commit queue without patch definitions"))
 			return
 		}
-
-		cq, err := commitqueue.FindOneId(responseRef.Identifier)
+		var cq *commitqueue.CommitQueue
+		cq, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
