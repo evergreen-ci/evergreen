@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
@@ -252,13 +251,13 @@ func (s *CommitQueueSuite) TestFindOneId() {
 	cq := &CommitQueue{ProjectID: "mci"}
 	s.NoError(InsertQueue(cq))
 
-	_, err := FindOneId("mci")
+	cq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Equal("mci", cq.ProjectID)
 
-	_, err = FindOneId("not_here")
-	s.Error(err)
-	s.True(adb.ResultsNotFound(err))
+	cq, err = FindOneId("not_here")
+	s.NoError(err)
+	s.Nil(cq)
 }
 
 func (s *CommitQueueSuite) TestSetupEnv() {

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -119,14 +118,14 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	if _, err := commitqueue.FindOneId(projectRef.Identifier); err != nil {
-		if adb.ResultsNotFound(err) {
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
-			if err = commitqueue.InsertQueue(cq); err != nil {
-				return errors.Wrapf(err, "problem inserting new commit queue")
-			}
-		} else {
-			return errors.Wrapf(err, "database error finding commit queue")
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "database error finding commit queue")
+	}
+	if cq == nil {
+		cq = &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+		if err = commitqueue.InsertQueue(cq); err != nil {
+			return errors.Wrapf(err, "problem inserting new commit queue")
 		}
 	}
 	return nil
