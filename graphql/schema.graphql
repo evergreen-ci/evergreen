@@ -54,7 +54,7 @@ enum SortDirection {
 }
 
 input PatchReconfigure {
-  description: String
+  description: String!
   variantsTasks: [VariantTasks!]!
 }
 input VariantTasks {
