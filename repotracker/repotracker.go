@@ -545,7 +545,8 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
 		if module.Ref == "" {
-			commit, err := thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+			var commit *github.RepositoryCommit
+			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
 			}
@@ -553,7 +554,8 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 				return nil, errors.New("malformed GitHub commit response")
 			}
 			revisionTime := commit.Commit.Committer.GetDate()
-			branchCommits, _, err := thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
+			var branchCommits []*github.RepositoryCommit
+			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
 			if err != nil {
 				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
 			}
