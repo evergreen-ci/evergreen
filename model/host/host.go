@@ -791,8 +791,12 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // SetNeedsJasperRestart sets this host as needing to have its Jasper service
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
-// monitor is running), it is put in the reprovisioning state.
+// monitor is running), it is put in the reprovisioning state. This is a no-op
+// on legacy hosts.
 func (h *Host) SetNeedsJasperRestart() error {
+	if h.Distro.LegacyBootstrap() {
+		return nil
+	}
 	if err := h.setAwaitingJasperRestart(); err != nil {
 		return err
 	}
