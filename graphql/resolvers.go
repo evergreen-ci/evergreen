@@ -558,6 +558,43 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
 }
 
+func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error) {
+	patch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
+	}
+
+	var tasksByVariant map[string][]*PatchBuildVariantTask = map[string][]*PatchBuildVariantTask{}
+	for _, variant := range patch.Variants {
+		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
+	}
+	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, 1, 0, 1000)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
+	}
+	for _, task := range tasks {
+		t := PatchBuildVariantTask{
+			ID:     task.Id,
+			Name:   task.DisplayName,
+			Status: task.Status,
+		}
+		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+	}
+
+	result := []*PatchBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := PatchBuildVariant{
+			Variant: variant,
+			Tasks:   tasks,
+		}
+		result = append(result, &pbv)
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].Variant < result[j].Variant
+	})
+	return result, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
