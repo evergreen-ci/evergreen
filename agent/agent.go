@@ -357,10 +357,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	taskConfig.Redacted = tc.expVars.PrivateVars
 	tc.setTaskConfig(taskConfig)
 
-	grip.Info(message.Fields{
-		"name": "julian:",
-		"url":  a.opts.LogkeeperURL,
-	})
 	if err = a.startLogging(ctx, tc); err != nil {
 		grip.Errorf("Error setting up logger producer: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
