@@ -243,7 +243,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error updating status on selected hosts")))
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", hostsUpdated, opts.Status)))
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) will be updated to '%s'", hostsUpdated, opts.Status)))
 	case "restartJasper":
 		var hostsUpdated int
 		var permissions map[string]gimlet.Permissions
@@ -263,7 +263,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking selected hosts as needing Jasper service restarted")))
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts marked as needing Jasper service restarted", hostsUpdated)))
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return

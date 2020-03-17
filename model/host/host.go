@@ -809,7 +809,6 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	if h.NeedsReprovision == ReprovisionJasperRestart {
 		return nil
 	}
-
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:     h.Id,
@@ -823,6 +822,8 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
 		},
 		ReprovisioningLockedKey: bson.M{"$ne": true},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
 			NeedsReprovisionKey: ReprovisionJasperRestart,
@@ -973,7 +974,9 @@ func (h *Host) ClearRunningTask() error {
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	if h.RunningTask != "" {
+		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	}
 	h.RunningTask = ""
 	h.RunningTaskGroup = ""
 	h.RunningTaskBuildVariant = ""

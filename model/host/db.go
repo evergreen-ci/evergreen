@@ -469,7 +469,6 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 
 // FindByNeedsJasperRestart finds all hosts that are ready and waiting to
 // restart their Jasper service.
-// kim: TODO: test
 func FindByNeedsJasperRestart() ([]Host, error) {
 	return Find(db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
