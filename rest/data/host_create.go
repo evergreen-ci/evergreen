@@ -165,11 +165,18 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	d := distro.Distro{}
 	var err error
 
-	distroID := createHost.Distro
-	if distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID))
+	if distroID := createHost.Distro; distroID != "" {
+		dat, err := distro.NewDistroAliasesLookupTable()
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding distro %s", distroID)
+			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
+		}
+		distroIDs := dat.Expand([]string{distroID})
+		if len(distroIDs) == 0 {
+			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+		}
+		d, err = distro.FindOne(distro.ById(distroIDs[0]))
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
 	}
 
@@ -242,9 +249,17 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	ec2Settings := cloud.EC2ProviderSettings{}
 	var err error
 	if distroID := createHost.Distro; distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID))
+		dat, err := distro.NewDistroAliasesLookupTable()
 		if err != nil {
-			return nil, errors.Wrap(err, "problem finding distro")
+			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
+		}
+		distroIDs := dat.Expand([]string{distroID})
+		if len(distroIDs) == 0 {
+			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+		}
+		d, err = distro.FindOne(distro.ById(distroIDs[0]))
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
 		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
