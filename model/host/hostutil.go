@@ -594,16 +594,18 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
 	writeFileContentCmd := func(path, content string) string {
-		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+		return fmt.Sprintf("echo '%s' > %s", content, path)
 	}
 
 	cmds := []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
 	if splunk.Populated() {
 		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+		cmds = append(cmds, fmt.Sprintf("chmod 666 %s", h.splunkTokenFilePath()))
 	}
 
 	return strings.Join(cmds, " && "), nil
@@ -621,6 +623,7 @@ func bufferedWriteFileCommands(path, content string) []string {
 		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
 		firstWrite = false
 	}
+	cmds = append(cmds, fmt.Sprintf("chmod 666 %s", path))
 	return cmds
 }
 

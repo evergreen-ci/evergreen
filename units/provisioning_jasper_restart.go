@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip/message"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 )
 
@@ -197,14 +198,11 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer func() {
-			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
-				"message": "could not close connection to Jasper",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}()
+		defer func(client remote.Manager) {
+			// Ignore the error because restarting Jasper will close the
+			// connection.
+			_ = client.CloseConnection()
+		}(client)
 		// We use this ID to later verify the current running Jasper service.
 		// When Jasper is restarted, its ID should be different to indicate it
 		// is a new Jasper service.
@@ -261,14 +259,14 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer func() {
+		defer func(client remote.Manager) {
 			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 				"message": "could not close connection to Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-		}()
+		}(client)
 
 		newServiceID := client.ID()
 		if newServiceID == "" {

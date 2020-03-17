@@ -51,7 +51,6 @@ func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 		PopulateCatchupJobs(30),
 		PopulateHostAlertJobs(20),
 		PopulatePeriodicBuilds(30),
-		PopulateHostJasperRestartJobs(j.env),
 		PopulateReauthorizationJobs(j.env),
 	}
 

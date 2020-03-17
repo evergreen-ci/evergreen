@@ -461,22 +461,26 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 		ParentIDKey:         bson.M{"$exists": false},
 		NeedsReprovisionKey: bson.M{"$in": []ReprovisionType{ReprovisionToNew, ReprovisionToLegacy}},
 		"$or": []bson.M{
-			bson.M{NeedsNewAgentKey: true},
-			bson.M{NeedsNewAgentMonitorKey: true},
+			{NeedsNewAgentKey: true},
+			{NeedsNewAgentMonitorKey: true},
 		},
 	}))
 }
 
 // FindByNeedsJasperRestart finds all hosts that are ready and waiting to
 // restart their Jasper service.
+// kim: TODO: test
 func FindByNeedsJasperRestart() ([]Host, error) {
 	return Find(db.Query(bson.M{
-		StatusKey:               bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
-		RunningTaskKey:          bson.M{"$exists": false},
-		HasContainersKey:        bson.M{"$ne": true},
-		ParentIDKey:             bson.M{"$exists": false},
-		NeedsReprovisionKey:     ReprovisionJasperRestart,
-		NeedsNewAgentMonitorKey: true,
+		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		RunningTaskKey:      bson.M{"$exists": false},
+		HasContainersKey:    bson.M{"$ne": true},
+		ParentIDKey:         bson.M{"$exists": false},
+		NeedsReprovisionKey: ReprovisionJasperRestart,
+		"$or": []bson.M{
+			{StartedByKey: bson.M{"$ne": evergreen.User}},
+			{NeedsNewAgentMonitorKey: true},
+		},
 	}))
 }
 
@@ -486,7 +490,6 @@ func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:               evergreen.HostProvisioning,
-		StartedByKey:            evergreen.User,
 		RunningTaskKey:          bson.M{"$exists": false},
 		HasContainersKey:        bson.M{"$ne": true},
 		ParentIDKey:             bson.M{"$exists": false},

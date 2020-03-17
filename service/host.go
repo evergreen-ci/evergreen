@@ -237,8 +237,8 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hostsUpdated, err := modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			_, updateErr := modifyHostStatus(rq, h, opts, user)
-			return updateErr
+			_, modifyErr := modifyHostStatus(rq, h, opts, user)
+			return modifyErr
 		})
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error updating status on selected hosts")))

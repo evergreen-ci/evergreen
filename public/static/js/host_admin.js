@@ -12,6 +12,10 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
   $scope.modalTitle = 'Modify Host';
   $scope.notes={};
 
+  $scope.canRestartJasper = function() {
+    return host.distro.bootstrap_settings.method !== 'legacy-ssh' && host.status === 'running' && host.needs_reprovision !== 'jasper-restart';
+  }
+
   $scope.updateStatus = function() {
     hostRestService.updateStatus(
       $scope.host.id,

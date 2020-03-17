@@ -1064,7 +1064,7 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsJasperRestart())
+			require.NoError(t, h.SetNeedsJasperRestart(evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
@@ -1073,28 +1073,37 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			h.NeedsReprovision = ReprovisionJasperRestart
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsJasperRestart())
+			require.NoError(t, h.SetNeedsJasperRestart(evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
+		},
+		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
 			h.ReprovisioningLocked = true
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfAlreadyNeedsReprovision": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
+		},
+		"FailsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
+			require.NoError(t, h.Insert())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -1106,6 +1115,12 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 				Id:          "id",
 				Status:      evergreen.HostRunning,
 				Provisioned: true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
+				},
 			}
 			testCase(t, h)
 		})

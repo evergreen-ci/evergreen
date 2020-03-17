@@ -793,9 +793,6 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
-	if h.NeedsReprovision == ReprovisionJasperRestart {
-		return nil
-	}
 	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
@@ -805,10 +802,14 @@ func (h *Host) SetNeedsJasperRestart(user string) error {
 	return h.MarkAsReprovisioning()
 }
 
-// setAwaitingJasperRestart marks a host running an agent as needing Jasper to
-// be restarted by the user but is not yet ready to reprovision now (i.e. the
-// agent monitor is still running).
+// setAwaitingJasperRestart marks a host as needing Jasper to be restarted by
+// the given user but is not yet ready to reprovision now (i.e. the agent
+// monitor is still running).
 func (h *Host) setAwaitingJasperRestart(user string) error {
+	if h.NeedsReprovision == ReprovisionJasperRestart {
+		return nil
+	}
+
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:     h.Id,
