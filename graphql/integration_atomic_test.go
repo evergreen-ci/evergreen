@@ -40,6 +40,8 @@ type atomicGraphQLState struct {
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {
