@@ -529,7 +529,7 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 		Revision:    v.Revision,
 		ProjectName: v.Identifier,
 		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
+		NotBase:     v.Requester != evergreen.RepotrackerVersionRequester,
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
