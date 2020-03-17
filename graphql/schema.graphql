@@ -23,6 +23,7 @@ type Query {
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
+  patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
 }
 
 type Mutation {
@@ -50,6 +51,16 @@ enum TestSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+type PatchBuildVariant {
+  variant: String!
+  tasks: [PatchBuildVariantTask]
+}
+type PatchBuildVariantTask {
+  id: ID!
+  name: String!
+  status: String!
 }
 
 type GroupedFiles {
