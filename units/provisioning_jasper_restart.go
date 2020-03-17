@@ -226,13 +226,15 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 
+		fetchCmd := j.host.FetchJasperCommand(j.settings.HostJasper)
 		// We have to kill the Jasper service from within a process that it
 		// creates so that the system restarts the service with the new
 		// credentials file. This will not work on Windows.
+		killCmd := fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " "))
 		restartJasperOpts := &options.Create{
 			Args: []string{
 				j.host.Distro.ShellBinary(), "-c",
-				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
+				fmt.Sprintf("%s && %s ", fetchCmd, killCmd),
 			},
 		}
 
@@ -309,6 +311,18 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd, sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to write credentials file",
+				"logs":    output,
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
+
+		if output, err := j.host.RunSSHCommand(ctx, j.host.FetchJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not run SSH command to download Jasper",
 				"logs":    output,
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
