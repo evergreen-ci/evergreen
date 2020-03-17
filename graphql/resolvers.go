@@ -568,7 +568,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, 1, 0, 1000)
+	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, 1, 0, 0)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
