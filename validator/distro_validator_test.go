@@ -148,7 +148,6 @@ func TestCheckDistro(t *testing.T) {
 }
 
 func TestEnsureUniqueId(t *testing.T) {
-
 	Convey("When validating a distros' ids...", t, func() {
 		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
@@ -164,12 +163,10 @@ func TestEnsureUniqueId(t *testing.T) {
 }
 
 func TestEnsureValidAliases(t *testing.T) {
-
 	Convey("When validating a distros' aliases...", t, func() {
 		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
-		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
-			vErrors := ensureValidAliases(&d, distroIds)
+			vErrors := ensureValidAliases(&d)
 			So(vErrors, ShouldNotResemble, ValidationErrors{})
 			So(len(vErrors), ShouldEqual, 1)
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
