@@ -17,7 +17,7 @@ var (
 	ProjectNameKey      = bsonutil.MustHaveTag(Manifest{}, "ProjectName")
 	ModulesKey          = bsonutil.MustHaveTag(Manifest{}, "Modules")
 	ManifestBranchKey   = bsonutil.MustHaveTag(Manifest{}, "Branch")
-	NotBaseKey          = bsonutil.MustHaveTag(Manifest{}, "NotBase")
+	IsBaseKey           = bsonutil.MustHaveTag(Manifest{}, "IsBase")
 	ModuleBranchKey     = bsonutil.MustHaveTag(Module{}, "Branch")
 	ModuleRevisionKey   = bsonutil.MustHaveTag(Module{}, "Revision")
 	OwnerKey            = bsonutil.MustHaveTag(Module{}, "Owner")
@@ -54,7 +54,14 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 	return db.Query(bson.M{
 		ProjectNameKey:      project,
 		ManifestRevisionKey: revision,
-		NotBaseKey:          bson.M{"$ne": true},
+		IsBaseKey:           true,
+	})
+}
+
+func ByProjectAndRevision(project, revision string) db.Q {
+	return db.Query(bson.M{
+		ProjectNameKey:      project,
+		ManifestRevisionKey: revision,
 	})
 }
 
@@ -74,7 +81,14 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 		return nil, errors.Wrap(err, "error finding manifest")
 	}
 	if manifest == nil {
-		return nil, nil
+		// check for a legacy manifest
+		manifest, err = FindOne(ByProjectAndRevision(project, revision))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding manifest")
+		}
+		if manifest == nil {
+			return nil, nil
+		}
 	}
 
 	if evergreen.IsPatchRequester(requester) {
