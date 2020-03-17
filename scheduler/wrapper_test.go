@@ -22,7 +22,7 @@ func TestNeedsReprovision(t *testing.T) {
 		h        *host.Host
 		expected host.ReprovisionType
 	}{
-		"NewLegacyHostsDoNotNeedReprovisioning": {
+		"NewLegacyHostDoNotNeedReprovisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -32,7 +32,7 @@ func TestNeedsReprovision(t *testing.T) {
 			h:        nil,
 			expected: host.ReprovisionNone,
 		},
-		"NewHostsNeedNewProvisioning": {
+		"NewHostNeedNewProvisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
@@ -42,7 +42,7 @@ func TestNeedsReprovision(t *testing.T) {
 			h:        nil,
 			expected: host.ReprovisionToNew,
 		},
-		"ExistingLegacyHostsWithNewDistroBootstrappingNeedNewProvisioning": {
+		"ExistingLegacyHostWithNewDistroBootstrappingNeedNewProvisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
@@ -59,7 +59,7 @@ func TestNeedsReprovision(t *testing.T) {
 			},
 			expected: host.ReprovisionToNew,
 		},
-		"ExistingHostsWithLegacyDistroBootstrappingNeedLegacyProvisioning": {
+		"ExistingHostWithLegacyDistroBootstrappingNeedLegacyProvisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -76,7 +76,7 @@ func TestNeedsReprovision(t *testing.T) {
 			},
 			expected: host.ReprovisionToLegacy,
 		},
-		"ExistingHostsPreservesExistingReprovisioning": {
+		"ExistingNonLegacyHostPreservesExistingReprovisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
@@ -94,7 +94,43 @@ func TestNeedsReprovision(t *testing.T) {
 			},
 			expected: host.ReprovisionToNew,
 		},
-		"ExistingLegacyHostsPreservesExistingReprovisioning": {
+		"ExistingNonLegacyHostPreservesExistingJasperRestart": {
+			d: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodSSH,
+					Communication: distro.CommunicationMethodSSH,
+				},
+			},
+			h: &host.Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+				NeedsReprovision: host.ReprovisionJasperRestart,
+			},
+			expected: host.ReprovisionJasperRestart,
+		},
+		"ExistingNonLegacyHostTransitioningToLegacyPreservesOverwritesJasperRestart": {
+			d: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
+			},
+			h: &host.Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+				},
+				NeedsReprovision: host.ReprovisionJasperRestart,
+			},
+			expected: host.ReprovisionNone,
+		},
+		"ExistingLegacyHostPreservesExistingReprovisioning": {
 			d: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
@@ -111,6 +147,24 @@ func TestNeedsReprovision(t *testing.T) {
 				NeedsReprovision: host.ReprovisionToLegacy,
 			},
 			expected: host.ReprovisionToLegacy,
+		},
+		"ExistingLegacyHostClearsJasperRestart": {
+			d: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
+			},
+			h: &host.Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
+				},
+				NeedsReprovision: host.ReprovisionJasperRestart,
+			},
+			expected: host.ReprovisionNone,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
