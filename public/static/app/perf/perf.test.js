@@ -1630,8 +1630,8 @@ describe('trendDataComplete', () => {
       expect(scope.filteredTrendSamples).toEqual(jasmine.anything(TrendSamples));
       expect(scope.allTrendSamples).not.toBe(scope.filteredTrendSamples);
       expect(scope.filteredTrendSamples.samples.length).toBe(2);
-      expect(scope.filteredTrendSamples.samples[0].task_id).toBe('mongohouse_archlinux_latency_benchmark_patch_63a5a59830a1e0a8614b12cbff62cca065bfcad5_5d6ff50257e85a69060aa156_19_09_04_17_31_51');
-      expect(scope.filteredTrendSamples.samples[1].task_id).toBe('sys_perf_linux_1_node_15gbwtcache_out_of_cache_scanner_20ba91db04c0b7b3d10fe2527b6938b1a14fcaa6_19_08_12_20_24_04');
+      expect(scope.filteredTrendSamples.samples[0].task_id).toBe('sys_perf_linux_1_node_15gbwtcache_out_of_cache_scanner_20ba91db04c0b7b3d10fe2527b6938b1a14fcaa6_19_08_12_20_24_04');
+      expect(scope.filteredTrendSamples.samples[1].task_id).toBe('mongohouse_archlinux_latency_benchmark_patch_63a5a59830a1e0a8614b12cbff62cca065bfcad5_5d6ff50257e85a69060aa156_19_09_04_17_31_51');
       expect(scope.metricSelect.options).toEqual([{
         "key": "threadLevel",
         "name": "threadLevel"

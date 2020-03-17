@@ -795,6 +795,7 @@ $http.get(templateUrl).success(function(template) {
     if (cedar && cedar.length) {
       scope.trendResults = scope.trendResults.concat(cedar);
     }
+    scope.trendResults = _.sortBy(scope.trendResults, (result) => Date.parse(result.create_time));
     let rejects = scope.outliers ? scope.outliers.rejects : [];
 
     scope.allTrendSamples = new TrendSamples(scope.trendResults);
