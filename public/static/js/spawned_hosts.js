@@ -1,6 +1,6 @@
 mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, $q, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
-    $scope.region = $window.region;
+    $scope.defaultRegion = $window.defaultRegion;
     $scope.hosts = null;
     $scope.modalOpen = false;
     $scope.spawnTask = $window.spawnTask;
@@ -441,11 +441,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
       // if multiple regions, preference the user region
       if ($scope.selectedDistro.regions.length > 1) {
-        if ($scope.region !== "") {
+        if ($scope.defaultRegion !== "") {
           for (let i=0; i < $scope.selectedDistro.regions.length; i++) {
             // valid region
-            if ($scope.region === $scope.selectedDistro.regions[i]) {
-              $scope.selectedRegion = $scope.region;
+            if ($scope.defaultRegion === $scope.selectedDistro.regions[i]) {
+              $scope.selectedRegion = $scope.defaultRegion;
             }
           }
         }

@@ -65,7 +65,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		u := gimlet.GetUser(ctx)
 		dbUser, ok := u.(*user.DBUser)
 		if !ok {
-			// should I error here? or just log a problem?
+			return gimlet.NewJSONInternalErrorResponse("error getting DBUser from User")
 		}
 		h.createHost.Region = dbUser.Settings.Region
 	}
