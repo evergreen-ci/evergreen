@@ -166,7 +166,8 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	var err error
 
 	if distroID := createHost.Distro; distroID != "" {
-		dat, err := distro.NewDistroAliasesLookupTable()
+		var dat distro.AliasLookupTable
+		dat, err = distro.NewDistroAliasesLookupTable()
 		if err != nil {
 			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
 		}
@@ -249,7 +250,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	ec2Settings := cloud.EC2ProviderSettings{}
 	var err error
 	if distroID := createHost.Distro; distroID != "" {
-		dat, err := distro.NewDistroAliasesLookupTable()
+		var dat distro.AliasLookupTable
+		dat, err = distro.NewDistroAliasesLookupTable()
 		if err != nil {
 			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
 		}
