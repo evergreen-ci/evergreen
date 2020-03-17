@@ -113,9 +113,6 @@ func (u *DBUser) DisplayName() string {
 }
 
 func (u *DBUser) GetRegion() string {
-	if u.Settings.Region == "" {
-		return evergreen.DefaultEC2Region
-	}
 	return u.Settings.Region
 }
 
