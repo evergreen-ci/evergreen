@@ -167,7 +167,8 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	switch opts.Action {
 	case "updateStatus":
 		currentStatus := h.Status
-		modifyResult, err := modifyHostStatus(queue, h, opts, u)
+		var modifyResult string
+		modifyResult, err = modifyHostStatus(queue, h, opts, u)
 
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
@@ -236,7 +237,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
 			return
 		}
-		hostsUpdated, err := modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
 			_, modifyErr := modifyHostStatus(rq, h, opts, user)
 			return modifyErr
 		})
