@@ -589,6 +589,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 		}
 		result = append(result, &pbv)
 	}
+	// sort variants by name
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Variant < result[j].Variant
 	})
