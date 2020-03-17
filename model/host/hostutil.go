@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -338,7 +339,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	return []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
+		fmt.Sprintf("curl -LO '%s' %s", path.Join(config.URL, downloadedFile), curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),
