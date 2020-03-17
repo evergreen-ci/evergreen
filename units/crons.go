@@ -964,7 +964,7 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, h := range expiringHosts {
-			if err := h.SetNeedsJasperRestart(); err != nil {
+			if err := h.SetNeedsJasperRestart(evergreen.User); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
 				continue
 			}

@@ -184,7 +184,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, msg)
 		gimlet.WriteJSON(w, HostStatusWriteConfirm)
 	case "restartJasper":
-		if err = h.SetNeedsJasperRestart(); err != nil {
+		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
 			return
 		}
@@ -254,7 +254,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			if modifyErr := h.SetNeedsJasperRestart(); err != nil {
+			if modifyErr := h.SetNeedsJasperRestart(user.Username()); modifyErr != nil {
 				return modifyErr
 			}
 			return nil

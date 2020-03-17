@@ -35,6 +35,7 @@ const (
 	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
 	EventHostAgentMonitorDeployFailed    = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
+	EventHostJasperRestarting            = "HOST_JASPER_RESTARTING"
 	EventHostJasperRestarted             = "HOST_JASPER_RESTARTED"
 	EventHostJasperRestartError          = "HOST_JASPER_RESTART_ERROR"
 	EventHostConvertingProvisioning      = "HOST_CONVERTING_PROVISIONING"
@@ -130,6 +131,10 @@ func LogHostAgentMonitorDeployed(hostId string) {
 
 func LogHostAgentMonitorDeployFailed(hostId string, err error) {
 	LogHostEvent(hostId, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
+}
+
+func LogHostJasperRestarting(hostId string, user string) {
+	LogHostEvent(hostId, EventHostJasperRestarting, HostEventData{User: user})
 }
 
 func LogHostJasperRestarted(hostId string, revision string) {

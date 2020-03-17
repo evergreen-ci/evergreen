@@ -212,7 +212,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 		writeCredentialsOpts := &options.Create{
 			Args: []string{
-				"bash", "-c", writeCredentialsCmd,
+				j.host.Distro.ShellBinary(), "-c", writeCredentialsCmd,
 			},
 		}
 		var output []string
@@ -233,7 +233,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		// credentials file. This will not work on Windows.
 		restartJasperOpts := &options.Create{
 			Args: []string{
-				"bash", "-c",
+				j.host.Distro.ShellBinary(), "-c",
 				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
 			},
 		}
@@ -344,9 +344,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	// We can only save the Jasper credentials with the new expiration once we
-	// have reasonable confidence that the host has a Jasper service running
-	// with the new credentials and the agent monitor will be deployed.
+	// Since this updates the TTL on the credentials, can only save the Jasper
+	// credentials with the new expiration once we have reasonable confidence
+	// that the host has a Jasper service running with the new credentials and
+	// the agent monitor will be deployed.
 	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving new Jasper credentials",
@@ -365,6 +366,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		"version": j.settings.HostJasper.Version,
 	})
 	event.LogHostJasperRestarted(j.host.Id, j.settings.HostJasper.Version)
+
+	if j.host.StartedBy != evergreen.User {
+		return
+	}
 
 	// If this doesn't succeed, a new agent monitor will be deployed
 	// when LCT elapses.

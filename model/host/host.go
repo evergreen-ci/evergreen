@@ -791,13 +791,12 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // SetNeedsJasperRestart sets this host as needing to have its Jasper service
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
-// monitor is running), it is put in the reprovisioning state. This is a no-op
-// on legacy hosts.
-func (h *Host) SetNeedsJasperRestart() error {
-	if h.Distro.LegacyBootstrap() {
+// monitor is running), it is put in the reprovisioning state.
+func (h *Host) SetNeedsJasperRestart(user string) error {
+	if h.NeedsReprovision == ReprovisionJasperRestart {
 		return nil
 	}
-	if err := h.setAwaitingJasperRestart(); err != nil {
+	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
@@ -807,12 +806,17 @@ func (h *Host) SetNeedsJasperRestart() error {
 }
 
 // setAwaitingJasperRestart marks a host running an agent as needing Jasper to
-// be restarted but is not yet ready to reprovision now (i.e. the agent monitor
-// is still running).
-func (h *Host) setAwaitingJasperRestart() error {
+// be restarted by the user but is not yet ready to reprovision now (i.e. the
+// agent monitor is still running).
+func (h *Host) setAwaitingJasperRestart(user string) error {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:     h.Id,
 		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
@@ -827,6 +831,8 @@ func (h *Host) setAwaitingJasperRestart() error {
 	}
 
 	h.NeedsReprovision = ReprovisionJasperRestart
+
+	event.LogHostJasperRestarting(h.Id, user)
 
 	return nil
 }

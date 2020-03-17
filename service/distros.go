@@ -201,7 +201,10 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		} else if shouldRestartJasper {
 			catcher := grip.NewBasicCatcher()
 			for _, h := range hosts {
-				catcher.Wrapf(h.SetNeedsJasperRestart(), "could not mark host '%s' as needing Jasper service restarted", h.Id)
+				if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
+					catcher.Wrapf(err, "could not mark host '%s' as needing Jasper service restarted", h.Id)
+					continue
+				}
 			}
 			if catcher.HasErrors() {
 				message := fmt.Sprintf("error marking hosts as needing Jasper service restarted: %s", err.Error())
