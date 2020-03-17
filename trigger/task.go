@@ -30,7 +30,6 @@ func init() {
 
 const (
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
-	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
@@ -48,8 +47,8 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerExceedsDuration:             t.taskExceedsDuration,
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
+		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
-		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
@@ -425,9 +424,9 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(sub.ID, t.task.Project, t.task.Version))
+	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(sub.ID, t.task.Version))
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", triggerTaskFirstFailureInVersion))
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", event.TriggerTaskFirstFailureInVersion))
 	}
 	if rec != nil {
 		return nil, nil

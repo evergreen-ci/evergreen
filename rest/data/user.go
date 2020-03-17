@@ -67,6 +67,24 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.PatchFinishID = ""
 	}
 
+	var patchFailureSubscriber event.Subscriber
+	switch settings.Notifications.PatchFirstFailure {
+	case user.PreferenceSlack:
+		patchFailureSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		patchFailureSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	patchFailureSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchFirstFailure,
+		dbUser.Settings.Notifications.PatchFirstFailureID, patchFailureSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if patchFailureSubscription != nil {
+		settings.Notifications.PatchFirstFailureID = patchFailureSubscription.ID
+	} else {
+		settings.Notifications.PatchFirstFailureID = ""
+	}
+
 	var buildBreakSubscriber event.Subscriber
 	switch settings.Notifications.BuildBreak {
 	case user.PreferenceSlack:
