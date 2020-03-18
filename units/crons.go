@@ -322,8 +322,13 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			for _, d := range distrosFound {
 				distroIDsFound = append(distroIDsFound, d.Id)
 			}
-			invalidDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
+			missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
+			for _, distroID := range missingDistroIDs {
+				catcher.Wrapf(host.DecommissionHostsWithDistroId(distroID), "error marking hosts in distro '%s' as decommissioned", distroID)
+			}
+			if catcher.HasErrors() {
+				return errors.Wrap(catcher.Resolve(), "could not decommission hosts with missing distros")
+			}
 		}
 
 		distrosMap := make(map[string]distro.Distro, len(distrosFound))
