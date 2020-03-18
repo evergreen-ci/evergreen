@@ -41,9 +41,9 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
-func FindUnprocessedEvents() ([]EventLogEntry, error) {
+func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
-	err := db.FindAllQ(AllLogCollection, db.Query(unprocessedEvents()).Limit(1000), &out)
+	err := db.FindAllQ(AllLogCollection, db.Query(unprocessedEvents()).Sort([]string{TimestampKey}).Limit(limit), &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch unprocssed events")
 	}

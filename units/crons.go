@@ -197,7 +197,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
+func PopulateEventAlertProcessing(env evergreen.Environment, parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -215,7 +215,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 
 		ts := util.RoundPartOfHour(parts).Format(TSFormat)
 
-		return errors.Wrap(queue.Put(ctx, NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
+		return errors.Wrap(queue.Put(ctx, NewEventMetaJob(env, queue, ts)), "failed to queue event-metajob")
 	}
 }
 

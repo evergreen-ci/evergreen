@@ -2069,7 +2069,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.True(complete)
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(0)
 	assert.NoError(err)
 	assert.Len(e, 7)
 }
@@ -2158,7 +2158,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(b.IsFinished())
 	assert.True(b.Tasks[1].Blocked)
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(0)
 	assert.NoError(err)
 	assert.Len(e, 3)
 }
@@ -2246,7 +2246,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.NoError(err)
 	assert.True(b.IsFinished())
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(0)
 	assert.NoError(err)
 	assert.Len(e, 3)
 }

@@ -48,7 +48,7 @@ func (s *spawnHostExpirationSuite) SetupTest() {
 func (s *spawnHostExpirationSuite) TestAlerts() {
 	ctx := context.Background()
 	s.j.Run(ctx)
-	events, err := event.FindUnprocessedEvents()
+	events, err := event.FindUnprocessedEvents(0)
 	s.NoError(err)
 	s.Len(events, 3)
 }
@@ -57,7 +57,7 @@ func (s *spawnHostExpirationSuite) TestCanceledJob() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	s.j.Run(ctx)
-	events, err := event.FindUnprocessedEvents()
+	events, err := event.FindUnprocessedEvents(0)
 	s.NoError(err)
 	s.Len(events, 0)
 }

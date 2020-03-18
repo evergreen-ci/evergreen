@@ -68,6 +68,7 @@ type eventMetaJob struct {
 	q        amboy.Queue
 	events   []event.EventLogEntry
 	flags    *evergreen.ServiceFlags
+	env      evergreen.Environment
 }
 
 func makeEventMetaJob() *eventMetaJob {
@@ -85,9 +86,10 @@ func makeEventMetaJob() *eventMetaJob {
 	return j
 }
 
-func NewEventMetaJob(q amboy.Queue, ts string) amboy.Job {
+func NewEventMetaJob(env evergreen.Environment, q amboy.Queue, ts string) amboy.Job {
 	j := makeEventMetaJob()
 	j.q = q
+	j.env = env
 
 	j.SetID(fmt.Sprintf("%s:%s", eventMetaJobName, ts))
 
@@ -256,9 +258,12 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	if j.q == nil {
-		env := evergreen.GetEnvironment()
-		j.q = env.RemoteQueue()
+		j.q = j.env.RemoteQueue()
 	}
 	if j.q == nil || !j.q.Started() {
 		j.AddError(errors.New("evergreen environment not setup correctly"))
@@ -281,7 +286,12 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 
 	j.AddError(j.dispatchUnprocessedNotifications(ctx))
 
-	j.events, err = event.FindUnprocessedEvents()
+	settings := j.env.Settings()
+	limit := settings.Notify.EventProcessingLimit
+	if limit <= 0 {
+		limit = evergreen.DefaultEventProcessingLimit
+	}
+	j.events, err = event.FindUnprocessedEvents(limit)
 	if err != nil {
 		j.AddError(err)
 		return
