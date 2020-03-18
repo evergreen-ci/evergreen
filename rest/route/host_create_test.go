@@ -32,6 +32,7 @@ func TestMakeIntentHost(t *testing.T) {
 
 	d := distro.Distro{
 		Id:       "archlinux-test",
+		Aliases:  []string{"archlinux-alias"},
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettings: &map[string]interface{}{
 			"ami": "ami-123456",
@@ -107,6 +108,36 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("mock_key", ec2Settings.KeyName)
 	assert.Equal(true, ec2Settings.IsVpc)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	// Using an alias should resolve to the actual distro
+	c = apimodels.CreateHost{
+		Distro:              "archlinux-alias",
+		CloudProvider:       "ec2",
+		NumHosts:            "1",
+		Scope:               "task",
+		SetupTimeoutSecs:    600,
+		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
+	}
+	handler.createHost = c
+	handler.taskID = "task-id"
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	require.NoError(err)
+	require.NotNil(h)
+
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
+
+	assert.Equal("task-id", h.SpawnOptions.TaskID)
+	ec2Settings = &cloud.EC2ProviderSettings{}
+	assert.Nil(h.Distro.ProviderSettings)
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
+	assert.Equal("ami-123456", ec2Settings.AMI)
+	assert.Equal("mock_key", ec2Settings.KeyName)
+	assert.Equal(true, ec2Settings.IsVpc)
 
 	// spawn a spot evergreen distro
 	c = apimodels.CreateHost{

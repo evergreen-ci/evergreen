@@ -48,7 +48,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	distroIds := []string{}
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		distroIds, err = getDistroIds()
+		distroIds, _, err = getDistroIds()
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
 	}
 	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
+		validationErrs = append(validationErrs, ensureValidAliases(d)...)
 	}
 
 	for _, v := range distroSyntaxValidators {
@@ -207,7 +207,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 	return nil
 }
 
-func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
+func ensureValidAliases(d *distro.Distro) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, a := range d.Aliases {

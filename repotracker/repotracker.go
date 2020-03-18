@@ -342,7 +342,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		_, err = CreateManifest(*v, project, ref.Branch, repoTracker.Settings)
+		_, err = CreateManifest(*v, project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating manifest",
@@ -520,7 +520,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
-func CreateManifest(v model.Version, proj *model.Project, branch string, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v model.Version, proj *model.Project, projectRef *model.ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	if len(proj.Modules) == 0 {
 		return nil, nil
 	}
@@ -528,7 +528,8 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 		Id:          v.Id,
 		Revision:    v.Revision,
 		ProjectName: v.Identifier,
-		Branch:      branch,
+		Branch:      projectRef.Branch,
+		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -544,13 +545,23 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
 		if module.Ref == "" {
-			gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
+			var commit *github.RepositoryCommit
+			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+			}
+			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+				return nil, errors.New("malformed GitHub commit response")
+			}
+			revisionTime := commit.Commit.Committer.GetDate()
+			var branchCommits []*github.RepositoryCommit
+			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
 			if err != nil {
 				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
 			}
-			if gitBranch != nil && gitBranch.Commit != nil {
-				sha = *gitBranch.Commit.SHA
-				url = *gitBranch.Commit.URL
+			if len(branchCommits) > 0 {
+				sha = branchCommits[0].GetSHA()
+				url = branchCommits[0].GetURL()
 			}
 		} else {
 			sha = module.Ref

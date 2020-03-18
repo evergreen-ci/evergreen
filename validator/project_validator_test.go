@@ -1051,6 +1051,7 @@ func TestCheckTaskCommands(t *testing.T) {
 func TestEnsureReferentialIntegrity(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		distroIds := []string{"rhel55"}
+		distroAliases := []string{"rhel55-alias"}
 		Convey("an error should be thrown if a referenced task for a "+
 			"buildvariant does not exist", func() {
 			project := &model.Project{
@@ -1068,9 +1069,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
-				ValidationErrors{})
-			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("no error should be thrown if a referenced task for a "+
@@ -1088,7 +1089,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble,
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble,
 				ValidationErrors{})
 		})
 
@@ -1102,22 +1103,36 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
 				ValidationErrors{})
-			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
+			So(len(errs), ShouldEqual, 1)
 		})
 
-		Convey("no error should be thrown if a referenced distro for a "+
+		Convey("no error should be thrown if a referenced distro ID for a "+
 			"buildvariant does exist", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "enterprise",
-						RunOn: []string{"rhel55"},
+						RunOn: distroIds,
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("no error should be thrown if a referenced distro alias for a"+
+			"buildvariant does exist", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: distroAliases,
+					},
+				},
+			}
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -2180,15 +2195,18 @@ buildvariants:
 }
 
 func TestGetDistroIdsForProject(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{
 		Id:            "distro1",
+		Aliases:       []string{"distro1-alias", "distro1and2-alias"},
 		ValidProjects: []string{"project1", "project2"},
 	}
 	require.NoError(d.Insert())
 	d = distro.Distro{
-		Id: "distro2",
+		Id:      "distro2",
+		Aliases: []string{"distro2-alias", "distro1and2-alias"},
 	}
 	require.NoError(d.Insert())
 	d = distro.Distro{
@@ -2197,13 +2215,23 @@ func TestGetDistroIdsForProject(t *testing.T) {
 	}
 	require.NoError(d.Insert())
 
-	ids, err := getDistroIds()
+	ids, aliases, err := getDistroIds()
 	require.NoError(err)
 	require.Len(ids, 3)
-	ids, err = getDistroIdsForProject("project1")
+	require.Len(aliases, 3)
+	assert.Contains(aliases, "distro1and2-alias")
+	assert.Contains(aliases, "distro1-alias")
+	assert.Contains(aliases, "distro2-alias")
+	ids, aliases, err = getDistroIdsForProject("project1")
 	require.NoError(err)
 	require.Len(ids, 2)
-	ids, err = getDistroIdsForProject("project3")
+	assert.Contains(ids, "distro1")
+	assert.Contains(aliases, "distro1and2-alias")
+	assert.Contains(aliases, "distro1-alias")
+	ids, aliases, err = getDistroIdsForProject("project3")
 	require.NoError(err)
 	require.Len(ids, 1)
+	assert.Contains(ids, "distro2")
+	assert.Contains(aliases, "distro2-alias")
+	assert.Contains(aliases, "distro1and2-alias")
 }

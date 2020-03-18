@@ -1956,8 +1956,13 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, sortDir, pag
 	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
 	sorters = append(sorters, "_id")
 
+	query := db.Query(match).Sort(sorters)
+	if limit > 0 {
+		query = query.Limit(limit).Skip(page * limit)
+	}
+
 	tasks := []Task{}
-	err := db.FindAllQ(Collection, db.Query(match).Sort(sorters).Limit(limit).Skip(page*limit), &tasks)
+	err := db.FindAllQ(Collection, query, &tasks)
 	if err != nil {
 		return nil, err
 	}

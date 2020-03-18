@@ -89,22 +89,25 @@ func getGithubClient(token string) (*http.Client, error) {
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, commitPage int) ([]*github.RepositoryCommit, int, error) {
+func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	httpClient, err := getGithubClient(oauthToken)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "can't fetch data from github")
 	}
 	defer util.PutHTTPClient(httpClient)
-
 	client := github.NewClient(httpClient)
 
-	commits, resp, err := client.Repositories.ListCommits(ctx, owner, repo,
-		&github.CommitsListOptions{
-			SHA: ref,
-			ListOptions: github.ListOptions{
-				Page: commitPage,
-			},
-		})
+	options := github.CommitsListOptions{
+		SHA: ref,
+		ListOptions: github.ListOptions{
+			Page: commitPage,
+		},
+	}
+	if !util.IsZeroTime(until) {
+		options.Until = until
+	}
+
+	commits, resp, err := client.Repositories.ListCommits(ctx, owner, repo, &options)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

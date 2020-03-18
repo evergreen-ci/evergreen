@@ -529,19 +529,14 @@ var IsTerminated = db.Query(
 		StatusKey:      evergreen.HostTerminated},
 )
 
-func ByDistroIdDoc(distroId string) bson.M {
-	dId := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
+// ByDistroIDs produces a query that returns all up hosts of the given distros.
+func ByDistroIDs(distroIDs ...string) bson.M {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	return bson.M{
-		dId:          distroId,
+		distroIDKey:  bson.M{"$in": distroIDs},
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
 	}
-}
-
-// ByDistroId produces a query that returns all working hosts (not terminated and
-// not quarantined) of the given distro.
-func ByDistroId(distroId string) db.Q {
-	return db.Query(ByDistroIdDoc(distroId))
 }
 
 // ById produces a query that returns a host with the given id.
