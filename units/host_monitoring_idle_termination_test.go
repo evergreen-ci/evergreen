@@ -416,8 +416,8 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, host4.Insert(), "error inserting host '%s'", host4.Id)
 		require.NoError(t, host5.Insert(), "error inserting host '%s'", host5.Id)
 
-		// If we encounter missing distros, we decommission hosts that do not
-		// exist
+		// If we encounter missing distros, we decommission hosts from those
+		// distros.
 		idle, err := flagIdleHosts(ctx, env)
 		require.NoError(t, err)
 		require.Len(t, idle, 3)
