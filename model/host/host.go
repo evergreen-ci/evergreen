@@ -1317,9 +1317,11 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
+// DecommissionHostsWithDistroId marks all up hosts intended for running tasks
+// that have a matching distro ID as decommissioned.
 func DecommissionHostsWithDistroId(distroId string) error {
 	err := UpdateAll(
-		ByDistroIdDoc(distroId),
+		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostDecommissioned,
