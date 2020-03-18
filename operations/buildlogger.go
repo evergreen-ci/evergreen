@@ -65,10 +65,12 @@ func fetch() cli.Command {
 			cli.StringFlag{
 				Name:  startFlagName,
 				Usage: "The start time in RFC3339 format.",
+				Value: "0001-01-01T00:00:00Z",
 			},
 			cli.StringFlag{
 				Name:  endFlagName,
 				Usage: "The end time in RFC3339 format.",
+				Value: "0001-01-01T00:00:00Z",
 			},
 			cli.IntFlag{
 				Name:  executionFlagName,
