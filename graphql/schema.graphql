@@ -29,6 +29,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -51,6 +52,20 @@ enum TestSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+input PatchReconfigure {
+  description: String!
+  variantsTasks: [VariantTasks!]!
+}
+input VariantTasks {
+  variant: String!
+  tasks: [String!]!
+  displayTasks: [DisplayTask!]!
+}
+input DisplayTask {
+  Name: String!
+  ExecTasks: [String!]!
 }
 
 type PatchBuildVariant {

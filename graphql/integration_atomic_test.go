@@ -40,6 +40,16 @@ type atomicGraphQLState struct {
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	ctx := context.Background()
+
+	env := testutil.NewEnvironment(ctx, t)
+	settings := env.Settings()
+
+	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
+	evergreen.SetEnvironment(env)
+
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {

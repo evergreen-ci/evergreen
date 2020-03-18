@@ -11,6 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type DisplayTask struct {
+	Name      string   `json:"Name"`
+	ExecTasks []string `json:"ExecTasks"`
+}
+
 type GroupedFiles struct {
 	TaskName *string          `json:"taskName"`
 	Files    []*model.APIFile `json:"files"`
@@ -38,6 +43,11 @@ type PatchDuration struct {
 	Time      *PatchTime `json:"time"`
 }
 
+type PatchReconfigure struct {
+	Description   string          `json:"description"`
+	VariantsTasks []*VariantTasks `json:"variantsTasks"`
+}
+
 type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
@@ -63,6 +73,12 @@ type TaskResult struct {
 	Status       string `json:"status"`
 	BaseStatus   string `json:"baseStatus"`
 	BuildVariant string `json:"buildVariant"`
+}
+
+type VariantTasks struct {
+	Variant      string         `json:"variant"`
+	Tasks        []string       `json:"tasks"`
+	DisplayTasks []*DisplayTask `json:"displayTasks"`
 }
 
 type SortDirection string

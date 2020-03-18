@@ -3,7 +3,9 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -630,6 +632,26 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", taskID, err.Error()))
 	}
 	return &apiTask, nil
+}
+
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
+	patchUpdateReq := PatchVariantsTasksRequest{}
+	patchUpdateReq.BuildFromGqlInput(reconfigure)
+	version, err := r.sc.FindVersionById(patchID)
+	// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
+	// does not contain nil version err values before sending InternalServerError
+	if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+	}
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
+	}
+	scheduledPatch, err := r.sc.FindPatchById(versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch `%s`: %s", patchID, err))
+	}
+	return scheduledPatch, nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {

@@ -75,6 +75,7 @@ type ComplexityRoot struct {
 		AbortTask             func(childComplexity int, taskID string) int
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
+		SchedulePatch         func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
 		ScheduleTask          func(childComplexity int, taskID string) int
 		SetTaskPriority       func(childComplexity int, taskID string, priority int) int
 		UnscheduleTask        func(childComplexity int, taskID string) int
@@ -262,6 +263,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
+	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*model.APIPatch, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -422,6 +424,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.schedulePatch":
+		if e.complexity.Mutation.SchedulePatch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_schedulePatch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["reconfigure"].(PatchReconfigure)), true
 
 	case "Mutation.scheduleTask":
 		if e.complexity.Mutation.ScheduleTask == nil {
@@ -1441,6 +1455,7 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -1463,6 +1478,20 @@ enum TestSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+input PatchReconfigure {
+  description: String!
+  variantsTasks: [VariantTasks!]!
+}
+input VariantTasks {
+  variant: String!
+  tasks: [String!]!
+  displayTasks: [DisplayTask!]!
+}
+input DisplayTask {
+  Name: String!
+  ExecTasks: [String!]!
 }
 
 type PatchBuildVariant {
@@ -1702,6 +1731,28 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
+	var arg1 PatchReconfigure
+	if tmp, ok := rawArgs["reconfigure"]; ok {
+		arg1, err = ec.unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["reconfigure"] = arg1
 	return args, nil
 }
 
@@ -2472,6 +2523,47 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	res := resTmp.(*model.UIProjectFields)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_schedulePatch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string), args["reconfigure"].(PatchReconfigure))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -7755,6 +7847,84 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
+	var it DisplayTask
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "Name":
+			var err error
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "ExecTasks":
+			var err error
+			it.ExecTasks, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, obj interface{}) (PatchReconfigure, error) {
+	var it PatchReconfigure
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "description":
+			var err error
+			it.Description, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variantsTasks":
+			var err error
+			it.VariantsTasks, err = ec.unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj interface{}) (VariantTasks, error) {
+	var it VariantTasks
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "variant":
+			var err error
+			it.Variant, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "tasks":
+			var err error
+			it.Tasks, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "displayTasks":
+			var err error
+			it.DisplayTasks, err = ec.unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -7912,6 +8082,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removeFavoriteProject":
 			out.Values[i] = ec._Mutation_removeFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "schedulePatch":
+			out.Values[i] = ec._Mutation_schedulePatch(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -9185,6 +9360,38 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNDisplayTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx context.Context, v interface{}) (DisplayTask, error) {
+	return ec.unmarshalInputDisplayTask(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v interface{}) ([]*DisplayTask, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*DisplayTask, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx context.Context, v interface{}) (*DisplayTask, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNDisplayTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) marshalNFile2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v model.APIFile) graphql.Marshaler {
 	return ec._File(ctx, sel, &v)
 }
@@ -9498,6 +9705,10 @@ func (ec *executionContext) marshalNPatchBuildVariant2ᚖgithubᚗcomᚋevergree
 		return graphql.Null
 	}
 	return ec._PatchBuildVariant(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx context.Context, v interface{}) (PatchReconfigure, error) {
+	return ec.unmarshalInputPatchReconfigure(ctx, v)
 }
 
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx context.Context, sel ast.SelectionSet, v model.UIProjectFields) graphql.Marshaler {
@@ -9856,6 +10067,38 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalNVariantTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasks(ctx context.Context, v interface{}) (VariantTasks, error) {
+	return ec.unmarshalInputVariantTasks(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx context.Context, v interface{}) ([]*VariantTasks, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*VariantTasks, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNVariantTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasks(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNVariantTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasks(ctx context.Context, v interface{}) (*VariantTasks, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNVariantTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasks(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋevergreenᚑciᚋevergreenᚋvendorᚋgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

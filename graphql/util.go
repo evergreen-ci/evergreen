@@ -132,7 +132,7 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, patchId string, v *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOne(patch.ById(patch.NewId(patchId)))
 	if err != nil {
@@ -185,22 +185,22 @@ func SchedulePatch(ctx context.Context, patchId string, v *model.Version, patchU
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
-		if v == nil {
+		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(context.Background(), p, v, project, tasks)
+		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks)
 		if err != nil {
-			return errors.Wrapf(err, "Error creating new tasks for version `%s`", v.Id), http.StatusInternalServerError, "", ""
+			return errors.Wrapf(err, "Error creating new tasks for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err := model.AddNewBuildsForPatch(ctx, p, v, project, tasks)
+		err := model.AddNewBuildsForPatch(ctx, p, version, project, tasks)
 		if err != nil {
-			return errors.Wrapf(err, "Error creating new builds for version `%s`", v.Id), http.StatusInternalServerError, "", ""
+			return errors.Wrapf(err, "Error creating new builds for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", v.Id
+		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", version.Id
 
 	} else {
 		env := evergreen.GetEnvironment()
@@ -240,4 +240,22 @@ type PatchVariantsTasksRequest struct {
 	Variants      []string             `json:"variants"`                 // old format
 	Tasks         []string             `json:"tasks"`                    // old format
 	Description   string               `json:"description"`
+}
+
+// BuildFromGqlInput takes a PatchReconfigure gql type and returns a PatchVariantsTasksRequest type
+func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) {
+	p.Description = r.Description
+	for _, vt := range r.VariantsTasks {
+		variantTasks := patch.VariantTasks{
+			Variant: vt.Variant,
+			Tasks:   vt.Tasks,
+		}
+		for _, displayTask := range vt.DisplayTasks {
+			dt := patch.DisplayTask{}
+			dt.Name = displayTask.Name
+			dt.ExecTasks = displayTask.ExecTasks
+			variantTasks.DisplayTasks = append(variantTasks.DisplayTasks, dt)
+		}
+		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
+	}
 }

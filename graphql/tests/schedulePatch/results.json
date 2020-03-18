@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "schedule-patch.graphql",
+      "result": {
+        "data": {
+          "schedulePatch": {
+            "id": "5e6bb9e23066155a993e0f1a",
+            "status": "created",
+            "activated": true,
+            "tasks": ["test-graphql"],
+            "variants": ["ubuntu1604"],
+            "variantsTasks": [
+              {
+                "name": "ubuntu1604",
+                "tasks": ["test-graphql"]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
