@@ -274,6 +274,7 @@ type Connector interface {
 	DeleteSubscriptions(string, []string) error
 	// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
 	CopyProjectSubscriptions(string, string) error
+	UpdateAdminRoles(*model.ProjectRef, []string, []string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)
