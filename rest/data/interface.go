@@ -73,11 +73,12 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
-	// Find project variables matching given projectId. If bool is set, returns only redacted values.
+	// Find project variables matching given projectId. If bool is set, also return private variables.
 	FindProjectVarsById(string, bool) (*restModel.APIProjectVars, error)
-	// UpdateProjectVars updates the project using the variables given in the model.ggg
+	// UpdateProjectVars updates the project using the variables given
+	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
-	UpdateProjectVars(string, *restModel.APIProjectVars) error
+	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
@@ -120,7 +121,7 @@ type Connector interface {
 	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
-	FindTestsByTaskIdFilterSortPaginate(string, string, string, string, int, int, int, int) ([]testresult.TestResult, error)
+	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
 	FindTasksByVersion(string, string, []string, int, int, int) ([]task.Task, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)

@@ -76,7 +76,6 @@ mciModule.factory('TrendSamples', function () {
     metricsSet.clear()
 
     for (let key in this.seriesByName) {
-      this.seriesByName[key] = _.sortBy(this.seriesByName[key], 'order');
       this.testNames.unshift(key);
     }
 

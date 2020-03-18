@@ -26,6 +26,17 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
+type PatchBuildVariant struct {
+	Variant string                   `json:"variant"`
+	Tasks   []*PatchBuildVariantTask `json:"tasks"`
+}
+
+type PatchBuildVariantTask struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
 type PatchDuration struct {
 	Makespan  *string    `json:"makespan"`
 	TimeTaken *string    `json:"timeTaken"`
@@ -33,7 +44,7 @@ type PatchDuration struct {
 }
 
 type PatchReconfigure struct {
-	Description   *string         `json:"description"`
+	Description   string          `json:"description"`
 	VariantsTasks []*VariantTasks `json:"variantsTasks"`
 }
 

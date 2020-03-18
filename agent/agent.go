@@ -79,7 +79,7 @@ func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, e
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
 
-	if setupData, err := comm.GetAgentSetupData(ctx); err != nil {
+	if setupData, err := comm.GetAgentSetupData(ctx); err == nil {
 		opts.SetupData = *setupData
 		opts.LogkeeperURL = setupData.LogkeeperURL
 		opts.S3BaseURL = setupData.S3Base

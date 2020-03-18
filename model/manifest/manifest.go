@@ -14,6 +14,7 @@ type Manifest struct {
 	ProjectName     string             `json:"project" bson:"project"`
 	Branch          string             `json:"branch" bson:"branch"`
 	Modules         map[string]*Module `json:"modules" bson:"modules"`
+	IsBase          bool               `json:"is_base" bson:"is_base"`
 	ModuleOverrides map[string]string  `json:"module_overrides,omitempty" bson:"-"`
 }
 

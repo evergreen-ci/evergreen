@@ -120,7 +120,7 @@ func (c *Mock) SetAPIKey(apiKey string)                    { c.apiKey = apiKey }
 
 // nolint
 func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	return nil, nil
+	return &apimodels.AgentSetupData{}, nil
 }
 
 // nolint

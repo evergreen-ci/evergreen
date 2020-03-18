@@ -47,7 +47,12 @@ func FindOneId(id string) (*CommitQueue, error) {
 func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, queue)
-
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding queue by id")
+	}
 	return queue, err
 }
 

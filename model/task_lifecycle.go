@@ -567,6 +567,9 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, req
 	if err != nil {
 		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
 	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", projectRef.Identifier)
+	}
 	issue := p.Id.Hex()
 	if p.IsPRMergePatch() {
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)

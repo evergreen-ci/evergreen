@@ -53,7 +53,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := repotracker.CreateManifest(*v, project, projectRef.Branch, &as.Settings)
+	manifest, err := repotracker.CreateManifest(*v, project, projectRef, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error storing new manifest"))
 		return

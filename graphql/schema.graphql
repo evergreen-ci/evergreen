@@ -18,11 +18,12 @@ type Query {
     page: Int = 0
     limit: Int = 0
     testName: String = ""
-    status: String = ""
+    statuses: [String!]! = []
   ): [TestResult!]
   taskFiles(taskId: String!): [GroupedFiles!]!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
+  patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
 }
 
 type Mutation {
@@ -65,6 +66,16 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+type PatchBuildVariant {
+  variant: String!
+  tasks: [PatchBuildVariantTask]
+}
+type PatchBuildVariantTask {
+  id: ID!
+  name: String!
+  status: String!
 }
 
 type GroupedFiles {

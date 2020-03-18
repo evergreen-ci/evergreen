@@ -1,0 +1,73 @@
+{
+  "tests": [
+    {
+      "query_file": "patch-build-variants.graphql",
+      "result": {
+        "data": {
+          "patchBuildVariants": [
+            {
+              "variant": "osx",
+              "tasks": [
+                {
+                  "id": "9",
+                  "name": "lint-graphql",
+                  "status": "started"
+                }
+              ]
+            },
+            {
+              "variant": "ubuntu1604",
+              "tasks": [
+                {
+                  "id": "2",
+                  "name": "test-cloud",
+                  "status": "failed"
+                },
+                {
+                  "id": "5",
+                  "name": "test-docker",
+                  "status": "success"
+                },
+                {
+                  "id": "1",
+                  "name": "test-thirdparty-docker",
+                  "status": "success"
+                }
+              ]
+            },
+            {
+              "variant": "windows",
+              "tasks": [
+                {
+                  "id": "4",
+                  "name": "compile",
+                  "status": "failed"
+                },
+                {
+                  "id": "7",
+                  "name": "lint",
+                  "status": "success"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "invalid-id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error finding patch `5e4ff3abe3c3317e352962e4`: 404 (Not Found): patch with id 5e4ff3abe3c3317e352962e4 not found",
+            "path": ["patchBuildVariants"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}
