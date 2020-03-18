@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -255,7 +256,11 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			if modifyErr := h.SetNeedsJasperRestart(user.Username()); modifyErr != nil {
+			modifyErr := h.SetNeedsJasperRestart(user.Username())
+			if adb.ResultsNotFound(modifyErr) {
+				return nil
+			}
+			if modifyErr != nil {
 				return modifyErr
 			}
 			return nil
