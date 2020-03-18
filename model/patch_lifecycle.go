@@ -496,7 +496,7 @@ func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptio
 		return nil, nil, errors.Wrapf(err, "error finding commit queue '%s'", projectID)
 	}
 	if cq == nil {
-		return nil, nil, errors.New("commit queue '%s' not found")
+		return nil, nil, errors.Errorf("commit queue '%s' not found", projectID)
 	}
 
 	// don't requeue items, just return what would be requeued

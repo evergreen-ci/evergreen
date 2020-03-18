@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindFromVersion(t *testing.T) {
@@ -16,14 +17,25 @@ func TestFindFromVersion(t *testing.T) {
 	moduleName := "sample_module"
 	projectName := "p1"
 	revision := "12345"
-	mfest := &Manifest{
-		Id:          "m1",
-		ProjectName: projectName,
-		Revision:    revision,
-		Modules:     map[string]*Module{moduleName: &Module{}},
+	mfests := []Manifest{
+		{
+			Id:          "m1",
+			ProjectName: projectName,
+			Revision:    revision,
+			Modules:     map[string]*Module{moduleName: &Module{}},
+			IsBase:      true,
+		},
+		{
+			Id:          "m2",
+			ProjectName: projectName,
+			Revision:    revision,
+			Modules:     map[string]*Module{moduleName: &Module{}},
+		},
 	}
-	_, err := mfest.TryInsert()
-	assert.NoError(t, err)
+	for _, mfest := range mfests {
+		_, err := mfest.TryInsert()
+		assert.NoError(t, err)
+	}
 
 	patchID := "aabbccddeeff001122334455"
 	p := patch.Patch{
@@ -37,7 +49,53 @@ func TestFindFromVersion(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 
-	mfest, err = FindFromVersion(patchID, projectName, revision, evergreen.PatchVersionRequester)
+	mfest, err := FindFromVersion(patchID, projectName, revision, evergreen.PatchVersionRequester)
 	assert.NoError(t, err)
+	assert.Equal(t, "m1", mfest.Id)
 	assert.Equal(t, "abcdef", mfest.ModuleOverrides[moduleName])
+
+	// If no manifest exists for this version we get the base version's manifest
+	mfest, err = FindFromVersion("deadbeefdeadbeefdeadbeef", projectName, revision, "")
+	assert.NoError(t, err)
+	assert.Equal(t, "m1", mfest.Id)
+}
+
+func TestByProjectAndRevision(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	mfest := &Manifest{
+		Id:          "m1",
+		ProjectName: "evergreen",
+		Revision:    "abcdef",
+	}
+	_, err := mfest.TryInsert()
+	require.NoError(t, err)
+
+	mfest, err = FindOne(ByProjectAndRevision("evergreen", "abcdef"))
+	assert.NoError(t, err)
+	assert.Equal(t, "m1", mfest.Id)
+}
+
+func TestByBaseProjectAndRevision(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	mfests := []Manifest{
+		{
+			Id:          "m1",
+			ProjectName: "evergreen",
+			Revision:    "abcdef",
+			IsBase:      true,
+		},
+		{
+			Id:          "m2",
+			ProjectName: "evergreen",
+			Revision:    "abcdef",
+		},
+	}
+	for _, mfest := range mfests {
+		_, err := mfest.TryInsert()
+		require.NoError(t, err)
+	}
+
+	mfest, err := FindOne(ByBaseProjectAndRevision("evergreen", "abcdef"))
+	assert.NoError(t, err)
+	assert.Equal(t, "m1", mfest.Id)
 }

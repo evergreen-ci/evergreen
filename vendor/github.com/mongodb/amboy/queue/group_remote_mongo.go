@@ -37,7 +37,7 @@ type MongoDBQueueGroupOptions struct {
 	// Abortable controls if the queue will use an abortable pool
 	// imlementation. The Ordered option controls if an
 	// order-respecting queue will be created, while default
-	// workers sets the defualt number of workers new queues will
+	// workers sets the default number of workers new queues will
 	// have if the WorkerPoolSize function is not set.
 	Abortable      bool
 	Ordered        bool

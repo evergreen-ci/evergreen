@@ -322,8 +322,17 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			for _, d := range distrosFound {
 				distroIDsFound = append(distroIDsFound, d.Id)
 			}
-			invalidDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
+			missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
+			hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
+			if err != nil {
+				return errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", "))
+			}
+			for _, h := range hosts {
+				catcher.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id)
+			}
+			if catcher.HasErrors() {
+				return errors.Wrapf(catcher.Resolve(), "could not decommission hosts from missing distros: %s", strings.Join(missingDistroIDs, ", "))
+			}
 		}
 
 		distrosMap := make(map[string]distro.Distro, len(distrosFound))
@@ -614,6 +623,13 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(0).Format(TSFormat)
+		return queue.Put(ctx, NewDuplicateTaskCheckJob(ts))
 	}
 }
 

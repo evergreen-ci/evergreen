@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -18,7 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/gqlerror"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type Resolver struct {
@@ -326,7 +328,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return taskResults, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, status *string) ([]*restModel.APITest, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*restModel.APITest, error) {
 
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
@@ -372,11 +374,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if limit != nil {
 		limitParam = *limit
 	}
-	statusParam := ""
-	if status != nil {
-		statusParam = *status
+	statusesParam := []string{}
+	if statuses != nil {
+		statusesParam = statuses
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -439,6 +441,159 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
 	return groupedFilesList, nil
+}
+
+func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error) {
+	const LogMessageCount = 100
+	var loggedEvents []event.EventLogEntry
+	// loggedEvents is ordered ts descending
+	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(taskID, LogMessageCount))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", taskID, err.Error()))
+	}
+
+	// remove all scheduled events except the youngest and push to filteredEvents
+	filteredEvents := []event.EventLogEntry{}
+	foundScheduled := false
+	for i := 0; i < len(loggedEvents); i++ {
+		if foundScheduled == false || loggedEvents[i].EventType != event.TaskScheduled {
+			filteredEvents = append(filteredEvents, loggedEvents[i])
+		}
+		if loggedEvents[i].EventType == event.TaskScheduled {
+			foundScheduled = true
+		}
+	}
+
+	// reverse order so ts is ascending
+	for i := len(filteredEvents)/2 - 1; i >= 0; i-- {
+		opp := len(filteredEvents) - 1 - i
+		filteredEvents[i], filteredEvents[opp] = filteredEvents[opp], filteredEvents[i]
+	}
+
+	// populate eventlogs pointer arrays
+	apiEventLogPointers := []*restModel.APIEventLogEntry{}
+	for _, e := range filteredEvents {
+		apiEventLog := restModel.APIEventLogEntry{}
+		err = apiEventLog.BuildFromService(&e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
+	}
+
+	// need to task to get project id
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	// need project to get default logger
+	p, err := r.sc.FindProjectById(t.Project)
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	taskLogs := []apimodels.LogMessage{}
+	systemLogs := []apimodels.LogMessage{}
+	agentLogs := []apimodels.LogMessage{}
+	// get logs from cedar
+	if defaultLogger == model.BuildloggerLogSender {
+		// task logs
+		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
+		if blErr != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
+		// system logs
+		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution)
+		if blErr != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
+		// agent logs
+		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
+		if blErr != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
+	} else {
+		// task logs
+		taskLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.TaskLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
+		}
+		// system logs
+		systemLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.SystemLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
+		}
+		// agent logs
+		agentLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+			[]string{apimodels.AgentLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))
+		}
+	}
+	taskLogPointers := []*apimodels.LogMessage{}
+	systemLogPointers := []*apimodels.LogMessage{}
+	agentLogPointers := []*apimodels.LogMessage{}
+	for i := range taskLogs {
+		taskLogPointers = append(taskLogPointers, &taskLogs[i])
+	}
+	for i := range systemLogs {
+		systemLogPointers = append(systemLogPointers, &systemLogs[i])
+	}
+	for i := range agentLogs {
+		agentLogPointers = append(agentLogPointers, &agentLogs[i])
+	}
+	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
+}
+
+func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error) {
+	patch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
+	}
+
+	var tasksByVariant map[string][]*PatchBuildVariantTask = map[string][]*PatchBuildVariantTask{}
+	for _, variant := range patch.Variants {
+		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
+	}
+	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, 1, 0, 0)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
+	}
+	for _, task := range tasks {
+		t := PatchBuildVariantTask{
+			ID:     task.Id,
+			Name:   task.DisplayName,
+			Status: task.Status,
+		}
+		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+	}
+
+	result := []*PatchBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := PatchBuildVariant{
+			Variant: variant,
+			Tasks:   tasks,
+		}
+		result = append(result, &pbv)
+	}
+	// sort variants by name
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].Variant < result[j].Variant
+	})
+	return result, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {

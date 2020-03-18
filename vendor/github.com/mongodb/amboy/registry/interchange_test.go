@@ -57,6 +57,7 @@ func (s *JobInterchangeSuite) TestRoundTripHighLevel() {
 	outJob, err := i.Resolve(s.format)
 	s.NoError(err)
 
+	outJob.SetScopes(nil)
 	if s.format == amboy.BSON || s.format == amboy.BSON2 {
 		// mgo/bson seems to unset/nil the private map in the
 		// implementation of the dependency. It's not material
@@ -75,8 +76,8 @@ func (s *JobInterchangeSuite) TestRoundTripLowLevel() {
 	i.Dependency.Dependency.dep = nil
 
 	j2, err := i.Resolve(s.format)
-
 	if s.NoError(err) {
+		j2.SetScopes(nil)
 		j2.SetDependency(dependency.NewAlways())
 		s.Equal(s.job, j2)
 	}

@@ -42,6 +42,9 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 	if err != nil {
 		return 0, errors.Wrapf(err, "can't query for queue id '%s'", projectID)
 	}
+	if q == nil {
+		return 0, errors.Errorf("no commit queue found for '%s'", projectID)
+	}
 
 	itemInterface, err := item.ToService()
 	if err != nil {
@@ -70,6 +73,9 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 	cqService, err := commitqueue.FindOneId(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get commit queue from database")
+	}
+	if cqService == nil {
+		return nil, errors.Errorf("no commit queue found for '%s'", id)
 	}
 
 	apiCommitQueue := &restModel.APICommitQueue{}
@@ -104,6 +110,9 @@ func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, er
 	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", id)
 	}
 
 	pos := cq.FindItem(item)

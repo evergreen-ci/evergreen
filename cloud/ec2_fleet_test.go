@@ -18,24 +18,7 @@ import (
 
 func TestFleet(t *testing.T) {
 	var h *host.Host
-	m := &ec2FleetManager{
-		EC2FleetManagerOptions: &EC2FleetManagerOptions{
-			client: &awsClientMock{},
-			region: "test-region",
-		},
-		credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
-			AccessKeyID:     "key",
-			SecretAccessKey: "secret",
-		}),
-		settings: &evergreen.Settings{
-			Providers: evergreen.CloudProviders{
-				AWS: evergreen.AWSConfig{
-					DefaultSecurityGroup: "sg-default",
-				},
-			},
-		},
-	}
-
+	var m *ec2FleetManager
 	for name, test := range map[string]func(*testing.T){
 		"SpawnHost": func(*testing.T) {
 			var err error
@@ -121,6 +104,11 @@ func TestFleet(t *testing.T) {
 			assert.Len(t, overrides, 1)
 			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
 
+			m.settings.Providers.AWS.Subnets = nil
+			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
+			assert.NoError(t, err)
+			assert.Len(t, overrides, 1)
+			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.DescribeVpcsInput.Filters, 1)
 			assert.Equal(t, "tag:Name", *mockClient.DescribeVpcsInput.Filters[0].Name)
@@ -181,6 +169,26 @@ func TestFleet(t *testing.T) {
 				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 		}
+
+		m = &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+				region: "test-region",
+			},
+			credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
+				AccessKeyID:     "key",
+				SecretAccessKey: "secret",
+			}),
+			settings: &evergreen.Settings{
+				Providers: evergreen.CloudProviders{
+					AWS: evergreen.AWSConfig{
+						DefaultSecurityGroup: "sg-default",
+						Subnets:              []evergreen.Subnet{{AZ: "az1", SubnetID: "subnet-654321"}},
+					},
+				},
+			},
+		}
+
 		require.NoError(t, db.Clear(host.Collection))
 		require.NoError(t, h.Insert())
 		t.Run(name, test)

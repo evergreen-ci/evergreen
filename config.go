@@ -28,7 +28,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2020-03-11"
+	ClientVersion = "2020-03-13"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

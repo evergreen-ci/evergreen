@@ -98,7 +98,7 @@ func (s *EC2ProviderSettings) Validate() error {
 
 // region is only provided if we want to filter by region
 func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
 		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
 		}
@@ -107,10 +107,11 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 			"input":   *d.ProviderSettings,
 			"output":  *s,
 		})
-		s.Region = s.getRegion()
-		if s.Region != evergreen.DefaultEC2Region {
+
+		if region != evergreen.DefaultEC2Region && region != "" {
 			return errors.Errorf("only default region should be saved in provider settings")
 		}
+		s.Region = s.getRegion()
 	} else if len(d.ProviderSettingsList) != 0 {
 		settingsDoc, err := d.GetProviderSettingByRegion(region)
 		if err != nil {

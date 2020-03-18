@@ -1,0 +1,10 @@
+{
+  patchBuildVariants(patchId: "5e4ff3abe3c3317e352962e4") {
+    variant
+    tasks {
+      id
+      name
+      status
+    }
+  }
+}

@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/99designs/gqlgen/codegen/templates"
 	"github.com/99designs/gqlgen/plugin"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 type BuildMutateHook = func(b *ModelBuild) *ModelBuild
@@ -72,36 +72,17 @@ func (m *Plugin) Name() string {
 }
 
 func (m *Plugin) MutateConfig(cfg *config.Config) error {
-	if err := cfg.Check(); err != nil {
-		return err
-	}
-
-	schema, _, err := cfg.LoadSchema()
-	if err != nil {
-		return err
-	}
-
-	err = cfg.Autobind(schema)
-	if err != nil {
-		return err
-	}
-
-	cfg.InjectBuiltins(schema)
-
-	binder, err := cfg.NewBinder(schema)
-	if err != nil {
-		return err
-	}
+	binder := cfg.NewBinder()
 
 	b := &ModelBuild{
 		PackageName: cfg.Model.Package,
 	}
 
-	for _, schemaType := range schema.Types {
+	hasEntity := false
+	for _, schemaType := range cfg.Schema.Types {
 		if cfg.Models.UserDefined(schemaType.Name) {
 			continue
 		}
-
 		switch schemaType.Kind {
 		case ast.Interface, ast.Union:
 			it := &Interface{
@@ -111,23 +92,23 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 
 			b.Interfaces = append(b.Interfaces, it)
 		case ast.Object, ast.InputObject:
-			if schemaType == schema.Query || schemaType == schema.Mutation || schemaType == schema.Subscription {
+			if schemaType == cfg.Schema.Query || schemaType == cfg.Schema.Mutation || schemaType == cfg.Schema.Subscription {
 				continue
 			}
 			it := &Object{
 				Description: schemaType.Description,
 				Name:        schemaType.Name,
 			}
-
-			for _, implementor := range schema.GetImplements(schemaType) {
+			for _, implementor := range cfg.Schema.GetImplements(schemaType) {
 				it.Implements = append(it.Implements, implementor.Name)
 			}
 
 			for _, field := range schemaType.Fields {
 				var typ types.Type
-				fieldDef := schema.Types[field.Type.Name()]
+				fieldDef := cfg.Schema.Types[field.Type.Name()]
 
 				if cfg.Models.UserDefined(field.Type.Name()) {
+					var err error
 					typ, err = binder.FindTypeFromName(cfg.Models[field.Type.Name()].Model[0])
 					if err != nil {
 						return err
@@ -209,7 +190,13 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 			b.Scalars = append(b.Scalars, schemaType.Name)
 		}
 	}
-
+	if hasEntity {
+		it := &Interface{
+			Description: "_Entity represents all types with @key",
+			Name:        "_Entity",
+		}
+		b.Interfaces = append(b.Interfaces, it)
+	}
 	sort.Slice(b.Enums, func(i, j int) bool { return b.Enums[i].Name < b.Enums[j].Name })
 	sort.Slice(b.Models, func(i, j int) bool { return b.Models[i].Name < b.Models[j].Name })
 	sort.Slice(b.Interfaces, func(i, j int) bool { return b.Interfaces[i].Name < b.Interfaces[j].Name })
@@ -227,7 +214,7 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 		cfg.Models.Add(it, "github.com/99designs/gqlgen/graphql.String")
 	}
 
-	if len(b.Models) == 0 && len(b.Enums) == 0 {
+	if len(b.Models) == 0 && len(b.Enums) == 0 && len(b.Interfaces) == 0 && len(b.Scalars) == 0 {
 		return nil
 	}
 
@@ -240,6 +227,7 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 		Filename:        cfg.Model.Filename,
 		Data:            b,
 		GeneratedHeader: true,
+		Packages:        cfg.Packages,
 	})
 }
 

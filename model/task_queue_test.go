@@ -577,3 +577,69 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].Count, 8)
 	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].ExpectedDuration, time.Duration(2600127105386))
 }
+
+func TestFindDuplicateEnqueuedTasks(t *testing.T) {
+	const coll = TaskQueuesCollection
+	makeTaskQueue := func(t *testing.T, distroID string, ids ...string) *TaskQueue {
+		tq := &TaskQueue{Distro: distroID}
+		for _, id := range ids {
+			tq.Queue = append(tq.Queue, TaskQueueItem{Id: id})
+		}
+		require.NoError(t, tq.Save())
+		return tq
+	}
+	for testName, testCase := range map[string]func(t *testing.T){
+		"MatchesDuplicatesAcrossDifferentQueues": func(t *testing.T) {
+			_ = makeTaskQueue(t, "d1", "task1", "task2", "task3")
+			_ = makeTaskQueue(t, "d2", "task1", "task3", "task4", "task5", "task6")
+			_ = makeTaskQueue(t, "d3", "task3")
+			dups, err := FindDuplicateEnqueuedTasks(coll)
+			require.NoError(t, err)
+			require.Len(t, dups, 2)
+			var task1Found, task3Found bool
+			for _, dup := range dups {
+				if dup.TaskID == "task1" {
+					expectedDistros := []string{"d1", "d2"}
+					assert.Subset(t, dup.DistroIDs, expectedDistros)
+					assert.Subset(t, expectedDistros, dup.DistroIDs)
+					task1Found = true
+				}
+				if dup.TaskID == "task3" {
+					expectedDistros := []string{"d1", "d2", "d3"}
+					assert.Subset(t, dup.DistroIDs, expectedDistros)
+					assert.Subset(t, expectedDistros, dup.DistroIDs)
+					task3Found = true
+				}
+			}
+			assert.True(t, task1Found)
+			assert.True(t, task3Found)
+		},
+		"DoesNotMatchDuplicatesWithinSameQueue": func(t *testing.T) {
+			_ = makeTaskQueue(t, "d1", "task1", "task1", "task2")
+			dups, err := FindDuplicateEnqueuedTasks(coll)
+			assert.NoError(t, err)
+			assert.Empty(t, dups)
+		},
+		"DoesNotMatchEmptyQueues": func(t *testing.T) {
+			_ = makeTaskQueue(t, "d1")
+			dups, err := FindDuplicateEnqueuedTasks(coll)
+			assert.NoError(t, err)
+			assert.Empty(t, dups)
+		},
+		"DoesNotMatchAllUnique": func(t *testing.T) {
+			_ = makeTaskQueue(t, "d1", "task1", "task2")
+			_ = makeTaskQueue(t, "d2", "task3", "task4")
+			dups, err := FindDuplicateEnqueuedTasks(coll)
+			assert.NoError(t, err)
+			assert.Empty(t, dups)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(coll))
+			defer func() {
+				assert.NoError(t, db.Clear(coll))
+			}()
+			testCase(t)
+		})
+	}
+}

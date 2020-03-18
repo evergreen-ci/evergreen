@@ -888,10 +888,10 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("Distro should be marked as decommissioned accordingly", func() {
-				hostsTypeA, err := Find(ByDistroId(distroA))
+				hostsTypeA, err := Find(db.Query(ByDistroIDs(distroA)))
 				So(err, ShouldBeNil)
 
-				hostsTypeB, err := Find(ByDistroId(distroB))
+				hostsTypeB, err := Find(db.Query(ByDistroIDs(distroB)))
 				So(err, ShouldBeNil)
 				for _, host := range hostsTypeA {
 

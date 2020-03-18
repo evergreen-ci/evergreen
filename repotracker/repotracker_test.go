@@ -780,9 +780,10 @@ func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestFetchRevisions")
+	// with a revision from 5/31/15
 	v := model.Version{
 		Id:         "v",
-		Revision:   "abc",
+		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 	}
 
@@ -797,18 +798,24 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err := CreateManifest(v, &proj, "branch", settings)
+
+	projRef := &model.ProjectRef{
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "master",
+	}
+
+	manifest, err := CreateManifest(v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
-	count := 0
-	for _, module := range manifest.Modules {
-		count++
-		assert.Equal("sample", module.Repo)
-		assert.Equal("master", module.Branch)
-		assert.NotEmpty(module.Revision)
-	}
-	assert.Equal(1, count)
+	assert.Len(manifest.Modules, 1)
+	module, ok := manifest.Modules["module1"]
+	assert.True(ok)
+	assert.Equal("sample", module.Repo)
+	assert.Equal("master", module.Branch)
+	// the most recent module commit as of the version's revision (from 5/30/15)
+	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
 	// revision specified
 	hash := "cf46076567e4949f9fc68e0634139d4ac495c89b"
@@ -823,19 +830,17 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, "branch", settings)
+	manifest, err = CreateManifest(v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
-	count = 0
-	for _, module := range manifest.Modules {
-		count++
-		assert.Equal("sample", module.Repo)
-		assert.Equal("master", module.Branch)
-		assert.Equal(hash, module.Revision)
-		assert.NotEmpty(module.URL)
-	}
-	assert.Equal(1, count)
+	assert.Len(manifest.Modules, 1)
+	module, ok = manifest.Modules["module1"]
+	assert.True(ok)
+	assert.Equal("sample", module.Repo)
+	assert.Equal("master", module.Branch)
+	assert.Equal(hash, module.Revision)
+	assert.NotEmpty(module.URL)
 
 	// invalid revision
 	hash = "1234"
@@ -850,6 +855,6 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, "branch", settings)
+	manifest, err = CreateManifest(v, &proj, projRef, settings)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }

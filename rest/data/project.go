@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -119,14 +118,14 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	if _, err := commitqueue.FindOneId(projectRef.Identifier); err != nil {
-		if adb.ResultsNotFound(err) {
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
-			if err = commitqueue.InsertQueue(cq); err != nil {
-				return errors.Wrapf(err, "problem inserting new commit queue")
-			}
-		} else {
-			return errors.Wrapf(err, "database error finding commit queue")
+	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "database error finding commit queue")
+	}
+	if cq == nil {
+		cq = &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+		if err = commitqueue.InsertQueue(cq); err != nil {
+			return errors.Wrapf(err, "problem inserting new commit queue")
 		}
 	}
 	return nil
@@ -151,7 +150,7 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) (
 }
 
 // FindProjectVarsById returns the variables associated with the given project.
-func (pc *DBProjectConnector) FindProjectVarsById(id string, redactedOnly bool) (*restModel.APIProjectVars, error) {
+func (pc *DBProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
@@ -162,9 +161,7 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string, redactedOnly bool) 
 			Message:    fmt.Sprintf("variables for project '%s' not found", id),
 		}
 	}
-	if redactedOnly {
-		vars = vars.RedactedOnly()
-	} else { // only return values for redacted variables
+	if redact {
 		vars = vars.RedactPrivateVars()
 	}
 
@@ -176,7 +173,7 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string, redactedOnly bool) 
 }
 
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
-func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
+func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
 	}
@@ -186,9 +183,16 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	}
 	vars := v.(*model.ProjectVars)
 	vars.Id = projectId
-	_, err = vars.FindAndModify(varsModel.VarsToDelete)
-	if err != nil {
-		return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+
+	if overwrite {
+		if _, err = vars.Upsert(); err != nil {
+			return errors.Wrapf(err, "problem overwriting variables for project '%s'", vars.Id)
+		}
+	} else {
+		_, err = vars.FindAndModify(varsModel.VarsToDelete)
+		if err != nil {
+			return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+		}
 	}
 
 	vars = vars.RedactPrivateVars()
@@ -357,7 +361,7 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 	}
 }
 
-func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool) (*restModel.APIProjectVars, error) {
+func (pc *MockProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {
 	varsModel := &restModel.APIProjectVars{}
 	res := &model.ProjectVars{
 		Id:   id,
@@ -369,11 +373,10 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool
 				res.Vars[key] = val
 			}
 			res.PrivateVars = v.PrivateVars
-			if redactedOnly {
-				res = res.RedactedOnly()
-			} else {
+			if redact {
 				res = res.RedactPrivateVars()
 			}
+
 			if err := varsModel.BuildFromService(res); err != nil {
 				return nil, errors.Wrapf(err, "error building project variables from service")
 			}
@@ -386,20 +389,24 @@ func (pc *MockProjectConnector) FindProjectVarsById(id string, redactedOnly bool
 	}
 }
 
-func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
+func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	tempVars := &model.ProjectVars{
 		Id:   projectId,
 		Vars: map[string]string{},
 	}
 	for _, cachedVars := range pc.CachedVars {
 		if cachedVars.Id == projectId {
+			if overwrite {
+				cachedVars.Vars = map[string]string{}
+				cachedVars.PrivateVars = map[string]bool{}
+			}
 			// update cached variables by adding new variables and deleting variables
 			for key, val := range varsModel.Vars {
 				cachedVars.Vars[key] = val
 			}
-			for key, val := range varsModel.PrivateVars {
-				if val {
-					cachedVars.PrivateVars[key] = val // don't unredact existing variables
+			for key, private := range varsModel.PrivateVars {
+				if private {
+					cachedVars.PrivateVars[key] = true // don't unredact existing variables
 				}
 			}
 			for _, varToDelete := range varsModel.VarsToDelete {
@@ -411,7 +418,6 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 			}
 			tempVars.PrivateVars = cachedVars.PrivateVars
 			tempVars = tempVars.RedactPrivateVars()
-
 			// return modified variables
 			varsModel.Vars = tempVars.Vars
 			varsModel.PrivateVars = tempVars.PrivateVars

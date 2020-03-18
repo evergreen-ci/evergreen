@@ -102,12 +102,12 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	return 1, nil
 }
 
-func (q *CommitQueue) Next() *CommitQueueItem {
+func (q *CommitQueue) Next() (CommitQueueItem, bool) {
 	if len(q.Queue) == 0 {
-		return nil
+		return CommitQueueItem{}, false
 	}
 
-	return &q.Queue[0]
+	return q.Queue[0], true
 }
 
 func (q *CommitQueue) Remove(issue string) (bool, error) {
@@ -215,8 +215,15 @@ func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
 	}
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", projectId)
+	}
 
-	head := cq.Next()
+	head, valid := cq.Next()
+	if !valid {
+		return false, nil
+	}
+
 	removed, err := cq.Remove(item)
 	if err != nil {
 		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, projectId)
@@ -230,7 +237,7 @@ func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool
 	return removed, nil
 }
 
-func preventMergeForItem(patchType string, versionExists bool, item *CommitQueueItem) error {
+func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem) error {
 	if patchType == PRPatchType && item.Version != "" {
 		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")

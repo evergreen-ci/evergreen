@@ -164,33 +164,53 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // GetCommonViewData returns a struct that can supplement the struct used to provide data to
 // views. It contains data that is used for most/all Evergreen pages.
 // The needsUser and needsProject params will cause an error to be logged if there is no
-// user/project, but other data will still be returned
+// user/project. Data will not be returned if the project cannot be found.
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
 	ctx := r.Context()
 	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
-		grip.Error("no user attached to request")
+		grip.Error(message.WrapError(errors.New("no user attached to request"), message.Fields{
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 	projectCtx, err := GetProjectContext(r)
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
-		uis.projectNotFoundBase(w, r, nil)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get project context from request",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 		return ViewData{}
 	}
 	if needsProject {
 		var project *model.Project
 		project, err = projectCtx.GetProject()
-		if err != nil || project == nil {
-			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
-			uis.ProjectNotFound(w, r)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not find project from project context",
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
+			return ViewData{}
+		}
+		if project == nil {
+			grip.Error(message.WrapError(errors.New("no project found"), message.Fields{
+				"url":     r.URL,
+				"request": gimlet.GetRequestID(r.Context()),
+			}))
 			return ViewData{}
 		}
 		viewData.Project = *project
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to retrieve admin settings",
+			"url":     r.URL,
+			"request": gimlet.GetRequestID(r.Context()),
+		}))
 	}
 
 	if u, ok := userCtx.(*user.DBUser); ok {
@@ -381,7 +401,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Patch pages
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()
-	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatch).Post()
+	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatchUI).Post()
 	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.diffPage).Get()
 	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
 	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
@@ -398,6 +418,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
 	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
 	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
+	app.AddRoute("/spawn/available_volumes").Wrap(needsLogin).Handler(uis.availableVolumes).Get()
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()

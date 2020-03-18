@@ -30,6 +30,7 @@ type CreateOptions struct {
 	NoExpiration          bool
 	IsVirtualWorkstation  bool
 	HomeVolumeSize        int
+	HomeVolumeID          string
 }
 
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
@@ -63,6 +64,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		InstanceType:          options.InstanceType,
 		IsVirtualWorkstation:  options.IsVirtualWorkstation,
 		HomeVolumeSize:        options.HomeVolumeSize,
+		HomeVolumeID:          options.HomeVolumeID,
 	}
 
 	if options.ExpirationDuration != nil {

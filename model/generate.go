@@ -95,6 +95,18 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 // ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
 // YAML parser instead of the JSON parser because the JSON parser will not
 // properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
+func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
+	g := GeneratedProject{}
+	dataAsJSON := []byte(data)
+	if err := yaml.Unmarshal(dataAsJSON, &g); err != nil {
+		return g, errors.Wrap(err, "error unmarshaling into GeneratedTasks")
+	}
+	return g, nil
+}
+
+// ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
+// YAML parser instead of the JSON parser because the JSON parser will not
+// properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
 func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	if err := yaml.Unmarshal(data, &g); err != nil {
@@ -137,7 +149,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
-		return nil, nil, v, nil, nil,
+		return nil, pp, v, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 

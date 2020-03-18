@@ -151,7 +151,8 @@ type Host struct {
 
 	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
-	HomeVolumeSize int `bson:"home_volume_size" json:"home_volume_size"`
+	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
+	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 }
 
 type Tag struct {
@@ -217,7 +218,7 @@ type DockerOptions struct {
 }
 
 func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil {
+	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
 		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
 			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
 		}
@@ -1316,9 +1317,11 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
+// DecommissionHostsWithDistroId marks all up hosts intended for running tasks
+// that have a matching distro ID as decommissioned.
 func DecommissionHostsWithDistroId(distroId string) error {
 	err := UpdateAll(
-		ByDistroIdDoc(distroId),
+		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostDecommissioned,

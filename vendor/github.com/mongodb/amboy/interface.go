@@ -193,7 +193,7 @@ type Queue interface {
 
 	// Saves the state of a current job to the underlying storage,
 	// generally in support of locking and incremental
-	// persistance. Should error if the job does not exist (use
+	// persistence. Should error if the job does not exist (use
 	// put,) or if the queue does not have ownership of the job.
 	Save(context.Context, Job) error
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
@@ -18,6 +19,17 @@ type GroupedFiles struct {
 type GroupedProjects struct {
 	Name     string                   `json:"name"`
 	Projects []*model.UIProjectFields `json:"projects"`
+}
+
+type PatchBuildVariant struct {
+	Variant string                   `json:"variant"`
+	Tasks   []*PatchBuildVariantTask `json:"tasks"`
+}
+
+type PatchBuildVariantTask struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 type PatchDuration struct {
@@ -35,6 +47,13 @@ type PatchTime struct {
 type Projects struct {
 	Favorites     []*model.UIProjectFields `json:"favorites"`
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
+}
+
+type RecentTaskLogs struct {
+	EventLogs  []*model.APIEventLogEntry `json:"eventLogs"`
+	TaskLogs   []*apimodels.LogMessage   `json:"taskLogs"`
+	SystemLogs []*apimodels.LogMessage   `json:"systemLogs"`
+	AgentLogs  []*apimodels.LogMessage   `json:"agentLogs"`
 }
 
 type TaskResult struct {

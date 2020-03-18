@@ -17,8 +17,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func TestWebsocket(t *testing.T) {
@@ -100,7 +100,7 @@ func TestWebsocket(t *testing.T) {
 
 		msg := readOp(c)
 		assert.Equal(t, errorMsg, msg.Type)
-		assert.Equal(t, `[{"message":"Unexpected !","locations":[{"line":1,"column":1}]}]`, string(msg.Payload))
+		assert.Equal(t, `[{"message":"Unexpected !","locations":[{"line":1,"column":1}],"extensions":{"code":"GRAPHQL_PARSE_FAILED"}}]`, string(msg.Payload))
 	})
 
 	t.Run("client can receive data", func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestWebsocketWithKeepAlive(t *testing.T) {
 
 	h := testserver.New()
 	h.AddTransport(transport.Websocket{
-		KeepAlivePingInterval: 10 * time.Millisecond,
+		KeepAlivePingInterval: 100 * time.Millisecond,
 	})
 
 	srv := httptest.NewServer(h)

@@ -23,7 +23,7 @@ Evergreen - Distros
         ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
     </div>
   </div>
-  <div ng-form="form" class="row">
+  <div ng-form="form" autocomplete="off" class="row">
     <div id="nav-container" class="col-md-2" ng-show="distroIds.length != 0" style="left:10%; max-width:350px">
       <div>
         <div>
@@ -332,7 +332,7 @@ Evergreen - Distros
               </div>
               <div>
                 <label class="distro-label">Password for Registries:</label>
-                <input type="password" class="form-control" ng-model="activeDistro.settings.docker_registry_pw" ng-readonly="readOnly">
+                <input type="password" autocomplete="new-password" class="form-control" ng-model="activeDistro.settings.docker_registry_pw" ng-readonly="readOnly">
               </div>
               <div>
                 <label class="distro-label">Pool ID:</label>
@@ -918,7 +918,7 @@ Evergreen - Distros
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
               Allow users to spawn these hosts for personal use.
             </p>
-            <p class="distro-checkbox checkbox" ng-show="activeDistro.spawn_allowed && isLinux() && home_volume_settings.format_command">
+            <p class="distro-checkbox checkbox" ng-show="activeDistro.spawn_allowed && isLinux() && activeDistro.home_volume_settings.format_command">
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.is_virtual_workstation">
               Allow users to use spawnhosts of this distro as virtual workstations.
             </p>

@@ -169,7 +169,7 @@ func (p *simpleRateLimited) Close(ctx context.Context) {
 	// pools are restartable, end up calling wait more than once,
 	// which doesn't affect behavior but does cause this to panic in
 	// tests
-	defer func() { recover() }()
+	defer func() { _ = recover() }()
 
 	wait := make(chan struct{})
 	go func() {
