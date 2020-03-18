@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	amboyRegistry "github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/suite"
@@ -323,7 +324,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := FindUnprocessedEvents(0)
+	events, err := FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
 	s.Len(events, 1)
 

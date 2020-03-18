@@ -3,6 +3,7 @@ package commitqueue
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip/level"
@@ -46,7 +47,7 @@ func TestCommitQueueDequeueLogger(t *testing.T) {
 	assert.NoError(err)
 	assert.False(q.Processing)
 	assert.Equal("2", q.Queue[0].Issue)
-	eventLog, err := event.FindUnprocessedEvents(0)
+	eventLog, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
 	assert.Len(eventLog, 1)
 
@@ -57,7 +58,7 @@ func TestCommitQueueDequeueLogger(t *testing.T) {
 	})
 	assert.Error(dequeueSender.doSend(msg))
 	// no additional events are logged
-	eventLog, err = event.FindUnprocessedEvents(0)
+	eventLog, err = event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
 	assert.Len(eventLog, 1)
 }

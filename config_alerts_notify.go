@@ -70,7 +70,7 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 
 	}
 
-	if c.EventProcessingLimit < 0 {
+	if c.EventProcessingLimit <= 0 {
 		c.EventProcessingLimit = DefaultEventProcessingLimit
 	}
 

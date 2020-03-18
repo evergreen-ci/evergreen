@@ -132,7 +132,7 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	out, err := event.FindUnprocessedEvents(0)
+	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
 	s.Len(out, 1)
 }

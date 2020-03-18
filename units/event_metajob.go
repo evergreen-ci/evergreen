@@ -311,12 +311,6 @@ func (j *eventMetaJob) logEventCount(eventCount, limit int) error {
 		var err error
 		eventCount, err = event.CountUnprocessedEvents()
 		if err != nil {
-			grip.Error(message.Fields{
-				"job_id":  j.ID(),
-				"job":     eventMetaJobName,
-				"message": "error getting unprocessed event count",
-				"source":  "events-processing",
-			})
 			return errors.Wrap(err, "error getting unprocessed event count")
 		}
 	}
