@@ -133,11 +133,11 @@ func LogHostAgentMonitorDeployFailed(hostId string, err error) {
 	LogHostEvent(hostId, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
 }
 
-func LogHostJasperRestarting(hostId string, user string) {
+func LogHostJasperRestarting(hostId, user string) {
 	LogHostEvent(hostId, EventHostJasperRestarting, HostEventData{User: user})
 }
 
-func LogHostJasperRestarted(hostId string, revision string) {
+func LogHostJasperRestarted(hostId, revision string) {
 	LogHostEvent(hostId, EventHostJasperRestarted, HostEventData{JasperRevision: revision})
 }
 
