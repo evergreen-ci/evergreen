@@ -297,16 +297,37 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 		return
 	}
 
+	j.AddError(errors.Wrap(j.logEventCount(len(j.events), limit), "can't log unprocessed event count"))
+
 	if len(j.events) == 0 {
-		grip.Info(message.Fields{
-			"job_id":  j.ID(),
-			"job":     eventMetaJobName,
-			"time":    time.Now().String(),
-			"message": "no events need to be processed",
-			"source":  "events-processing",
-		})
 		return
 	}
 
 	j.AddError(j.dispatchLoop(ctx))
+}
+
+func (j *eventMetaJob) logEventCount(eventCount, limit int) error {
+	if eventCount == limit {
+		var err error
+		eventCount, err = event.CountUnprocessedEvents()
+		if err != nil {
+			grip.Error(message.Fields{
+				"job_id":  j.ID(),
+				"job":     eventMetaJobName,
+				"message": "error getting unprocessed event count",
+				"source":  "events-processing",
+			})
+			return errors.Wrap(err, "error getting unprocessed event count")
+		}
+	}
+
+	grip.Info(message.Fields{
+		"job_id":  j.ID(),
+		"job":     eventMetaJobName,
+		"message": "unprocessed event count",
+		"count":   eventCount,
+		"source":  "events-processing",
+	})
+
+	return nil
 }
