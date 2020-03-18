@@ -33,7 +33,6 @@ type hostStatsCollector struct {
 func NewHostStatsCollector(id string) amboy.Job {
 	j := makeHostStatsCollector()
 	j.SetID(fmt.Sprintf("%s-%s", hostStatsCollectorJobName, id))
-	j.SetPriority(-1)
 
 	return j
 }
