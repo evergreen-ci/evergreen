@@ -858,6 +858,9 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		// attach to the host
 		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
+		if h.Distro.HomeVolumeSettings.DeviceName != "" {
+			attachment.DeviceName = h.Distro.HomeVolumeSettings.DeviceName
+		}
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
 			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
 		}
