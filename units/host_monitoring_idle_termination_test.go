@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -417,15 +416,17 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, host4.Insert(), "error inserting host '%s'", host4.Id)
 		require.NoError(t, host5.Insert(), "error inserting host '%s'", host5.Id)
 
-		// If we encounter missing distros, we exit early before we ever evaluate if any hosts are idle
+		// If we encounter missing distros, we decommission hosts that do not
+		// exist
 		idle, err := flagIdleHosts(ctx, env)
-		assert.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "distroZ"))
-		assert.True(t, strings.Contains(err.Error(), "distroA"))
-		assert.True(t, strings.Contains(err.Error(), "distroC"))
-		assert.False(t, strings.Contains(err.Error(), "distro1"))
-		assert.False(t, strings.Contains(err.Error(), "distro2"))
-		assert.Equal(t, 0, len(idle))
+		require.NoError(t, err)
+		require.Len(t, idle, 3)
+		for _, h := range []host.Host{host3, host4, host5} {
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status, h.Id)
+			assert.Contains(t, idle, h.Id)
+		}
 	})
 }
 
