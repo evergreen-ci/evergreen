@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -113,7 +114,7 @@ func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 	if queuePos == -1 {
 		return -1, nil
 	}
-	hosts, err := host.Find(host.ByDistroId(t.DistroId))
+	hosts, err := host.Find(db.Query(host.ByDistroIDs(t.DistroId)))
 	if err != nil {
 		return -1, errors.Wrap(err, "error retrieving hosts")
 	}

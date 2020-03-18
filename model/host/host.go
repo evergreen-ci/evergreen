@@ -1321,7 +1321,7 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 // that have a matching distro ID as decommissioned.
 func DecommissionHostsWithDistroId(distroId string) error {
 	err := UpdateAll(
-		ByDistroIdDoc(distroId),
+		ByDistroIDs(distroId),
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostDecommissioned,
