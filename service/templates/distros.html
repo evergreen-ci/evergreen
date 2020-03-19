@@ -939,6 +939,12 @@ Evergreen - Distros
           <input ng-disabled="readOnly" type="checkbox" name="shouldDeco" ng-model="shouldDeco">
           Decommission hosts of this distro for this update
         </p>
+        <div ng-show="isNonLegacyProvisioning()">
+          <p class="distro-checkbox checkbox" style="margin-left: 5px" >
+            <input ng-show="isNonLegacyProvisioning()" ng-disabled="readOnly || !isNonLegacyProvisioning() || shouldDeco" type="checkbox" name="shouldRestartJasper" ng-model="shouldRestartJasper">
+            Restart Jasper service on running hosts of this distro for this update
+          </p>
+        </div>
         <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()"
           ng-click="saveConfiguration()">Save Configuration</button>
         <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-show="remove" ng-click="openConfirmationModal('removeDistro')"

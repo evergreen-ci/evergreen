@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -338,7 +339,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	return []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
+		fmt.Sprintf("curl -LO '%s' %s", path.Join(config.URL, downloadedFile), curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),
@@ -594,16 +595,18 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
 	writeFileContentCmd := func(path, content string) string {
-		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+		return fmt.Sprintf("echo '%s' > %s", content, path)
 	}
 
 	cmds := []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
 	if splunk.Populated() {
 		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+		cmds = append(cmds, fmt.Sprintf("chmod 666 %s", h.splunkTokenFilePath()))
 	}
 
 	return strings.Join(cmds, " && "), nil
@@ -621,6 +624,7 @@ func bufferedWriteFileCommands(path, content string) []string {
 		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
 		firstWrite = false
 	}
+	cmds = append(cmds, fmt.Sprintf("chmod 666 %s", path))
 	return cmds
 }
 

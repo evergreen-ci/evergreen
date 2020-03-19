@@ -343,6 +343,9 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
+	if h.NeedsReprovision != host.ReprovisionJasperRestart {
+		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
+	}
 
 	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {

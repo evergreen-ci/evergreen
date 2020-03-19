@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
-	jcli "github.com/mongodb/jasper/cli"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/remote"
 	jutil "github.com/mongodb/jasper/util"
@@ -244,40 +242,13 @@ func TestJasperRestartJob(t *testing.T) {
 			restartJob, ok := j.(*jasperRestartJob)
 			require.True(t, ok)
 
-			// Job will error because mock service will not be restarted.
+			// Job will error because mock service cannot be restarted.
 			assert.True(t, restartJob.HasErrors())
 
 			// Job updates LCT.
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
 			assert.WithinDuration(t, time.Now(), dbHost.LastCommunicationTime, time.Minute)
-
-			// Jasper service received expected commands to update credentials
-			// and restart service.
-
-			require.Len(t, mngr.Procs, 2)
-
-			writeCredentialsProc := mngr.Procs[0]
-
-			var writeCredsCmdFound bool
-			for _, arg := range writeCredentialsProc.Info(ctx).Options.Args {
-				if strings.Contains(arg, "echo") && strings.Contains(arg, fmt.Sprintf("> '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)) {
-					writeCredsCmdFound = true
-					break
-				}
-			}
-			assert.True(t, writeCredsCmdFound)
-
-			killJasperCmd := fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(env.Settings().HostJasper.BinaryName), " "))
-			killJasperProc := mngr.Procs[1]
-			var killJasperCmdFound bool
-			for _, arg := range killJasperProc.Info(ctx).Options.Args {
-				if strings.Contains(arg, killJasperCmd) {
-					killJasperCmdFound = true
-					break
-				}
-			}
-			assert.True(t, killJasperCmdFound)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -295,7 +266,9 @@ func TestJasperRestartJob(t *testing.T) {
 						Method:                distro.BootstrapMethodUserData,
 						Communication:         distro.CommunicationMethodRPC,
 						JasperCredentialsPath: "/jasper_credentials_path",
+						JasperBinaryDir:       "/jasper_binary_dir",
 					},
+					Arch:   "linux_amd64",
 					SSHKey: "ssh_key",
 				},
 				Status:               evergreen.HostProvisioning,
@@ -305,6 +278,12 @@ func TestJasperRestartJob(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
+			env.EvergreenSettings.HostJasper = evergreen.HostJasperConfig{
+				BinaryName:       "binary_name",
+				DownloadFileName: "download_file_name",
+				URL:              "https://example.com",
+				Version:          "version",
+			}
 
 			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func(env evergreen.Environment) {
 				testCase(tctx, t, env, mngr, h)

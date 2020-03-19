@@ -45,10 +45,15 @@ Evergreen - Host {{.Host.Id}}
 
           <ul class="dropdown-menu" role="menu">
             <li><a tabindex="-1" href="#" ng-hide="readOnly" ng-click="openAdminModal('statusChange')">Update Status</a></li>
+            <li ng-class="{'admin-disabled': !canRestartJasper()}">
+              <a tabindex="-1" href="#" ng-hide="readOnly || (host.distro.bootstrap_settings.method === 'legacy-ssh')"
+                ng-click="canRestartJasper() && openAdminModal('restartJasper')">Restart Jasper</a>
+            </li>
           </ul>
         </div>
         <admin-modal>
           <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
+          <admin-restart-jasper ng-if="adminOption === 'restartJasper'"></admin-restart-jasper>
         </admin-modal>
       </div>
     {{end}}

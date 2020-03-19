@@ -192,10 +192,12 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 	// has not performed reprovisioning yet, preserve the transition.
 	if h.NeedsReprovision != host.ReprovisionNone {
 		if d.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy {
-			return host.ReprovisionToLegacy
+			return h.NeedsReprovision
 		}
-		if !d.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToNew {
-			return host.ReprovisionToNew
+		if !d.LegacyBootstrap() {
+			if h.NeedsReprovision == host.ReprovisionToNew || h.NeedsReprovision == host.ReprovisionJasperRestart {
+				return h.NeedsReprovision
+			}
 		}
 		return host.ReprovisionNone
 	}

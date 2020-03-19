@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip/message"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 )
 
@@ -197,14 +198,11 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer func() {
-			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
-				"message": "could not close connection to Jasper",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-		}()
+		defer func(client remote.Manager) {
+			// Ignore the error because restarting Jasper will close the
+			// connection.
+			_ = client.CloseConnection()
+		}(client)
 		// We use this ID to later verify the current running Jasper service.
 		// When Jasper is restarted, its ID should be different to indicate it
 		// is a new Jasper service.
@@ -212,7 +210,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 		writeCredentialsOpts := &options.Create{
 			Args: []string{
-				"bash", "-c", writeCredentialsCmd,
+				j.host.Distro.ShellBinary(), "-c", writeCredentialsCmd,
 			},
 		}
 		var output []string
@@ -228,13 +226,15 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 
+		fetchCmd := j.host.FetchJasperCommand(j.settings.HostJasper)
 		// We have to kill the Jasper service from within a process that it
 		// creates so that the system restarts the service with the new
 		// credentials file. This will not work on Windows.
+		killCmd := fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " "))
 		restartJasperOpts := &options.Create{
 			Args: []string{
-				"bash", "-c",
-				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jcli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
+				j.host.Distro.ShellBinary(), "-c",
+				fmt.Sprintf("%s && %s ", fetchCmd, killCmd),
 			},
 		}
 
@@ -261,14 +261,14 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		defer func() {
+		defer func(client remote.Manager) {
 			grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
 				"message": "could not close connection to Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-		}()
+		}(client)
 
 		newServiceID := client.ID()
 		if newServiceID == "" {
@@ -320,6 +320,18 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 
+		if output, err := j.host.RunSSHCommand(ctx, j.host.FetchJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not run SSH command to download Jasper",
+				"logs":    output,
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			j.AddError(err)
+			return
+		}
+
 		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
@@ -344,9 +356,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	// We can only save the Jasper credentials with the new expiration once we
-	// have reasonable confidence that the host has a Jasper service running
-	// with the new credentials and the agent monitor will be deployed.
+	// Since this updates the TTL on the credentials, can only save the Jasper
+	// credentials with the new expiration once we have reasonable confidence
+	// that the host has a Jasper service running with the new credentials and
+	// the agent monitor will be deployed.
 	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving new Jasper credentials",
@@ -365,6 +378,10 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		"version": j.settings.HostJasper.Version,
 	})
 	event.LogHostJasperRestarted(j.host.Id, j.settings.HostJasper.Version)
+
+	if j.host.StartedBy != evergreen.User {
+		return
+	}
 
 	// If this doesn't succeed, a new agent monitor will be deployed
 	// when LCT elapses.

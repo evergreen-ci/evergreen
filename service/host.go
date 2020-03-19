@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -163,23 +165,36 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentStatus := h.Status
-	modifyResult, err := modifyHostStatus(queue, h, opts, u)
+	switch opts.Action {
+	case "updateStatus":
+		currentStatus := h.Status
+		var modifyResult string
+		modifyResult, err = modifyHostStatus(queue, h, opts, u)
 
-	if err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
-		return
-	}
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
+			return
+		}
 
-	var msg flashMessage
-	switch modifyResult {
-	case fmt.Sprintf(HostTerminationQueueingSuccess, h.Id):
-		msg = NewSuccessFlash(fmt.Sprintf(HostTerminationQueueingSuccess, h.Id))
-	case fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status):
-		msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
+		var msg flashMessage
+		switch modifyResult {
+		case fmt.Sprintf(HostTerminationQueueingSuccess, h.Id):
+			msg = NewSuccessFlash(fmt.Sprintf(HostTerminationQueueingSuccess, h.Id))
+		case fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status):
+			msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
+		}
+		PushFlash(uis.CookieStore, r, w, msg)
+		gimlet.WriteJSON(w, HostStatusWriteConfirm)
+	case "restartJasper":
+		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(HostRestartJasperConfirm))
+		gimlet.WriteJSON(w, HostRestartJasperConfirm)
+	default:
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 	}
-	PushFlash(uis.CookieStore, r, w, msg)
-	gimlet.WriteJSON(w, HostStatusWriteConfirm)
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
@@ -213,31 +228,69 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		hostsUpdated := 0
+		var hostsUpdated int
 		var permissions map[string]gimlet.Permissions
-		rm := evergreen.GetEnvironment().RoleManager()
+		env := evergreen.GetEnvironment()
+		rm := env.RoleManager()
+		rq := env.RemoteQueue()
 		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
 		if err != nil {
 			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
 			return
 		}
-		for _, h := range hosts {
-			if permissions[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
-				continue
-			}
-			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
-				return
-			}
-			hostsUpdated++
+		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+			_, modifyErr := modifyHostStatus(rq, h, opts, user)
+			return modifyErr
+		})
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error updating status on selected hosts")))
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", hostsUpdated, opts.Status)))
-		return
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) will be updated to '%s'", hostsUpdated, opts.Status)))
+	case "restartJasper":
+		var hostsUpdated int
+		var permissions map[string]gimlet.Permissions
+		rm := evergreen.GetEnvironment().RoleManager()
+		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "unable to get user permissions")))
+			return
+		}
+		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+			modifyErr := h.SetNeedsJasperRestart(user.Username())
+			if adb.ResultsNotFound(modifyErr) {
+				return nil
+			}
+			if modifyErr != nil {
+				return modifyErr
+			}
+			return nil
+		})
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking selected hosts as needing Jasper service restarted")))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
+}
+
+// modifyHostsWithPermissions performs an update on each of the given hosts
+// for which the permissions allow updates on that host.
+func modifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permissions, modifyHost func(h *host.Host) error) (updated int, err error) {
+	catcher := grip.NewBasicCatcher()
+	for _, h := range hosts {
+		if perm[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
+			continue
+		}
+		if err := modifyHost(&h); err != nil {
+			catcher.Wrapf(err, "could not modify host '%s'", h.Id)
+			continue
+		}
+		updated++
+	}
+	return updated, catcher.Resolve()
 }
 
 func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {

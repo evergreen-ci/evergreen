@@ -792,8 +792,8 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
-func (h *Host) SetNeedsJasperRestart() error {
-	if err := h.setAwaitingJasperRestart(); err != nil {
+func (h *Host) SetNeedsJasperRestart(user string) error {
+	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
@@ -802,18 +802,28 @@ func (h *Host) SetNeedsJasperRestart() error {
 	return h.MarkAsReprovisioning()
 }
 
-// setAwaitingJasperRestart marks a host running an agent as needing Jasper to
-// be restarted but is not yet ready to reprovision now (i.e. the agent monitor
-// is still running).
-func (h *Host) setAwaitingJasperRestart() error {
+// setAwaitingJasperRestart marks a host as needing Jasper to be restarted by
+// the given user but is not yet ready to reprovision now (i.e. the agent
+// monitor is still running).
+func (h *Host) setAwaitingJasperRestart(user string) error {
+	if h.NeedsReprovision == ReprovisionJasperRestart {
+		return nil
+	}
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:     h.Id,
 		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
 		},
 		ReprovisioningLockedKey: bson.M{"$ne": true},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
 			NeedsReprovisionKey: ReprovisionJasperRestart,
@@ -823,6 +833,8 @@ func (h *Host) setAwaitingJasperRestart() error {
 	}
 
 	h.NeedsReprovision = ReprovisionJasperRestart
+
+	event.LogHostJasperRestarting(h.Id, user)
 
 	return nil
 }
@@ -852,10 +864,6 @@ func (h *Host) MarkAsReprovisioning() error {
 			}})
 	if err != nil {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
-	}
-
-	if h.NeedsReprovision == ReprovisionToLegacy || h.NeedsReprovision == ReprovisionToNew {
-		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
 	}
 
 	h.AgentStartTime = util.ZeroTime
@@ -966,7 +974,9 @@ func (h *Host) ClearRunningTask() error {
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	if h.RunningTask != "" {
+		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	}
 	h.RunningTask = ""
 	h.RunningTaskGroup = ""
 	h.RunningTaskBuildVariant = ""
