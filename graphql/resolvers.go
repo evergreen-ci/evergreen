@@ -638,10 +638,12 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(reconfigure)
 	version, err := r.sc.FindVersionById(patchID)
-	// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
-	// does not contain nil version err values before sending InternalServerError
-	if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+	if err != nil {
+		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
+		// does not contain nil version err values before sending InternalServerError
+		if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+		}
 	}
 	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
