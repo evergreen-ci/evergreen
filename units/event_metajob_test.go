@@ -127,11 +127,12 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	s.NoError(logger.LogEvent(&e))
 
-	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.RemoteQueue(), "1")
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	out, err := event.FindUnprocessedEvents()
+	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
 	s.Len(out, 1)
 }
@@ -152,7 +153,8 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
 
-	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1").(*eventMetaJob)
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.RemoteQueue(), "1").(*eventMetaJob)
 	job.flags = &flags
 	s.NoError(job.dispatch(ctx, s.n))
 	s.NoError(job.Error())
@@ -271,7 +273,8 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	go httpServer(ln, handler)
 
-	job := NewEventMetaJob(evergreen.GetEnvironment().LocalQueue(), "1").(*eventMetaJob)
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
 	job.q = evergreen.GetEnvironment().LocalQueue()
 	job.Run(s.ctx)
 	s.NoError(job.Error())
@@ -292,7 +295,8 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 func (s *eventMetaJobSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
-	job := NewEventMetaJob(evergreen.GetEnvironment().LocalQueue(), "1").(*eventMetaJob)
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
 	flags, err := evergreen.GetServiceFlags()
 	s.NoError(err)
 	job.flags = flags

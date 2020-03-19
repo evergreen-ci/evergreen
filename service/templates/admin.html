@@ -1228,7 +1228,7 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="notifications" style="height:180px">
+							<md-card flex=50 id="notifications">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Notifications Config</span>
@@ -1246,6 +1246,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Notifications Rate Limit Time Interval (seconds)</label>
 										<input type="number" ng-model="Settings.notify.buffer_interval_seconds">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Event Processing Limit (events per job)</label>
+										<input type="number" ng-model="Settings.notify.event_processing_limit">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
