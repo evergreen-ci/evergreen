@@ -391,7 +391,7 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	}
 
 	if len(depIdsToQueryFor) > 0 {
-		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey))
+		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey, ActivatedKey))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -442,16 +442,12 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 			})
 			continue
 		}
-
 		if depTask.Blocked() {
 			return false, nil
 		}
 
 		if !t.satisfiesDependency(&depTask) {
 			if depTask.IsFinished() {
-				return false, nil
-			}
-			if !depTask.IsDispatchable() {
 				return false, nil
 			}
 			if !depTask.Activated {
