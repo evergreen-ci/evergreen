@@ -502,12 +502,21 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	distro, err := distro.FindByID(distroID)
+	dat, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "could not get distro lookup table")
+	}
+	distroIDs := dat.Expand([]string{distroID})
+	if len(distroIDs) == 0 {
+		return nil, http.StatusNotFound, errors.Errorf("could not resolve distro '%s'", distroID)
+	}
+	distroID = distroIDs[0]
+	d, err := distro.FindByID(distroID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.WithStack(err)
 	}
-	if distro == nil {
-		return nil, http.StatusNotFound, errors.Errorf("error finding the distro %s", distroID)
+	if d == nil {
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", distroID)
 	}
 
 	return []string{distroID}, http.StatusOK, nil
