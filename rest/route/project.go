@@ -400,13 +400,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.projectID))
 	}
 
-	deleteAdmins := []string{}
-	for _, toDelete := range requestProjectRef.DeleteAdmins {
-		if toDelete != nil {
-			deleteAdmins = append(deleteAdmins, *toDelete)
-		}
-	}
-	if err = h.sc.UpdateAdminRoles(newProjectRef, newProjectRef.Admins, deleteAdmins); err != nil {
+	if err = h.sc.UpdateAdminRoles(newProjectRef, newProjectRef.Admins, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.projectID))
 	}
 	for i := range requestProjectRef.Subscriptions {
