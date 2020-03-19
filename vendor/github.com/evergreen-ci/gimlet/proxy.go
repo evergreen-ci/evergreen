@@ -25,6 +25,7 @@ type ProxyOptions struct {
 	TargetPool        []string
 	FindTarget        func(*http.Request) ([]string, error)
 	RemoteScheme      string
+	ErrorHandler      func(http.ResponseWriter, *http.Request, error)
 }
 
 // Validate checks the default configuration of a proxy configuration.
@@ -137,8 +138,9 @@ func (r *APIRoute) Proxy(opts ProxyOptions) *APIRoute {
 	}
 
 	r.handler = (&httputil.ReverseProxy{
-		ErrorLog: grip.MakeStandardLogger(level.Warning),
-		Director: opts.director,
+		ErrorLog:     grip.MakeStandardLogger(level.Warning),
+		Director:     opts.director,
+		ErrorHandler: opts.ErrorHandler,
 	}).ServeHTTP
 
 	return r
