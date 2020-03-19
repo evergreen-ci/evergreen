@@ -70,6 +70,3 @@ evergreen
 !cmd/evergreen
 
 package-lock.json
-
-# Test config file with secrets
-testdata/test_config.yml
