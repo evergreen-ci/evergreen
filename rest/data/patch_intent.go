@@ -28,16 +28,16 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 		}
 	}
 	if projectRef == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusUnprocessableEntity,
-			Message:    "cannot map pull request to project",
-		}
 		grip.Debug(message.Fields{
 			"message":     "cannot map pull request to project",
 			"base_owner":  patchDoc.GithubPatchData.BaseOwner,
 			"base_repo":   patchDoc.GithubPatchData.BaseRepo,
 			"base_branch": patchDoc.GithubPatchData.BaseBranch,
 		})
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnprocessableEntity,
+			Message:    "cannot map pull request to project",
+		}
 	}
 
 	if err := intent.Insert(); err != nil {
