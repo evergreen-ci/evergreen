@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,16 +41,7 @@ type atomicGraphQLState struct {
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	ctx := context.Background()
-
-	env := testutil.NewEnvironment(ctx, t)
-	settings := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
-	evergreen.SetEnvironment(env)
-
+	testutil.ConfigureIntegrationTest(t, evergreen.GetEnvironment().Settings(), "TestAtomicGQLQueries")
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {
