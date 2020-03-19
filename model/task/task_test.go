@@ -219,6 +219,93 @@ func TestDependenciesMet(t *testing.T) {
 	})
 }
 
+func TestDependencySatisfiable(t *testing.T) {
+	taskId := "t1"
+	taskDoc := &Task{
+		Id: taskId,
+	}
+	depTasks := []*Task{
+		{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched, Activated: true},
+		{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
+		{Id: depTaskIds[2].TaskId, Status: evergreen.TaskFailed, Activated: true},
+		{Id: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Activated: true},
+		{Id: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded, Activated: true},
+		{Id: "td6", Status: evergreen.TaskDispatched, Activated: true, DependsOn: []Dependency{{TaskId: "DNE", Unattainable: true}}},
+	}
+	require.NoError(t, db.Clear(Collection))
+	for _, depTask := range depTasks {
+		require.NoError(t, depTask.Insert())
+	}
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	t.Run("NoDeps", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.True(t, satisfiable)
+	})
+	t.Run("Satisfied", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.True(t, satisfiable)
+	})
+	t.Run("UnsatisfiedAndFinished", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[2].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.False(t, satisfiable)
+	})
+	t.Run("UnsatisfiedAndNotActivated", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[1].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.False(t, satisfiable)
+	})
+	t.Run("UnsatisfiedAndActivated", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[0].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.True(t, satisfiable)
+	})
+	t.Run("BlockedEarly", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Unattainable: true},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.False(t, satisfiable)
+	})
+	t.Run("BlockedLater", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: "td6", Status: evergreen.TaskSucceeded},
+		}
+		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		require.NoError(t, err)
+		assert.False(t, satisfiable)
+	})
+}
+
 func TestSetTasksScheduledTime(t *testing.T) {
 	Convey("With some tasks", t, func() {
 
