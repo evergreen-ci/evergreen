@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
 	homedir "github.com/mitchellh/go-homedir"
@@ -43,8 +44,8 @@ func findConfigFilePath(fn string) (string, error) {
 	files := []string{
 		fn,
 		absfn,
-		filepath.Join(userHome, ".evergreen.yml"),
-		filepath.Join(filepath.Dir(currentBinPath), ".evergreen.yml"),
+		filepath.Join(userHome, evergreen.DefaultEvergreenConfig),
+		filepath.Join(filepath.Dir(currentBinPath), evergreen.DefaultEvergreenConfig),
 	}
 
 	for _, path := range files {
