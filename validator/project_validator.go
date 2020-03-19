@@ -120,15 +120,15 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 	return s.String()
 }
 
-// getDistroIds creates a slice of all distro IDs and aliases.
-func getDistroIds() (ids []string, aliases []string, err error) {
-	return getDistroIdsForProject("")
+// getDistros creates a slice of all distro IDs and aliases.
+func getDistros() (ids []string, aliases []string, err error) {
+	return getDistrosForProject("")
 }
 
-// getDistroIdsForProject creates a slice of all valid distro IDs and aliases
-// for a project. If projectID is empty, it returns all distro IDs and all
-// aliases.
-func getDistroIdsForProject(projectID string) (ids []string, aliases []string, err error) {
+// getDistrosForProject creates a slice of all valid distro IDs and a slice of
+// all valid aliases for a project. If projectID is empty, it returns all distro
+// IDs and all aliases.
+func getDistrosForProject(projectID string) (ids []string, aliases []string, err error) {
 	// create a slice of all known distros
 	distros, err := distro.Find(distro.All)
 	if err != nil {
@@ -174,12 +174,12 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 			projectSyntaxValidator(project)...)
 	}
 
-	// get distroIds for ensureReferentialIntegrity validation
-	distroIds, distroAliases, err := getDistroIdsForProject(project.Identifier)
+	// get distro IDs and aliases for ensureReferentialIntegrity validation
+	distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds, distroAliases)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
 	return validationErrs
 }
 
@@ -483,7 +483,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 // 1. a referenced task within a buildvariant task object exists in
 // the set of project tasks
 // 2. any referenced distro exists within the current setting's distro directory
-func ensureReferentialIntegrity(project *model.Project, distroIds []string, distroAliases []string) ValidationErrors {
+func ensureReferentialIntegrity(project *model.Project, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -518,8 +518,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string, dist
 				}
 			}
 			buildVariantTasks[task.Name] = true
-			for _, distroId := range task.Distros {
-				if !util.StringSliceContains(distroIds, distroId) && !util.StringSliceContains(distroAliases, distroId) {
+			for _, distro := range task.Distros {
+				if !util.StringSliceContains(distroIDs, distro) && !util.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant "+
@@ -528,8 +528,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string, dist
 								"Valid distros include:\n\t- %s\n"+
 								"Valid distro aliases include:\n\t- %s",
 								task.Name, buildVariant.Name, project.Identifier,
-								distroId,
-								strings.Join(distroIds, "\n\t- "),
+								distro,
+								strings.Join(distroIDs, "\n\t- "),
 								strings.Join(distroAliases, "\n\t- ")),
 							Level: Warning,
 						},
@@ -537,8 +537,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string, dist
 				}
 			}
 		}
-		for _, distroId := range buildVariant.RunOn {
-			if !util.StringSliceContains(distroIds, distroId) && !util.StringSliceContains(distroAliases, distroId) {
+		for _, distro := range buildVariant.RunOn {
+			if !util.StringSliceContains(distroIDs, distro) && !util.StringSliceContains(distroAliases, distro) {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' in project "+
@@ -546,8 +546,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string, dist
 							"Valid distros include:\n\t- %s\n"+
 							"Valid distro aliases include:\n\t- %s",
 							buildVariant.Name,
-							project.Identifier, distroId,
-							strings.Join(distroIds, "\n\t- "),
+							project.Identifier, distro,
+							strings.Join(distroIDs, "\n\t- "),
 							strings.Join(distroAliases, "\n\t- ")),
 						Level: Warning,
 					},

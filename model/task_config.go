@@ -123,7 +123,17 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
-	d, err := distro.FindOne(distro.ById(t.DistroId))
+	dat, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get distro lookup table")
+	}
+	distroIDs := dat.Expand([]string{t.DistroId})
+	if len(distroIDs) == 0 {
+		return nil, errors.Errorf("could not resolve distro '%s'", t.DistroId)
+	}
+	// If this distro name is aliased, it could resolve into multiple concrete
+	// distros, so just pick one of them.
+	d, err := distro.FindOne(distro.ById(distroIDs[0]))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding distro")
 	}

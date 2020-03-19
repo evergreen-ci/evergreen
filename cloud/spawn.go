@@ -58,7 +58,7 @@ func (so *SpawnOptions) validate() error {
 	}
 
 	if !d.SpawnAllowed {
-		return errors.Errorf("Invalid spawn options: spawning not allowed for distro  %v", so.DistroId)
+		return errors.Errorf("Invalid spawn options: spawning not allowed for distro %s", so.DistroId)
 	}
 
 	// if the user already has too many active spawned hosts, deny the request

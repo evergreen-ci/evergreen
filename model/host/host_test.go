@@ -2972,7 +2972,7 @@ func TestGetHostIds(t *testing.T) {
 	assert.Equal([]string{"h1", "h2", "h3"}, ids)
 }
 
-func TestFindAllRunningParentsByDistro(t *testing.T) {
+func TestFindAllRunningParentsByDistroID(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -3033,7 +3033,7 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	parents, err := FindAllRunningParentsByDistro(d1)
+	parents, err := FindAllRunningParentsByDistroID(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
 }

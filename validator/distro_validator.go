@@ -45,16 +45,22 @@ var distroSyntaxValidators = []distroValidator{
 // a slice of any validation errors found.
 func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) (ValidationErrors, error) {
 	validationErrs := ValidationErrors{}
-	distroIds := []string{}
+	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		distroIds, _, err = getDistroIds()
+		allDistroIDs, allDistroAliases, err = getDistros()
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// Parent and container distros do not support aliases.
+	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
+		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
+	}
+
 	if newDistro {
-		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
 	if len(d.Aliases) > 0 {
 		validationErrs = append(validationErrs, ensureValidAliases(d)...)
@@ -208,8 +214,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 }
 
 func ensureValidAliases(d *distro.Distro) ValidationErrors {
-	errs := ValidationErrors{}
-
+	var errs ValidationErrors
 	for _, a := range d.Aliases {
 		if d.Id == a {
 			errs = append(errs, ValidationError{
@@ -218,8 +223,22 @@ func ensureValidAliases(d *distro.Distro) ValidationErrors {
 			})
 		}
 	}
-	if len(errs) == 0 {
-		return nil
+	return errs
+}
+
+func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
+	var errs ValidationErrors
+	if len(d.Aliases) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("'%s' cannot have aliases", d.Id),
+		})
+	}
+	if util.StringSliceContains(distroAliases, d.Id) {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot have alias that resolves to '%s'", d.Id),
+		})
 	}
 	return errs
 }

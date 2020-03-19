@@ -148,7 +148,7 @@ func TestCheckDistro(t *testing.T) {
 }
 
 func TestEnsureUniqueId(t *testing.T) {
-	Convey("When validating a distros' ids...", t, func() {
+	Convey("When validating a distro's ids...", t, func() {
 		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
 			err := ensureUniqueId(&distro.Distro{Id: "c"}, distroIds)
@@ -163,7 +163,7 @@ func TestEnsureUniqueId(t *testing.T) {
 }
 
 func TestEnsureValidAliases(t *testing.T) {
-	Convey("When validating a distros' aliases...", t, func() {
+	Convey("When validating a distro's aliases...", t, func() {
 		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
 		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
 			vErrors := ensureValidAliases(&d)
@@ -173,6 +173,38 @@ func TestEnsureValidAliases(t *testing.T) {
 		})
 
 	})
+}
+
+func TestEnsureNoAliases(t *testing.T) {
+	for testName, testParams := range map[string]struct {
+		distro     distro.Distro
+		aliases    []string
+		shouldPass bool
+	}{
+		"PassesWithNoAliasesAndNoConflictingAliases": {
+			distro:     distro.Distro{Id: "id"},
+			aliases:    []string{"some_other_alias", "another_alias"},
+			shouldPass: true,
+		},
+		"FailsWithAliases": {
+			distro:     distro.Distro{Id: "id", Aliases: []string{"alias"}},
+			shouldPass: false,
+		},
+		"FailsWithConflictingAliases": {
+			distro:     distro.Distro{Id: "conflicting_distro_id"},
+			aliases:    []string{"other_aliase", "conflicting_distro_id"},
+			shouldPass: false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			errs := ensureNoAliases(&testParams.distro, testParams.aliases)
+			if testParams.shouldPass {
+				assert.Empty(t, errs)
+			} else {
+				assert.NotEmpty(t, errs)
+			}
+		})
+	}
 }
 
 func TestEnsureHasRequiredFields(t *testing.T) {
@@ -464,10 +496,10 @@ func TestEnsureValidContainerPool(t *testing.T) {
 
 	err := ensureValidContainerPool(ctx, d1, conf)
 	assert.Equal(err, ValidationErrors{{Error,
-		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
+		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}})
 	err = ensureValidContainerPool(ctx, d2, conf)
 	assert.Equal(err, ValidationErrors{{Error,
-		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
+		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}})
 	err = ensureValidContainerPool(ctx, d3, conf)
 	assert.Equal(err, ValidationErrors{{Error,
 		"distro container pool does not exist"}})

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -216,12 +215,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	if err != nil {
 		return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
 	}
-
-	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
-	if err != nil {
-		return errors.Wrapf(err, "error finding distro %s", j.host.Distro.Id)
-	}
-	j.host.Distro = d
 
 	if err = j.prepRemoteHost(ctx, sshOptions, settings); err != nil {
 		return errors.Wrap(err, "could not prep remote host")

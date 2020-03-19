@@ -34,7 +34,6 @@ var (
 )
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
-
 	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error

@@ -141,7 +141,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 
 func TestGetDistroIds(t *testing.T) {
 	assert := assert.New(t)
-	hosts := DistroGroup{
+	distros := DistroGroup{
 		Distro{
 			Id: "d1",
 		},
@@ -152,7 +152,7 @@ func TestGetDistroIds(t *testing.T) {
 			Id: "d3",
 		},
 	}
-	ids := hosts.GetDistroIds()
+	ids := distros.GetDistroIds()
 	assert.Equal([]string{"d1", "d2", "d3"}, ids)
 }
 
