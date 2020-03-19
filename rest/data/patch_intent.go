@@ -32,6 +32,12 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 			StatusCode: http.StatusUnprocessableEntity,
 			Message:    "cannot map pull request to project",
 		}
+		grip.Debug(message.Fields{
+			"message":     "cannot map pull request to project",
+			"base_owner":  patchDoc.GithubPatchData.BaseOwner,
+			"base_repo":   patchDoc.GithubPatchData.BaseRepo,
+			"base_branch": patchDoc.GithubPatchData.BaseBranch,
+		})
 	}
 
 	if err := intent.Insert(); err != nil {
