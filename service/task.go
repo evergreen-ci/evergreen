@@ -512,29 +512,24 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defaultLogger, err := getDefaultLogger(projCtx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// check buildlogger logs first
+	var logReader io.ReadCloser
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution)
+	if err == nil {
+		defer func() {
+			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+				"task_id": projCtx.Task.Id,
+				"message": "failed to close buildlogger log ReadCloser",
+			}))
+		}()
+		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
 		return
 	}
-	if defaultLogger == model.BuildloggerLogSender {
-		var logReader io.ReadCloser
-		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution)
-		if err == nil {
-			defer func() {
-				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-					"task_id": projCtx.Task.Id,
-					"message": "failed to close buildlogger log ReadCloser",
-				}))
-			}()
-			gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
-			return
-		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"task_id": projCtx.Task.Id,
-			"message": "problem getting buildlogger logs",
-		}))
-	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"task_id": projCtx.Task.Id,
+		"message": "problem getting buildlogger logs",
+	}))
+
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
 	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
@@ -583,26 +578,20 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	var logReader io.ReadCloser
 
-	defaultLogger, err := getDefaultLogger(projCtx)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if defaultLogger == model.BuildloggerLogSender {
-		logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution)
-		if err == nil {
-			defer func() {
-				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-					"task_id": projCtx.Task.Id,
-					"message": "failed to close buildlogger log ReadCloser",
-				}))
-			}()
-		} else {
-			grip.Error(message.WrapError(err, message.Fields{
+	// check buildlogger logs first
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution)
+	if err == nil {
+		defer func() {
+			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
 				"task_id": projCtx.Task.Id,
-				"message": "problem getting buildlogger logs",
+				"message": "failed to close buildlogger log ReadCloser",
 			}))
-		}
+		}()
+	} else {
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id": projCtx.Task.Id,
+			"message": "problem getting buildlogger logs",
+		}))
 	}
 
 	if logReader == nil {
