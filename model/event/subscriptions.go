@@ -511,8 +511,22 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 }
 
 func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeTask, TriggerTaskFirstFailureInVersion)
-
+	return Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: ResourceTypeTask,
+		Trigger:      TriggerTaskFirstFailureInVersion,
+		Selectors: []Selector{
+			{
+				Type: SelectorOwner,
+				Data: owner,
+			},
+			{
+				Type: SelectorRequester,
+				Data: evergreen.PatchVersionRequester,
+			},
+		},
+		Subscriber: sub,
+	}
 }
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
