@@ -1027,7 +1027,7 @@ func (h *Host) spawnHostConfigDir() string {
 
 // spawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
 func (h *Host) spawnHostConfigFile() string {
-	return filepath.Join(h.spawnHostConfigDir(), ".evergreen.yml")
+	return filepath.Join(h.Distro.HomeDir(), evergreen.DefaultEvergreenConfig)
 }
 
 // spawnHostConfigJSON returns evergreen yaml configuration for a spawn host in

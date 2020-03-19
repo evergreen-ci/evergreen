@@ -125,6 +125,8 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
+	DefaultEvergreenConfig = ".evergreen.yml"
+
 	EvergreenHome = "EVGHOME"
 	MongodbUrl    = "MONGO_URL"
 
