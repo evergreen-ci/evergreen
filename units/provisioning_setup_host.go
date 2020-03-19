@@ -858,9 +858,6 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		// attach to the host
 		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
-		if h.Distro.HomeVolumeSettings.DeviceName != "" {
-			attachment.DeviceName = h.Distro.HomeVolumeSettings.DeviceName
-		}
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
 			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
 		}
@@ -915,7 +912,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("file -s /dev/%s", deviceName)).SetOutputWriter(cmdOut).Run(ctx); err != nil {
 		return errors.Wrap(err, "problem checking for formatted device")
 	}
-	if strings.TrimSpace(cmdOut.String()) == fmt.Sprintf("%s: data", deviceName) {
+	if strings.Contains(cmdOut.String(), fmt.Sprintf("/dev/%s: data", deviceName)) {
 		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
 	}
 
