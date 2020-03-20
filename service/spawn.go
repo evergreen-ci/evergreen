@@ -176,6 +176,11 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if putParams.IsVirtualWorkstation && putParams.Task != "" {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot request a spawn host as a virtual workstation and load task data"))
+		return
+	}
+
 	// save the supplied public key if needed
 	if putParams.SaveKey {
 		if err = authedUser.AddPublicKey(putParams.KeyName, putParams.PublicKey); err != nil {
