@@ -238,7 +238,8 @@ func (unit *Unit) RankValue() int64 {
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
 		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
-	} else {
+	}
+	if !inPatch {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
 		avgLifeTime := timeInQueue / time.Duration(length)
