@@ -358,6 +358,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
+		ErrorHandler:      uis.handleBackendError("IDE service is not available", http.StatusInternalServerError),
 	}).AllMethods()
 	// Prefix routes not ending in a '/' are not automatically redirected by gimlet's underlying library.
 	// Add another route to match when there's no trailing slash and redirect

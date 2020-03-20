@@ -323,3 +323,9 @@ func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
 
 	return &h, nil
 }
+
+func (uis *UIServer) handleBackendError(message string, statusCode int) func(http.ResponseWriter, *http.Request, error) {
+	return func(w http.ResponseWriter, r *http.Request, err error) {
+		gimlet.WriteTextResponse(w, statusCode, message)
+	}
+}
