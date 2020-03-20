@@ -9,7 +9,7 @@ type Query {
     sortDir: SortDirection = ASC
     page: Int = 0
     limit: Int = 0
-    statuses: [String!]! = []
+    statuses: [String!] = []
   ): [TaskResult!]!
   taskTests(
     taskId: String!

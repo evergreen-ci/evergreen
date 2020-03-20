@@ -1435,7 +1435,7 @@ var sources = []*ast.Source{
     sortDir: SortDirection = ASC
     page: Int = 0
     limit: Int = 0
-    statuses: [String!]! = []
+    statuses: [String!] = []
   ): [TaskResult!]!
   taskTests(
     taskId: String!
@@ -1879,7 +1879,7 @@ func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, raw
 	args["limit"] = arg4
 	var arg5 []string
 	if tmp, ok := rawArgs["statuses"]; ok {
-		arg5, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		arg5, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
