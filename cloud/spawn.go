@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
@@ -126,6 +127,14 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}
 
+	if so.Region == "" && IsEc2Provider(d.Provider) {
+		u := gimlet.GetUser(ctx)
+		dbUser, ok := u.(*user.DBUser)
+		if !ok {
+			return nil, errors.Errorf("error getting DBUser from User")
+		}
+		so.Region = dbUser.GetRegion()
+	}
 	if so.Userdata != "" {
 		if !IsEc2Provider(d.Provider) {
 			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)

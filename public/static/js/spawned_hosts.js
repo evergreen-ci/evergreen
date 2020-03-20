@@ -273,6 +273,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
       $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
+      $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }

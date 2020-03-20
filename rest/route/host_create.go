@@ -7,12 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -59,15 +56,6 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
-	}
-
-	if h.createHost.Region == "" && cloud.IsEc2Provider(h.createHost.CloudProvider) {
-		u := gimlet.GetUser(ctx)
-		dbUser, ok := u.(*user.DBUser)
-		if !ok {
-			return gimlet.NewJSONInternalErrorResponse("error getting DBUser from User")
-		}
-		h.createHost.Region = dbUser.GetRegion()
 	}
 
 	ids := []string{}
