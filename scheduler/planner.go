@@ -216,10 +216,6 @@ func (unit *Unit) RankValue() int64 {
 	length := int64(len(unit.tasks))
 	priority := 1 + (totalPriority / length)
 
-	if inCommitQueue {
-		priority += 200
-	}
-
 	if !anyNonGroupTasks {
 		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
