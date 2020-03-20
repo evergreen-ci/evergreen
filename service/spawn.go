@@ -63,6 +63,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	if settings.SpawnHostsPerUser >= 0 {
 		maxHosts = settings.SpawnHostsPerUser
 	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro                     distro.Distro
 		Task                       *task.Task
@@ -172,6 +173,11 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if putParams.IsVirtualWorkstation && putParams.Task != "" {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot request a spawn host as a virtual workstation and load task data"))
 		return
 	}
 

@@ -5,6 +5,7 @@
 {{end}}
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
+  window.defaultRegion = {{ GetRegion $.User }};
   window.maxHostsPerUser = {{$.MaxHostsPerUser}}
   window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}}
   {{if .Task}}

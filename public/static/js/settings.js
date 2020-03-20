@@ -10,6 +10,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
 
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
+  $scope.new_region = $window.user_region || "us-east-1";
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
   $scope.should_show_feedback = false;
@@ -77,14 +78,15 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     return formattedFeedback;
   }
 
-  $scope.updateUserSettings = function (new_tz, use_spruce_options, spruce_feedback) {
+  $scope.updateUserSettings = function (use_spruce_options, spruce_feedback) {
     if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page &&
       (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
       notifier.pushNotification("Please fill out all required fields before submitting", 'errorHeader');
       return;
     }
     data = {
-      timezone: new_tz,
+      timezone: $scope.new_tz,
+      region: $scope.new_region,
       use_spruce_options: use_spruce_options,
       github_user: {
         last_known_as: $scope.github_user,

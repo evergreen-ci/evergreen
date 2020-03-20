@@ -3,6 +3,7 @@
 <script type="text/javascript" src="/static/js/services/time.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
   var user_tz = {{.Data.Timezone}};
+  var user_region = {{.Data.Region}};
   var use_spruce_options = {{.Data.UseSpruceOptions}}
   var notifications = {{.Data.Notifications}}
   var slack_username = {{.Data.SlackUsername}}
@@ -83,6 +84,10 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               <div class="col-sm-8">
                 <select class="form-control" ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select>
               </div>
+              <label for="region" class="col-sm-4 control-label" style="margin-top: 8px;">AWS Default Region</label>
+              <div class="col-sm-8" style="margin-top: 8px;">
+                <select class="form-control" ng-model="new_region" ng-options="region for region in userConf.regions"></select>
+              </div>
             </div>
             <div class="form-group">
               <label class="col-sm-4 control-label">Github Username</label>
@@ -140,7 +145,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                 </div>
               </div>
             </div>
-            <div class="right text-right"><button type="submit" ng-click="updateUserSettings(new_tz, use_spruce_options, spruce_feedback)" class="btn btn-primary">Save</button></div>
+            <div class="right text-right"><button type="submit" ng-click="updateUserSettings(use_spruce_options, spruce_feedback)" class="btn btn-primary">Save</button></div>
           </form>
         </div>
       </md-card>

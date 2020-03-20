@@ -118,7 +118,7 @@ func ByLastFailureTransition(subscriptionID, taskName, variant, projectId string
 	return db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}).Limit(1)
 }
 
-func ByFirstFailureInVersion(subscriptionID, projectId, versionId string) db.Q {
+func ByFirstFailureInVersion(subscriptionID, versionId string) db.Q {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = FirstVersionFailureId
 	q[VersionIdKey] = versionId

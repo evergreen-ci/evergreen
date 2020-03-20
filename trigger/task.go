@@ -30,7 +30,6 @@ func init() {
 
 const (
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
-	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
@@ -48,8 +47,8 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerExceedsDuration:             t.taskExceedsDuration,
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
+		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
-		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
@@ -340,7 +339,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 	return n, nil
 }
 
-func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride, testNames string) (*notification.Notification, error) {
+func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, triggerType, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	n, err := t.generate(sub, pastTenseOverride, testNames)
 	if err != nil {
 		return nil, err
@@ -349,14 +348,42 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 		return nil, nil
 	}
 
-	rec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(rec.Insert(), message.Fields{
+	// verify another alert record hasn't been inserted in this time
+	rec, err := GetRecordByTriggerType(sub.ID, triggerType, t.task)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if rec != nil {
+		return nil, nil
+	}
+
+	newRec := newAlertRecord(sub.ID, t.task, alertType)
+	grip.Error(message.WrapError(newRec.Insert(), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
 	}))
 
 	return n, nil
+}
+
+func GetRecordByTriggerType(subID, triggerType string, t *task.Task) (*alertrecord.AlertRecord, error) {
+	var rec *alertrecord.AlertRecord
+	var err error
+	switch triggerType {
+	case triggerTaskFirstFailureInBuild:
+		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(subID, t.Version, t.BuildVariant))
+	case event.TriggerTaskFirstFailureInVersion:
+		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(subID, t.Version))
+	case triggerTaskFirstFailureInVersionWithName:
+		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(subID, t.Version, t.DisplayName))
+	case triggerBuildBreak:
+		rec, err = alertrecord.FindByFirstRegressionInVersion(subID, t.Version)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", triggerType))
+	}
+	return rec, nil
 }
 
 func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
@@ -406,15 +433,15 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(sub.ID, t.task.Version, t.task.BuildVariant))
+	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInBuild, t.task)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", triggerTaskFirstFailureInBuild))
+		return nil, errors.WithStack(err)
 	}
 	if rec != nil {
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId, "", "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId, triggerTaskFirstFailureInBuild, "", "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
@@ -425,15 +452,15 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(sub.ID, t.task.Project, t.task.Version))
+	rec, err := GetRecordByTriggerType(sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", triggerTaskFirstFailureInVersion))
+		return nil, errors.WithStack(err)
 	}
 	if rec != nil {
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId, "", "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId, event.TriggerTaskFirstFailureInVersion, "", "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
@@ -444,15 +471,15 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(sub.ID, t.task.Version, t.task.DisplayName))
+	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", triggerTaskFirstFailureInVersionWithName))
+		return nil, errors.WithStack(err)
 	}
 	if rec != nil {
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId, "", "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId, triggerTaskFirstFailureInVersionWithName, "", "")
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
@@ -965,15 +992,15 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 
-	lastAlert, err := alertrecord.FindByFirstRegressionInVersion(sub.ID, t.task.Version)
+	lastAlert, err := GetRecordByTriggerType(sub.ID, triggerBuildBreak, t.task)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding last alert")
+		return nil, errors.WithStack(err)
 	}
 	if lastAlert != nil {
 		return nil, nil
 	}
 
-	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, "caused a regression", "")
+	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, triggerBuildBreak, "caused a regression", "")
 	if err != nil {
 		return nil, err
 	}

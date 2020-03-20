@@ -47,6 +47,7 @@ const (
 	TestRegexKey                                      = "test-regex"
 	RenotifyIntervalKey                               = "renotify-interval"
 	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
+	ImplicitSubscriptionPatchFirstFailure             = "patch-first-failure"
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 	ImplicitSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
@@ -58,14 +59,15 @@ const (
 	ObjectHost                      = "host"
 	ObjectPatch                     = "patch"
 
-	TriggerOutcome                = "outcome"
-	TriggerFailure                = "failure"
-	TriggerSuccess                = "success"
-	TriggerRegression             = "regression"
-	TriggerExceedsDuration        = "exceeds-duration"
-	TriggerRuntimeChangeByPercent = "runtime-change"
-	TriggerExpiration             = "expiration"
-	TriggerPatchStarted           = "started"
+	TriggerOutcome                   = "outcome"
+	TriggerFailure                   = "failure"
+	TriggerSuccess                   = "success"
+	TriggerRegression                = "regression"
+	TriggerExceedsDuration           = "exceeds-duration"
+	TriggerRuntimeChangeByPercent    = "runtime-change"
+	TriggerExpiration                = "expiration"
+	TriggerPatchStarted              = "started"
+	TriggerTaskFirstFailureInVersion = "first-failure-in-version"
 )
 
 type Subscription struct {
@@ -451,6 +453,8 @@ func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 			switch resourceType {
 			case ImplicitSubscriptionPatchOutcome:
 				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
+			case ImplicitSubscriptionPatchFirstFailure:
+				temp = NewFirstTaskFailureInVersionSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionBuildBreak:
 				temp = NewBuildBreakSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionSpawnhostExpiration:
@@ -504,6 +508,25 @@ func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerOutcome)
+}
+
+func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: ResourceTypeTask,
+		Trigger:      TriggerTaskFirstFailureInVersion,
+		Selectors: []Selector{
+			{
+				Type: SelectorOwner,
+				Data: owner,
+			},
+			{
+				Type: SelectorRequester,
+				Data: evergreen.PatchVersionRequester,
+			},
+		},
+		Subscriber: sub,
+	}
 }
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {

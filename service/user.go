@@ -189,13 +189,17 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	settingsData := currentUser.Settings
 
 	type confFile struct {
-		User    string `json:"user"`
-		APIKey  string `json:"api_key"`
-		APIHost string `json:"api_server_host"`
-		UIHost  string `json:"ui_server_host"`
+		User    string   `json:"user"`
+		APIKey  string   `json:"api_key"`
+		APIHost string   `json:"api_server_host"`
+		UIHost  string   `json:"ui_server_host"`
+		Regions []string `json:"regions"`
 	}
-	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
-
+	regions := []string{}
+	for _, item := range uis.Settings.Providers.AWS.EC2Keys {
+		regions = append(regions, item.Region)
+	}
+	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url, regions}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data           user.UserSettings
 		Config         confFile
@@ -204,6 +208,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		GithubUID      int
 		CanClearTokens bool
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs,
+		currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
