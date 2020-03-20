@@ -2,9 +2,8 @@ package model
 
 import (
 	"fmt"
-	"time"
-
 	"net/url"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -109,7 +108,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 		fileDiffs := []*FileDiff{}
 		for _, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.PathEscape(file.Name), patchNumber)
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
 			fileDiff := FileDiff{
 				FileName:  &file.Name,
 				Additions: file.Additions,
