@@ -508,19 +508,19 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		// task logs
-		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
+		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
 		// system logs
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution)
+		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
 		// agent logs
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
+		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
