@@ -270,7 +270,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
 
-	if settings.Splunk.Populated() {
+	if settings.Splunk.Populated() && h.StartedBy == evergreen.User {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
 			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
@@ -603,7 +603,7 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
-	if splunk.Populated() {
+	if splunk.Populated() && h.StartedBy == evergreen.User {
 		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
 		cmds = append(cmds, fmt.Sprintf("chmod 666 %s", h.splunkTokenFilePath()))
 	}
@@ -653,7 +653,7 @@ func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkCon
 
 	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
 
-	if splunk.Populated() {
+	if splunk.Populated() && h.StartedBy == evergreen.User {
 		cmds = append(cmds, writeToFileCommand(h.splunkTokenFilePath(), splunk.Token, true))
 	}
 

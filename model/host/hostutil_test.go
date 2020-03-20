@@ -226,6 +226,7 @@ func TestJasperCommands(t *testing.T) {
 			}
 		},
 		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
@@ -338,7 +339,9 @@ func TestJasperCommands(t *testing.T) {
 						},
 					},
 					User: "user",
-				}}
+				},
+				StartedBy: evergreen.User,
+			}
 			settings := &evergreen.Settings{
 				HostJasper: evergreen.HostJasperConfig{
 					BinaryName:       "jasper_cli",
@@ -378,7 +381,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert())
 
 			setupUser, err := h.SetupServiceUserCommands()
@@ -433,6 +435,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
@@ -534,6 +537,17 @@ func TestJasperCommandsWindows(t *testing.T) {
 					require.NoError(t, err)
 					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
 				},
+				"SpawnHostWithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+					h.StartedBy = "started_by_user"
+					settings.Splunk.Token = "token"
+					settings.Splunk.ServerURL = "splunk_url"
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+					require.NoError(t, err)
+
+					expectedCreds, err := creds.Export()
+					require.NoError(t, err)
+					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
+				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(evergreen.CredentialsCollection))
@@ -552,19 +566,22 @@ func TestJasperCommandsWindows(t *testing.T) {
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
-			h := &Host{Distro: distro.Distro{
-				Arch: distro.ArchWindowsAmd64,
-				BootstrapSettings: distro.BootstrapSettings{
-					Method:                distro.BootstrapMethodUserData,
-					Communication:         distro.CommunicationMethodRPC,
-					JasperBinaryDir:       "/foo",
-					JasperCredentialsPath: "/bar/bat.txt",
-					ShellPath:             "/bin/bash",
-					ServiceUser:           "service-user",
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: distro.ArchWindowsAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						Communication:         distro.CommunicationMethodRPC,
+						JasperBinaryDir:       "/foo",
+						JasperCredentialsPath: "/bar/bat.txt",
+						ShellPath:             "/bin/bash",
+						ServiceUser:           "service-user",
+					},
+					Setup: "#!/bin/bash\necho hello",
+					User:  "user",
 				},
-				Setup: "#!/bin/bash\necho hello",
-				User:  "user",
-			}}
+				StartedBy: evergreen.User,
+			}
 			settings := &evergreen.Settings{
 				HostJasper: evergreen.HostJasperConfig{
 					BinaryName:       "jasper_cli",
