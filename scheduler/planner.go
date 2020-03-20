@@ -230,6 +230,8 @@ func (unit *Unit) RankValue() int64 {
 
 	if inPatch || inCommitQueue {
 		// give patches a bump, over non-patches.
+		// we include commit queue patches to ensure that they
+		// get scheduled over normal patches.
 		unit.cachedValue += priority * unit.distro.GetPatchFactor()
 		// patches that have spent more time in the queue
 		// should get worked on first (because people are
