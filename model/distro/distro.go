@@ -171,7 +171,7 @@ type PlannerSettings struct {
 	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
-	maxDurationPerHost time.Duration `bson:"max_duration_per_host" json:"max_duration_per_host" mapstructure:"max_duration_per_host"`
+	maxDurationPerHost time.Duration
 }
 
 type DispatcherSettings struct {

@@ -10,10 +10,10 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder" mapstructure:"task_finder"`
-	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator" mapstructure:"host_allocator"`
-	FreeHostFraction              float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction" mapstructure:"free_host_fraction"`
-	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds" mapstructure:"cache_duration_seconds"`
+	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	FreeHostFraction              float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
