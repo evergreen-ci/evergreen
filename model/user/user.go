@@ -59,6 +59,7 @@ type PubKey struct {
 
 type UserSettings struct {
 	Timezone         string                  `json:"timezone" bson:"timezone"`
+	Region           string                  `json:"region" bson:"region"`
 	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
 	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -111,6 +112,10 @@ func (u *DBUser) DisplayName() string {
 		return u.DispName
 	}
 	return u.Id
+}
+
+func (u *DBUser) GetRegion() string {
+	return u.Settings.Region
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {

@@ -1,5 +1,6 @@
 mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, $q, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
+    $scope.defaultRegion = $window.defaultRegion;
     $scope.hosts = null;
     $scope.modalOpen = false;
     $scope.spawnTask = $window.spawnTask;
@@ -439,8 +440,20 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.selectedDistro = spawnableDistro;
       $scope.spawnInfo.distroId = spawnableDistro.name;
 
-      if ($scope.selectedDistro.regions.length > 0) {
-        $scope.selectedRegion = $scope.selectedDistro.regions[0];
+      // if multiple regions, preference the user region
+      if ($scope.selectedDistro.regions.length > 1) {
+        if ($scope.defaultRegion !== "") {
+          for (let i=0; i < $scope.selectedDistro.regions.length; i++) {
+            // valid region
+            if ($scope.defaultRegion === $scope.selectedDistro.regions[i]) {
+              $scope.selectedRegion = $scope.defaultRegion;
+            }
+          }
+        }
+        // if preferred region not configured for this distro, default to the first region in this list
+        if ($scope.selectedRegion === undefined) {
+          $scope.selectedRegion = $scope.selectedDistro.regions[0];
+        }
       }
 
       // clear home volume settings when switching between distros

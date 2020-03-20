@@ -63,6 +63,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	if settings.SpawnHostsPerUser >= 0 {
 		maxHosts = settings.SpawnHostsPerUser
 	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro                     distro.Distro
 		Task                       *task.Task

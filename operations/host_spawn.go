@@ -55,7 +55,7 @@ func hostCreate() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(regionFlagName, "r"),
-				Usage: "AWS region to spawn host in",
+				Usage: fmt.Sprintf("AWS region to spawn host in (defaults to user-defined region, or %s)", evergreen.DefaultEC2Region),
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tagFlagName, "t"),
