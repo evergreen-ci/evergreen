@@ -514,7 +514,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	var logReader io.ReadCloser
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution, true)
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.Settings.LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution, true)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -578,7 +578,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	var logReader io.ReadCloser
 
 	// check buildlogger logs first
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution, !raw)
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.Settings.LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution, !raw)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -612,19 +612,6 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
-}
-
-func getDefaultLogger(projCtx projectContext) (string, error) {
-	projRef, err := projCtx.GetProjectRef()
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting project ref to fetch logs")
-	}
-	defaultLogger := projRef.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
-	return defaultLogger, nil
 }
 
 // avoids type-checking json params for the below function
