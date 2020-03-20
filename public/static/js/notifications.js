@@ -17,17 +17,21 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
   $scope.getSubscriptions = function() {
     var success = function(resp) {
       var patchFinishId = $scope.settings.notifications.patch_finish_id;
+      var patchFirstFailureId = $scope.settings.notifications.patch_first_failure_id;
       var buildBreakId = $scope.settings.notifications.build_break_id;
       var spawnhostExpirationId = $scope.settings.notifications.spawn_host_expiration_id;
+      var spawnhostOutcomeId = $scope.settings.notifications.spawn_host_outcome_id;
       var commitQueueId = $scope.settings.notifications.commit_queue_id;
       if (!Array.isArray(resp.data)) {
         resp.data = [resp.data];
       }
       $scope.subscriptions = _.filter(resp.data, function(subscription){
         if (
-          subscription.id === patchFinishId || 
+          subscription.id === patchFinishId ||
+          subscription.id === patchFirstFailureId ||
           subscription.id === buildBreakId || 
-          subscription.id === spawnhostExpirationId || 
+          subscription.id === spawnhostExpirationId ||
+          subscription.id === spawnhostOutcomeId ||
           subscription.id === commitQueueId) {
           return false;
         }

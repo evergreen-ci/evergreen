@@ -132,6 +132,8 @@ type APINotificationPreferences struct {
 	BuildBreakID          *string `json:"build_break_id,omitempty"`
 	PatchFinish           *string `json:"patch_finish"`
 	PatchFinishID         *string `json:"patch_finish_id,omitempty"`
+	PatchFirstFailure     *string `json:"patch_first_failure"`
+	PatchFirstFailureID   *string `json:"patch_first_failure_id,omitempty"`
 	SpawnHostExpiration   *string `json:"spawn_host_expiration"`
 	SpawnHostExpirationID *string `json:"spawn_host_expiration_id,omitempty"`
 	SpawnHostOutcome      *string `json:"spawn_host_outcome"`
@@ -148,6 +150,7 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToStringPtr(string(v.BuildBreak))
 		n.PatchFinish = ToStringPtr(string(v.PatchFinish))
+		n.PatchFirstFailure = ToStringPtr(string(v.PatchFirstFailure))
 		n.SpawnHostOutcome = ToStringPtr(string(v.SpawnHostOutcome))
 		n.SpawnHostExpiration = ToStringPtr(string(v.SpawnHostExpiration))
 		n.CommitQueue = ToStringPtr(string(v.CommitQueue))
@@ -156,6 +159,9 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 		}
 		if v.PatchFinishID != "" {
 			n.PatchFinishID = ToStringPtr(v.PatchFinishID)
+		}
+		if v.PatchFirstFailureID != "" {
+			n.PatchFirstFailureID = ToStringPtr(v.PatchFirstFailureID)
 		}
 		if v.SpawnHostOutcomeID != "" {
 			n.SpawnHostOutcomeID = ToStringPtr(v.SpawnHostOutcomeID)
@@ -178,6 +184,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	}
 	buildbreak := FromStringPtr(n.BuildBreak)
 	patchFinish := FromStringPtr(n.PatchFinish)
+	patchFirstFailure := FromStringPtr(n.PatchFirstFailure)
 	spawnHostExpiration := FromStringPtr(n.SpawnHostExpiration)
 	spawnHostOutcome := FromStringPtr(n.SpawnHostOutcome)
 	commitQueue := FromStringPtr(n.CommitQueue)
@@ -186,6 +193,9 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	}
 	if !user.IsValidSubscriptionPreference(patchFinish) {
 		return nil, errors.New("Patch finish preference is not a valid type")
+	}
+	if !user.IsValidSubscriptionPreference(patchFirstFailure) {
+		return nil, errors.New("Patch first task failure preference is not a valid type")
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostExpiration) {
 		return nil, errors.New("Spawn Host Expiration preference is not a valid type")
@@ -199,13 +209,15 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
+		PatchFirstFailure:   user.UserSubscriptionPreference(patchFirstFailure),
 		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 		CommitQueue:         user.UserSubscriptionPreference(commitQueue),
 	}
 	preferences.BuildBreakID = FromStringPtr(n.BuildBreakID)
 	preferences.PatchFinishID = FromStringPtr(n.PatchFinishID)
-	preferences.SpawnHostOutcomeID = FromStringPtr(n.PatchFinishID)
+	preferences.PatchFirstFailureID = FromStringPtr(n.PatchFirstFailureID)
+	preferences.SpawnHostOutcomeID = FromStringPtr(n.SpawnHostOutcomeID)
 	preferences.SpawnHostExpirationID = FromStringPtr(n.SpawnHostExpirationID)
 	preferences.CommitQueueID = FromStringPtr(n.CommitQueueID)
 	return preferences, nil

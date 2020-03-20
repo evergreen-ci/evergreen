@@ -74,6 +74,8 @@ type NotificationPreferences struct {
 	BuildBreakID          string                     `bson:"build_break_id,omitempty" json:"-"`
 	PatchFinish           UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
 	PatchFinishID         string                     `bson:"patch_finish_id,omitempty" json:"-"`
+	PatchFirstFailure     UserSubscriptionPreference `bson:"patch_first_failure,omitempty" json:"patch_first_failure"`
+	PatchFirstFailureID   string                     `bson:"patch_first_failure_id,omitempty" json:"-"`
 	SpawnHostExpiration   UserSubscriptionPreference `bson:"spawn_host_expiration" json:"spawn_host_expiration"`
 	SpawnHostExpirationID string                     `bson:"spawn_host_expiration_id,omitempty" json:"-"`
 	SpawnHostOutcome      UserSubscriptionPreference `bson:"spawn_host_outcome" json:"spawn_host_outcome"`
