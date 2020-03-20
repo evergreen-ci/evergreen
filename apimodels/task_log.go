@@ -128,6 +128,7 @@ func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 				}))
 				err = nil
 			}
+			line = line[8:]
 		}
 
 		select {
