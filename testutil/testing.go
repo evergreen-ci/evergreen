@@ -30,6 +30,9 @@ func GetDirectoryOfFile() string {
 
 func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
 	// make sure an override file is provided
+	if skip := os.Getenv("SKIP_INTEGRATION_TESTS"); skip != "" {
+		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
+	}
 	if (*settingsOverride) == "" {
 		require.NotZero(t, os.Getenv(EnvOverride), "Integration tests need a settings override file to be provided")
 
