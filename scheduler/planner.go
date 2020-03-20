@@ -228,7 +228,7 @@ func (unit *Unit) RankValue() int64 {
 		priority += length
 	}
 
-	if inPatch {
+	if inPatch || inCommitQueue {
 		// give patches a bump, over non-patches.
 		unit.cachedValue += priority * unit.distro.GetPatchFactor()
 		// patches that have spent more time in the queue
