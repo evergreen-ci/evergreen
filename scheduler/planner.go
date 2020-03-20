@@ -228,18 +228,19 @@ func (unit *Unit) RankValue() int64 {
 		priority += length
 	}
 
-	if inPatch || inCommitQueue {
+	if inPatch {
 		// give patches a bump, over non-patches.
-		// we include commit queue patches to ensure that they
-		// get scheduled over normal patches.
 		unit.cachedValue += priority * unit.distro.GetPatchFactor()
 		// patches that have spent more time in the queue
 		// should get worked on first (because people are
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
 		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
-	}
-	if !inPatch {
+	} else if inCommitQueue {
+		// give commit queue patches a boost over everything else
+		priority += 200
+		unit.cachedValue += priority * unit.distro.GetCommitQueueFactor()
+	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
 		avgLifeTime := timeInQueue / time.Duration(length)

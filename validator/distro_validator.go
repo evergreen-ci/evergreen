@@ -446,6 +446,12 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
+	if settings.CommitQueueFactor < 0 || settings.CommitQueueFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.commit_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.CommitQueueFactor, d.Id),
+			Level:   Error,
+		})
+	}
 	if settings.MainlineTimeInQueueFactor < 0 || settings.MainlineTimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.mainline_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.MainlineTimeInQueueFactor, d.Id),
