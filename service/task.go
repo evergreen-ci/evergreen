@@ -514,7 +514,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	var logReader io.ReadCloser
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution)
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution, true)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -552,15 +552,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	grip.Warning(err)
 	logType := r.FormValue("type")
-
 	if logType == "" {
 		logType = AllLogsType
 	}
-
 	logTypeFilter := []string{}
 	if logType != AllLogsType {
 		logTypeFilter = []string{logType}
 	}
+	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 
 	// restrict access if the user is not logged in
 	ctx := r.Context()
@@ -579,7 +578,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	var logReader io.ReadCloser
 
 	// check buildlogger logs first
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution)
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.env.Settings().LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution, !raw)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -602,7 +601,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
+	if raw {
 		if logReader != nil {
 			gimlet.WriteText(w, logReader)
 		} else {

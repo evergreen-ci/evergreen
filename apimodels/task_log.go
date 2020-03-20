@@ -67,7 +67,7 @@ func GetSeverityMapping(s int) string {
 }
 
 // GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
-func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int) (io.ReadCloser, error) {
+func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int, priority bool) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return nil, errors.New("error getting user from context")
@@ -79,7 +79,7 @@ func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType
 		TaskID:        taskId,
 		Execution:     execution,
 		PrintTime:     true,
-		PrintPriority: true,
+		PrintPriority: priority,
 		Tail:          tail,
 	}
 	switch logType {
