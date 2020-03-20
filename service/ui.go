@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
@@ -358,7 +359,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
-		ErrorHandler:      uis.handleBackendError("IDE service is not available", http.StatusInternalServerError),
+		Transport:         rehttp.NewTransport(nil, rehttp.RetryAll(rehttp.RetryMaxRetries(5), rehttp.RetryTemporaryErr()), rehttp.ConstDelay(2*time.Second)),
+		ErrorHandler:      uis.handleBackendError("IDE service is not available.\nEnsure the code-server service is running", http.StatusInternalServerError),
 	}).AllMethods()
 	// Prefix routes not ending in a '/' are not automatically redirected by gimlet's underlying library.
 	// Add another route to match when there's no trailing slash and redirect
