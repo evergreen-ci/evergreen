@@ -135,13 +135,13 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	}
 
 	err := ValidateContainerPoolDistros(testSettings)
-	assert.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
-	assert.Contains(err.Error(), "error finding distro for container pool test-pool-3")
+	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
+	assert.Contains(err.Error(), "error finding distro for container pool 'test-pool-3'")
 }
 
 func TestGetDistroIds(t *testing.T) {
 	assert := assert.New(t)
-	hosts := DistroGroup{
+	distros := DistroGroup{
 		Distro{
 			Id: "d1",
 		},
@@ -152,7 +152,7 @@ func TestGetDistroIds(t *testing.T) {
 			Id: "d3",
 		},
 	}
-	ids := hosts.GetDistroIds()
+	ids := distros.GetDistroIds()
 	assert.Equal([]string{"d1", "d2", "d3"}, ids)
 }
 

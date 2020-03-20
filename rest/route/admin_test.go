@@ -194,8 +194,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(err)
 	s.NoError(s.postHandler.Parse(ctx, request))
 	resp = s.postHandler.Run(ctx)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "container pool test-pool-2 has invalid distro")
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "error finding distro for container pool test-pool-3")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "error finding distro for container pool 'test-pool-3'")
 	s.NotNil(resp)
 }
 

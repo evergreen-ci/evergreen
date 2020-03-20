@@ -162,20 +162,11 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 }
 
 func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
-	d := distro.Distro{}
+	var d distro.Distro
 	var err error
 
 	if distroID := createHost.Distro; distroID != "" {
-		var dat distro.AliasLookupTable
-		dat, err = distro.NewDistroAliasesLookupTable()
-		if err != nil {
-			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
-		}
-		distroIDs := dat.Expand([]string{distroID})
-		if len(distroIDs) == 0 {
-			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
-		}
-		d, err = distro.FindOne(distro.ById(distroIDs[0]))
+		d, err = distro.FindOne(distro.ById(distroID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
@@ -253,7 +244,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		var dat distro.AliasLookupTable
 		dat, err = distro.NewDistroAliasesLookupTable()
 		if err != nil {
-			return nil, errors.Wrap(err, "problem creating distro alias lookup table")
+			return nil, errors.Wrap(err, "could not get distro lookup table")
 		}
 		distroIDs := dat.Expand([]string{distroID})
 		if len(distroIDs) == 0 {
