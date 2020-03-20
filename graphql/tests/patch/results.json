@@ -10,6 +10,30 @@
           }
         }
       }
+    },
+    {
+      "query_file": "moduleCodeChanges.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "moduleCodeChanges": [
+              {
+                "branchName": "evergreen",
+                "htmlLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?patch_number=0",
+                "rawLink": "https://localhost:8443/rawdiff/5e4ff3abe3c3317e352062e4?patch_number=0",
+                "fileDiffs": [
+                  {
+                    "fileName": "service/api_task.go",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=service%2Fapi_task.go&patch_number=0",
+                    "deletions": 4,
+                    "additions": 5
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
