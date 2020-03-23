@@ -14,25 +14,25 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id                *string           `json:"patch_id"`
-	Description       *string           `json:"description"`
-	ProjectId         *string           `json:"project_id"`
-	Branch            *string           `json:"branch"`
-	Githash           *string           `json:"git_hash"`
-	PatchNumber       int               `json:"patch_number"`
-	Author            *string           `json:"author"`
-	Version           *string           `json:"version"`
-	Status            *string           `json:"status"`
-	CreateTime        *time.Time        `json:"create_time"`
-	StartTime         *time.Time        `json:"start_time"`
-	FinishTime        *time.Time        `json:"finish_time"`
-	Variants          []*string         `json:"builds"`
-	Tasks             []*string         `json:"tasks"`
-	VariantsTasks     []VariantTask     `json:"variants_tasks"`
-	Activated         bool              `json:"activated"`
-	Alias             *string           `json:"alias,omitempty"`
-	GithubPatchData   githubPatch       `json:"github_patch_data,omitempty"`
-	ModuleCodeChanges []*APIModulePatch `json:"module_code_changes"`
+	Id                *string          `json:"patch_id"`
+	Description       *string          `json:"description"`
+	ProjectId         *string          `json:"project_id"`
+	Branch            *string          `json:"branch"`
+	Githash           *string          `json:"git_hash"`
+	PatchNumber       int              `json:"patch_number"`
+	Author            *string          `json:"author"`
+	Version           *string          `json:"version"`
+	Status            *string          `json:"status"`
+	CreateTime        *time.Time       `json:"create_time"`
+	StartTime         *time.Time       `json:"start_time"`
+	FinishTime        *time.Time       `json:"finish_time"`
+	Variants          []*string        `json:"builds"`
+	Tasks             []*string        `json:"tasks"`
+	VariantsTasks     []VariantTask    `json:"variants_tasks"`
+	Activated         bool             `json:"activated"`
+	Alias             *string          `json:"alias,omitempty"`
+	GithubPatchData   githubPatch      `json:"github_patch_data,omitempty"`
+	ModuleCodeChanges []APIModulePatch `json:"module_code_changes"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -97,7 +97,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 
-	codeChanges := []*APIModulePatch{}
+	codeChanges := []APIModulePatch{}
 	apiURL := evergreen.GetEnvironment().Settings().ApiUrl
 	for patchNumber, modPatch := range v.Patches {
 		branchName := modPatch.ModuleName
@@ -123,7 +123,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 			RawLink:    &rawLink,
 			FileDiffs:  fileDiffs,
 		}
-		codeChanges = append(codeChanges, &apiModPatch)
+		codeChanges = append(codeChanges, apiModPatch)
 	}
 	apiPatch.ModuleCodeChanges = codeChanges
 

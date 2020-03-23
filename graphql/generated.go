@@ -1618,7 +1618,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  moduleCodeChanges: [ModuleCodeChange]
+  moduleCodeChanges: [ModuleCodeChange!]!
 }
 
 type TaskResult {
@@ -3654,11 +3654,14 @@ func (ec *executionContext) _Patch_moduleCodeChanges(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIModulePatch)
+	res := resTmp.([]model.APIModulePatch)
 	fc.Result = res
-	return ec.marshalOModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx, field.Selections, res)
+	return ec.marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatchᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
@@ -8712,6 +8715,9 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			})
 		case "moduleCodeChanges":
 			out.Values[i] = ec._Patch_moduleCodeChanges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10128,6 +10134,47 @@ func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._LogMessage(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNModuleCodeChange2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v model.APIModulePatch) graphql.Marshaler {
+	return ec._ModuleCodeChange(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModulePatch) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModuleCodeChange2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -10958,57 +11005,6 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return ec.marshalOInt2int(ctx, sel, *v)
-}
-
-func (ec *executionContext) marshalOModuleCodeChange2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v model.APIModulePatch) graphql.Marshaler {
-	return ec._ModuleCodeChange(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOModuleCodeChange2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v []*model.APIModulePatch) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOModuleCodeChange2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v *model.APIModulePatch) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ModuleCodeChange(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {

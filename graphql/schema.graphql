@@ -114,7 +114,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  moduleCodeChanges: [ModuleCodeChange]
+  moduleCodeChanges: [ModuleCodeChange!]!
 }
 
 type TaskResult {
