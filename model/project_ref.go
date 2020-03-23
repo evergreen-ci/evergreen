@@ -841,6 +841,9 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		if err != nil {
 			return errors.Wrapf(err, "error finding user %s", removedUser)
 		}
+		if adminUser == nil {
+			continue
+		}
 		err = adminUser.RemoveRole(role.ID)
 		if err != nil {
 			return errors.Wrapf(err, "error removing role from user %s", removedUser)
