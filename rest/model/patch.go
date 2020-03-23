@@ -1,8 +1,11 @@
 package model
 
 import (
+	"fmt"
+	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -11,28 +14,43 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id              *string       `json:"patch_id"`
-	Description     *string       `json:"description"`
-	ProjectId       *string       `json:"project_id"`
-	Branch          *string       `json:"branch"`
-	Githash         *string       `json:"git_hash"`
-	PatchNumber     int           `json:"patch_number"`
-	Author          *string       `json:"author"`
-	Version         *string       `json:"version"`
-	Status          *string       `json:"status"`
-	CreateTime      *time.Time    `json:"create_time"`
-	StartTime       *time.Time    `json:"start_time"`
-	FinishTime      *time.Time    `json:"finish_time"`
-	Variants        []*string     `json:"builds"`
-	Tasks           []*string     `json:"tasks"`
-	VariantsTasks   []VariantTask `json:"variants_tasks"`
-	Activated       bool          `json:"activated"`
-	Alias           *string       `json:"alias,omitempty"`
-	GithubPatchData githubPatch   `json:"github_patch_data,omitempty"`
+	Id                *string          `json:"patch_id"`
+	Description       *string          `json:"description"`
+	ProjectId         *string          `json:"project_id"`
+	Branch            *string          `json:"branch"`
+	Githash           *string          `json:"git_hash"`
+	PatchNumber       int              `json:"patch_number"`
+	Author            *string          `json:"author"`
+	Version           *string          `json:"version"`
+	Status            *string          `json:"status"`
+	CreateTime        *time.Time       `json:"create_time"`
+	StartTime         *time.Time       `json:"start_time"`
+	FinishTime        *time.Time       `json:"finish_time"`
+	Variants          []*string        `json:"builds"`
+	Tasks             []*string        `json:"tasks"`
+	VariantsTasks     []VariantTask    `json:"variants_tasks"`
+	Activated         bool             `json:"activated"`
+	Alias             *string          `json:"alias,omitempty"`
+	GithubPatchData   githubPatch      `json:"github_patch_data,omitempty"`
+	ModuleCodeChanges []APIModulePatch `json:"module_code_changes"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
 	Tasks []*string `json:"tasks"`
+}
+
+type FileDiff struct {
+	FileName  *string `json:"file_name"`
+	Additions int     `json:"additions"`
+	Deletions int     `json:"deletions"`
+	DiffLink  *string `json:"diff_link"`
+}
+
+type APIModulePatch struct {
+	BranchName *string    `json:"branch_name"`
+	HTMLLink   *string    `json:"html_link"`
+	RawLink    *string    `json:"raw_link"`
+	FileDiffs  []FileDiff `json:"file_diffs"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -78,6 +96,38 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Activated = v.Activated
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
+
+	codeChanges := []APIModulePatch{}
+	apiURL := evergreen.GetEnvironment().Settings().ApiUrl
+	for patchNumber, modPatch := range v.Patches {
+		branchName := modPatch.ModuleName
+		if branchName == "" {
+			branchName = v.Project
+		}
+		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+		fileDiffs := []FileDiff{}
+		for _, file := range modPatch.PatchSet.Summary {
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
+			fileName := file.Name
+			fileDiff := FileDiff{
+				FileName:  &fileName,
+				Additions: file.Additions,
+				Deletions: file.Deletions,
+				DiffLink:  &diffLink,
+			}
+			fileDiffs = append(fileDiffs, fileDiff)
+		}
+		apiModPatch := APIModulePatch{
+			BranchName: &branchName,
+			HTMLLink:   &htmlLink,
+			RawLink:    &rawLink,
+			FileDiffs:  fileDiffs,
+		}
+		codeChanges = append(codeChanges, apiModPatch)
+	}
+	apiPatch.ModuleCodeChanges = codeChanges
+
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 

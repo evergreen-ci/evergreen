@@ -83,6 +83,20 @@ type GroupedFiles {
   files: [File!]
 }
 
+type ModuleCodeChange {
+  branchName: String!
+  htmlLink: String!
+  rawLink: String!
+  fileDiffs: [FileDiff!]!
+}
+
+type FileDiff {
+  fileName: String!
+  additions: Int!
+  deletions: Int!
+  diffLink: String!
+}
+
 type Patch {
   id: ID!
   description: String!
@@ -100,6 +114,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
+  moduleCodeChanges: [ModuleCodeChange!]!
 }
 
 type TaskResult {
