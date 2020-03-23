@@ -47,10 +47,10 @@ type FileDiff struct {
 }
 
 type APIModulePatch struct {
-	BranchName *string     `json:"branch_name"`
-	HTMLLink   *string     `json:"html_link"`
-	RawLink    *string     `json:"raw_link"`
-	FileDiffs  []*FileDiff `json:"file_diffs"`
+	BranchName *string    `json:"branch_name"`
+	HTMLLink   *string    `json:"html_link"`
+	RawLink    *string    `json:"raw_link"`
+	FileDiffs  []FileDiff `json:"file_diffs"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -106,7 +106,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		}
 		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-		fileDiffs := []*FileDiff{}
+		fileDiffs := []FileDiff{}
 		for _, file := range modPatch.PatchSet.Summary {
 			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
 			fileDiff := FileDiff{
@@ -115,7 +115,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 				Deletions: file.Deletions,
 				DiffLink:  &diffLink,
 			}
-			fileDiffs = append(fileDiffs, &fileDiff)
+			fileDiffs = append(fileDiffs, fileDiff)
 		}
 		apiModPatch := APIModulePatch{
 			BranchName: &branchName,

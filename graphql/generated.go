@@ -2803,9 +2803,9 @@ func (ec *executionContext) _ModuleCodeChange_fileDiffs(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.FileDiff)
+	res := resTmp.([]model.FileDiff)
 	fc.Result = res
-	return ec.marshalNFileDiff2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ(ctx, field.Selections, res)
+	return ec.marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9892,7 +9892,7 @@ func (ec *executionContext) marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋeve
 	return ec._FileDiff(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNFileDiff2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FileDiff) graphql.Marshaler {
+func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiffᚄ(ctx context.Context, sel ast.SelectionSet, v []model.FileDiff) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -9916,7 +9916,7 @@ func (ec *executionContext) marshalNFileDiff2ᚕᚖgithubᚗcomᚋevergreenᚑci
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNFileDiff2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiff(ctx, sel, v[i])
+			ret[i] = ec.marshalNFileDiff2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiff(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -9927,16 +9927,6 @@ func (ec *executionContext) marshalNFileDiff2ᚕᚖgithubᚗcomᚋevergreenᚑci
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalNFileDiff2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐFileDiff(ctx context.Context, sel ast.SelectionSet, v *model.FileDiff) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._FileDiff(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGroupedFiles2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFiles(ctx context.Context, sel ast.SelectionSet, v GroupedFiles) graphql.Marshaler {
