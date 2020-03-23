@@ -276,6 +276,14 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	if len(d.ProviderSettingsList) == 0 {
+		if err := cloud.CreateSettingsListFromLegacy(&d); err != nil {
+			message := fmt.Sprintf("error converting from legacy settings for distro '%v'", id)
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
+	}
 
 	opts := gimlet.PermissionOpts{Resource: id, ResourceType: evergreen.DistroResourceType}
 	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
