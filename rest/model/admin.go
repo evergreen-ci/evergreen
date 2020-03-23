@@ -1546,6 +1546,7 @@ type APISchedulerConfig struct {
 	GroupVersions                 bool    `json:"group_versions"`
 	PatchFactor                   int64   `json:"patch_factor"`
 	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor             int64   `json:"commit_queue_factor"`
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
@@ -1563,6 +1564,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
 		a.PatchTimeInQueueFactor = v.PatchTimeInQueueFactor
+		a.CommitQueueFactor = v.CommitQueueFactor
 		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
@@ -1584,6 +1586,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		PatchFactor:                   a.PatchFactor,
 		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
 		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
+		CommitQueueFactor:             a.CommitQueueFactor,
 		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 	}, nil
 }

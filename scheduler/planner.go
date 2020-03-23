@@ -216,10 +216,6 @@ func (unit *Unit) RankValue() int64 {
 	length := int64(len(unit.tasks))
 	priority := 1 + (totalPriority / length)
 
-	if inCommitQueue {
-		priority += 200
-	}
-
 	if !anyNonGroupTasks {
 		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
@@ -236,6 +232,10 @@ func (unit *Unit) RankValue() int64 {
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
 		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
+	} else if inCommitQueue {
+		// give commit queue patches a boost over everything else
+		priority += 200
+		unit.cachedValue += priority * unit.distro.GetCommitQueueFactor()
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
