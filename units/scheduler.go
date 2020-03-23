@@ -50,7 +50,6 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 	j := makeDistroSchedulerJob()
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(TSFormat)))
-	j.SetScopes([]string{distroID})
 
 	j.env = env
 	return j
