@@ -24,9 +24,34 @@
                 "fileDiffs": [
                   {
                     "fileName": "service/api_task.go",
-                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=service%2Fapi_task.go&patch_number=0",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=service%2Fapi_task.go\u0026patch_number=0",
                     "deletions": 4,
                     "additions": 5
+                  }
+                ]
+              },
+              {
+                "branchName": "Spruce",
+                "htmlLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?patch_number=1",
+                "rawLink": "https://localhost:8443/rawdiff/5e4ff3abe3c3317e352062e4?patch_number=1",
+                "fileDiffs": [
+                  {
+                    "fileName": "src/page/Task.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2Fpage%2FTask.tsx\u0026patch_number=1",
+                    "deletions": 4,
+                    "additions": 11
+                  },
+                  {
+                    "fileName": "src/page/App.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2FApp.tsx\u0026patch_number=1",
+                    "deletions": 4,
+                    "additions": 22
+                  },
+                  {
+                    "fileName": "src/page/Patch.tsx",
+                    "diffLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?file_name=src%2Fpage%2FPatch.tsx\u0026patch_number=1",
+                    "deletions": 4,
+                    "additions": 33
                   }
                 ]
               }
