@@ -380,5 +380,53 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			So(len(expired), ShouldEqual, 1)
 			So(expired[0].Id, ShouldEqual, "h2")
 		})
+
+		Convey("hosts should be returned if they have not provisioned before the cutoff", func() {
+			h1 := &host.Host{
+				Id:                    "h1",
+				Status:                evergreen.HostProvisioning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Hour),
+				CreationTime:          time.Now().Add(-time.Hour),
+				LastTask:              "",
+				Provider:              evergreen.ProviderNameEc2Fleet,
+			}
+			require.NoError(t, h1.Insert())
+			hosts, err := host.FindHostsToTerminate()
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h1.Id)
+		})
+		Convey("hosts should be ignored if they are running a task or have run a task and recently communicated", func() {
+			h1 := &host.Host{
+				Id:                    "h1",
+				Status:                evergreen.HostStarting,
+				Provisioned:           false,
+				LastCommunicationTime: time.Now(),
+				RunningTask:           "running_task",
+				StartedBy:             evergreen.User,
+			}
+			require.NoError(t, h1.Insert())
+			hosts, err := host.FindHostsToTerminate()
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
+		})
+		Convey("hosts that have run tasks before provisioning should be returned if they have communicated recently", func() {
+			h1 := &host.Host{
+				Id:           "h1",
+				Status:       evergreen.HostProvisioning,
+				Provisioned:  false,
+				LastTask:     "last_task",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Provider:     evergreen.ProviderNameEc2Fleet,
+			}
+			require.NoError(t, h1.Insert())
+			hosts, err := host.FindHostsToTerminate()
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h1.Id)
+
+		})
 	})
 }

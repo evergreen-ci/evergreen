@@ -1413,10 +1413,19 @@ func FindHostsToTerminate() ([]Host, error) {
 			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // hosts that are taking too long to provision
-				"$or": []bson.M{
-					bson.M{ProvisionedKey: false},
-					bson.M{StatusKey: evergreen.HostProvisioning},
+			{ // hosts that are either taking too long to provision or have started tasks before provisioning finished but not communicated recently
+				"$and": []bson.M{
+					{"$or": []bson.M{
+						{ProvisionedKey: false},
+						{StatusKey: evergreen.HostProvisioning},
+					}},
+					{
+						"$or": []bson.M{
+							{RunningTaskKey: bson.M{"$exists": false}},
+							{LTCTaskKey: ""},
+						},
+						LastCommunicationTimeKey: bson.M{"$lte": now.Add(-unreachableCutoff)},
+					},
 				},
 				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
 				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
