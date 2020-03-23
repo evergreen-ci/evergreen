@@ -277,7 +277,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(d.ProviderSettingsList) == 0 {
-		if err := cloud.CreateSettingsListFromLegacy(&d); err != nil {
+		if err = cloud.CreateSettingsListFromLegacy(&d); err != nil {
 			message := fmt.Sprintf("error converting from legacy settings for distro '%v'", id)
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 			http.Error(w, message, http.StatusInternalServerError)
