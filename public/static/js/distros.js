@@ -148,6 +148,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       } else if (distroHash != newId) {
         $scope.getDistroById(distroHash).then(function (distro) {
           if (distro) {
+            $scope.regions = distro.regions;
             $scope.readOnly = distro.permissions.distro_settings < 20
             $scope.remove = distro.permissions.distro_settings >= 30
             $scope.activeDistro = distro.distro;
@@ -206,12 +207,61 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
           distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
           distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
+
+          // current settings from provider settings
+          if (distro.distro.provider_settings === undefined || distro.distro.provider_settings.length === 0) {
+            distro.distro.provider_settings = [$scope.getNewProviderSettings(distro.distro.provider)];
+
+          }
+          distro.distro.settings = distro.distro.provider_settings[0];
+          $scope.currentIdx = 0;
         }
         return distro
       },
       function (resp) {
         console.log(resp.status)
       });
+  };
+
+  $scope.updateSettingsList = function() {
+    // don't save if there aren't any populated fields
+    for (let [key, val] of Object.entries($scope.activeDistro.settings)) {
+        if (key !== "region" && val !== "" && val !== undefined) {
+          $scope.activeDistro.provider_settings[$scope.currentIdx] = $scope.activeDistro.settings;
+          return;
+        }
+    }
+    // if we haven't updated it, then we should remove from the list for now
+    $scope.activeDistro.provider_settings.splice($scope.currentIdx);
+
+  };
+
+  $scope.switchRegion = function(region) {
+    // save current settings to the overall provider settings list
+    $scope.updateSettingsList();
+
+    for (var i = 0; i < $scope.activeDistro.provider_settings.length; i++) {
+      if ($scope.activeDistro.provider_settings[i].region === region) {
+        $scope.activeDistro.settings = $scope.activeDistro.provider_settings[i];
+        $scope.currentIdx = i;
+        return;
+      }
+    }
+
+    // if we didn't find the region in the provider settings list, then we must be adding a new one
+    $scope.activeDistro.settings = $scope.getNewProviderSettings($scope.activeDistro.provider, region);
+    $scope.activeDistro.provider_settings.push($scope.activeDistro.settings);
+    $scope.currentIdx = $scope.activeDistro.provider_settings.length - 1;
+  };
+
+  $scope.getNewProviderSettings = function(provider, region) {
+      if (provider.startsWith('ec2')) {
+        if (region !== "") {
+          return {"region": region};
+        }
+        return {"region": "us-east-1"};
+      }
+      return {};
   };
 
   $scope.initOptions = function () {
@@ -385,6 +435,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     if ($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9
     }
+    $scope.updateSettingsList();
+    $scope.activeDistro.settings = null;
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
         $scope.activeDistro, {
@@ -442,7 +494,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           'communication': 'legacy-ssh'
         },
         'clone_method': 'legacy-ssh',
-        'settings': {},
+        'provider_settings': [{}], // empty list with one empty object
         'finder_settings': {
           'version': 'legacy'
         },
@@ -602,10 +654,13 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function () {
     if ($scope.activeDistro) {
-      if ($scope.activeDistro.settings.is_vpc && $scope.activeDistro.settings.security_group_ids) {
-        for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
-          if ($scope.activeDistro.settings.security_group_ids[i].substring(0, 3) !== "sg-") {
-            return false
+      $scope.updateSettingsList(); // to validate list
+      for (var i = 0; i < $scope.activeDistro.provider_settings; i++) {
+        if ($scope.activeDistro.provider_settings[i].is_vpc && $scope.activeDistro.provider_settings[i].security_group_ids) {
+          for (var i = 0; i < $scope.activeDistro.provider_settings[i].security_group_ids.length; i++) {
+            if ($scope.activeDistro.provider_settings[i].security_group_ids[i].substring(0, 3) !== "sg-") {
+                return false;
+            }
           }
         }
       }
@@ -616,8 +671,11 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
   $scope.validSubnetId = function () {
     if ($scope.activeDistro) {
-      if ($scope.activeDistro.settings.is_vpc) {
-        return $scope.activeDistro.settings.subnet_id.substring(0, 7) == 'subnet-';
+      $scope.updateSettingsList(); // to validate list
+      for (var i = 0; i < $scope.activeDistro.provider_settings; i++) {
+        if ($scope.activeDistro.provider_settings[i].is_vpc) {
+            return $scope.activeDistro.provider_settings[i].subnet_id.substring(0, 7) == 'subnet-';
+        }
       }
     }
     return true

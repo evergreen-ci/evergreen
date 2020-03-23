@@ -116,7 +116,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newDistro := oldDistro
-
+	newDistro.ProviderSettings = nil // new distro only handle ProviderSettingsList
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
 		message := fmt.Sprintf("error unmarshaling request: %v", err)
@@ -127,8 +127,8 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 
 	// ensure docker password wasn't auto-filled from form
 	if newDistro.Provider != evergreen.ProviderNameDocker && newDistro.Provider != evergreen.ProviderNameDockerMock {
-		if newDistro.ProviderSettings != nil {
-			delete(*newDistro.ProviderSettings, "docker_registry_pw")
+		for i := range newDistro.ProviderSettingsList {
+			newDistro.ProviderSettingsList[i].Delete("docker_registry_pw")
 		}
 	}
 
@@ -285,6 +285,11 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	regions := []string{}
+	for _, key := range uis.Settings.Providers.AWS.EC2Keys {
+		regions = append(regions, key.Region)
+	}
+
 	opts := gimlet.PermissionOpts{Resource: id, ResourceType: evergreen.DistroResourceType}
 	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 	if err != nil {
@@ -294,8 +299,9 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Distro      distro.Distro      `json:"distro"`
+		Regions     []string           `json:"regions"`
 		Permissions gimlet.Permissions `json:"permissions"`
-	}{d, permissions}
+	}{d, regions, permissions}
 
 	gimlet.WriteJSON(w, data)
 }
