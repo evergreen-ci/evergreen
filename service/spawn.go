@@ -203,6 +203,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := uis.env.Context()
 	defer cancel()
+	ctx = gimlet.AttachUser(ctx, authedUser)
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 
 	if err != nil {
