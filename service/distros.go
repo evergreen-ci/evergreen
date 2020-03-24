@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -116,7 +117,8 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newDistro := oldDistro
-	newDistro.ProviderSettings = nil // new distro only handle ProviderSettingsList
+	newDistro.ProviderSettings = nil                     // new distro only handles ProviderSettingsList
+	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
 		message := fmt.Sprintf("error unmarshaling request: %v", err)

@@ -231,9 +231,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           return;
         }
     }
-    // if we haven't updated it, then we should remove from the list for now
+    // if the settings object is cleared, then we should remove from the list for now
     $scope.activeDistro.provider_settings.splice($scope.currentIdx);
-
   };
 
   $scope.switchRegion = function(region) {
@@ -262,6 +261,11 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         return {"region": "us-east-1"};
       }
       return {};
+  };
+
+  // clear every field but region for the current settings object
+  $scope.clearSettings = function() {
+    $scope.activeDistro.settings = $scope.getNewProviderSettings($scope.activeDistro.provider, $scope.activeDistro.settings.region)
   };
 
   $scope.initOptions = function () {
@@ -612,6 +616,14 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       return $scope.validSecurityGroup() && $scope.validSubnetId();
     }
     return true;
+  }
+
+  $scope.isDefaultRegion = function() {
+    // default region cannot be empty
+    if ($scope.activeDistro === undefined || $scope.activeDistro.settings === undefined || $scope.activeDistro.settings.region === "us-east-1") {
+      return true;
+    }
+    return false;
   }
 
   $scope.isWindows = function () {
