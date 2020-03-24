@@ -193,7 +193,7 @@ func (a *APIApp) SetHost(name string) error {
 }
 
 // SetPrefix sets the route prefix, adding a leading slash, "/", if
-// neccessary.
+// necessary.
 func (a *APIApp) SetPrefix(p string) {
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p

@@ -141,7 +141,9 @@ type mangledResponseWriter struct{ *httptest.ResponseRecorder }
 func (r mangledResponseWriter) Write(b []byte) (int, error) { return 0, errors.New("always errors") }
 
 func TestWriteResponseErrorLogs(t *testing.T) {
-	defer grip.SetSender(grip.GetSender())
+	defer func(s send.Sender) {
+		assert.NoError(t, grip.SetSender(s))
+	}(grip.GetSender())
 	assert := assert.New(t)
 	sender := send.MakeInternalLogger()
 	rw := mangledResponseWriter{httptest.NewRecorder()}
