@@ -16,7 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -148,46 +148,45 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
-// AllIdleEphemeral finds all running ephemeral hosts without containers
-// that have no running tasks.
-func AllIdleEphemeral() ([]Host, error) {
-	query := db.Query(bson.M{
-		RunningTaskKey:   bson.M{"$exists": false},
-		StartedByKey:     evergreen.User,
-		StatusKey:        evergreen.HostRunning,
-		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
-		HasContainersKey: bson.M{"$ne": true},
-	})
-
-	return Find(query)
-}
-
 // IdleEphemeralGroupedByDistroId groups and collates the following by distro.Id:
 // - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
-// - the total number of ephemeral hosts with status: evergreen.HostRunning
+// - the total number of ephemeral hosts that are capable of running tasks
 func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 	var idlehostsByDistroID []IdleHostsByDistroID
-	pipeline := []mgobson.M{
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	pipeline := []bson.M{
 		{
-			"$match": mgobson.M{
+			"$match": bson.M{
 				StartedByKey:     evergreen.User,
-				StatusKey:        evergreen.HostRunning,
-				ProviderKey:      mgobson.M{"$in": evergreen.ProviderSpawnable},
-				HasContainersKey: mgobson.M{"$ne": true},
+				ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+				HasContainersKey: bson.M{"$ne": true},
+				"$or": []bson.M{
+					{
+						StatusKey: evergreen.HostRunning,
+					},
+					{
+						StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}},
+						bootstrapKey: distro.BootstrapMethodUserData,
+						// User data hosts have a grace period during which
+						// they are not considered idle to give agents time to
+						// start.
+						LastCommunicationTimeKey: bson.M{"$lte": time.Now().Add(-MaxUncommunicativeInterval)},
+					},
+				},
 			},
 		},
 		{
-			"$sort": mgobson.M{CreateTimeKey: 1},
+			"$sort": bson.M{CreateTimeKey: 1},
 		},
 		{
-			"$group": mgobson.M{
+			"$group": bson.M{
 				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
-				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
-				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
+				HostsByDistroRunningHostsCountKey: bson.M{"$sum": 1},
+				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", primitive.Undefined{}}}, "$$ROOT", primitive.Undefined{}}}},
 			},
 		},
 		{
-			"$project": mgobson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
+			"$project": bson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
 		},
 	}
 
@@ -759,9 +758,6 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 // recently.
 func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	// Agent monitors should have a longer grace period than agents until they
-	// are considered unreachable.
-	cutoffTime := currentTime.Add(-3 * MaxLCTInterval)
 	return bson.M{
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -777,7 +773,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 			}},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: util.ZeroTime},
-				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxUncommunicativeInterval)}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
 		},
