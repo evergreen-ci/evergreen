@@ -255,9 +255,6 @@ func (as *APIServer) getTaskS3SetupData(w http.ResponseWriter, r *http.Request) 
 		TaskS3Bucket:  settings.Providers.AWS.TaskS3Bucket,
 		TaskS3BaseURL: settings.Providers.AWS.S3BaseURL,
 	}
-	if data.TaskS3BaseURL == "" {
-		data.TaskS3BaseURL = "https://s3.amazonaws.com"
-	}
 	gimlet.WriteJSON(w, data)
 }
 

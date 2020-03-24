@@ -181,7 +181,6 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 
 func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 	out := &apimodels.AgentSetupData{
-		// kim: TODO: add S3 task key/secret/bucket
 		SumoLogicEndpoint: as.Settings.Credentials["sumologic"],
 		SplunkServerURL:   as.Settings.Splunk.ServerURL,
 		SplunkClientToken: as.Settings.Splunk.Token,
@@ -189,15 +188,8 @@ func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 		S3Key:             as.Settings.Providers.AWS.S3Key,
 		S3Secret:          as.Settings.Providers.AWS.S3Secret,
 		S3Bucket:          as.Settings.Providers.AWS.Bucket,
-		TaskS3Key:         as.Settings.Providers.AWS.TaskS3Key,
-		TaskS3Secret:      as.Settings.Providers.AWS.TaskS3Secret,
-		TaskS3Bucket:      as.Settings.Providers.AWS.TaskS3Bucket,
 		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
 		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
 	}
-	if out.S3Base == "" {
-		out.S3Base = "https://s3.amazonaws.com"
-	}
-
 	gimlet.WriteJSON(w, out)
 }
