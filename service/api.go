@@ -250,10 +250,10 @@ func (as *APIServer) GetExpansions(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) getTaskS3SetupData(w http.ResponseWriter, r *http.Request) {
 	settings := as.GetSettings()
 	data := apimodels.TaskS3SetupData{
-		TaskS3Key:     settings.Providers.AWS.TaskS3Key,
-		TaskS3Secret:  settings.Providers.AWS.TaskS3Secret,
-		TaskS3Bucket:  settings.Providers.AWS.TaskS3Bucket,
-		TaskS3BaseURL: settings.Providers.AWS.S3BaseURL,
+		Key:     settings.Providers.AWS.TaskS3Key,
+		Secret:  settings.Providers.AWS.TaskS3Secret,
+		Bucket:  settings.Providers.AWS.TaskS3Bucket,
+		BaseURL: settings.Providers.AWS.S3BaseURL,
 	}
 	gimlet.WriteJSON(w, data)
 }

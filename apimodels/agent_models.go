@@ -84,10 +84,10 @@ type AgentSetupData struct {
 // TaskS3SetupData contains all information necessary to upload/download task
 // data in S3.
 type TaskS3SetupData struct {
-	TaskS3Key     string `json:"task_s3_key"`
-	TaskS3Secret  string `json:"task_s3_secret"`
-	TaskS3Bucket  string `json:"task_s3_bucket"`
-	TaskS3BaseURL string `json:"task_s3_base_url"`
+	Key     string `json:"key"`
+	Secret  string `json:"secret"`
+	Bucket  string `json:"bucket"`
+	BaseURL string `json:"base_url"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
