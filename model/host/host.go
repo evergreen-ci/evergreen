@@ -316,7 +316,8 @@ type SpawnHostUsage struct {
 }
 
 const (
-	MaxLCTInterval = 5 * time.Minute
+	MaxLCTInterval             = 5 * time.Minute
+	MaxUncommunicativeInterval = 3 * MaxLCTInterval
 
 	// Max number of spawn hosts with no expiration for user
 	DefaultUnexpirableHostsPerUser = 1
@@ -1400,6 +1401,7 @@ func FindHostsToTerminate() ([]Host, error) {
 
 	now := time.Now()
 
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
@@ -1413,19 +1415,33 @@ func FindHostsToTerminate() ([]Host, error) {
 			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // hosts that are either taking too long to provision or have started tasks before provisioning finished but not communicated recently
+			{
+				// Non-user data hosts that are either taking too long to
+				// provision or a user hata host has started tasks before
+				// provisioning finished but not checked in recently
 				"$and": []bson.M{
+					// Host is not yet done provisioning
 					{"$or": []bson.M{
 						{ProvisionedKey: false},
 						{StatusKey: evergreen.HostProvisioning},
 					}},
-					{
-						"$or": []bson.M{
-							{RunningTaskKey: bson.M{"$exists": false}},
-							{LTCTaskKey: ""},
+					{"$or": []bson.M{
+						{
+							// Host is a user data host and either has not run a
+							// task yet (i.e. failed to provision in a
+							// reasonable amount of time) or has not
+							// communicated recently (unreachable).
+							"$or": []bson.M{
+								{RunningTaskKey: bson.M{"$exists": false}},
+								{LTCTaskKey: ""},
+							},
+							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxUncommunicativeInterval)},
+						}, {
+							// Host is not a user data host so cannot run tasks
+							// until done provisioning.
+							bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
 						},
-						LastCommunicationTimeKey: bson.M{"$lte": now.Add(-unreachableCutoff)},
-					},
+					}},
 				},
 				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
 				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
