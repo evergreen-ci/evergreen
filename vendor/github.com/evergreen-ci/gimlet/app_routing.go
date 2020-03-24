@@ -155,7 +155,7 @@ func (r *APIRoute) Version(version int) *APIRoute {
 // Handler makes it possible to register an http.HandlerFunc with a
 // route. Chainable. The common pattern for implementing these
 // functions is to write functions and methods in your application
-// that *return* handler fucntions, so you can pass application state
+// that *return* handler functions, so you can pass application state
 // or other data into to the handlers when the applications start,
 // without relying on either global state *or* running into complex
 // typing issues.
