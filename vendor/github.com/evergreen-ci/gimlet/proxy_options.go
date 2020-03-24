@@ -3,13 +3,11 @@ package gimlet
 import (
 	"math/rand"
 	"net/http"
-	"net/http/httputil"
 	"regexp"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 )
 
@@ -25,6 +23,8 @@ type ProxyOptions struct {
 	TargetPool        []string
 	FindTarget        func(*http.Request) ([]string, error)
 	RemoteScheme      string
+	ErrorHandler      func(http.ResponseWriter, *http.Request, error)
+	Transport         http.RoundTripper
 }
 
 // Validate checks the default configuration of a proxy configuration.
@@ -119,29 +119,6 @@ func (opts *ProxyOptions) director(req *http.Request) {
 	if opts.RemoteScheme != "" {
 		req.URL.Scheme = opts.RemoteScheme
 	}
-}
-
-// Proxy adds a simple reverse proxy handler to the specified route,
-// based on the options described in the ProxyOption structure.
-// In most cases you'll want to specify a route matching pattern
-// that captures all routes that begin with a specific prefix.
-func (r *APIRoute) Proxy(opts ProxyOptions) *APIRoute {
-	if err := opts.Validate(); err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
-			"message":          "invalid proxy options",
-			"route":            r.route,
-			"version":          r.version,
-			"existing_handler": r.handler != nil,
-		}))
-		return r
-	}
-
-	r.handler = (&httputil.ReverseProxy{
-		ErrorLog: grip.MakeStandardLogger(level.Warning),
-		Director: opts.director,
-	}).ServeHTTP
-
-	return r
 }
 
 func singleJoiningSlash(a, b string) string {

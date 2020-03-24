@@ -529,7 +529,10 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 			return err
 		}
 
-		if err = c.applyPatch(ctx, logger, conf, p); err != nil {
+		// in order for the main commit's manifest to include module changes commit queue
+		// commits need to be in the correct order, first modules and then the main patch
+		// reorder patches so the main patch gets applied last
+		if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
 			err = errors.Wrap(err, "Failed to apply patch")
 			logger.Execution().Error(err.Error())
 			return err
@@ -537,6 +540,22 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	}
 
 	return nil
+}
+
+// reorder a slice of ModulePatches so the main patch is last
+func reorderPatches(originalPatches []patch.ModulePatch) []patch.ModulePatch {
+	patches := make([]patch.ModulePatch, len(originalPatches))
+	index := 0
+	for _, mp := range originalPatches {
+		if mp.ModuleName == "" {
+			patches[len(patches)-1] = mp
+		} else {
+			patches[index] = mp
+			index++
+		}
+	}
+
+	return patches
 }
 
 func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
@@ -614,12 +633,12 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *model.TaskConfig, dir
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
-	conf *model.TaskConfig, p *patch.Patch) error {
+	conf *model.TaskConfig, patches []patch.ModulePatch) error {
 
 	jpm := c.JasperManager()
 
 	// patch sets and contain multiple patches, some of them for modules
-	for _, patchPart := range p.Patches {
+	for _, patchPart := range patches {
 		if ctx.Err() != nil {
 			return errors.New("apply patch operation canceled")
 		}

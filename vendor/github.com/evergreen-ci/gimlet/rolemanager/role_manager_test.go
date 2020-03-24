@@ -579,3 +579,30 @@ func (s *RoleManagerSuite) TestPermissionSummaryForRoles() {
 	s.Equal(40, summary[0].Permissions["resource3"]["edit"])
 	s.Equal(50, summary[0].Permissions["resource3"]["read"])
 }
+
+func (s *RoleManagerSuite) TestHasPermission() {
+	opts := gimlet.PermissionOpts{
+		Resource:      "resource1",
+		ResourceType:  "project",
+		Permission:    "edit",
+		RequiredLevel: 10,
+	}
+	hasPermission := gimlet.Role{
+		ID:    "1",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 10,
+		},
+	}
+	s.NoError(s.m.UpdateRole(hasPermission))
+	noPermission := gimlet.Role{
+		ID:    "1",
+		Scope: "1",
+		Permissions: map[string]int{
+			"edit": 0,
+		},
+	}
+	s.NoError(s.m.UpdateRole(noPermission))
+	s.False(gimlet.HasPermission(s.m, opts, []gimlet.Role{noPermission}))
+	s.True(gimlet.HasPermission(s.m, opts, []gimlet.Role{hasPermission}))
+}

@@ -140,33 +140,32 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 		for _, cookie := range r.Cookies() {
 			if cookie.Name == u.conf.CookieName {
 				if token, err = url.QueryUnescape(cookie.Value); err == nil {
-					break
+					// set the user, preferring the cookie, maybe change
+					if len(token) > 0 {
+						usr, err = u.manager.GetUserByToken(ctx, token)
+						needsReauth := errors.Cause(err) == ErrNeedsReauthentication
+
+						logger.DebugWhen(err != nil && !needsReauth, message.WrapError(err, message.Fields{
+							"request": reqID,
+							"message": "problem getting user by token",
+						}))
+						if err == nil {
+							usr, err = u.manager.GetOrCreateUser(usr)
+							// Get the user's full details from the DB or create them if they don't exists
+							if err != nil {
+								logger.Debug(message.WrapError(err, message.Fields{
+									"message": "error looking up user",
+									"request": reqID,
+								}))
+							}
+						}
+
+						if usr != nil && !needsReauth {
+							r = setUserForRequest(r, usr)
+							break
+						}
+					}
 				}
-			}
-		}
-
-		// set the user, preferring the cookie, maye change
-		if len(token) > 0 {
-			usr, err = u.manager.GetUserByToken(ctx, token)
-			needsReauth := errors.Cause(err) == ErrNeedsReauthentication
-
-			logger.DebugWhen(err != nil && !needsReauth, message.WrapError(err, message.Fields{
-				"request": reqID,
-				"message": "problem getting user by token",
-			}))
-			if err == nil {
-				usr, err = u.manager.GetOrCreateUser(usr)
-				// Get the user's full details from the DB or create them if they don't exists
-				if err != nil {
-					logger.Debug(message.WrapError(err, message.Fields{
-						"message": "error looking up user",
-						"request": reqID,
-					}))
-				}
-			}
-
-			if usr != nil && !needsReauth {
-				r = setUserForRequest(r, usr)
 			}
 		}
 	}
@@ -185,7 +184,7 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 			authDataName = r.Header[u.conf.HeaderUserName][0]
 		}
 
-		if len(authDataAPIKey) > 0 {
+		if len(authDataName) > 0 && len(authDataAPIKey) > 0 {
 			usr, err = u.manager.GetUserByID(authDataName)
 			logger.Debug(message.WrapError(err, message.Fields{
 				"message":   "problem getting user by id",
