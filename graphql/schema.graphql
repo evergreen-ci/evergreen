@@ -173,6 +173,12 @@ type TestLog {
   rawDisplayURL: String
 }
 
+type Dependency {
+  isMet: Boolean
+  buildVariant: String
+  required: String
+}
+
 type Task {
   id: String!
   createTime: Time
@@ -194,7 +200,7 @@ type Task {
   buildId: String!
   distroId: String!
   buildVariant: String!
-  dependsOn: [String!]
+  dependsOn: [Dependency]
   displayName: String!
   hostId: String
   restarts: Int

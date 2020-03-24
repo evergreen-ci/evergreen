@@ -11,6 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type Dependency struct {
+	IsMet        *bool   `json:"isMet"`
+	BuildVariant *string `json:"buildVariant"`
+	Required     *string `json:"required"`
+}
+
 type DisplayTask struct {
 	Name      string   `json:"Name"`
 	ExecTasks []string `json:"ExecTasks"`
