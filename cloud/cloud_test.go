@@ -4,9 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -82,6 +80,4 @@ func TestConvertContainerManager(t *testing.T) {
 	cm2, err := ConvertContainerManager(m2)
 	assert.EqualError(err, "Error converting manager to container manager")
 	assert.Nil(cm2)
-}
-
 }
