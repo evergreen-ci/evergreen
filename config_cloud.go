@@ -77,10 +77,15 @@ type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
-	S3Key                string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
-	S3Secret             string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
-	Bucket               string `bson:"bucket" json:"bucket" yaml:"bucket"`
-	S3BaseURL            string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	S3Key    string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
+	S3Secret string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
+	Bucket   string `bson:"bucket" json:"bucket" yaml:"bucket"`
+	// Data for agents storing task data
+	TaskS3Key    string `bson:"task_s3_key" json:"task_s3_key" yaml:"task_s3_key"`
+	TaskS3Secret string `bson:"task_s3_secret" json:"task_s3_secret" yaml:"task_s3_secret"`
+	TaskS3Bucket string `bson:"task_s3_bucket" json:"task_s3_bucket" yaml:"task_s3_bucket"`
+	S3BaseURL    string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
 	// EC2 instance types for spawn hosts

@@ -46,6 +46,25 @@ func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	return out, nil
 }
 
+func (c *communicatorImpl) GetTaskS3SetupData(ctx context.Context, taskData TaskData) (*apimodels.TaskS3SetupData, error) {
+	setupData := &apimodels.TaskS3SetupData{}
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+	info.setTaskPathSuffix("s3_setup")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get task S3 setup data for '%s'", taskData.ID)
+	}
+	defer resp.Body.Close()
+	if err = util.ReadJSONInto(resp.Body, setupData); err != nil {
+		return nil, errors.Wrap(err, "failed to read task S3 setup data")
+	}
+	return setupData, nil
+}
+
 // StartTask marks the task as started.
 func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{

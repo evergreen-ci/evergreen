@@ -123,6 +123,11 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
+// GetTaskS3SetupData returns an empty apimodels.TaskS3SetupData.
+func (c *Mock) GetTaskS3SetupData(ctx context.Context) (*apimodels.TaskS3SetupData, error) {
+	return &apimodels.TaskS3SetupData{}, nil
+}
+
 // nolint
 func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
 

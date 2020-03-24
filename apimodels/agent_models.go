@@ -81,6 +81,14 @@ type AgentSetupData struct {
 	LogkeeperURL      string `json:"logkeeper_url"`
 }
 
+// TaskS3SetupData contains all information necessary to upload/download task
+// data in S3.
+type TaskS3SetupData struct {
+	TaskS3Key    string `json:"task_s3_key"`
+	TaskS3Secret string `json:"task_s3_secret"`
+	TaskS3Bucket string `json:"task_s3_bucket"`
+}
+
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
 	TaskId              string `json:"task_id,omitempty"`
