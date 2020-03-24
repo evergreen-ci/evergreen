@@ -2,10 +2,12 @@ package agent
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -128,4 +130,23 @@ func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (conte
 		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return context.WithTimeout(ctx, timeout)
+}
+
+func (a *Agent) startSpotTerminationWatcher(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+	defer recovery.LogStackTraceAndContinue("spot termination watcher")
+	defer cancel()
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			grip.Info("Spot termination watcher canceled")
+			return
+		case <-ticker.C:
+			if util.SpotHostWillTerminateSoon() {
+				grip.Info("Spot instance terminating, so agent is exiting")
+				os.Exit(1)
+			}
+		}
+	}
 }

@@ -56,6 +56,7 @@ type monitor struct {
 	logPrefix       string
 	jasperPort      int
 	port            int
+	provider        string
 
 	// Args to be forwarded to the agent
 	agentArgs []string
@@ -89,6 +90,7 @@ func agentMonitor() cli.Command {
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
+		providerFlagName        = "provider"
 	)
 
 	const (
@@ -132,6 +134,10 @@ func agentMonitor() cli.Command {
 				Value: defaultMonitorPort,
 				Usage: "the port that used by the monitor",
 			},
+			cli.StringFlag{
+				Name:  providerFlagName,
+				Usage: "the cloud provider that manages this host",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientURLFlagName),
@@ -153,6 +159,7 @@ func agentMonitor() cli.Command {
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
 				logPrefix:       c.String(logPrefixFlagName),
+				provider:        c.String(providerFlagName),
 			}
 
 			var err error
@@ -402,6 +409,12 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+			if util.StringSliceContains(evergreen.ProviderEc2Type, m.provider) {
+				if util.SpotHostWillTerminateSoon() {
+					return true, errors.New("spot host terminating soon, not starting a new agent")
+				}
+			}
+
 			// The evergreen agent runs using a separate binary from the monitor
 			// to allow the agent to be updated.
 			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
