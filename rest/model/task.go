@@ -36,7 +36,7 @@ type APITask struct {
 	BuildId            *string          `json:"build_id"`
 	DistroId           *string          `json:"distro_id"`
 	BuildVariant       *string          `json:"build_variant"`
-	DependsOn          []string         `json:"depends_on"`
+	DependsOn          []APIDependency  `json:"depends_on"`
 	DisplayName        *string          `json:"display_name"`
 	HostId             *string          `json:"host_id"`
 	Restarts           int              `json:"restarts"`
@@ -76,6 +76,15 @@ type ApiTaskEndDetail struct {
 	Type        *string `json:"type"`
 	Description *string `json:"desc"`
 	TimedOut    bool    `json:"timed_out"`
+}
+type APIDependency struct {
+	TaskId string `bson:"_id" json:"id"`
+	Status string `bson:"status" json:"status"`
+}
+
+func (ad *APIDependency) BuildFromService(dep task.Dependency) {
+	ad.TaskId = dep.TaskId
+	ad.Status = dep.Status
 }
 
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
@@ -152,9 +161,11 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 
 		if len(v.DependsOn) > 0 {
-			dependsOn := make([]string, len(v.DependsOn))
+			dependsOn := make([]APIDependency, len(v.DependsOn))
 			for i, dep := range v.DependsOn {
-				dependsOn[i] = dep.TaskId
+				apiDep := APIDependency{}
+				apiDep.BuildFromService(dep)
+				dependsOn[i] = apiDep
 			}
 			at.DependsOn = dependsOn
 		}
@@ -242,8 +253,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
-	for i, depId := range ad.DependsOn {
-		dependsOn[i].TaskId = depId
+	for i, dep := range ad.DependsOn {
+		dependsOn[i].TaskId = dep.TaskId
 	}
 
 	st.DependsOn = dependsOn

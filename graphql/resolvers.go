@@ -44,6 +44,55 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
+func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*Dependency, error) {
+	depIds := []string{}
+	for _, dep := range t.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s:%s", t.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	task, err := task.FindOneId(*t.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *t.Id, err.Error()))
+	}
+	state, err := task.BlockedState()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", t.Id, err.Error()))
+	}
+
+	dependencies := []*Dependency{}
+	for _, dep := range t.DependsOn {
+		task, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var isMet string
+		if state == evergreen.TaskStatusBlocked {
+			isMet = "unmet"
+		} else if task.Status != evergreen.TaskFailed && task.Status != evergreen.TaskSucceeded {
+			isMet = ""
+		} else if task.Status == dep.Status || dep.Status == model.AllStatuses {
+			isMet = "met"
+		} else {
+			isMet = "unmet"
+		}
+		denpendency := Dependency{}
+
+	}
+
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
