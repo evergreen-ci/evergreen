@@ -220,6 +220,13 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
+				S3Key:                "s3_key",
+				S3Secret:             "s3_secret",
+				Bucket:               "bucket",
+				TaskS3Key:            "task_s3_key",
+				TaskS3Secret:         "task_s3_secret",
+				TaskS3Bucket:         "task_s3_bucket",
+				S3BaseURL:            "task_s3_url",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
