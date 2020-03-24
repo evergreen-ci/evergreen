@@ -287,6 +287,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 					RPCPort:     bi.RPCPort,
 					Username:    bi.Username,
 					Password:    bi.Password,
+					Retries:     10,
 				}
 				c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 				if err != nil {
