@@ -81,9 +81,9 @@ type AWSConfig struct {
 	S3Secret string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
 	Bucket   string `bson:"bucket" json:"bucket" yaml:"bucket"`
 	// Data for agents storing task data
-	TaskS3Key    string `bson:"task_s3_key" json:"task_s3_key" yaml:"task_s3_key"`
-	TaskS3Secret string `bson:"task_s3_secret" json:"task_s3_secret" yaml:"task_s3_secret"`
-	TaskS3Bucket string `bson:"task_s3_bucket" json:"task_s3_bucket" yaml:"task_s3_bucket"`
+	S3TaskKey    string `bson:"s3_task_key" json:"s3_task_key" yaml:"s3_task_key"`
+	S3TaskSecret string `bson:"s3_task_secret" json:"s3_task_secret" yaml:"s3_task_secret"`
+	S3TaskBucket string `bson:"s3_task_bucket" json:"s3_task_bucket" yaml:"s3_task_bucket"`
 	S3BaseURL    string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`

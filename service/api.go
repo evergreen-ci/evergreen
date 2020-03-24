@@ -247,17 +247,6 @@ func (as *APIServer) GetExpansions(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, e)
 }
 
-func (as *APIServer) getTaskS3SetupData(w http.ResponseWriter, r *http.Request) {
-	settings := as.GetSettings()
-	data := apimodels.TaskS3SetupData{
-		Key:     settings.Providers.AWS.TaskS3Key,
-		Secret:  settings.Providers.AWS.TaskS3Secret,
-		Bucket:  settings.Providers.AWS.TaskS3Bucket,
-		BaseURL: settings.Providers.AWS.S3BaseURL,
-	}
-	gimlet.WriteJSON(w, data)
-}
-
 // AttachTestLog is the API Server hook for getting
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +560,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
-	app.Route().Version(2).Route("/task/{taskId}/s3_setup").Wrap(checkTask, checkHost).Handler(as.getTaskS3SetupData).Get()
 
 	// plugins
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(checkTask).Handler(as.gitServePatchFile).Get()

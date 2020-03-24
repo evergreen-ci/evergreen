@@ -188,8 +188,14 @@ func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 		S3Key:             as.Settings.Providers.AWS.S3Key,
 		S3Secret:          as.Settings.Providers.AWS.S3Secret,
 		S3Bucket:          as.Settings.Providers.AWS.Bucket,
-		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
-		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
+		S3Task: apimodels.S3TaskSetupData{
+			Key:     as.Settings.Providers.AWS.S3TaskKey,
+			Secret:  as.Settings.Providers.AWS.S3TaskSecret,
+			Bucket:  as.Settings.Providers.AWS.S3TaskBucket,
+			BaseURL: as.Settings.Providers.AWS.S3BaseURL,
+		},
+		S3Base:       as.Settings.Providers.AWS.S3BaseURL,
+		LogkeeperURL: as.Settings.LoggerConfig.LogkeeperURL,
 	}
 	gimlet.WriteJSON(w, out)
 }

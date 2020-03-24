@@ -81,10 +81,6 @@ type Communicator interface {
 	// secrets.
 	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
 
-	// GetTaskS3SetupData populates the data necessary to upload/download task
-	// data in S3.
-	GetTaskS3SetupData(context.Context, TaskData) (*apimodels.TaskS3SetupData, error)
-
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
 	GetLoggerMetadata() LoggerMetadata
