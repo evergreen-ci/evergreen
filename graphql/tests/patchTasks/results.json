@@ -1,6 +1,37 @@
 {
   "tests": [
     {
+      "query_file": "filter-by-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "evergreen_lint_generate_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4f02df9ccd4e6ae31f729f_20_02_21_15_13_48",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "generate-lint",
+              "buildVariant": "lint"
+            },
+            {
+              "id": "evergreen_lint_lint_service_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint-service",
+              "buildVariant": "lint"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-bad-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": []
+        }
+      }
+    },
+    {
       "query_file": "no-params.graphql",
       "result": {
         "data": {
@@ -371,18 +402,18 @@
         "data": {
           "patchTasks": [
             {
-              "id": "3",
-              "status": "success",
-              "baseStatus": "success",
-              "displayName": "lint",
-              "buildVariant": "windows"
+              "id": "evergreen_ubuntu1604_bear_repotracker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+              "status": "inactive",
+              "baseStatus": "unstarted",
+              "displayName": "test-repotracker",
+              "buildVariant": "ubuntu1604"
             },
             {
-              "id": "4",
-              "status": "failed",
-              "baseStatus": "success",
-              "displayName": "compile",
-              "buildVariant": "windows"
+              "id": "evergreen_ubuntu1604_cat_repotracker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+              "status": "pending",
+              "baseStatus": "unstarted",
+              "displayName": "test-repotracker",
+              "buildVariant": "ubuntu1604"
             }
           ]
         }
