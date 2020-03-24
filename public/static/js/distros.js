@@ -488,13 +488,13 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       var defaultOptions = {
         '_id': newId,
         'arch': 'linux_amd64',
-        'provider': 'ec2',
+        'provider': 'ec2-auto',
         'bootstrap_settings': {
           'method': 'legacy-ssh',
           'communication': 'legacy-ssh'
         },
         'clone_method': 'legacy-ssh',
-        'provider_settings': [{}], // empty list with one empty object
+        'provider_settings': [$scope.getNewProviderSettings('ec2-auto', "")], // empty list with one new object
         'finder_settings': {
           'version': 'legacy'
         },

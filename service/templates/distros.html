@@ -377,7 +377,7 @@ Evergreen - Distros
               </div>
               <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
                 <label class="distro-label">Bid Price:</label>
-                <input ng-readonly="readOnly" name="bidPrice"
+                <input ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2-spot')" name="bidPrice"
                   type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
                 <div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric
                   bid price is required</div>
