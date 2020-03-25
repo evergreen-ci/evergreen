@@ -42,9 +42,9 @@ func TestTaskBuildFromService(t *testing.T) {
 					BuildId:       ToStringPtr("testBuildId"),
 					DistroId:      ToStringPtr("testDistroId"),
 					BuildVariant:  ToStringPtr("testBuildVariant"),
-					DependsOn: []string{
-						"testDepends1",
-						"testDepends2",
+					DependsOn: []APIDependency{
+						APIDependency{TaskId: "testDepends1", Status: "*"},
+						APIDependency{TaskId: "testDepends2", Status: "*"},
 					},
 					DisplayName: ToStringPtr("testDisplayName"),
 					Logs: LogLinks{
