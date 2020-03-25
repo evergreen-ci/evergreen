@@ -157,7 +157,6 @@ func NewDefaultHTTPRetryConf() HTTPRetryConfiguration {
 			http.MethodPatch,
 		},
 		Statuses: []int{
-			http.StatusBadRequest,
 			http.StatusInternalServerError,
 			http.StatusBadGateway,
 			http.StatusServiceUnavailable,
