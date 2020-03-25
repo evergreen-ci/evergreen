@@ -18,14 +18,14 @@
           "task": {
             "dependsOn": [
               {
-                "metStatus": "unmet",
-                "requiredStatus": "must finish",
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_FINISH",
                 "buildVariant": "ubuntu",
                 "name": "dep1"
               },
               {
-                "metStatus": "unmet",
-                "requiredStatus": "must finish",
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_FINISH",
                 "buildVariant": "windows",
                 "name": "dep2"
               }
@@ -41,8 +41,8 @@
           "task": {
             "dependsOn": [
               {
-                "metStatus": "",
-                "requiredStatus": "must finish",
+                "metStatus": null,
+                "requiredStatus": "MUST_FINISH",
                 "buildVariant": "ubuntu",
                 "name": "dep1"
               }
@@ -58,8 +58,8 @@
           "task": {
             "dependsOn": [
               {
-                "metStatus": "",
-                "requiredStatus": "",
+                "metStatus": null,
+                "requiredStatus": null,
                 "buildVariant": "ubuntu",
                 "name": "dep1"
               }
@@ -75,8 +75,8 @@
           "task": {
             "dependsOn": [
               {
-                "metStatus": "met",
-                "requiredStatus": "must finish",
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FINISH",
                 "buildVariant": "windows",
                 "name": "dep2"
               }
@@ -89,15 +89,17 @@
       "query_file": "dependsOn-dep-status-failed.graphql",
       "result": {
         "data": {
-          "task": {
-            "dependsOn": [
-              {
-                "metStatus": "met",
-                "requiredStatus": "must fail",
-                "buildVariant": "windows",
-                "name": "dep2"
-              }
-            ]
+          "data": {
+            "task": {
+              "dependsOn": [
+                {
+                  "metStatus": "MET",
+                  "requiredStatus": "MUST_FAIL",
+                  "buildVariant": "windows",
+                  "name": "dep2"
+                }
+              ]
+            }
           }
         }
       }
