@@ -133,8 +133,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 	}
 	if cloud.IsEc2Provider(d.Provider) && len(d.ProviderSettingsList) > 1 {
 		return append(errs, validateMultipleProviderSettings(d)...)
-	}
-	if err := validateSingleProviderSettings(d); err != nil {
+	} else if err := validateSingleProviderSettings(d); err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),
 			Level:   Error,
@@ -146,6 +145,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 	errs := ValidationErrors{}
 	definedRegions := map[string]bool{}
+	d.ProviderSettings = nil
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
@@ -176,15 +176,11 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 			})
 			continue
 		}
-		if err := settings.FromDistroSettings(*d, region); err != nil {
+		if err := settings.Validate(); err != nil {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsListKey, err),
+				Message: errors.Wrapf(err, "error validating settings for region '%s'", region).Error(),
 				Level:   Error,
 			})
-			continue
-		}
-		if err := settings.Validate(); err != nil {
-			errs = append(errs, ValidationError{Error, err.Error()})
 		}
 	}
 	return errs

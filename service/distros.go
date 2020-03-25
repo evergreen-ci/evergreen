@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -116,7 +117,8 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newDistro := oldDistro
-
+	newDistro.ProviderSettings = nil                     // new distro only handles ProviderSettingsList
+	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
 		message := fmt.Sprintf("error unmarshaling request: %v", err)
@@ -127,8 +129,8 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 
 	// ensure docker password wasn't auto-filled from form
 	if newDistro.Provider != evergreen.ProviderNameDocker && newDistro.Provider != evergreen.ProviderNameDockerMock {
-		if newDistro.ProviderSettings != nil {
-			delete(*newDistro.ProviderSettings, "docker_registry_pw")
+		for i := range newDistro.ProviderSettingsList {
+			newDistro.ProviderSettingsList[i].Delete("docker_registry_pw")
 		}
 	}
 
@@ -276,6 +278,19 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	if len(d.ProviderSettingsList) == 0 {
+		if err = cloud.CreateSettingsListFromLegacy(&d); err != nil {
+			message := fmt.Sprintf("error converting from legacy settings for distro '%v'", id)
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	regions := []string{}
+	for _, key := range uis.Settings.Providers.AWS.EC2Keys {
+		regions = append(regions, key.Region)
+	}
 
 	opts := gimlet.PermissionOpts{Resource: id, ResourceType: evergreen.DistroResourceType}
 	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
@@ -286,8 +301,9 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Distro      distro.Distro      `json:"distro"`
+		Regions     []string           `json:"regions"`
 		Permissions gimlet.Permissions `json:"permissions"`
-	}{d, permissions}
+	}{d, regions, permissions}
 
 	gimlet.WriteJSON(w, data)
 }

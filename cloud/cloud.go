@@ -265,14 +265,17 @@ func UpdateProviderSettings(d *distro.Distro) error {
 }
 
 func CreateSettingsListFromLegacy(d *distro.Distro) error {
-	bytes, err := bson.Marshal(d.ProviderSettings)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling provider setting into bson")
-	}
 	doc := &birch.Document{}
-	if err := doc.UnmarshalBSON(bytes); err != nil {
-		return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+	if d.ProviderSettings != nil {
+		bytes, err := bson.Marshal(d.ProviderSettings)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling provider setting into bson")
+		}
+		if err := doc.UnmarshalBSON(bytes); err != nil {
+			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
+		}
 	}
+
 	if IsEc2Provider(d.Provider) {
 		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
 	}
