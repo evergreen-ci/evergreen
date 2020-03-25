@@ -68,7 +68,11 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 	}
 	state, err := task.BlockedState()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", *t.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", task.Id, err.Error()))
+	}
+	err = task.CircularDependencies()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", task.Id, err.Error()))
 	}
 
 	dependencies := []*Dependency{}
