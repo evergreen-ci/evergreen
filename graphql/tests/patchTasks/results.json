@@ -6,22 +6,18 @@
         "data": {
           "patchTasks": [
             {
-              "_id": "base-task-2",
-              "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-              "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-              "build_variant": "ubuntu1604",
-              "display_name": "test-cloud",
-              "r": "github_pull_request",
-              "status": "failed"
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
             },
             {
-              "_id": "base-task-1",
-              "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-              "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-              "build_variant": "ubuntu1604",
-              "display_name": "test-thirdparty-docker",
-              "r": "github_pull_request",
-              "status": "success"
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
             }
           ]
         }
