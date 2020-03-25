@@ -6,6 +6,7 @@
     sortDir: DESC
     sortBy: VARIANT
     variant: "ubuntu1604"
+    taskName: "party"
   ) {
     id
     status

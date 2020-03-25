@@ -1934,7 +1934,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, sortDir, page, limit int) ([]Task, error) {
+func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}
@@ -1943,6 +1943,9 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	}
 	if variant != "" {
 		match[BuildVariantKey] = variant
+	}
+	if len(taskName) > 0 {
+		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
 	sorters := []string{}
 	if len(sortBy) > 0 {
