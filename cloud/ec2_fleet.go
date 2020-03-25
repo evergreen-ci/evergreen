@@ -29,9 +29,26 @@ func init() {
 	typeCache.azToInstanceTypes = make(map[string][]string)
 }
 
-func (c *azInstanceTypeCache) azSupportsInstanceType(az, instanceType string) (bool, error) {
+func (c *azInstanceTypeCache) azSupportsInstanceType(ctx context.Context, client AWSClient, az, instanceType string) (bool, error) {
 	if _, ok := c.azToInstanceTypes[az]; !ok {
 		// refresh cache
+		output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
+			LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
+			Filters: []*ec2.Filter{
+				{Name: aws.String("location"), Values: []*string{aws.String(az)}},
+			},
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "can't get instance types for '%s'", az)
+		}
+
+		instanceTypes := make([]string, 0, len(output.InstanceTypeOfferings))
+		for _, offering := range output.InstanceTypeOfferings {
+			if offering != nil && offering.InstanceType != nil {
+				instanceTypes = append(instanceTypes, *offering.InstanceType)
+			}
+		}
+		c.azToInstanceTypes[az] = instanceTypes
 	}
 
 	return util.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
@@ -494,7 +511,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	if len(subnets) > 0 {
 		overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 		for _, subnet := range subnets {
-			supported, err := typeCache.azSupportsInstanceType(subnet.AZ, ec2Settings.InstanceType)
+			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, subnet.AZ, ec2Settings.InstanceType)
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", subnet.AZ)
 			}
@@ -545,7 +562,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	for _, subnet := range describeSubnetsOutput.Subnets {
 		// AWS only allows one override per AZ
 		if !AZSet[*subnet.AvailabilityZone] && subnetMatchesAz(subnet) {
-			supported, err := typeCache.azSupportsInstanceType(*subnet.AvailabilityZone, ec2Settings.InstanceType)
+			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, *subnet.AvailabilityZone, ec2Settings.InstanceType)
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", *subnet.AvailabilityZone)
 			}
