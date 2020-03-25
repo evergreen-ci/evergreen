@@ -174,9 +174,10 @@ type TestLog {
 }
 
 type Dependency {
-  isMet: Boolean
+  name: String
+  metStatus: String
+  requiredStatus: String
   buildVariant: String
-  required: String
 }
 
 type Task {

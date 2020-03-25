@@ -48,9 +48,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Dependency struct {
-		BuildVariant func(childComplexity int) int
-		IsMet        func(childComplexity int) int
-		Required     func(childComplexity int) int
+		BuildVariant   func(childComplexity int) int
+		MetStatus      func(childComplexity int) int
+		Name           func(childComplexity int) int
+		RequiredStatus func(childComplexity int) int
 	}
 
 	File struct {
@@ -335,19 +336,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Dependency.BuildVariant(childComplexity), true
 
-	case "Dependency.isMet":
-		if e.complexity.Dependency.IsMet == nil {
+	case "Dependency.metStatus":
+		if e.complexity.Dependency.MetStatus == nil {
 			break
 		}
 
-		return e.complexity.Dependency.IsMet(childComplexity), true
+		return e.complexity.Dependency.MetStatus(childComplexity), true
 
-	case "Dependency.required":
-		if e.complexity.Dependency.Required == nil {
+	case "Dependency.name":
+		if e.complexity.Dependency.Name == nil {
 			break
 		}
 
-		return e.complexity.Dependency.Required(childComplexity), true
+		return e.complexity.Dependency.Name(childComplexity), true
+
+	case "Dependency.requiredStatus":
+		if e.complexity.Dependency.RequiredStatus == nil {
+			break
+		}
+
+		return e.complexity.Dependency.RequiredStatus(childComplexity), true
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -1707,9 +1715,10 @@ type TestLog {
 }
 
 type Dependency {
-  isMet: Boolean
+  name: String
+  metStatus: String
+  requiredStatus: String
   buildVariant: String
-  required: String
 }
 
 type Task {
@@ -2184,7 +2193,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Dependency_isMet(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
+func (ec *executionContext) _Dependency_name(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2201,7 +2210,7 @@ func (ec *executionContext) _Dependency_isMet(ctx context.Context, field graphql
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.IsMet, nil
+		return obj.Name, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2210,9 +2219,71 @@ func (ec *executionContext) _Dependency_isMet(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Dependency_metStatus(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Dependency",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MetStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Dependency_requiredStatus(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Dependency",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequiredStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -2233,37 +2304,6 @@ func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildVariant, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Dependency_required(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Dependency",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Required, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8474,12 +8514,14 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Dependency")
-		case "isMet":
-			out.Values[i] = ec._Dependency_isMet(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._Dependency_name(ctx, field, obj)
+		case "metStatus":
+			out.Values[i] = ec._Dependency_metStatus(ctx, field, obj)
+		case "requiredStatus":
+			out.Values[i] = ec._Dependency_requiredStatus(ctx, field, obj)
 		case "buildVariant":
 			out.Values[i] = ec._Dependency_buildVariant(ctx, field, obj)
-		case "required":
-			out.Values[i] = ec._Dependency_required(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

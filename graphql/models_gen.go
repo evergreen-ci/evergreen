@@ -12,9 +12,10 @@ import (
 )
 
 type Dependency struct {
-	IsMet        *bool   `json:"isMet"`
-	BuildVariant *string `json:"buildVariant"`
-	Required     *string `json:"required"`
+	Name           *string `json:"name"`
+	MetStatus      *string `json:"metStatus"`
+	RequiredStatus *string `json:"requiredStatus"`
+	BuildVariant   *string `json:"buildVariant"`
 }
 
 type DisplayTask struct {
