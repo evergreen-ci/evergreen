@@ -1728,8 +1728,8 @@ type TestLog {
 
 type Dependency {
   name: String!
-  metStatus: MetStatus
-  requiredStatus: RequiredStatus
+  metStatus: MetStatus!
+  requiredStatus: RequiredStatus!
   buildVariant: String!
 }
 
@@ -2263,11 +2263,14 @@ func (ec *executionContext) _Dependency_metStatus(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*MetStatus)
+	res := resTmp.(MetStatus)
 	fc.Result = res
-	return ec.marshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx, field.Selections, res)
+	return ec.marshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_requiredStatus(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -2294,11 +2297,14 @@ func (ec *executionContext) _Dependency_requiredStatus(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*RequiredStatus)
+	res := resTmp.(RequiredStatus)
 	fc.Result = res
-	return ec.marshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx, field.Selections, res)
+	return ec.marshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -8539,8 +8545,14 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 			}
 		case "metStatus":
 			out.Values[i] = ec._Dependency_metStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "requiredStatus":
 			out.Values[i] = ec._Dependency_requiredStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "buildVariant":
 			out.Values[i] = ec._Dependency_buildVariant(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -10422,6 +10434,15 @@ func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._LogMessage(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (MetStatus, error) {
+	var res MetStatus
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, sel ast.SelectionSet, v MetStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNModuleCodeChange2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModulePatch(ctx context.Context, sel ast.SelectionSet, v model.APIModulePatch) graphql.Marshaler {
 	return ec._ModuleCodeChange(ctx, sel, &v)
 }
@@ -10646,6 +10667,15 @@ func (ec *executionContext) marshalNRecentTaskLogs2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._RecentTaskLogs(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, v interface{}) (RequiredStatus, error) {
+	var res RequiredStatus
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -11295,30 +11325,6 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
-func (ec *executionContext) unmarshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (MetStatus, error) {
-	var res MetStatus
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, sel ast.SelectionSet, v MetStatus) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (*MetStatus, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, sel ast.SelectionSet, v *MetStatus) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
-}
-
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {
 	return ec._PatchBuildVariantTask(ctx, sel, &v)
 }
@@ -11390,30 +11396,6 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, v interface{}) (RequiredStatus, error) {
-	var res RequiredStatus
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, v interface{}) (*RequiredStatus, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v *RequiredStatus) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {

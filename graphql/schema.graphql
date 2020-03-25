@@ -187,8 +187,8 @@ type TestLog {
 
 type Dependency {
   name: String!
-  metStatus: MetStatus
-  requiredStatus: RequiredStatus
+  metStatus: MetStatus!
+  requiredStatus: RequiredStatus!
   buildVariant: String!
 }
 

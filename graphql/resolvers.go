@@ -100,15 +100,10 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 		dependency := Dependency{
 			Name:           depTask.DisplayName,
 			BuildVariant:   depTask.BuildVariant,
-			MetStatus:      &metStatus,
-			RequiredStatus: &requiredStatus,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
 		}
-		if metStatus == "" {
-			dependency.MetStatus = nil
-		}
-		if requiredStatus == "" {
-			dependency.RequiredStatus = nil
-		}
+
 		dependencies = append(dependencies, &dependency)
 	}
 	return dependencies, nil
