@@ -272,7 +272,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           });
           // don't copy private variables
           for (let [k, v] of Object.entries($scope.privateVars)) {
-              if (v === true) {
+              if (v) {
                   delete item.project_vars[k];
                   delete item.private_vars[k];
               }
