@@ -306,7 +306,6 @@ var (
 
 	ProviderEc2Type = []string{
 		ProviderNameEc2Auto,
-		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 	}
