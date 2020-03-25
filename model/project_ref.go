@@ -683,6 +683,9 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 
 // return the next valid batch time
 func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
+	if strings.HasPrefix(cronBatchTime, "@every") {
+		return time.Time{}, errors.Errorf("cron batchtime '%s' cannot be an interval", cronBatchTime)
+	}
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
 	sched, err := parser.Parse(cronBatchTime)
 	if err != nil {

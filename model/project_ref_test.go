@@ -96,8 +96,8 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, res.Add(time.Hour*48), newRes)
 		},
-		"15thOfTheMonth": func(t *testing.T) {
-			batchStr := "0 0 15 *"
+		"1and15thOfTheMonth": func(t *testing.T) {
+			batchStr := "0 0 1,15 *"
 			res, err := GetActivationTimeWithCron(prevTime, batchStr)
 			assert.NoError(t, err)
 			assert.Equal(t, prevTime.Add(time.Hour*24*6), res)
@@ -110,9 +110,8 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 		},
 		"Interval": func(t *testing.T) {
 			batchStr := "@every 2h"
-			res, err := GetActivationTimeWithCron(prevTime, batchStr)
-			assert.NoError(t, err)
-			assert.Equal(t, prevTime.Add(time.Hour*2), res)
+			_, err := GetActivationTimeWithCron(prevTime, batchStr)
+			assert.Error(t, err)
 		},
 	} {
 		t.Run(name, test)

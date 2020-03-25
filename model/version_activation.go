@@ -43,7 +43,7 @@ func ActivateElapsedBuilds(v *Version) error {
 			grip.Info(message.Fields{
 				"message":   "activating revision",
 				"variant":   status.BuildVariant,
-				"project":   v.Branch,
+				"project":   v.Identifier,
 				"revision":  v.Revision,
 				"operation": "project-activation",
 			})
@@ -59,7 +59,7 @@ func ActivateElapsedBuilds(v *Version) error {
 					"message":   "problem retrieving build",
 					"variant":   status.BuildVariant,
 					"build":     status.BuildId,
-					"project":   v.Branch,
+					"project":   v.Identifier,
 					"operation": "project-activation",
 				}))
 				continue
@@ -70,7 +70,7 @@ func ActivateElapsedBuilds(v *Version) error {
 				"operation": "project-activation",
 				"variant":   status.BuildVariant,
 				"build":     status.BuildId,
-				"project":   v.Branch,
+				"project":   v.Identifier,
 			})
 
 			// Don't need to set the version in here since we do it ourselves in a single update
@@ -80,7 +80,7 @@ func ActivateElapsedBuilds(v *Version) error {
 					"message":   "problem activating build",
 					"variant":   status.BuildVariant,
 					"build":     status.BuildId,
-					"project":   v.Branch,
+					"project":   v.Identifier,
 				}))
 				continue
 			}
