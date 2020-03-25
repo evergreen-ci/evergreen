@@ -1306,6 +1306,9 @@ type APIAWSConfig struct {
 	S3Secret             *string     `json:"s3_secret"`
 	Bucket               *string     `json:"bucket"`
 	S3BaseURL            *string     `json:"s3_base_url"`
+	S3TaskKey            *string     `json:"s3_task_key"`
+	S3TaskSecret         *string     `json:"s3_task_secret"`
+	S3TaskBucket         *string     `json:"s3_task_bucket"`
 	DefaultSecurityGroup *string     `json:"default_security_group"`
 	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
 	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
@@ -1333,6 +1336,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3Key = ToStringPtr(v.S3Key)
 		a.S3Secret = ToStringPtr(v.S3Secret)
 		a.Bucket = ToStringPtr(v.Bucket)
+		a.S3TaskKey = ToStringPtr(v.S3TaskKey)
+		a.S3TaskSecret = ToStringPtr(v.S3TaskSecret)
+		a.S3TaskBucket = ToStringPtr(v.S3TaskBucket)
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1355,6 +1361,9 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		S3Secret:             FromStringPtr(a.S3Secret),
 		Bucket:               FromStringPtr(a.Bucket),
 		S3BaseURL:            FromStringPtr(a.S3BaseURL),
+		S3TaskKey:            FromStringPtr(a.S3TaskKey),
+		S3TaskSecret:         FromStringPtr(a.S3TaskSecret),
+		S3TaskBucket:         FromStringPtr(a.S3TaskBucket),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 	}

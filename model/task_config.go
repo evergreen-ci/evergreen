@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -27,6 +28,7 @@ type TaskConfig struct {
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout
+	S3Data          apimodels.S3TaskSetupData
 
 	mu sync.RWMutex
 }

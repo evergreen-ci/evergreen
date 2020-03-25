@@ -1403,10 +1403,22 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Task S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>S3 Base URL</label>
 										<input type="text" ng-model="Settings.providers.aws.s3_base_url">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
