@@ -1947,10 +1947,6 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
-	// if len(taskName) > 0 {
-	// 	matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
-	// 	pipeline = append(pipeline, matchTestName)
-	// }
 	sorters := []string{}
 	if len(sortBy) > 0 {
 		sortKey := sortBy
