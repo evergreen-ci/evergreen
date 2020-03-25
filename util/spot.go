@@ -10,7 +10,9 @@ import (
 // SpotHostWillTerminateSoon returns true if the EC2 spot host it is running on will terminate soon.
 func SpotHostWillTerminateSoon() bool {
 	const url = "http://169.254.169.254/latest/meta-data/spot/termination-time"
-	resp, err := http.Get(url)
+	c := GetHTTPClient()
+	defer PutHTTPClient(c)
+	resp, err := c.Get(url)
 	if err != nil {
 		grip.Info(errors.Wrap(err, "problem getting termination endpoint"))
 		return false
