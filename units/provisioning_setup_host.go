@@ -947,15 +947,10 @@ func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host
 		return nil
 	}
 
-	cmd := fmt.Sprintf("tee %s", h.Distro.IcecreamSettings.ConfigPath)
-	if !h.Distro.IsWindows() {
-		cmd = "sudo" + cmd
-	}
-	args := []string{h.Distro.ShellBinary(), "-c", cmd}
-	content := fmt.Sprintf("ICECC_SCHEDULER_HOST=\"%s\"", h.Distro.IcecreamSettings.SchedulerHost)
+	script := h.Distro.IcecreamSettings.GetUpdateConfigScript()
+	args := []string{h.Distro.ShellBinary(), "-c", script}
 	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
-		Args:               args,
-		StandardInputBytes: []byte(content),
+		Args: args,
 	}); err != nil {
 		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
 	}

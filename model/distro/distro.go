@@ -99,7 +99,38 @@ type IcecreamSettings struct {
 	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" yaml:"config_path,omitempty"`
 }
 
-func (s *IcecreamSettings) Populated() bool {
+// WriteConfigScript returns the shell script to update the icecream config
+// file.
+func (s IcecreamSettings) GetUpdateConfigScript() string {
+	if !s.Populated() {
+		return ""
+	}
+
+	return fmt.Sprintf(`#!/usr/bin/env bash
+set -o errexit
+set -o verbose
+
+sudo su
+
+mkdir -p "%s"
+touch "%s"
+chmod 644 "%s"
+if [[ $(grep 'ICECC_SCHEDULER_HOST=".*"' "%s") ]]; then
+	sed -i 's/ICECC_SCHEDULER_HOST=".*"/ICECC_SCHEDULER_HOST="%s"/g' "%s"
+else
+	echo 'ICECC_SCHEDULER_HOST="%s"' > "%s"
+fi
+`,
+		filepath.Dir(s.ConfigPath),
+		s.ConfigPath,
+		s.ConfigPath,
+		s.ConfigPath,
+		s.SchedulerHost, s.ConfigPath,
+		s.SchedulerHost, s.ConfigPath,
+	)
+}
+
+func (s IcecreamSettings) Populated() bool {
 	return s.SchedulerHost != "" && s.ConfigPath != ""
 }
 

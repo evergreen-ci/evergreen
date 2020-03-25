@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -77,8 +78,8 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
-func (hc *DBHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, error) {
-	return host.Find(host.ByDistroIDRunning(distroID))
+func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
+	return host.Find(db.Query(host.ByDistroIDOrAliasRunning(distro)))
 }
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
@@ -286,10 +287,10 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 	}
 }
 
-func (hc *MockHostConnector) FindHostsByDistroID(distroID string) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
 	hosts := []host.Host{}
 	for _, h := range hc.CachedHosts {
-		if h.Distro.Id == distroID {
+		if h.Distro.Id == distro || util.StringSliceContains(h.Distro.Aliases, distro) {
 			hosts = append(hosts, h)
 		}
 	}

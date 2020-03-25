@@ -40,6 +40,7 @@ func TestHostConnectorSuite(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 		host1 := &host.Host{
 			Id:             "host1",
+			Aliases:        []string{"alias1and2"},
 			StartedBy:      testUser,
 			Status:         evergreen.HostRunning,
 			ExpirationTime: time.Now().Add(time.Hour),
@@ -47,6 +48,7 @@ func TestHostConnectorSuite(t *testing.T) {
 		}
 		host2 := &host.Host{
 			Id:        "host2",
+			Aliases:   []string{"alias1and2"},
 			StartedBy: "user2",
 			Distro: distro.Distro{
 				Id: "distro2",
@@ -202,11 +204,26 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 	s.Nil(h)
 }
 
-func (s *HostConnectorSuite) TestFindHostsByDistroID() {
-	hosts, err := s.ctx.FindHostsByDistroID("distro5")
+func (s *HostConnectorSuite) TestFindHostsByDistro() {
+	hosts, err := s.ctx.FindHostsByDistro("distro5")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
+
+	hosts, err = s.ctx.FindHostsByDistro("alias1and2")
+	s.Require().NoError(err)
+	s.Require().Len(hosts, 2)
+	var host1Found, host2Found bool
+	for _, h := range hosts {
+		if h.Id == "host1" {
+			host1Found = true
+		}
+		if h.Id == "host2" {
+			host2Found = true
+		}
+	}
+	s.True(host1Found)
+	s.True(host2Found)
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
