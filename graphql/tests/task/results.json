@@ -89,17 +89,15 @@
       "query_file": "dependsOn-dep-status-failed.graphql",
       "result": {
         "data": {
-          "data": {
-            "task": {
-              "dependsOn": [
-                {
-                  "metStatus": "MET",
-                  "requiredStatus": "MUST_FAIL",
-                  "buildVariant": "windows",
-                  "name": "dep2"
-                }
-              ]
-            }
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FAIL",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
           }
         }
       }
