@@ -66,10 +66,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *at.Id, err.Error()))
 	}
-	state, err := t.BlockedState()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", t.Id, err.Error()))
-	}
+
 	err = t.CircularDependencies()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", t.Id, err.Error()))
@@ -82,9 +79,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 			continue
 		}
 		var metStatus MetStatus
-		if state == evergreen.TaskStatusBlocked {
-			metStatus = "UNMET"
-		} else if depTask.Status != evergreen.TaskFailed && depTask.Status != evergreen.TaskSucceeded {
+		if depTask.Status != evergreen.TaskFailed && depTask.Status != evergreen.TaskSucceeded {
 			metStatus = ""
 		} else if depTask.Status == dep.Status || dep.Status == model.AllStatuses {
 			metStatus = "MET"
