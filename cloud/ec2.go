@@ -1159,7 +1159,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if err != nil {
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
-	if volume.Device != nil {
+	if volume != nil && volume.Device != nil {
 		attachment.DeviceName = *volume.Device
 	}
 	return errors.Wrapf(h.AddVolumeToHost(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)

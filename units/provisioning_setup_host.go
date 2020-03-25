@@ -802,6 +802,9 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	output, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: []string{"lsblk"},
 	})
+	if err != nil {
+		return errors.Wrap(err, "can't run lsblk")
+	}
 	deviceName, err := getMostRecentlyAddedDevice(output)
 	if err != nil {
 		return errors.Wrapf(err, "can't get device name from '%s'", output)
