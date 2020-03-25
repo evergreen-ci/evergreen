@@ -9,9 +9,9 @@ import (
 	"github.com/urfave/cli"
 )
 
-func management(opts *ServiceOptions) cli.Command {
+func abortablePoolManagement(opts *ServiceOptions) cli.Command {
 	return cli.Command{
-		Name: "manage",
+		Name: "abortable_pool_management",
 		Subcommands: []cli.Command{
 			manageListJobs(opts),
 			manageAbortAllJobs(opts),
@@ -24,12 +24,12 @@ func management(opts *ServiceOptions) cli.Command {
 func manageListJobs(opts *ServiceOptions) cli.Command {
 	return cli.Command{
 		Name:  "list",
-		Flags: opts.managementFlags(),
+		Flags: opts.abortablePoolManagementFlags(),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withAbortablePoolManagementClient(ctx, c, func(client *rest.AbortablePoolManagementClient) error {
 				jobs, err := client.ListJobs(ctx)
 				if err != nil {
 					return errors.WithStack(err)
@@ -52,12 +52,12 @@ func manageListJobs(opts *ServiceOptions) cli.Command {
 func manageAbortAllJobs(opts *ServiceOptions) cli.Command {
 	return cli.Command{
 		Name:  "abort-all",
-		Flags: opts.managementFlags(),
+		Flags: opts.abortablePoolManagementFlags(),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withAbortablePoolManagementClient(ctx, c, func(client *rest.AbortablePoolManagementClient) error {
 				return errors.WithStack(client.AbortAllJobs(ctx))
 			})
 
@@ -70,7 +70,7 @@ func manageCheckJob(opts *ServiceOptions) cli.Command {
 
 	return cli.Command{
 		Name: "check",
-		Flags: opts.managementFlags(
+		Flags: opts.abortablePoolManagementFlags(
 			cli.StringSliceFlag{
 				Name:  jobIDFlagName,
 				Usage: "specify the name of the job to check. May specify more than once.",
@@ -80,7 +80,7 @@ func manageCheckJob(opts *ServiceOptions) cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withAbortablePoolManagementClient(ctx, c, func(client *rest.AbortablePoolManagementClient) error {
 				t := tabby.New()
 				t.AddHeader("Job ID", "Is Running")
 				for _, j := range c.StringSlice(jobIDFlagName) {
@@ -105,7 +105,7 @@ func manageAbortJob(opts *ServiceOptions) cli.Command {
 
 	return cli.Command{
 		Name: "abort",
-		Flags: opts.managementFlags(
+		Flags: opts.abortablePoolManagementFlags(
 			cli.StringSliceFlag{
 				Name:  jobIDFlagName,
 				Usage: "specify the name of the job to abort. May specify more than once.",
@@ -115,7 +115,7 @@ func manageAbortJob(opts *ServiceOptions) cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withAbortablePoolManagementClient(ctx, c, func(client *rest.AbortablePoolManagementClient) error {
 				var hasErrors bool
 				t := tabby.New()
 				t.AddHeader("Job ID", "Aborted", "Error")

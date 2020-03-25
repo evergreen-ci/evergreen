@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"context"
@@ -23,31 +23,31 @@ func TestMongoDBConstructors(t *testing.T) {
 	t.Run("NilSessionShouldError", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		conf := DBQueueReporterOptions{Options: opts}
+		conf := DBQueueManagerOptions{Options: opts}
 
-		db, err := MakeDBQueueState(ctx, conf, nil)
+		db, err := MakeDBQueueManager(ctx, conf, nil)
 		assert.Error(t, err)
 		assert.Nil(t, db)
 	})
 	t.Run("UnpingableSessionError", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		conf := DBQueueReporterOptions{Options: opts}
+		conf := DBQueueManagerOptions{Options: opts}
 
-		db, err := MakeDBQueueState(ctx, conf, client)
+		db, err := MakeDBQueueManager(ctx, conf, client)
 		assert.Error(t, err)
 		assert.Nil(t, db)
 	})
 	t.Run("BuildNewConnector", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		conf := DBQueueReporterOptions{Name: "foo", Options: opts}
+		conf := DBQueueManagerOptions{Name: "foo", Options: opts}
 
-		db, err := MakeDBQueueState(ctx, conf, client)
+		db, err := MakeDBQueueManager(ctx, conf, client)
 		assert.NoError(t, err)
 		assert.NotNil(t, db)
 
-		r, ok := db.(*dbQueueStat)
+		r, ok := db.(*dbQueueManager)
 		require.True(t, ok)
 		require.NotNil(t, r)
 		assert.NotZero(t, r.collection)
@@ -55,9 +55,9 @@ func TestMongoDBConstructors(t *testing.T) {
 	t.Run("DialWithNewConstructor", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		conf := DBQueueReporterOptions{Name: "foo", Options: opts}
+		conf := DBQueueManagerOptions{Name: "foo", Options: opts}
 
-		r, err := NewDBQueueState(ctx, conf)
+		r, err := NewDBQueueManager(ctx, conf)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 	})
@@ -65,9 +65,9 @@ func TestMongoDBConstructors(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
 		opts.URI = "mongodb://lochost:26016"
-		conf := DBQueueReporterOptions{Options: opts}
+		conf := DBQueueManagerOptions{Options: opts}
 
-		r, err := NewDBQueueState(ctx, conf)
+		r, err := NewDBQueueManager(ctx, conf)
 		assert.Error(t, err)
 		assert.Nil(t, r)
 	})

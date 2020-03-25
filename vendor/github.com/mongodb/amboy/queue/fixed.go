@@ -277,6 +277,12 @@ func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	// save it
+	status := j.Status()
+	status.Completed = true
+	status.InProgress = false
+	status.ModificationTime = time.Now()
+	status.ModificationCount += 1
+	j.SetStatus(status)
 	q.storage[j.ID()] = j
 
 	if len(q.toDelete) == q.capacity-1 {

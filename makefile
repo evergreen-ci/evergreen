@@ -350,7 +350,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
-	mkdir vendor/github.com/vektah/gqlparser/.v2 && pushd vendor/github.com/vektah/gqlparser && mv * .v2 && mv .v2 v2 && popd
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go
