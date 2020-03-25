@@ -12,29 +12,6 @@
       }
     },
     {
-      "query_file": "dependsOn-blocked.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "dependsOn": [
-              {
-                "metStatus": "UNMET",
-                "requiredStatus": "MUST_FINISH",
-                "buildVariant": "ubuntu",
-                "name": "dep1"
-              },
-              {
-                "metStatus": "UNMET",
-                "requiredStatus": "MUST_FINISH",
-                "buildVariant": "windows",
-                "name": "dep2"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
       "query_file": "dependsOn-task-status-not-success-nor-fail.graphql",
       "result": {
         "data": {
