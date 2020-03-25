@@ -1598,11 +1598,13 @@ enum SortDirection {
 enum MetStatus {
   UNMET
   MET
+  PENDING
 }
 
 enum RequiredStatus {
   MUST_FAIL
   MUST_FINISH
+  MUST_SUCCEED
 }
 
 input PatchReconfigure {

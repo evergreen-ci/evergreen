@@ -91,18 +91,20 @@ type VariantTasks struct {
 type MetStatus string
 
 const (
-	MetStatusUnmet MetStatus = "UNMET"
-	MetStatusMet   MetStatus = "MET"
+	MetStatusUnmet   MetStatus = "UNMET"
+	MetStatusMet     MetStatus = "MET"
+	MetStatusPending MetStatus = "PENDING"
 )
 
 var AllMetStatus = []MetStatus{
 	MetStatusUnmet,
 	MetStatusMet,
+	MetStatusPending,
 }
 
 func (e MetStatus) IsValid() bool {
 	switch e {
-	case MetStatusUnmet, MetStatusMet:
+	case MetStatusUnmet, MetStatusMet, MetStatusPending:
 		return true
 	}
 	return false
@@ -132,18 +134,20 @@ func (e MetStatus) MarshalGQL(w io.Writer) {
 type RequiredStatus string
 
 const (
-	RequiredStatusMustFail   RequiredStatus = "MUST_FAIL"
-	RequiredStatusMustFinish RequiredStatus = "MUST_FINISH"
+	RequiredStatusMustFail    RequiredStatus = "MUST_FAIL"
+	RequiredStatusMustFinish  RequiredStatus = "MUST_FINISH"
+	RequiredStatusMustSucceed RequiredStatus = "MUST_SUCCEED"
 )
 
 var AllRequiredStatus = []RequiredStatus{
 	RequiredStatusMustFail,
 	RequiredStatusMustFinish,
+	RequiredStatusMustSucceed,
 }
 
 func (e RequiredStatus) IsValid() bool {
 	switch e {
-	case RequiredStatusMustFail, RequiredStatusMustFinish:
+	case RequiredStatusMustFail, RequiredStatusMustFinish, RequiredStatusMustSucceed:
 		return true
 	}
 	return false

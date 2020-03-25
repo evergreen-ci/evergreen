@@ -80,20 +80,22 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 		}
 		var metStatus MetStatus
 		if depTask.Status != evergreen.TaskFailed && depTask.Status != evergreen.TaskSucceeded {
-			metStatus = ""
-		} else if depTask.Status == dep.Status || dep.Status == model.AllStatuses {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
 			metStatus = "MET"
 		} else {
 			metStatus = "UNMET"
 		}
-
 		var requiredStatus RequiredStatus
-		if dep.Status == model.AllStatuses {
+		switch dep.Status {
+		case model.AllStatuses:
 			requiredStatus = "MUST_FINISH"
-		} else if dep.Status == evergreen.TaskFailed {
+			break
+		case evergreen.TaskFailed:
 			requiredStatus = "MUST_FAIL"
-		} else {
-			requiredStatus = ""
+			break
+		default:
+			requiredStatus = "MUST_SUCCEED"
 		}
 
 		dependency := Dependency{
