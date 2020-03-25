@@ -361,7 +361,7 @@ Evergreen - Distros
               </div>
               <div>
                 <label class="distro-label">AMI ID:</label>
-                <input ng-readonly="readOnly" type="text" name="ami"
+                <input ng-readonly="readOnly" type="text" name="ami" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2')"
                   class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776"
                   ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">AMI

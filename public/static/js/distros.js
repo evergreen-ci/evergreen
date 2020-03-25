@@ -613,6 +613,9 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       return false;
     }
     if ($scope.activeDistro.provider.startsWith('ec2')) {
+      if ($scope.activeDistro) {
+          $scope.updateSettingsList(); // remove any empty settings before validating
+      }
       return $scope.validSecurityGroup() && $scope.validSubnetId();
     }
     return true;
@@ -666,7 +669,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function () {
     if ($scope.activeDistro) {
-      $scope.updateSettingsList(); // to validate list
       for (var i = 0; i < $scope.activeDistro.provider_settings; i++) {
         if ($scope.activeDistro.provider_settings[i].is_vpc && $scope.activeDistro.provider_settings[i].security_group_ids) {
           for (var i = 0; i < $scope.activeDistro.provider_settings[i].security_group_ids.length; i++) {
@@ -683,7 +685,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
   $scope.validSubnetId = function () {
     if ($scope.activeDistro) {
-      $scope.updateSettingsList(); // to validate list
       for (var i = 0; i < $scope.activeDistro.provider_settings; i++) {
         if ($scope.activeDistro.provider_settings[i].is_vpc) {
             return $scope.activeDistro.provider_settings[i].subnet_id.substring(0, 7) == 'subnet-';
