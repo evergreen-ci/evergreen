@@ -77,15 +77,6 @@ type ApiTaskEndDetail struct {
 	Description *string `json:"desc"`
 	TimedOut    bool    `json:"timed_out"`
 }
-type APIDependency struct {
-	TaskId string `bson:"_id" json:"id"`
-	Status string `bson:"status" json:"status"`
-}
-
-func (ad *APIDependency) BuildFromService(dep task.Dependency) {
-	ad.TaskId = dep.TaskId
-	ad.Status = dep.Status
-}
 
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
@@ -324,4 +315,17 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 // ToService returns a service layer version cost using the data from APIVersionCost.
 func (atc *APITaskCost) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APITaskCost")
+}
+
+type APIDependency struct {
+	TaskId string `bson:"_id" json:"id"`
+	Status string `bson:"status" json:"status"`
+}
+
+func (ad *APIDependency) BuildFromService(dep task.Dependency) {
+	ad.TaskId = dep.TaskId
+	ad.Status = dep.Status
+}
+func (ad *APIDependency) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIDependency")
 }
