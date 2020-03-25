@@ -54,7 +54,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s:%s", t.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s:%s", *t.Id, err.Error()))
 	}
 
 	taskMap := map[string]*task.Task{}
@@ -68,7 +68,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 	}
 	state, err := task.BlockedState()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", t.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", *t.Id, err.Error()))
 	}
 
 	dependencies := []*Dependency{}
@@ -77,20 +77,35 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		if !ok {
 			continue
 		}
-		var isMet string
+		var metStatus string
 		if state == evergreen.TaskStatusBlocked {
-			isMet = "unmet"
+			metStatus = "unmet"
 		} else if task.Status != evergreen.TaskFailed && task.Status != evergreen.TaskSucceeded {
-			isMet = ""
+			metStatus = ""
 		} else if task.Status == dep.Status || dep.Status == model.AllStatuses {
-			isMet = "met"
+			metStatus = "met"
 		} else {
-			isMet = "unmet"
+			metStatus = "unmet"
 		}
-		denpendency := Dependency{}
 
+		var requiredStatus string
+		if dep.Status == model.AllStatuses {
+			requiredStatus = "must finish"
+		} else if dep.Status == evergreen.TaskFailed {
+			requiredStatus = "must fail"
+		} else {
+			requiredStatus = ""
+		}
+
+		dependency := Dependency{
+			Name:           &task.DisplayName,
+			BuildVariant:   &task.BuildVariant,
+			MetStatus:      &metStatus,
+			RequiredStatus: &requiredStatus,
+		}
+		dependencies = append(dependencies, &dependency)
 	}
-
+	return dependencies, nil
 }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
