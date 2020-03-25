@@ -24,7 +24,6 @@ func TestDistroBuildFromService(t *testing.T) {
 		},
 		Note: "note1",
 		HomeVolumeSettings: distro.HomeVolumeSettings{
-			DeviceName:    "nvme1n1",
 			FormatCommand: "format_command",
 		},
 		IcecreamSettings: distro.IcecreamSettings{
@@ -44,7 +43,6 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromStringPtr(apiDistro.BootstrapSettings.ServiceUser))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, FromStringPtr(apiDistro.Note))
-	assert.Equal(t, d.HomeVolumeSettings.DeviceName, FromStringPtr(apiDistro.HomeVolumeSettings.DeviceName))
 	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
 	assert.Equal(t, d.IcecreamSettings.SchedulerHost, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, d.IcecreamSettings.ConfigPath, FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
@@ -84,6 +82,7 @@ func TestDistroToService(t *testing.T) {
 			},
 		},
 		Note: ToStringPtr("note1"),
+<<<<<<< HEAD
 		HomeVolumeSettings: APIHomeVolumeSettings{
 			DeviceName:    ToStringPtr("nvme1n1"),
 			FormatCommand: ToStringPtr("format_command"),
@@ -92,6 +91,8 @@ func TestDistroToService(t *testing.T) {
 			SchedulerHost: ToStringPtr("host"),
 			ConfigPath:    ToStringPtr("config_path"),
 		},
+=======
+>>>>>>> parse device name from lsblk
 	}
 
 	res, err := apiDistro.ToService()
@@ -114,10 +115,13 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	assert.Equal(t, apiDistro.Note, ToStringPtr(d.Note))
+<<<<<<< HEAD
 	assert.Equal(t, apiDistro.HomeVolumeSettings.DeviceName, ToStringPtr(d.HomeVolumeSettings.DeviceName))
 	assert.Equal(t, apiDistro.HomeVolumeSettings.FormatCommand, ToStringPtr(d.HomeVolumeSettings.FormatCommand))
 	assert.Equal(t, apiDistro.IcecreamSettings.SchedulerHost, ToStringPtr(d.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, apiDistro.IcecreamSettings.ConfigPath, ToStringPtr(d.IcecreamSettings.ConfigPath))
+=======
+>>>>>>> parse device name from lsblk
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {
