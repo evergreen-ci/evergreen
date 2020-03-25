@@ -194,3 +194,27 @@ func TestFleet(t *testing.T) {
 		t.Run(name, test)
 	}
 }
+
+func TestAzInstanceTypeCache(t *testing.T) {
+	cache := azInstanceTypeCache{azToInstanceTypes: make(map[string][]string)}
+	client := &awsClientMock{
+		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
+			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
+				{InstanceType: aws.String("instanceType0")},
+				{InstanceType: aws.String("instanceType1")},
+				{InstanceType: aws.String("instanceType2")},
+			},
+		},
+	}
+	supported, err := cache.azSupportsInstanceType(context.Background(), client, "az0", "instanceType0")
+	assert.NoError(t, err)
+	assert.True(t, supported)
+
+	supported, err = cache.azSupportsInstanceType(context.Background(), client, "az0", "not_supported")
+	assert.NoError(t, err)
+	assert.False(t, supported)
+
+	az, ok := cache.azToInstanceTypes["az0"]
+	assert.True(t, ok)
+	assert.Len(t, az, 3)
+}
