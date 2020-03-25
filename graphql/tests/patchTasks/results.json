@@ -1,6 +1,37 @@
 {
   "tests": [
     {
+      "query_file": "filter-by-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-bad-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": []
+        }
+      }
+    },
+    {
       "query_file": "no-params.graphql",
       "result": {
         "data": {
@@ -371,18 +402,18 @@
         "data": {
           "patchTasks": [
             {
-              "id": "3",
-              "status": "success",
               "baseStatus": "success",
-              "displayName": "lint",
-              "buildVariant": "windows"
+              "buildVariant": "ubuntu1604",
+              "displayName": "test-thirdparty-docker",
+              "id": "1",
+              "status": "success"
             },
             {
-              "id": "4",
-              "status": "failed",
-              "baseStatus": "success",
-              "displayName": "compile",
-              "buildVariant": "windows"
+              "baseStatus": "failed",
+              "buildVariant": "ubuntu1604",
+              "displayName": "test-cloud",
+              "id": "2",
+              "status": "failed"
             }
           ]
         }
