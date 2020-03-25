@@ -81,31 +81,37 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		if !ok {
 			continue
 		}
-		var metStatus string
+		var metStatus MetStatus
 		if state == evergreen.TaskStatusBlocked {
-			metStatus = "unmet"
+			metStatus = "UNMET"
 		} else if task.Status != evergreen.TaskFailed && task.Status != evergreen.TaskSucceeded {
 			metStatus = ""
 		} else if task.Status == dep.Status || dep.Status == model.AllStatuses {
-			metStatus = "met"
+			metStatus = "MET"
 		} else {
-			metStatus = "unmet"
+			metStatus = "UNMET"
 		}
 
-		var requiredStatus string
+		var requiredStatus RequiredStatus
 		if dep.Status == model.AllStatuses {
-			requiredStatus = "must finish"
+			requiredStatus = "MUST_FINISH"
 		} else if dep.Status == evergreen.TaskFailed {
-			requiredStatus = "must fail"
+			requiredStatus = "MUST_FAIL"
 		} else {
 			requiredStatus = ""
 		}
 
 		dependency := Dependency{
-			Name:           &task.DisplayName,
-			BuildVariant:   &task.BuildVariant,
+			Name:           task.DisplayName,
+			BuildVariant:   task.BuildVariant,
 			MetStatus:      &metStatus,
 			RequiredStatus: &requiredStatus,
+		}
+		if metStatus == "" {
+			dependency.MetStatus = nil
+		}
+		if requiredStatus == "" {
+			dependency.RequiredStatus = nil
 		}
 		dependencies = append(dependencies, &dependency)
 	}

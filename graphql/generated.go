@@ -1595,6 +1595,16 @@ enum SortDirection {
   DESC
 }
 
+enum MetStatus {
+  UNMET
+  MET
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+}
+
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -1715,10 +1725,10 @@ type TestLog {
 }
 
 type Dependency {
-  name: String
-  metStatus: String
-  requiredStatus: String
-  buildVariant: String
+  name: String!
+  metStatus: MetStatus
+  requiredStatus: RequiredStatus
+  buildVariant: String!
 }
 
 type Task {
@@ -2217,11 +2227,14 @@ func (ec *executionContext) _Dependency_name(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_metStatus(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -2250,9 +2263,9 @@ func (ec *executionContext) _Dependency_metStatus(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*MetStatus)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_requiredStatus(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -2281,9 +2294,9 @@ func (ec *executionContext) _Dependency_requiredStatus(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*RequiredStatus)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -2310,11 +2323,14 @@ func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
@@ -8516,12 +8532,18 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("Dependency")
 		case "name":
 			out.Values[i] = ec._Dependency_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "metStatus":
 			out.Values[i] = ec._Dependency_metStatus(ctx, field, obj)
 		case "requiredStatus":
 			out.Values[i] = ec._Dependency_requiredStatus(ctx, field, obj)
 		case "buildVariant":
 			out.Values[i] = ec._Dependency_buildVariant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11271,6 +11293,30 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
+func (ec *executionContext) unmarshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (MetStatus, error) {
+	var res MetStatus
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, sel ast.SelectionSet, v MetStatus) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (*MetStatus, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOMetStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, sel ast.SelectionSet, v *MetStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {
 	return ec._PatchBuildVariantTask(ctx, sel, &v)
 }
@@ -11342,6 +11388,30 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, v interface{}) (RequiredStatus, error) {
+	var res RequiredStatus
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, v interface{}) (*RequiredStatus, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalORequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalORequiredStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v *RequiredStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {

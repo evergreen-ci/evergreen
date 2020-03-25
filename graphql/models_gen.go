@@ -12,10 +12,10 @@ import (
 )
 
 type Dependency struct {
-	Name           *string `json:"name"`
-	MetStatus      *string `json:"metStatus"`
-	RequiredStatus *string `json:"requiredStatus"`
-	BuildVariant   *string `json:"buildVariant"`
+	Name           string          `json:"name"`
+	MetStatus      *MetStatus      `json:"metStatus"`
+	RequiredStatus *RequiredStatus `json:"requiredStatus"`
+	BuildVariant   string          `json:"buildVariant"`
 }
 
 type DisplayTask struct {
@@ -86,6 +86,88 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type MetStatus string
+
+const (
+	MetStatusUnmet MetStatus = "UNMET"
+	MetStatusMet   MetStatus = "MET"
+)
+
+var AllMetStatus = []MetStatus{
+	MetStatusUnmet,
+	MetStatusMet,
+}
+
+func (e MetStatus) IsValid() bool {
+	switch e {
+	case MetStatusUnmet, MetStatusMet:
+		return true
+	}
+	return false
+}
+
+func (e MetStatus) String() string {
+	return string(e)
+}
+
+func (e *MetStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MetStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MetStatus", str)
+	}
+	return nil
+}
+
+func (e MetStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type RequiredStatus string
+
+const (
+	RequiredStatusMustFail   RequiredStatus = "MUST_FAIL"
+	RequiredStatusMustFinish RequiredStatus = "MUST_FINISH"
+)
+
+var AllRequiredStatus = []RequiredStatus{
+	RequiredStatusMustFail,
+	RequiredStatusMustFinish,
+}
+
+func (e RequiredStatus) IsValid() bool {
+	switch e {
+	case RequiredStatusMustFail, RequiredStatusMustFinish:
+		return true
+	}
+	return false
+}
+
+func (e RequiredStatus) String() string {
+	return string(e)
+}
+
+func (e *RequiredStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RequiredStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RequiredStatus", str)
+	}
+	return nil
+}
+
+func (e RequiredStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type SortDirection string

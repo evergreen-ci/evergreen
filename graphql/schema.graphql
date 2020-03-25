@@ -54,6 +54,16 @@ enum SortDirection {
   DESC
 }
 
+enum MetStatus {
+  UNMET
+  MET
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+}
+
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -174,10 +184,10 @@ type TestLog {
 }
 
 type Dependency {
-  name: String
-  metStatus: String
-  requiredStatus: String
-  buildVariant: String
+  name: String!
+  metStatus: MetStatus
+  requiredStatus: RequiredStatus
+  buildVariant: String!
 }
 
 type Task {
