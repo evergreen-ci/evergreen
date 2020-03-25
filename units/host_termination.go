@@ -104,7 +104,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.HasContainers {
+	if j.host.HasContainers && !j.TerminateIfBusy {
 		var idle bool
 		idle, err = j.host.IsIdleParent()
 		if err != nil {
@@ -115,6 +115,15 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		if !idle {
+			grip.Info(message.Fields{
+				"job":      j.ID(),
+				"host_id":  j.HostID,
+				"job_type": j.Type().Name,
+				"status":   j.host.Status,
+				"provider": j.host.Distro.Provider,
+				"reason":   j.Reason,
+				"message":  "attempted to terminate a non-idle parent",
+			})
 			return
 		}
 	}

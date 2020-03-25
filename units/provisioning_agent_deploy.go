@@ -145,18 +145,9 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 					return
 				}
 
-				if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
+				if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 					j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
-					return
 				}
-
-				grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")),
-					message.Fields{
-						"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-						"host_id": j.host.Id,
-						"distro":  j.host.Distro,
-					}))
-
 				return
 			}
 
@@ -282,18 +273,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string
 		}))
 
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
-		if disableErr := j.host.DisablePoisonedHost(err.Error()); disableErr != nil {
-			return errors.Wrapf(disableErr, "error terminating host %s", j.host.Id)
-		}
-
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")),
-			message.Fields{
-				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro,
-			}))
-
-		return errors.Wrapf(err, "error running setup script on remote host: %s", output)
+		return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)), "error terminating host %s", j.host.Id)
 	}
 
 	return nil
