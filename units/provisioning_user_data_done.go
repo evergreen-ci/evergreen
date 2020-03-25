@@ -124,6 +124,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		// kim: TODO: add icecc config file
 	}
 }
 

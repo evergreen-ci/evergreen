@@ -207,11 +207,11 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           distro.distro.bootstrap_settings.method = distro.distro.bootstrap_settings.method || 'legacy-ssh';
           distro.distro.bootstrap_settings.communication = distro.distro.bootstrap_settings.communication || 'legacy-ssh';
           distro.distro.clone_method = distro.distro.clone_method || 'legacy-ssh';
+          distro.distro.icecream_settings = distro.distro.icecream_settings || {};
 
           // current settings from provider settings
           if (distro.distro.provider_settings === undefined || distro.distro.provider_settings.length === 0) {
             distro.distro.provider_settings = [$scope.getNewProviderSettings(distro.distro.provider)];
-
           }
           distro.distro.settings = distro.distro.provider_settings[0];
           $scope.currentIdx = 0;
@@ -541,10 +541,14 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'ssh_options': $scope.activeDistro.ssh_options,
         'authorized_keys_file': $scope.activeDistro.authorized_keys_file,
         'setup': $scope.activeDistro.setup,
-        'setup': $scope.activeDistro.teardown,
-        'setup': $scope.activeDistro.user_data,
+        'spawn_allowed': $scope.activeDistro.spawn_allowed,
+        'teardown': $scope.activeDistro.teardown,
+        'user_data': $scope.activeDistro.user_data,
         'setup_as_sudo': $scope.activeDistro.setup_as_sudo,
         'clone_method': $scope.activeDistro.clone_method,
+        'is_virtual_workstation': $scope.activeDistro.is_virtual_workstation,
+        'disable_shallow_clone': $scope.activeDistro.disable_shallow_clone,
+        'disabled': $scope.activeDistro.disabled,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
@@ -553,6 +557,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
       newDistro.dispatcher_settings = _.clone($scope.activeDistro.dispatcher_settings);
       newDistro.host_allocator_settings = _.clone($scope.activeDistro.host_allocator_settings);
+      newDistro.home_volume_settings = _.clone($scope.activeDistro.home_volume_settings);
+      newDistro.icecream_settings = _.clone($scope.activeDistro.icecream_settings);
 
       $scope.distroIds.unshift(newDistro._id);
       $scope.tempDistro = newDistro;

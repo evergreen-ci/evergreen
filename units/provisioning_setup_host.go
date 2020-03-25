@@ -634,6 +634,15 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return nil
 		}
+		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "can't write icecream config file",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			return nil
+		}
 	}
 
 	// If this is a spawn host
@@ -930,5 +939,25 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "problem appending to fstab")
 	}
 
+	return nil
+}
+
+func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if !h.Distro.IcecreamSettings.Populated() {
+		return nil
+	}
+
+	cmd := fmt.Sprintf("tee %s", h.Distro.IcecreamSettings.ConfigPath)
+	if !h.Distro.IsWindows() {
+		cmd = "sudo" + cmd
+	}
+	args := []string{h.Distro.ShellBinary(), "-c", cmd}
+	content := fmt.Sprintf("ICECC_SCHEDULER_HOST=\"%s\"", h.Distro.IcecreamSettings.SchedulerHost)
+	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args:               args,
+		StandardInputBytes: []byte(content),
+	}); err != nil {
+		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
+	}
 	return nil
 }

@@ -36,6 +36,7 @@ var (
 	UseLegacyAgentKey        = bsonutil.MustHaveTag(Distro{}, "UseLegacyAgent")
 	ValidProjectsKey         = bsonutil.MustHaveTag(Distro{}, "ValidProjects")
 	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
+	IcecreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IcecreamSettings")
 )
 
 var (
@@ -63,6 +64,11 @@ var (
 	ResourceLimitsNumProcessesKey    = bsonutil.MustHaveTag(ResourceLimits{}, "NumProcesses")
 	ResourceLimitsVirtualMemoryKBKey = bsonutil.MustHaveTag(ResourceLimits{}, "VirtualMemoryKB")
 	ResourceLimitsLockedMemoryKBKey  = bsonutil.MustHaveTag(ResourceLimits{}, "LockedMemoryKB")
+)
+
+var (
+	IcecreamSettingsSchedulerHostKey = bsonutil.MustHaveTag(IcecreamSettings{}, "SchedulerHost")
+	IcecreamSettingsConfigPathKey    = bsonutil.MustHaveTag(IcecreamSettings{}, "ConfigPath")
 )
 
 const Collection = "distro"

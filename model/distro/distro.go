@@ -51,6 +51,7 @@ type Distro struct {
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                    `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
+	IcecreamSettings      IcecreamSettings        `bson:"icecream_settings" josn:"icecream_settings" yaml:"icecream_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -91,6 +92,15 @@ type ResourceLimits struct {
 type HomeVolumeSettings struct {
 	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
 	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
+}
+
+type IcecreamSettings struct {
+	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host,omitempty" yaml:"scheduler_host,omitempty"`
+	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" yaml:"config_path,omitempty"`
+}
+
+func (s *IcecreamSettings) Populated() bool {
+	return s.SchedulerHost != "" && s.ConfigPath != ""
 }
 
 func (d *Distro) SetBSON(raw mgobson.Raw) error {

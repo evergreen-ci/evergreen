@@ -623,8 +623,8 @@ func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) err
 	return nil
 }
 
-// Run enqueues a job to run a script on all hosts (excluding spawn hosts) that
-// are not down for the given given distro ID.
+// Run enqueues a job to run a script on all hosts that are not down for the
+// given given distro ID.
 func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts, err := h.sc.FindHostsByDistroID(h.distroID)
 	if err != nil {

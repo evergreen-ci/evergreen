@@ -39,6 +39,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
+	ensureHasValidVirtualWorkstationSettings,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -509,4 +510,31 @@ func ensureHasValidDispatcherSettings(ctx context.Context, d *distro.Distro, s *
 	}
 
 	return nil
+}
+
+// kim: TODO: test
+func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if !d.IsVirtualWorkstation {
+		return nil
+	}
+	var errs ValidationErrors
+	if d.HomeVolumeSettings.FormatCommand == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("missing format command"),
+			Level:   Error,
+		})
+	}
+	if d.IcecreamSettings.SchedulerHost == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("missing icecream scheduler host name"),
+			Level:   Error,
+		})
+	}
+	if d.IcecreamSettings.ConfigPath == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("missing icecream scheduler config path"),
+			Level:   Error,
+		})
+	}
+	return errs
 }
