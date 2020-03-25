@@ -44,9 +44,9 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
-func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*Dependency, error) {
+func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	depIds := []string{}
-	for _, dep := range t.DependsOn {
+	for _, dep := range at.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
 
@@ -54,7 +54,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s:%s", *t.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s:%s", *at.Id, err.Error()))
 	}
 
 	taskMap := map[string]*task.Task{}
@@ -62,31 +62,31 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
 	}
 
-	task, err := task.FindOneId(*t.Id)
+	t, err := task.FindOneId(*at.Id)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *t.Id, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *at.Id, err.Error()))
 	}
-	state, err := task.BlockedState()
+	state, err := t.BlockedState()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", task.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting blocked state for task %s:%s", t.Id, err.Error()))
 	}
-	err = task.CircularDependencies()
+	err = t.CircularDependencies()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", task.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", t.Id, err.Error()))
 	}
 
 	dependencies := []*Dependency{}
-	for _, dep := range t.DependsOn {
-		task, ok := taskMap[dep.TaskId]
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
 		if !ok {
 			continue
 		}
 		var metStatus MetStatus
 		if state == evergreen.TaskStatusBlocked {
 			metStatus = "UNMET"
-		} else if task.Status != evergreen.TaskFailed && task.Status != evergreen.TaskSucceeded {
+		} else if depTask.Status != evergreen.TaskFailed && depTask.Status != evergreen.TaskSucceeded {
 			metStatus = ""
-		} else if task.Status == dep.Status || dep.Status == model.AllStatuses {
+		} else if depTask.Status == dep.Status || dep.Status == model.AllStatuses {
 			metStatus = "MET"
 		} else {
 			metStatus = "UNMET"
@@ -102,8 +102,8 @@ func (r *taskResolver) DependsOn(ctx context.Context, t *restModel.APITask) ([]*
 		}
 
 		dependency := Dependency{
-			Name:           task.DisplayName,
-			BuildVariant:   task.BuildVariant,
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
 			MetStatus:      &metStatus,
 			RequiredStatus: &requiredStatus,
 		}
