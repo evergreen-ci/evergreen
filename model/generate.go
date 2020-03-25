@@ -16,7 +16,7 @@ import (
 
 const (
 	maxGeneratedBuildVariants = 100
-	maxGeneratedTasks         = 1000
+	maxGeneratedTasks         = 2000
 )
 
 // GeneratedProject is a subset of the Project type, and is generated from the
