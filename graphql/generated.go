@@ -153,7 +153,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
-		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string) int
+		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
 		Task               func(childComplexity int, taskID string) int
 		TaskFiles          func(childComplexity int, taskID string) int
@@ -294,7 +294,7 @@ type QueryResolver interface {
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
-	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string) ([]*TaskResult, error)
+	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) ([]*TaskResult, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*model.APITest, error)
 	TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
 	User(ctx context.Context) (*model.APIUser, error)
@@ -816,7 +816,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string)), true
+		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string), args["taskName"].(*string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -1515,6 +1515,7 @@ var sources = []*ast.Source{
     limit: Int = 0
     statuses: [String!] = []
     variant: String
+    taskName: String
   ): [TaskResult!]!
   taskTests(
     taskId: String!
@@ -1987,6 +1988,14 @@ func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, raw
 		}
 	}
 	args["variant"] = arg6
+	var arg7 *string
+	if tmp, ok := rawArgs["taskName"]; ok {
+		arg7, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskName"] = arg7
 	return args, nil
 }
 
@@ -4411,7 +4420,7 @@ func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string))
+		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string), args["taskName"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
