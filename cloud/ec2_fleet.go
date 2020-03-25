@@ -18,6 +18,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+type azInstanceTypeCache struct {
+	azToInstanceTypes map[string][]string
+}
+
+var typeCache *azInstanceTypeCache
+
+func init() {
+	typeCache = new(azInstanceTypeCache)
+	typeCache.azToInstanceTypes = make(map[string][]string)
+}
+
+func (c *azInstanceTypeCache) azSupportsInstanceType(az, instanceType string) (bool, error) {
+	if _, ok := c.azToInstanceTypes[az]; !ok {
+		// refresh cache
+	}
+
+	return util.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
+}
+
 type EC2FleetManagerOptions struct {
 	client         AWSClient
 	region         string
@@ -475,7 +494,13 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	if len(subnets) > 0 {
 		overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 		for _, subnet := range subnets {
-			overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
+			supported, err := typeCache.azSupportsInstanceType(subnet.AZ, ec2Settings.InstanceType)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", subnet.AZ)
+			}
+			if supported {
+				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
+			}
 		}
 
 		return overrides, nil
@@ -520,7 +545,13 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	for _, subnet := range describeSubnetsOutput.Subnets {
 		// AWS only allows one override per AZ
 		if !AZSet[*subnet.AvailabilityZone] && subnetMatchesAz(subnet) {
-			overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+			supported, err := typeCache.azSupportsInstanceType(*subnet.AvailabilityZone, ec2Settings.InstanceType)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", *subnet.AvailabilityZone)
+			}
+			if supported {
+				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+			}
 			AZSet[*subnet.AvailabilityZone] = true
 		}
 	}
