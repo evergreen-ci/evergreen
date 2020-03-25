@@ -1,0 +1,10 @@
+{
+  task(taskId: "task5") {
+    dependsOn {
+      metStatus
+      requiredStatus
+      buildVariant
+      name
+    }
+  }
+}

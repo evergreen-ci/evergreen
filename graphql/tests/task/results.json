@@ -10,6 +10,110 @@
           }
         }
       }
+    },
+    {
+      "query_file": "dependsOn-blocked.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "unmet",
+                "requiredStatus": "must finish",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              },
+              {
+                "metStatus": "unmet",
+                "requiredStatus": "must finish",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "dependsOn-task-status-not-success-nor-fail.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "",
+                "requiredStatus": "must finish",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "dependsOn-task-status-equals-dep-status.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "",
+                "requiredStatus": "",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "dependsOn-dep-status-equals-all-statuses.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "met",
+                "requiredStatus": "must finish",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "dependsOn-dep-status-failed.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "met",
+                "requiredStatus": "must fail",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "dependsOn-circular-dep.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Found circular dependency for task task6: Dependency cycle detected: task6,dep4",
+            "path": ["task", "dependsOn"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": { "task": null }
+      }
     }
   ]
 }
