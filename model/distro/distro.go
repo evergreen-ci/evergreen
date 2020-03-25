@@ -110,8 +110,6 @@ func (s IcecreamSettings) GetUpdateConfigScript() string {
 set -o errexit
 set -o verbose
 
-sudo su
-
 mkdir -p "%s"
 touch "%s"
 chmod 644 "%s"

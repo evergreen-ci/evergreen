@@ -590,6 +590,8 @@ type distroExecuteHandler struct {
 	Script            string `json:"script"`
 	IncludeTaskHosts  bool   `json:"include_task_hosts"`
 	IncludeSpawnHosts bool   `json:"include_spawn_hosts"`
+	Sudo              bool   `json:"sudo"`
+	SudoUser          string `json:"sudo_user"`
 	distro            string
 	sc                data.Connector
 	env               evergreen.Environment
@@ -641,10 +643,10 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, host := range hosts {
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 		if host.StartedBy == evergreen.User && h.IncludeTaskHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
+			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, h.Sudo, h.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
 		}
 		if host.StartedBy != evergreen.User && h.IncludeSpawnHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
+			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, h.Sudo, h.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
 		}
 	}
 	if catcher.HasErrors() {
@@ -737,7 +739,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, ts)), "problem enqueueing job to update icecream config file on host '%s'", host.Id)
+		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)), "problem enqueueing job to update icecream config file on host '%s'", host.Id)
 	}
 
 	if catcher.HasErrors() {
