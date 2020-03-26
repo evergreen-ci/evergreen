@@ -759,12 +759,8 @@ func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.API
 	if baseTask.TimeTaken == 0 {
 		return nil, nil
 	}
-	apiBaseTask := restModel.APITask{}
-	err = apiBaseTask.BuildFromService(baseTask)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error build task %s from service", baseTask.Id))
-	}
-	return &apiBaseTask.TimeTaken, nil
+	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
+	return &dur, nil
 }
 
 // New injects resources into the resolvers, such as the data connector
