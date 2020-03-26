@@ -751,8 +751,11 @@ func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.API
 	}
 	for _, bT := range baseTasks {
 		if bT.DisplayName == *at.DisplayName {
+			if bT.TimeTaken == 0 {
+				return nil, nil
+			}
 			apiTask := restModel.APITask{}
-			apiTask.BuildFromService(bT)
+			apiTask.BuildFromService(&bT)
 			return &apiTask.TimeTaken, nil
 		}
 	}
