@@ -115,7 +115,7 @@ chmod 644 "%s"
 if [[ $(grep 'ICECC_SCHEDULER_HOST=".*"' "%s") ]]; then
 	sed -i 's/ICECC_SCHEDULER_HOST=".*"/ICECC_SCHEDULER_HOST="%s"/g' "%s"
 else
-	echo 'ICECC_SCHEDULER_HOST="%s"' > "%s"
+	echo 'ICECC_SCHEDULER_HOST="%s"' >> "%s"
 fi
 `,
 		filepath.Dir(s.ConfigPath),
