@@ -20,7 +20,7 @@ import (
 //   - https://github.com/evergreen-ci/evergreen/blob/master/thirdparty/s3.go
 //   - https://github.com/mongodb/curator/tree/master/sthree
 //
-// The prefered aws sdk is here: https://docs.aws.amazon.com/sdk-for-go/api/
+// The preferred aws sdk is here: https://docs.aws.amazon.com/sdk-for-go/api/
 //
 // In no particular order:
 //  - implementation constructors should make it possible to use

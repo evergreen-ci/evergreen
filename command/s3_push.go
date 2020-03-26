@@ -102,6 +102,7 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 		Credentials: pail.CreateAWSCredentials(conf.S3Data.Key, conf.S3Data.Secret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        conf.S3Data.Bucket,
+		MaxRetries:  10,
 		Permissions: pail.S3PermissionsPrivate,
 	}
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, opts)

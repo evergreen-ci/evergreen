@@ -287,7 +287,7 @@ func (b *gridfsBucket) Push(ctx context.Context, opts SyncOptions) error {
 	}
 
 	if b.opts.DeleteOnSync && !b.opts.DryRun {
-		return errors.Wrap(deleteOnPush(ctx, localPaths, opts.Remote, b), "probelm with delete on sync after push")
+		return errors.Wrap(deleteOnPush(ctx, localPaths, opts.Remote, b), "problem with delete on sync after push")
 	}
 
 	return nil

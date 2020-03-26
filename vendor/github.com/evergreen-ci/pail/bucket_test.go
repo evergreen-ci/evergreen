@@ -47,7 +47,7 @@ func TestBucket(t *testing.T) {
 	ses, err := mgo.DialWithTimeout(mdburl, time.Second)
 	require.NoError(t, err)
 	defer ses.Close()
-	defer func() { ses.DB(uuid).DropDatabase() }()
+	defer func() { assert.NoError(t, ses.DB(uuid).DropDatabase()) }()
 
 	s3BucketName := "build-test-curator"
 	s3Prefix := newUUID() + "-"
@@ -971,7 +971,8 @@ func TestBucket(t *testing.T) {
 					require.NoError(t, err)
 					counter := 0
 					for iter.Next(ctx) {
-						fn, err := filepath.Rel(remotePrefix, iter.Item().Name())
+						var fn string
+						fn, err = filepath.Rel(remotePrefix, iter.Item().Name())
 						require.NoError(t, err)
 						ok := filenames[fn]
 						if !ok {

@@ -4,7 +4,7 @@ imports:
 - name: github.com/pkg/errors
   version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
 - name: github.com/mongodb/grip
-  version: a4288cec9139bc97135a22e795b086baefb167b2
+  version: 2e402613ba129030dffcf05f53f185ea52d350c2
 - name: github.com/aws/aws-sdk-go
   version: cf66c348f82c79de333bd788d4f782c4d623ebad
 - name: gopkg.in/mgo.v2
