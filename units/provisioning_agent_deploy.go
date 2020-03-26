@@ -174,9 +174,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	j.AddError(j.startAgentOnHost(ctx, settings))
 }
 
-// SSHTimeout defines the timeout for the SSH commands in this package.
-const sshTimeout = 25 * time.Second
-
 func (j *agentDeployJob) getHostMessage() message.Fields {
 	m := message.Fields{
 		"message":  "starting agent on host",
@@ -210,13 +207,7 @@ func (j *agentDeployJob) getHostMessage() message.Fields {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
 func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings) error {
-	// get the host's SSH options
-	sshOptions, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
-	}
-
-	if err = j.prepRemoteHost(ctx, sshOptions, settings); err != nil {
+	if err := j.prepRemoteHost(ctx, settings); err != nil {
 		return errors.Wrap(err, "could not prep remote host")
 	}
 
@@ -224,17 +215,18 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 
 	// generate the host secret if none exists
 	if j.host.Secret == "" {
-		if err = j.host.CreateSecret(); err != nil {
+		if err := j.host.CreateSecret(); err != nil {
 			return errors.Wrapf(err, "creating secret for %s", j.host.Id)
 		}
 	}
 
 	// Start agent to listen for tasks
 	grip.Info(j.getHostMessage())
-	if err = j.startAgentOnRemote(ctx, settings, sshOptions); err != nil {
+	if logs, err := j.startAgentOnRemote(ctx, settings); err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "error starting agent on remote",
+			"logs":    logs,
 			"host_id": j.HostID,
 			"job":     j.ID(),
 		}))
@@ -242,21 +234,25 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host_id": j.host.Id})
 
-	if err = j.host.SetAgentRevision(evergreen.BuildRevision); err != nil {
+	if err := j.host.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", j.host.Id)
 	}
 	return nil
 }
 
-// The app server stops an attempt to curl the evergreen binary after a minute.
-const evergreenCurlTimeout = 61 * time.Second
+const (
+	// The app server stops an attempt to curl the evergreen binary after a minute.
+	evergreenCurlTimeout = 61 * time.Second
+	// sshTimeout defines the timeout for starting the agent.
+	startAgentTimeout = 25 * time.Second
+)
 
 // Prepare the remote machine to run a task.
-func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string, settings *evergreen.Settings) error {
+func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings), sshOptions)
+	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
 	if err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", output)
@@ -269,7 +265,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string
 		return nil
 	}
 
-	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand(), sshOptions); err != nil {
+	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 		event.LogProvisionFailed(j.host.Id, output)
 
 		grip.Error(message.WrapError(err, message.Fields{
@@ -300,7 +296,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, sshOptions []string
 }
 
 // Start the agent process on the specified remote host.
-func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, sshOptions []string) error {
+func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(j.host.AgentCommand(settings), " ")
 	grip.Info(message.Fields{
@@ -310,27 +306,18 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		"runner":  "taskrunner",
 	})
 
-	// compute any info necessary to ssh into the host
-	hostInfo, err := j.host.GetSSHInfo()
-	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %v", j.host.Host)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
+	ctx, cancel := context.WithTimeout(ctx, startAgentTimeout)
 	defer cancel()
 
-	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
-
-	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Append(remoteCmd).
-		User(j.host.User).Host(hostInfo.Hostname).ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...)
-
-	if err = startAgentCmd.Run(ctx); err != nil {
-		return errors.Wrapf(err, "error starting agent (%v)", j.host.Id)
+	startAgentCmd := fmt.Sprintf("nohup %s > /tmp/start 2>&1 &", remoteCmd)
+	logs, err := j.host.RunSSHCommand(ctx, startAgentCmd)
+	if err != nil {
+		return logs, errors.Wrapf(err, "error starting agent on host '%s'", j.host.Id)
 	}
 
 	event.LogHostAgentDeployed(j.host.Id)
 
-	return nil
+	return logs, nil
 }
 
 func (j *agentDeployJob) checkNoRetries() (bool, error) {

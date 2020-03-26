@@ -119,8 +119,7 @@ func (h *Host) ClientURL(settings *evergreen.Settings) string {
 }
 
 const (
-	// sshTimeout is the timeout for SSH commands.
-	sshTimeout = 2 * time.Minute
+	defaultSSHTimeout = 2 * time.Minute
 )
 
 // GetSSHInfo returns the information necessary to SSH into this host.
@@ -178,39 +177,43 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 }
 
 // RunSSHCommand runs an SSH command on the host with the default SSH timeout.
-func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOpts []string) (string, error) {
-	return h.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, time.Duration(0))
+func (h *Host) RunSSHCommand(ctx context.Context, cmd string) (string, error) {
+	return h.RunSSHCommandWithTimeout(ctx, cmd, time.Duration(0))
 }
 
 // RunSSHCommandWithTimeout runs an SSH command on the host with the given
 // timeout.
-func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, timeout time.Duration) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{cmd})
-	}, sshOpts, timeout)
+	}, timeout)
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // default SSH timeout.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []string) (string, error) {
-	return h.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, time.Duration(0))
+func (h *Host) RunSSHShellScript(ctx context.Context, script string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, time.Duration(0))
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // given timeout.
-func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
-	}, sshOpts, timeout)
+	}, timeout)
 }
 
-func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
 		return "", errors.WithStack(err)
+	}
+	sshOpts, err := h.GetSSHOptions(env.Settings())
+	if err != nil {
+		return "", errors.Wrap(err, "could not get host's SSH options")
 	}
 
 	output := util.NewMBCappedWriter()
@@ -220,7 +223,7 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	} else {
-		ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+		ctx, cancel = context.WithTimeout(ctx, defaultSSHTimeout)
 		defer cancel()
 	}
 

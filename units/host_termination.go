@@ -417,12 +417,8 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *ever
 		}
 	}
 
-	sshOptions, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		return "", errors.Wrap(err, "error getting ssh options")
-	}
 	return j.tryRunTeardownScript(ctx, settings, func(runScript string) (string, error) {
-		return j.host.RunSSHCommand(ctx, runScript, sshOptions)
+		return j.host.RunSSHCommand(ctx, runScript)
 	})
 }
 
