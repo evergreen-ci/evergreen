@@ -108,7 +108,6 @@ func (s IcecreamSettings) GetUpdateConfigScript() string {
 
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -o errexit
-set -o verbose
 
 mkdir -p "%s"
 touch "%s"
