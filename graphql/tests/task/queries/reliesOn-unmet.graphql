@@ -1,6 +1,6 @@
 {
   task(taskId: "task7") {
-    dependsOn {
+    reliesOn {
       metStatus
       requiredStatus
       buildVariant

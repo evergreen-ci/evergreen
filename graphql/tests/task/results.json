@@ -12,11 +12,11 @@
       }
     },
     {
-      "query_file": "dependsOn-task-status-not-success-nor-fail.graphql",
+      "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
       "result": {
         "data": {
           "task": {
-            "dependsOn": [
+            "reliesOn": [
               {
                 "metStatus": "PENDING",
                 "requiredStatus": "MUST_FINISH",
@@ -29,11 +29,11 @@
       }
     },
     {
-      "query_file": "dependsOn-task-status-equals-dep-status.graphql",
+      "query_file": "reliesOn-task-status-equals-dep-status.graphql",
       "result": {
         "data": {
           "task": {
-            "dependsOn": [
+            "reliesOn": [
               {
                 "metStatus": "PENDING",
                 "requiredStatus": "MUST_SUCCEED",
@@ -46,11 +46,11 @@
       }
     },
     {
-      "query_file": "dependsOn-dep-status-equals-all-statuses.graphql",
+      "query_file": "reliesOn-dep-status-equals-all-statuses.graphql",
       "result": {
         "data": {
           "task": {
-            "dependsOn": [
+            "reliesOn": [
               {
                 "metStatus": "MET",
                 "requiredStatus": "MUST_FINISH",
@@ -63,11 +63,11 @@
       }
     },
     {
-      "query_file": "dependsOn-dep-status-failed.graphql",
+      "query_file": "reliesOn-dep-status-failed.graphql",
       "result": {
         "data": {
           "task": {
-            "dependsOn": [
+            "reliesOn": [
               {
                 "metStatus": "MET",
                 "requiredStatus": "MUST_FAIL",
@@ -80,11 +80,11 @@
       }
     },
     {
-      "query_file": "dependsOn-unmet.graphql",
+      "query_file": "reliesOn-unmet.graphql",
       "result": {
         "data": {
           "task": {
-            "dependsOn": [
+            "reliesOn": [
               {
                 "metStatus": "UNMET",
                 "requiredStatus": "MUST_SUCCEED",

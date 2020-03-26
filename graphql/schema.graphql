@@ -213,7 +213,7 @@ type Task {
   buildId: String!
   distroId: String!
   buildVariant: String!
-  dependsOn: [Dependency!]!
+  reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
   restarts: Int

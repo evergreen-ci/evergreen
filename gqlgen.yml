@@ -26,7 +26,7 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
-      dependsOn:
+      reliesOn:
         resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks

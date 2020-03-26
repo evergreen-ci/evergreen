@@ -185,7 +185,6 @@ type ComplexityRoot struct {
 		BuildId           func(childComplexity int) int
 		BuildVariant      func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
-		DependsOn         func(childComplexity int) int
 		Details           func(childComplexity int) int
 		DispatchTime      func(childComplexity int) int
 		DisplayName       func(childComplexity int) int
@@ -205,6 +204,7 @@ type ComplexityRoot struct {
 		PatchNumber       func(childComplexity int) int
 		Priority          func(childComplexity int) int
 		ProjectId         func(childComplexity int) int
+		ReliesOn          func(childComplexity int) int
 		Requester         func(childComplexity int) int
 		Restarts          func(childComplexity int) int
 		Revision          func(childComplexity int) int
@@ -309,7 +309,7 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 }
 type TaskResolver interface {
-	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 }
@@ -1006,13 +1006,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CreateTime(childComplexity), true
 
-	case "Task.dependsOn":
-		if e.complexity.Task.DependsOn == nil {
-			break
-		}
-
-		return e.complexity.Task.DependsOn(childComplexity), true
-
 	case "Task.details":
 		if e.complexity.Task.Details == nil {
 			break
@@ -1145,6 +1138,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.ProjectId(childComplexity), true
+
+	case "Task.reliesOn":
+		if e.complexity.Task.ReliesOn == nil {
+			break
+		}
+
+		return e.complexity.Task.ReliesOn(childComplexity), true
 
 	case "Task.requester":
 		if e.complexity.Task.Requester == nil {
@@ -1754,7 +1754,7 @@ type Task {
   buildId: String!
   distroId: String!
   buildVariant: String!
-  dependsOn: [Dependency!]!
+  reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
   restarts: Int
@@ -5655,7 +5655,7 @@ func (ec *executionContext) _Task_buildVariant(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_dependsOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5672,7 +5672,7 @@ func (ec *executionContext) _Task_dependsOn(ctx context.Context, field graphql.C
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().DependsOn(rctx, obj)
+		return ec.resolvers.Task().ReliesOn(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9446,7 +9446,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "dependsOn":
+		case "reliesOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -9454,7 +9454,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Task_dependsOn(ctx, field, obj)
+				res = ec._Task_reliesOn(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

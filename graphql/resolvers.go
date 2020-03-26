@@ -44,7 +44,7 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
-func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {
 		return dependencies, nil
