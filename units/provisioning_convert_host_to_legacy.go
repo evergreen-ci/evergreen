@@ -132,21 +132,10 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
-	sshOpts, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get SSH options",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
 	// This is a best-effort attempt to uninstall Jasper, but it will silently
 	// fail to uninstall Jasper if the Jasper binary path does not match its
 	// actual path on the remote host.
-	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("[ -a \"%s\" ] && %s", j.host.JasperBinaryFilePath(settings.HostJasper), j.host.QuietUninstallJasperCommand(settings.HostJasper)), sshOpts); err != nil {
+	if logs, err := j.host.RunSSHCommand(ctx, fmt.Sprintf("[ -a \"%s\" ] && %s", j.host.JasperBinaryFilePath(settings.HostJasper), j.host.QuietUninstallJasperCommand(settings.HostJasper))); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not uninstall Jasper service",
 			"host_id": j.host.Id,

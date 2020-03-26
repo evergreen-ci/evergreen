@@ -80,17 +80,6 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 		return
 	}
 
-	sshOpts, err := j.host.GetSSHOptions(settings)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get SSH options",
-			"host_id": j.host.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
-
 	for _, pair := range settings.SSHKeyPairs {
 		// Ignore if host already contains the public key.
 		if util.StringSliceContains(j.host.SSHKeyNames, pair.Name) {
@@ -99,7 +88,7 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 
 		// Either key is already in the authorized keys or it is appended.
 		addKeyCmd := fmt.Sprintf(" grep \"^%s$\" %s || echo \"%s\" >> %s", pair.Public, j.host.Distro.AuthorizedKeysFile, pair.Public, j.host.Distro.AuthorizedKeysFile)
-		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd, sshOpts); err != nil {
+		if logs, err := j.host.RunSSHCommand(ctx, addKeyCmd); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to add to authorized keys",
 				"host_id": j.host.Id,
