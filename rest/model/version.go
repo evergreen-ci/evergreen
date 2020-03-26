@@ -24,6 +24,7 @@ type APIVersion struct {
 	Branch        *string       `json:"branch"`
 	BuildVariants []buildDetail `json:"build_variants_status"`
 	Requester     *string       `json:"requester"`
+	Errors        []*string     `json:"errors"`
 }
 
 type buildDetail struct {
@@ -52,6 +53,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Order = v.RevisionOrderNumber
 	apiVersion.Project = ToStringPtr(v.Identifier)
 	apiVersion.Requester = ToStringPtr(v.Requester)
+	apiVersion.Errors = ToStringPtrSlice(v.Errors)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {
