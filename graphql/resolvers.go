@@ -755,7 +755,10 @@ func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.API
 				return nil, nil
 			}
 			apiTask := restModel.APITask{}
-			apiTask.BuildFromService(&bT)
+			err = apiTask.BuildFromService(&bT)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error build task %s from service", bT.Id))
+			}
 			return &apiTask.TimeTaken, nil
 		}
 	}
