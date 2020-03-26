@@ -543,16 +543,16 @@ func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
-// ByDistroIDOrAliasRunning returns a query that retusn all hosts with a
-// matching distro ID or alias.
-func ByDistroIDOrAliasRunning(distroName string) bson.M {
+// ByDistroIDOrAliasesRunning returns a query that returns all hosts with
+// matching distro IDs or aliases.
+func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	distroAliasesKey := bsonutil.GetDottedKeyName(DistroKey, distro.AliasesKey)
 	return bson.M{
 		StatusKey: evergreen.HostRunning,
 		"$or": []bson.M{
-			{distroIDKey: distroName},
-			{distroAliasesKey: distroName},
+			{distroIDKey: bson.M{"$in": distroNames}},
+			{distroAliasesKey: bson.M{"$in": distroNames}},
 		},
 	}
 }
