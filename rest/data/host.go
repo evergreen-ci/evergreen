@@ -290,7 +290,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 func (hc *MockHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
 	hosts := []host.Host{}
 	for _, h := range hc.CachedHosts {
-		if h.Distro.Id == distro || util.StringSliceContains(h.Distro.Aliases, distro) {
+		if h.Status == evergreen.HostRunning && (h.Distro.Id == distro || util.StringSliceContains(h.Distro.Aliases, distro)) {
 			hosts = append(hosts, h)
 		}
 	}
