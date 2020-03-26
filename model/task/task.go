@@ -327,6 +327,19 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
+func (t *Task) IsSystemUnresponsive() bool {
+	// this is a legacy case
+	if t.Status == evergreen.TaskSystemUnresponse {
+		return true
+	}
+
+	if t.Details.Type == evergreen.CommandTypeSystem && t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
+		return true
+	}
+
+	return false
+}
+
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
