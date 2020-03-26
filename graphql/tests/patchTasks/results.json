@@ -55,6 +55,29 @@
       }
     },
     {
+      "query_file": "filter-by-variant-partial-search-term.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "filter-by-bad-variant.graphql",
       "result": {
         "data": {

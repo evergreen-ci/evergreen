@@ -1942,7 +1942,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		match[StatusKey] = bson.M{"$in": statuses}
 	}
 	if variant != "" {
-		match[BuildVariantKey] = variant
+		match[BuildVariantKey] = bson.M{"$regex": variant, "$options": "i"}
 	}
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
