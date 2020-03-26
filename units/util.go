@@ -25,7 +25,7 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			}
 			catcher := grip.NewBasicCatcher()
 			for _, container := range containers {
-				err = DisableAndNotifyPoisonedHost(ctx, env, container, reason)
+				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, container, reason))
 			}
 			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, *parent, reason))
 			if catcher.HasErrors() {
