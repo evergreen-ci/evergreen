@@ -304,7 +304,7 @@ type QueryResolver interface {
 }
 type TaskResolver interface {
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
-	BaseCommitDuration(ctx context.Context, obj *model.APITask) (*time.Time, error)
+	BaseCommitDuration(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 }
 
 type executableSchema struct {
@@ -1726,7 +1726,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseCommitDuration: Time
+  baseCommitDuration: Duration
 }
 
 type Projects {
@@ -6053,9 +6053,9 @@ func (ec *executionContext) _Task_baseCommitDuration(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(*model.APIDuration)
 	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -10996,6 +10996,21 @@ func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋe
 
 func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
 	return model.MarshalAPIDuration(v)
+}
+
+func (ec *executionContext) unmarshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (*model.APIDuration, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v *model.APIDuration) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIFile) graphql.Marshaler {
