@@ -122,8 +122,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		}
 		logs = strings.Join(output, "\n")
 	} else {
-		// kim: TODO: handle sudo --user
-		logs, err = j.host.RunSSHShellScript(ctx, j.Script, sshOptions)
+		logs, err = j.host.RunSSHShellScript(ctx, j.Script, j.Sudo, j.SudoUser, sshOptions)
 		if err != nil {
 			event.LogHostScriptExecuteFailed(j.host.Id, err)
 			grip.Error(message.WrapError(err, message.Fields{

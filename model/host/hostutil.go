@@ -192,17 +192,25 @@ func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, sshOpts
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // default SSH timeout.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []string) (string, error) {
-	return h.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, time.Duration(0))
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sudo bool, sudoUser string, sshOpts []string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, sudo, sudoUser, sshOpts, time.Duration(0))
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // given timeout.
-func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sudo bool, sudoUser string, sshOpts []string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
+		var cmd []string
+		if sudo {
+			cmd = append(cmd, "sudo")
+			if sudoUser != "" {
+				cmd = append(cmd, fmt.Sprintf("--user=%s", sudoUser))
+			}
+		}
+		cmd = append(cmd, "bash", "-s")
+		return c.Add(cmd).SetInputBytes([]byte(script))
 	}, sshOpts, timeout)
 }
 

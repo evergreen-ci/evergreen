@@ -758,7 +758,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
 	}
 
-	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, 30*time.Second); err != nil {
+	if output, err := j.host.RunSSHShellScriptWithTimeout(ctx, script, false, "", sshOpts, 30*time.Second); err != nil {
 		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
 

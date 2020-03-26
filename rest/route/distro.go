@@ -584,17 +584,13 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 
 ///////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/distros/{distro_id}/execute
+// PATCH /rest/v2/distros/{distro}/execute
 
 type distroExecuteHandler struct {
-	Script            string `json:"script"`
-	IncludeTaskHosts  bool   `json:"include_task_hosts"`
-	IncludeSpawnHosts bool   `json:"include_spawn_hosts"`
-	Sudo              bool   `json:"sudo"`
-	SudoUser          string `json:"sudo_user"`
-	distro            string
-	sc                data.Connector
-	env               evergreen.Environment
+	opts   model.APIDistroScriptOptions
+	distro string
+	sc     data.Connector
+	env    evergreen.Environment
 }
 
 func makeDistroExecute(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
@@ -617,14 +613,14 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, h); err != nil {
+	if err := util.ReadJSONInto(body, &h.opts); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 
-	if h.Script == "" {
+	if h.opts.Script == "" {
 		return errors.New("cannot execute an empty script")
 	}
-	if !h.IncludeTaskHosts && !h.IncludeSpawnHosts {
+	if !h.opts.IncludeTaskHosts && !h.opts.IncludeSpawnHosts {
 		return errors.New("cannot exclude both spawn hosts and task hosts from script execution")
 	}
 
@@ -640,25 +636,29 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	catcher := grip.NewBasicCatcher()
+	var hostIDs []string
 	for _, host := range hosts {
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		if host.StartedBy == evergreen.User && h.IncludeTaskHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, h.Sudo, h.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
+		if host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts {
+			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
 		}
-		if host.StartedBy != evergreen.User && h.IncludeSpawnHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, h.Sudo, h.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
+		if host.StartedBy != evergreen.User && h.opts.IncludeSpawnHosts {
+			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
 		}
+		hostIDs = append(hostIDs, host.Id)
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
 	}
 
-	return gimlet.NewJSONResponse(struct{}{})
+	return gimlet.NewJSONResponse(struct {
+		HostIDs []string `json:"host_ids"`
+	}{HostIDs: hostIDs})
 }
 
 ///////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/distros/{distro}/icecream_config
+// PATCH /rest/v2/distros/{distro}/icecream_config
 
 type distroIcecreamConfigHandler struct {
 	distro string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ func Admin() cli.Command {
 			fromMdbForLocal(),
 			toMdbForLocal(),
 			updateRoleCmd(),
+			adminDistroExecute(),
 		},
 	}
 }
@@ -473,6 +475,83 @@ func updateRoleCmd() cli.Command {
 			}
 
 			return ac.UpdateRole(&role)
+		},
+	}
+}
+
+func adminDistroExecute() cli.Command {
+	const (
+		distroFlagName            = "distro"
+		scriptPathFlagName        = "file"
+		scriptFlagName            = "script"
+		includeSpawnHostsFlagName = "spawn_hosts"
+		includeTaskHostsFlagName  = "task_hosts"
+	)
+	return cli.Command{
+		Name:  "distro-execute",
+		Usage: "run a shell script on selected hosts in a distro",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  distroFlagName,
+				Usage: "the distro to run the script on",
+			},
+			cli.StringFlag{
+				Name:  scriptFlagName,
+				Usage: "the script to run",
+			},
+			cli.StringFlag{
+				Name:  scriptPathFlagName,
+				Usage: "the file containing the script to run",
+			},
+			cli.BoolTFlag{
+				Name:  includeTaskHostsFlagName,
+				Usage: "run the script on hosts running tasks",
+			},
+			cli.BoolFlag{
+				Name:  includeSpawnHostsFlagName,
+				Usage: "run the script on spawn hosts",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(distroFlagName),
+			mutuallyExclusiveArgs(true, scriptFlagName, scriptPathFlagName),
+		),
+		Action: func(c *cli.Context) error {
+			distro := c.String(distroFlagName)
+			includeTaskHosts := c.BoolT(includeTaskHostsFlagName)
+			includeSpawnHosts := c.Bool(includeSpawnHostsFlagName)
+			script := c.String(scriptFlagName)
+			if script == "" {
+				scriptPath := c.String(scriptPathFlagName)
+				b, err := ioutil.ReadFile(scriptPath)
+				if err != nil {
+					return errors.Wrapf(err, "could not read script file '%s'", scriptPath)
+				}
+				script = string(b)
+			}
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(context.Background())
+			defer client.Close()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			hostIDs, err := client.ExecuteOnDistro(ctx, distro, model.APIDistroScriptOptions{
+				Script:            script,
+				IncludeTaskHosts:  includeTaskHosts,
+				IncludeSpawnHosts: includeSpawnHosts,
+			})
+			if len(hostIDs) != 0 {
+				fmt.Printf("Running script on the following hosts:\n%s", strings.Join(hostIDs, "\n"))
+			} else {
+				fmt.Println("No hosts matched.")
+			}
+
+			return nil
 		},
 	}
 }
