@@ -171,43 +171,44 @@ type ComplexityRoot struct {
 	}
 
 	Task struct {
-		Aborted           func(childComplexity int) int
-		Activated         func(childComplexity int) int
-		ActivatedBy       func(childComplexity int) int
-		ActivatedTime     func(childComplexity int) int
-		BuildId           func(childComplexity int) int
-		BuildVariant      func(childComplexity int) int
-		CreateTime        func(childComplexity int) int
-		DependsOn         func(childComplexity int) int
-		Details           func(childComplexity int) int
-		DispatchTime      func(childComplexity int) int
-		DisplayName       func(childComplexity int) int
-		DisplayOnly       func(childComplexity int) int
-		DistroId          func(childComplexity int) int
-		Execution         func(childComplexity int) int
-		ExecutionTasks    func(childComplexity int) int
-		ExpectedDuration  func(childComplexity int) int
-		FinishTime        func(childComplexity int) int
-		GenerateTask      func(childComplexity int) int
-		GeneratedBy       func(childComplexity int) int
-		HostId            func(childComplexity int) int
-		Id                func(childComplexity int) int
-		IngestTime        func(childComplexity int) int
-		Logs              func(childComplexity int) int
-		Order             func(childComplexity int) int
-		PatchNumber       func(childComplexity int) int
-		Priority          func(childComplexity int) int
-		ProjectId         func(childComplexity int) int
-		Requester         func(childComplexity int) int
-		Restarts          func(childComplexity int) int
-		Revision          func(childComplexity int) int
-		ScheduledTime     func(childComplexity int) int
-		StartTime         func(childComplexity int) int
-		Status            func(childComplexity int) int
-		TaskGroup         func(childComplexity int) int
-		TaskGroupMaxHosts func(childComplexity int) int
-		TimeTaken         func(childComplexity int) int
-		Version           func(childComplexity int) int
+		Aborted            func(childComplexity int) int
+		Activated          func(childComplexity int) int
+		ActivatedBy        func(childComplexity int) int
+		ActivatedTime      func(childComplexity int) int
+		BaseCommitDuration func(childComplexity int) int
+		BuildId            func(childComplexity int) int
+		BuildVariant       func(childComplexity int) int
+		CreateTime         func(childComplexity int) int
+		DependsOn          func(childComplexity int) int
+		Details            func(childComplexity int) int
+		DispatchTime       func(childComplexity int) int
+		DisplayName        func(childComplexity int) int
+		DisplayOnly        func(childComplexity int) int
+		DistroId           func(childComplexity int) int
+		Execution          func(childComplexity int) int
+		ExecutionTasks     func(childComplexity int) int
+		ExpectedDuration   func(childComplexity int) int
+		FinishTime         func(childComplexity int) int
+		GenerateTask       func(childComplexity int) int
+		GeneratedBy        func(childComplexity int) int
+		HostId             func(childComplexity int) int
+		Id                 func(childComplexity int) int
+		IngestTime         func(childComplexity int) int
+		Logs               func(childComplexity int) int
+		Order              func(childComplexity int) int
+		PatchNumber        func(childComplexity int) int
+		Priority           func(childComplexity int) int
+		ProjectId          func(childComplexity int) int
+		Requester          func(childComplexity int) int
+		Restarts           func(childComplexity int) int
+		Revision           func(childComplexity int) int
+		ScheduledTime      func(childComplexity int) int
+		StartTime          func(childComplexity int) int
+		Status             func(childComplexity int) int
+		TaskGroup          func(childComplexity int) int
+		TaskGroupMaxHosts  func(childComplexity int) int
+		TimeTaken          func(childComplexity int) int
+		Version            func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -303,6 +304,7 @@ type QueryResolver interface {
 }
 type TaskResolver interface {
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
+	BaseCommitDuration(ctx context.Context, obj *model.APITask) (*time.Time, error)
 }
 
 type executableSchema struct {
@@ -947,6 +949,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.ActivatedTime(childComplexity), true
+
+	case "Task.baseCommitDuration":
+		if e.complexity.Task.BaseCommitDuration == nil {
+			break
+		}
+
+		return e.complexity.Task.BaseCommitDuration(childComplexity), true
 
 	case "Task.buildId":
 		if e.complexity.Task.BuildId == nil {
@@ -1717,6 +1726,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
+  baseCommitDuration: Time
 }
 
 type Projects {
@@ -6017,6 +6027,37 @@ func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_baseCommitDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BaseCommitDuration(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -9277,6 +9318,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patchNumber(ctx, field, obj)
+				return res
+			})
+		case "baseCommitDuration":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_baseCommitDuration(ctx, field, obj)
 				return res
 			})
 		default:

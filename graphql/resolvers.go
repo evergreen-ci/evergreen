@@ -744,6 +744,10 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &patch.PatchNumber, nil
 }
 
+func (r *taskResolver) BaseCommitDuration(ctx context.Context, obj *restModel.APITask) (*time.Time, error) {
+	return nil, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{
