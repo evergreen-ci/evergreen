@@ -42,6 +42,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsRemove)
+	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
@@ -84,8 +85,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroTeardown(sc))
 	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroTeardown(sc))
-	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeDistroExecute(sc, env))
-	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeDistroIcecreamConfig(sc, env))
+	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroExecute(sc, env))
+	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(sc, env))
 
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHostFilter(sc))
