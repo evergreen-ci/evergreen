@@ -486,6 +486,8 @@ func adminDistroExecute() cli.Command {
 		scriptFlagName            = "script"
 		includeSpawnHostsFlagName = "include_spawn_hosts"
 		includeTaskHostsFlagName  = "include_task_hosts"
+		sudoFlagName              = "sudo"
+		sudoUserFlagName          = "sudo_user"
 	)
 	return cli.Command{
 		Name:  "distro-execute",
@@ -511,6 +513,14 @@ func adminDistroExecute() cli.Command {
 				Name:  includeSpawnHostsFlagName,
 				Usage: "run the script on spawn hosts",
 			},
+			cli.BoolFlag{
+				Name:  sudoFlagName,
+				Usage: "run the script with sudo",
+			},
+			cli.StringFlag{
+				Name:  sudoUserFlagName,
+				Usage: "run the script as a user",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(distroFlagName),
@@ -521,6 +531,11 @@ func adminDistroExecute() cli.Command {
 			includeTaskHosts := c.BoolT(includeTaskHostsFlagName)
 			includeSpawnHosts := c.Bool(includeSpawnHostsFlagName)
 			script := c.String(scriptFlagName)
+			sudo := c.Bool(sudoFlagName)
+			sudoUser := c.String(sudoUserFlagName)
+			if sudoUser != "" {
+				sudo = true
+			}
 			if script == "" {
 				scriptPath := c.String(scriptPathFlagName)
 				b, err := ioutil.ReadFile(scriptPath)
@@ -544,9 +559,14 @@ func adminDistroExecute() cli.Command {
 				Script:            script,
 				IncludeTaskHosts:  includeTaskHosts,
 				IncludeSpawnHosts: includeSpawnHosts,
+				Sudo:              sudo,
+				SudoUser:          sudoUser,
 			})
+			if err != nil {
+				return errors.Wrapf(err, "failed to execute script on hosts of distro '%s'", distro)
+			}
 			if len(hostIDs) != 0 {
-				fmt.Printf("Running script on the following hosts:\n%s", strings.Join(hostIDs, "\n"))
+				fmt.Printf("Running script on the following hosts:\n%s\n", strings.Join(hostIDs, "\n"))
 			} else {
 				fmt.Println("No hosts matched, so not running script on any hosts.")
 			}

@@ -609,12 +609,12 @@ func (h *distroExecuteHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the distro and JSON payload from the http request.
 func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distro = gimlet.GetVars(r)["distro"]
+	h.distro = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
 	if err := util.ReadJSONInto(body, &h.opts); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "could not read request")
 	}
 
 	if h.opts.Script == "" {
@@ -632,15 +632,19 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts, err := h.sc.FindHostsByDistro(h.distro)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
 	}
 
+	var allHostIDs []string
+	for _, host := range hosts {
+		allHostIDs = append(allHostIDs, host.Id)
+	}
 	catcher := grip.NewBasicCatcher()
 	var hostIDs []string
 	for _, host := range hosts {
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 		if (host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts) || (host.StartedBy != evergreen.User && h.opts.IncludeSpawnHosts) {
-			if err := h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts); err != nil {
+			if err := h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)); err != nil {
 				catcher.Wrapf(err, "problem enqueueing job to run script on host '%s'", host.Id)
 				continue
 			}
@@ -648,7 +652,7 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
 	}
 
 	return gimlet.NewJSONResponse(struct {
@@ -662,6 +666,7 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 
 type distroIcecreamConfigHandler struct {
 	distro string
+	opts   model.APIDistroScriptOptions
 	sc     data.Connector
 	env    evergreen.Environment
 }
@@ -682,12 +687,12 @@ func (h *distroIcecreamConfigHandler) Factory() gimlet.RouteHandler {
 
 // Parse extracts the distro and JSON payload from the http request.
 func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distro = gimlet.GetVars(r)["distro"]
+	h.distro = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, h); err != nil {
-		return errors.Wrap(err, "Argument read error")
+	if err := util.ReadJSONInto(body, &h.opts); err != nil {
+		return errors.Wrap(err, "could not read request body")
 	}
 
 	return nil
@@ -740,7 +745,6 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		if err := h.env.RemoteQueue()
 		if err := h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
 			catcher.Wrapf(err, "problem enqueueing job to update icecream config file on host '%s'", host.Id)
 			continue
