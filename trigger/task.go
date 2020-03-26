@@ -379,7 +379,12 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
 		return nil, nil
 	}
+
 	if !isFailedTaskStatus(t.data.Status) {
+		return nil, nil
+	}
+
+	if t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 
@@ -403,7 +408,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 		return nil, nil
 	}
 
-	if t.data.Status != evergreen.TaskFailed {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(sub.ID, t.task.Version, t.task.BuildVariant))
@@ -422,7 +427,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 		return nil, nil
 	}
 
-	if t.data.Status != evergreen.TaskFailed {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(sub.ID, t.task.Project, t.task.Version))
@@ -441,7 +446,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 		return nil, nil
 	}
 
-	if t.data.Status != evergreen.TaskFailed {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(sub.ID, t.task.Version, t.task.DisplayName))
@@ -475,7 +480,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 }
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
-	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
+	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) || t.IsSystemUnresponsive() {
 		return false, nil, nil
 	}
 
