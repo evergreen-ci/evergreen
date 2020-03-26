@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -714,6 +713,10 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 	catcher := grip.NewBasicCatcher()
 	var hostIDs []string
 	for _, host := range hosts {
+		if host.StartedBy == evergreen.User || !host.IsVirtualWorkstation {
+			continue
+		}
+
 		// If the distro exists, we use the settings directly from that distro;
 		// if the distro in the host document is deleted, we make a best-effort
 		// attempt to resolve it to a real distro by attempting to pick any
@@ -725,11 +728,12 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 		var d distro.Distro
 		var distroFound bool
-		for _, distroID := range distroIDs {
-			d, err = distro.FindOne(db.Query(distro.ById(distroID)))
-			if err != nil {
-				continue
-			}
+		distros, err := distro.Find(distro.ByIds(distroIDs))
+		if err != nil {
+			catcher.Errorf("could not find distros matching '%s' for host '%s'", host.Distro.Id, host.Id)
+			continue
+		}
+		for _, d = range distros {
 			if d.IcecreamSettings.Populated() {
 				distroFound = true
 				break
@@ -737,9 +741,6 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 		if !distroFound {
 			catcher.Wrapf(err, "could not resolve distro '%s' for host '%s'", host.Distro.Id, host.Id)
-			continue
-		}
-		if host.StartedBy == evergreen.User || !host.IsVirtualWorkstation {
 			continue
 		}
 

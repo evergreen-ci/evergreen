@@ -550,11 +550,11 @@ func adminDistroExecute() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.setupRestCommunicator(context.Background())
-			defer client.Close()
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
 			hostIDs, err := client.ExecuteOnDistro(ctx, distro, model.APIDistroScriptOptions{
 				Script:            script,
 				IncludeTaskHosts:  includeTaskHosts,
