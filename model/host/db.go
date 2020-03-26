@@ -557,16 +557,6 @@ func ByDistroIDOrAliasRunning(distroName string) bson.M {
 	}
 }
 
-// // ByDistroIDRunning returns all hosts that are running in a distro.
-// // kim: TODO: delete
-// func ByDistroIDRunning(distroID string) db.Q {
-//     distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-//     return db.Query(bson.M{
-//         distroIDKey: distroID,
-//         StatusKey:   evergreen.HostRunning,
-//     })
-// }
-
 // ByIds produces a query that returns all hosts in the given list of ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{

@@ -718,3 +718,19 @@ func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
 	assert.NotNil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic}, settings))
 	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}, settings))
 }
+
+func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings := &evergreen.Settings{}
+	assert.Nil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
+		IsVirtualWorkstation: true,
+		HomeVolumeSettings: distro.HomeVolumeSettings{
+			FormatCommand: "format_command",
+		},
+	}, settings))
+	assert.NotNil(t, ensureHasValidVirtualWorkstationSettings(ctx, &distro.Distro{
+		IsVirtualWorkstation: true,
+	}, settings))
+}
