@@ -78,19 +78,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "dependsOn-circular-dep.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "Found circular dependency for task task6: Dependency cycle detected: task6,dep4",
-            "path": ["task", "dependsOn"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
-          }
-        ],
-        "data": { "task": null }
-      }
     }
   ]
 }
