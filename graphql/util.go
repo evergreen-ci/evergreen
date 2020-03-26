@@ -93,9 +93,6 @@ func IsURL(str string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// BaseTaskStatuses represents the format {buildVariant: {displayName: status}} for base task statuses
-type BaseTaskStatuses map[string]map[string]string
-
 // GetBaseTasksFromPatchID returns the base tasks of a patch
 func GetBaseTasksFromPatchID(r *queryResolver, patchID string) ([]task.Task, error) {
 	version, err := r.sc.FindVersionById(patchID)
@@ -121,6 +118,9 @@ func GetBaseTasksFromPatchID(r *queryResolver, patchID string) ([]task.Task, err
 	}
 	return baseTasks, nil
 }
+
+// BaseTaskStatuses represents the format {buildVariant: {displayName: status}} for base task statuses
+type BaseTaskStatuses map[string]map[string]string
 
 // GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
 func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskStatuses, error) {
