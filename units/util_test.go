@@ -2,9 +2,7 @@ package units
 
 import (
 	"context"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -35,9 +33,6 @@ func TestHandlePoisonedHost(t *testing.T) {
 	assert.NoError(container2.Insert())
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
-	if !env.RemoteQueue().Started() {
-		_ = env.RemoteQueue().Start(ctx)
-	}
 
 	_ = HandlePoisonedHost(ctx, env, &container1, "")
 	dbParent, err := host.FindOneId(parent.Id)
@@ -49,18 +44,5 @@ func TestHandlePoisonedHost(t *testing.T) {
 	dbContainer2, err := host.FindOneId(container2.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.HostDecommissioned, dbContainer2.Status)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	results := env.RemoteQueue().Results(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			assert.Fail("timed out reading remote stats")
-		case j := <-results:
-			if strings.Contains(j.ID(), decoHostNotifyJobName) {
-				return
-			}
-		}
-	}
 
 }
