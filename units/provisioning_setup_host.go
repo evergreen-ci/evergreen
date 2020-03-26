@@ -302,7 +302,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 		var output string
 		output, err = copyScript(ctx, j.env, settings, j.host, filepath.Join(j.host.Distro.HomeDir(), scriptName), j.host.Distro.Setup)
 		if err != nil {
-			return errors.Wrapf(err, "error copying setup script %s to host %s",
+			return errors.Wrapf(err, "error copying setup script %s to host %s: %s",
 				scriptName, j.host.Id, output)
 		}
 	}
