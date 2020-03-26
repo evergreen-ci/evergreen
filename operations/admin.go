@@ -484,8 +484,8 @@ func adminDistroExecute() cli.Command {
 		distroFlagName            = "distro"
 		scriptPathFlagName        = "file"
 		scriptFlagName            = "script"
-		includeSpawnHostsFlagName = "spawn_hosts"
-		includeTaskHostsFlagName  = "task_hosts"
+		includeSpawnHostsFlagName = "include_spawn_hosts"
+		includeTaskHostsFlagName  = "include_task_hosts"
 	)
 	return cli.Command{
 		Name:  "distro-execute",
@@ -548,7 +548,7 @@ func adminDistroExecute() cli.Command {
 			if len(hostIDs) != 0 {
 				fmt.Printf("Running script on the following hosts:\n%s", strings.Join(hostIDs, "\n"))
 			} else {
-				fmt.Println("No hosts matched.")
+				fmt.Println("No hosts matched, so not running script on any hosts.")
 			}
 
 			return nil

@@ -639,13 +639,13 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	var hostIDs []string
 	for _, host := range hosts {
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		if host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
+		if (host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts) || (host.StartedBy != evergreen.User && h.opts.IncludeSpawnHosts) {
+			if err := h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts); err != nil {
+				catcher.Wrapf(err, "problem enqueueing job to run script on host '%s'", host.Id)
+				continue
+			}
+			hostIDs = append(hostIDs, host.Id)
 		}
-		if host.StartedBy != evergreen.User && h.opts.IncludeSpawnHosts {
-			catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)), "problem enqueueing job to run script on host '%s'", host.Id)
-		}
-		hostIDs = append(hostIDs, host.Id)
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
@@ -707,6 +707,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	catcher := grip.NewBasicCatcher()
+	var hostIDs []string
 	for _, host := range hosts {
 		// If the distro exists, we use the settings directly from that distro;
 		// if the distro in the host document is deleted, we make a best-effort
@@ -730,7 +731,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			}
 		}
 		if !distroFound {
-			catcher.Wrapf(err, "could not resolve distro '%s'", host.Distro.Id)
+			catcher.Wrapf(err, "could not resolve distro '%s' for host '%s'", host.Distro.Id, host.Id)
 			continue
 		}
 		if host.StartedBy == evergreen.User || !host.IsVirtualWorkstation {
@@ -739,12 +740,19 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)), "problem enqueueing job to update icecream config file on host '%s'", host.Id)
+		if err := h.env.RemoteQueue()
+		if err := h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
+			catcher.Wrapf(err, "problem enqueueing job to update icecream config file on host '%s'", host.Id)
+			continue
+		}
+		hostIDs = append(hostIDs, host.Id)
 	}
 
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to update icecream config on hosts"))
 	}
 
-	return gimlet.NewJSONResponse(struct{}{})
+	return gimlet.NewJSONResponse(struct {
+		HostIDs []string `json:"host_ids"`
+	}{HostIDs: hostIDs})
 }
