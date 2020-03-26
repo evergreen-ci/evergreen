@@ -726,13 +726,14 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			catcher.Errorf("could not look up distro '%s'", host.Distro.Id)
 			continue
 		}
-		var d distro.Distro
-		var distroFound bool
-		distros, err := distro.Find(distro.ByIds(distroIDs))
+		var distros []distro.Distro
+		distros, err = distro.Find(distro.ByIds(distroIDs))
 		if err != nil {
 			catcher.Errorf("could not find distros matching '%s' for host '%s'", host.Distro.Id, host.Id)
 			continue
 		}
+		var d distro.Distro
+		var distroFound bool
 		for _, d = range distros {
 			if d.IcecreamSettings.Populated() {
 				distroFound = true
