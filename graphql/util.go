@@ -94,8 +94,8 @@ func IsURL(str string) bool {
 }
 
 // GetBaseTasksFromPatchID returns the base tasks of a patch
-func GetBaseTasksFromPatchID(r *queryResolver, patchID string) ([]task.Task, error) {
-	version, err := r.sc.FindVersionById(patchID)
+func GetBaseTasksFromPatchID(sc data.Connector, patchID string) ([]task.Task, error) {
+	version, err := sc.FindVersionById(patchID)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting version %s: %s", patchID, err.Error())
 	}
@@ -124,7 +124,7 @@ type BaseTaskStatuses map[string]map[string]string
 
 // GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
 func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskStatuses, error) {
-	baseTasks, err := GetBaseTasksFromPatchID(r, patchID)
+	baseTasks, err := GetBaseTasksFromPatchID(r.sc, patchID)
 	if err != nil {
 		return nil, err
 	}
