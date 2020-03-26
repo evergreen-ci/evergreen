@@ -76,7 +76,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 			continue
 		}
 		var metStatus MetStatus
-		if depTask.Status != evergreen.TaskFailed && depTask.Status != evergreen.TaskSucceeded {
+		if !t.IsFinished() {
 			metStatus = "PENDING"
 		} else if t.SatisfiesDependency(depTask) {
 			metStatus = "MET"
