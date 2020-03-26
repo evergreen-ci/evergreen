@@ -304,10 +304,10 @@ func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
-// satisfiesDependency checks a task the receiver task depends on
+// SatisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.
-func (t *Task) satisfiesDependency(depTask *Task) bool {
+func (t *Task) SatisfiesDependency(depTask *Task) bool {
 	for _, dep := range t.DependsOn {
 		if dep.TaskId == depTask.Id {
 			switch dep.Status {
@@ -384,7 +384,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -459,7 +459,7 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 			return false, nil
 		}
 
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			if depTask.IsFinished() {
 				return false, nil
 			}
@@ -499,7 +499,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -1865,7 +1865,7 @@ func (t *Task) BlockedState() (string, error) {
 			})
 			continue
 		}
-		if !t.satisfiesDependency(depTask) {
+		if !t.SatisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil
 		}
 	}

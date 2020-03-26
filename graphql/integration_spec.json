@@ -1742,7 +1742,6 @@
             "buildId": "some_thang",
             "distroId": "distro",
             "buildVariant": "variant",
-            "dependsOn": null,
             "displayName": "exec1 display name",
             "hostId": "host",
             "restarts": 5,
