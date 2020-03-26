@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"context"
@@ -8,26 +8,26 @@ import (
 	"github.com/pkg/errors"
 )
 
-type queueReporter struct {
+type queueManager struct {
 	queue amboy.Queue
 }
 
-// NewQueueReporter returns a queue state reporter that provides the
-// Reporter supported by calling the output of amboy.Queue.Results()
-// and amboy.Queue.JobStats(). iterating over jobs directly. Use this
-// to introspect in-memory queue implementations more generically.
+// NewQueueManager returns a queue manager that provides the supported
+// Management interface by calling the output of amboy.Queue.Results() and
+// amboy.Queue.JobStats(), iterating over jobs directly. Use this to manage
+// in-memory queue implementations more generically.
 //
-// The reporting algorithms may impact performance of jobs, as queues
-// may require some locking to their Jobs function. Additionally, the
-// speed of these operations will necessarily degrade with the number
-// of jobs. Do pass contexts with timeouts to in these cases.
-func NewQueueReporter(q amboy.Queue) Reporter {
-	return &queueReporter{
+// The management algorithms may impact performance of jobs, as queues may
+// require some locking to their Jobs function. Additionally, the speed of
+// these operations will necessarily degrade with the number of jobs. Do pass
+// contexts with timeouts to in these cases.
+func NewQueueManager(q amboy.Queue) Management {
+	return &queueManager{
 		queue: q,
 	}
 }
 
-func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
+func (m *queueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -39,27 +39,27 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 	counters := map[string]int{}
 	switch f {
 	case InProgress:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.InProgress {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
 			}
 		}
 	case Pending:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if !stat.Completed && !stat.InProgress {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
 			}
 		}
 	case Stale:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
@@ -81,7 +81,7 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 	return &out, nil
 }
 
-func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, f RuntimeFilter) (*JobRuntimeReport, error) {
+func (m *queueManager) RecentTiming(ctx context.Context, window time.Duration, f RuntimeFilter) (*JobRuntimeReport, error) {
 	var err error
 
 	if err = f.Validate(); err != nil {
@@ -100,7 +100,7 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 
 	switch f {
 	case Duration:
-		for job := range r.queue.Results(ctx) {
+		for job := range m.queue.Results(ctx) {
 			stat := job.Status()
 			ti := job.TimeInfo()
 			if stat.Completed && time.Since(ti.End) < window {
@@ -109,8 +109,8 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 			}
 		}
 	case Latency:
-		for stat := range r.queue.JobStats(ctx) {
-			job, ok := r.queue.Get(ctx, stat.ID)
+		for stat := range m.queue.JobStats(ctx) {
+			job, ok := m.queue.Get(ctx, stat.ID)
 			if !ok {
 				continue
 			}
@@ -121,9 +121,9 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 			}
 		}
 	case Running:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if !stat.Completed && stat.InProgress {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -157,7 +157,7 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 	}, nil
 }
 
-func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
+func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
 	var err error
 	if err = f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -174,9 +174,9 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 
 	switch f {
 	case InProgress:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -186,9 +186,9 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 			}
 		}
 	case Pending:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -198,9 +198,9 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 			}
 		}
 	case Stale:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -220,7 +220,7 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 	}, nil
 }
 
-func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
+func (m *queueManager) RecentErrors(ctx context.Context, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
 	var err error
 	if err = f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -238,9 +238,9 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 
 	switch f {
 	case UniqueErrors:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -274,9 +274,9 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 			collector[k] = v
 		}
 	case AllErrors:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -296,9 +296,9 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 			}
 		}
 	case StatsOnly:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -336,7 +336,7 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 	}, nil
 }
 
-func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
+func (m *queueManager) RecentJobErrors(ctx context.Context, jobType string, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
 	var err error
 	if err = f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -354,9 +354,9 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 
 	switch f {
 	case UniqueErrors:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -392,9 +392,9 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 			collector[k] = v
 		}
 	case AllErrors:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -416,9 +416,9 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 			}
 		}
 	case StatsOnly:
-		for stat := range r.queue.JobStats(ctx) {
+		for stat := range m.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(ctx, stat.ID)
+				job, ok := m.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -457,4 +457,20 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 		Data:           reports,
 	}, nil
 
+}
+
+func (m *queueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
+	for stat := range m.queue.JobStats(ctx) {
+		if stat.Completed {
+			continue
+		}
+
+		job, ok := m.queue.Get(ctx, stat.ID)
+		if ok && job.Type().Name != jobType {
+			continue
+		}
+		m.queue.Complete(ctx, job)
+	}
+
+	return nil
 }
