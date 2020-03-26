@@ -45,6 +45,10 @@ func (r *Resolver) Task() TaskResolver {
 type mutationResolver struct{ *Resolver }
 
 func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return dependencies, nil
+	}
 	depIds := []string{}
 	for _, dep := range at.DependsOn {
 		depIds = append(depIds, dep.TaskId)
@@ -71,7 +75,6 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", t.Id, err.Error()))
 	}
 
-	dependencies := []*Dependency{}
 	for _, dep := range at.DependsOn {
 		depTask, ok := taskMap[dep.TaskId]
 		if !ok {
