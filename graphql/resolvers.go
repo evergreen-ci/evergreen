@@ -756,7 +756,7 @@ func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.API
 			return &apiTask.TimeTaken, nil
 		}
 	}
-	return nil, ResourceNotFound.Send(ctx, fmt.Sprint("Unable to find base task for task %s", *at.Id))
+	return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find base task for task %s", *at.Id))
 }
 
 // New injects resources into the resolvers, such as the data connector
