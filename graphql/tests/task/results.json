@@ -32,15 +32,17 @@
       "query_file": "dependsOn-task-status-equals-dep-status.graphql",
       "result": {
         "data": {
-          "task": {
-            "dependsOn": [
-              {
-                "metStatus": "PENDING",
-                "requiredStatus": "MUST_SUCCEED",
-                "buildVariant": "ubuntu",
-                "name": "dep1"
-              }
-            ]
+          "data": {
+            "task": {
+              "dependsOn": [
+                {
+                  "metStatus": "UNMET",
+                  "requiredStatus": "MUST_SUCCEED",
+                  "buildVariant": "ubuntu",
+                  "name": "dep1"
+                }
+              ]
+            }
           }
         }
       }
@@ -49,15 +51,17 @@
       "query_file": "dependsOn-dep-status-equals-all-statuses.graphql",
       "result": {
         "data": {
-          "task": {
-            "dependsOn": [
-              {
-                "metStatus": "MET",
-                "requiredStatus": "MUST_FINISH",
-                "buildVariant": "windows",
-                "name": "dep2"
-              }
-            ]
+          "data": {
+            "task": {
+              "dependsOn": [
+                {
+                  "metStatus": "PENDING",
+                  "requiredStatus": "MUST_FINISH",
+                  "buildVariant": "windows",
+                  "name": "dep2"
+                }
+              ]
+            }
           }
         }
       }
@@ -66,15 +70,17 @@
       "query_file": "dependsOn-dep-status-failed.graphql",
       "result": {
         "data": {
-          "task": {
-            "dependsOn": [
-              {
-                "metStatus": "MET",
-                "requiredStatus": "MUST_FAIL",
-                "buildVariant": "windows",
-                "name": "dep2"
-              }
-            ]
+          "data": {
+            "task": {
+              "dependsOn": [
+                {
+                  "metStatus": "PENDING",
+                  "requiredStatus": "MUST_FAIL",
+                  "buildVariant": "windows",
+                  "name": "dep2"
+                }
+              ]
+            }
           }
         }
       }
