@@ -70,11 +70,6 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *at.Id, err.Error()))
 	}
 
-	err = t.CircularDependencies()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Found circular dependency for task %s: %s", t.Id, err.Error()))
-	}
-
 	for _, dep := range at.DependsOn {
 		depTask, ok := taskMap[dep.TaskId]
 		if !ok {
