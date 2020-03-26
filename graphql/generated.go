@@ -85,6 +85,7 @@ type ComplexityRoot struct {
 		Activated     func(childComplexity int) int
 		Alias         func(childComplexity int) int
 		Author        func(childComplexity int) int
+		BaseVersionID func(childComplexity int) int
 		Description   func(childComplexity int) int
 		Duration      func(childComplexity int) int
 		Githash       func(childComplexity int) int
@@ -273,6 +274,7 @@ type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
+	BaseVersionID(ctx context.Context, obj *model.APIPatch) (string, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -493,6 +495,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Author(childComplexity), true
+
+	case "Patch.baseVersionId":
+		if e.complexity.Patch.BaseVersionID == nil {
+			break
+		}
+
+		return e.complexity.Patch.BaseVersionID(childComplexity), true
 
 	case "Patch.description":
 		if e.complexity.Patch.Description == nil {
@@ -1526,6 +1535,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
+  baseVersionId: String!
 }
 
 type TaskResult {
@@ -3263,6 +3273,40 @@ func (ec *executionContext) _Patch_taskCount(ctx context.Context, field graphql.
 	res := resTmp.(*int)
 	fc.Result = res
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_baseVersionId(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().BaseVersionID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
@@ -8228,6 +8272,20 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Patch_taskCount(ctx, field, obj)
+				return res
+			})
+		case "baseVersionId":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_baseVersionId(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
