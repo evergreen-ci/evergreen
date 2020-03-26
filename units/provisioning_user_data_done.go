@@ -124,7 +124,14 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		// kim: TODO: add icecc config file
+		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapErro(err, message.Fields{
+				"message": "can't write icecream config file",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 	}
 }
 
