@@ -32,17 +32,15 @@
       "query_file": "dependsOn-task-status-equals-dep-status.graphql",
       "result": {
         "data": {
-          "data": {
-            "task": {
-              "dependsOn": [
-                {
-                  "metStatus": "UNMET",
-                  "requiredStatus": "MUST_SUCCEED",
-                  "buildVariant": "ubuntu",
-                  "name": "dep1"
-                }
-              ]
-            }
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_SUCCEED",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
           }
         }
       }
@@ -51,17 +49,15 @@
       "query_file": "dependsOn-dep-status-equals-all-statuses.graphql",
       "result": {
         "data": {
-          "data": {
-            "task": {
-              "dependsOn": [
-                {
-                  "metStatus": "PENDING",
-                  "requiredStatus": "MUST_FINISH",
-                  "buildVariant": "windows",
-                  "name": "dep2"
-                }
-              ]
-            }
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_FINISH",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
           }
         }
       }
@@ -70,17 +66,15 @@
       "query_file": "dependsOn-dep-status-failed.graphql",
       "result": {
         "data": {
-          "data": {
-            "task": {
-              "dependsOn": [
-                {
-                  "metStatus": "PENDING",
-                  "requiredStatus": "MUST_FAIL",
-                  "buildVariant": "windows",
-                  "name": "dep2"
-                }
-              ]
-            }
+          "task": {
+            "dependsOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_FAIL",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
           }
         }
       }
