@@ -495,11 +495,11 @@ func adminBackup() cli.Command {
 			serviceConfigFlags(),
 			addDbSettingsFlags(
 				cli.StringFlag{
-					Name:  joinFlagNames(collectionNameFlag, "c"),
+					Name:  joinFlagNames(collectionNameFlag, "gac"),
 					Usage: "specify the name of the collection to backup",
 				},
 				cli.StringFlag{
-					Name:  "prefix",
+					Name:  prefixFlagName,
 					Value: "archive",
 					Usage: "specify prefix within the bucket to store this archive",
 				},
