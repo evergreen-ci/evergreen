@@ -745,24 +745,23 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
-	baseTasks, err := GetBaseTasksFromPatchID(r.sc, *at.Version)
+	t, err := r.sc.FindTaskById(*at.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base tasks for task %s: %s", *at.Id, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", *at.Id, err.Error()))
 	}
-	for _, bT := range baseTasks {
-		if bT.DisplayName == *at.DisplayName {
-			if bT.TimeTaken == 0 {
-				return nil, nil
-			}
-			apiTask := restModel.APITask{}
-			err = apiTask.BuildFromService(&bT)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error build task %s from service", bT.Id))
-			}
-			return &apiTask.TimeTaken, nil
-		}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
 	}
-	return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find base task for task %s", *at.Id))
+	if baseTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+	}
+	if baseTask.TimeTaken == 0 {
+		return nil, nil
+	}
+	apiBaseTask := restModel.APITask{}
+	apiBaseTask.BuildFromService(baseTask)
+	return &apiBaseTask.TimeTaken, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

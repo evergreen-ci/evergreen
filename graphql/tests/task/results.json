@@ -28,7 +28,7 @@
       "result": {
         "errors": [
           {
-            "message": "Unable to find base task for task taskity_task",
+            "message": "Unable to find task taskity_task on base commit",
             "path": ["task", "baseCommitDuration"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
