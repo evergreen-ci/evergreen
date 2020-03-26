@@ -246,6 +246,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 
 	for i, dep := range ad.DependsOn {
 		dependsOn[i].TaskId = dep.TaskId
+		dependsOn[i].Status = dep.Status
 	}
 
 	st.DependsOn = dependsOn

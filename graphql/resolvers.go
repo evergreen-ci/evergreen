@@ -65,9 +65,13 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
 	}
 
-	t, err := task.FindOneId(*at.Id)
+	i, err := at.ToService()
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s: %s", *at.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
 	}
 
 	for _, dep := range at.DependsOn {
