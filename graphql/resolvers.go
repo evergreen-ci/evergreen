@@ -744,8 +744,19 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &patch.PatchNumber, nil
 }
 
-func (r *taskResolver) BaseCommitDuration(ctx context.Context, obj *restModel.APITask) (*time.Time, error) {
-	return nil, nil
+func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
+	baseTasks, err := GetBaseTasksFromPatchID(r.sc, *at.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base tasks for task %s: %s", *at.Id, err.Error()))
+	}
+	for _, bT := range baseTasks {
+		if bT.DisplayName == *at.DisplayName {
+			apiTask := restModel.APITask{}
+			apiTask.BuildFromService(bT)
+			return &apiTask.TimeTaken, nil
+		}
+	}
+	return nil, ResourceNotFound.Send(ctx, fmt.Sprint("Unable to find base task for task %s", *at.Id))
 }
 
 // New injects resources into the resolvers, such as the data connector
