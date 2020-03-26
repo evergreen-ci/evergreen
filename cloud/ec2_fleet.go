@@ -41,6 +41,9 @@ func (c *azInstanceTypeCache) azSupportsInstanceType(ctx context.Context, client
 		if err != nil {
 			return false, errors.Wrapf(err, "can't get instance types for '%s'", az)
 		}
+		if output == nil {
+			return false, errors.Wrap(err, "DescribeInstanceTypeOfferings returned nil output")
+		}
 
 		instanceTypes := make([]string, 0, len(output.InstanceTypeOfferings))
 		for _, offering := range output.InstanceTypeOfferings {

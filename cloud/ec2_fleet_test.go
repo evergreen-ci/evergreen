@@ -97,7 +97,10 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "templateID", *mockClient.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateId)
 		},
 		"MakeOverrides": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{VpcName: "vpc-123456"}
+			ec2Settings := &EC2ProviderSettings{
+				VpcName:      "vpc-123456",
+				InstanceType: "instanceType0",
+			}
 
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
@@ -172,7 +175,13 @@ func TestFleet(t *testing.T) {
 
 		m = &ec2FleetManager{
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client: &awsClientMock{},
+				client: &awsClientMock{
+					DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
+						InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
+							{InstanceType: aws.String("instanceType0")},
+						},
+					},
+				},
 				region: "test-region",
 			},
 			credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
