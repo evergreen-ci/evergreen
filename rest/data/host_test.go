@@ -39,19 +39,22 @@ func TestHostConnectorSuite(t *testing.T) {
 		}
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 		host1 := &host.Host{
-			Id:             "host1",
-			Aliases:        []string{"alias1and2"},
-			StartedBy:      testUser,
+			Id:        "host1",
+			StartedBy: testUser,
+			Distro: distro.Distro{
+				Id:      "distro1",
+				Aliases: []string{"alias125"},
+			},
 			Status:         evergreen.HostRunning,
 			ExpirationTime: time.Now().Add(time.Hour),
 			Secret:         "abcdef",
 		}
 		host2 := &host.Host{
 			Id:        "host2",
-			Aliases:   []string{"alias1and2"},
 			StartedBy: "user2",
 			Distro: distro.Distro{
-				Id: "distro2",
+				Id:      "distro2",
+				Aliases: []string{"alias125"},
 			},
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
@@ -73,7 +76,8 @@ func TestHostConnectorSuite(t *testing.T) {
 			StartedBy: evergreen.User,
 			Status:    evergreen.HostRunning,
 			Distro: distro.Distro{
-				Id: "distro5",
+				Id:      "distro5",
+				Aliases: []string{"alias125"},
 			},
 		}
 
@@ -210,7 +214,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = s.ctx.FindHostsByDistro("alias1and2")
+	hosts, err = s.ctx.FindHostsByDistro("alias125")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host2Found bool
