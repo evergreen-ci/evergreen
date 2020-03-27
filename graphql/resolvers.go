@@ -161,12 +161,12 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 	return &taskCount, nil
 }
 
-func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
+func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(*obj.Version, *obj.Githash))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
-	return &baseVersion.Id, nil
+	return baseVersion.Id, nil
 }
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
