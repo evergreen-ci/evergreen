@@ -38,17 +38,25 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	var spawnTask *task.Task
 	var err error
 	if len(r.FormValue("distro_id")) > 0 {
-		spawnDistro, err = distro.FindOne(distro.ById(r.FormValue("distro_id")))
+		dat, err := distro.NewDistroAliasesLookupTable()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error finding distro %v", r.FormValue("distro_id")))
+				errors.Wrapf(err, "Error getting distro lookup table"))
 			return
+		}
+		// Make a best-effort attempt to find a matching distro, but don't error
+		// if we can't find one.
+		for _, distroID := range dat.Expand([]string{r.FormValue("distro_id")}) {
+			spawnDistro, err = distro.FindOne(distro.ById(distroID))
+			if err == nil {
+				break
+			}
 		}
 	}
 	if len(r.FormValue("task_id")) > 0 {
 		spawnTask, err = task.FindOne(task.ById(r.FormValue("task_id")))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
+			uis.LoggedError(w, r, http.StatusBadRequest,
 				errors.Wrapf(err, "Error finding task %v", r.FormValue("task_id")))
 			return
 		}
