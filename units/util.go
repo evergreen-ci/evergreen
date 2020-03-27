@@ -13,6 +13,7 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 	if h == nil {
 		return errors.New("no host found")
 	}
+	catcher := grip.NewBasicCatcher()
 	if h.ParentID != "" {
 		parent, err := host.FindOneId(h.ParentID)
 		if err != nil {
@@ -23,17 +24,15 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			if err != nil {
 				return errors.Wrap(err, "error getting containers")
 			}
-			catcher := grip.NewBasicCatcher()
+
 			for _, container := range containers {
 				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, container, reason))
 			}
 			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, *parent, reason))
-			if catcher.HasErrors() {
-				return catcher.Resolve()
-			}
 		}
 	}
-	return DisableAndNotifyPoisonedHost(ctx, env, *h, reason)
+	catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, *h, reason))
+	return catcher.Resolve()
 }
 
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h host.Host, reason string) error {

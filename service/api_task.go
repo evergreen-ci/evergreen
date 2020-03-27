@@ -286,11 +286,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err = units.HandlePoisonedHost(r.Context(), as.env, currentHost, msg)
-
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to disable poisoned host",
+			}))
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
