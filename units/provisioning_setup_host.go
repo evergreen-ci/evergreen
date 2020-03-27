@@ -872,7 +872,10 @@ func getMostRecentlyAddedDevice(lsblkOutput []string) (string, error) {
 	}
 
 	device := lsblkOutput[len(lsblkOutput)-1]
-	deviceNameRegexp := regexp.MustCompile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1)`)
+	deviceNameRegexp, err := regexp.Compile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1)`)
+	if err != nil {
+		return "", errors.Wrap(err, "can't compile device name regexp")
+	}
 	deviceNameMatch := deviceNameRegexp.FindStringSubmatch(device)
 	if len(deviceNameMatch) < 2 {
 		return "", errors.Errorf("can't get device name from device: '%s'", device)
