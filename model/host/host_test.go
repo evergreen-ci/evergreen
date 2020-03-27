@@ -3607,6 +3607,15 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			UserHost:     false,
 			Provider:     evergreen.ProviderNameEc2Auto,
 		},
+		{
+			Id:           "host8",
+			Distro:       distro2,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			SpawnOptions: SpawnOptions{SpawnedByTask: true},
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
 	}
 
 	for i, _ := range hosts {
@@ -3621,7 +3630,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 
 	numHosts, err := Count(All)
 	assert.NoError(err)
-	assert.Equal(5, numHosts)
+	assert.Equal(6, numHosts)
 
 	dbCreds := certdepot.User{}
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host1"}, db.NoProjection, db.NoSort, &dbCreds))
@@ -3629,6 +3638,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host4"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host5"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host7"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host8"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host2"}, db.NoProjection, db.NoSort, &dbCreds)))
 	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host6"}, db.NoProjection, db.NoSort, &dbCreds)))
 
@@ -3638,11 +3648,12 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host3"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host5"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host7"}, db.NoProjection, db.NoSort, &dbCreds))
+	assert.NoError(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host8"}, db.NoProjection, db.NoSort, &dbCreds))
 	assert.True(adb.ResultsNotFound(db.FindOne(evergreen.CredentialsCollection, bson.M{CertUserIDKey: "host4"}, db.NoProjection, db.NoSort, &dbCreds)))
 
 	numHosts, err = Count(All)
 	assert.NoError(err)
-	assert.Equal(4, numHosts)
+	assert.Equal(5, numHosts)
 
 }
 
