@@ -328,7 +328,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -401,6 +401,15 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			}
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
+	}
+	if len(baseStatuses) > 0 {
+		tasksFilteredByBaseStatus := []*TaskResult{}
+		for _, taskResult := range taskResults {
+			if util.StringSliceContains(baseStatuses, taskResult.Status) {
+				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
+			}
+		}
+		taskResults = tasksFilteredByBaseStatus
 	}
 	return taskResults, nil
 }

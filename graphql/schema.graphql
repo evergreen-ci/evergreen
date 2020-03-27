@@ -10,6 +10,7 @@ type Query {
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
+    baseStatuses: [String!] = []
     variant: String
     taskName: String
   ): [TaskResult!]!
