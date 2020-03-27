@@ -160,7 +160,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
-		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) int
+		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
 		Task               func(childComplexity int, taskID string) int
 		TaskFiles          func(childComplexity int, taskID string) int
@@ -302,7 +302,7 @@ type QueryResolver interface {
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
-	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) ([]*TaskResult, error)
+	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error)
 	TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*model.APITest, error)
 	TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error)
 	User(ctx context.Context) (*model.APIUser, error)
@@ -855,7 +855,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string), args["taskName"].(*string)), true
+		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -1560,6 +1560,7 @@ var sources = []*ast.Source{
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
+    baseStatuses: [String!] = []
     variant: String
     taskName: String
   ): [TaskResult!]!
@@ -2046,22 +2047,30 @@ func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, raw
 		}
 	}
 	args["statuses"] = arg5
-	var arg6 *string
-	if tmp, ok := rawArgs["variant"]; ok {
-		arg6, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg6 []string
+	if tmp, ok := rawArgs["baseStatuses"]; ok {
+		arg6, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["variant"] = arg6
+	args["baseStatuses"] = arg6
 	var arg7 *string
-	if tmp, ok := rawArgs["taskName"]; ok {
+	if tmp, ok := rawArgs["variant"]; ok {
 		arg7, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["taskName"] = arg7
+	args["variant"] = arg7
+	var arg8 *string
+	if tmp, ok := rawArgs["taskName"]; ok {
+		arg8, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskName"] = arg8
 	return args, nil
 }
 
@@ -4622,7 +4631,7 @@ func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["variant"].(*string), args["taskName"].(*string))
+		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sortBy"].(*TaskSortCategory), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
