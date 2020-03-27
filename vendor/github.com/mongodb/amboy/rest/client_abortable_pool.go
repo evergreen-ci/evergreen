@@ -8,23 +8,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ManagementClient provides a go wrapper to the management
-// service.
-type ManagementClient struct {
+// AbortablePoolManagementClient provides a go wrapper to the
+// AbortablePoolManagement service.
+type AbortablePoolManagementClient struct {
 	client *http.Client
 	url    string
 }
 
-// NewManagementClient constructs a new ManagementClient instance
-// that constructs a new http.Client.
-func NewManagementClient(url string) *ManagementClient {
-	return NewManagementClientFromExisting(&http.Client{}, url)
+// NewAbortablePoolManagementClient constructs a new
+// AbortablePoolManagementClient instance that constructs a new http.Client.
+func NewAbortablePoolManagementClient(url string) *AbortablePoolManagementClient {
+	return NewAbortablePoolManagementClientFromExisting(&http.Client{}, url)
 }
 
-// NewManagementClientFromExisting builds a ManagementClient instance
-// from an existing http.Client.
-func NewManagementClientFromExisting(client *http.Client, url string) *ManagementClient {
-	return &ManagementClient{
+// NewAbortablePoolManagementClientFromExisting builds an
+// AbortablePoolManagementClient instance from an existing http.Client.
+func NewAbortablePoolManagementClientFromExisting(client *http.Client, url string) *AbortablePoolManagementClient {
+	return &AbortablePoolManagementClient{
 		client: client,
 		url:    url,
 	}
@@ -32,7 +32,7 @@ func NewManagementClientFromExisting(client *http.Client, url string) *Managemen
 
 // ListJobs returns a full list of all running jobs managed by the
 // pool that the service reflects.
-func (c *ManagementClient) ListJobs(ctx context.Context) ([]string, error) {
+func (c *AbortablePoolManagementClient) ListJobs(ctx context.Context) ([]string, error) {
 	req, err := http.NewRequest(http.MethodGet, c.url+"/v1/jobs/list", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building request")
@@ -54,7 +54,7 @@ func (c *ManagementClient) ListJobs(ctx context.Context) ([]string, error) {
 
 // AbortAllJobs issues the request to terminate all currently running
 // jobs managed by the pool that backs the request.
-func (c *ManagementClient) AbortAllJobs(ctx context.Context) error {
+func (c *AbortablePoolManagementClient) AbortAllJobs(ctx context.Context) error {
 	req, err := http.NewRequest(http.MethodDelete, c.url+"/v1/jobs/abort", nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")
@@ -78,7 +78,7 @@ func (c *ManagementClient) AbortAllJobs(ctx context.Context) error {
 // in the remote queue. Check the error value to identify if false
 // response is due to a communication problem with the service or is
 // legitimate.
-func (c *ManagementClient) IsRunning(ctx context.Context, job string) (bool, error) {
+func (c *AbortablePoolManagementClient) IsRunning(ctx context.Context, job string) (bool, error) {
 	req, err := http.NewRequest(http.MethodGet, c.url+"/v1/jobs/"+job, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "problem building request")
@@ -101,7 +101,7 @@ func (c *ManagementClient) IsRunning(ctx context.Context, job string) (bool, err
 // AbortJob sends the abort signal for a running job to the management
 // service, return any errors from the service. A nil response
 // indicates that the job has been successfully terminated.
-func (c *ManagementClient) AbortJob(ctx context.Context, job string) error {
+func (c *AbortablePoolManagementClient) AbortJob(ctx context.Context, job string) error {
 	req, err := http.NewRequest(http.MethodDelete, c.url+"/v1/jobs/"+job, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")

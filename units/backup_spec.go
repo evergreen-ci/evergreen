@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/backup"
@@ -82,7 +81,6 @@ func appendIndexOnlyBackupCollections(dbName string, in []backup.Options) []back
 		stats.DailyTestStatsCollection,
 		stats.HourlyTestStatsCollection,
 		task.OldCollection,
-		testresult.Collection,
 	} {
 		in = append(in, backup.Options{
 			NS: amodel.Namespace{

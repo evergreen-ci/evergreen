@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -14,20 +16,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type ReportingSuite struct {
-	queue    amboy.Queue
-	reporter Reporter
-	ctx      context.Context
-	cancel   context.CancelFunc
+type ManagementSuite struct {
+	queue   amboy.Queue
+	manager Management
+	ctx     context.Context
+	cancel  context.CancelFunc
 
-	factory func() Reporter
+	factory func() Management
 	setup   func()
 	cleanup func() error
 	suite.Suite
 }
 
-func TestReportingSuiteBackedByMongoDB(t *testing.T) {
-	s := new(ReportingSuite)
+func TestManagementSuiteBackedByMongoDB(t *testing.T) {
+	s := new(ManagementSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -35,13 +37,13 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Reporter {
-		reporter, err := MakeDBQueueState(ctx, DBQueueReporterOptions{
+	s.factory = func() Management {
+		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options: opts,
 			Name:    name,
 		}, client)
 		require.NoError(t, err)
-		return reporter
+		return manager
 	}
 
 	s.setup = func() {
@@ -66,8 +68,8 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
-	s := new(ReportingSuite)
+func TestManagementSuiteBackedByMongoDBSingleGroup(t *testing.T) {
+	s := new(ManagementSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,15 +77,15 @@ func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Reporter {
-		reporter, err := MakeDBQueueState(ctx, DBQueueReporterOptions{
+	s.factory = func() Management {
+		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options:     opts,
 			Name:        name,
 			Group:       "foo",
 			SingleGroup: true,
 		}, client)
 		require.NoError(t, err)
-		return reporter
+		return manager
 	}
 
 	opts.UseGroups = true
@@ -111,8 +113,8 @@ func TestReportingSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
-	s := new(ReportingSuite)
+func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
+	s := new(ManagementSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -120,14 +122,14 @@ func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Reporter {
-		reporter, err := MakeDBQueueState(ctx, DBQueueReporterOptions{
+	s.factory = func() Management {
+		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options:  opts,
 			Name:     name,
 			ByGroups: true,
 		}, client)
 		require.NoError(t, err)
-		return reporter
+		return manager
 	}
 
 	opts.UseGroups = true
@@ -155,18 +157,18 @@ func TestReportingSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestReportingSuiteBackedByQueueMethods(t *testing.T) {
+func TestManagementSuiteBackedByQueueMethods(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := new(ReportingSuite)
+	s := new(ManagementSuite)
 	s.setup = func() {
 		s.queue = queue.NewLocalLimitedSize(2, 128)
 		s.Require().NoError(s.queue.Start(ctx))
 	}
 
-	s.factory = func() Reporter {
-		return NewQueueReporter(s.queue)
+	s.factory = func() Management {
+		return NewQueueManager(s.queue)
 	}
 
 	s.cleanup = func() error {
@@ -175,105 +177,149 @@ func TestReportingSuiteBackedByQueueMethods(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *ReportingSuite) SetupTest() {
+func (s *ManagementSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.setup()
-	s.reporter = s.factory()
+	s.manager = s.factory()
 }
 
-func (s *ReportingSuite) TearDownTest() {
+func (s *ManagementSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *ReportingSuite) TearDownSuite() {
+func (s *ManagementSuite) TearDownSuite() {
 	s.NoError(s.cleanup())
 }
 
-func (s *ReportingSuite) TestJobStatusInvalidFilter() {
+func (s *ManagementSuite) TestJobStatusInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
-		r, err := s.reporter.JobStatus(s.ctx, CounterFilter(f))
+		r, err := s.manager.JobStatus(s.ctx, CounterFilter(f))
 		s.Error(err)
 		s.Nil(r)
 
-		rr, err := s.reporter.JobIDsByState(s.ctx, "foo", CounterFilter(f))
+		rr, err := s.manager.JobIDsByState(s.ctx, "foo", CounterFilter(f))
 		s.Error(err)
 		s.Nil(rr)
 	}
 }
 
-func (s *ReportingSuite) TestTimingWithInvalidFilter() {
+func (s *ManagementSuite) TestTimingWithInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
-		r, err := s.reporter.RecentTiming(s.ctx, time.Hour, RuntimeFilter(f))
+		r, err := s.manager.RecentTiming(s.ctx, time.Hour, RuntimeFilter(f))
 		s.Error(err)
 		s.Nil(r)
 	}
 }
 
-func (s *ReportingSuite) TestErrorsWithInvalidFilter() {
+func (s *ManagementSuite) TestErrorsWithInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
-		r, err := s.reporter.RecentJobErrors(s.ctx, "foo", time.Hour, ErrorFilter(f))
+		r, err := s.manager.RecentJobErrors(s.ctx, "foo", time.Hour, ErrorFilter(f))
 		s.Error(err)
 		s.Nil(r)
 
-		r, err = s.reporter.RecentErrors(s.ctx, time.Hour, ErrorFilter(f))
+		r, err = s.manager.RecentErrors(s.ctx, time.Hour, ErrorFilter(f))
 		s.Error(err)
 		s.Nil(r)
 	}
 }
 
-func (s *ReportingSuite) TestJobCounterHighLevel() {
+func (s *ManagementSuite) TestJobCounterHighLevel() {
 	for _, f := range []CounterFilter{InProgress, Pending, Stale} {
-		r, err := s.reporter.JobStatus(s.ctx, f)
+		r, err := s.manager.JobStatus(s.ctx, f)
 		s.NoError(err)
 		s.NotNil(r)
 	}
 
 }
 
-func (s *ReportingSuite) TestJobCountingIDHighLevel() {
+func (s *ManagementSuite) TestJobCountingIDHighLevel() {
 	for _, f := range []CounterFilter{InProgress, Pending, Stale} {
-		r, err := s.reporter.JobIDsByState(s.ctx, "foo", f)
+		r, err := s.manager.JobIDsByState(s.ctx, "foo", f)
 		s.NoError(err)
 		s.NotNil(r)
 	}
 }
 
-func (s *ReportingSuite) TestJobTimingMustBeLongerThanASecond() {
+func (s *ManagementSuite) TestJobTimingMustBeLongerThanASecond() {
 	for _, dur := range []time.Duration{-1, 0, time.Millisecond, -time.Hour} {
-		r, err := s.reporter.RecentTiming(s.ctx, dur, Duration)
+		r, err := s.manager.RecentTiming(s.ctx, dur, Duration)
 		s.Error(err)
 		s.Nil(r)
-		je, err := s.reporter.RecentJobErrors(s.ctx, "foo", dur, StatsOnly)
+		je, err := s.manager.RecentJobErrors(s.ctx, "foo", dur, StatsOnly)
 		s.Error(err)
 		s.Nil(je)
 
-		je, err = s.reporter.RecentErrors(s.ctx, dur, StatsOnly)
+		je, err = s.manager.RecentErrors(s.ctx, dur, StatsOnly)
 		s.Error(err)
 		s.Nil(je)
 
 	}
 }
 
-func (s *ReportingSuite) TestJobTiming() {
+func (s *ManagementSuite) TestJobTiming() {
 	for _, f := range []RuntimeFilter{Duration, Latency, Running} {
-		r, err := s.reporter.RecentTiming(s.ctx, time.Minute, f)
+		r, err := s.manager.RecentTiming(s.ctx, time.Minute, f)
 		s.NoError(err)
 		s.NotNil(r)
 	}
 }
 
-func (s *ReportingSuite) TestRecentErrors() {
+func (s *ManagementSuite) TestRecentErrors() {
 	for _, f := range []ErrorFilter{UniqueErrors, AllErrors, StatsOnly} {
-		r, err := s.reporter.RecentErrors(s.ctx, time.Minute, f)
+		r, err := s.manager.RecentErrors(s.ctx, time.Minute, f)
 		s.NoError(err)
 		s.NotNil(r)
 	}
 }
 
-func (s *ReportingSuite) TestRecentJobErrors() {
+func (s *ManagementSuite) TestRecentJobErrors() {
 	for _, f := range []ErrorFilter{UniqueErrors, AllErrors, StatsOnly} {
-		r, err := s.reporter.RecentJobErrors(s.ctx, "shell", time.Minute, f)
+		r, err := s.manager.RecentJobErrors(s.ctx, "shell", time.Minute, f)
 		s.NoError(err)
 		s.NotNil(r)
 	}
+}
+
+func (s *ManagementSuite) TestCompleteJobsByType() {
+	j1 := job.NewShellJob("ls", "")
+	s.Require().NoError(s.queue.Put(s.ctx, j1))
+	j2 := newTestJob("0")
+	s.Require().NoError(s.queue.Put(s.ctx, j2))
+	j3 := newTestJob("1")
+	s.Require().NoError(s.queue.Put(s.ctx, j3))
+
+	s.Require().NoError(s.manager.CompleteJobsByType(s.ctx, "test"))
+	for jobStats := range s.queue.JobStats(s.ctx) {
+		if jobStats.ID == "0" || jobStats.ID == "1" {
+			s.True(jobStats.Completed)
+			_, ok := s.manager.(*dbQueueManager)
+			if ok {
+				s.Equal(3, jobStats.ModificationCount)
+			}
+		} else {
+			s.False(jobStats.Completed)
+			s.Equal(0, jobStats.ModificationCount)
+		}
+	}
+}
+
+type testJob struct {
+	job.Base
+}
+
+func newTestJob(id string) *testJob {
+	j := &testJob{
+		Base: job.Base{
+			TaskID:  id,
+			JobType: amboy.JobType{Name: "test"},
+		},
+	}
+	j.SetDependency(dependency.NewAlways())
+
+	return j
+}
+
+func (j *testJob) Run(ctx context.Context) {
+	time.Sleep(time.Minute)
+	return
 }

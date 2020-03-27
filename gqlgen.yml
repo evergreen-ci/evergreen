@@ -28,6 +28,8 @@ models:
     fields:
       baseCommitDuration:
         resolver: true
+      reliesOn:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

@@ -9,9 +9,9 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/amboy/reporting"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
@@ -93,7 +93,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(ctx),
 		})
 
-		if evergreen.EnableAmboyRemoteReporting {
+		if evergreen.EnableAmboyRemoteManagement {
 			j.collectExtendedRemoteStats(ctx)
 			j.collectExtendedGroupRemoteStats(ctx)
 		}
@@ -108,7 +108,7 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) {
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	reporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+	manager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 		Name:    settings.Amboy.Name,
 		Options: opts,
 	}, j.env.Client())
@@ -117,7 +117,7 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) {
 		return
 	}
 
-	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue report", reporter)
+	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue report", manager)
 	j.AddError(err)
 	j.logger.InfoWhen(len(r) > 1, r)
 }
@@ -129,7 +129,7 @@ func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Contex
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	reporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+	manager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 		Name:     settings.Amboy.Name,
 		Options:  opts,
 		ByGroups: true,
@@ -139,34 +139,34 @@ func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Contex
 		return
 	}
 
-	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue group", reporter)
+	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue group", manager)
 	j.AddError(err)
 	j.logger.InfoWhen(len(r) > 1, r)
 }
 
-func buildAmboyQueueMessage(ctx context.Context, msg string, reporter reporting.Reporter) (message.Fields, error) {
+func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.Management) (message.Fields, error) {
 	catcher := grip.NewBasicCatcher()
 	r := message.Fields{
 		"message": msg,
 	}
 
-	pending, err := reporter.JobStatus(ctx, reporting.Pending)
+	pending, err := manager.JobStatus(ctx, management.Pending)
 	catcher.Add(err)
 	if pending != nil {
 		r["pending"] = pending
 	}
-	inprog, err := reporter.JobStatus(ctx, reporting.InProgress)
+	inprog, err := manager.JobStatus(ctx, management.InProgress)
 	catcher.Add(err)
 	if inprog != nil {
 		r["inprog"] = inprog
 	}
-	stale, err := reporter.JobStatus(ctx, reporting.Stale)
+	stale, err := manager.JobStatus(ctx, management.Stale)
 	catcher.Add(err)
 	if stale != nil {
 		r["stale"] = stale
 	}
 
-	recentErrors, err := reporter.RecentErrors(ctx, time.Minute, reporting.StatsOnly)
+	recentErrors, err := manager.RecentErrors(ctx, time.Minute, management.StatsOnly)
 	catcher.Add(err)
 	if recentErrors != nil {
 		r["errors"] = recentErrors

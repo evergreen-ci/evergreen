@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"testing"

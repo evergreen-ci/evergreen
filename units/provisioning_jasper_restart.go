@@ -296,19 +296,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 	} else {
-		sshOpts, err := j.host.GetSSHOptions(j.settings)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not get SSH options",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-			j.AddError(err)
-			return
-		}
-
-		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd, sshOpts); err != nil {
+		if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to write credentials file",
 				"logs":    output,
@@ -320,7 +308,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 
-		if output, err := j.host.RunSSHCommand(ctx, j.host.FetchJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
+		if output, err := j.host.RunSSHCommand(ctx, j.host.FetchJasperCommand(j.settings.HostJasper)); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to download Jasper",
 				"logs":    output,
@@ -332,7 +320,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			return
 		}
 
-		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
+		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper)); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
 				"logs":    output,

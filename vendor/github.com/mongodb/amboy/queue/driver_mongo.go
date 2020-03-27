@@ -464,11 +464,22 @@ func getAtomicQuery(owner, jobName string, modCount int) bson.M {
 }
 
 func isMongoDupKey(err error) bool {
-	wce, ok := errors.Cause(err).(mongo.WriteConcernError)
+	we, ok := errors.Cause(err).(mongo.WriteException)
 	if !ok {
 		return false
 	}
-	return wce.Code == 11000 || wce.Code == 11001 || wce.Code == 12582 || wce.Code == 16460 && strings.Contains(wce.Message, " E11000 ")
+	if we.WriteConcernError != nil {
+		wce := we.WriteConcernError
+		return wce.Code == 11000 || wce.Code == 11001 || wce.Code == 12582 || wce.Code == 16460 && strings.Contains(wce.Message, " E11000 ")
+	}
+	if we.WriteErrors != nil && len(we.WriteErrors) > 0 {
+		for _, wErr := range we.WriteErrors {
+			if wErr.Code == 11000 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {

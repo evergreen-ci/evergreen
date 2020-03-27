@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
@@ -94,7 +95,9 @@ func (s *DriverSuite) TestPutJobDoesNotAllowDuplicateIds() {
 	s.NoError(err)
 
 	for i := 0; i < 10; i++ {
-		s.Error(s.driver.Put(ctx, j))
+		err := s.driver.Put(ctx, j)
+		s.Error(err)
+		s.True(amboy.IsDuplicateJobError(err))
 	}
 }
 

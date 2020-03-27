@@ -1145,6 +1145,7 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
 	*ec2.CreateLaunchTemplateOutput
+	*ec2.DescribeInstanceTypeOfferingsOutput
 }
 
 // Create a new mock client.
@@ -1231,7 +1232,7 @@ func (c *awsClientMock) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 
 func (c *awsClientMock) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	c.DescribeInstanceTypeOfferingsInput = input
-	return nil, nil
+	return c.DescribeInstanceTypeOfferingsOutput, nil
 }
 
 // TerminateInstances is a mock for ec2.TerminateInstances.

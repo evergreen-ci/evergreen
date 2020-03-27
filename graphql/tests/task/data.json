@@ -3,6 +3,9 @@
     {
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
       "patch_number": 1234
+    },
+    {
+      "_id": { "$oid": "1e4ff3abe3c3317e352062e4" }
     }
   ],
   "versions": [
@@ -187,7 +190,11 @@
   "tasks": [
     {
       "_id": "taskity_task",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        { "_id": "dep1", "status": "*", "unattainable": true },
+        { "_id": "dep2", "status": "*", "unattainable": false }
+      ]
     },
     {
       "_id": "1",
@@ -235,6 +242,79 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce"
+    },
+    {
+      "_id": "dep1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep1",
+      "build_variant": "ubuntu"
+    },
+    {
+      "_id": "dep2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep2",
+      "build_variant": "windows",
+      "status": "failed"
+    },
+    {
+      "_id": "dep3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "display_name": "dep3",
+      "build_variant": "windows",
+      "status": "started"
+    },
+    {
+      "_id": "dep4",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "display_name": "dep4",
+      "build_variant": "windows",
+      "depends_on": [
+        { "_id": "task6", "status": "failed", "unattainable": false }
+      ]
+    },
+    {
+      "_id": "dep5",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "display_name": "dep5",
+      "build_variant": "windows",
+      "status": "failed"
+    },
+    {
+      "_id": "task2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [{ "_id": "dep1", "status": "*", "unattainable": false }]
+    },
+    {
+      "_id": "task3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        { "_id": "dep1", "status": "started", "unattainable": false }
+      ],
+      "status": "failed"
+    },
+    {
+      "_id": "task4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [{ "_id": "dep2", "status": "*", "unattainable": false }]
+    },
+    {
+      "_id": "task5",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        { "_id": "dep2", "status": "failed", "unattainable": false }
+      ]
+    },
+    {
+      "_id": "task6",
+      "version": "1e4ff3abe3c3317e352062e4",
+      "depends_on": [
+        { "_id": "dep4", "status": "failed", "unattainable": false }
+      ]
+    },
+    {
+      "_id": "task7",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "depends_on": [{ "_id": "dep5", "status": "", "unattainable": false }]
     }
   ]
 }
