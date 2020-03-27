@@ -5,7 +5,6 @@ mciModule.controller('SignalProcessingCtrl', function(
 ) {
   const vm = this;
   // Ui grid col accessor
-  let getCol;
 
   // TODO later this might be replaced with some sort of pagination
   const LIMIT = 500;
@@ -90,7 +89,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   // Required by loadData.
   let theMostRecentPromise;
 
-  function loadData(state) {
+  vm.loadData = function(state) {
     vm.isLoading = true;
     vm.gridOptions.data = [];
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
@@ -139,8 +138,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   // This data is required by expression compiler
   function getFilteringContext(state) {
     return _.reduce(state.filtering, function(m, v, k) {
-      if (v === "") return m;  // Empty filters can be ignored.
-      const col = getCol(k);
+      const col = vm.getCol(k);
       if (!col) return m;  // Error! Associated col does not found
       return m.concat({
         field: k,
@@ -178,7 +176,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   vm.modeChanged = function() {
     state.mode = vm.mode.value;
     // Show/hide column depending on mode
-    const col = getCol('processed_type');
+    const col = vm.getCol('processed_type');
 
     if (state.mode === 'processed') {
       col.showColumn();
@@ -199,12 +197,12 @@ mciModule.controller('SignalProcessingCtrl', function(
     // Clear selection
     vm.selection = [];
 
-    loadData(state);
+    vm.loadData(state);
   };
 
-  function setInitialGridFiltering(gridApi, state) {
+  vm.setInitialGridFiltering = function (gridApi, state) {
     _.each(state.filtering, function(term, colName) {
-      const col = getCol(colName);
+      const col = vm.getCol(colName);
       if (!col) return;  // Error! Associated col does not found
       col.filters = [{term: term}];
     });
@@ -212,10 +210,10 @@ mciModule.controller('SignalProcessingCtrl', function(
 
   // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
-    setInitialGridFiltering(gridApi, state);
+    vm.setInitialGridFiltering(gridApi, state);
 
     _.each(state.sorting, function(sortingItem) {
-      const col = getCol(sortingItem.field);
+      const col = vm.getCol(sortingItem.field);
       if (!col) return; // Error! Associated col does not found
       col.sort.direction = sortingItem.direction;
     });
@@ -235,6 +233,23 @@ mciModule.controller('SignalProcessingCtrl', function(
     );
   }
 
+  vm.onFilterChanged = function (api) {
+    Settings.perf.signalProcessing.persistentFiltering = _.reduce(api.grid.columns, function (m, d) {
+      if (d.visible) {
+        const term = d.filters[0].term;
+        if (term) {
+          m[d.field] = term;
+        }
+      }
+      return m;
+    }, {});
+
+    state.filtering = vm.changePointFilter();
+    vm.setInitialGridFiltering(vm.gridApi, state);
+
+    vm.loadData(state);
+  };
+
   vm.gridOptions = {
     enableFiltering: true,
     enableGridMenu: true,
@@ -245,7 +260,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     useExternalSorting: false,
     onRegisterApi: function(api) {
       vm.gridApi = api;
-      getCol = EvgUiGridUtil.getColAccessor(api);
+      vm.getCol = EvgUiGridUtil.getColAccessor(api);
       api.core.on.sortChanged($scope, function(grid, cols) {
         state.sorting = _.map(cols, function(col) {
           return {
@@ -256,34 +271,14 @@ mciModule.controller('SignalProcessingCtrl', function(
         // NOTE do loadData(state) here for server-side sorting
       });
 
-      const onFilterChanged = _.debounce(function () {
-        Settings.perf.signalProcessing.persistentFiltering = _.reduce(api.grid.columns, function (m, d) {
-          if (d.visible) {
-            const term = d.filters[0].term;
-            if (term || term === "") {
-              m[d.field] = term;
-            }
-          }
-          return m;
-        }, {});
-
-        state.filtering = vm.changePointFilter();
-        // When user clicks 'Clear all filters'
-        // FIXME and when clear all filters mnually. Either patching
-        //       of uigrid either standalone button required
-        if (_.isEmpty(Settings.perf.signalProcessing.persistentFiltering)) {
-          setInitialGridFiltering(vm.gridApi, state);
-        }
-
-        loadData(state);
-      }, 200);
+      const onFilterChanged = _.debounce(_.partial(vm.onFilterChanged, api), 200);
 
       api.core.on.filterChanged($scope, onFilterChanged);
 
       // Load initial set of data once `columns` are populated
       api.core.on.rowsRendered(null, _.once(function() {
         setInitialGridState(api, state);
-        loadData(state);
+        vm.loadData(state);
       }));
 
       // Debounce is neat when selecting multiple items

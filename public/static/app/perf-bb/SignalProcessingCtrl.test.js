@@ -39,10 +39,12 @@ describe('SignalProcessingFactoriesTest', () => {
   describe('SignalProcessingCtrl', () => {
     let $controller;
     let settings;
+    let evgGridUtil;
 
-    beforeEach(inject(function(_$controller_, _Settings_) {
+    beforeEach(inject(function(_$controller_, _Settings_, _EvgUiGridUtil_) {
       $controller = _$controller_;
       settings = _Settings_;
+      evgGridUtil = _EvgUiGridUtil_
     }));
 
     describe('changePointFilter', () => {
@@ -72,5 +74,49 @@ describe('SignalProcessingFactoriesTest', () => {
         expect(controller.changePointFilter()).toEqual(filtering);
       });
     });
+
+    describe('onFilterChanged', () => {
+      let $scope;
+      let controller;
+
+      beforeEach(function() {
+        $scope = {};
+        controller = $controller('SignalProcessingCtrl', {$scope: $scope});
+      });
+
+      afterEach(function() {
+        settings.perf.signalProcessing.persistentFiltering = {};
+      });
+
+      it('should always update grid with state - EVG-7453', () => {
+        let api = {
+          grid: {
+            columns: [{
+                visible: true,
+                field: "create_time",
+                filters: [
+                  {
+                    term: ""
+                  }
+                ]
+              },
+              {
+                visible: true,
+                field: "thread_level",
+                filters: [
+                  {
+                    term: "4"
+                  }
+                ]
+              }
+            ]
+          }
+        };
+        controller.getCol = evgGridUtil.getColAccessor(api);
+        controller.loadData = () => {};
+        controller.onFilterChanged(api);
+        expect(api.grid.columns[0].filters[0].term).not.toEqual("");
+      })
+    })
   });
 });
