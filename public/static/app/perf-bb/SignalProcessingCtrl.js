@@ -83,7 +83,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   }, {
     title:    'Unmark',
     action:   _.partial(markFn, PROCESSED_TYPE.NONE),
-    visible:  function() { return state.mode == 'processed' },
+    visible:  function() { return state.mode === 'processed' },
     disabled: _.isEmpty,
   }];
 
@@ -139,6 +139,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   // This data is required by expression compiler
   function getFilteringContext(state) {
     return _.reduce(state.filtering, function(m, v, k) {
+      if (v === "") return m;  // Empty filters can be ignored.
       const col = getCol(k);
       if (!col) return m;  // Error! Associated col does not found
       return m.concat({
@@ -259,7 +260,7 @@ mciModule.controller('SignalProcessingCtrl', function(
         Settings.perf.signalProcessing.persistentFiltering = _.reduce(api.grid.columns, function (m, d) {
           if (d.visible) {
             const term = d.filters[0].term;
-            if (term) {
+            if (term || term === "") {
               m[d.field] = term;
             }
           }
