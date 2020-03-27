@@ -1,0 +1,6 @@
+{
+  task(taskId: "2") {
+    id
+    baseCommitDuration
+  }
+}

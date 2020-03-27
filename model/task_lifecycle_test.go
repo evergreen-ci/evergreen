@@ -2069,7 +2069,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.True(complete)
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
 	assert.Len(e, 7)
 }
@@ -2158,7 +2158,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(b.IsFinished())
 	assert.True(b.Tasks[1].Blocked)
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
 	assert.Len(e, 3)
 }
@@ -2246,7 +2246,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.NoError(err)
 	assert.True(b.IsFinished())
 
-	e, err := event.FindUnprocessedEvents()
+	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
 	assert.Len(e, 3)
 }
@@ -2804,13 +2804,16 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		{
 			Id:      "t2",
 			BuildId: b.Id,
+
+			Status:      evergreen.TaskUndispatched,
+			DisplayOnly: true,
 			DependsOn: []task.Dependency{
 				{
 					TaskId: "t1",
 					Status: evergreen.TaskSucceeded,
 				},
 			},
-			Status: evergreen.TaskUndispatched,
+			ExecutionTasks: []string{"t2-execution"},
 		},
 		{
 			Id:      "t3",
@@ -2849,6 +2852,18 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 		assert.NoError(t.Insert())
 		b.Tasks = append(b.Tasks, build.TaskCache{Id: t.Id, Blocked: t.Blocked()})
 	}
+	execTask := task.Task{
+		Id: "t2-execution",
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "t1",
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+		BuildId:     b.Id,
+		DisplayTask: &tasks[2],
+	}
+	assert.NoError(execTask.Insert())
 	assert.NoError(b.Insert())
 
 	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
@@ -2884,6 +2899,9 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.True(dbTask5.DependsOn[0].Unattainable)
 	assert.True(dbBuild.Tasks[5].Blocked)
 
+	dbExecTask, err := task.FindOneId(execTask.Id)
+	assert.NoError(err)
+	assert.True(dbExecTask.DependsOn[0].Unattainable)
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {

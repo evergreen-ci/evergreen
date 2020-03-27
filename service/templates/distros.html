@@ -347,9 +347,21 @@ Evergreen - Distros
               </div>
             </div>
             <div ng-show="activeDistro.provider.startsWith('ec2')">
+              <div class="dropdown" ng-show="regions.length > 1" style="top:10px;">
+                <span class="distro-menu-title">Current Region:</span>
+                <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
+                  <strong class="distro-menu-item">[[activeDistro.settings.region]]<span class="fa fa-caret-down"></span></strong>
+                </button>
+                <ul class="dropdown-menu" role="menu" style="margin-left: 60px">
+                  <li ng-click="switchRegion(region)" required name="regionForm"
+                      ng-repeat="region in regions" role="presentation"><a role="menuitem" tabindex="-1">[[region]]</a></li>
+                </ul>
+                <div class="icon fa fa-warning distro-error" ng-show="form.regionForm.$dirty && form.regionForm.$error.required">Distro
+                  Region is required</div>
+              </div>
               <div>
                 <label class="distro-label">AMI ID:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="ami"
+                <input ng-readonly="readOnly" type="text" name="ami" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2')"
                   class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776"
                   ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">AMI
@@ -357,7 +369,7 @@ Evergreen - Distros
               </div>
               <div>
                 <label class="distro-label">Instance Type:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="instanceType"
+                <input ng-readonly="readOnly" type="text" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2')" name="instanceType"
                   class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)"
                   ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance
@@ -365,14 +377,14 @@ Evergreen - Distros
               </div>
               <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
                 <label class="distro-label">Bid Price:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2-spot')" name="bidPrice"
+                <input ng-readonly="readOnly" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2-spot')" name="bidPrice"
                   type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
                 <div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric
                   bid price is required</div>
               </div>
               <div>
                 <label class="distro-label">Key Name:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="keyName"
+                <input type="text" ng-readonly="readOnly" name="keyName"
                   class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine"
                   ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2
@@ -382,9 +394,9 @@ Evergreen - Distros
                 <label class="distro-label"><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
                     name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
                 <label class="distro-label">Security Groups:</label>
-                <textarea ng-readonly="readOnly" placeholder="List 1 security group per line" ng-required="activeDistro.provider.startsWith('ec2')"
+                <textarea ng-readonly="readOnly" placeholder="List 1 security group per line" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2')"
                   type="text" wrap="off" class="form-control" rows="3" name="securityGroups" ng-model="activeDistro.settings.security_group_ids"
-                  ng-list="/\n/" style="margin-left: 0px; font-family: monospace"></textarea>
+                  ng-list="&#10;" ng-trim="false" style="margin-left: 0px; font-family: monospace"></textarea>
                 <div class="icon fa fa-warning distro-error" ng-show="form.securityGroups.$dirty && form.securityGroups.$error.required || form.securityGroups.$invalid">Security
                   group is required</div>
                 <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC
@@ -443,12 +455,15 @@ Evergreen - Distros
                   class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>Add Mount
                   Point</button>
               </div>
-              <div ng-show="activeDistro.provider.startsWith('ec2')">
+              <div>
                 <div>
                   <label class="distro-label">User Data:</label>
                 </div>
                 <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7"
                   ng-model="activeDistro.settings.user_data" style="margin-left: 0px; font-family: monospace"></textarea>
+              </div>
+              <div ng-show="regions.length > 1" style="margin-top:10px;">
+                <button ng-hide="readOnly" type="button" class="btn btn-danger" ng-click="form.$setDirty();clearSettings()">Clear Region's Settings</button>
               </div>
             </div>
             <div ng-show="activeDistro.provider == 'openstack'">
@@ -939,6 +954,12 @@ Evergreen - Distros
           <input ng-disabled="readOnly" type="checkbox" name="shouldDeco" ng-model="shouldDeco">
           Decommission hosts of this distro for this update
         </p>
+        <div ng-show="isNonLegacyProvisioning()">
+          <p class="distro-checkbox checkbox" style="margin-left: 5px" >
+            <input ng-show="isNonLegacyProvisioning()" ng-disabled="readOnly || !isNonLegacyProvisioning() || shouldDeco" type="checkbox" name="shouldRestartJasper" ng-model="shouldRestartJasper">
+            Restart Jasper service on running hosts of this distro for this update
+          </p>
+        </div>
         <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()"
           ng-click="saveConfiguration()">Save Configuration</button>
         <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-show="remove" ng-click="openConfirmationModal('removeDistro')"

@@ -316,7 +316,8 @@ type SpawnHostUsage struct {
 }
 
 const (
-	MaxLCTInterval = 5 * time.Minute
+	MaxLCTInterval             = 5 * time.Minute
+	MaxUncommunicativeInterval = 3 * MaxLCTInterval
 
 	// Max number of spawn hosts with no expiration for user
 	DefaultUnexpirableHostsPerUser = 1
@@ -362,9 +363,13 @@ func (h *Host) IsEphemeral() bool {
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
-	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, status)
-		grip.Warning(msg)
+	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
+		msg := "not changing status of already terminated host"
+		grip.Warning(message.Fields{
+			"message": msg,
+			"host_id": h.Id,
+			"status":  status,
+		})
 		return errors.New(msg)
 	}
 
@@ -386,9 +391,13 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
 // status in the database matches currentStatus.
 func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
-	if h.Status == evergreen.HostTerminated {
-		msg := fmt.Sprintf("not changing the status of terminate host %s to %s", h.Id, newStatus)
-		grip.Warning(msg)
+	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
+		msg := "not changing status of already terminated host"
+		grip.Warning(message.Fields{
+			"message": msg,
+			"host_id": h.Id,
+			"status":  newStatus,
+		})
 		return errors.New(msg)
 	}
 
@@ -792,8 +801,8 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
-func (h *Host) SetNeedsJasperRestart() error {
-	if err := h.setAwaitingJasperRestart(); err != nil {
+func (h *Host) SetNeedsJasperRestart(user string) error {
+	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
@@ -802,18 +811,28 @@ func (h *Host) SetNeedsJasperRestart() error {
 	return h.MarkAsReprovisioning()
 }
 
-// setAwaitingJasperRestart marks a host running an agent as needing Jasper to
-// be restarted but is not yet ready to reprovision now (i.e. the agent monitor
-// is still running).
-func (h *Host) setAwaitingJasperRestart() error {
+// setAwaitingJasperRestart marks a host as needing Jasper to be restarted by
+// the given user but is not yet ready to reprovision now (i.e. the agent
+// monitor is still running).
+func (h *Host) setAwaitingJasperRestart(user string) error {
+	if h.NeedsReprovision == ReprovisionJasperRestart {
+		return nil
+	}
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:     h.Id,
 		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
 		},
 		ReprovisioningLockedKey: bson.M{"$ne": true},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
 			NeedsReprovisionKey: ReprovisionJasperRestart,
@@ -823,6 +842,8 @@ func (h *Host) setAwaitingJasperRestart() error {
 	}
 
 	h.NeedsReprovision = ReprovisionJasperRestart
+
+	event.LogHostJasperRestarting(h.Id, user)
 
 	return nil
 }
@@ -852,10 +873,6 @@ func (h *Host) MarkAsReprovisioning() error {
 			}})
 	if err != nil {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
-	}
-
-	if h.NeedsReprovision == ReprovisionToLegacy || h.NeedsReprovision == ReprovisionToNew {
-		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
 	}
 
 	h.AgentStartTime = util.ZeroTime
@@ -966,7 +983,9 @@ func (h *Host) ClearRunningTask() error {
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	if h.RunningTask != "" {
+		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	}
 	h.RunningTask = ""
 	h.RunningTaskGroup = ""
 	h.RunningTaskBuildVariant = ""
@@ -1390,6 +1409,7 @@ func FindHostsToTerminate() ([]Host, error) {
 
 	now := time.Now()
 
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
@@ -1403,10 +1423,33 @@ func FindHostsToTerminate() ([]Host, error) {
 			{ // hosts that failed to provision
 				StatusKey: evergreen.HostProvisionFailed,
 			},
-			{ // hosts that are taking too long to provision
-				"$or": []bson.M{
-					bson.M{ProvisionedKey: false},
-					bson.M{StatusKey: evergreen.HostProvisioning},
+			{
+				// Non-user data hosts that are either taking too long to
+				// provision or a user hata host has started tasks before
+				// provisioning finished but not checked in recently
+				"$and": []bson.M{
+					// Host is not yet done provisioning
+					{"$or": []bson.M{
+						{ProvisionedKey: false},
+						{StatusKey: evergreen.HostProvisioning},
+					}},
+					{"$or": []bson.M{
+						{
+							// Host is a user data host and either has not run a
+							// task yet (i.e. failed to provision in a
+							// reasonable amount of time) or has not
+							// communicated recently (unreachable).
+							"$or": []bson.M{
+								{RunningTaskKey: bson.M{"$exists": false}},
+								{LTCTaskKey: ""},
+							},
+							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxUncommunicativeInterval)},
+						}, {
+							// Host is not a user data host so cannot run tasks
+							// until done provisioning.
+							bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
+						},
+					}},
 				},
 				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
 				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
@@ -1488,12 +1531,13 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 	return hosts, nil
 }
 
-// FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
-func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
+// FindAllRunningParentsByDistroID finds all running hosts of a given distro ID
+// with child containers.
+func FindAllRunningParentsByDistroID(distroID string) ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
+		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroID,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
 }

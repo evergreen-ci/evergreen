@@ -2194,7 +2194,7 @@ buildvariants:
 	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
 }
 
-func TestGetDistroIdsForProject(t *testing.T) {
+func TestGetDistrosForProject(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
@@ -2215,20 +2215,20 @@ func TestGetDistroIdsForProject(t *testing.T) {
 	}
 	require.NoError(d.Insert())
 
-	ids, aliases, err := getDistroIds()
+	ids, aliases, err := getDistros()
 	require.NoError(err)
 	require.Len(ids, 3)
 	require.Len(aliases, 3)
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
 	assert.Contains(aliases, "distro2-alias")
-	ids, aliases, err = getDistroIdsForProject("project1")
+	ids, aliases, err = getDistrosForProject("project1")
 	require.NoError(err)
 	require.Len(ids, 2)
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
-	ids, aliases, err = getDistroIdsForProject("project3")
+	ids, aliases, err = getDistrosForProject("project3")
 	require.NoError(err)
 	require.Len(ids, 1)
 	assert.Contains(ids, "distro2")

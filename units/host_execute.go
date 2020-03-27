@@ -76,19 +76,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	sshOptions, err := j.host.GetSSHOptions(j.env.Settings())
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get ssh options",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
-
-	logs, err := j.host.RunSSHShellScript(ctx, j.Script, sshOptions)
+	logs, err := j.host.RunSSHShellScript(ctx, j.Script)
 	if err != nil {
 		event.LogHostScriptExecuteFailed(j.host.Id, err)
 		grip.Error(message.WrapError(err, message.Fields{

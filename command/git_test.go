@@ -751,16 +751,11 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	sender := send.MakeInternalLogger()
 	logger := client.NewSingleChannelLogHarness("", sender)
 
-	p := patch.Patch{
-		Patches: []patch.ModulePatch{
-			{},
-		},
-	}
 	conf := model.TaskConfig{
 		WorkDir: dir,
 	}
 
-	s.NoError(c.applyPatch(ctx, logger, &conf, &p))
+	s.NoError(c.applyPatch(ctx, logger, &conf, []patch.ModulePatch{{}}))
 	s.Equal(1, sender.Len())
 
 	msg := sender.GetMessage()
@@ -857,4 +852,20 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", distro.CloneMethodOAuth)
 	s.Error(err)
+}
+
+func (s *GitGetProjectSuite) TestReorderPatches() {
+	patches := []patch.ModulePatch{{ModuleName: ""}}
+	patches = reorderPatches(patches)
+	s.Equal("", patches[0].ModuleName)
+
+	patches = []patch.ModulePatch{
+		{ModuleName: ""},
+		{ModuleName: "m0"},
+		{ModuleName: "m1"},
+	}
+	patches = reorderPatches(patches)
+	s.Equal("m0", patches[0].ModuleName)
+	s.Equal("m1", patches[1].ModuleName)
+	s.Equal("", patches[2].ModuleName)
 }

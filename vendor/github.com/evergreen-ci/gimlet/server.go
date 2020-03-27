@@ -79,7 +79,7 @@ func (c *ServerConfig) build() Server {
 	}}
 }
 
-// Resovle validates a config and constructs a server from the
+// Resolve validates a config and constructs a server from the
 // configuration if possible.
 func (c *ServerConfig) Resolve() (Server, error) {
 	if err := c.Validate(); err != nil {

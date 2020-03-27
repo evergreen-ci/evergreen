@@ -125,6 +125,8 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
+	DefaultEvergreenConfig = ".evergreen.yml"
+
 	EvergreenHome = "EVGHOME"
 	MongodbUrl    = "MONGO_URL"
 
@@ -374,7 +376,7 @@ const (
 	defaultGroupTTLMinutes                       = 1
 	maxNotificationsPerSecond                    = 100
 
-	EnableAmboyRemoteReporting = false
+	EnableAmboyRemoteManagement = false
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.

@@ -80,5 +80,4 @@ func TestConvertContainerManager(t *testing.T) {
 	cm2, err := ConvertContainerManager(m2)
 	assert.EqualError(err, "Error converting manager to container manager")
 	assert.Nil(cm2)
-
 }

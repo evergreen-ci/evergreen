@@ -119,8 +119,7 @@ func (h *Host) ClientURL(settings *evergreen.Settings) string {
 }
 
 const (
-	// sshTimeout is the timeout for SSH commands.
-	sshTimeout = 2 * time.Minute
+	defaultSSHTimeout = 2 * time.Minute
 )
 
 // GetSSHInfo returns the information necessary to SSH into this host.
@@ -178,39 +177,43 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 }
 
 // RunSSHCommand runs an SSH command on the host with the default SSH timeout.
-func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOpts []string) (string, error) {
-	return h.RunSSHCommandWithTimeout(ctx, cmd, sshOpts, time.Duration(0))
+func (h *Host) RunSSHCommand(ctx context.Context, cmd string) (string, error) {
+	return h.RunSSHCommandWithTimeout(ctx, cmd, time.Duration(0))
 }
 
 // RunSSHCommandWithTimeout runs an SSH command on the host with the given
 // timeout.
-func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, timeout time.Duration) (string, error) {
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{cmd})
-	}, sshOpts, timeout)
+	}, timeout)
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // default SSH timeout.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string, sshOpts []string) (string, error) {
-	return h.RunSSHShellScriptWithTimeout(ctx, script, sshOpts, time.Duration(0))
+func (h *Host) RunSSHShellScript(ctx context.Context, script string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, time.Duration(0))
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // given timeout.
-func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
-	}, sshOpts, timeout)
+	}, timeout)
 }
 
-func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, sshOpts []string, timeout time.Duration) (string, error) {
+func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
 	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
 		return "", errors.WithStack(err)
+	}
+	sshOpts, err := h.GetSSHOptions(env.Settings())
+	if err != nil {
+		return "", errors.Wrap(err, "could not get host's SSH options")
 	}
 
 	output := util.NewMBCappedWriter()
@@ -220,7 +223,7 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	} else {
-		ctx, cancel = context.WithTimeout(ctx, sshTimeout)
+		ctx, cancel = context.WithTimeout(ctx, defaultSSHTimeout)
 		defer cancel()
 	}
 
@@ -270,7 +273,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
 
-	if settings.Splunk.Populated() {
+	if settings.Splunk.Populated() && h.StartedBy == evergreen.User {
 		params = append(params,
 			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
 			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
@@ -594,16 +597,18 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
 	writeFileContentCmd := func(path, content string) string {
-		return fmt.Sprintf("echo '%s' > '%s'", content, path)
+		return fmt.Sprintf("echo '%s' > %s", content, path)
 	}
 
 	cmds := []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
+		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
-	if splunk.Populated() {
+	if splunk.Populated() && h.StartedBy == evergreen.User {
 		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
+		cmds = append(cmds, fmt.Sprintf("chmod 666 %s", h.splunkTokenFilePath()))
 	}
 
 	return strings.Join(cmds, " && "), nil
@@ -621,6 +626,7 @@ func bufferedWriteFileCommands(path, content string) []string {
 		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
 		firstWrite = false
 	}
+	cmds = append(cmds, fmt.Sprintf("chmod 666 %s", path))
 	return cmds
 }
 
@@ -650,7 +656,7 @@ func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkCon
 
 	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
 
-	if splunk.Populated() {
+	if splunk.Populated() && h.StartedBy == evergreen.User {
 		cmds = append(cmds, writeToFileCommand(h.splunkTokenFilePath(), splunk.Token, true))
 	}
 
@@ -1024,7 +1030,7 @@ func (h *Host) spawnHostConfigDir() string {
 
 // spawnHostConfigFile returns the path to the evergreen yaml for a spawn host.
 func (h *Host) spawnHostConfigFile() string {
-	return filepath.Join(h.spawnHostConfigDir(), ".evergreen.yml")
+	return filepath.Join(h.Distro.HomeDir(), evergreen.DefaultEvergreenConfig)
 }
 
 // spawnHostConfigJSON returns evergreen yaml configuration for a spawn host in

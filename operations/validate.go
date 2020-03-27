@@ -13,15 +13,22 @@ import (
 )
 
 func Validate() cli.Command {
+	const (
+		quietFlagName = "quiet"
+	)
 	return cli.Command{
-		Name:   "validate",
-		Usage:  "verify that an evergreen project config is valid",
-		Flags:  addPathFlag(),
+		Name:  "validate",
+		Usage: "verify that an evergreen project config is valid",
+		Flags: addPathFlag(cli.BoolFlag{
+			Name:  joinFlagNames(quietFlagName, "q"),
+			Usage: "suppress warnings",
+		},
+		),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)
-
+			quiet := c.Bool(quietFlagName)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -50,17 +57,17 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac)
+			return validateFile(path, ac, quiet)
 		},
 	}
 }
 
-func validateFile(path string, ac *legacyClient) error {
+func validateFile(path string, ac *legacyClient, quiet bool) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "problem reading file")
@@ -70,6 +77,16 @@ func validateFile(path string, ac *legacyClient) error {
 	if err != nil {
 		return nil
 	}
+
+	if quiet { // only return errors
+		allErrors := projErrors
+		projErrors = []validator.ValidationError{}
+		for _, e := range allErrors {
+			if e.Level == validator.Error {
+				projErrors = append(projErrors, e)
+			}
+		}
+	}
 	if len(projErrors) == 0 {
 		grip.Infof("%s is valid", path)
 	} else {
@@ -78,7 +95,7 @@ func validateFile(path string, ac *legacyClient) error {
 
 	for _, e := range projErrors {
 		if e.Level == validator.Error {
-			return errors.New("invalid configuration")
+			return errors.New("invalid configuration for %s")
 		}
 	}
 

@@ -172,6 +172,13 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string, redact bool) (*rest
 	return &varsModel, nil
 }
 
+func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
+	if project == nil {
+		return errors.New("no project found")
+	}
+	return project.UpdateAdminRoles(toAdd, toDelete)
+}
+
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
@@ -359,6 +366,10 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
 	}
+}
+
+func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
+	return nil
 }
 
 func (pc *MockProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {

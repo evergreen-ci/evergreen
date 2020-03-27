@@ -1,4 +1,4 @@
-package reporting
+package management
 
 func addJobsSuffix(s string) string {
 	return s + ".jobs"

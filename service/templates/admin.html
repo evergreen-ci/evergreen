@@ -545,6 +545,10 @@ Admin Settings
 										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.patch_time_in_queue_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Commit Queue Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.commit_queue_factor">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Mainline Time In Queue Factor (0 to 100 inclusive)</label>
 										<input type="number" step="1" min="0" max="100" ng-model="Settings.scheduler.mainline_time_in_queue_factor">
 									</md-input-container>
@@ -1228,7 +1232,7 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="notifications" style="height:180px">
+							<md-card flex=50 id="notifications">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Notifications Config</span>
@@ -1246,6 +1250,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Notifications Rate Limit Time Interval (seconds)</label>
 										<input type="number" ng-model="Settings.notify.buffer_interval_seconds">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Event Processing Limit (events per job)</label>
+										<input type="number" ng-model="Settings.notify.event_processing_limit">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1395,10 +1403,22 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Task S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>S3 Base URL</label>
 										<input type="text" ng-model="Settings.providers.aws.s3_base_url">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>

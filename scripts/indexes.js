@@ -81,7 +81,8 @@ db.event_log.ensureIndex({
     "ts": 1
 })
 db.event_log.ensureIndex({
-    "processed_at": 1
+    "processed_at": 1,
+    "ts": 1
 })
 db.event_log.ensureIndex({
     "data.guid": 1

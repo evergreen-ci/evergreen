@@ -175,7 +175,7 @@ tasks:
     name: test-queue
     tags: ["test"]
   - <<: *run-go-test-suite-with-mongodb
-    name: test-reporting
+    name: test-management
     tags: ["test"]
 
   # run the suites with the race detector (one variant only)
@@ -201,7 +201,7 @@ tasks:
     name: race-queue
     tags: ["race"]
   - <<: *run-go-test-suite-with-mongodb
-    name: race-reporting
+    name: race-management
     tags: ["race"]
 
 post:

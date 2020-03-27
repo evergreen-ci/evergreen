@@ -2,9 +2,10 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -23,12 +24,10 @@ func (h *clearTaskQueueHandler) Factory() gimlet.RouteHandler { return &clearTas
 func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distro = r.FormValue("distro")
 
-	_, err := distro.FindOne(distro.ById(h.distro))
-
-	if err != nil {
+	if tq, err := model.LoadTaskQueue(h.distro); err != nil || tq == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "unable to find distro",
+			Message:    fmt.Sprintf("unable to find task queue for distro '%s'", h.distro),
 		}
 	}
 

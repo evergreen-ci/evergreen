@@ -49,6 +49,13 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
 			}
 			return "America/New_York"
 		},
+		"GetRegion": func(u gimlet.User) string {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.Region != "" {
+				return usr.Settings.Region
+			}
+			return evergreen.DefaultEC2Region
+		},
 		// Trunc cuts off a string to be n characters long.
 		"Trunc": func(s string, n int) string {
 			if n > len(s) {

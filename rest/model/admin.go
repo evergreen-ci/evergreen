@@ -1056,6 +1056,7 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 type APINotifyConfig struct {
 	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
+	EventProcessingLimit    int           `json:"event_processing_limit"`
 	SMTP                    APISMTPConfig `json:"smtp"`
 }
 
@@ -1068,6 +1069,7 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
+		a.EventProcessingLimit = v.EventProcessingLimit
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1082,6 +1084,7 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
+		EventProcessingLimit:    a.EventProcessingLimit,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
 	}, nil
 }
@@ -1303,6 +1306,9 @@ type APIAWSConfig struct {
 	S3Secret             *string     `json:"s3_secret"`
 	Bucket               *string     `json:"bucket"`
 	S3BaseURL            *string     `json:"s3_base_url"`
+	S3TaskKey            *string     `json:"s3_task_key"`
+	S3TaskSecret         *string     `json:"s3_task_secret"`
+	S3TaskBucket         *string     `json:"s3_task_bucket"`
 	DefaultSecurityGroup *string     `json:"default_security_group"`
 	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
 	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
@@ -1330,6 +1336,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3Key = ToStringPtr(v.S3Key)
 		a.S3Secret = ToStringPtr(v.S3Secret)
 		a.Bucket = ToStringPtr(v.Bucket)
+		a.S3TaskKey = ToStringPtr(v.S3TaskKey)
+		a.S3TaskSecret = ToStringPtr(v.S3TaskSecret)
+		a.S3TaskBucket = ToStringPtr(v.S3TaskBucket)
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1352,6 +1361,9 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		S3Secret:             FromStringPtr(a.S3Secret),
 		Bucket:               FromStringPtr(a.Bucket),
 		S3BaseURL:            FromStringPtr(a.S3BaseURL),
+		S3TaskKey:            FromStringPtr(a.S3TaskKey),
+		S3TaskSecret:         FromStringPtr(a.S3TaskSecret),
+		S3TaskBucket:         FromStringPtr(a.S3TaskBucket),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 	}
@@ -1543,6 +1555,7 @@ type APISchedulerConfig struct {
 	GroupVersions                 bool    `json:"group_versions"`
 	PatchFactor                   int64   `json:"patch_factor"`
 	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor             int64   `json:"commit_queue_factor"`
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 }
@@ -1560,6 +1573,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
 		a.PatchTimeInQueueFactor = v.PatchTimeInQueueFactor
+		a.CommitQueueFactor = v.CommitQueueFactor
 		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
@@ -1581,6 +1595,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		PatchFactor:                   a.PatchFactor,
 		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
 		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
+		CommitQueueFactor:             a.CommitQueueFactor,
 		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 	}, nil
 }

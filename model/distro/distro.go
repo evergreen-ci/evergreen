@@ -167,6 +167,7 @@ type PlannerSettings struct {
 	GroupVersions             *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	PatchFactor               int64         `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_factor"`
 	PatchTimeInQueueFactor    int64         `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	CommitQueueFactor         int64         `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
 	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
@@ -302,6 +303,13 @@ func (d *Distro) GetPatchTimeInQueueFactor() int64 {
 		return 1
 	}
 	return d.PlannerSettings.PatchTimeInQueueFactor
+}
+
+func (d *Distro) GetCommitQueueFactor() int64 {
+	if d.PlannerSettings.CommitQueueFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.CommitQueueFactor
 }
 
 func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
@@ -490,10 +498,10 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	for _, pool := range s.ContainerPools.Pools {
 		d, err := FindOne(ById(pool.Distro))
 		if err != nil {
-			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}
 		if d.ContainerPool != "" {
-			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+			catcher.Add(fmt.Errorf("container pool '%s' has invalid distro '%s'", pool.Id, d.Id))
 		}
 	}
 	return errors.WithStack(catcher.Resolve())
@@ -668,6 +676,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		GroupVersions:             ps.GroupVersions,
 		PatchFactor:               ps.PatchFactor,
 		PatchTimeInQueueFactor:    ps.PatchTimeInQueueFactor,
+		CommitQueueFactor:         ps.CommitQueueFactor,
 		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
 		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
 		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
@@ -700,6 +709,9 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.PatchTimeInQueueFactor == 0 {
 		resolved.PatchTimeInQueueFactor = config.PatchTimeInQueueFactor
+	}
+	if resolved.CommitQueueFactor == 0 {
+		resolved.CommitQueueFactor = config.CommitQueueFactor
 	}
 	if resolved.MainlineTimeInQueueFactor == 0 {
 		resolved.MainlineTimeInQueueFactor = config.MainlineTimeInQueueFactor

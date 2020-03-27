@@ -343,6 +343,9 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
+	if h.NeedsReprovision != host.ReprovisionJasperRestart {
+		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
+	}
 
 	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
@@ -393,7 +396,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 	d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
 	if err != nil {
-		// Should we bailout if there is a database error leaving us unsure if the distro document actual exists?
+		// Should we bailout if there is a database error leaving us unsure if the distro document actually exists?
 		m := "database error while retrieving distro document;"
 		if adb.ResultsNotFound(err) {
 			m = "cannot find the db.distro document for the given distro;"

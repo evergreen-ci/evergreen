@@ -25,7 +25,6 @@
     buildId
     distroId
     buildVariant
-    dependsOn
     displayName
     hostId
     restarts

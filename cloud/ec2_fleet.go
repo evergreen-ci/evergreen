@@ -18,6 +18,45 @@ import (
 	"github.com/pkg/errors"
 )
 
+type azInstanceTypeCache struct {
+	azToInstanceTypes map[string][]string
+}
+
+var typeCache *azInstanceTypeCache
+
+func init() {
+	typeCache = new(azInstanceTypeCache)
+	typeCache.azToInstanceTypes = make(map[string][]string)
+}
+
+func (c *azInstanceTypeCache) azSupportsInstanceType(ctx context.Context, client AWSClient, az, instanceType string) (bool, error) {
+	if _, ok := c.azToInstanceTypes[az]; !ok {
+		// refresh cache
+		output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
+			LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
+			Filters: []*ec2.Filter{
+				{Name: aws.String("location"), Values: []*string{aws.String(az)}},
+			},
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "can't get instance types for '%s'", az)
+		}
+		if output == nil {
+			return false, errors.Wrap(err, "DescribeInstanceTypeOfferings returned nil output")
+		}
+
+		instanceTypes := make([]string, 0, len(output.InstanceTypeOfferings))
+		for _, offering := range output.InstanceTypeOfferings {
+			if offering != nil && offering.InstanceType != nil {
+				instanceTypes = append(instanceTypes, *offering.InstanceType)
+			}
+		}
+		c.azToInstanceTypes[az] = instanceTypes
+	}
+
+	return util.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
+}
+
 type EC2FleetManagerOptions struct {
 	client         AWSClient
 	region         string
@@ -475,7 +514,13 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	if len(subnets) > 0 {
 		overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 		for _, subnet := range subnets {
-			overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
+			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, subnet.AZ, ec2Settings.InstanceType)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", subnet.AZ)
+			}
+			if supported {
+				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
+			}
 		}
 
 		return overrides, nil
@@ -520,7 +565,13 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	for _, subnet := range describeSubnetsOutput.Subnets {
 		// AWS only allows one override per AZ
 		if !AZSet[*subnet.AvailabilityZone] && subnetMatchesAz(subnet) {
-			overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, *subnet.AvailabilityZone, ec2Settings.InstanceType)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", *subnet.AvailabilityZone)
+			}
+			if supported {
+				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+			}
 			AZSet[*subnet.AvailabilityZone] = true
 		}
 	}

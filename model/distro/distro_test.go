@@ -135,13 +135,13 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	}
 
 	err := ValidateContainerPoolDistros(testSettings)
-	assert.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
-	assert.Contains(err.Error(), "error finding distro for container pool test-pool-3")
+	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
+	assert.Contains(err.Error(), "error finding distro for container pool 'test-pool-3'")
 }
 
 func TestGetDistroIds(t *testing.T) {
 	assert := assert.New(t)
-	hosts := DistroGroup{
+	distros := DistroGroup{
 		Distro{
 			Id: "d1",
 		},
@@ -152,7 +152,7 @@ func TestGetDistroIds(t *testing.T) {
 			Id: "d3",
 		},
 	}
-	ids := hosts.GetDistroIds()
+	ids := distros.GetDistroIds()
 	assert.Equal([]string{"d1", "d2", "d3"}, ids)
 }
 
@@ -306,6 +306,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		GroupVersions:                 false,
 		PatchFactor:                   50,
 		PatchTimeInQueueFactor:        12,
+		CommitQueueFactor:             50,
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
@@ -331,6 +332,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			GroupVersions:             nil,
 			PatchFactor:               0,
 			PatchTimeInQueueFactor:    0,
+			CommitQueueFactor:         0,
 			MainlineTimeInQueueFactor: 0,
 			ExpectedRuntimeFactor:     0,
 		},
@@ -346,6 +348,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		GroupVersions:                 false,
 		PatchFactor:                   50,
 		PatchTimeInQueueFactor:        12,
+		CommitQueueFactor:             50,
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
@@ -362,6 +365,8 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 50, resolved0.PatchFactor)
 	// Fallback to the SchedulerConfig.PatchTimeInQueueFactor as PlannerSettings.PatchTimeInQueueFactor is equal to 0.
 	assert.EqualValues(t, 12, resolved0.PatchTimeInQueueFactor)
+	// Fallback to the SchedulerConfig.CommitQueueFactor as PlannerSettings.CommitQueueFactor is equal to 0.
+	assert.EqualValues(t, 50, resolved0.CommitQueueFactor)
 	// Fallback to the SchedulerConfig.MainlineTimeInQueueFactor as PlannerSettings.MainlineTimeInQueueFactor is equal to 0.
 	assert.EqualValues(t, 10, resolved0.MainlineTimeInQueueFactor)
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
@@ -376,6 +381,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			GroupVersions:             &pTrue,
 			PatchFactor:               25,
 			PatchTimeInQueueFactor:    0,
+			CommitQueueFactor:         0,
 			MainlineTimeInQueueFactor: 0,
 			ExpectedRuntimeFactor:     0,
 		},
@@ -391,6 +397,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		GroupVersions:                 false,
 		PatchFactor:                   50,
 		PatchTimeInQueueFactor:        0,
+		CommitQueueFactor:             0,
 		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 	}
@@ -405,6 +412,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, true, *resolved1.GroupVersions)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.EqualValues(t, 0, resolved1.PatchTimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved1.CommitQueueFactor)
 	assert.EqualValues(t, 0, resolved1.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 
@@ -414,6 +422,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		GroupVersions:             nil,
 		PatchFactor:               19,
 		PatchTimeInQueueFactor:    0,
+		CommitQueueFactor:         0,
 		MainlineTimeInQueueFactor: 0,
 		ExpectedRuntimeFactor:     0,
 	}
@@ -432,6 +441,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		GroupVersions:                 false,
 		PatchFactor:                   0,
 		PatchTimeInQueueFactor:        0,
+		CommitQueueFactor:             0,
 		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 	}
@@ -448,6 +458,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, false, *resolved2.GroupVersions)
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.PatchTimeInQueueFactor)
+	assert.EqualValues(t, 0, resolved2.CommitQueueFactor)
 	assert.EqualValues(t, 0, resolved2.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.ExpectedRuntimeFactor)
 }

@@ -108,7 +108,9 @@ func (c *communicatorImpl) resetClient() {
 		util.PutHTTPClient(c.httpClient)
 	}
 
-	c.httpClient = util.GetHTTPClient()
+	conf := util.NewDefaultHTTPRetryConf()
+	conf.Statuses = append(conf.Statuses, http.StatusBadRequest)
+	c.httpClient = util.GetHTTPRetryableClient(conf)
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
@@ -287,6 +289,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 					RPCPort:     bi.RPCPort,
 					Username:    bi.Username,
 					Password:    bi.Password,
+					Retries:     10,
 				}
 				c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 				if err != nil {

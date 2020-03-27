@@ -34,7 +34,6 @@ var (
 )
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
-
 	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error
@@ -63,6 +62,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	if settings.SpawnHostsPerUser >= 0 {
 		maxHosts = settings.SpawnHostsPerUser
 	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro                     distro.Distro
 		Task                       *task.Task
@@ -175,6 +175,11 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if putParams.IsVirtualWorkstation && putParams.Task != "" {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot request a spawn host as a virtual workstation and load task data"))
+		return
+	}
+
 	// save the supplied public key if needed
 	if putParams.SaveKey {
 		if err = authedUser.AddPublicKey(putParams.KeyName, putParams.PublicKey); err != nil {
@@ -198,6 +203,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := uis.env.Context()
 	defer cancel()
+	ctx = gimlet.AttachUser(ctx, authedUser)
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 
 	if err != nil {

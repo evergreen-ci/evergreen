@@ -556,6 +556,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 
 	config.BufferIntervalSeconds = 1
 	config.BufferTargetPerInterval = 2
+	config.EventProcessingLimit = 1
 	s.NoError(config.Set())
 
 	settings, err = GetConfig()

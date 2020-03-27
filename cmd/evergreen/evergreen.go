@@ -79,7 +79,7 @@ func buildApp() *cli.App {
 			userHome = os.Getenv("HOME")
 		}
 	}
-	confPath := filepath.Join(userHome, ".evergreen.yml")
+	confPath := filepath.Join(userHome, evergreen.DefaultEvergreenConfig)
 
 	// These are global options. Use this to configure logging or
 	// other options independent from specific sub commands.

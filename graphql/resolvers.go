@@ -44,6 +44,73 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
+func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return dependencies, nil
+	}
+	depIds := []string{}
+	for _, dep := range at.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var metStatus MetStatus
+		if !depTask.IsFinished() {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
+			metStatus = "MET"
+		} else {
+			metStatus = "UNMET"
+		}
+		var requiredStatus RequiredStatus
+		switch dep.Status {
+		case model.AllStatuses:
+			requiredStatus = "MUST_FINISH"
+			break
+		case evergreen.TaskFailed:
+			requiredStatus = "MUST_FAIL"
+			break
+		default:
+			requiredStatus = "MUST_SUCCEED"
+		}
+
+		dependency := Dependency{
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
+		}
+
+		dependencies = append(dependencies, &dependency)
+	}
+	return dependencies, nil
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
@@ -269,7 +336,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -306,7 +373,15 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, sortDirParam, pageParam, limitParam)
+	variantParam := ""
+	if variant != nil {
+		variantParam = *variant
+	}
+	taskNameParam := ""
+	if taskName != nil {
+		taskNameParam = *taskName
+	}
+	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -334,6 +409,15 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			}
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
+	}
+	if len(baseStatuses) > 0 {
+		tasksFilteredByBaseStatus := []*TaskResult{}
+		for _, taskResult := range taskResults {
+			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
+			}
+		}
+		taskResults = tasksFilteredByBaseStatus
 	}
 	return taskResults, nil
 }
@@ -516,19 +600,19 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		// task logs
-		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution)
+		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
 		// system logs
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution)
+		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
 		// agent logs
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution)
+		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution, true)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
@@ -578,7 +662,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, 1, 0, 0)
+	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
@@ -646,10 +730,12 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(reconfigure)
 	version, err := r.sc.FindVersionById(patchID)
-	// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
-	// does not contain nil version err values before sending InternalServerError
-	if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+	if err != nil {
+		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
+		// does not contain nil version err values before sending InternalServerError
+		if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+		}
 	}
 	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
@@ -740,6 +826,25 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	return &patch.PatchNumber, nil
+}
+
+func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
+	t, err := r.sc.FindTaskById(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", *at.Id, err.Error()))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
+	}
+	if baseTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+	}
+	if baseTask.TimeTaken == 0 {
+		return nil, nil
+	}
+	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
+	return &dur, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

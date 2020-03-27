@@ -22,6 +22,7 @@ func TestVersionBuildFromService(t *testing.T) {
 	status := "status"
 	repo := "repo"
 	branch := "branch"
+	errors := []string{"made a mistake"}
 
 	bv1 := "buildvariant1"
 	bv2 := "buildvariant2"
@@ -51,6 +52,7 @@ func TestVersionBuildFromService(t *testing.T) {
 		Repo:          repo,
 		Branch:        branch,
 		BuildVariants: buildVariants,
+		Errors:        errors,
 	}
 
 	apiVersion := &APIVersion{}
@@ -69,6 +71,7 @@ func TestVersionBuildFromService(t *testing.T) {
 	assert.Equal(apiVersion.Status, ToStringPtr(status))
 	assert.Equal(apiVersion.Repo, ToStringPtr(repo))
 	assert.Equal(apiVersion.Branch, ToStringPtr(branch))
+	assert.Equal(apiVersion.Errors, ToStringPtrSlice(errors))
 
 	bvs := apiVersion.BuildVariants
 	assert.Equal(bvs[0].BuildVariant, ToStringPtr(bv1))

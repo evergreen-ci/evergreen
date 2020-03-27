@@ -171,6 +171,7 @@ const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
+	intervalPrefix           = "@every"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -683,6 +684,10 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 
 // return the next valid batch time
 func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
+
+	if strings.HasPrefix(cronBatchTime, intervalPrefix) {
+		return time.Time{}, errors.Errorf("cannot use '%s' in cron batchtime '%s'", intervalPrefix, cronBatchTime)
+	}
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
 	sched, err := parser.Parse(cronBatchTime)
 	if err != nil {
@@ -840,6 +845,9 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
 			return errors.Wrapf(err, "error finding user %s", removedUser)
+		}
+		if adminUser == nil {
+			continue
 		}
 		err = adminUser.RemoveRole(role.ID)
 		if err != nil {

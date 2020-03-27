@@ -94,9 +94,7 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-	if options.Region == "" {
-		options.Region = evergreen.DefaultEC2Region
-	}
+
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:             options.DistroID,
 		Userdata:             options.UserData,

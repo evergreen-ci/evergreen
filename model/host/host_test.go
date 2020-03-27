@@ -1064,7 +1064,7 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 		"SetsProvisioningFields": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsJasperRestart())
+			require.NoError(t, h.SetNeedsJasperRestart(evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
@@ -1073,28 +1073,37 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 			h.NeedsReprovision = ReprovisionJasperRestart
 			require.NoError(t, h.Insert())
 
-			require.NoError(t, h.SetNeedsJasperRestart())
+			require.NoError(t, h.SetNeedsJasperRestart(evergreen.User))
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
 			assert.False(t, h.Provisioned)
 			assert.Equal(t, ReprovisionJasperRestart, h.NeedsReprovision)
+		},
+		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
 			h.ReprovisioningLocked = true
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 		"FailsIfAlreadyNeedsReprovision": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetNeedsJasperRestart())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
+		},
+		"FailsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
+			require.NoError(t, h.Insert())
+			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -1106,6 +1115,12 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 				Id:          "id",
 				Status:      evergreen.HostRunning,
 				Provisioned: true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
+				},
 			}
 			testCase(t, h)
 		})
@@ -1897,10 +1912,14 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 
 func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	const d1 = "distro1"
-	const d2 = "distro2"
+	const (
+		d1 = "distro1"
+		d2 = "distro2"
+		d3 = "distro3"
+	)
 
 	host1 := &Host{
 		Id:            "host1",
@@ -1957,35 +1976,104 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-60 * time.Minute),
 	}
+	// User data host that is running task and recently communicated is not
+	// idle.
+	host7 := &Host{
+		Id: "host7",
+		Distro: distro.Distro{
+			Id: d3,
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		LastCommunicationTime: time.Now(),
+		RunningTask:           "running_task",
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		Status:                evergreen.HostProvisioning,
+		CreationTime:          time.Now().Add(-60 * time.Minute),
+	}
+	// User data host that is not running task and has passed the grace period
+	// to start running tasks is idle.
+	host8 := &Host{
+		Id: "host8",
+		Distro: distro.Distro{
+			Id: d3,
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		LastCommunicationTime: time.Now().Add(-time.Hour),
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		Status:                evergreen.HostProvisioning,
+		CreationTime:          time.Now().Add(-70 * time.Minute),
+	}
+	// User data host that is running task but has not communicated recently is
+	// not idle.
+	host9 := &Host{
+		Id: "host9",
+		Distro: distro.Distro{
+			Id: d3,
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		RunningTask:           "running_task_for_long_time",
+		LastCommunicationTime: time.Now().Add(-time.Hour),
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		Status:                evergreen.HostProvisioning,
+		CreationTime:          time.Now().Add(-100 * time.Minute),
+	}
+	// User data host that is not running task but has not passed the grace
+	// period to start running tasks is not idle.
+	host10 := &Host{
+		Id: "host10",
+		Distro: distro.Distro{
+			Id: d3,
+			BootstrapSettings: distro.BootstrapSettings{
+				Method: distro.BootstrapMethodUserData,
+			},
+		},
+		LastCommunicationTime: time.Now(),
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		Status:                evergreen.HostProvisioning,
+		CreationTime:          time.Now(),
+	}
 
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(host5.Insert())
-	assert.NoError(host6.Insert())
+	require.NoError(host1.Insert())
+	require.NoError(host2.Insert())
+	require.NoError(host3.Insert())
+	require.NoError(host4.Insert())
+	require.NoError(host5.Insert())
+	require.NoError(host6.Insert())
+	require.NoError(host7.Insert())
+	require.NoError(host8.Insert())
+	require.NoError(host9.Insert())
+	require.NoError(host10.Insert())
 
 	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID()
 	assert.NoError(err)
-	assert.Equal(2, len(idleHostsByDistroID))
+	assert.Len(idleHostsByDistroID, 3)
 
 	// Confirm the hosts are sorted from oldest to newest CreationTime.
-	if idleHostsByDistroID[0].DistroID == d2 {
-		assert.Equal(2, len(idleHostsByDistroID[0].IdleHosts))
-		assert.Equal("host5", idleHostsByDistroID[0].IdleHosts[0].Id)
-		assert.Equal("host3", idleHostsByDistroID[0].IdleHosts[1].Id)
-		assert.Equal(3, len(idleHostsByDistroID[1].IdleHosts))
-		assert.Equal("host4", idleHostsByDistroID[1].IdleHosts[0].Id)
-		assert.Equal("host1", idleHostsByDistroID[1].IdleHosts[1].Id)
-		assert.Equal("host2", idleHostsByDistroID[1].IdleHosts[2].Id)
-	} else {
-		assert.Equal(3, len(idleHostsByDistroID[0].IdleHosts))
-		assert.Equal("host4", idleHostsByDistroID[0].IdleHosts[0].Id)
-		assert.Equal("host1", idleHostsByDistroID[0].IdleHosts[1].Id)
-		assert.Equal("host2", idleHostsByDistroID[0].IdleHosts[2].Id)
-		assert.Equal(2, len(idleHostsByDistroID[1].IdleHosts))
-		assert.Equal("host5", idleHostsByDistroID[1].IdleHosts[0].Id)
-		assert.Equal("host3", idleHostsByDistroID[1].IdleHosts[1].Id)
+	for _, distroHosts := range idleHostsByDistroID {
+		switch distroHosts.DistroID {
+		case d1:
+			require.Len(distroHosts.IdleHosts, 3)
+			assert.Equal("host4", distroHosts.IdleHosts[0].Id)
+			assert.Equal("host1", distroHosts.IdleHosts[1].Id)
+			assert.Equal("host2", distroHosts.IdleHosts[2].Id)
+		case d2:
+			require.Len(distroHosts.IdleHosts, 2)
+			assert.Equal("host5", distroHosts.IdleHosts[0].Id)
+			assert.Equal("host3", distroHosts.IdleHosts[1].Id)
+		case d3:
+			require.Len(distroHosts.IdleHosts, 1)
+			assert.Equal("host8", distroHosts.IdleHosts[0].Id)
+		}
 	}
 }
 
@@ -2957,7 +3045,7 @@ func TestGetHostIds(t *testing.T) {
 	assert.Equal([]string{"h1", "h2", "h3"}, ids)
 }
 
-func TestFindAllRunningParentsByDistro(t *testing.T) {
+func TestFindAllRunningParentsByDistroID(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -3018,7 +3106,7 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	parents, err := FindAllRunningParentsByDistro(d1)
+	parents, err := FindAllRunningParentsByDistroID(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
 }

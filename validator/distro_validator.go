@@ -45,16 +45,22 @@ var distroSyntaxValidators = []distroValidator{
 // a slice of any validation errors found.
 func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) (ValidationErrors, error) {
 	validationErrs := ValidationErrors{}
-	distroIds := []string{}
+	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		distroIds, _, err = getDistroIds()
+		allDistroIDs, allDistroAliases, err = getDistros()
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// Parent and container distros do not support aliases.
+	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
+		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
+	}
+
 	if newDistro {
-		validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
 	}
 	if len(d.Aliases) > 0 {
 		validationErrs = append(validationErrs, ensureValidAliases(d)...)
@@ -127,8 +133,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 	}
 	if cloud.IsEc2Provider(d.Provider) && len(d.ProviderSettingsList) > 1 {
 		return append(errs, validateMultipleProviderSettings(d)...)
-	}
-	if err := validateSingleProviderSettings(d); err != nil {
+	} else if err := validateSingleProviderSettings(d); err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),
 			Level:   Error,
@@ -140,6 +145,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 	errs := ValidationErrors{}
 	definedRegions := map[string]bool{}
+	d.ProviderSettings = nil
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
@@ -170,15 +176,11 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 			})
 			continue
 		}
-		if err := settings.FromDistroSettings(*d, region); err != nil {
+		if err := settings.Validate(); err != nil {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsListKey, err),
+				Message: errors.Wrapf(err, "error validating settings for region '%s'", region).Error(),
 				Level:   Error,
 			})
-			continue
-		}
-		if err := settings.Validate(); err != nil {
-			errs = append(errs, ValidationError{Error, err.Error()})
 		}
 	}
 	return errs
@@ -208,8 +210,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 }
 
 func ensureValidAliases(d *distro.Distro) ValidationErrors {
-	errs := ValidationErrors{}
-
+	var errs ValidationErrors
 	for _, a := range d.Aliases {
 		if d.Id == a {
 			errs = append(errs, ValidationError{
@@ -218,8 +219,22 @@ func ensureValidAliases(d *distro.Distro) ValidationErrors {
 			})
 		}
 	}
-	if len(errs) == 0 {
-		return nil
+	return errs
+}
+
+func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors {
+	var errs ValidationErrors
+	if len(d.Aliases) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("'%s' cannot have aliases", d.Id),
+		})
+	}
+	if util.StringSliceContains(distroAliases, d.Id) {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot have alias that resolves to '%s'", d.Id),
+		})
 	}
 	return errs
 }
@@ -443,6 +458,12 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	if settings.PatchTimeInQueueFactor < 0 || settings.PatchTimeInQueueFactor > 100 {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.patch_time_in_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.PatchTimeInQueueFactor, d.Id),
+			Level:   Error,
+		})
+	}
+	if settings.CommitQueueFactor < 0 || settings.CommitQueueFactor > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.commit_queue_factor value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.CommitQueueFactor, d.Id),
 			Level:   Error,
 		})
 	}

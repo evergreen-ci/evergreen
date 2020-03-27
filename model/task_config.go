@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -27,6 +28,7 @@ type TaskConfig struct {
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout
+	S3Data          apimodels.S3TaskSetupData
 
 	mu sync.RWMutex
 }
@@ -123,7 +125,17 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
-	d, err := distro.FindOne(distro.ById(t.DistroId))
+	dat, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get distro lookup table")
+	}
+	distroIDs := dat.Expand([]string{t.DistroId})
+	if len(distroIDs) == 0 {
+		return nil, errors.Errorf("could not resolve distro '%s'", t.DistroId)
+	}
+	// If this distro name is aliased, it could resolve into multiple concrete
+	// distros, so just pick one of them.
+	d, err := distro.FindOne(distro.ById(distroIDs[0]))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding distro")
 	}

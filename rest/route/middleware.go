@@ -471,6 +471,8 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	return res, http.StatusOK, nil
 }
 
+// urlVarsToDistroScopes returns all distros being requested for access and the
+// HTTP status code.
 func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
@@ -502,15 +504,27 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.New("no distro found")
 	}
 
-	distro, err := distro.FindByID(distroID)
+	dat, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.WithStack(err)
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "could not get distro lookup table")
 	}
-	if distro == nil {
-		return nil, http.StatusNotFound, errors.Errorf("error finding the distro %s", distroID)
+	distroIDs := dat.Expand([]string{distroID})
+	if len(distroIDs) == 0 {
+		return nil, http.StatusNotFound, errors.Errorf("could not resolve distro '%s'", distroID)
+	}
+	// Verify that all the concrete distros that this request is accessing
+	// exist.
+	for _, resolvedDistroID := range distroIDs {
+		d, err := distro.FindByID(resolvedDistroID)
+		if err != nil {
+			return nil, http.StatusInternalServerError, errors.WithStack(err)
+		}
+		if d == nil {
+			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
+		}
 	}
 
-	return []string{distroID}, http.StatusOK, nil
+	return distroIDs, http.StatusOK, nil
 }
 
 func superUserResource(_ *http.Request) ([]string, int, error) {

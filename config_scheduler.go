@@ -20,6 +20,7 @@ type SchedulerConfig struct {
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
 	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
 	PatchTimeInQueueFactor        int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	CommitQueueFactor             int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
 	MainlineTimeInQueueFactor     int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 }
@@ -64,6 +65,7 @@ func (c *SchedulerConfig) Set() error {
 			"group_versions":                    c.GroupVersions,
 			"patch_zipper_factor":               c.PatchFactor,
 			"patch_time_in_queue_factor":        c.PatchTimeInQueueFactor,
+			"commit_queue_factor":               c.CommitQueueFactor,
 			"mainline_time_in_queue_factor":     c.MainlineTimeInQueueFactor,
 			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
 		},
@@ -129,6 +131,10 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 
 	if c.PatchTimeInQueueFactor < 0 || c.PatchTimeInQueueFactor > 100 {
 		return errors.New("patch time in queue factor must be between 0 and 100")
+	}
+
+	if c.CommitQueueFactor < 0 || c.CommitQueueFactor > 100 {
+		return errors.New("commit queue factor must be between 0 and 100")
 	}
 
 	if c.MainlineTimeInQueueFactor < 0 || c.MainlineTimeInQueueFactor > 100 {

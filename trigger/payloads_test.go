@@ -99,7 +99,7 @@ func (s *payloadSuite) TestEvergreenWebhook() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Len(m.Body, 410)
+	s.Len(m.Body, 437)
 	s.Len(m.Headers, 1)
 }
 

@@ -521,8 +521,11 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.WithStack(err)
 		}
-		if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, dependentTask.Blocked()); err != nil {
-			return errors.Wrap(err, "error marking cached task as blocked")
+
+		if !dependentTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip
+			if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, dependentTask.Blocked()); err != nil {
+				return errors.Wrapf(err, "error marking cached task '%s' as blocked", dependentTask.Id)
+			}
 		}
 	}
 	return nil
@@ -541,8 +544,11 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 		if err = UpdateUnblockedDependencies(&blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
-		if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, blockedTask.Blocked()); err != nil {
-			return errors.Wrap(err, "error setting cached task unblocked")
+
+		if !blockedTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip
+			if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, blockedTask.Blocked()); err != nil {
+				return errors.Wrap(err, "error setting cached task '%s' as unblocked")
+			}
 		}
 	}
 

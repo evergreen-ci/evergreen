@@ -54,7 +54,7 @@ func NewParentDecommissionJob(id, d string, maxContainers int) amboy.Job {
 
 func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-	parents, err := host.FindAllRunningParentsByDistro(j.DistroId)
+	parents, err := host.FindAllRunningParentsByDistroID(j.DistroId)
 	if err != nil {
 		j.AddError(err)
 		return

@@ -272,6 +272,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Id:     testUserID,
 		APIKey: testUserAPIKey,
 	}
+	ctx := gimlet.AttachUser(context.Background(), testUser)
 	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
 		Name: testPublicKeyName,
 		Key:  testPublicKey,
@@ -286,7 +287,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		InstanceTags: nil,
 	}
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
@@ -302,7 +303,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 
 	// with instance type
 	options.InstanceType = testInstanceType
-	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
 	fmt.Println(err.Error())
 	s.Contains(err.Error(), "not been allowed by admins")
@@ -310,7 +311,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	s.NoError(config.Set())
 
 	// found instance type in config
-	_, err = (&DBHostConnector{}).NewIntentHost(context.Background(), options, testUser, config)
+	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
 	fmt.Println(err.Error())
 	s.Contains(err.Error(), "Unable to find region")

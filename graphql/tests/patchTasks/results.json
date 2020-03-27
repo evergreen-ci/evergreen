@@ -1,6 +1,91 @@
 {
   "tests": [
     {
+      "query_file": "filter-by-bad-task-name.graphql",
+      "result": {
+        "data": {
+          "patchTasks": []
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-task-name.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            },
+            {
+              "id": "1",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "test-thirdparty-docker",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-variant-partial-search-term.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "4",
+              "status": "failed",
+              "baseStatus": "success",
+              "displayName": "compile",
+              "buildVariant": "windows"
+            },
+            {
+              "id": "3",
+              "status": "success",
+              "baseStatus": "success",
+              "displayName": "lint",
+              "buildVariant": "windows"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "filter-by-bad-variant.graphql",
+      "result": {
+        "data": {
+          "patchTasks": []
+        }
+      }
+    },
+    {
       "query_file": "no-params.graphql",
       "result": {
         "data": {
@@ -283,6 +368,22 @@
       }
     },
     {
+      "query_file": "filter-by-base-status.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "filter-by-multiple-statuses.graphql",
       "result": {
         "data": {
@@ -371,18 +472,11 @@
         "data": {
           "patchTasks": [
             {
-              "id": "3",
-              "status": "success",
               "baseStatus": "success",
-              "displayName": "lint",
-              "buildVariant": "windows"
-            },
-            {
-              "id": "4",
-              "status": "failed",
-              "baseStatus": "success",
-              "displayName": "compile",
-              "buildVariant": "windows"
+              "buildVariant": "ubuntu1604",
+              "displayName": "test-thirdparty-docker",
+              "id": "1",
+              "status": "success"
             }
           ]
         }
