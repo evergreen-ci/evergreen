@@ -425,7 +425,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 		deleteTags := restModel.FromStringPtrSlice(updateParams.DeleteTags)
 		addTagPairs := restModel.FromStringPtrSlice(updateParams.AddTags)
-		addTags, err := host.MakeHostTags(addTagPairs)
+		var addTags []host.Tag
+		addTags, err = host.MakeHostTags(addTagPairs)
 		if err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error creating tags to add"))
