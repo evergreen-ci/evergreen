@@ -66,6 +66,8 @@ func GetSeverityMapping(s int) string {
 	}
 }
 
+// GetBuildloggerLogsOptions represents the arguments passed into
+// GetBuildloggerLogs function.
 type GetBuildloggerLogsOptions struct {
 	BaseURL       string
 	TaskID        string
