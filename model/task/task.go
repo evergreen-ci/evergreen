@@ -356,16 +356,38 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$push": bson.M{
+			DependsOnKey: d,
+		},
+	}
+	for _, existingDependency := range t.DependsOn {
+		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
+			// If the dependency in the DB is attainable and we want to set it unattainable, update dependency.
+			// Otherwise, no update needed.
+			if !existingDependency.Unattainable && d.Unattainable {
+				query[DependsOnKey] = bson.M{
+					"$elemMatch": bson.M{
+						DependencyTaskIdKey: d.TaskId,
+						DependencyStatusKey: d.Status,
+					},
+				}
+				query[bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey)] = d.Status
+				update = bson.M{
+					"$set": bson.M{
+						bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): d.Unattainable,
+					},
+				}
+				break
+			}
+			return nil
+		}
+	}
 	t.DependsOn = append(t.DependsOn, d)
 	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$push": bson.M{
-				DependsOnKey: d,
-			},
-		},
+		query,
+		update,
 	)
 }
 
@@ -1173,10 +1195,10 @@ func (t *Task) MarkUnscheduled() error {
 }
 
 func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependency.Id {
 			t.DependsOn[i].Unattainable = unattainable
-			break
 		}
 	}
 
