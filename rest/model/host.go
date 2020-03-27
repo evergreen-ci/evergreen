@@ -197,6 +197,7 @@ type APISpawnHostModify struct {
 	InstanceType *string    `json:"instance_type"`
 	AddTags      []*string  `json:"tags_to_add"`
 	DeleteTags   []*string  `json:"tags_to_delete"`
+	NewName      *string    `json:"new_name"`
 }
 
 type APIHostScript struct {

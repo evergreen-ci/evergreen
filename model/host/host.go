@@ -39,6 +39,7 @@ type Host struct {
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+	DisplayName        string `bson:"display_name" json:"display_name"`
 
 	// physical location of host
 	Project string `bson:"project" json:"project"`
@@ -300,6 +301,7 @@ type HostModifyOptions struct {
 	AttachVolume       string
 	DetachVolume       string
 	SubscriptionType   string
+	NewName            string
 }
 
 type SpawnHostUsage struct {
@@ -1374,6 +1376,14 @@ func (h *Host) SetExtId() error {
 	return UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
+	)
+}
+
+func (h *Host) SetDisplayName(newName string) error {
+	h.DisplayName = newName
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
 	)
 }
 

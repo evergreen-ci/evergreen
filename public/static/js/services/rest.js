@@ -346,6 +346,16 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         baseSvc.getResource(resource, "available_volumes", {}, callbacks);
     }
 
+    service.updateHostDisplayName = function(hostId, newName, callbacks) {
+        var config = {
+            data: {}
+        };
+        config.data['host_id'] = hostId;
+        config.data['action'] = "changeDisplayName";
+        config.data['new_name'] = newName;
+        return baseSvc.postResource(resource, [], config, callbacks);
+    }
+
     return service;
 }]);
 

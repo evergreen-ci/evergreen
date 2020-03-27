@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	HostRename                 = "changeDisplayName"
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostInstanceTypeUpdate     = "updateInstanceType"
 	HostTagUpdate              = "updateHostTags"
@@ -443,6 +444,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprint("Host tags successfully modified.")))
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
+	case HostRename:
+		if err = h.SetDisplayName(restModel.FromStringPtr(updateParams.NewName)); err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating display name"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem renaming spawn host"))
+			return
+		}
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return
