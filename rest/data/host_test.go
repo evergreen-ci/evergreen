@@ -28,6 +28,49 @@ type HostConnectorSuite struct {
 
 const testUser = "user1"
 
+func (*HostConnectorSuite) hosts() []host.Host {
+	return []host.Host{
+		{
+			Id:        "host1",
+			StartedBy: testUser,
+			Distro: distro.Distro{
+				Id:      "distro1",
+				Aliases: []string{"alias125"},
+			},
+			Status:         evergreen.HostRunning,
+			ExpirationTime: time.Now().Add(time.Hour),
+			Secret:         "abcdef",
+		}, {
+			Id:        "host2",
+			StartedBy: "user2",
+			Distro: distro.Distro{
+				Id:      "distro2",
+				Aliases: []string{"alias125"},
+			},
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}, {
+			Id:             "host3",
+			StartedBy:      "user3",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}, {
+			Id:             "host4",
+			StartedBy:      "user4",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}, {
+			Id:        "host5",
+			StartedBy: evergreen.User,
+			Status:    evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:      "distro5",
+				Aliases: []string{"alias125"},
+			},
+		},
+	}
+}
+
 func TestHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
@@ -38,48 +81,11 @@ func TestHostConnectorSuite(t *testing.T) {
 			"create": evergreen.ScopeCollection,
 		}
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-		host1 := &host.Host{
-			Id:             "host1",
-			StartedBy:      testUser,
-			Status:         evergreen.HostRunning,
-			ExpirationTime: time.Now().Add(time.Hour),
-			Secret:         "abcdef",
-		}
-		host2 := &host.Host{
-			Id:        "host2",
-			StartedBy: "user2",
-			Distro: distro.Distro{
-				Id: "distro2",
-			},
-			Status:         evergreen.HostTerminated,
-			ExpirationTime: time.Now().Add(time.Hour),
-		}
-		host3 := &host.Host{
-			Id:             "host3",
-			StartedBy:      "user3",
-			Status:         evergreen.HostTerminated,
-			ExpirationTime: time.Now().Add(time.Hour),
-		}
-		host4 := &host.Host{
-			Id:             "host4",
-			StartedBy:      "user4",
-			Status:         evergreen.HostTerminated,
-			ExpirationTime: time.Now().Add(time.Hour),
-		}
-		host5 := &host.Host{
-			Id:        "host5",
-			StartedBy: evergreen.User,
-			Status:    evergreen.HostRunning,
-			Distro: distro.Distro{
-				Id: "distro5",
-			},
-		}
 
-		s.NoError(host1.Insert())
-		s.NoError(host2.Insert())
-		s.NoError(host3.Insert())
-		s.NoError(host4.Insert())
-		s.NoError(host5.Insert())
+		hosts := s.hosts()
+		for _, h := range hosts {
+			s.Require().NoError(h.Insert())
+		}
 
 		users := []string{testUser, "user2", "user3", "user4"}
 
@@ -122,12 +128,7 @@ func TestMockHostConnectorSuite(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 		s.ctx = &MockConnector{
 			MockHostConnector: MockHostConnector{
-				CachedHosts: []host.Host{
-					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour), Secret: "abcdef"},
-					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour), Distro: distro.Distro{Id: "distro2"}},
-					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-					{Id: "host5", StartedBy: evergreen.User, Status: evergreen.HostRunning, Distro: distro.Distro{Id: "distro5"}}},
+				CachedHosts: s.hosts(),
 			},
 			MockUserConnector: MockUserConnector{
 				CachedUsers: map[string]*user.DBUser{
@@ -202,11 +203,26 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 	s.Nil(h)
 }
 
-func (s *HostConnectorSuite) TestFindHostsByDistroID() {
-	hosts, err := s.ctx.FindHostsByDistroID("distro5")
+func (s *HostConnectorSuite) TestFindHostsByDistro() {
+	hosts, err := s.ctx.FindHostsByDistro("distro5")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
+
+	hosts, err = s.ctx.FindHostsByDistro("alias125")
+	s.Require().NoError(err)
+	s.Require().Len(hosts, 2)
+	var host1Found, host5Found bool
+	for _, h := range hosts {
+		if h.Id == "host1" {
+			host1Found = true
+		}
+		if h.Id == "host5" {
+			host5Found = true
+		}
+	}
+	s.True(host1Found)
+	s.True(host5Found)
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {

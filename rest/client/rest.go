@@ -605,6 +605,35 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 	return nil
 }
 
+func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, opts model.APIDistroScriptOptions) (hostIDs []string, err error) {
+	info := requestInfo{
+		method:  http.MethodPatch,
+		version: apiVersion2,
+		path:    fmt.Sprintf("distros/%s/execute", distro),
+	}
+
+	var result struct {
+		HostIDs []string `json:"host_ids"`
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Errorf("received status %s", resp.Status)
+		}
+		return nil, errors.Wrap(errMsg, "problem running script on hosts")
+	}
+
+	if err = util.ReadJSONInto(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "problem reading response")
+	}
+	return result.HostIDs, nil
+}
+
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
 		method:  get,

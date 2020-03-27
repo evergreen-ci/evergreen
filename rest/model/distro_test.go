@@ -22,8 +22,15 @@ func TestDistroBuildFromService(t *testing.T) {
 			ServiceUser:           "service_user",
 			ShellPath:             "/shell_path",
 		},
-		Note:               "note1",
-		HomeVolumeSettings: distro.HomeVolumeSettings{DeviceName: "nvme1n1"},
+		Note: "note1",
+		HomeVolumeSettings: distro.HomeVolumeSettings{
+			DeviceName:    "nvme1n1",
+			FormatCommand: "format_command",
+		},
+		IcecreamSettings: distro.IcecreamSettings{
+			SchedulerHost: "host",
+			ConfigPath:    "config_path",
+		},
 	}
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
@@ -38,6 +45,9 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, FromStringPtr(apiDistro.Note))
 	assert.Equal(t, d.HomeVolumeSettings.DeviceName, FromStringPtr(apiDistro.HomeVolumeSettings.DeviceName))
+	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
+	assert.Equal(t, d.IcecreamSettings.SchedulerHost, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
+	assert.Equal(t, d.IcecreamSettings.ConfigPath, FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -73,8 +83,15 @@ func TestDistroToService(t *testing.T) {
 				VirtualMemoryKB: 4,
 			},
 		},
-		Note:               ToStringPtr("note1"),
-		HomeVolumeSettings: APIHomeVolumeSettings{DeviceName: ToStringPtr("nvme1n1")},
+		Note: ToStringPtr("note1"),
+		HomeVolumeSettings: APIHomeVolumeSettings{
+			DeviceName:    ToStringPtr("nvme1n1"),
+			FormatCommand: ToStringPtr("format_command"),
+		},
+		IcecreamSettings: APIIcecreamSettings{
+			SchedulerHost: ToStringPtr("host"),
+			ConfigPath:    ToStringPtr("config_path"),
+		},
 	}
 
 	res, err := apiDistro.ToService()
@@ -98,6 +115,9 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	assert.Equal(t, apiDistro.Note, ToStringPtr(d.Note))
 	assert.Equal(t, apiDistro.HomeVolumeSettings.DeviceName, ToStringPtr(d.HomeVolumeSettings.DeviceName))
+	assert.Equal(t, apiDistro.HomeVolumeSettings.FormatCommand, ToStringPtr(d.HomeVolumeSettings.FormatCommand))
+	assert.Equal(t, apiDistro.IcecreamSettings.SchedulerHost, ToStringPtr(d.IcecreamSettings.SchedulerHost))
+	assert.Equal(t, apiDistro.IcecreamSettings.ConfigPath, ToStringPtr(d.IcecreamSettings.ConfigPath))
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

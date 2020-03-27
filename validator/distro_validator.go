@@ -39,6 +39,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasValidPlannerSettings,
 	ensureHasValidFinderSettings,
 	ensureHasValidDispatcherSettings,
+	ensureHasValidVirtualWorkstationSettings,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -509,4 +510,18 @@ func ensureHasValidDispatcherSettings(ctx context.Context, d *distro.Distro, s *
 	}
 
 	return nil
+}
+
+func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if !d.IsVirtualWorkstation {
+		return nil
+	}
+	var errs ValidationErrors
+	if d.HomeVolumeSettings.FormatCommand == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("missing format command"),
+			Level:   Error,
+		})
+	}
+	return errs
 }

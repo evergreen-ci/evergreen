@@ -543,6 +543,15 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return nil
 		}
+		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "can't write icecream config file",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			return nil
+		}
 	}
 
 	// If this is a spawn host
@@ -648,7 +657,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 
 	spawnHostSetupCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if output, err := j.host.RunSSHShellScript(spawnHostSetupCtx, script); err != nil {
+	if output, err := j.host.RunSSHShellScript(spawnHostSetupCtx, script, false, ""); err != nil {
 		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
 
@@ -832,5 +841,20 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "problem appending to fstab")
 	}
 
+	return nil
+}
+
+func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if !h.Distro.IcecreamSettings.Populated() {
+		return nil
+	}
+
+	script := h.Distro.IcecreamSettings.GetUpdateConfigScript()
+	args := []string{h.Distro.ShellBinary(), "-c", script}
+	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args: args,
+	}); err != nil {
+		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
+	}
 	return nil
 }
