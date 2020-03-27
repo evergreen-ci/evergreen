@@ -151,6 +151,7 @@ func makeModifyUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.
 func (h *userPermissionsPostHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
 		sc: h.sc,
+		rm: h.rm,
 	}
 }
 
@@ -225,6 +226,7 @@ func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
 		sc: h.sc,
+		rm: h.rm,
 	}
 }
 
@@ -327,6 +329,7 @@ func makeGetUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.Rou
 func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
 		sc: h.sc,
+		rm: h.rm,
 	}
 }
 
