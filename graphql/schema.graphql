@@ -232,6 +232,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
+  baseCommitDuration: Duration
 }
 
 type Projects {

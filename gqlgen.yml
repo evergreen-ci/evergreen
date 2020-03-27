@@ -26,6 +26,8 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
+      baseCommitDuration:
+        resolver: true
       reliesOn:
         resolver: true
   TaskLogLinks:

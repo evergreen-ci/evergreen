@@ -12,6 +12,31 @@
       }
     },
     {
+      "query_file": "baseCommitDuration.graphql",
+      "result": {
+        "data": { "task": { "id": "1", "baseCommitDuration": 30000000 } }
+      }
+    },
+    {
+      "query_file": "baseCommitDuration-base-task-not-finished.graphql",
+      "result": {
+        "data": { "task": { "id": "2", "baseCommitDuration": null } }
+      }
+    },
+    {
+      "query_file": "baseCommitDuration-no-base-task.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to find task taskity_task on base commit",
+            "path": ["task", "baseCommitDuration"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "task": { "id": "taskity_task", "baseCommitDuration": null } }
+      }
+    },
+    {
       "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
       "result": {
         "data": {
