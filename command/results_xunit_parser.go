@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,13 +16,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+type customTime float64
+
+func (cf *customTime) UnmarshalXMLAttr(attr xml.Attr) error {
+	s := strings.Replace(attr.Value, ",", "", -1)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return err
+	}
+	*cf = customTime(f)
+	return nil
+}
+
 type testSuites struct {
 	Suites   []testSuite `xml:"testsuite"`
 	Errors   int         `xml:"errors,attr"`
 	Failures int         `xml:"failures,attr"`
 	Skip     int         `xml:"skip,attr"`
 	Name     string      `xml:"name,attr"`
-	Time     float64     `xml:"time,attr"`
+	Time     customTime  `xml:"time,attr"`
 	Tests    int         `xml:"tests,attr"`
 }
 
@@ -32,7 +45,7 @@ type testSuite struct {
 	Name      string          `xml:"name,attr"`
 	Tests     int             `xml:"tests,attr"`
 	TestCases []testCase      `xml:"testcase"`
-	Time      float64         `xml:"time,attr"`
+	Time      customTime      `xml:"time,attr"`
 	Error     *failureDetails `xml:"error"`
 	SysOut    string          `xml:"system-out"`
 	SysErr    string          `xml:"system-err"`
@@ -40,7 +53,7 @@ type testSuite struct {
 
 type testCase struct {
 	Name      string          `xml:"name,attr"`
-	Time      float64         `xml:"time,attr"`
+	Time      customTime      `xml:"time,attr"`
 	ClassName string          `xml:"classname,attr"`
 	Failure   *failureDetails `xml:"failure"`
 	Error     *failureDetails `xml:"error"`
@@ -91,7 +104,7 @@ func (tc testCase) toModelTestResultAndLog(t *task.Task) (task.TestResult, *mode
 	res.TestFile = util.CleanForPath(res.TestFile)
 
 	res.StartTime = float64(time.Now().Unix())
-	res.EndTime = res.StartTime + tc.Time
+	res.EndTime = res.StartTime + float64(tc.Time)
 
 	// the presence of the Failure, Error, or Skipped fields
 	// is used to indicate an unsuccessful test case. Logs
