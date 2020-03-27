@@ -151,3 +151,17 @@ func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
 	s.Nil(info)
 	s.Errorf(err, "id appears to be a spot instance request ID, not a host ID (\"sir-123456\")")
 }
+
+func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {
+	opts := &EC2ManagerOptions{
+		client:   &awsClientImpl{},
+		provider: onDemandProvider,
+	}
+	m := &ec2Manager{env: s.env, EC2ManagerOptions: opts}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	info, err := m.client.GetInstanceInfo(ctx, "evg-ubuntu-1234")
+	s.Nil(info)
+	s.Errorf(err, "intent host")
+}

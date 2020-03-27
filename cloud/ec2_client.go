@@ -751,6 +751,9 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	if strings.HasPrefix(id, "sir") {
 		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
 	}
+	if strings.HasPrefix(id, "evg-") {
+		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
+	}
 	resp, err := c.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(id)},
 	})
