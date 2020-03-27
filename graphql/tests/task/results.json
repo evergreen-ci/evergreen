@@ -10,6 +10,116 @@
           }
         }
       }
+    },
+    {
+      "query_file": "baseCommitDuration.graphql",
+      "result": {
+        "data": { "task": { "id": "1", "baseCommitDuration": 30000000 } }
+      }
+    },
+    {
+      "query_file": "baseCommitDuration-base-task-not-finished.graphql",
+      "result": {
+        "data": { "task": { "id": "2", "baseCommitDuration": null } }
+      }
+    },
+    {
+      "query_file": "baseCommitDuration-no-base-task.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Unable to find task taskity_task on base commit",
+            "path": ["task", "baseCommitDuration"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": { "task": { "id": "taskity_task", "baseCommitDuration": null } }
+      }
+    },
+    {
+      "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "reliesOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_FINISH",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "reliesOn-task-status-equals-dep-status.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "reliesOn": [
+              {
+                "metStatus": "PENDING",
+                "requiredStatus": "MUST_SUCCEED",
+                "buildVariant": "ubuntu",
+                "name": "dep1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "reliesOn-dep-status-equals-all-statuses.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "reliesOn": [
+              {
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FINISH",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "reliesOn-dep-status-failed.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "reliesOn": [
+              {
+                "metStatus": "MET",
+                "requiredStatus": "MUST_FAIL",
+                "buildVariant": "windows",
+                "name": "dep2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "reliesOn-unmet.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "reliesOn": [
+              {
+                "metStatus": "UNMET",
+                "requiredStatus": "MUST_SUCCEED",
+                "buildVariant": "windows",
+                "name": "dep5"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"context"
@@ -13,16 +13,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type dbQueueStat struct {
+type dbQueueManager struct {
 	client     *mongo.Client
 	collection *mongo.Collection
-	opts       DBQueueReporterOptions
+	opts       DBQueueManagerOptions
 }
 
-// DBQueueReporterOptions describes the arguments to the operations to
-// construct queue reporters, and accommodates both group-backed
-// queues and conventional queues.
-type DBQueueReporterOptions struct {
+// DBQueueManagerOptions describes the arguments to the operations to construct
+// queue managers, and accommodates both group-backed queues and conventional
+// queues.
+type DBQueueManagerOptions struct {
 	Name        string
 	Group       string
 	SingleGroup bool
@@ -30,9 +30,9 @@ type DBQueueReporterOptions struct {
 	Options     queue.MongoDBOptions
 }
 
-func (o *DBQueueReporterOptions) hasGroups() bool { return o.SingleGroup || o.ByGroups }
+func (o *DBQueueManagerOptions) hasGroups() bool { return o.SingleGroup || o.ByGroups }
 
-func (o *DBQueueReporterOptions) collName() string {
+func (o *DBQueueManagerOptions) collName() string {
 	if o.hasGroups() {
 		return addGroupSuffix(o.Name)
 	}
@@ -40,19 +40,19 @@ func (o *DBQueueReporterOptions) collName() string {
 	return addJobsSuffix(o.Name)
 }
 
-// Validate checks the state of the reporter configuration, preventing
-// logically invalid options.
-func (o *DBQueueReporterOptions) Validate() error {
+// Validate checks the state of the manager configuration, preventing logically
+// invalid options.
+func (o *DBQueueManagerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(o.SingleGroup && o.ByGroups, "cannot specify conflicting group options")
 	catcher.NewWhen(o.Name == "", "must specify queue name")
 	return catcher.Resolve()
 }
 
-// NewDBQueueState produces a queue Reporter for (remote) queues that persist
-// jobs in MongoDB. This implementation does not interact with a queue
-// directly, and reports by interacting with the database directly.
-func NewDBQueueState(ctx context.Context, opts DBQueueReporterOptions) (Reporter, error) {
+// NewDBQueueManager produces a queue manager for (remote) queues that persist
+// jobs in MongoDB. This implementation does not interact with the queue
+// directly, and manages by interacting with the database directly.
+func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Management, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func NewDBQueueState(ctx context.Context, opts DBQueueReporterOptions) (Reporter
 		return nil, errors.Wrap(err, "problem connecting to database")
 	}
 
-	db, err := MakeDBQueueState(ctx, opts, client)
+	db, err := MakeDBQueueManager(ctx, opts, client)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building reporting interface")
 	}
@@ -74,24 +74,23 @@ func NewDBQueueState(ctx context.Context, opts DBQueueReporterOptions) (Reporter
 	return db, nil
 }
 
-// MakeDBQueueState make it possible to produce a queue reporter with
-// an existing database Connection. This operations runs the "ping"
-// command and will return an error if there is no session or no
-// active server.
-func MakeDBQueueState(ctx context.Context, opts DBQueueReporterOptions, client *mongo.Client) (Reporter, error) {
+// MakeDBQueueManager make it possible to produce a queue manager with an
+// existing database Connection. This operations runs the "ping" command and
+// and will return an error if there is no session or no active server.
+func MakeDBQueueManager(ctx context.Context, opts DBQueueManagerOptions, client *mongo.Client) (Management, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
 
 	if client == nil {
-		return nil, errors.New("cannot make a reporter without a client")
+		return nil, errors.New("cannot make a manager without a client")
 	}
 
 	if err := client.Ping(ctx, nil); err != nil {
 		return nil, errors.Wrap(err, "could not establish a connection with the database")
 	}
 
-	db := &dbQueueStat{
+	db := &dbQueueManager{
 		opts:       opts,
 		client:     client,
 		collection: client.Database(opts.Options.DB).Collection(opts.collName()),
@@ -100,7 +99,7 @@ func MakeDBQueueState(ctx context.Context, opts DBQueueReporterOptions, client *
 	return db, nil
 }
 
-func (db *dbQueueStat) aggregateCounters(ctx context.Context, stages ...bson.M) ([]JobCounters, error) {
+func (db *dbQueueManager) aggregateCounters(ctx context.Context, stages ...bson.M) ([]JobCounters, error) {
 	cursor, err := db.collection.Aggregate(ctx, stages, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem running aggregation")
@@ -125,7 +124,7 @@ func (db *dbQueueStat) aggregateCounters(ctx context.Context, stages ...bson.M) 
 	return out, nil
 }
 
-func (db *dbQueueStat) aggregateRuntimes(ctx context.Context, stages ...bson.M) ([]JobRuntimes, error) {
+func (db *dbQueueManager) aggregateRuntimes(ctx context.Context, stages ...bson.M) ([]JobRuntimes, error) {
 	cursor, err := db.collection.Aggregate(ctx, stages, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem running aggregation")
@@ -150,7 +149,7 @@ func (db *dbQueueStat) aggregateRuntimes(ctx context.Context, stages ...bson.M) 
 	return out, nil
 }
 
-func (db *dbQueueStat) aggregateErrors(ctx context.Context, stages ...bson.M) ([]JobErrorsForType, error) {
+func (db *dbQueueManager) aggregateErrors(ctx context.Context, stages ...bson.M) ([]JobErrorsForType, error) {
 	cursor, err := db.collection.Aggregate(ctx, stages, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem running aggregation")
@@ -175,7 +174,7 @@ func (db *dbQueueStat) aggregateErrors(ctx context.Context, stages ...bson.M) ([
 	return out, nil
 }
 
-func (db *dbQueueStat) findJobs(ctx context.Context, match bson.M) ([]string, error) {
+func (db *dbQueueManager) findJobs(ctx context.Context, match bson.M) ([]string, error) {
 	group := bson.M{
 		"_id":  nil,
 		"jobs": bson.M{"$push": "$_id"},
@@ -215,7 +214,7 @@ func (db *dbQueueStat) findJobs(ctx context.Context, match bson.M) ([]string, er
 	}
 }
 
-func (db *dbQueueStat) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
+func (db *dbQueueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -272,7 +271,7 @@ func (db *dbQueueStat) JobStatus(ctx context.Context, f CounterFilter) (*JobStat
 	}, nil
 }
 
-func (db *dbQueueStat) RecentTiming(ctx context.Context, window time.Duration, f RuntimeFilter) (*JobRuntimeReport, error) {
+func (db *dbQueueManager) RecentTiming(ctx context.Context, window time.Duration, f RuntimeFilter) (*JobRuntimeReport, error) {
 	if window <= time.Second {
 		return nil, errors.New("must specify windows greater than one second")
 	}
@@ -360,7 +359,7 @@ func (db *dbQueueStat) RecentTiming(ctx context.Context, window time.Duration, f
 	}, nil
 }
 
-func (db *dbQueueStat) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
+func (db *dbQueueManager) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -398,7 +397,7 @@ func (db *dbQueueStat) JobIDsByState(ctx context.Context, jobType string, f Coun
 	}, nil
 }
 
-func (db *dbQueueStat) RecentErrors(ctx context.Context, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
+func (db *dbQueueManager) RecentErrors(ctx context.Context, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
 	if window <= time.Second {
 		return nil, errors.New("must specify windows greater than one second")
 	}
@@ -482,7 +481,7 @@ func (db *dbQueueStat) RecentErrors(ctx context.Context, window time.Duration, f
 	}, nil
 }
 
-func (db *dbQueueStat) RecentJobErrors(ctx context.Context, jobType string, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
+func (db *dbQueueManager) RecentJobErrors(ctx context.Context, jobType string, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
 	if window <= time.Second {
 		return nil, errors.New("must specify windows greater than one second")
 	}
@@ -569,4 +568,22 @@ func (db *dbQueueStat) RecentJobErrors(ctx context.Context, jobType string, wind
 		FilteredByType: true,
 		Data:           reports,
 	}, nil
+}
+
+func (db *dbQueueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
+	query := bson.M{
+		"type":             jobType,
+		"status.completed": false,
+	}
+	if db.opts.Group != "" {
+		query["group"] = db.opts.Group
+	}
+
+	update := bson.M{
+		"$set": bson.M{"status.completed": true},
+		"$inc": bson.M{"status.mod_count": 3},
+	}
+
+	_, err := db.collection.UpdateMany(ctx, query, update)
+	return errors.Wrap(err, "problem marking jobs complete by type")
 }

@@ -97,7 +97,10 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "templateID", *mockClient.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateId)
 		},
 		"MakeOverrides": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{VpcName: "vpc-123456"}
+			ec2Settings := &EC2ProviderSettings{
+				VpcName:      "vpc-123456",
+				InstanceType: "instanceType0",
+			}
 
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
@@ -172,7 +175,13 @@ func TestFleet(t *testing.T) {
 
 		m = &ec2FleetManager{
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client: &awsClientMock{},
+				client: &awsClientMock{
+					DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
+						InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
+							{InstanceType: aws.String("instanceType0")},
+						},
+					},
+				},
 				region: "test-region",
 			},
 			credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
@@ -193,4 +202,28 @@ func TestFleet(t *testing.T) {
 		require.NoError(t, h.Insert())
 		t.Run(name, test)
 	}
+}
+
+func TestAzInstanceTypeCache(t *testing.T) {
+	cache := azInstanceTypeCache{azToInstanceTypes: make(map[string][]string)}
+	client := &awsClientMock{
+		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
+			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
+				{InstanceType: aws.String("instanceType0")},
+				{InstanceType: aws.String("instanceType1")},
+				{InstanceType: aws.String("instanceType2")},
+			},
+		},
+	}
+	supported, err := cache.azSupportsInstanceType(context.Background(), client, "az0", "instanceType0")
+	assert.NoError(t, err)
+	assert.True(t, supported)
+
+	supported, err = cache.azSupportsInstanceType(context.Background(), client, "az0", "not_supported")
+	assert.NoError(t, err)
+	assert.False(t, supported)
+
+	az, ok := cache.azToInstanceTypes["az0"]
+	assert.True(t, ok)
+	assert.Len(t, az, 3)
 }

@@ -1,4 +1,4 @@
-package reporting
+package management
 
 import (
 	"context"
@@ -7,15 +7,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Reporter is an interface that describes queue introspection tools
-// that make it possible to get more details about the running jobs in
-// an amboy queue.
-type Reporter interface {
+// Management is an interface that describes queue introspection tools and
+// utility for queue management that make it possible to get more details about
+// the running jobs in an amboy queue and gives users broader capabilities than
+// the Queue interface itself.
+type Management interface {
 	JobStatus(context.Context, CounterFilter) (*JobStatusReport, error)
 	RecentTiming(context.Context, time.Duration, RuntimeFilter) (*JobRuntimeReport, error)
 	JobIDsByState(context.Context, string, CounterFilter) (*JobReportIDs, error)
 	RecentErrors(context.Context, time.Duration, ErrorFilter) (*JobErrorsReport, error)
 	RecentJobErrors(context.Context, string, time.Duration, ErrorFilter) (*JobErrorsReport, error)
+	CompleteJobsByType(context.Context, string) error
 }
 
 // CounterFilter defines a number of dimensions with which to filter

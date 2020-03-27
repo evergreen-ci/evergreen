@@ -82,18 +82,6 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		return
 	}
 
-	sshOptions, err := j.host.GetSSHOptions(j.env.Settings())
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get ssh options",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
-
 	var logs string
 	if !j.host.Distro.LegacyBootstrap() {
 		var args []string
@@ -105,7 +93,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		}
 		args = append(args, j.host.Distro.ShellBinary(), "-l", "-c", j.Script)
 		var output []string
-		output, err = j.host.RunJasperProcess(ctx, j.env, &options.Create{
+		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 			Args: args,
 		})
 		if err != nil {
@@ -122,7 +110,8 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		}
 		logs = strings.Join(output, "\n")
 	} else {
-		logs, err = j.host.RunSSHShellScript(ctx, j.Script, j.Sudo, j.SudoUser, sshOptions)
+		var err error
+		logs, err = j.host.RunSSHShellScript(ctx, j.Script, j.Sudo, j.SudoUser)
 		if err != nil {
 			event.LogHostScriptExecuteFailed(j.host.Id, err)
 			grip.Error(message.WrapError(err, message.Fields{

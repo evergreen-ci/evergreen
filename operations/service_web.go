@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/amboy/reporting"
 	"github.com/mongodb/amboy/rest"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -209,44 +209,44 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	apps := []*gimlet.APIApp{app}
 
-	localAbort := rest.NewManagementService(localPool).App()
+	localAbort := rest.NewAbortablePoolManagementService(localPool).App()
 	localAbort.SetPrefix("/amboy/local/pool")
 
-	remoteAbort := rest.NewManagementService(remotePool).App()
+	remoteAbort := rest.NewAbortablePoolManagementService(remotePool).App()
 	remoteAbort.SetPrefix("/amboy/remote/pool")
 
 	groupAbort := rest.NewManagementGroupService(env.RemoteQueueGroup()).App()
 	groupAbort.SetPrefix("/amboy/group/pool")
 
-	localReporting := rest.NewReportingService(reporting.NewQueueReporter(env.LocalQueue())).App()
-	localReporting.SetPrefix("/amboy/local/reporting")
+	localManagement := rest.NewManagementService(management.NewQueueManager(env.LocalQueue())).App()
+	localManagement.SetPrefix("/amboy/local/management")
 
-	apps = append(apps, localAbort, remoteAbort, groupAbort, localReporting)
-	if evergreen.EnableAmboyRemoteReporting {
-		remoteReporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+	apps = append(apps, localAbort, remoteAbort, groupAbort, localManagement)
+	if evergreen.EnableAmboyRemoteManagement {
+		remoteManager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 			Name:    settings.Amboy.Name,
 			Options: opts,
 		}, env.Client())
 		if err != nil {
-			return nil, errors.Wrap(err, "problem building queue reporter")
+			return nil, errors.Wrap(err, "problem building queue manager")
 		}
 
-		remoteReporting := rest.NewReportingService(remoteReporter).App()
-		remoteReporting.SetPrefix("/amboy/remote/reporting")
-		apps = append(apps, remoteReporting)
+		remoteManagement := rest.NewManagementService(remoteManager).App()
+		remoteManagement.SetPrefix("/amboy/remote/management")
+		apps = append(apps, remoteManagement)
 
-		groupReporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+		groupManager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 			Name:     settings.Amboy.Name,
 			Options:  opts,
 			ByGroups: true,
 		}, env.Client())
 		if err != nil {
-			return nil, errors.Wrap(err, "problem building queue reporter")
+			return nil, errors.Wrap(err, "problem building queue manager")
 		}
 
-		groupReporting := rest.NewReportingService(groupReporter).App()
-		groupReporting.SetPrefix("/amboy/group/reporting")
-		apps = append(apps, groupReporting)
+		groupManagement := rest.NewManagementService(groupManager).App()
+		groupManagement.SetPrefix("/amboy/group/management")
+		apps = append(apps, groupManagement)
 	}
 
 	jpm := remote.NewRestService(env.JasperManager())

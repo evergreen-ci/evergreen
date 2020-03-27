@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -343,4 +344,31 @@ func (c *QueueClient) WaitAll(ctx context.Context) bool {
 	}
 
 	return true
+}
+
+// MarkJobComplete marks the job with the given ID complete.
+func (c *QueueClient) MarkJobComplete(ctx context.Context, id string) error {
+	req, err := http.NewRequest(http.MethodPost, c.getURL(fmt.Sprintf("/v1/job/%s", id)), nil)
+	if err != nil {
+		return errors.Wrap(err, "problem with request")
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error processing request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var msg string
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			msg = fmt.Sprintf("problem reading response body: '%s'", err.Error())
+		} else {
+			msg = string(data)
+		}
+		return errors.Errorf("status code '%s' returned with message: '%s'", resp.Status, msg)
+	}
+
+	return nil
 }

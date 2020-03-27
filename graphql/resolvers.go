@@ -44,6 +44,73 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
+func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return dependencies, nil
+	}
+	depIds := []string{}
+	for _, dep := range at.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var metStatus MetStatus
+		if !depTask.IsFinished() {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
+			metStatus = "MET"
+		} else {
+			metStatus = "UNMET"
+		}
+		var requiredStatus RequiredStatus
+		switch dep.Status {
+		case model.AllStatuses:
+			requiredStatus = "MUST_FINISH"
+			break
+		case evergreen.TaskFailed:
+			requiredStatus = "MUST_FAIL"
+			break
+		default:
+			requiredStatus = "MUST_SUCCEED"
+		}
+
+		dependency := Dependency{
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
+		}
+
+		dependencies = append(dependencies, &dependency)
+	}
+	return dependencies, nil
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
@@ -261,7 +328,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -334,6 +401,15 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			}
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
+	}
+	if len(baseStatuses) > 0 {
+		tasksFilteredByBaseStatus := []*TaskResult{}
+		for _, taskResult := range taskResults {
+			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
+			}
+		}
+		taskResults = tasksFilteredByBaseStatus
 	}
 	return taskResults, nil
 }
@@ -742,6 +818,25 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	return &patch.PatchNumber, nil
+}
+
+func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
+	t, err := r.sc.FindTaskById(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", *at.Id, err.Error()))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
+	}
+	if baseTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+	}
+	if baseTask.TimeTaken == 0 {
+		return nil, nil
+	}
+	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
+	return &dur, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

@@ -751,6 +751,23 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
 }
 
+func TestIsSystemUnresponsive(t *testing.T) {
+	var task Task
+
+	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
+	assert.True(t, task.IsSystemUnresponsive(), "current definition")
+
+	task = Task{Status: evergreen.TaskSystemUnresponse}
+	assert.True(t, task.IsSystemUnresponsive(), "legacy definition")
+
+	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
+	assert.False(t, task.IsSystemUnresponsive(), "normal timeout")
+
+	task = Task{Status: evergreen.TaskSucceeded}
+	assert.False(t, task.IsSystemUnresponsive(), "success")
+
+}
+
 func TestMergeTestResultsBulk(t *testing.T) {
 	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
 	assert := assert.New(t)
