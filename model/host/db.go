@@ -854,6 +854,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
 			{
