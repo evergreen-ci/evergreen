@@ -16,15 +16,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type customTime float64
+type customFloat float64
 
-func (cf *customTime) UnmarshalXMLAttr(attr xml.Attr) error {
+func (cf *customFloat) UnmarshalXMLAttr(attr xml.Attr) error {
 	s := strings.Replace(attr.Value, ",", "", -1)
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return err
 	}
-	*cf = customTime(f)
+	*cf = customFloat(f)
 	return nil
 }
 
@@ -34,7 +34,7 @@ type testSuites struct {
 	Failures int         `xml:"failures,attr"`
 	Skip     int         `xml:"skip,attr"`
 	Name     string      `xml:"name,attr"`
-	Time     customTime  `xml:"time,attr"`
+	Time     customFloat `xml:"time,attr"`
 	Tests    int         `xml:"tests,attr"`
 }
 
@@ -45,7 +45,7 @@ type testSuite struct {
 	Name      string          `xml:"name,attr"`
 	Tests     int             `xml:"tests,attr"`
 	TestCases []testCase      `xml:"testcase"`
-	Time      customTime      `xml:"time,attr"`
+	Time      customFloat     `xml:"time,attr"`
 	Error     *failureDetails `xml:"error"`
 	SysOut    string          `xml:"system-out"`
 	SysErr    string          `xml:"system-err"`
@@ -53,7 +53,7 @@ type testSuite struct {
 
 type testCase struct {
 	Name      string          `xml:"name,attr"`
-	Time      customTime      `xml:"time,attr"`
+	Time      customFloat     `xml:"time,attr"`
 	ClassName string          `xml:"classname,attr"`
 	Failure   *failureDetails `xml:"failure"`
 	Error     *failureDetails `xml:"error"`
