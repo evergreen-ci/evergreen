@@ -405,7 +405,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if len(baseStatuses) > 0 {
 		tasksFilteredByBaseStatus := []*TaskResult{}
 		for _, taskResult := range taskResults {
-			if util.StringSliceContains(baseStatuses, taskResult.Status) {
+			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
 				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
 			}
 		}

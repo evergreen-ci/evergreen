@@ -368,6 +368,22 @@
       }
     },
     {
+      "query_file": "filter-by-base-status.graphql",
+      "result": {
+        "data": {
+          "patchTasks": [
+            {
+              "id": "2",
+              "status": "failed",
+              "baseStatus": "failed",
+              "displayName": "test-cloud",
+              "buildVariant": "ubuntu1604"
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "filter-by-multiple-statuses.graphql",
       "result": {
         "data": {
