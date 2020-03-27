@@ -66,33 +66,42 @@ func GetSeverityMapping(s int) string {
 	}
 }
 
+type GetBuildloggerLogsOptions struct {
+	BaseURL       string
+	TaskID        string
+	Execution     int
+	PrintPriority bool
+	Tail          int
+	LogType       string
+}
+
 // GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
-func GetBuildloggerLogs(ctx context.Context, buildloggerBaseURL, taskId, logType string, tail, execution int, priority bool) (io.ReadCloser, error) {
+func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return nil, errors.New("error getting user from context")
 	}
-	opts := fetcher.GetOptions{
-		BaseURL:       fmt.Sprintf("https://%s", buildloggerBaseURL),
+	getOpts := fetcher.GetOptions{
+		BaseURL:       fmt.Sprintf("https://%s", opts.BaseURL),
 		UserKey:       usr.GetAPIKey(),
 		UserName:      usr.Username(),
-		TaskID:        taskId,
-		Execution:     execution,
+		TaskID:        opts.TaskID,
+		Execution:     opts.Execution,
 		PrintTime:     true,
-		PrintPriority: priority,
-		Tail:          tail,
+		PrintPriority: opts.PrintPriority,
+		Tail:          opts.Tail,
 	}
-	switch logType {
+	switch opts.LogType {
 	case TaskLogPrefix:
-		opts.ProcessName = evergreen.LogTypeTask
+		getOpts.ProcessName = evergreen.LogTypeTask
 	case SystemLogPrefix:
-		opts.ProcessName = evergreen.LogTypeSystem
+		getOpts.ProcessName = evergreen.LogTypeSystem
 	case AgentLogPrefix:
-		opts.ProcessName = evergreen.LogTypeAgent
+		getOpts.ProcessName = evergreen.LogTypeAgent
 	}
 
-	logReader, err := fetcher.Logs(ctx, opts)
-	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", taskId)
+	logReader, err := fetcher.Logs(ctx, getOpts)
+	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
 }
 
 // ReadBuildloggerToChan parses cedar log lines by message and severity and reads into channel
