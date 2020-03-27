@@ -38,7 +38,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	var spawnTask *task.Task
 	var err error
 	if len(r.FormValue("distro_id")) > 0 {
-		dat, err := distro.NewDistroAliasesLookupTable()
+		var dat distro.AliasLookupTable
+		dat, err = distro.NewDistroAliasesLookupTable()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error getting distro lookup table"))
