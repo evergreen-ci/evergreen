@@ -102,17 +102,6 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.SetUserDataHostProvisioned(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not mark host that has finished running user data as done provisioning",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
-
 	if j.host.IsVirtualWorkstation {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -132,6 +121,17 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 		}
+	}
+
+	if err := j.host.SetUserDataHostProvisioned(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not mark host that has finished running user data as done provisioning",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		}))
+		j.AddError(err)
+		return
 	}
 }
 

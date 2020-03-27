@@ -327,7 +327,6 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 }
 
 type APIHomeVolumeSettings struct {
-	DeviceName    *string `json:"device_name"`
 	FormatCommand *string `json:"format_command"`
 }
 
@@ -337,7 +336,6 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
 	}
 
-	s.DeviceName = ToStringPtr(settings.DeviceName)
 	s.FormatCommand = ToStringPtr(settings.FormatCommand)
 
 	return nil
@@ -345,7 +343,6 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 
 func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
 	return distro.HomeVolumeSettings{
-		DeviceName:    FromStringPtr(s.DeviceName),
 		FormatCommand: FromStringPtr(s.FormatCommand),
 	}, nil
 }

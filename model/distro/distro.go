@@ -90,7 +90,6 @@ type ResourceLimits struct {
 }
 
 type HomeVolumeSettings struct {
-	DeviceName    string `bson:"device_name" json:"device_name" mapstructure:"device_name"`
 	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
 }
 
