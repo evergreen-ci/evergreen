@@ -141,7 +141,9 @@ type Connector interface {
 	// started by
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
-	FindHostsByDistroID(string) ([]host.Host, error)
+	// FindHostsByDistro finds all hosts that have either a matching distro ID
+	// or distro alias.
+	FindHostsByDistro(string) ([]host.Host, error)
 
 	// FindHostWithVolume returns the host that has the given volume attached
 	FindHostWithVolume(string) (*host.Host, error)

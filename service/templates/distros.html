@@ -268,37 +268,6 @@ Evergreen - Distros
           <br>
           <div class="panel-body panel panel-default">
             <div class="dropdown">
-              <span class="distro-menu-title">Agent Architecture:</span>
-              <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
-                ng-disabled="readOnly">
-                <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-              </button>
-              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'"
-                  role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
-              </ul>
-              <div class="icon fa fa-warning distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">Agent
-                architecture is required</div>
-            </div>
-            <div>
-              <label class="distro-label">Working Directory:</label>
-              <input required name="workDir" type="text" class="form-control" ng-model="activeDistro.work_dir"
-                placeholder="Absolute path in which agent runs tasks on host machine" ng-readonly="readOnly">
-              <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working
-                Directory is required</div>
-            </div>
-            <div>
-              <label class="distro-label">Home Volume Device Name:</label>
-              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.device_name">
-            </div>
-            <div>
-              <label class="distro-label">Home Volume Format Command:</label>
-              <input ng-readonly="readOnly" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.format_command">
-            </div>
-          </div>
-          <br>
-          <div class="panel-body panel panel-default">
-            <div class="dropdown">
               <span class="distro-menu-title">Provider:</span>
               <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
                 <strong class="distro-menu-item">[[activeDistro.provider | providerDisplay:this]]<span class="fa fa-caret-down"></span></strong>
@@ -687,10 +656,6 @@ Evergreen - Distros
 
         <div class="panel-body panel panel-default">
           <div class="dropdown">
-            <p class="distro-checkbox checkbox">
-              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.use_legacy_agent">
-              Use legacy agent for this distro.
-            </p>
             <span class="distro-menu-title">Host Bootstrap Method:</span>
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
                 <strong class="distro-menu-item">[[activeDistro.bootstrap_settings.method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
@@ -701,7 +666,8 @@ Evergreen - Distros
               </ul>
           </div>
           <br />
-          <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
+
+          <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required"> Bootstrap method is required</div>
           <div class="dropdown">
             <span class="distro-menu-title">Host Communication Method:</span>
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
@@ -715,12 +681,100 @@ Evergreen - Distros
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
 
+          <div class="dropdown">
+            <span class="distro-menu-title">Agent Architecture:</span>
+            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
+              ng-disabled="readOnly">
+              <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+            </button>
+            <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+              <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'"
+                role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
+            </ul>
+            <div class="icon fa fa-warning distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid"> Agent
+              architecture is required</div>
+          </div>
+          <div>
+            <label class="distro-label">User:</label>
+            <input required ng-readonly="readOnly" name="userName" type="text" class="form-control" ng-model="activeDistro.user"
+              placeholder="Username with which to SSH into host machine">
+            <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH
+              user is required</div>
+          </div>
+          <div>
+            <label class="distro-label">Working Directory:</label>
+            <input required name="workDir" type="text" class="form-control" ng-model="activeDistro.work_dir"
+              placeholder="Absolute path in which agent runs tasks on host machine" ng-readonly="readOnly">
+            <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid"> Working
+              Directory is required</div>
+          </div>
+
+          <div>
+            <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
+                type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
+            <label class="distro-label">Setup Script:</label>
+          </div>
+          <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
+            style="margin-left: 0px; font-family: monospace"></textarea>
+          <div ng-hide="isStatic()">
+            <label class="distro-label">Teardown Script:</label>
+            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2"
+              ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
+            <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
+              There is no guarantee this script will be run if the host is terminated by mechanisms outside of
+              Evergreen.
+            </div>
+          </div><br />
+
+          <div class="dropdown">
+            <span class="distro-menu-title">SSH Key:</span>
+            <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
+              <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>
+            </button>
+            <ul class="dropdown-menu" role="menu" style="margin-left: 63px">
+              <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys"
+                role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
+            </ul>
+            <br>
+            <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">SSH keys must be configured</div>
+          </div>
+          <div ng-form name="sshForm">
+            <label class="distro-label">SSH Options:</label>
+            <div id="ssh-options-table" class="distro-table-scroll">
+              <table style="margin-left: -8px;" class="table distro-table">
+                <tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
+                  <tr>
+                    <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="opt" type="text"
+                        ng-model="activeDistro.ssh_options[$index]" class="form-control" placeholder="e.g. BatchMode=yes">
+                    </td>
+                    <td ng-hide="readOnly">
+                      <a ng-click="form.$setDirty();removeSSHOption(opt)">
+                        <i class="fa fa-trash distro-trash-icon"></i>
+                      </a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH
+              option can not be blank<br /></div>
+            <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
+              ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
+
+            <div ng-show="isStatic()">
+              <label class="distro-label">Authorized Keys File:</label>
+              <input type="text" ng-readonly="readOnly" name="authorizedKeysFile"
+              class="form-control" ng-model="activeDistro.authorized_keys_file" placeholder="Path to file containing authorized SSH keys (e.g. ~/.ssh/authorized_keys)">
+            </div>
+          </div>
+
           <div ng-show="isWindows()">
             <label class="distro-label">Root Directory:</label>
             <input type="text" ng-required="isWindows()" name="rootDir" class="form-control" ng-model="activeDistro.bootstrap_settings.root_dir"
               placeholder="Native path to root directory" ng-readonly="readOnly">
             <div class="icon fa fa-warning distro-error" ng-show="form.rootDir.$invalid"> Root directory is required</div><br />
           </div>
+
           <div ng-show="isNonLegacyProvisioning()">
             <label class="distro-label">Jasper Binary Directory:</label>
             <input type="text" ng-required="isNonLegacyProvisioning()" ng-readonly="readOnly" name="jasperBinaryDir"
@@ -750,33 +804,34 @@ Evergreen - Distros
                 class="form-control" ng-model="activeDistro.bootstrap_settings.service_user" placeholder="Username for setting up Evergreen services">
               <div class="icon fa fa-warning distro-error" ng-show="form.serviceUser.$invalid"> Service user is required</div><br />
             </div>
-			<div ng-form name="env">
-			  <label id="env-table" class="distro-label">Environment Variables:</label>
-			  <div class="distro-table-scroll">
-				<table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.bootstrap_settings.env">
-				  <thead class="muted">
-					<tr>
-					  <th>Key</th>
-					  <th>Value</th>
-					</tr>
-				  </thead>
-				  <tbody ng-repeat="envVar in activeDistro.bootstrap_settings.env">
-					<tr>
-					  <td><input ng-readonly="readOnly" type="text" required name="envKey" ng-model="envVar.key" class="form-control"></td>
-					  <td><input ng-readonly="readOnly" type="text" ng-model="envVar.value" class="form-control"></td>
-					  <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeEnvVar(envVar)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
-					</tr>
-				  </tbody>
-				</table>
-			  </div>
-			  <div>
-				<div class="icon fa fa-warning distro-error" ng-show="env.envKey.$dirty && env.envKey.$error.required">
-					Environment key can not be blank<br />
-				</div>
-				<button type="button" ng-hide="readOnly" ng-disabled="env.envKey.$dirty && env.envKey.$invalid || env.envKey.$error.required"
-				  class="btn btn-primary" ng-click="form.$setDirty();addEnvVar()"><i class="fa fa-plus"></i>Add Environment Variable</button>
-			  </div>
-			</div>
+
+            <div ng-form name="env">
+              <label id="env-table" class="distro-label">Environment Variables:</label>
+              <div class="distro-table-scroll">
+              <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.bootstrap_settings.env">
+                <thead class="muted">
+                <tr>
+                  <th>Key</th>
+                  <th>Value</th>
+                </tr>
+                </thead>
+                <tbody ng-repeat="envVar in activeDistro.bootstrap_settings.env">
+                <tr>
+                  <td><input ng-readonly="readOnly" type="text" required name="envKey" ng-model="envVar.key" class="form-control"></td>
+                  <td><input ng-readonly="readOnly" type="text" ng-model="envVar.value" class="form-control"></td>
+                  <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeEnvVar(envVar)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
+                </tr>
+                </tbody>
+              </table>
+              </div>
+              <div>
+              <div class="icon fa fa-warning distro-error" ng-show="env.envKey.$dirty && env.envKey.$error.required">
+                Environment key can not be blank<br />
+              </div>
+              <button type="button" ng-hide="readOnly" ng-disabled="env.envKey.$dirty && env.envKey.$invalid || env.envKey.$error.required"
+                class="btn btn-primary" ng-click="form.$setDirty();addEnvVar()"><i class="fa fa-plus"></i>Add Environment Variable</button>
+              </div>
+            </div>
 
             <div ng-show="isLinux()">
               <label class="distro-label">Resource Limits:</label><br />
@@ -809,13 +864,33 @@ Evergreen - Distros
               <div class="icon fa fa-warning distro-error" ng-show="form.virtualMemory.$invalid"> Invalid max virtual memory</div><br />
             </div>
           </div>
-        </div>
-        <div>
-          <label class="distro-label">User:</label>
-          <input required ng-readonly="readOnly" name="userName" type="text" class="form-control" ng-model="activeDistro.user"
-            placeholder="Username with which to SSH into host machine">
-          <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH
-            user is required</div><br>
+          <div>
+            <label class="distro-label">Home Volume Format Command:</label>
+            <input ng-readonly="readOnly" name="formatCommand" ng-required="activeDistro.is_virtual_workstation" type="text" class="form-control" ng-model="activeDistro.home_volume_settings.format_command">
+            <div class="icon fa fa-warning distro-error"
+              ng-show="form.formatCommand.$dirty && form.formatCommand.$error.required || form.formatCommand.$invalid"> Format command is required
+            </div>
+          </div>
+          <div ng-show="activeDistro.is_virtual_workstation">
+            <label class="distro-label">Icecream Scheduler Host:</label>
+            <input ng-required="activeDistro.is_virtual_workstation" ng-readonly="readOnly" name="icecreamSchedulerHost" type="text"
+              class="form-control" ng-model="activeDistro.icecream_settings.scheduler_host"
+              placeholder="Host name to connect to the icecream scheduler">
+            <div class="icon fa fa-warning distro-error"
+              ng-show="form.icecreamSchedulerHost.$dirty && form.icecreamSchedulerHost.$error.required || form.icecreamSchedulerHost.$invalid"> Icecream scheduler host is required
+            </div><br>
+            <label class="distro-label">Icecream Config File Path:</label>
+            <input ng-required="activeDistro.is_virtual_workstation" ng-readonly="readOnly" name="icecreamConfigPath" type="text"
+              class="form-control" ng-model="activeDistro.icecream_settings.config_path"
+              placeholder="Path to the icecream config file">
+            <div class="icon fa fa-warning distro-error"
+              ng-show="form.icecreamConfigPath.$dirty && form.icecreamConfigPath.$error.required || form.icecreamConfigPath.$invalid"> Icecream config path is required
+            </div><br>
+          </div>
+          <p class="distro-checkbox checkbox">
+            <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.use_legacy_agent">
+            Use legacy version of agent for this distro.
+          </p>
         </div>
         <div class="icon fa fa-warning distro-error" ng-show="form.communicationMethodForm.$dirty && form.communicationMethodForm.$invalid || communicationMethodForm.$error.required">Communication method is required</div>
         <div class="dropdown">
@@ -828,67 +903,7 @@ Evergreen - Distros
                 role="presentation"><a role="menuitem" tabindex="-1">[[cloneMethod.display]]</a></li>
             </ul>
         </div>
-        <br />
         <div class="icon fa fa-warning distro-error" ng-show="form.cloneMethodForm.$dirty && form.cloneMethodForm.$invalid || cloneMethodForm.$error.required">Clone method is required</div>
-        <div class="dropdown">
-          <span class="distro-menu-title">SSH Key:</span>
-          <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
-            <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>
-          </button>
-          <ul class="dropdown-menu" role="menu" style="margin-left: 63px">
-            <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys"
-              role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
-          </ul>
-          <br>
-          <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">SSH keys must be configured</div>
-        </div>
-        <div ng-form name="sshForm">
-          <label class="distro-label">SSH Options:</label>
-          <div id="ssh-options-table" class="distro-table-scroll">
-            <table style="margin-left: -8px;" class="table distro-table">
-              <tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
-                <tr>
-                  <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="opt" type="text"
-                      ng-model="activeDistro.ssh_options[$index]" class="form-control" placeholder="e.g. BatchMode=yes">
-                  </td>
-                  <td ng-hide="readOnly">
-                    <a ng-click="form.$setDirty();removeSSHOption(opt)">
-                      <i class="fa fa-trash distro-trash-icon"></i>
-                    </a>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH
-            option can not be blank<br /></div>
-          <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
-            ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
-
-		  <div ng-show="isStatic()">
-		    <label class="distro-label">Authorized Keys File:</label>
-		    <input type="text" ng-readonly="readOnly" name="authorizedKeysFile"
-		  	class="form-control" ng-model="activeDistro.authorized_keys_file" placeholder="Path to file containing authorized SSH keys (e.g. ~/.ssh/authorized_keys)">
-		  </div>
-        </div>
-        <div>
-          <div>
-            <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
-                type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
-            <label class="distro-label">Setup Script:</label>
-          </div>
-          <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
-            style="margin-left: 0px; font-family: monospace"></textarea>
-          <div ng-hide="isStatic()">
-            <label class="distro-label">Teardown Script:</label>
-            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2"
-              ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
-            <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
-              There is no guarantee this script will be run if the host is terminated by mechanisms outside of
-              Evergreen.
-            </div>
-          </div>
-        </div>
         <div>
           <div ng-form name="expansions">
             <label class="distro-label">Expansions:</label>
@@ -933,7 +948,7 @@ Evergreen - Distros
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
               Allow users to spawn these hosts for personal use.
             </p>
-            <p class="distro-checkbox checkbox" ng-show="activeDistro.spawn_allowed && isLinux() && activeDistro.home_volume_settings.format_command">
+            <p class="distro-checkbox checkbox" ng-disabled="!activeDistro.spawn_allowed || !isLinux()">
               <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.is_virtual_workstation">
               Allow users to use spawnhosts of this distro as virtual workstations.
             </p>

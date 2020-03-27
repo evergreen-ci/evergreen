@@ -107,6 +107,7 @@ func TestXMLParsing(t *testing.T) {
 					So(res[0].Failures, ShouldEqual, 0)
 					So(res[0].Name, ShouldEqual, "com.mongodb.operation.InsertOperationSpecification")
 					So(res[0].TestCases[0].Name, ShouldEqual, "should return correct result")
+					So(res[0].Time, ShouldEqual, 1000341.112)
 					So(res[0].SysOut, ShouldEqual, "out message")
 					So(res[0].SysErr, ShouldEqual, "error message")
 				})

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -30,7 +31,7 @@ func GetDirectoryOfFile() string {
 
 func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
 	// make sure an override file is provided
-	if skip := os.Getenv("SKIP_INTEGRATION_TESTS"); skip != "" {
+	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
 		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
 	}
 	if (*settingsOverride) == "" {
