@@ -547,6 +547,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
+      newDistro.provider_settings = _.clone($scope.activeDistro.provider_settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.bootstrap_settings = _.clone($scope.activeDistro.bootstrap_settings);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
