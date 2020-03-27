@@ -543,7 +543,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return nil
 		}
-		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "can't write icecream config file",
 				"host_id": j.host.Id,
