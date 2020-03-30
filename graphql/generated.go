@@ -1821,7 +1821,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
-  patchMetadata: PatchMetadata
+  patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
   ingestTime: Time
@@ -1860,7 +1860,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata!
 }
 
 type Projects {
@@ -5316,11 +5316,14 @@ func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*PatchMetadata)
 	fc.Result = res
-	return ec.marshalOPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx, field.Selections, res)
+	return ec.marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -6561,11 +6564,14 @@ func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*BaseTaskMetadata)
 	fc.Result = res
-	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
+	return ec.marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -9831,6 +9837,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patchMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "id":
@@ -9972,6 +9981,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_baseTaskMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -10547,6 +10559,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
+	return ec._BaseTaskMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._BaseTaskMetadata(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -11048,6 +11074,20 @@ func (ec *executionContext) marshalNPatchBuildVariant2ᚖgithubᚗcomᚋevergree
 		return graphql.Null
 	}
 	return ec._PatchBuildVariant(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
+	return ec._PatchMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *PatchMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._PatchMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx context.Context, v interface{}) (PatchReconfigure, error) {
@@ -11679,17 +11719,6 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
-	return ec._BaseTaskMetadata(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._BaseTaskMetadata(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -11875,17 +11904,6 @@ func (ec *executionContext) marshalOPatchDuration2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._PatchDuration(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
-	return ec._PatchMetadata(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *PatchMetadata) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._PatchMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchTime2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v PatchTime) graphql.Marshaler {

@@ -207,7 +207,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
-  patchMetadata: PatchMetadata
+  patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
   ingestTime: Time
@@ -246,7 +246,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata!
 }
 
 type Projects {
