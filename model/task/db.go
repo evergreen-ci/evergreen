@@ -1084,17 +1084,18 @@ func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	coll := env.DB().Collection(Collection)
-	filter := bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId}
-	opts := options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{filter}})
-	res := coll.FindOneAndUpdate(ctx,
+	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
 			IdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
 		},
-		opts,
+		options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
+			},
+		}}),
 	)
 	return res.Err()
 }
