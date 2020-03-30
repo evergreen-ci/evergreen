@@ -201,6 +201,11 @@ type PatchMetadata {
   patchNumber: Int!
 }
 
+type BaseTaskMetadata {
+  baseTaskDuration: Duration
+  baseTaskLink: String!
+}
+
 type Task {
   patchMetadata: PatchMetadata
   id: String!
@@ -241,7 +246,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseCommitDuration: Duration
+  baseTaskMetadata: BaseTaskMetadata
 }
 
 type Projects {

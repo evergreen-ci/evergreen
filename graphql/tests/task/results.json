@@ -12,28 +12,42 @@
       }
     },
     {
-      "query_file": "baseCommitDuration.graphql",
+      "query_file": "baseTaskMetadata.graphql",
       "result": {
-        "data": { "task": { "id": "1", "baseCommitDuration": 30000000 } }
+        "data": {
+          "task": {
+            "baseTaskMetadata": {
+              "baseTaskDuration": 30000000,
+              "baseTaskLink": "/task/base-task-1"
+            }
+          }
+        }
       }
     },
     {
-      "query_file": "baseCommitDuration-base-task-not-finished.graphql",
+      "query_file": "baseTaskMetadata-base-task-not-finished.graphql",
       "result": {
-        "data": { "task": { "id": "2", "baseCommitDuration": null } }
+        "data": {
+          "task": {
+            "baseTaskMetadata": {
+              "baseTaskDuration": null,
+              "baseTaskLink": "/task/base-task-2"
+            }
+          }
+        }
       }
     },
     {
-      "query_file": "baseCommitDuration-no-base-task.graphql",
+      "query_file": "baseTaskMetadata-no-base-task.graphql",
       "result": {
         "errors": [
           {
             "message": "Unable to find task taskity_task on base commit",
-            "path": ["task", "baseCommitDuration"],
+            "path": ["task", "baseTaskMetadata"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
-        "data": { "task": { "id": "taskity_task", "baseCommitDuration": null } }
+        "data": { "task": { "baseTaskMetadata": null } }
       }
     },
     {

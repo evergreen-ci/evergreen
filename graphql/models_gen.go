@@ -11,6 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type BaseTaskMetadata struct {
+	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
+	BaseTaskLink     string             `json:"baseTaskLink"`
+}
+
 type Dependency struct {
 	Name           string         `json:"name"`
 	MetStatus      MetStatus      `json:"metStatus"`
