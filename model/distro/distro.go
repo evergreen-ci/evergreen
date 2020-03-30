@@ -807,8 +807,8 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 	return nil
 }
 
-// LegacyBootstrap returns whether hosts of this distro are bootstrapped using the legacy
-// method.
+// LegacyBootstrap returns whether hosts of this distro are bootstrapped using
+// the legacy method.
 func (d *Distro) LegacyBootstrap() bool {
 	return d.BootstrapSettings.Method == "" || d.BootstrapSettings.Method == BootstrapMethodLegacySSH
 }
