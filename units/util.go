@@ -36,6 +36,9 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 }
 
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h host.Host, reason string) error {
+	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostTerminated {
+		return nil
+	}
 	err := h.DisablePoisonedHost(reason)
 	if err != nil {
 		return errors.Wrap(err, "error disabling poisoned host")

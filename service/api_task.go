@@ -285,9 +285,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err = units.HandlePoisonedHost(r.Context(), as.env, currentHost, msg)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.WrapError(units.HandlePoisonedHost(r.Context(), as.env, currentHost, msg), message.Fields{
 				"message": "unable to disable poisoned host",
+				"host":    currentHost.Id,
 			}))
 		}
 
