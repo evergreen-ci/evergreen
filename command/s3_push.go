@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -38,16 +37,7 @@ func (c *s3Push) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
-	if err := c.validateParams(); err != nil {
-		return errors.Wrapf(err, "error validating %s params", c.Name())
-	}
 	return nil
-}
-
-func (c *s3Push) validateParams() error {
-	catcher := grip.NewBasicCatcher()
-	// kim: TODO: validate buildvariants?
-	return catcher.Resolve()
 }
 
 func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
@@ -67,13 +57,17 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "could not find S3 task bucket")
 	}
 
+	wd, err := conf.GetWorkingDirectory("")
+	if err != nil {
+		return errors.Wrap(err, "could not get task working directory")
+	}
 	putMsg := "Pushing task directory files into S3"
 	if c.ExcludeFilter != "" {
 		putMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
 	logger.Task().Infof(putMsg)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
-		Local:   conf.WorkDir,
+		Local:   wd,
 		Remote:  s3TaskRemotePath(conf),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {

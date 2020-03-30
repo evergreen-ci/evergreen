@@ -45,6 +45,7 @@ func init() {
 		"s3.get":                        s3GetFactory,
 		"s3.put":                        s3PutFactory,
 		"s3Copy.copy":                   s3CopyFactory,
+		"s3.push":                       s3PushFactory,
 		"shell.cleanup":                 shellCleanupFactory,
 		"shell.exec":                    shellExecFactory,
 		"shell.track":                   shellTrackFactory,
