@@ -514,7 +514,15 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	var logReader io.ReadCloser
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), uis.Settings.LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, DefaultLogMessages, execution, true)
+	opts := apimodels.GetBuildloggerLogsOptions{
+		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		TaskID:        projCtx.Task.Id,
+		Execution:     execution,
+		PrintPriority: true,
+		Tail:          DefaultLogMessages,
+		LogType:       logType,
+	}
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -578,7 +586,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	var logReader io.ReadCloser
 
 	// check buildlogger logs first
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, uis.Settings.LoggerConfig.BuildloggerBaseURL, projCtx.Task.Id, logType, 0, execution, !raw)
+	opts := apimodels.GetBuildloggerLogsOptions{
+		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		TaskID:        projCtx.Task.Id,
+		Execution:     execution,
+		PrintPriority: !raw,
+		LogType:       logType,
+	}
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
