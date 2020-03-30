@@ -142,9 +142,7 @@
           "task": {
             "id": "taskity_task",
             "patchMetadata": {
-              "patchNumber": 1234,
-              "author": "arjun",
-              "githash": "ca82a6dff817ec66f44342007202690a93763949"
+              "author": "arjun"
             }
           }
         }
@@ -156,7 +154,7 @@
         "data": {
           "task": {
             "hostId": "i-0bb70e2ac4c1a9ac8",
-            "hostLink": "https://localhost:8443/host/i-0bb70e2ac4c1a9ac8"
+            "hostLink": "http://localhost/host/i-0bb70e2ac4c1a9ac8"
           }
         }
       }

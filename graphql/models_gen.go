@@ -56,9 +56,7 @@ type PatchDuration struct {
 }
 
 type PatchMetadata struct {
-	Githash     string `json:"githash"`
-	Author      string `json:"author"`
-	PatchNumber int    `json:"patchNumber"`
+	Author string `json:"author"`
 }
 
 type PatchReconfigure struct {

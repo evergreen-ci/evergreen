@@ -2,9 +2,7 @@
   task(taskId: "taskity_task") {
     id
     patchMetadata {
-      patchNumber
       author
-      githash
     }
   }
 }

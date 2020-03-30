@@ -145,9 +145,7 @@ type ComplexityRoot struct {
 	}
 
 	PatchMetadata struct {
-		Author      func(childComplexity int) int
-		Githash     func(childComplexity int) int
-		PatchNumber func(childComplexity int) int
+		Author func(childComplexity int) int
 	}
 
 	PatchTime struct {
@@ -793,20 +791,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchMetadata.Author(childComplexity), true
-
-	case "PatchMetadata.githash":
-		if e.complexity.PatchMetadata.Githash == nil {
-			break
-		}
-
-		return e.complexity.PatchMetadata.Githash(childComplexity), true
-
-	case "PatchMetadata.patchNumber":
-		if e.complexity.PatchMetadata.PatchNumber == nil {
-			break
-		}
-
-		return e.complexity.PatchMetadata.PatchNumber(childComplexity), true
 
 	case "PatchTime.finished":
 		if e.complexity.PatchTime.Finished == nil {
@@ -1810,9 +1794,7 @@ type Dependency {
 }
 
 type PatchMetadata {
-  githash: String!
   author: String!
-  patchNumber: Int!
 }
 
 type BaseTaskMetadata {
@@ -4295,40 +4277,6 @@ func (ec *executionContext) _PatchDuration_time(ctx context.Context, field graph
 	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchMetadata_githash(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Githash, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4361,40 +4309,6 @@ func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field gra
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchMetadata_patchNumber(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PatchNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTime_started(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
@@ -9480,18 +9394,8 @@ func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PatchMetadata")
-		case "githash":
-			out.Values[i] = ec._PatchMetadata_githash(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "author":
 			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "patchNumber":
-			out.Values[i] = ec._PatchMetadata_patchNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

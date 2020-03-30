@@ -146,7 +146,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 
 		if v.HostId != "" {
-			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().ApiUrl, v.HostId)
+			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().Ui.Url, v.HostId)
 			at.HostLink = &hostLink
 		}
 

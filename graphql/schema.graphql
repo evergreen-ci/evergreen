@@ -196,9 +196,7 @@ type Dependency {
 }
 
 type PatchMetadata {
-  githash: String!
   author: String!
-  patchNumber: Int!
 }
 
 type BaseTaskMetadata {

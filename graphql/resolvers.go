@@ -826,9 +826,7 @@ func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	patchMetadata := PatchMetadata{
-		Author:      *patch.Author,
-		Githash:     *patch.Githash,
-		PatchNumber: patch.PatchNumber,
+		Author: *patch.Author,
 	}
 	return &patchMetadata, nil
 }
