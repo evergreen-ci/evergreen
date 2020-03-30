@@ -30,6 +30,8 @@ models:
         resolver: true
       reliesOn:
         resolver: true
+      patchMetadata:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

@@ -139,6 +139,12 @@ type ComplexityRoot struct {
 		TimeTaken func(childComplexity int) int
 	}
 
+	PatchMetadata struct {
+		Author      func(childComplexity int) int
+		Githash     func(childComplexity int) int
+		PatchNumber func(childComplexity int) int
+	}
+
 	PatchTime struct {
 		Finished    func(childComplexity int) int
 		Started     func(childComplexity int) int
@@ -202,6 +208,7 @@ type ComplexityRoot struct {
 		IngestTime         func(childComplexity int) int
 		Logs               func(childComplexity int) int
 		Order              func(childComplexity int) int
+		PatchMetadata      func(childComplexity int) int
 		PatchNumber        func(childComplexity int) int
 		Priority           func(childComplexity int) int
 		ProjectId          func(childComplexity int) int
@@ -310,6 +317,8 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 }
 type TaskResolver interface {
+	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
+
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
@@ -758,6 +767,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchDuration.TimeTaken(childComplexity), true
 
+	case "PatchMetadata.author":
+		if e.complexity.PatchMetadata.Author == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.Author(childComplexity), true
+
+	case "PatchMetadata.githash":
+		if e.complexity.PatchMetadata.Githash == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.Githash(childComplexity), true
+
+	case "PatchMetadata.patchNumber":
+		if e.complexity.PatchMetadata.PatchNumber == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.PatchNumber(childComplexity), true
+
 	case "PatchTime.finished":
 		if e.complexity.PatchTime.Finished == nil {
 			break
@@ -1126,6 +1156,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Order(childComplexity), true
+
+	case "Task.patchMetadata":
+		if e.complexity.Task.PatchMetadata == nil {
+			break
+		}
+
+		return e.complexity.Task.PatchMetadata(childComplexity), true
 
 	case "Task.patchNumber":
 		if e.complexity.Task.PatchNumber == nil {
@@ -1745,7 +1782,14 @@ type Dependency {
   buildVariant: String!
 }
 
+type PatchMetadata {
+  githash: String!
+  author: String!
+  patchNumber: Int!
+}
+
 type Task {
+  patchMetadata: PatchMetadata
   id: String!
   createTime: Time
   ingestTime: Time
@@ -4153,6 +4197,108 @@ func (ec *executionContext) _PatchDuration_time(ctx context.Context, field graph
 	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _PatchMetadata_githash(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Githash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Author, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchMetadata_patchNumber(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PatchTime_started(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5046,6 +5192,37 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	res := resTmp.([]*apimodels.LogMessage)
 	fc.Result = res
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().PatchMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*PatchMetadata)
+	fc.Result = res
+	return ec.marshalOPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -9128,6 +9305,43 @@ func (ec *executionContext) _PatchDuration(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var patchMetadataImplementors = []string{"PatchMetadata"}
+
+func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.SelectionSet, obj *PatchMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, patchMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PatchMetadata")
+		case "githash":
+			out.Values[i] = ec._PatchMetadata_githash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "author":
+			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "patchNumber":
+			out.Values[i] = ec._PatchMetadata_patchNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var patchTimeImplementors = []string{"PatchTime"}
 
 func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet, obj *PatchTime) graphql.Marshaler {
@@ -9450,6 +9664,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Task")
+		case "patchMetadata":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_patchMetadata(ctx, field, obj)
+				return res
+			})
 		case "id":
 			out.Values[i] = ec._Task_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11479,6 +11704,17 @@ func (ec *executionContext) marshalOPatchDuration2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._PatchDuration(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
+	return ec._PatchMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *PatchMetadata) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PatchMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchTime2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx context.Context, sel ast.SelectionSet, v PatchTime) graphql.Marshaler {

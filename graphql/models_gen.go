@@ -50,6 +50,12 @@ type PatchDuration struct {
 	Time      *PatchTime `json:"time"`
 }
 
+type PatchMetadata struct {
+	Githash     string `json:"githash"`
+	Author      string `json:"author"`
+	PatchNumber int    `json:"patchNumber"`
+}
+
 type PatchReconfigure struct {
 	Description   string          `json:"description"`
 	VariantsTasks []*VariantTasks `json:"variantsTasks"`

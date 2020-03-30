@@ -820,6 +820,19 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &patch.PatchNumber, nil
 }
 
+func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
+	patch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+	}
+	patchMetadata := PatchMetadata{
+		Author:      *patch.Author,
+		Githash:     *patch.Githash,
+		PatchNumber: patch.PatchNumber,
+	}
+	return &patchMetadata, nil
+}
+
 func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := r.sc.FindTaskById(*at.Id)
 	if err != nil {

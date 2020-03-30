@@ -120,6 +120,21 @@
           }
         }
       }
+    },
+    {
+      "query_file": "patchMetadata.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "patchMetadata": {
+              "patchNumber": 1234,
+              "author": "arjun",
+              "githash": "ca82a6dff817ec66f44342007202690a93763949"
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -195,7 +195,14 @@ type Dependency {
   buildVariant: String!
 }
 
+type PatchMetadata {
+  githash: String!
+  author: String!
+  patchNumber: Int!
+}
+
 type Task {
+  patchMetadata: PatchMetadata
   id: String!
   createTime: Time
   ingestTime: Time
