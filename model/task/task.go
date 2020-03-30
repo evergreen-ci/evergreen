@@ -362,25 +362,9 @@ func (t *Task) AddDependency(d Dependency) error {
 			DependsOnKey: d,
 		},
 	}
+	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
-			// If the dependency in the DB is attainable and we want to set it unattainable, update dependency.
-			// Otherwise, no update needed.
-			if !existingDependency.Unattainable && d.Unattainable {
-				query[DependsOnKey] = bson.M{
-					"$elemMatch": bson.M{
-						DependencyTaskIdKey: d.TaskId,
-						DependencyStatusKey: d.Status,
-					},
-				}
-				query[bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey)] = d.Status
-				update = bson.M{
-					"$set": bson.M{
-						bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): d.Unattainable,
-					},
-				}
-				break
-			}
 			return nil
 		}
 	}
