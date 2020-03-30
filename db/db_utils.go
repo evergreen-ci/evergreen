@@ -205,6 +205,15 @@ func FindAll(collection string, query interface{},
 	return errors.WithStack(q.Skip(skip).Limit(limit).All(out))
 }
 
+func FindOneAndUpdate(collection string, query interface{}, update interface{}, opts *options.FindOneAndUpdateOptions) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(collection)
+	res := coll.FindOneAndUpdate(ctx, query, update, opts)
+	return res.Err()
+}
+
 // Update updates one matching document in the collection.
 func Update(collection string, query interface{}, update interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

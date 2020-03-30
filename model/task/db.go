@@ -12,6 +12,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -1038,6 +1039,15 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 		Collection,
 		query,
 		update,
+	)
+}
+
+func FindOneAndUpdate(query interface{}, update interface{}, opts *options.FindOneAndUpdateOptions) error {
+	return db.FindOneAndUpdate(
+		Collection,
+		query,
+		update,
+		opts,
 	)
 }
 
