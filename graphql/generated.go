@@ -297,7 +297,7 @@ type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
-	BaseVersionID(ctx context.Context, obj *model.APIPatch) (string, error)
+	BaseVersionID(ctx context.Context, obj *model.APIPatch) (*string, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
@@ -1688,7 +1688,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  baseVersionId: String!
+  baseVersionId: String
   moduleCodeChanges: [ModuleCodeChange!]!
 }
 
@@ -3893,14 +3893,11 @@ func (ec *executionContext) _Patch_baseVersionId(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_moduleCodeChanges(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -9071,9 +9068,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Patch_baseVersionId(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "moduleCodeChanges":

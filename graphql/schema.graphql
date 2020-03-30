@@ -129,7 +129,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  baseVersionId: String!
+  baseVersionId: String
   moduleCodeChanges: [ModuleCodeChange!]!
 }
 
