@@ -802,6 +802,10 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
+	// Ignore hosts spawned by tasks.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
+		return nil
+	}
 	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}

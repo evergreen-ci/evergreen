@@ -801,6 +801,9 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 	if (h.Distro.LegacyBootstrap() || h.Distro.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
+		return nil, errors.New("hosts without any provisioning method cannot use Jasper")
+	}
 
 	settings := env.Settings()
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
