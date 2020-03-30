@@ -842,7 +842,6 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 		StatusKey:      evergreen.HostProvisioning,
 		ProvisionedKey: true,
 		StartedByKey:   bson.M{"$ne": evergreen.User},
-		UserHostKey:    true,
 		bootstrapKey:   distro.BootstrapMethodUserData,
 	}))
 	if err != nil {
