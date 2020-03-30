@@ -1042,15 +1042,6 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
-func FindOneAndUpdate(query interface{}, update interface{}, opts *options.FindOneAndUpdateOptions) error {
-	return db.FindOneAndUpdate(
-		Collection,
-		query,
-		update,
-		opts,
-	)
-}
-
 // Remove deletes the task of the given id from the database
 func Remove(id string) error {
 	return db.Remove(
@@ -1087,4 +1078,23 @@ func FindProjectForTask(taskID string) (string, error) {
 		return "", errors.New("task not found")
 	}
 	return t.Project, nil
+}
+
+func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(Collection)
+	filter := bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId}
+	opts := options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{filter}})
+	res := coll.FindOneAndUpdate(ctx,
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
+		},
+		opts,
+	)
+	return res.Err()
 }

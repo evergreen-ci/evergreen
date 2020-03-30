@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1202,17 +1201,8 @@ func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) e
 			t.DependsOn[i].Unattainable = unattainable
 		}
 	}
-	filter := bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependency.Id}
-	opts := options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{filter}})
-	return FindOneAndUpdate(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
-		},
-		opts,
-	)
+
+	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
 }
 
 // SetCost updates the task's Cost field
