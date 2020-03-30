@@ -226,6 +226,7 @@ type Task {
   reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
+  hostLink: String
   restarts: Int
   execution: Int
   order: Int

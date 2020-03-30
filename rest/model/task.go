@@ -39,6 +39,7 @@ type APITask struct {
 	DependsOn          []APIDependency  `json:"depends_on"`
 	DisplayName        *string          `json:"display_name"`
 	HostId             *string          `json:"host_id"`
+	HostLink           *string          `json:"host_link"`
 	Restarts           int              `json:"restarts"`
 	Execution          int              `json:"execution"`
 	Order              int              `json:"order"`
@@ -143,6 +144,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
 		}
+
+		if v.HostId != "" {
+			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().ApiUrl, v.HostId)
+			at.HostLink = &hostLink
+		}
+
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}
 			for _, t := range v.ExecutionTasks {

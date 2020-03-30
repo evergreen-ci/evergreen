@@ -204,6 +204,7 @@ type ComplexityRoot struct {
 		GenerateTask       func(childComplexity int) int
 		GeneratedBy        func(childComplexity int) int
 		HostId             func(childComplexity int) int
+		HostLink           func(childComplexity int) int
 		Id                 func(childComplexity int) int
 		IngestTime         func(childComplexity int) int
 		Logs               func(childComplexity int) int
@@ -1129,6 +1130,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.HostId(childComplexity), true
 
+	case "Task.hostLink":
+		if e.complexity.Task.HostLink == nil {
+			break
+		}
+
+		return e.complexity.Task.HostLink(childComplexity), true
+
 	case "Task.id":
 		if e.complexity.Task.Id == nil {
 			break
@@ -1813,6 +1821,7 @@ type Task {
   reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
+  hostLink: String
   restarts: Int
   execution: Int
   order: Int
@@ -5968,6 +5977,37 @@ func (ec *executionContext) _Task_hostId(ctx context.Context, field graphql.Coll
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_hostLink(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_restarts(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -9760,6 +9800,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "hostId":
 			out.Values[i] = ec._Task_hostId(ctx, field, obj)
+		case "hostLink":
+			out.Values[i] = ec._Task_hostLink(ctx, field, obj)
 		case "restarts":
 			out.Values[i] = ec._Task_restarts(ctx, field, obj)
 		case "execution":
