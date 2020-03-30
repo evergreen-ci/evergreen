@@ -72,6 +72,7 @@ func NewHostSetupJob(env evergreen.Environment, h host.Host, id string) amboy.Jo
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
 	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	return j
 }
@@ -836,13 +837,13 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
 
 	// write to fstab so the volume is mounted on restart
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("%s /%s auto noatime 0 0\n", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem appending to fstab")
 	}
