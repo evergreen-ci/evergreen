@@ -1140,15 +1140,17 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	}
 	defer m.client.Close()
 
-	opts := generateDeviceNameOptions{isWindows: h.Distro.IsWindows()}
+	opts := generateDeviceNameOptions{
+		isWindows:           h.Distro.IsWindows(),
+		existingDeviceNames: h.HostVolumeDeviceNames(),
+	}
 	// if no device name is provided, generate a unique device name
 	if attachment.DeviceName == "" {
-		deviceName, err := getGeneratedDeviceNameForVolume(ctx, h.Distro.IsWindows())
+		deviceName, err := generateDeviceNameForVolume(opts)
 		if err != nil {
 			return errors.Wrap(err, "error generating initial device name")
 		}
 		attachment.DeviceName = deviceName
-		opts.shouldGenerate = true
 	}
 
 	volume, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{

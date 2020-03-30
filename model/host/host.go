@@ -2289,6 +2289,14 @@ func (h *Host) HomeVolume() *VolumeAttachment {
 	return nil
 }
 
+func (h *Host) HostVolumeDeviceNames() []string {
+	res := []string{}
+	for _, vol := range h.Volumes {
+		res = append(res, vol.DeviceName)
+	}
+	return res
+}
+
 // FindHostWithVolume finds the host associated with the
 // specified volume ID.
 func FindHostWithVolume(volumeID string) (*Host, error) {

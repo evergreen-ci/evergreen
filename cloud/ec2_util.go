@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"os/user"
 	"regexp"
@@ -324,35 +323,24 @@ type Terms struct {
 	}
 }
 
-func getGeneratedDeviceNameForVolume(ctx context.Context, isWindowsHost bool) (string, error) {
-	deviceName := ""
-	err := util.Retry(
-		ctx,
-		func() (bool, error) {
-			deviceName = generateDeviceNameForVolume(isWindowsHost)
-			exists, err := host.HostExistsWithVolumeWithDeviceName(deviceName)
-			if err != nil {
-				return true, errors.Wrapf(err, "error checking if device name already exists")
-			}
-			if !exists {
-				return false, nil
-			}
-			return true, errors.New("generated device name already exists")
-		}, 500, 1, 10)
-
-	return deviceName, err
-}
-
 // formats /dev/sd[f-p]and xvd[f-p] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-func generateDeviceNameForVolume(isWindowsHost bool) string {
+func generateDeviceNameForVolume(opts generateDeviceNameOptions) (string, error) {
 	letters := "fghijklmnop"
-	rand.Seed(time.Now().Unix())
-	pattern := "/dev/sd%c"
-	if isWindowsHost {
-		pattern = "xvd%c"
+	if len(opts.existingDeviceNames) >= len(letters) {
+		return "", errors.Errorf("host cannot have more than '%d' volumes", len(letters))
 	}
 
-	return fmt.Sprintf(pattern, letters[rand.Intn(len(letters))])
+	pattern := "/dev/sd%c"
+	if opts.isWindows {
+		pattern = "xvd%c"
+	}
+	for _, char := range letters {
+		curName := fmt.Sprintf(pattern, char)
+		if !util.StringSliceContains(opts.existingDeviceNames, curName) {
+			return curName, nil
+		}
+	}
+	return "", errors.New("no available device names to generate")
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
