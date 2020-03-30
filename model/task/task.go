@@ -1201,14 +1201,13 @@ func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) e
 			t.DependsOn[i].Unattainable = unattainable
 		}
 	}
-
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependency.Id,
 		},
 		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[]", DependencyUnattainableKey): unattainable},
 		},
 	)
 }
@@ -2006,7 +2005,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	return tasks, nil
 }
 
-// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+// UpdateDependsOn appends new dependencies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
