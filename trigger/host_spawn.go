@@ -32,7 +32,7 @@ func makeSpawnHostProvisioningTriggers() eventHandler {
 }
 
 func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.host.StartedBy == evergreen.User {
+	if !t.host.UserHost {
 		return nil, nil
 	}
 
@@ -159,7 +159,7 @@ func makeSpawnHostStateChangeTriggers() eventHandler {
 }
 
 func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.host.StartedBy == evergreen.User {
+	if !t.host.UserHost {
 		return nil, nil
 	}
 

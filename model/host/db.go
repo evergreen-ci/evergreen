@@ -469,14 +469,19 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 // FindByNeedsJasperRestart finds all hosts that are ready and waiting to
 // restart their Jasper service.
 func FindByNeedsJasperRestart() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return Find(db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey:        bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		RunningTaskKey:      bson.M{"$exists": false},
 		HasContainersKey:    bson.M{"$ne": true},
 		ParentIDKey:         bson.M{"$exists": false},
 		NeedsReprovisionKey: ReprovisionJasperRestart,
 		"$or": []bson.M{
-			{StartedByKey: bson.M{"$ne": evergreen.User}},
+			{"$and": []bson.M{
+				{StartedByKey: bson.M{"$ne": evergreen.User}},
+				{UserHostKey: true},
+			}},
 			{NeedsNewAgentMonitorKey: true},
 		},
 	}))
@@ -638,7 +643,7 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByExpiringBetween produces a query that returns  any user-spawned hosts
+// ByExpiringBetween produces a query that returns any host not running tasks
 // that will expire between the specified times.
 func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 	return db.Query(bson.M{
@@ -837,6 +842,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 		StatusKey:      evergreen.HostProvisioning,
 		ProvisionedKey: true,
 		StartedByKey:   bson.M{"$ne": evergreen.User},
+		UserHostKey:    true,
 		bootstrapKey:   distro.BootstrapMethodUserData,
 	}))
 	if err != nil {
