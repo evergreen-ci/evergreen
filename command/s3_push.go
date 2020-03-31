@@ -34,7 +34,7 @@ func (*s3Push) Name() string {
 }
 
 const (
-	defaultS3MaxRetries = 10
+	defaultS3MaxRetries uint = 10
 )
 
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
@@ -48,6 +48,10 @@ func (c *s3Push) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	if err := c.expandParams(conf); err != nil {
+		return errors.Wrap(err, "error applying expansions to parameters")
+	}
+
 	httpClient := util.GetHTTPClient()
 	defer util.PutHTTPClient(httpClient)
 
@@ -102,6 +106,7 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 	if c.bucket != nil {
 		return nil
 	}
+
 	if err := conf.S3Data.Validate(); err != nil {
 		return errors.Wrap(err, "invalid S3 task credentials")
 	}
@@ -122,5 +127,6 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 		DeleteOnSync: true,
 	}, bucket)
 	c.bucket = bucket
+
 	return nil
 }
