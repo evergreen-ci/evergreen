@@ -47,6 +47,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	BaseTaskMetadata struct {
+		BaseTaskDuration func(childComplexity int) int
+		BaseTaskLink     func(childComplexity int) int
+	}
+
 	Dependency struct {
 		BuildVariant   func(childComplexity int) int
 		MetStatus      func(childComplexity int) int
@@ -139,6 +144,10 @@ type ComplexityRoot struct {
 		TimeTaken func(childComplexity int) int
 	}
 
+	PatchMetadata struct {
+		Author func(childComplexity int) int
+	}
+
 	PatchTime struct {
 		Finished    func(childComplexity int) int
 		Started     func(childComplexity int) int
@@ -178,44 +187,46 @@ type ComplexityRoot struct {
 	}
 
 	Task struct {
-		Aborted            func(childComplexity int) int
-		Activated          func(childComplexity int) int
-		ActivatedBy        func(childComplexity int) int
-		ActivatedTime      func(childComplexity int) int
-		BaseCommitDuration func(childComplexity int) int
-		BuildId            func(childComplexity int) int
-		BuildVariant       func(childComplexity int) int
-		CreateTime         func(childComplexity int) int
-		Details            func(childComplexity int) int
-		DispatchTime       func(childComplexity int) int
-		DisplayName        func(childComplexity int) int
-		DisplayOnly        func(childComplexity int) int
-		DistroId           func(childComplexity int) int
-		Execution          func(childComplexity int) int
-		ExecutionTasks     func(childComplexity int) int
-		ExpectedDuration   func(childComplexity int) int
-		FinishTime         func(childComplexity int) int
-		GenerateTask       func(childComplexity int) int
-		GeneratedBy        func(childComplexity int) int
-		HostId             func(childComplexity int) int
-		Id                 func(childComplexity int) int
-		IngestTime         func(childComplexity int) int
-		Logs               func(childComplexity int) int
-		Order              func(childComplexity int) int
-		PatchNumber        func(childComplexity int) int
-		Priority           func(childComplexity int) int
-		ProjectId          func(childComplexity int) int
-		ReliesOn           func(childComplexity int) int
-		Requester          func(childComplexity int) int
-		Restarts           func(childComplexity int) int
-		Revision           func(childComplexity int) int
-		ScheduledTime      func(childComplexity int) int
-		StartTime          func(childComplexity int) int
-		Status             func(childComplexity int) int
-		TaskGroup          func(childComplexity int) int
-		TaskGroupMaxHosts  func(childComplexity int) int
-		TimeTaken          func(childComplexity int) int
-		Version            func(childComplexity int) int
+		Aborted           func(childComplexity int) int
+		Activated         func(childComplexity int) int
+		ActivatedBy       func(childComplexity int) int
+		ActivatedTime     func(childComplexity int) int
+		BaseTaskMetadata  func(childComplexity int) int
+		BuildId           func(childComplexity int) int
+		BuildVariant      func(childComplexity int) int
+		CreateTime        func(childComplexity int) int
+		Details           func(childComplexity int) int
+		DispatchTime      func(childComplexity int) int
+		DisplayName       func(childComplexity int) int
+		DisplayOnly       func(childComplexity int) int
+		DistroId          func(childComplexity int) int
+		Execution         func(childComplexity int) int
+		ExecutionTasks    func(childComplexity int) int
+		ExpectedDuration  func(childComplexity int) int
+		FinishTime        func(childComplexity int) int
+		GenerateTask      func(childComplexity int) int
+		GeneratedBy       func(childComplexity int) int
+		HostId            func(childComplexity int) int
+		HostLink          func(childComplexity int) int
+		Id                func(childComplexity int) int
+		IngestTime        func(childComplexity int) int
+		Logs              func(childComplexity int) int
+		Order             func(childComplexity int) int
+		PatchMetadata     func(childComplexity int) int
+		PatchNumber       func(childComplexity int) int
+		Priority          func(childComplexity int) int
+		ProjectId         func(childComplexity int) int
+		ReliesOn          func(childComplexity int) int
+		Requester         func(childComplexity int) int
+		Restarts          func(childComplexity int) int
+		Revision          func(childComplexity int) int
+		ScheduledTime     func(childComplexity int) int
+		StartTime         func(childComplexity int) int
+		Status            func(childComplexity int) int
+		TaskGroup         func(childComplexity int) int
+		TaskGroupMaxHosts func(childComplexity int) int
+		TimeTaken         func(childComplexity int) int
+		Version           func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -310,10 +321,12 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 }
 type TaskResolver interface {
+	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
+
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
-	BaseCommitDuration(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
+	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 }
 
 type executableSchema struct {
@@ -330,6 +343,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "BaseTaskMetadata.baseTaskDuration":
+		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
+			break
+		}
+
+		return e.complexity.BaseTaskMetadata.BaseTaskDuration(childComplexity), true
+
+	case "BaseTaskMetadata.baseTaskLink":
+		if e.complexity.BaseTaskMetadata.BaseTaskLink == nil {
+			break
+		}
+
+		return e.complexity.BaseTaskMetadata.BaseTaskLink(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -758,6 +785,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchDuration.TimeTaken(childComplexity), true
 
+	case "PatchMetadata.author":
+		if e.complexity.PatchMetadata.Author == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.Author(childComplexity), true
+
 	case "PatchTime.finished":
 		if e.complexity.PatchTime.Finished == nil {
 			break
@@ -987,12 +1021,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ActivatedTime(childComplexity), true
 
-	case "Task.baseCommitDuration":
-		if e.complexity.Task.BaseCommitDuration == nil {
+	case "Task.baseTaskMetadata":
+		if e.complexity.Task.BaseTaskMetadata == nil {
 			break
 		}
 
-		return e.complexity.Task.BaseCommitDuration(childComplexity), true
+		return e.complexity.Task.BaseTaskMetadata(childComplexity), true
 
 	case "Task.buildId":
 		if e.complexity.Task.BuildId == nil {
@@ -1099,6 +1133,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.HostId(childComplexity), true
 
+	case "Task.hostLink":
+		if e.complexity.Task.HostLink == nil {
+			break
+		}
+
+		return e.complexity.Task.HostLink(childComplexity), true
+
 	case "Task.id":
 		if e.complexity.Task.Id == nil {
 			break
@@ -1126,6 +1167,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Order(childComplexity), true
+
+	case "Task.patchMetadata":
+		if e.complexity.Task.PatchMetadata == nil {
+			break
+		}
+
+		return e.complexity.Task.PatchMetadata(childComplexity), true
 
 	case "Task.patchNumber":
 		if e.complexity.Task.PatchNumber == nil {
@@ -1745,7 +1793,17 @@ type Dependency {
   buildVariant: String!
 }
 
+type PatchMetadata {
+  author: String!
+}
+
+type BaseTaskMetadata {
+  baseTaskDuration: Duration
+  baseTaskLink: String!
+}
+
 type Task {
+  patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
   ingestTime: Time
@@ -1769,6 +1827,7 @@ type Task {
   reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
+  hostLink: String
   restarts: Int
   execution: Int
   order: Int
@@ -1783,7 +1842,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseCommitDuration: Duration
+  baseTaskMetadata: BaseTaskMetadata!
 }
 
 type Projects {
@@ -2241,6 +2300,71 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BaseTaskMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseTaskDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIDuration)
+	fc.Result = res
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BaseTaskMetadata_baseTaskLink(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BaseTaskMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseTaskLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _Dependency_name(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
 	defer func() {
@@ -4153,6 +4277,40 @@ func (ec *executionContext) _PatchDuration_time(ctx context.Context, field graph
 	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Author, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PatchTime_started(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5048,6 +5206,40 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().PatchMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*PatchMetadata)
+	fc.Result = res
+	return ec.marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5791,6 +5983,37 @@ func (ec *executionContext) _Task_hostId(ctx context.Context, field graphql.Coll
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_hostLink(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_restarts(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6231,7 +6454,7 @@ func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_baseCommitDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -6248,18 +6471,21 @@ func (ec *executionContext) _Task_baseCommitDuration(ctx context.Context, field 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().BaseCommitDuration(rctx, obj)
+		return ec.resolvers.Task().BaseTaskMetadata(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIDuration)
+	res := resTmp.(*BaseTaskMetadata)
 	fc.Result = res
-	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+	return ec.marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -8595,6 +8821,35 @@ func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj 
 
 // region    **************************** object.gotpl ****************************
 
+var baseTaskMetadataImplementors = []string{"BaseTaskMetadata"}
+
+func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, baseTaskMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BaseTaskMetadata")
+		case "baseTaskDuration":
+			out.Values[i] = ec._BaseTaskMetadata_baseTaskDuration(ctx, field, obj)
+		case "baseTaskLink":
+			out.Values[i] = ec._BaseTaskMetadata_baseTaskLink(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var dependencyImplementors = []string{"Dependency"}
 
 func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSet, obj *Dependency) graphql.Marshaler {
@@ -9128,6 +9383,33 @@ func (ec *executionContext) _PatchDuration(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var patchMetadataImplementors = []string{"PatchMetadata"}
+
+func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.SelectionSet, obj *PatchMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, patchMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PatchMetadata")
+		case "author":
+			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var patchTimeImplementors = []string{"PatchTime"}
 
 func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet, obj *PatchTime) graphql.Marshaler {
@@ -9450,6 +9732,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Task")
+		case "patchMetadata":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_patchMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "id":
 			out.Values[i] = ec._Task_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -9535,6 +9831,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "hostId":
 			out.Values[i] = ec._Task_hostId(ctx, field, obj)
+		case "hostLink":
+			out.Values[i] = ec._Task_hostLink(ctx, field, obj)
 		case "restarts":
 			out.Values[i] = ec._Task_restarts(ctx, field, obj)
 		case "execution":
@@ -9578,7 +9876,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Task_patchNumber(ctx, field, obj)
 				return res
 			})
-		case "baseCommitDuration":
+		case "baseTaskMetadata":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -9586,7 +9884,10 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Task_baseCommitDuration(ctx, field, obj)
+				res = ec._Task_baseTaskMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -10162,6 +10463,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
+	return ec._BaseTaskMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._BaseTaskMetadata(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -10663,6 +10978,20 @@ func (ec *executionContext) marshalNPatchBuildVariant2ᚖgithubᚗcomᚋevergree
 		return graphql.Null
 	}
 	return ec._PatchBuildVariant(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
+	return ec._PatchMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *PatchMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._PatchMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx context.Context, v interface{}) (PatchReconfigure, error) {
