@@ -329,3 +329,12 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 
 	return send.NewConfiguredMultiSender(senders...), nil
 }
+
+// kim: TODO: implement
+func (c *communicatorImpl) GetS3TaskCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (c *communicatorImpl) GetS3TaskPath(ctx context.Context, taskID string) (string, error) {
+	return "", errors.New("not implemented")
+}

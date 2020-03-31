@@ -1392,41 +1392,53 @@ Admin Settings
 
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_key">
+										<input type="text" ng-model="Settings.providers.aws.s3.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_secret">
+										<input type="text" ng-model="Settings.providers.aws.s3.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.bucket">
+										<input type="text" ng-model="Settings.providers.aws.s3.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_key">
+										<input type="text" ng-model="Settings.providers.aws.s3_task.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Task S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_secret">
+										<input type="text" ng-model="Settings.providers.aws.s3_task.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_bucket">
+										<input type="text" ng-model="Settings.providers.aws.s3_task.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Task Read-Only S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_read.key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task Read-Only S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_read.secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Task Read-Only S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_task_read.bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>S3 Base URL</label>
 										<input type="text" ng-model="Settings.providers.aws.s3_base_url">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>

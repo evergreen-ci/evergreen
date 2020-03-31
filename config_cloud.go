@@ -77,20 +77,24 @@ type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
-	S3Key    string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
-	S3Secret string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
-	Bucket   string `bson:"bucket" json:"bucket" yaml:"bucket"`
-	// Data for agents storing task data
-	S3TaskKey    string `bson:"s3_task_key" json:"s3_task_key" yaml:"s3_task_key"`
-	S3TaskSecret string `bson:"s3_task_secret" json:"s3_task_secret" yaml:"s3_task_secret"`
-	S3TaskBucket string `bson:"s3_task_bucket" json:"s3_task_bucket" yaml:"s3_task_bucket"`
-	S3BaseURL    string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	S3 S3Credentials `bson:"s3_credentials"`
+	// S3Task store credentials for storing task data
+	S3Task S3Credentials `bson:"s3_task_credentials" json:"s3_task_credentials" yaml:"s3_task_credentials"`
+	// S3TaskRead stores credentials for reading S3 task data
+	S3TaskRead S3Credentials `bson:"s3_task_read_credentiasl" json:"s3_task_read_credentials" yaml:"s3_task_read_credentials"`
+	S3BaseURL  string        `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
+}
+
+type S3Credentials struct {
+	Key    string `bson:"key" json:"key" yaml:"key"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
 }
 
 // DockerConfig stores auth info for Docker.
