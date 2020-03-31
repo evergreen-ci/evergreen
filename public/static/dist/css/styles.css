@@ -1018,6 +1018,8 @@ ul.tooltip-tasks li.tooltip-task {
   background-color: #9FBD89;
 }
 .host-name-confirm {
+  opacity: 0.5;
+  color: #1C2B11;
   position: relative;
   right: 40px;
 }
