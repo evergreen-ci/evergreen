@@ -104,6 +104,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 			BuildVariant:   depTask.BuildVariant,
 			MetStatus:      metStatus,
 			RequiredStatus: requiredStatus,
+			UILink:         fmt.Sprintf("/task/%s", depTask.Id),
 		}
 
 		dependencies = append(dependencies, &dependency)
