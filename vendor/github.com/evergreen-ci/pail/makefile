@@ -1,6 +1,4 @@
 buildDir := build
-srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
-testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 projectPath := github.com/evergreen-ci/pail
 
 packages := pail
@@ -19,44 +17,16 @@ endif
 goEnv := GOPATH=$(gopath) $(if ${GO_BIN_PATH},PATH="$(shell dirname ${GO_BIN_PATH}):${PATH}")
 # end environment setup
 
-# start linting configuration
-#   package, testing, and linter dependencies specified
-#   separately. This is a temporary solution: eventually we should
-#   vendorize all of these dependencies.
-lintDeps := github.com/alecthomas/gometalinter
-#   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=13m --vendor
-#   gotype produces false positives because it reads .a files which
-#   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --enable="golint"
-lintArgs += --skip="build"
-#   enable and configure additional linters
-lintArgs += --line-length=100 --dupl-threshold=150
-#   some test cases are structurally similar, and lead to dupl linter
-#   warnings, but are important to maintain separately, and would be
-#   difficult to test without a much more complex reflection/code
-#   generation approach, so we ignore dupl errors in tests.
-lintArgs += --exclude="warning: duplicate of .*_test.go"
-#   go lint warns on an error in docstring format, erroneously because
-#   it doesn't consider the entire package.
-lintArgs += --exclude="warning: package comment should be of the form \"Package .* ...\""
-#   known issues that the linter picks up that are not relevant in our cases
-lintArgs += --exclude="file is not goimported" # top-level mains aren't imported
-lintArgs += --exclude="error return value not checked .defer.*"
-# end linting configuration
 
-
-# start dependency installation tools
-#   implementation details for being able to lazily install dependencies
-lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
-$(gopath)/src/%:
-	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	$(goEnv) $(gobin) get $(subst $(gopath)/src/,,$@)
-$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
-	 $(goEnv) $(gobin) build -o $@ $<
-$(buildDir)/.lintSetup:$(lintDeps)
-	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
-# end dependency installation tools
+# start lint setup targets
+lintDeps := $(buildDir)/.lintSetup $(buildDir)/run-linter $(buildDir)/golangci-lint
+$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
+	@touch $@
+$(buildDir)/golangci-lint:$(buildDir)
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup $(buildDir)
+	@$(goEnv) $(gobin) build -o $@ $<
+# end lint setup targets
 
 
 testArgs := -v
@@ -83,8 +53,6 @@ testArgs += -timeout=30m
 endif
 
 # test execution and output handlers
-$(buildDir)/:
-	mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir)/ .FORCE
 	export USERPROFILE=$(userProfile)
 	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
@@ -101,9 +69,9 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+	@./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
+	@./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$(packages)'
 #  targets to process and generate coverage reports
 # end test and coverage artifacts
 
@@ -125,15 +93,15 @@ benchmark:
 	$(goEnv) $(gobin) test -v -benchmem -bench=. -run="Benchmark.*" -timeout=20m
 lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 
-phony += lint lint-deps build build-race race test coverage coverage-html
+phony += lint build race test coverage coverage-html
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
 # end front-ends
 
 
-$(buildDir):$(srcFiles) compile
+$(buildDir): compile
 	@mkdir -p $@
-$(buildDir)/cover.out:$(buildDir) $(testFiles) .FORCE
+$(buildDir)/cover.out:$(buildDir) .FORCE
 	export USERPROFILE=$(userProfile)
 	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile $@ -cover ./
 $(buildDir)/cover.html:$(buildDir)/cover.out
@@ -147,7 +115,12 @@ vendor-clean:
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/montanaflynn
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors
 phony += vendor-clean
+clean:
+	rm -rf $(lintDeps)
+phony += clean
 
 # mongodb utility targets
 mongodb/.get-mongodb:

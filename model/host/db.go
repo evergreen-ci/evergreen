@@ -364,20 +364,6 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 	return len(hosts), nil
 }
 
-func HostExistsWithVolumeWithDeviceName(deviceName string) (bool, error) {
-	q := db.Query(
-		bson.M{bsonutil.GetDottedKeyName(VolumesKey, VolumeDeviceNameKey): deviceName},
-	)
-
-	hosts, err := Find(q)
-	if err != nil {
-		return false, errors.Wrapf(err, "error querying database for host volumes")
-	}
-	hostExists := len(hosts) > 0
-	return hostExists, nil
-
-}
-
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.
 var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
@@ -470,14 +456,19 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 // FindByNeedsJasperRestart finds all hosts that are ready and waiting to
 // restart their Jasper service.
 func FindByNeedsJasperRestart() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return Find(db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey:        bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		RunningTaskKey:      bson.M{"$exists": false},
 		HasContainersKey:    bson.M{"$ne": true},
 		ParentIDKey:         bson.M{"$exists": false},
 		NeedsReprovisionKey: ReprovisionJasperRestart,
 		"$or": []bson.M{
-			{StartedByKey: bson.M{"$ne": evergreen.User}},
+			{"$and": []bson.M{
+				{StartedByKey: bson.M{"$ne": evergreen.User}},
+				{UserHostKey: true},
+			}},
 			{NeedsNewAgentMonitorKey: true},
 		},
 	}))
@@ -544,13 +535,18 @@ func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
-func ByDistroIDRunning(distroID string) db.Q {
+// ByDistroIDOrAliasesRunning returns a query that returns all hosts with
+// matching distro IDs or aliases.
+func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-	return db.Query(bson.M{
-		distroIDKey:  distroID,
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
-	})
+	distroAliasesKey := bsonutil.GetDottedKeyName(DistroKey, distro.AliasesKey)
+	return bson.M{
+		StatusKey: evergreen.HostRunning,
+		"$or": []bson.M{
+			{distroIDKey: bson.M{"$in": distroNames}},
+			{distroAliasesKey: bson.M{"$in": distroNames}},
+		},
+	}
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.
@@ -634,7 +630,7 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByExpiringBetween produces a query that returns  any user-spawned hosts
+// ByExpiringBetween produces a query that returns any host not running tasks
 // that will expire between the specified times.
 func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 	return db.Query(bson.M{
@@ -850,6 +846,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
 			{

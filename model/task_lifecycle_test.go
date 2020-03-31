@@ -2798,13 +2798,16 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 					TaskId: "t0",
 					Status: evergreen.TaskSucceeded,
 				},
+				{
+					TaskId: "t0",
+					Status: evergreen.TaskSucceeded,
+				},
 			},
 			Status: evergreen.TaskUndispatched,
 		},
 		{
-			Id:      "t2",
-			BuildId: b.Id,
-
+			Id:          "t2",
+			BuildId:     b.Id,
 			Status:      evergreen.TaskUndispatched,
 			DisplayOnly: true,
 			DependsOn: []task.Dependency{
@@ -2874,7 +2877,9 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 
 	dbTask1, err := task.FindOneId(tasks[1].Id)
 	assert.NoError(err)
+	assert.Len(dbTask1.DependsOn, 2)
 	assert.True(dbTask1.DependsOn[0].Unattainable)
+	assert.True(dbTask1.DependsOn[1].Unattainable) // this task has duplicates which are also marked
 	assert.True(dbBuild.Tasks[1].Blocked)
 
 	dbTask2, err := task.FindOneId(tasks[2].Id)

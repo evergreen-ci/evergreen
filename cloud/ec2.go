@@ -1140,24 +1140,29 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	}
 	defer m.client.Close()
 
-	opts := generateDeviceNameOptions{isWindows: h.Distro.IsWindows()}
+	opts := generateDeviceNameOptions{
+		isWindows:           h.Distro.IsWindows(),
+		existingDeviceNames: h.HostVolumeDeviceNames(),
+	}
 	// if no device name is provided, generate a unique device name
 	if attachment.DeviceName == "" {
-		deviceName, err := getGeneratedDeviceNameForVolume(ctx, h.Distro.IsWindows())
+		deviceName, err := generateDeviceNameForVolume(opts)
 		if err != nil {
 			return errors.Wrap(err, "error generating initial device name")
 		}
 		attachment.DeviceName = deviceName
-		opts.shouldGenerate = true
 	}
 
-	_, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
+	volume, err := m.client.AttachVolume(ctx, &ec2.AttachVolumeInput{
 		InstanceId: aws.String(h.Id),
 		Device:     aws.String(attachment.DeviceName),
 		VolumeId:   aws.String(attachment.VolumeID),
 	}, opts)
 	if err != nil {
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
+	}
+	if volume != nil && volume.Device != nil {
+		attachment.DeviceName = *volume.Device
 	}
 	return errors.Wrapf(h.AddVolumeToHost(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
 }

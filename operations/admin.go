@@ -4,16 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/pail"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	amboyCLI "github.com/mongodb/amboy/cli"
+	"github.com/mongodb/anser/backup"
+	amodel "github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -28,6 +33,7 @@ func Admin() cli.Command {
 			adminSetBanner(),
 			adminDisableService(),
 			adminEnableService(),
+			adminBackup(),
 			viewSettings(),
 			updateSettings(),
 			listEvents(),
@@ -37,6 +43,7 @@ func Admin() cli.Command {
 			fromMdbForLocal(),
 			toMdbForLocal(),
 			updateRoleCmd(),
+			adminDistroExecute(),
 		},
 	}
 }
@@ -473,6 +480,169 @@ func updateRoleCmd() cli.Command {
 			}
 
 			return ac.UpdateRole(&role)
+		},
+	}
+}
+
+func adminBackup() cli.Command {
+	const (
+		collectionNameFlag = "collection"
+		prefixFlagName     = "prefix"
+	)
+
+	return cli.Command{
+		Name:  "backup",
+		Usage: "create a backup (to s3) of a collection",
+		Flags: mergeFlagSlices(
+			serviceConfigFlags(),
+			addDbSettingsFlags(
+				cli.StringFlag{
+					Name:  joinFlagNames(collectionNameFlag, "c"),
+					Usage: "specify the name of the collection to backup",
+				},
+				cli.StringFlag{
+					Name:  prefixFlagName,
+					Value: "archive",
+					Usage: "specify prefix within the bucket to store this archive",
+				},
+			),
+		),
+		Before: requireStringFlag(collectionNameFlag),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			collectionName := c.String(collectionNameFlag)
+
+			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), parseDB(c))
+			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			evergreen.SetEnvironment(env)
+
+			// avoid working on remote jobs during the backup
+			env.RemoteQueue().Runner().Close(ctx)
+			env.RemoteQueueGroup().Close(ctx)
+
+			client := util.GetHTTPClient()
+			client.Timeout = 30 * 24 * time.Hour
+			defer util.PutHTTPClient(client)
+
+			conf := env.Settings().Backup
+			conf.Prefix = c.String(prefixFlagName)
+			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, pail.S3Options{
+				Credentials: pail.CreateAWSCredentials(conf.Key, conf.Secret, ""),
+				Permissions: pail.S3PermissionsPrivate,
+				Name:        conf.BucketName,
+				Compress:    conf.Compress,
+				Prefix:      strings.Join([]string{conf.Prefix, time.Now().Format(units.TSFormat), "dump"}, "/"),
+				MaxRetries:  10,
+			})
+			grip.EmergencyFatal(errors.Wrap(err, "problem constructing bucket"))
+			opts := backup.Options{
+				NS: amodel.Namespace{
+					DB:         env.Settings().Database.DB,
+					Collection: collectionName,
+				},
+				EnableLogging: true,
+				Target:        bucket.Writer,
+			}
+			return backup.Collection(ctx, env.Client(), opts)
+		},
+	}
+}
+
+func adminDistroExecute() cli.Command {
+	const (
+		distroFlagName            = "distro"
+		scriptPathFlagName        = "file"
+		scriptFlagName            = "script"
+		includeSpawnHostsFlagName = "include_spawn_hosts"
+		includeTaskHostsFlagName  = "include_task_hosts"
+		sudoFlagName              = "sudo"
+		sudoUserFlagName          = "sudo_user"
+	)
+	return cli.Command{
+		Name:  "distro-execute",
+		Usage: "run a shell script on selected hosts in a distro",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  distroFlagName,
+				Usage: "the distro to run the script on",
+			},
+			cli.StringFlag{
+				Name:  scriptFlagName,
+				Usage: "the script to run",
+			},
+			cli.StringFlag{
+				Name:  scriptPathFlagName,
+				Usage: "the file containing the script to run",
+			},
+			cli.BoolTFlag{
+				Name:  includeTaskHostsFlagName,
+				Usage: "run the script on hosts running tasks",
+			},
+			cli.BoolFlag{
+				Name:  includeSpawnHostsFlagName,
+				Usage: "run the script on spawn hosts",
+			},
+			cli.BoolFlag{
+				Name:  sudoFlagName,
+				Usage: "run the script with sudo",
+			},
+			cli.StringFlag{
+				Name:  sudoUserFlagName,
+				Usage: "run the script as a user",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(distroFlagName),
+			mutuallyExclusiveArgs(true, scriptFlagName, scriptPathFlagName),
+		),
+		Action: func(c *cli.Context) error {
+			distro := c.String(distroFlagName)
+			includeTaskHosts := c.BoolT(includeTaskHostsFlagName)
+			includeSpawnHosts := c.Bool(includeSpawnHostsFlagName)
+			script := c.String(scriptFlagName)
+			sudo := c.Bool(sudoFlagName)
+			sudoUser := c.String(sudoUserFlagName)
+			if sudoUser != "" {
+				sudo = true
+			}
+			if script == "" {
+				scriptPath := c.String(scriptPathFlagName)
+				b, err := ioutil.ReadFile(scriptPath)
+				if err != nil {
+					return errors.Wrapf(err, "could not read script file '%s'", scriptPath)
+				}
+				script = string(b)
+			}
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			hostIDs, err := client.ExecuteOnDistro(ctx, distro, model.APIDistroScriptOptions{
+				Script:            script,
+				IncludeTaskHosts:  includeTaskHosts,
+				IncludeSpawnHosts: includeSpawnHosts,
+				Sudo:              sudo,
+				SudoUser:          sudoUser,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "failed to execute script on hosts of distro '%s'", distro)
+			}
+			if len(hostIDs) != 0 {
+				fmt.Printf("Running script on the following hosts:\n%s\n", strings.Join(hostIDs, "\n"))
+			} else {
+				fmt.Println("No hosts matched, so not running script on any hosts.")
+			}
+
+			return nil
 		},
 	}
 }

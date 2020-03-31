@@ -446,6 +446,14 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
 		})
 	}
+	if h.attachment.DeviceName != "" {
+		if util.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    errors.Errorf("host '%s' already has a volume with device name '%s'", h.hostID, h.attachment.DeviceName).Error(),
+			})
+		}
+	}
 
 	// Check whether attachment already attached to a host
 	attachedHost, err := h.sc.FindHostWithVolume(h.attachment.VolumeID)

@@ -804,6 +804,10 @@ func (h *Host) UpdateProvisioningToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
+	// Ignore hosts spawned by tasks.
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
+		return nil
+	}
 	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
@@ -2297,6 +2301,14 @@ func (h *Host) HomeVolume() *VolumeAttachment {
 	}
 
 	return nil
+}
+
+func (h *Host) HostVolumeDeviceNames() []string {
+	res := []string{}
+	for _, vol := range h.Volumes {
+		res = append(res, vol.DeviceName)
+	}
+	return res
 }
 
 // FindHostWithVolume finds the host associated with the

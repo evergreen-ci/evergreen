@@ -44,6 +44,74 @@ func (r *Resolver) Task() TaskResolver {
 
 type mutationResolver struct{ *Resolver }
 
+func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return dependencies, nil
+	}
+	depIds := []string{}
+	for _, dep := range at.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var metStatus MetStatus
+		if !depTask.IsFinished() {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
+			metStatus = "MET"
+		} else {
+			metStatus = "UNMET"
+		}
+		var requiredStatus RequiredStatus
+		switch dep.Status {
+		case model.AllStatuses:
+			requiredStatus = "MUST_FINISH"
+			break
+		case evergreen.TaskFailed:
+			requiredStatus = "MUST_FAIL"
+			break
+		default:
+			requiredStatus = "MUST_SUCCEED"
+		}
+
+		dependency := Dependency{
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
+			UILink:         fmt.Sprintf("/task/%s", depTask.Id),
+		}
+
+		dependencies = append(dependencies, &dependency)
+	}
+	return dependencies, nil
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
@@ -261,7 +329,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -334,6 +402,15 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			}
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
+	}
+	if len(baseStatuses) > 0 {
+		tasksFilteredByBaseStatus := []*TaskResult{}
+		for _, taskResult := range taskResults {
+			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
+			}
+		}
+		taskResults = tasksFilteredByBaseStatus
 	}
 	return taskResults, nil
 }
@@ -454,10 +531,10 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*Groupe
 }
 
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error) {
-	const LogMessageCount = 100
+	const logMessageCount = 100
 	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
-	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(taskID, LogMessageCount))
+	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(taskID, logMessageCount))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", taskID, err.Error()))
 	}
@@ -515,39 +592,49 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	agentLogs := []apimodels.LogMessage{}
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+			TaskID:        taskID,
+			Execution:     t.Execution,
+			PrintPriority: true,
+			Tail:          logMessageCount,
+			LogType:       apimodels.TaskLogPrefix,
+		}
 		// task logs
-		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.TaskLogPrefix, LogMessageCount, t.Execution, true)
+		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
 		// system logs
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.SystemLogPrefix, LogMessageCount, t.Execution, true)
+		opts.LogType = apimodels.SystemLogPrefix
+		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
 		// agent logs
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL, taskID, apimodels.AgentLogPrefix, LogMessageCount, t.Execution, true)
+		opts.LogType = apimodels.AgentLogPrefix
+		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
 	} else {
 		// task logs
-		taskLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
 		}
 		// system logs
-		systemLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		systemLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
 		}
 		// agent logs
-		agentLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, LogMessageCount, []string{},
+		agentLogs, err = model.FindMostRecentLogMessages(taskID, t.Execution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))
@@ -742,6 +829,45 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	return &patch.PatchNumber, nil
+}
+
+func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
+	patch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+	}
+	patchMetadata := PatchMetadata{
+		Author: *patch.Author,
+	}
+	return &patchMetadata, nil
+}
+
+func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITask) (*BaseTaskMetadata, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
+	}
+	if baseTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+	}
+
+	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
+	baseTaskMetadata := BaseTaskMetadata{
+		BaseTaskLink:     fmt.Sprintf("/task/%s", baseTask.Id),
+		BaseTaskDuration: &dur,
+	}
+	if baseTask.TimeTaken == 0 {
+		baseTaskMetadata.BaseTaskDuration = nil
+	}
+	return &baseTaskMetadata, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

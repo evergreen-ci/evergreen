@@ -583,62 +583,182 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 
 ///////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/distros/{distro_id}/execute
+// PATCH /rest/v2/distros/{distro}/execute
 
-type distroIDExecuteHandler struct {
-	Script   string
-	distroID string
-	sc       data.Connector
-	env      evergreen.Environment
+type distroExecuteHandler struct {
+	opts   model.APIDistroScriptOptions
+	distro string
+	sc     data.Connector
+	env    evergreen.Environment
 }
 
 func makeDistroExecute(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
-	return &distroIDExecuteHandler{
+	return &distroExecuteHandler{
 		sc:  sc,
 		env: env,
 	}
 }
 
-func (h *distroIDExecuteHandler) Factory() gimlet.RouteHandler {
-	return &distroIDExecuteHandler{
+func (h *distroExecuteHandler) Factory() gimlet.RouteHandler {
+	return &distroExecuteHandler{
 		sc:  h.sc,
 		env: h.env,
 	}
 }
 
-// Parse fetches the distroId and JSON payload from the http request.
-func (h *distroIDExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distroID = gimlet.GetVars(r)["distro_id"]
+// Parse fetches the distro and JSON payload from the http request.
+func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distro = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, h); err != nil {
-		return errors.Wrap(err, "Argument read error")
+	if err := util.ReadJSONInto(body, &h.opts); err != nil {
+		return errors.Wrap(err, "could not read request")
 	}
 
-	if h.Script == "" {
+	if h.opts.Script == "" {
 		return errors.New("cannot execute an empty script")
+	}
+	if !h.opts.IncludeTaskHosts && !h.opts.IncludeSpawnHosts {
+		return errors.New("cannot exclude both spawn hosts and task hosts from script execution")
 	}
 
 	return nil
 }
 
-// Run enqueues a job to run a script on all hosts (excluding spawn hosts) that
-// are not down for the given given distro ID.
-func (h *distroIDExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := h.sc.FindHostsByDistroID(h.distroID)
+// Run enqueues a job to run a script on all selected hosts that are not down
+// for the given given distro ID.
+func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
+	hosts, err := h.sc.FindHostsByDistro(h.distro)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distroID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
+	}
+
+	var allHostIDs []string
+	for _, host := range hosts {
+		allHostIDs = append(allHostIDs, host.Id)
+	}
+	catcher := grip.NewBasicCatcher()
+	var hostIDs []string
+	for _, host := range hosts {
+		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		if (host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts) || (host.UserHost && h.opts.IncludeSpawnHosts) {
+			if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)); err != nil {
+				catcher.Wrapf(err, "problem enqueueing job to run script on host '%s'", host.Id)
+				continue
+			}
+			hostIDs = append(hostIDs, host.Id)
+		}
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
+	}
+
+	return gimlet.NewJSONResponse(struct {
+		HostIDs []string `json:"host_ids"`
+	}{HostIDs: hostIDs})
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/distros/{distro}/icecream_config
+
+type distroIcecreamConfigHandler struct {
+	distro string
+	opts   model.APIDistroScriptOptions
+	sc     data.Connector
+	env    evergreen.Environment
+}
+
+func makeDistroIcecreamConfig(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &distroIcecreamConfigHandler{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (h *distroIcecreamConfigHandler) Factory() gimlet.RouteHandler {
+	return &distroIcecreamConfigHandler{
+		sc:  h.sc,
+		env: h.env,
+	}
+}
+
+// Parse extracts the distro and JSON payload from the http request.
+func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distro = gimlet.GetVars(r)["distro_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, &h.opts); err != nil {
+		return errors.Wrap(err, "could not read request body")
+	}
+
+	return nil
+}
+
+// Run enqueues a job to run a script on all hosts that are not down for the
+// given given distro ID.
+func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
+	hosts, err := h.sc.FindHostsByDistro(h.distro)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro '%s'", h.distro))
+	}
+
+	dat, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "could not get distro lookup table"))
 	}
 
 	catcher := grip.NewBasicCatcher()
+	var hostIDs []string
 	for _, host := range hosts {
+		if host.StartedBy == evergreen.User || !host.IsVirtualWorkstation {
+			continue
+		}
+
+		// If the distro exists, we use the settings directly from that distro;
+		// if the distro in the host document is deleted, we make a best-effort
+		// attempt to resolve it to a real distro by attempting to pick any
+		// existing distro with an alias that matches the deleted distro.
+		distroIDs := dat.Expand([]string{host.Distro.Id})
+		if len(distroIDs) == 0 {
+			catcher.Errorf("could not look up distro '%s'", host.Distro.Id)
+			continue
+		}
+		var distros []distro.Distro
+		distros, err = distro.Find(distro.ByIds(distroIDs))
+		if err != nil {
+			catcher.Errorf("could not find distros matching '%s' for host '%s'", host.Distro.Id, host.Id)
+			continue
+		}
+		var d distro.Distro
+		var distroFound bool
+		for _, d = range distros {
+			if d.IcecreamSettings.Populated() {
+				distroFound = true
+				break
+			}
+		}
+		if !distroFound {
+			catcher.Wrapf(err, "could not resolve distro '%s' for host '%s'", host.Distro.Id, host.Id)
+			continue
+		}
+
+		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
-		catcher.Wrapf(h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.Script, ts)), "problem enqueueing job to run script on host %s", host.Id)
-	}
-	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
+		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
+			catcher.Wrapf(err, "problem enqueueing job to update icecream config file on host '%s'", host.Id)
+			continue
+		}
+		hostIDs = append(hostIDs, host.Id)
 	}
 
-	return gimlet.NewJSONResponse(struct{}{})
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to update icecream config on hosts"))
+	}
+
+	return gimlet.NewJSONResponse(struct {
+		HostIDs []string `json:"host_ids"`
+	}{HostIDs: hostIDs})
 }

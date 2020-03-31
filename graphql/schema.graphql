@@ -10,6 +10,7 @@ type Query {
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
+    baseStatuses: [String!] = []
     variant: String
     taskName: String
   ): [TaskResult!]!
@@ -54,6 +55,18 @@ enum TestSortCategory {
 enum SortDirection {
   ASC
   DESC
+}
+
+enum MetStatus {
+  UNMET
+  MET
+  PENDING
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+  MUST_SUCCEED
 }
 
 input PatchReconfigure {
@@ -175,7 +188,25 @@ type TestLog {
   rawDisplayURL: String
 }
 
+type Dependency {
+  name: String!
+  metStatus: MetStatus!
+  requiredStatus: RequiredStatus!
+  buildVariant: String!
+  uiLink: String!
+}
+
+type PatchMetadata {
+  author: String!
+}
+
+type BaseTaskMetadata {
+  baseTaskDuration: Duration
+  baseTaskLink: String!
+}
+
 type Task {
+  patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
   ingestTime: Time
@@ -196,9 +227,10 @@ type Task {
   buildId: String!
   distroId: String!
   buildVariant: String!
-  dependsOn: [String!]
+  reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
+  hostLink: String
   restarts: Int
   execution: Int
   order: Int
@@ -213,6 +245,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
+  baseTaskMetadata: BaseTaskMetadata!
 }
 
 type Projects {

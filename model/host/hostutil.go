@@ -191,17 +191,27 @@ func (h *Host) RunSSHCommandWithTimeout(ctx context.Context, cmd string, timeout
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // default SSH timeout.
-func (h *Host) RunSSHShellScript(ctx context.Context, script string) (string, error) {
-	return h.RunSSHShellScriptWithTimeout(ctx, script, time.Duration(0))
+func (h *Host) RunSSHShellScript(ctx context.Context, script string, sudo bool, sudoUser string) (string, error) {
+	return h.RunSSHShellScriptWithTimeout(ctx, script, sudo, sudoUser, time.Duration(0))
 }
 
 // RunSSHShellScript runs a shell script on a remote host over SSH with the
 // given timeout.
-func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, timeout time.Duration) (string, error) {
+func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sudo bool, sudoUser string, timeout time.Duration) (string, error) {
+	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
+	// instead of "bash -c") to avoid shell parsing errors.
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
-		return c.Add([]string{"bash", "-s"}).SetInputBytes([]byte(script))
+		var cmd []string
+		if sudo {
+			cmd = append(cmd, "sudo")
+			if sudoUser != "" {
+				cmd = append(cmd, fmt.Sprintf("--user=%s", sudoUser))
+			}
+		}
+		cmd = append(cmd, "bash", "-s")
+		return c.Add(cmd).SetInputBytes([]byte(script))
 	}, timeout)
 }
 
@@ -790,6 +800,9 @@ const jasperDialTimeout = 15 * time.Second
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (remote.Manager, error) {
 	if (h.Distro.LegacyBootstrap() || h.Distro.LegacyCommunication()) && h.NeedsReprovision != ReprovisionToLegacy {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
+	}
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
+		return nil, errors.New("hosts without any provisioning method cannot use Jasper")
 	}
 
 	settings := env.Settings()

@@ -526,6 +526,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             break;
           case 'initializing':
           case 'provisioning':
+          case 'building':
           case 'starting':
           case 'stopping':
           case 'stopped':

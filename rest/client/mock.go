@@ -441,6 +441,9 @@ func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interf
 	return nil, nil
 }
 func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
+func (c *Mock) ExecuteOnDistro(context.Context, string, model.APIDistroScriptOptions) ([]string, error) {
+	return nil, nil
+}
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.

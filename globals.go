@@ -195,7 +195,8 @@ const (
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 
-	DefaultJasperPort          = 2385
+	DefaultJasperPort = 2385
+
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	VSCodePort = 2021

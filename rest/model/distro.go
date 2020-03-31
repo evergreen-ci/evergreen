@@ -327,7 +327,6 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 }
 
 type APIHomeVolumeSettings struct {
-	DeviceName    *string `json:"device_name"`
 	FormatCommand *string `json:"format_command"`
 }
 
@@ -337,7 +336,6 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
 	}
 
-	s.DeviceName = ToStringPtr(settings.DeviceName)
 	s.FormatCommand = ToStringPtr(settings.FormatCommand)
 
 	return nil
@@ -345,8 +343,31 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 
 func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
 	return distro.HomeVolumeSettings{
-		DeviceName:    FromStringPtr(s.DeviceName),
 		FormatCommand: FromStringPtr(s.FormatCommand),
+	}, nil
+}
+
+type APIIcecreamSettings struct {
+	SchedulerHost *string `json:"scheduler_host"`
+	ConfigPath    *string `json:"config_path"`
+}
+
+func (s *APIIcecreamSettings) BuildFromService(h interface{}) error {
+	settings, ok := h.(distro.IcecreamSettings)
+	if !ok {
+		return errors.Errorf("Unexpected type '%T' for IcecreamSettings", h)
+	}
+
+	s.SchedulerHost = ToStringPtr(settings.SchedulerHost)
+	s.ConfigPath = ToStringPtr(settings.ConfigPath)
+
+	return nil
+}
+
+func (s *APIIcecreamSettings) ToService() (interface{}, error) {
+	return distro.IcecreamSettings{
+		SchedulerHost: FromStringPtr(s.SchedulerHost),
+		ConfigPath:    FromStringPtr(s.ConfigPath),
 	}, nil
 }
 
@@ -382,6 +403,7 @@ type APIDistro struct {
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
 	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
 	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
+	IcecreamSettings      APIIcecreamSettings      `json:"icecream_settings"`
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
@@ -454,13 +476,13 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	// HostAllocatorSettings
 	allocatorSettings := APIHostAllocatorSettings{}
 	if err := allocatorSettings.BuildFromService(d.HostAllocatorSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.API.HostAllocatorSettings")
+		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.APIHostAllocatorSettings")
 	}
 	apiDistro.HostAllocatorSettings = allocatorSettings
 	// DispatcherSettings
 	dispatchSettings := APIDispatcherSettings{}
 	if err := dispatchSettings.BuildFromService(d.DispatcherSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.API.HostAllocatorSettings")
+		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.APIHostAllocatorSettings")
 	}
 	apiDistro.DispatcherSettings = dispatchSettings
 	apiDistro.DisableShallowClone = d.DisableShallowClone
@@ -469,9 +491,14 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.ValidProjects = ToStringPtrSlice(d.ValidProjects)
 	homeVolumeSettings := APIHomeVolumeSettings{}
 	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.API.HomeVolumeSettings")
+		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.APIHomeVolumeSettings")
 	}
 	apiDistro.HomeVolumeSettings = homeVolumeSettings
+	icecreamSettings := APIIcecreamSettings{}
+	if err := icecreamSettings.BuildFromService(d.IcecreamSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.IcecreamSettings to model.APIIcecreamSettings")
+	}
+	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
 
 	return nil
@@ -575,6 +602,15 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
+	i, err = apiDistro.IcecreamSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIIcecreamSettings to distro.IcecreamSettings")
+	}
+	icecreamSettings, ok := i.(distro.IcecreamSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.IcecreamSettings", i)
+	}
+	d.IcecreamSettings = icecreamSettings
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 
 	return &d, nil
@@ -605,4 +641,14 @@ func (e *APIExpansion) ToService() (interface{}, error) {
 	d.Value = FromStringPtr(e.Value)
 
 	return interface{}(d), nil
+}
+
+// APIDistroScriptOptions provides a model to execute scripts on hosts in a
+// distro.
+type APIDistroScriptOptions struct {
+	Script            string `json:"script"`
+	IncludeTaskHosts  bool   `json:"include_task_hosts"`
+	IncludeSpawnHosts bool   `json:"include_spawn_hosts"`
+	Sudo              bool   `json:"sudo"`
+	SudoUser          string `json:"sudo_user"`
 }

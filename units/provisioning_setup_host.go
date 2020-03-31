@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -71,6 +72,7 @@ func NewHostSetupJob(env evergreen.Environment, h host.Host, id string) amboy.Jo
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
 	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	return j
 }
@@ -543,6 +545,15 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return nil
 		}
+		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "can't write icecream config file",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			return nil
+		}
 	}
 
 	// If this is a spawn host
@@ -648,7 +659,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 
 	spawnHostSetupCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if output, err := j.host.RunSSHShellScript(spawnHostSetupCtx, script); err != nil {
+	if output, err := j.host.RunSSHShellScript(spawnHostSetupCtx, script, false, ""); err != nil {
 		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
 	}
 
@@ -789,17 +800,19 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	homeVolume := h.HomeVolume()
-	if homeVolume == nil {
-		return errors.Errorf("host '%s' has no home volume", h.Id)
+	output, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args: []string{"lsblk"},
+	})
+	if err != nil {
+		return errors.Wrap(err, "can't run lsblk")
 	}
-	deviceName := homeVolume.DeviceName
-	if h.Distro.HomeVolumeSettings.DeviceName != "" {
-		deviceName = h.Distro.HomeVolumeSettings.DeviceName
+	deviceName, err := getMostRecentlyAddedDevice(output)
+	if err != nil {
+		return errors.Wrapf(err, "can't get device name from '%s'", output)
 	}
 
 	// continue on umount mount error
-	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f /dev/%s", deviceName)).Background(true)
+	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't run umount command")
 	}
@@ -809,28 +822,65 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	cmd = client.CreateCommand(ctx).Sudo(true)
+
 	// skip formatting if the volume already contains a filesystem
-	cmdOut := util.NewMBCappedWriter()
-	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("file -s /dev/%s", deviceName)).SetOutputWriter(cmdOut).Run(ctx); err != nil {
+	output, err = h.RunJasperProcess(ctx, env, &options.Create{
+		Args: []string{"sudo", "file", "-s", deviceName},
+	})
+	if err != nil {
 		return errors.Wrap(err, "problem checking for formatted device")
 	}
-	if strings.Contains(cmdOut.String(), fmt.Sprintf("/dev/%s: data", deviceName)) {
-		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
+	if util.StringSliceContains(output, fmt.Sprintf("%s: data", deviceName)) {
+		cmd.Append(fmt.Sprintf("%s %s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
 	}
 
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("ln -s /%s %s/%s", evergreen.HomeVolumeDir, h.Distro.HomeDir(), evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
 
 	// write to fstab so the volume is mounted on restart
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("/dev/%s /%s auto noatime 0 0", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("%s /%s auto noatime 0 0\n", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem appending to fstab")
 	}
 
 	return nil
+}
+
+func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if !h.Distro.IcecreamSettings.Populated() {
+		return nil
+	}
+
+	script := h.Distro.IcecreamSettings.GetUpdateConfigScript()
+	args := []string{h.Distro.ShellBinary(), "-c", script}
+	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args: args,
+	}); err != nil {
+		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
+	}
+	return nil
+}
+
+func getMostRecentlyAddedDevice(lsblkOutput []string) (string, error) {
+	// lsblk contains at least the header and one device
+	if len(lsblkOutput) < 2 {
+		return "", errors.Errorf("lsblk output is length '%d'", len(lsblkOutput))
+	}
+
+	device := lsblkOutput[len(lsblkOutput)-1]
+	deviceNameRegexp, err := regexp.Compile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1)`)
+	if err != nil {
+		return "", errors.Wrap(err, "can't compile device name regexp")
+	}
+	deviceNameMatch := deviceNameRegexp.FindStringSubmatch(device)
+	if len(deviceNameMatch) < 2 {
+		return "", errors.Errorf("can't get device name from device: '%s'", device)
+	}
+
+	return fmt.Sprintf("/dev/%s", deviceNameMatch[1]), nil
 }

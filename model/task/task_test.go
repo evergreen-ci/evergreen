@@ -751,6 +751,23 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
 }
 
+func TestIsSystemUnresponsive(t *testing.T) {
+	var task Task
+
+	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem, TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
+	assert.True(t, task.IsSystemUnresponsive(), "current definition")
+
+	task = Task{Status: evergreen.TaskSystemUnresponse}
+	assert.True(t, task.IsSystemUnresponsive(), "legacy definition")
+
+	task = Task{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
+	assert.False(t, task.IsSystemUnresponsive(), "normal timeout")
+
+	task = Task{Status: evergreen.TaskSucceeded}
+	assert.False(t, task.IsSystemUnresponsive(), "success")
+
+}
+
 func TestMergeTestResultsBulk(t *testing.T) {
 	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
 	assert := assert.New(t)
@@ -1452,6 +1469,31 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 	deps, err := t1.FindAllUnmarkedBlockedDependencies()
 	assert.NoError(err)
 	assert.Len(deps, 1)
+}
+
+func TestAddDependency(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
+	assert.NoError(t, t1.Insert())
+
+	assert.NoError(t, t1.AddDependency(depTaskIds[0]))
+
+	updated, err := FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, t1.DependsOn, updated.DependsOn)
+
+	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskSucceeded, Unattainable: true}))
+
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, len(depTaskIds), len(updated.DependsOn))
+	assert.False(t, updated.DependsOn[0].Unattainable) // don't change attainability
+
+	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskFailed}))
+
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {

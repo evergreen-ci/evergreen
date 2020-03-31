@@ -304,10 +304,10 @@ func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
-// satisfiesDependency checks a task the receiver task depends on
+// SatisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.
-func (t *Task) satisfiesDependency(depTask *Task) bool {
+func (t *Task) SatisfiesDependency(depTask *Task) bool {
 	for _, dep := range t.DependsOn {
 		if dep.TaskId == depTask.Id {
 			switch dep.Status {
@@ -327,6 +327,19 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
+func (t *Task) IsSystemUnresponsive() bool {
+	// this is a legacy case
+	if t.Status == evergreen.TaskSystemUnresponse {
+		return true
+	}
+
+	if t.Details.Type == evergreen.CommandTypeSystem && t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
+		return true
+	}
+
+	return false
+}
+
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
@@ -343,16 +356,22 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$push": bson.M{
+			DependsOnKey: d,
+		},
+	}
+	// ensure the dependency doesn't already exist
+	for _, existingDependency := range t.DependsOn {
+		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
+			return nil
+		}
+	}
 	t.DependsOn = append(t.DependsOn, d)
 	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$push": bson.M{
-				DependsOnKey: d,
-			},
-		},
+		query,
+		update,
 	)
 }
 
@@ -371,7 +390,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -446,7 +465,7 @@ func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
 			return false, nil
 		}
 
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			if depTask.IsFinished() {
 				return false, nil
 			}
@@ -486,7 +505,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if !t.satisfiesDependency(&depTask) {
+		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -1160,22 +1179,14 @@ func (t *Task) MarkUnscheduled() error {
 }
 
 func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependency.Id {
 			t.DependsOn[i].Unattainable = unattainable
-			break
 		}
 	}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependency.Id,
-		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
-		},
-	)
+	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
 }
 
 // SetCost updates the task's Cost field
@@ -1852,7 +1863,7 @@ func (t *Task) BlockedState() (string, error) {
 			})
 			continue
 		}
-		if !t.satisfiesDependency(depTask) {
+		if !t.SatisfiesDependency(depTask) {
 			return evergreen.TaskStatusPending, nil
 		}
 	}
@@ -1971,7 +1982,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	return tasks, nil
 }
 
-// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+// UpdateDependsOn appends new dependencies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {

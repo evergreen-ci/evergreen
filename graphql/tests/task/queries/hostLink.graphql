@@ -1,0 +1,6 @@
+{
+  task(taskId: "taskity_task") {
+    hostId
+    hostLink
+  }
+}

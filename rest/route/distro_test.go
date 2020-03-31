@@ -1427,29 +1427,30 @@ func getMockDistrosConnector() *data.MockConnector {
 
 ///////////////////////////////////////////////////////////////////////
 //
-// Tests for POST /rest/v2/distro/{distro_id}/execute
+// Tests for PATCH /rest/v2/distro/{distro}/execute
 
-type DistroIDExecuteSuite struct {
+type distroExecuteSuite struct {
 	sc     *data.MockConnector
 	data   data.MockHostConnector
-	rh     *distroIDExecuteHandler
+	rh     *distroExecuteHandler
 	env    evergreen.Environment
 	cancel context.CancelFunc
 
 	suite.Suite
 }
 
-func TestDistroIDExecuteSuite(t *testing.T) {
-	suite.Run(t, new(DistroIDExecuteSuite))
+func TestDistroExecuteSuite(t *testing.T) {
+	suite.Run(t, new(distroExecuteSuite))
 }
 
-func (s *DistroIDExecuteSuite) SetupTest() {
+func (s *distroExecuteSuite) SetupTest() {
 	s.data = data.MockHostConnector{
 		CachedHosts: []host.Host{
 			{
 				Id: "host1",
 				Distro: distro.Distro{
-					Id: "distro1",
+					Id:      "distro1",
+					Aliases: []string{"alias1"},
 				},
 			},
 		},
@@ -1463,34 +1464,41 @@ func (s *DistroIDExecuteSuite) SetupTest() {
 	s.env = env
 	s.Require().NoError(env.Configure(ctx))
 	h := makeDistroExecute(s.sc, s.env)
-	rh, ok := h.(*distroIDExecuteHandler)
+	rh, ok := h.(*distroExecuteHandler)
 	s.Require().True(ok)
 	s.rh = rh
 }
 
-func (s *DistroIDExecuteSuite) TearDownTest() {
+func (s *distroExecuteSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *DistroIDExecuteSuite) TestParse() {
+func (s *distroExecuteSuite) TestParse() {
 	ctx, _ := s.env.Context()
 
 	body := []byte(`
-  	{"script": "echo foobar"}`,
+  	{
+		"script": "echo foobar",
+		"include_spawn_hosts": true,
+		"include_task_hosts": true
+	}`,
 	)
-	req, err := http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(body))
 	s.Require().NoError(err)
 	s.NoError(s.rh.Parse(ctx, req))
 
 	emptyBody := []byte(`{"script": ""}`)
-	req, err = http.NewRequest("POST", "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(emptyBody))
+	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/distro1/execute", bytes.NewBuffer(emptyBody))
 	s.Require().NoError(err)
 	s.Error(s.rh.Parse(ctx, req))
 }
 
-func (s *DistroIDExecuteSuite) TestRun() {
-	s.rh.distroID = "distro1"
-	s.rh.Script = "echo foobar"
+func (s *distroExecuteSuite) TestRunWithDistroID() {
+	s.rh.distro = "distro1"
+	s.rh.opts = model.APIDistroScriptOptions{
+		Script:           "echo foobar",
+		IncludeTaskHosts: true,
+	}
 
 	ctx, _ := s.env.Context()
 	resp := s.rh.Run(ctx)
@@ -1498,10 +1506,32 @@ func (s *DistroIDExecuteSuite) TestRun() {
 	s.Equal(http.StatusOK, resp.Status())
 }
 
-func (s *DistroIDExecuteSuite) TestRunNonexistentDistro() {
+func (s *distroExecuteSuite) TestRunWithDistroAlias() {
+	s.rh.distro = "alias1"
+	s.rh.opts = model.APIDistroScriptOptions{
+		Script:           "echo foobar",
+		IncludeTaskHosts: true,
+	}
+
+	ctx, _ := s.env.Context()
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+}
+
+func (s *distroExecuteSuite) TestRunWithNoHostSelector() {
+	s.rh.distro = "alias1"
+
+	ctx, _ := s.env.Context()
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+}
+
+func (s *distroExecuteSuite) TestRunNonexistentDistro() {
 	ctx := context.Background()
-	s.rh.distroID = "nonexistent"
-	s.rh.Script = "echo foobar"
+	s.rh.distro = "nonexistent"
+	s.rh.opts.Script = "echo foobar"
 
 	resp := s.rh.Run(ctx)
 	s.NotNil(resp.Data())
