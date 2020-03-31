@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Resolver struct {
@@ -229,7 +230,7 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 }
 
 func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
-	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(*obj.ProjectId, *obj.Githash))
+	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(*obj.ProjectId, *obj.Githash).Project(bson.M{"Identifier": 1}))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
