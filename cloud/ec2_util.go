@@ -326,10 +326,6 @@ type Terms struct {
 // formats /dev/sd[f-p]and xvd[f-p] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
 func generateDeviceNameForVolume(opts generateDeviceNameOptions) (string, error) {
 	letters := "fghijklmnop"
-	if len(opts.existingDeviceNames) >= len(letters) {
-		return "", errors.Errorf("host cannot have more than '%d' volumes", len(letters))
-	}
-
 	pattern := "/dev/sd%c"
 	if opts.isWindows {
 		pattern = "xvd%c"
