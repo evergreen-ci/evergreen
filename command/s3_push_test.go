@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,6 +123,22 @@ func TestS3PushExecute(t *testing.T) {
 			iter, err := c.bucket.List(ctx, conf.S3Path())
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
+		},
+		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+			tmpDir, err := ioutil.TempDir("", "s3-push")
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(tmpDir))
+			}()
+			conf.WorkDir = tmpDir
+
+			c.ExcludeFilter = "${exclude_filter}"
+			excludeFilterExpansion := "expanded_exclude_filter"
+			conf.Expansions = util.NewExpansions(map[string]string{
+				"exclude_filter": excludeFilterExpansion,
+			})
+			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
+			assert.Equal(t, excludeFilterExpansion, c.ExcludeFilter)
 		},
 		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
 			c.bucket = nil
