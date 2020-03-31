@@ -606,7 +606,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Author(childComplexity), true
 
-	case "Patch.baseVersionId":
+	case "Patch.baseVersionID":
 		if e.complexity.Patch.BaseVersionID == nil {
 			break
 		}
@@ -1688,7 +1688,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  baseVersionId: String
+  baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
 }
 
@@ -3869,7 +3869,7 @@ func (ec *executionContext) _Patch_taskCount(ctx context.Context, field graphql.
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Patch_baseVersionId(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _Patch_baseVersionID(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -9059,7 +9059,7 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				res = ec._Patch_taskCount(ctx, field, obj)
 				return res
 			})
-		case "baseVersionId":
+		case "baseVersionID":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -9067,7 +9067,7 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Patch_baseVersionId(ctx, field, obj)
+				res = ec._Patch_baseVersionID(ctx, field, obj)
 				return res
 			})
 		case "moduleCodeChanges":
