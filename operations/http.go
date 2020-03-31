@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // legacyClient manages requests to the API server endpoints, and unmarshaling the results into
@@ -279,15 +278,12 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	pp := &model.ParserProject{}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading body")
 	}
-	if err := bson.Unmarshal(respBytes, pp); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling into parser project")
-	}
-	return model.TranslateProject(pp)
+
+	return model.GetProjectFromBSON(respBytes)
 }
 
 // GetLastGreen returns the most recent successful version for the given project and variants.

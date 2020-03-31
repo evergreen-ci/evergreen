@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1377,24 +1376,16 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	assert.NoError(t, err)
 
 	// to and from yaml
-	curTime := time.Now()
 	yamlBytes, err := yaml.Marshal(original)
 	assert.NoError(t, err)
 	pp := &ParserProject{}
 	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
-	yamlTime := time.Since(curTime)
 
 	// to and from BSON
-	curTime = time.Now()
 	bsonBytes, err := bson.Marshal(original)
 	assert.NoError(t, err)
 	bsonPP := &ParserProject{}
 	assert.NoError(t, bson.Unmarshal(bsonBytes, bsonPP))
-	bsonTime := time.Since(curTime)
-
-	fmt.Println("yaml time: ", yamlTime.String())
-	//fmt.Println("json time: ", jsonTime.String())
-	fmt.Println("bson time: ", bsonTime.String())
 
 	// ensure bson actually worked
 	newBytes, err := yaml.Marshal(bsonPP)

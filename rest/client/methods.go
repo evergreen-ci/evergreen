@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
@@ -211,7 +210,6 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 }
 
 func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
-	pp := &model.ParserProject{}
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
@@ -230,10 +228,7 @@ func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading body")
 	}
-	if err := bson.Unmarshal(respBytes, pp); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
-	}
-	return model.TranslateProject(pp)
+	return model.GetProjectFromBSON(respBytes)
 }
 
 func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
