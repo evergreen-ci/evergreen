@@ -181,9 +181,11 @@ func MockConfig() *evergreen.Settings {
 			Version:          "version",
 		},
 		Jira: evergreen.JiraConfig{
-			Host:           "host",
-			Username:       "username",
-			Password:       "password",
+			Host: "host",
+			BasicAuthConfig: evergreen.JiraBasicAuthConfig{
+				Username: "username",
+				Password: "password",
+			},
 			DefaultProject: "proj",
 		},
 		Keys:    map[string]string{"k3": "v3"},
