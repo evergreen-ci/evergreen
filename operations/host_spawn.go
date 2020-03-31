@@ -611,8 +611,9 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*model.APIHost) {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
+		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
 			model.FromStringPtr(h.Id),
+			model.FromStringPtr(h.DisplayName),
 			model.FromStringPtr(h.Distro.Id),
 			model.FromStringPtr(h.Status),
 			model.FromStringPtr(h.HostURL),

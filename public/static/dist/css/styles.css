@@ -1010,6 +1010,13 @@ ul.tooltip-tasks li.tooltip-task {
   background-color: #5F923B;
   color: white;
 }
+.host-name-input {
+  border: none;
+  background-color: inherit;
+}
+.host-name-input-group:focus-within {
+  background-color: #9FBD89;
+}
 .host-info {
   font-size: 1.2em;
 }
