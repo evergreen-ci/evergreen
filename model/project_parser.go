@@ -33,7 +33,7 @@ const LoadProjectError = "load project error(s)"
 // when they use fields that aren't actually defined.
 //
 // Once the intermediary project is created, we crawl it to evaluate tag selectors
-// and  matrix definitions. This step recursively crawls variants, tasks, their
+// and matrix definitions. This step recursively crawls variants, tasks, their
 // dependencies, and so on, to replace selectors with the tasks they reference and return
 // a populated Project type.
 //
