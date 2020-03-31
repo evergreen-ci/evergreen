@@ -144,8 +144,8 @@ type awsClientImpl struct { //nolint
 }
 
 type generateDeviceNameOptions struct {
-	isWindows      bool
-	shouldGenerate bool
+	isWindows           bool
+	existingDeviceNames []string
 }
 
 const (
@@ -574,6 +574,9 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 			output, err = c.EC2.DeleteVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Error(), "does not exist") {
+						return false, nil
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
@@ -601,16 +604,7 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
 					if strings.Contains(ec2err.Message(), "not a valid EBS device name") {
-						if opts.shouldGenerate {
-							newDeviceName, err2 := getGeneratedDeviceNameForVolume(ctx, opts.isWindows)
-							if err2 != nil {
-								return true, err2
-							}
-							input.Device = &newDeviceName
-							msg = makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
-						} else { // user chose device name so can't attempt with a new one
-							return false, err
-						}
+						return false, err
 					}
 				}
 				return true, err
