@@ -356,16 +356,22 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$push": bson.M{
+			DependsOnKey: d,
+		},
+	}
+	// ensure the dependency doesn't already exist
+	for _, existingDependency := range t.DependsOn {
+		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
+			return nil
+		}
+	}
 	t.DependsOn = append(t.DependsOn, d)
 	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$push": bson.M{
-				DependsOnKey: d,
-			},
-		},
+		query,
+		update,
 	)
 }
 
@@ -1173,22 +1179,14 @@ func (t *Task) MarkUnscheduled() error {
 }
 
 func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependency.Id {
 			t.DependsOn[i].Unattainable = unattainable
-			break
 		}
 	}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependency.Id,
-		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
-		},
-	)
+	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
 }
 
 // SetCost updates the task's Cost field
@@ -1984,7 +1982,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	return tasks, nil
 }
 
-// UpdateDependsOn appends new dependnecies to tasks that already depend on this task
+// UpdateDependsOn appends new dependencies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {

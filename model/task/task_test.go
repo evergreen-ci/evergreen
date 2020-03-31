@@ -1471,6 +1471,31 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 	assert.Len(deps, 1)
 }
 
+func TestAddDependency(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
+	assert.NoError(t, t1.Insert())
+
+	assert.NoError(t, t1.AddDependency(depTaskIds[0]))
+
+	updated, err := FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, t1.DependsOn, updated.DependsOn)
+
+	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskSucceeded, Unattainable: true}))
+
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, len(depTaskIds), len(updated.DependsOn))
+	assert.False(t, updated.DependsOn[0].Unattainable) // don't change attainability
+
+	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskFailed}))
+
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
+}
+
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
