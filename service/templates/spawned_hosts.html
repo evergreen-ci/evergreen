@@ -81,9 +81,9 @@ Evergreen - My Hosts
           <tbody>
             <tr ng-repeat="host in hosts | orderBy:sortBy.by" ng-click="setSelected(host)" ng-class="host.selected">
               <td class="col-lg-2 no-word-wrap">
-                <div>
-                  <input type="text" class="host-name-input" ng-class="host.selected" ng-model="host.display_name">
-                  <span class="host-name-confirm" ng-show="host.originalDisplayName != host.display_name" >
+                <div class="host-name-input-group">
+                  <input type="text" class="host-name-input" ng-model="host.display_name">
+                  <span ng-show="host.originalDisplayName != host.display_name" >
                     <i class="fa fa-check pointer" ng-click="setDisplayName(host)"></i>
                     <i class="fa fa-times pointer" ng-click="resetDisplayName(host)"></i>
                   </span>
