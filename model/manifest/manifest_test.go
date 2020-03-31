@@ -60,21 +60,6 @@ func TestFindFromVersion(t *testing.T) {
 	assert.Equal(t, "m1", mfest.Id)
 }
 
-func TestByProjectAndRevision(t *testing.T) {
-	require.NoError(t, db.Clear(Collection))
-	mfest := &Manifest{
-		Id:          "m1",
-		ProjectName: "evergreen",
-		Revision:    "abcdef",
-	}
-	_, err := mfest.TryInsert()
-	require.NoError(t, err)
-
-	mfest, err = FindOne(ByProjectAndRevision("evergreen", "abcdef"))
-	assert.NoError(t, err)
-	assert.Equal(t, "m1", mfest.Id)
-}
-
 func TestByBaseProjectAndRevision(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	mfests := []Manifest{

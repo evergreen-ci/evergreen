@@ -58,13 +58,6 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 	})
 }
 
-func ByProjectAndRevision(project, revision string) db.Q {
-	return db.Query(bson.M{
-		ProjectNameKey:      project,
-		ManifestRevisionKey: revision,
-	})
-}
-
 func FindFromVersion(versionID, project, revision, requester string) (*Manifest, error) {
 	manifest, err := FindOne(ById(versionID))
 	if err != nil {
@@ -81,14 +74,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 		return nil, errors.Wrap(err, "error finding manifest")
 	}
 	if manifest == nil {
-		// check for a legacy manifest
-		manifest, err = FindOne(ByProjectAndRevision(project, revision))
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding manifest")
-		}
-		if manifest == nil {
-			return nil, nil
-		}
+		return nil, nil
 	}
 
 	if evergreen.IsPatchRequester(requester) {
