@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"net/http"
-	"path"
 	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -22,6 +21,7 @@ type s3Push struct {
 	ExcludeFilter string `mapstructure:"exclude_filter" plugin:"expand"`
 	// BuildVariants contains all build variants this command should be run on.
 	BuildVariants []string `mapstructure:"build_variants"`
+	MaxRetries    uint     `mapstructure:"max_retries"`
 
 	bucket pail.Bucket
 	base
@@ -33,9 +33,16 @@ func (*s3Push) Name() string {
 	return "s3.push"
 }
 
+const (
+	defaultS3MaxRetries = 10
+)
+
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
+	}
+	if c.MaxRetries == 0 {
+		c.MaxRetries = defaultS3MaxRetries
 	}
 	return nil
 }
@@ -68,7 +75,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(putMsg)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  s3TaskRemotePath(conf),
+		Remote:  conf.S3Path(),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")
@@ -85,6 +92,9 @@ func (c *s3Push) expandParams(conf *model.TaskConfig) error {
 }
 
 func (c *s3Push) shouldRunOnBuildVariant(bv string) bool {
+	if len(c.BuildVariants) == 0 {
+		return true
+	}
 	return util.StringSliceContains(c.BuildVariants, bv)
 }
 
@@ -92,11 +102,15 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 	if c.bucket != nil {
 		return nil
 	}
+	if err := conf.S3Data.Validate(); err != nil {
+		return errors.Wrap(err, "invalid S3 task credentials")
+	}
+
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(conf.S3Data.Key, conf.S3Data.Secret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        conf.S3Data.Bucket,
-		MaxRetries:  10,
+		MaxRetries:  int(c.MaxRetries),
 		Permissions: pail.S3PermissionsPrivate,
 	}
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, opts)
@@ -109,15 +123,4 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 	}, bucket)
 	c.bucket = bucket
 	return nil
-}
-
-// s3TaskRemotePath returns the path for the latest s3 push for this task.
-func s3TaskRemotePath(conf *model.TaskConfig) string {
-	return path.Join(s3TaskRemotePathBase(conf), "latest")
-}
-
-// s3TaskPrefixBase is a helper that returns the base s3 path in S3, which is a
-// path path unique to a task.
-func s3TaskRemotePathBase(conf *model.TaskConfig) string {
-	return path.Join(conf.ProjectRef.Identifier, conf.Task.Version, conf.Task.BuildVariant, conf.Task.DisplayName)
 }

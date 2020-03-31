@@ -189,10 +189,9 @@ func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 		S3Secret:          as.Settings.Providers.AWS.S3Secret,
 		S3Bucket:          as.Settings.Providers.AWS.Bucket,
 		S3Task: apimodels.S3TaskSetupData{
-			Key:     as.Settings.Providers.AWS.S3TaskKey,
-			Secret:  as.Settings.Providers.AWS.S3TaskSecret,
-			Bucket:  as.Settings.Providers.AWS.S3TaskBucket,
-			BaseURL: as.Settings.Providers.AWS.S3BaseURL,
+			Key:    as.Settings.Providers.AWS.S3TaskKey,
+			Secret: as.Settings.Providers.AWS.S3TaskSecret,
+			Bucket: as.Settings.Providers.AWS.S3TaskBucket,
 		},
 		S3Base:       as.Settings.Providers.AWS.S3BaseURL,
 		LogkeeperURL: as.Settings.LoggerConfig.LogkeeperURL,
