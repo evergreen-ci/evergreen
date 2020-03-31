@@ -296,6 +296,9 @@ task_groups:
   - example_task_1
   - example_task_2
 `
+	p := &Project{}
+	_, err := LoadProjectInto([]byte(projYml), "", p)
+	assert.NoError(err)
 	v := Version{
 		Id:     "v1",
 		Config: projYml,
@@ -309,6 +312,7 @@ task_groups:
 	tg, err := GetTaskGroup(tgName, &TaskConfig{
 		Version: &v,
 		Task:    &t1,
+		Project: p,
 	})
 	assert.NoError(err)
 	assert.Equal(tgName, tg.Name)

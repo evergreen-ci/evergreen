@@ -9,12 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1364,6 +1366,40 @@ func TestTryUpsert(t *testing.T) {
 			testCase(t)
 		})
 	}
+}
+
+func TestParserProjectRoundtrip(t *testing.T) {
+	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+	yml, err := ioutil.ReadFile(filepath)
+	assert.NoError(t, err)
+
+	original, err := createIntermediateProject(yml)
+	assert.NoError(t, err)
+
+	// to and from yaml
+	curTime := time.Now()
+	yamlBytes, err := yaml.Marshal(original)
+	assert.NoError(t, err)
+	pp := &ParserProject{}
+	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
+	yamlTime := time.Since(curTime)
+
+	// to and from BSON
+	curTime = time.Now()
+	bsonBytes, err := bson.Marshal(original)
+	assert.NoError(t, err)
+	bsonPP := &ParserProject{}
+	assert.NoError(t, bson.Unmarshal(bsonBytes, bsonPP))
+	bsonTime := time.Since(curTime)
+
+	fmt.Println("yaml time: ", yamlTime.String())
+	//fmt.Println("json time: ", jsonTime.String())
+	fmt.Println("bson time: ", bsonTime.String())
+
+	// ensure bson actually worked
+	newBytes, err := yaml.Marshal(bsonPP)
+	assert.NoError(t, err)
+	assert.True(t, bytes.Equal(yamlBytes, newBytes))
 }
 
 func TestParserProjectPersists(t *testing.T) {

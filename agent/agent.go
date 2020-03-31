@@ -276,11 +276,15 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting version")
 	}
-	project := &model.Project{}
-	// TODO: populated config from parser project
-	// later will want a separate communicator route
-	if _, err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project); err != nil {
-		return errors.Wrapf(err, "error reading project config")
+	p, err := a.comm.GetProject(ctx, tc.task)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"ticket":  "EVG-7167",
+			"message": "fetchProjectConfig",
+			"task":    tc.task.ID,
+			"version": v.Id,
+		}))
+		return errors.Wrap(err, "error getting parser project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
@@ -298,7 +302,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	exp.Update(expVars.Vars)
 	tc.version = v
 	tc.taskModel = taskModel
-	tc.project = project
+	tc.project = p
 	tc.expansions = exp
 	tc.expVars = expVars
 	return nil

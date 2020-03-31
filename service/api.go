@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -195,20 +196,44 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pp, err := model.ParserProjectFindOneById(t.Version)
+	gimlet.WriteJSON(w, v)
+}
+
+func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
+	t := MustHaveTask(r)
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		v.Config = string(config)
+
+	if v == nil {
+		http.Error(w, "version not found", http.StatusNotFound)
+		return
 	}
-	gimlet.WriteJSON(w, v)
+	pp, err := model.ParserProjectFindOneById(t.Version)
+	// handle legacy
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
+		pp = &model.ParserProject{}
+		if err := yaml.Unmarshal([]byte(v.Config), pp); err != nil {
+			http.Error(w, "invalid version config", http.StatusNotFound)
+		}
+	}
+	if pp.Functions == nil {
+		pp.Functions = map[string]*model.YAMLCommandSet{}
+	}
+	projBytes, err := bson.Marshal(pp)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"ticket":  "EVG-7167",
+			"message": "GetParserProject",
+			"version": v.Id,
+		}))
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling to bson"})
+		return
+	}
+	gimlet.WriteBinary(w, projBytes)
 }
 
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
@@ -558,6 +583,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
 	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
+	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
 

@@ -25,6 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
@@ -207,6 +208,37 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 		return nil, err
 	}
 	return v, nil
+}
+
+func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
+	pp := &model.ParserProject{}
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+	info.setTaskPathSuffix("parser_project")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get project for task %s", taskData.ID)
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusConflict {
+		return nil, errors.New("conflict; wrong secret")
+	}
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+	if err := bson.Unmarshal(respBytes, pp); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"ticket":  "EVG-7167",
+			"message": "GetProject (ac legacy client)",
+			"task":    taskData.ID,
+		}))
+		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
+	}
+	return model.TranslateProject(pp)
 }
 
 func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {

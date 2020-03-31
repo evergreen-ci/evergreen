@@ -9,7 +9,7 @@ import (
 )
 
 // Returns a JSON response of an array with the ref information for the requested project_id.
-func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	ref := projCtx.ProjectRef
 	if ref == nil {

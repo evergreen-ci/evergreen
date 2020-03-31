@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/evergreen-ci/gimlet"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -20,8 +18,11 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // legacyClient manages requests to the API server endpoints, and unmarshaling the results into
@@ -253,8 +254,8 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	return ref, nil
 }
 
-// GetVersionConfig fetches the config requests project details from the API server for a given project ID.
-func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
+// GetVersionConfig fetches the config yaml from the API server for a given project ID.
+func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	resp, err := ac.get(fmt.Sprintf("versions/%v/config", versionId), nil)
 	if err != nil {
 		return nil, err
@@ -262,15 +263,37 @@ func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	ref := &model.Project{}
-	yamlBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+	return respBytes, nil
+
+}
+
+// GetVersionConfig fetches the project details from the API server for a given project ID.
+func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
+	resp, err := ac.get(fmt.Sprintf("versions/%v/parser_project", versionId), nil)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
-		return nil, err
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
 	}
-	return ref, nil
+	pp := &model.ParserProject{}
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+	if err := bson.Unmarshal(respBytes, pp); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"ticket":  "EVG-7167",
+			"message": "GetProject (ac legacy client)",
+			"version": versionId,
+		}))
+		return nil, errors.Wrap(err, "error unmarshalling into parser project")
+	}
+	return model.TranslateProject(pp)
 }
 
 // GetLastGreen returns the most recent successful version for the given project and variants.

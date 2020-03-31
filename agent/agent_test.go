@@ -204,6 +204,19 @@ func (s *AgentSuite) TestCancelRunCommands() {
 }
 
 func (s *AgentSuite) TestPre() {
+	projYml := `
+pre:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -212,20 +225,10 @@ func (s *AgentSuite) TestPre() {
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: &model.Project{},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
-	projYml := `
-pre:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
-	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
@@ -237,17 +240,6 @@ pre:
 }
 
 func (s *AgentSuite) TestPreFailsTask() {
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
 	projYml := `
 pre_error_fails_task: true
 pre:
@@ -255,18 +247,13 @@ pre:
     params:
       command: "doesntexist"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
-	s.NoError(s.tc.logger.Close())
-}
-
-func (s *AgentSuite) TestPost() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -275,20 +262,42 @@ func (s *AgentSuite) TestPost() {
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: &model.Project{},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+}
+
+func (s *AgentSuite) TestPost() {
 	projYml := `
 post:
   - command: shell.exec
     params:
       script: "echo hi"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostTaskCommands(ctx, s.tc)
@@ -300,17 +309,6 @@ post:
 }
 
 func (s *AgentSuite) TestPostContinuesOnError() {
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
 	projYml := `
 post:
   - command: shell.exec
@@ -320,9 +318,24 @@ post:
     params:
       script: "exit 0"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
+	}
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
 	}
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
@@ -571,18 +584,6 @@ func (s *AgentSuite) TestAgentConstructorSetsHostData() {
 
 func (s *AgentSuite) TestGroupPreGroupCommands() {
 	s.tc.taskGroup = "task_group_name"
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
@@ -592,11 +593,26 @@ task_groups:
     params:
       script: "echo hi"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
@@ -609,19 +625,6 @@ task_groups:
 
 func (s *AgentSuite) TestGroupPreGroupSetupTimeout() {
 	s.tc.taskGroup = "task_group_name"
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
-	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -632,20 +635,13 @@ task_groups:
     params:
       script: "sleep 10"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := s.a.runPreTaskCommands(ctx, s.tc)
-	s.Error(err)
-	s.Contains(err.Error(), "context deadline exceeded")
-}
-
-func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
-	s.tc.taskGroup = "task_group_name"
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -655,9 +651,18 @@ func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: &model.Project{},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err = s.a.runPreTaskCommands(ctx, s.tc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "context deadline exceeded")
+}
+
+func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
 	s.tc.taskGroup = "task_group_name"
 	s.tc.runGroupSetup = true
 	projYml := `
@@ -669,11 +674,26 @@ task_groups:
     params:
       script: "echo hi"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
@@ -684,6 +704,21 @@ task_groups:
 
 func (s *AgentSuite) TestGroupPreTaskCommands() {
 	s.tc.taskGroup = "task_group_name"
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_task:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -693,23 +728,10 @@ func (s *AgentSuite) TestGroupPreTaskCommands() {
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: &model.Project{},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
-	s.tc.taskGroup = "task_group_name"
-	projYml := `
-task_groups:
-- name: task_group_name
-  setup_task:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
-	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
@@ -722,6 +744,21 @@ task_groups:
 
 func (s *AgentSuite) TestGroupPostTaskCommands() {
 	s.tc.taskGroup = "task_group_name"
+	projYml := `
+task_groups:
+- name: task_group_name
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -731,23 +768,10 @@ func (s *AgentSuite) TestGroupPostTaskCommands() {
 			TaskGroup: "task_group_name",
 			Version:   versionId,
 		},
-		Project: &model.Project{},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
-	s.tc.taskGroup = "task_group_name"
-	projYml := `
-task_groups:
-- name: task_group_name
-  teardown_task:
-  - command: shell.exec
-    params:
-      script: "echo hi"
-`
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
-	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostTaskCommands(ctx, s.tc)
@@ -760,18 +784,6 @@ task_groups:
 
 func (s *AgentSuite) TestGroupPostGroupCommands() {
 	s.tc.taskModel = &task.Task{}
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
@@ -781,11 +793,26 @@ task_groups:
     params:
       script: "echo hi"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostGroupCommands(ctx, s.tc)
@@ -800,18 +827,6 @@ func (s *AgentSuite) TestGroupTimeoutCommands() {
 		ID:     "task_id",
 		Secret: "task_secret",
 	}
-	s.tc.taskConfig = &model.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_group_name",
-			Version:   versionId,
-		},
-		Project: &model.Project{},
-		WorkDir: s.tc.taskDirectory,
-	}
 	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
@@ -821,11 +836,26 @@ task_groups:
     params:
       script: "echo hi"
 `
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
 	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.tc.taskConfig.Version = v
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: p,
+		Version: v,
+		WorkDir: s.tc.taskDirectory,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runTaskTimeoutCommands(ctx, s.tc)
@@ -840,6 +870,25 @@ func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
 		ID:     "task_id",
 		Secret: "task_secret",
 	}
+
+	projYml := `
+timeout:
+- command: shell.exec
+  params:
+    shell: bash
+    script: |
+      echo "hi"
+      sleep 5
+      echo "bye"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
+	p.CallbackTimeout = 2
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -848,26 +897,10 @@ func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
 			Id:      "task_id",
 			Version: versionId,
 		},
-		Project: &model.Project{
-			CallbackTimeout: 2,
-		},
+		Project: p,
+		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
-	projYml := `
-timeout:
-  - command: shell.exec
-    params:
-      shell: bash
-      script: |
-	echo "hi"
-	sleep 5
-	echo "bye"
-`
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
-	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	now := time.Now()
