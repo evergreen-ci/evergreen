@@ -1900,6 +1900,20 @@ buildvariants:
 	assert.Len(strictErrs, 1)
 	assert.Contains(strictErrs[0].Message, "field not_a_field not found")
 	assert.Equal(strictErrs[0].Level, Warning)
+
+	yamlWithVariables := `
+variables:
+tasks:
+- name: task1
+  commands:
+  - command: shell.exec
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: task1
+`
+	assert.Empty(CheckYamlStrict([]byte(yamlWithVariables)))
 }
 
 func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {

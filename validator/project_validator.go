@@ -186,8 +186,14 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	// check strict yaml, i.e warn if there are missing fields
-	strictProject := &model.ParserProject{}
-	if err := yaml.UnmarshalStrict(yamlBytes, strictProject); err != nil {
+	strictProjectWithVariables := struct {
+		model.ParserProject `yaml:"pp,inline"`
+		// Variables is only used to suppress yaml unmarshalling errors related
+		// to a non-existent variables field.
+		Variables interface{} `yaml:"variables" bson:"-"`
+	}{}
+
+	if err := yaml.UnmarshalStrict(yamlBytes, &strictProjectWithVariables); err != nil {
 		validationErrs = append(validationErrs, ValidationError{
 			Level:   Warning,
 			Message: err.Error(),

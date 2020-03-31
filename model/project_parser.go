@@ -71,9 +71,6 @@ type ParserProject struct {
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
-	// This is only used to suppress yaml unmarshalling errors related to a
-	// non-existent variables field.
-	Variables interface{} `yaml:"-" bson:"-"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
