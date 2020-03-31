@@ -194,9 +194,20 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
+  uiLink: String!
+}
+
+type PatchMetadata {
+  author: String!
+}
+
+type BaseTaskMetadata {
+  baseTaskDuration: Duration
+  baseTaskLink: String!
 }
 
 type Task {
+  patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
   ingestTime: Time
@@ -220,6 +231,7 @@ type Task {
   reliesOn: [Dependency!]!
   displayName: String!
   hostId: String
+  hostLink: String
   restarts: Int
   execution: Int
   order: Int
@@ -234,7 +246,7 @@ type Task {
   generatedBy: String
   aborted: Boolean
   patchNumber: Int
-  baseCommitDuration: Duration
+  baseTaskMetadata: BaseTaskMetadata!
 }
 
 type Projects {

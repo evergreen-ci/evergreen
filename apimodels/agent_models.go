@@ -84,10 +84,17 @@ type AgentSetupData struct {
 
 // S3TaskSetupData contains information for tasks running S3 commands.
 type S3TaskSetupData struct {
-	Key     string `json:"key"`
-	Secret  string `json:"secret"`
-	Bucket  string `json:"bucket"`
-	BaseURL string `json:"base_url"`
+	Key    string `json:"key"`
+	Secret string `json:"secret"`
+	Bucket string `json:"bucket"`
+}
+
+func (d *S3TaskSetupData) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(d.Key == "", "S3 key is missing")
+	catcher.NewWhen(d.Secret == "", "S3 secret is missing")
+	catcher.NewWhen(d.Bucket == "", "S3 bucket name is missing")
+	return catcher.Resolve()
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

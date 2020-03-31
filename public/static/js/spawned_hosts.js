@@ -73,6 +73,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
                 $scope.setSelected(host);
               }
+              if (host.display_name == "") {
+                host.display_name = host.id;
+              }
+              host.originalDisplayName = host.display_name;
             });
             $scope.hosts = hosts
           },
@@ -263,6 +267,23 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         }
       );
     };
+
+    $scope.setDisplayName = function (host) {
+      mciSpawnRestService.updateHostDisplayName(host.id, host.display_name,
+        {
+          success: function (resp) {
+            host.originalDisplayName = host.display_name;
+          },
+          error: function (resp) {
+            notificationService.pushNotification('Error setting display name: ' + resp.data.error, 'errorHeader');
+          }
+        }
+      );
+    }
+
+    $scope.resetDisplayName = function (host) {
+      host.display_name = host.originalDisplayName
+    }
 
     $scope.spawnHost = function () {
       $scope.spawnReqSent = true;

@@ -620,8 +620,6 @@ buildvariants:
       - windows-64-vs2015-compile
       - windows-64-vs2013-test
       - windows-64-vs2013-compile
-      - windows-64-vs2010-test
-      - windows-64-vs2010-compile
       - windows-64-vs2017-test
       - windows-64-vs2017-compile
     expansions:

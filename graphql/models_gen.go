@@ -11,11 +11,17 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
+type BaseTaskMetadata struct {
+	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
+	BaseTaskLink     string             `json:"baseTaskLink"`
+}
+
 type Dependency struct {
 	Name           string         `json:"name"`
 	MetStatus      MetStatus      `json:"metStatus"`
 	RequiredStatus RequiredStatus `json:"requiredStatus"`
 	BuildVariant   string         `json:"buildVariant"`
+	UILink         string         `json:"uiLink"`
 }
 
 type DisplayTask struct {
@@ -48,6 +54,10 @@ type PatchDuration struct {
 	Makespan  *string    `json:"makespan"`
 	TimeTaken *string    `json:"timeTaken"`
 	Time      *PatchTime `json:"time"`
+}
+
+type PatchMetadata struct {
+	Author string `json:"author"`
 }
 
 type PatchReconfigure struct {

@@ -39,6 +39,7 @@ type Host struct {
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+	DisplayName        string `bson:"display_name" json:"display_name"`
 
 	// physical location of host
 	Project string `bson:"project" json:"project"`
@@ -300,6 +301,7 @@ type HostModifyOptions struct {
 	AttachVolume       string
 	DetachVolume       string
 	SubscriptionType   string
+	NewName            string
 }
 
 type SpawnHostUsage struct {
@@ -1381,6 +1383,14 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+func (h *Host) SetDisplayName(newName string) error {
+	h.DisplayName = newName
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
+	)
+}
+
 // AddSSHKeyName adds the SSH key name for the host if it doesn't already have
 // it.
 func (h *Host) AddSSHKeyName(name string) error {
@@ -2291,6 +2301,14 @@ func (h *Host) HomeVolume() *VolumeAttachment {
 	}
 
 	return nil
+}
+
+func (h *Host) HostVolumeDeviceNames() []string {
+	res := []string{}
+	for _, vol := range h.Volumes {
+		res = append(res, vol.DeviceName)
+	}
+	return res
 }
 
 // FindHostWithVolume finds the host associated with the

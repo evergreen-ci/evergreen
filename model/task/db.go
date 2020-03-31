@@ -12,6 +12,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -1077,4 +1078,24 @@ func FindProjectForTask(taskID string) (string, error) {
 		return "", errors.New("task not found")
 	}
 	return t.Project, nil
+}
+
+func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyUnattainableKey): unattainable},
+		},
+		options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): dependencyId,
+			},
+		}}),
+	)
+	return res.Err()
 }

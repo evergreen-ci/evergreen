@@ -5,6 +5,7 @@
       requiredStatus
       buildVariant
       name
+      uiLink
     }
   }
 }

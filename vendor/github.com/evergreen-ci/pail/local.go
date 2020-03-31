@@ -363,7 +363,7 @@ func (b *localFileSystem) Push(ctx context.Context, opts SyncOptions) error {
 	}
 
 	if b.deleteOnSync && !b.dryRun {
-		return errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "probelm with delete on sync after push")
+		return errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "problem with delete on sync after push")
 	}
 	return nil
 }

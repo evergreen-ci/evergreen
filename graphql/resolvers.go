@@ -105,6 +105,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 			BuildVariant:   depTask.BuildVariant,
 			MetStatus:      metStatus,
 			RequiredStatus: requiredStatus,
+			UILink:         fmt.Sprintf("/task/%s", depTask.Id),
 		}
 
 		dependencies = append(dependencies, &dependency)
@@ -840,10 +841,25 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &patch.PatchNumber, nil
 }
 
-func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.APITask) (*restModel.APIDuration, error) {
-	t, err := r.sc.FindTaskById(*at.Id)
+func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
+	patch, err := r.sc.FindPatchById(*obj.Version)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", *at.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+	}
+	patchMetadata := PatchMetadata{
+		Author: *patch.Author,
+	}
+	return &patchMetadata, nil
+}
+
+func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITask) (*BaseTaskMetadata, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
 	}
 	baseTask, err := t.FindTaskOnBaseCommit()
 	if err != nil {
@@ -852,11 +868,16 @@ func (r *taskResolver) BaseCommitDuration(ctx context.Context, at *restModel.API
 	if baseTask == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
 	}
-	if baseTask.TimeTaken == 0 {
-		return nil, nil
-	}
+
 	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
-	return &dur, nil
+	baseTaskMetadata := BaseTaskMetadata{
+		BaseTaskLink:     fmt.Sprintf("/task/%s", baseTask.Id),
+		BaseTaskDuration: &dur,
+	}
+	if baseTask.TimeTaken == 0 {
+		baseTaskMetadata.BaseTaskDuration = nil
+	}
+	return &baseTaskMetadata, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

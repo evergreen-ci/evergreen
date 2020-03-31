@@ -92,7 +92,7 @@ type S3Options struct {
 	UseSingleFileChecksums bool
 	// Verbose sets the logging mode to "debug".
 	Verbose bool
-	// MaxRetries sets the number of retry attemps for s3 operations.
+	// MaxRetries sets the number of retry attempts for s3 operations.
 	MaxRetries int
 	// Credentials allows the passing in of explicit AWS credentials. These
 	// will override the default credentials chain. (Optional)
@@ -847,7 +847,7 @@ func (s *s3Bucket) pushHelper(ctx context.Context, b Bucket, opts SyncOptions) e
 	}
 
 	if s.deleteOnSync && !s.dryRun {
-		return errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "probelm with delete on sync after push")
+		return errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "problem with delete on sync after push")
 	}
 	return nil
 }
