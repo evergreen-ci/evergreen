@@ -189,8 +189,8 @@ buildvariants:
   - name: coverage
     display_name: Coverage (Arch Linux)
     expansions:
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
     run_on:
       - archlinux-test
