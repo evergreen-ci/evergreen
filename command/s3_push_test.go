@@ -19,20 +19,19 @@ import (
 
 func TestS3PushParseParams(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *s3Push){
-		"SetsDefaults": func(t *testing.T, c *s3Push) {
-			require.NoError(t, c.ParseParams(map[string]interface{}{}))
-			assert.Equal(t, (defaultS3MaxRetries), c.MaxRetries)
-		},
 		"SetsValues": func(t *testing.T, c *s3Push) {
 			params := map[string]interface{}{
-				"exclude_filter": "exclude_pattern",
+				"exclude":        "exclude_pattern",
 				"build_variants": []string{"some_build_variant"},
 				"max_retries":    uint(5),
 			}
 			require.NoError(t, c.ParseParams(params))
-			assert.Equal(t, params["exclude_filter"], c.ExcludeFilter)
+			assert.Equal(t, params["exclude"], c.ExcludeFilter)
 			assert.Equal(t, params["build_variants"], c.BuildVariants)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
+		},
+		"SucceedsWithNoParameters": func(t *testing.T, c *s3Push) {
+			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
