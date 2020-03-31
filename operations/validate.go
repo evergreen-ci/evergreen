@@ -95,7 +95,7 @@ func validateFile(path string, ac *legacyClient, quiet bool) error {
 
 	for _, e := range projErrors {
 		if e.Level == validator.Error {
-			return errors.New("invalid configuration for %s")
+			return errors.Errorf("%s is an invalid configuration", path)
 		}
 	}
 
