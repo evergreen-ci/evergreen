@@ -46,7 +46,8 @@
                 "metStatus": "PENDING",
                 "requiredStatus": "MUST_FINISH",
                 "buildVariant": "ubuntu",
-                "name": "dep1"
+                "name": "dep1",
+                "uiLink": "/task/dep1"
               }
             ]
           }
@@ -63,7 +64,8 @@
                 "metStatus": "PENDING",
                 "requiredStatus": "MUST_SUCCEED",
                 "buildVariant": "ubuntu",
-                "name": "dep1"
+                "name": "dep1",
+                "uiLink": "/task/dep1"
               }
             ]
           }
@@ -80,7 +82,8 @@
                 "metStatus": "MET",
                 "requiredStatus": "MUST_FINISH",
                 "buildVariant": "windows",
-                "name": "dep2"
+                "name": "dep2",
+                "uiLink": "/task/dep2"
               }
             ]
           }
@@ -97,7 +100,8 @@
                 "metStatus": "MET",
                 "requiredStatus": "MUST_FAIL",
                 "buildVariant": "windows",
-                "name": "dep2"
+                "name": "dep2",
+                "uiLink": "/task/dep2"
               }
             ]
           }
@@ -114,7 +118,8 @@
                 "metStatus": "UNMET",
                 "requiredStatus": "MUST_SUCCEED",
                 "buildVariant": "windows",
-                "name": "dep5"
+                "name": "dep5",
+                "uiLink": "/task/dep5"
               }
             ]
           }

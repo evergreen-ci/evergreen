@@ -193,6 +193,7 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
+  uiLink: String!
 }
 
 type Task {
