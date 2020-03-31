@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -286,11 +285,6 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 		return nil, errors.Wrap(err, "error reading body")
 	}
 	if err := bson.Unmarshal(respBytes, pp); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-7167",
-			"message": "GetProject (ac legacy client)",
-			"version": versionId,
-		}))
 		return nil, errors.Wrap(err, "error unmarshalling into parser project")
 	}
 	return model.TranslateProject(pp)

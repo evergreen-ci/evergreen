@@ -984,11 +984,6 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	}
 
 	if tc.Project == nil {
-		grip.Error(message.Fields{
-			"ticket":  "EVG-7167",
-			"message": "GetTaskGroup has nil project",
-			"version": tc.Version.Id,
-		})
 		return nil, errors.New("project is nil")
 	}
 	if taskGroup == "" {

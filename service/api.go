@@ -224,11 +224,6 @@ func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 	}
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-7167",
-			"message": "GetParserProject",
-			"version": v.Id,
-		}))
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling to bson"})
 		return

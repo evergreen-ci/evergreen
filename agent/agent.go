@@ -278,12 +278,6 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	}
 	p, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-7167",
-			"message": "fetchProjectConfig",
-			"task":    tc.task.ID,
-			"version": v.Id,
-		}))
 		return errors.Wrap(err, "error getting parser project")
 	}
 

@@ -231,11 +231,6 @@ func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*
 		return nil, errors.Wrap(err, "error reading body")
 	}
 	if err := bson.Unmarshal(respBytes, pp); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"ticket":  "EVG-7167",
-			"message": "GetProject (ac legacy client)",
-			"task":    taskData.ID,
-		}))
 		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
 	}
 	return model.TranslateProject(pp)
