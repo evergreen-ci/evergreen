@@ -285,19 +285,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err = currentHost.DisablePoisonedHost(msg)
-
-			job := units.NewDecoHostNotifyJob(as.env, currentHost, err, msg)
-			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
-				message.Fields{
-					"host_id": currentHost.Id,
-					"task_id": t.Id,
-				}))
-
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
+			grip.Error(message.WrapError(units.HandlePoisonedHost(r.Context(), as.env, currentHost, msg), message.Fields{
+				"message": "unable to disable poisoned host",
+				"host":    currentHost.Id,
+			}))
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
