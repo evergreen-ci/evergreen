@@ -213,10 +213,6 @@ pre:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -226,7 +222,6 @@ pre:
 			Version: versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -250,10 +245,6 @@ pre:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -263,7 +254,6 @@ pre:
 			Version: versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -282,10 +272,6 @@ post:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -295,7 +281,6 @@ post:
 			Version: versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -321,10 +306,6 @@ post:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -334,10 +315,8 @@ post:
 			Version: versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
-	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostTaskCommands(ctx, s.tc)
@@ -596,10 +575,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -610,7 +585,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -638,10 +612,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -652,7 +622,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -677,10 +646,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -691,7 +656,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -715,10 +679,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -729,7 +689,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -755,10 +714,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -769,7 +724,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -796,10 +750,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -810,7 +760,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -839,10 +788,6 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -853,7 +798,6 @@ task_groups:
 			Version:   versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -885,10 +829,6 @@ timeout:
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
 	p.CallbackTimeout = 2
-	v := &model.Version{
-		Id:     versionId,
-		Config: projYml,
-	}
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -898,7 +838,6 @@ timeout:
 			Version: versionId,
 		},
 		Project: p,
-		Version: v,
 		WorkDir: s.tc.taskDirectory,
 	}
 	ctx, cancel := context.WithCancel(context.Background())

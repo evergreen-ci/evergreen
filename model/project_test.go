@@ -310,7 +310,6 @@ task_groups:
 	}
 
 	tg, err := GetTaskGroup(tgName, &TaskConfig{
-		Version: &v,
 		Task:    &t1,
 		Project: p,
 	})

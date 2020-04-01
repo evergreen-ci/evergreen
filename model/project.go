@@ -979,10 +979,6 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Task.Version == "" {
 		return nil, errors.New("task has no version")
 	}
-	if tc.Version == nil {
-		return nil, errors.New("version is nil")
-	}
-
 	if tc.Project == nil {
 		return nil, errors.New("project is nil")
 	}

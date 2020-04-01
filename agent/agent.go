@@ -69,7 +69,6 @@ type taskContext struct {
 	timedOut       bool
 	project        *model.Project
 	taskModel      *task.Task
-	version        *model.Version
 	sync.RWMutex
 }
 
@@ -272,15 +271,10 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 }
 
 func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
-	v, err := a.comm.GetVersion(ctx, tc.task)
-	if err != nil {
-		return errors.Wrap(err, "error getting version")
-	}
 	p, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "error getting parser project")
+		return errors.Wrap(err, "error getting project")
 	}
-
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
 		return errors.Wrap(err, "error getting task")
@@ -294,7 +288,6 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error getting project vars")
 	}
 	exp.Update(expVars.Vars)
-	tc.version = v
 	tc.taskModel = taskModel
 	tc.project = p
 	tc.expansions = exp

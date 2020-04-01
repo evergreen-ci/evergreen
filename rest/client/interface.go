@@ -62,8 +62,6 @@ type Communicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
-	// GetVersion loads the task's Version
-	GetVersion(context.Context, TaskData) (*model.Version, error)
 	// GetProject loads the project using the task's version ID
 	GetProject(context.Context, TaskData) (*model.Project, error)
 	// GetExpansions returns all expansions for the task known by the app server

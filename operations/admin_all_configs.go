@@ -78,7 +78,7 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
 	}
 
-	err = ioutil.WriteFile(project+".yml", config, 0666)
+	err = ioutil.WriteFile(project+".yml", config, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write configuration for project %s", project)
 	}
