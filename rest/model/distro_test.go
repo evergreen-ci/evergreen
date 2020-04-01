@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
@@ -133,12 +134,11 @@ func TestDistroToServiceDefaults(t *testing.T) {
 }
 
 func TestDistroAMIForEC2(t *testing.T) {
+	settingsList := []*birch.Document{birch.NewDocument(birch.EC.String("ami", "ami-000000"))}
 	d := distro.Distro{
-		Id:       "testId",
-		Provider: evergreen.ProviderNameEc2Auto,
-		ProviderSettings: &map[string]interface{}{
-			"ami": "ami-000000",
-		},
+		Id:                   "testId",
+		Provider:             evergreen.ProviderNameEc2Auto,
+		ProviderSettingsList: settingsList,
 	}
 
 	apiDistro := &APIDistro{}

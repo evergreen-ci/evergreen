@@ -321,7 +321,6 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		return nil, errors.Wrap(err, "error marshalling ec2 settings to document")
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
-	d.ProviderSettings = nil
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {

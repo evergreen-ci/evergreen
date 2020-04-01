@@ -4506,22 +4506,32 @@ func TestFindHostWithVolume(t *testing.T) {
 
 func TestStartingHostsByClient(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
-
+	doc1 := birch.NewDocument(birch.EC.String(awsRegionKey, evergreen.DefaultEC2Region))
+	doc2 := birch.NewDocument(
+		birch.EC.String(awsRegionKey, "us-west-1"),
+		birch.EC.String(awsKeyKey, "key1"),
+		birch.EC.String(awsSecretKey, "secret1"),
+	)
+	doc3 := birch.NewDocument(
+		birch.EC.String(awsRegionKey, "us-west-1"),
+		birch.EC.String(awsKeyKey, "key2"),
+		birch.EC.String(awsSecretKey, "secret2"),
+	)
 	startingHosts := []Host{
 		{
 			Id:     "h0",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: []*birch.Document{doc1},
 			},
 		},
 		{
 			Id:     "h1",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: []*birch.Document{doc1},
 			},
 		},
 		{
@@ -4542,16 +4552,16 @@ func TestStartingHostsByClient(t *testing.T) {
 			Id:     "h4",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key1", awsSecretKey: "secret1"},
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: []*birch.Document{doc2},
 			},
 		},
 		{
 			Id:     "h5",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key2", awsSecretKey: "secret2"},
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: []*birch.Document{doc3},
 			},
 		},
 	}

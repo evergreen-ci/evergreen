@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -135,12 +137,29 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	// DistroCost model.
 	dc := res[0]
 	dc.Provider = d.Provider
-	if d.ProviderSettings != nil {
-		dc.ProviderSettings = *(d.ProviderSettings)
+	dc.ProviderSettings, err = getDefaultProviderSettings(&d)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
-	// TODO: handle multiple regions in ProviderSettingsList
 
 	return &dc, nil
+}
+
+func getDefaultProviderSettings(d *distro.Distro) (map[string]interface{}, error) {
+	var doc *birch.Document
+	var err error
+	if len(d.ProviderSettingsList) == 1 {
+		doc = d.ProviderSettingsList[0]
+	} else if len(d.ProviderSettingsList) > 1 {
+		doc, err = d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
+		if err != nil {
+			return nil, errors.Wrapf(err, "providers list doesn't contain region '%s'", evergreen.DefaultEC2Region)
+		}
+	}
+	if doc != nil {
+		return doc.ExportMap(), nil
+	}
+	return nil, nil
 }
 
 // ClearTaskQueue deletes all tasks from the task queue for a distro
@@ -220,13 +239,17 @@ func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
 	dc := task.DistroCost{}
 	var provider string
 	var settings map[string]interface{}
+	var err error
 
 	// Find the distro.
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distroId {
 			dc.DistroId = distroId
 			provider = d.Provider
-			settings = *d.ProviderSettings
+			settings, err = getDefaultProviderSettings(d)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
 		}
 	}
 

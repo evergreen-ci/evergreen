@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -33,11 +35,9 @@ func (s *VSphereSuite) SetupTest() {
 		client: s.client,
 	}
 	s.distro = distro.Distro{
-		Id:       "host",
-		Provider: evergreen.ProviderNameVsphere,
-		ProviderSettings: &map[string]interface{}{
-			"template": "macos-1012",
-		},
+		Id:                   "host",
+		Provider:             evergreen.ProviderNameVsphere,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", "macos-1012"))},
 	}
 	s.hostOpts = host.CreateOptions{}
 }
@@ -228,8 +228,8 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	s.Nil(h)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         evergreen.ProviderNameVsphere,
-		ProviderSettings: &map[string]interface{}{"template": ""},
+		Provider:             evergreen.ProviderNameVsphere,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", ""))},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)

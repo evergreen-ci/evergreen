@@ -1248,9 +1248,9 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 			"$group": bson.M{
 				"_id": bson.M{
 					"provider": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
-					"region":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsRegionKey),
-					"key":      "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsKeyKey),
-					"secret":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsSecretKey),
+					"region":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey),
+					"key":      "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsKeyKey),
+					"secret":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsSecretKey),
 				},
 				"hosts": bson.M{"$push": "$$ROOT"},
 			},

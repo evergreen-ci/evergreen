@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -52,11 +51,7 @@ func (opts *openStackSettings) Validate() error {
 }
 
 func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -102,18 +103,17 @@ func (s *DistroCostSuite) SetupSuite() {
 		TimeTaken: time.Millisecond, StartTime: s.starttime,
 		FinishTime: s.starttime.Add(time.Millisecond)}
 
-	var settings1 = make(map[string]interface{})
-	var settings2 = make(map[string]interface{})
-	settings1["instance_type"] = "type"
+	var settings1 = birch.NewDocument(birch.EC.String("instance_type", "type"))
+	var settings2 = birch.NewDocument()
 	testDistro1 := distro.Distro{
-		Id:               "distro1",
-		Provider:         "ec2-ondemand",
-		ProviderSettings: &settings1,
+		Id:                   "distro1",
+		Provider:             "ec2-ondemand",
+		ProviderSettingsList: []*birch.Document{settings1},
 	}
 	testDistro2 := distro.Distro{
-		Id:               "distro2",
-		Provider:         "gce",
-		ProviderSettings: &settings2,
+		Id:                   "distro2",
+		Provider:             "gce",
+		ProviderSettingsList: []*birch.Document{settings2},
 	}
 
 	s.data = data.MockDistroConnector{
