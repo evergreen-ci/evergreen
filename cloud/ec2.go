@@ -646,7 +646,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		Tags: []*ec2.Tag{
 			{
 				Key:   aws.String("expire-on"),
-				Value: aws.String(expireOn.Format(evergreen.ExpireOnFormat)),
+				Value: aws.String(expireOn),
 			},
 		},
 	})
@@ -1223,11 +1223,11 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	}
 	defer m.client.Close()
 
-	volume.Expiration = expireInDays(evergreen.SpawnHostExpireDays)
+	volume.Expiration = time.Now().Add(DefaultSpawnHostExpiration)
 	volumeTags := []*ec2.Tag{
 		{Key: aws.String(evergreen.TagName), Value: aws.String(volume.ID)},
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
-		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(volume.Expiration.Format(evergreen.ExpireOnFormat))},
+		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
 
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
@@ -1271,8 +1271,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 }
 
 func (m *ec2Manager) extendVolumeExiration(ctx context.Context, volume *host.Volume) error {
-	expiration := expireInDays(evergreen.SpawnHostExpireDays)
-	if err := volume.SetExpiration(expiration); err != nil {
+	if err := volume.SetExpiration(time.Now().Add(DefaultSpawnHostExpiration)); err != nil {
 		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)
 	}
 
@@ -1280,7 +1279,7 @@ func (m *ec2Manager) extendVolumeExiration(ctx context.Context, volume *host.Vol
 		Resources: []*string{aws.String(volume.ID)},
 		Tags: []*ec2.Tag{{
 			Key:   aws.String(evergreen.TagExpireOn),
-			Value: aws.String(expiration.Format(evergreen.ExpireOnFormat))}},
+			Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))}},
 	})
 	if err != nil {
 		return errors.Wrapf(err, "can't update expire-on tag for volume '%s'", volume.ID)

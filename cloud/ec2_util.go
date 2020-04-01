@@ -120,10 +120,10 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	}
 }
 
-// expireInDays creates an expire-on time for numDays days
+// expireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
 // in the future.
-func expireInDays(numDays int) time.Time {
-	return time.Now().AddDate(0, 0, numDays)
+func expireInDays(numDays int) string {
+	return time.Now().AddDate(0, 0, numDays).Format(evergreen.ExpireOnFormat)
 }
 
 // makeTags populates a slice of tags based on a host object, which contain keys
@@ -163,7 +163,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		host.Tag{Key: evergreen.TagOwner, Value: intentHost.StartedBy, CanBeModified: false},
 		host.Tag{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
 		host.Tag{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
-		host.Tag{Key: evergreen.TagExpireOn, Value: expireOn.Format(evergreen.ExpireOnFormat), CanBeModified: false},
+		host.Tag{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {

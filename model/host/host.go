@@ -2236,17 +2236,17 @@ func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
 	return Find(query)
 }
 
-func makeExpireOnTag(expireOn time.Time) Tag {
+func makeExpireOnTag(expireOn string) Tag {
 	return Tag{
 		Key:           evergreen.TagExpireOn,
-		Value:         expireOn.Format(evergreen.ExpireOnFormat),
+		Value:         expireOn,
 		CanBeModified: false,
 	}
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(expireOn time.Time) error {
+func (h *Host) MarkShouldNotExpire(expireOn string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(cloud.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOn), true)
@@ -2266,7 +2266,7 @@ func (h *Host) MarkShouldNotExpire(expireOn time.Time) error {
 
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
-func (h *Host) MarkShouldExpire(expireOn time.Time) error {
+func (h *Host) MarkShouldExpire(expireOn string) error {
 	h.NoExpiration = false
 	h.ExpirationTime = time.Now().Add(cloud.DefaultSpawnHostExpiration)
 	h.addTag(makeExpireOnTag(expireOn), true)
