@@ -1163,6 +1163,23 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	}
 }
 
+func PopulateVolumeExpirationJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		volumes, err := host.FindVolumesToDelete()
+		if err != nil {
+			return errors.Wrap(err, "can't get volumes to delete")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, v := range volumes {
+			ts := util.RoundPartOfHour(0).Format(TSFormat)
+			catcher.Add(queue.Put(ctx, NewVolumeDeletionJob(ts, &v)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()

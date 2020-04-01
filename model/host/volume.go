@@ -42,6 +42,12 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 		bson.M{VolumeExpirationKey: v.Expiration})
 }
 
+func FindVolumesToDelete() ([]Volume, error) {
+	return FindVolumes(bson.M{
+		ExpirationTimeKey: bson.M{"$lte": time.Now()},
+	})
+}
+
 // FindVolumeByID finds a volume by its ID field.
 func FindVolumeByID(id string) (*Volume, error) {
 	return FindOneVolume(bson.M{VolumeIDKey: id})
