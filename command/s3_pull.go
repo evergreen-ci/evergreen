@@ -79,6 +79,7 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 // s3Pull is a command to download the task directory from S3.
 type s3Pull struct {
 	s3Base
+	TaskName     string `mapstructure:"task" plugin:"expand"`
 	WorkingDir   string `mapstructure:"working_directory" plugin:"expand"`
 	DeleteOnSync bool   `mapstructure:"delete_on_sync"`
 
@@ -98,6 +99,9 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	}
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
+	}
+	if c.TaskName == "" {
+		return errors.New("task must not be empty")
 	}
 	if c.WorkingDir == "" {
 		return errors.New("working directory cannot be empty")
@@ -146,7 +150,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pullMsg)
 	if err := c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   c.WorkingDir,
-		Remote:  conf.S3Path(),
+		Remote:  conf.S3Path(c.TaskName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pulling task data from S3")
