@@ -640,13 +640,13 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	if err != nil {
 		return errors.Wrap(err, "error getting host resources")
 	}
-	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
+	expireOn := expireInDays(evergreen.SpawnHostExpireDays)
 	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags: []*ec2.Tag{
 			{
 				Key:   aws.String("expire-on"),
-				Value: aws.String(expireOnValue),
+				Value: aws.String(expireOn.Format(evergreen.ExpireOnFormat)),
 			},
 		},
 	})
@@ -655,9 +655,9 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "error marking host should not expire in db for '%s'", h.Id)
+		return errors.Wrapf(h.MarkShouldNotExpire(expireOn), "error marking host should not expire in db for '%s'", h.Id)
 	}
-	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "error marking host should in db for '%s'", h.Id)
+	return errors.Wrapf(h.MarkShouldExpire(expireOn), "error marking host should in db for '%s'", h.Id)
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
@@ -936,6 +936,27 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
+	for _, attachedVolume := range h.Volumes {
+		v, err := host.FindVolumeByID(attachedVolume.VolumeID)
+		if err != nil {
+			return errors.Wrapf(err, "can't get volume '%s' for host '%s'", attachedVolume.VolumeID, h.Id)
+		}
+		if v == nil {
+			continue
+		}
+		if err = m.extendVolumeExiration(ctx, v); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error updating volume expiration",
+				"user":          user,
+				"host_id":       h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+				"volume":        attachedVolume.VolumeID,
+			}))
+			return err
+		}
+	}
+
 	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
 
@@ -1168,17 +1189,29 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	v, err := host.FindVolumeByID(volumeID)
+	if err != nil {
+		return errors.Wrapf(err, "can't get volume '%s'", volumeID)
+	}
+	if v == nil {
+		return errors.Errorf("no volume '%s' found", volumeID)
+	}
+
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
-	_, err := m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
+	_, err = m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
 		InstanceId: aws.String(h.Id),
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+	}
+
+	if err = m.extendVolumeExiration(ctx, v); err != nil {
+		return errors.Wrapf(err, "can't update expiration for volume '%s'", volumeID)
 	}
 
 	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
@@ -1190,10 +1223,20 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	}
 	defer m.client.Close()
 
+	volume.Expiration = expireInDays(evergreen.SpawnHostExpireDays)
+	volumeTags := []*ec2.Tag{
+		{Key: aws.String(evergreen.TagName), Value: aws.String(volume.ID)},
+		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
+		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(volume.Expiration.Format(evergreen.ExpireOnFormat))},
+	}
+
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
 		Size:             aws.Int64(int64(volume.Size)),
+		TagSpecifications: []*ec2.TagSpecification{
+			{ResourceType: aws.String(ec2.ResourceTypeVolume), Tags: volumeTags},
+		},
 	})
 
 	if err != nil {
@@ -1225,6 +1268,25 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	}
 
 	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
+}
+
+func (m *ec2Manager) extendVolumeExiration(ctx context.Context, volume *host.Volume) error {
+	expiration := expireInDays(evergreen.SpawnHostExpireDays)
+	if err := volume.SetExpiration(expiration); err != nil {
+		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)
+	}
+
+	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: []*string{aws.String(volume.ID)},
+		Tags: []*ec2.Tag{{
+			Key:   aws.String(evergreen.TagExpireOn),
+			Value: aws.String(expiration.Format(evergreen.ExpireOnFormat))}},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "can't update expire-on tag for volume '%s'", volume.ID)
+	}
+
+	return nil
 }
 
 // GetDNSName returns the DNS name for the host.

@@ -1,16 +1,19 @@
 package host
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Volume struct {
-	ID               string `bson:"_id" json:"id"`
-	CreatedBy        string `bson:"created_by" json:"created_by"`
-	Type             string `bson:"type" json:"type"`
-	Size             int    `bson:"size" json:"size"`
-	AvailabilityZone string `bson:"availability_zone" json:"availability_zone"`
+	ID               string    `bson:"_id" json:"id"`
+	CreatedBy        string    `bson:"created_by" json:"created_by"`
+	Type             string    `bson:"type" json:"type"`
+	Size             int       `bson:"size" json:"size"`
+	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
+	Expiration       time.Time `bson:"expiration" json:"expiration"`
 }
 
 // Insert a volume into the volumes collection.
@@ -25,9 +28,18 @@ func (v *Volume) Remove() error {
 	return db.Remove(
 		VolumesCollection,
 		bson.M{
-			IdKey: v.ID,
+			VolumeIDKey: v.ID,
 		},
 	)
+}
+
+func (v *Volume) SetExpiration(expiration time.Time) error {
+	v.Expiration = expiration
+
+	return db.UpdateId(
+		VolumesCollection,
+		v.ID,
+		bson.M{VolumeExpirationKey: v.Expiration})
 }
 
 // FindVolumeByID finds a volume by its ID field.

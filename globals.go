@@ -175,6 +175,17 @@ const (
 	// max expirations
 	SpawnHostExpireDays = 30
 	HostExpireDays      = 10
+	ExpireOnFormat      = "2006-01-02"
+
+	// ec2 resource tag names
+	TagName             = "name"
+	TagDistro           = "distro"
+	TagEvergreenService = "evergreen-service"
+	TagUsername         = "username"
+	TagOwner            = "owner"
+	TagMode             = "mode"
+	TagStartTime        = "start-time"
+	TagExpireOn         = "expire-on"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"

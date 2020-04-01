@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -2235,21 +2236,20 @@ func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
 	return Find(query)
 }
 
-func makeExpireOnTag(expireOnValue string) Tag {
-	const expireOnKey = "expire-on"
+func makeExpireOnTag(expireOn time.Time) Tag {
 	return Tag{
-		Key:           expireOnKey,
-		Value:         expireOnValue,
+		Key:           evergreen.TagExpireOn,
+		Value:         expireOn.Format(evergreen.ExpireOnFormat),
 		CanBeModified: false,
 	}
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
+func (h *Host) MarkShouldNotExpire(expireOn time.Time) error {
 	h.NoExpiration = true
-	h.ExpirationTime = time.Now().AddDate(0, 0, 7)
-	h.addTag(makeExpireOnTag(expireOnValue), true)
+	h.ExpirationTime = time.Now().Add(cloud.SpawnHostNoExpirationDuration)
+	h.addTag(makeExpireOnTag(expireOn), true)
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -2266,10 +2266,10 @@ func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
-func (h *Host) MarkShouldExpire(expireOnValue string) error {
+func (h *Host) MarkShouldExpire(expireOn time.Time) error {
 	h.NoExpiration = false
-	h.ExpirationTime = time.Now().Add(24 * time.Hour)
-	h.addTag(makeExpireOnTag(expireOnValue), true)
+	h.ExpirationTime = time.Now().Add(cloud.DefaultSpawnHostExpiration)
+	h.addTag(makeExpireOnTag(expireOn), true)
 	return UpdateOne(bson.M{
 		IdKey: h.Id,
 	},

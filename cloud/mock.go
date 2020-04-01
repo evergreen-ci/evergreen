@@ -197,13 +197,13 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 	}
 
 	if changes.NoExpiration != nil {
-		expireOnValue := expireInDays(30)
+		expireOn := expireInDays(30)
 		if *changes.NoExpiration {
-			if err = host.MarkShouldNotExpire(expireOnValue); err != nil {
+			if err = host.MarkShouldNotExpire(expireOn); err != nil {
 				return errors.Errorf("error setting no expiration in db")
 			}
 		}
-		if err = host.MarkShouldExpire(expireOnValue); err != nil {
+		if err = host.MarkShouldExpire(expireOn); err != nil {
 			return errors.Errorf("error setting expiration in db")
 		}
 	}

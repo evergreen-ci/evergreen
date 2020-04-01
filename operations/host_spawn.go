@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -455,7 +456,11 @@ func printVolumes(volumes []model.APIVolume, userID string) {
 		if model.FromStringPtr(v.HostID) != "" {
 			grip.Infof("%-18s: %s\n", "Device Name", model.FromStringPtr(v.DeviceName))
 			grip.Infof("%-18s: %s\n", "Attached to Host", model.FromStringPtr(v.HostID))
-
+		} else {
+			t, err := model.FromTimePtr(v.Expiration)
+			if err == nil && !util.IsZeroTime(t) {
+				grip.Infof("%-18s: %s\n", "Expiration", t.Format(time.RFC3339))
+			}
 		}
 	}
 }
