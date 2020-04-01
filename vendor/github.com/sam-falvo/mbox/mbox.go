@@ -197,7 +197,13 @@ func (m *MboxStream) nextLine() error {
 	if err != nil {
 		return err
 	}
-	m.prefetch = m.prefetch[0:len(slice)]
+
+	// If slice is longer than the original prefetch, resize.
+	if len(slice) < 1000 {
+		m.prefetch = m.prefetch[0:len(slice)]
+	} else {
+		m.prefetch = make([]byte, len(slice))
+	}
 	copy(m.prefetch, slice)
 	m.prefetchLength = len(m.prefetch)
 	m.currentLine++
