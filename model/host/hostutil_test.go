@@ -917,13 +917,6 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 		Ui: evergreen.UIConfig{
 			Url: "www.example2.com",
 		},
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				S3Key:    "key",
-				S3Secret: "secret",
-				Bucket:   "bucket",
-			},
-		},
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "www.example3.com",
 			Token:     "token",
