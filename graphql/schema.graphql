@@ -23,7 +23,7 @@ type Query {
     testName: String = ""
     statuses: [String!]! = []
   ): [TestResult!]
-  taskFiles(taskId: String!): [GroupedFiles!]!
+  taskFiles(taskId: String!): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
@@ -91,6 +91,11 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+}
+
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
 }
 
 type GroupedFiles {

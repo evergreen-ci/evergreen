@@ -502,44 +502,55 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	return testPointers, nil
 }
 
-func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
-	groupedFilesList := []*GroupedFiles{}
+func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error) {
+	emptyTaskFiles := TaskFiles{
+		FileCount:    0,
+		GroupedFiles: []*GroupedFiles{},
+	}
 	t, err := task.FindOneId(taskID)
 	if t == nil {
-		return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	if err != nil {
-		return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+		return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t.OldTaskId != "" {
 		t, err = task.FindOneId(t.OldTaskId)
 		if t == nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
 		}
 		if err != nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
 	}
+	groupedFilesList := []*GroupedFiles{}
+	fileCount := 0
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
 		for _, execTask := range execTasks {
 			groupedFiles, err := GetGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
 			if err != nil {
-				return groupedFilesList, err
+				return &emptyTaskFiles, err
 			}
+			fileCount += len(groupedFiles.Files)
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
 		groupedFiles, err := GetGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
 		if err != nil {
-			return groupedFilesList, err
+			return &emptyTaskFiles, err
 		}
+		fileCount += len(groupedFiles.Files)
 		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
-	return groupedFilesList, nil
+	taskFiles := TaskFiles{
+		FileCount:    fileCount,
+		GroupedFiles: groupedFilesList,
+	}
+	return &taskFiles, nil
 }
 
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error) {
