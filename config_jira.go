@@ -70,7 +70,7 @@ func (c *JiraConfig) Set() error {
 }
 
 func (c *JiraConfig) ValidateAndDefault() error {
-	if (c.BasicAuthConfig.Username != "") == (c.OAuth1Config.AccessToken != "") {
+	if (c.Host != "") && (c.BasicAuthConfig.Username != "") == (c.OAuth1Config.AccessToken != "") {
 		return errors.New("must specify exactly 1 jira auth method")
 	}
 	return nil
