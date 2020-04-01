@@ -119,7 +119,7 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 
 // S3Path returns the path to the working directory dump in S3 for a task.
 func (c *TaskConfig) S3Path() string {
-	return filepath.Join(c.ProjectRef.Identifier, c.Task.Version, c.Task.BuildVariant, c.Task.DisplayName, "latest")
+	return filepath.Join(c.Task.Project, c.Task.Version, c.Task.BuildVariant, c.Task.DisplayName, "latest")
 }
 
 func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {

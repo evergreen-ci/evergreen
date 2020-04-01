@@ -609,7 +609,7 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	info := requestInfo{
 		method:  http.MethodPatch,
 		version: apiVersion2,
-		path:    fmt.Sprintf("distros/%s/execute", distro),
+		path:    fmt.Sprintf("/distros/%s/execute", distro),
 	}
 
 	var result struct {
@@ -623,7 +623,7 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
-			return nil, errors.Errorf("received status %s", resp.Status)
+			return nil, errors.Errorf("received unexpected status %s", resp.Status)
 		}
 		return nil, errors.Wrap(errMsg, "problem running script on hosts")
 	}
@@ -1214,4 +1214,58 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	}
 
 	return result, nil
+}
+
+func (c *communicatorImpl) GetS3TaskCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "/task/s3_read_credentials",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+			return nil, errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return nil, errors.Wrap(respErr, "problem getting task read-only credentials")
+	}
+	creds := &evergreen.S3Credentials{}
+	if err := util.ReadJSONInto(resp.Body, creds); err != nil {
+		return nil, errors.Wrap(err, "could not read credentials from response body")
+	}
+
+	return creds, nil
+}
+
+func (c *communicatorImpl) GetS3TaskPath(ctx context.Context, taskID string) (string, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/tasks/%s/s3_path", taskID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+			return "", errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return "", errors.Wrap(respErr, "problem getting task's S3 path")
+	}
+	var res struct {
+		Path string `json:"path"`
+	}
+	if err := util.ReadJSONInto(resp.Body, &res); err != nil {
+		return "", errors.Wrap(err, "could not read credentials from response body")
+	}
+
+	return res.Path, nil
 }

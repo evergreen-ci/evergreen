@@ -3,6 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -173,6 +174,11 @@ func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) 
 
 func (t *Task) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+}
+
+// S3Path returns the path to a task's directory dump in S3.
+func (t *Task) S3Path(name string) string {
+	return filepath.Join(t.Project, t.Version, t.BuildVariant, name, "latest")
 }
 
 // Dependency represents a task that must be completed before the owning

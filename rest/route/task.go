@@ -297,3 +297,73 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 
 	return gimlet.NewJSONResponse(taskModel)
 }
+
+// GET /tasks/{task_id}/s3_path
+
+type s3TaskPathGetHandler struct {
+	taskID string
+	sc     data.Connector
+}
+
+func makeS3TaskPathGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &s3TaskPathGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *s3TaskPathGetHandler) Factory() gimlet.RouteHandler {
+	return &s3TaskPathGetHandler{
+		sc: h.sc,
+	}
+}
+
+// ParseAndValidate fetches the needed data from the request and errors otherwise.
+// It fetches the task and user from the request context and fetches the changes
+// in activation and priority from the request body.
+func (h *s3TaskPathGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.taskID = gimlet.GetVars(r)["task_id"]
+	return nil
+}
+
+func (h *s3TaskPathGetHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := h.sc.FindTaskById(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", h.taskID))
+	}
+	return gimlet.NewJSONResponse(struct {
+		Path string `json:"path"`
+	}{
+		Path: t.S3Path(t.DisplayName),
+	})
+}
+
+// GET /task/s3_read_credentials
+
+type s3TaskReadCredentialsGetHandler struct {
+	taskID string
+	sc     data.Connector
+}
+
+func makeS3TaskReadCredentialsGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &s3TaskReadCredentialsGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *s3TaskReadCredentialsGetHandler) Factory() gimlet.RouteHandler {
+	return &s3TaskReadCredentialsGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *s3TaskReadCredentialsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *s3TaskReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := h.sc.GetEvergreenSettings()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	return gimlet.NewJSONResponse(settings.Providers.AWS.S3TaskRead)
+}
