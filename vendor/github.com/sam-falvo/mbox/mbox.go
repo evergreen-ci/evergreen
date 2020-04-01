@@ -199,7 +199,7 @@ func (m *MboxStream) nextLine() error {
 	}
 
 	// If slice is longer than the original prefetch, resize.
-	if len(slice) < 1000 {
+	if len(slice) <= cap(m.prefetch) {
 		m.prefetch = m.prefetch[0:len(slice)]
 	} else {
 		m.prefetch = make([]byte, len(slice))
