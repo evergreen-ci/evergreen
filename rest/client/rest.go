@@ -1260,12 +1260,10 @@ func (c *communicatorImpl) GetS3TaskPath(ctx context.Context, taskID string) (st
 		}
 		return "", errors.Wrap(respErr, "problem getting task's S3 path")
 	}
-	var res struct {
-		Path string `json:"path"`
-	}
-	if err := util.ReadJSONInto(resp.Body, &res); err != nil {
-		return "", errors.Wrap(err, "could not read credentials from response body")
+	var path string
+	if err = util.ReadJSONInto(resp.Body, &path); err != nil {
+		return "", errors.Wrap(err, "problem reading response body")
 	}
 
-	return res.Path, nil
+	return path, nil
 }
