@@ -1223,7 +1223,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	}
 	defer m.client.Close()
 
-	volume.Expiration = time.Now().Add(DefaultSpawnHostExpiration)
+	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []*ec2.Tag{
 		{Key: aws.String(evergreen.TagName), Value: aws.String(volume.ID)},
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
@@ -1271,7 +1271,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 }
 
 func (m *ec2Manager) extendVolumeExiration(ctx context.Context, volume *host.Volume) error {
-	if err := volume.SetExpiration(time.Now().Add(DefaultSpawnHostExpiration)); err != nil {
+	if err := volume.SetExpiration(time.Now().Add(evergreen.DefaultSpawnHostExpiration)); err != nil {
 		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)
 	}
 

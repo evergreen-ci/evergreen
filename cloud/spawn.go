@@ -21,13 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	DefaultMaxSpawnHostsPerUser         = 3
-	DefaultSpawnHostExpiration          = 24 * time.Hour
-	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
-	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
-)
-
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
 	DistroId             string
@@ -171,9 +164,9 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		TaskId:  so.TaskId,
 		OwnerId: so.Owner.Id,
 	}
-	expiration := DefaultSpawnHostExpiration
+	expiration := evergreen.DefaultSpawnHostExpiration
 	if so.NoExpiration {
-		expiration = SpawnHostNoExpirationDuration
+		expiration = evergreen.SpawnHostNoExpirationDuration
 	}
 	hostOptions := host.CreateOptions{
 		ProvisionOptions:     provisionOptions,
@@ -304,8 +297,8 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint
-	if remainingDuration > MaxSpawnHostExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), MaxSpawnHostExpirationDurationHours.String())
+	if remainingDuration > evergreen.MaxSpawnHostExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
 	}
 
 	return newExp, nil

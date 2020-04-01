@@ -557,8 +557,8 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
 		return errors.New("host must be stopped to modify instance typed")
 	}
-	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > MaxSpawnHostExpirationDurationHours {
-		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
+	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
+		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
 	}
 
 	return nil

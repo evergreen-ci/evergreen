@@ -172,10 +172,14 @@ const (
 	MaxDurationPerDistroHost               = 30 * time.Minute
 	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
-	// max expirations
-	SpawnHostExpireDays = 30
-	HostExpireDays      = 10
-	ExpireOnFormat      = "2006-01-02"
+	// Spawn hosts
+	SpawnHostExpireDays                 = 30
+	HostExpireDays                      = 10
+	ExpireOnFormat                      = "2006-01-02"
+	DefaultMaxSpawnHostsPerUser         = 3
+	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
+	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 
 	// ec2 resource tag names
 	TagName             = "name"

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -30,7 +29,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	config, err := evergreen.GetConfig()
 	assert.NoError(err)
-	config.SpawnHostsPerUser = cloud.DefaultMaxSpawnHostsPerUser
+	config.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
 	assert.NoError(config.Set())
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -2248,7 +2247,7 @@ func makeExpireOnTag(expireOn string) Tag {
 // and updates its expiration time to avoid early reaping.
 func (h *Host) MarkShouldNotExpire(expireOn string) error {
 	h.NoExpiration = true
-	h.ExpirationTime = time.Now().Add(cloud.SpawnHostNoExpirationDuration)
+	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOn), true)
 	return UpdateOne(
 		bson.M{
@@ -2268,7 +2267,7 @@ func (h *Host) MarkShouldNotExpire(expireOn string) error {
 // a normal spawn host, after 24 hours.
 func (h *Host) MarkShouldExpire(expireOn string) error {
 	h.NoExpiration = false
-	h.ExpirationTime = time.Now().Add(cloud.DefaultSpawnHostExpiration)
+	h.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	h.addTag(makeExpireOnTag(expireOn), true)
 	return UpdateOne(bson.M{
 		IdKey: h.Id,

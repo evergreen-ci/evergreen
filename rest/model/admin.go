@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -158,7 +157,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Keys:                    map[string]string{},
 		Plugins:                 evergreen.PluginConfig{},
 		GithubOrgs:              as.GithubOrgs,
-		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
+		SpawnHostsPerUser:       evergreen.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
 	}
 	if as.ApiUrl != nil {

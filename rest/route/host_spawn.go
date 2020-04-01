@@ -1043,10 +1043,10 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
-	if h.addHours > cloud.MaxSpawnHostExpirationDurationHours {
+	if h.addHours > evergreen.MaxSpawnHostExpirationDurationHours {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %s", cloud.MaxSpawnHostExpirationDurationHours.String()),
+			Message:    fmt.Sprintf("cannot add more than %s", evergreen.MaxSpawnHostExpirationDurationHours.String()),
 		}
 	}
 

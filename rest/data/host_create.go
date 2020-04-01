@@ -340,7 +340,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*h
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true
-		expiration := cloud.DefaultSpawnHostExpiration
+		expiration := evergreen.DefaultSpawnHostExpiration
 		options.ExpirationDuration = &expiration
 		options.ProvisionOptions = &host.ProvisionOptions{
 			TaskId:  taskID,
