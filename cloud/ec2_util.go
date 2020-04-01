@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	EC2ErrorNotFound    = "InvalidInstanceID.NotFound"
-	EC2DuplicateKeyPair = "InvalidKeyPair.Duplicate"
+	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
+	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
+	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
 )
 
 type MountPoint struct {

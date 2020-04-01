@@ -196,6 +196,9 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+						return false, err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
@@ -933,6 +936,9 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			output, err = c.EC2.CreateFleetWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+						return false, err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
