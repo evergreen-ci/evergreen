@@ -79,7 +79,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(putMsg)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  conf.S3Path(),
+		Remote:  conf.Task.S3Path(conf.Task.DisplayName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")
