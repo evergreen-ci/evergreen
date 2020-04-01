@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -78,7 +77,6 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 	}
 
 	var (
-		offsets   []int
 		batches   int
 		numDocs   int
 		timeSpent time.Duration
@@ -103,15 +101,13 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 						break
 					}
 					opStart := time.Now()
-					offset := rand.Intn(7)
-					num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-(offset+365)*24)*time.Hour), 100*1000)
+					num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
 					j.AddError(err)
 					opTime := time.Since(opStart)
 					func() {
 						lock.Lock()
 						defer lock.Unlock()
 						batches++
-						offsets = append(offsets, offset)
 						numDocs += num
 						timeSpent += opTime
 					}()
@@ -131,7 +127,6 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 		"aborted":            ctx.Err() != nil,
 		"total":              time.Since(startAt).Seconds(),
 		"run_end_at":         time.Now(),
-		"offsets":            offsets,
 		"num_batches":        batches,
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
