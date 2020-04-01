@@ -1302,9 +1302,9 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key       `json:"ec2_keys"`
 	Subnets              []APISubnet       `json:"subnets"`
-	S3                   *APIS3Credentials `json:"s3"`
-	S3Task               *APIS3Credentials `json:"s3_task"`
-	S3TaskRead           *APIS3Credentials `json:"s3_task_read"`
+	S3                   *APIS3Credentials `json:"s3_credentials"`
+	S3Task               *APIS3Credentials `json:"s3_task_credentials"`
+	S3TaskRead           *APIS3Credentials `json:"s3_task_read_credentials"`
 	S3BaseURL            *string           `json:"s3_base_url"`
 	DefaultSecurityGroup *string           `json:"default_security_group"`
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`

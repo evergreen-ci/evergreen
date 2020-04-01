@@ -78,9 +78,9 @@ type AWSConfig struct {
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	S3 S3Credentials `bson:"s3_credentials"`
-	// S3Task store credentials for storing task data
+	// S3Task stores credentials for storing task data.
 	S3Task S3Credentials `bson:"s3_task_credentials" json:"s3_task_credentials" yaml:"s3_task_credentials"`
-	// S3TaskRead stores credentials for reading S3 task data
+	// S3TaskRead stores credentials for reading S3 task data.
 	S3TaskRead S3Credentials `bson:"s3_task_read_credentiasl" json:"s3_task_read_credentials" yaml:"s3_task_read_credentials"`
 	S3BaseURL  string        `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 
