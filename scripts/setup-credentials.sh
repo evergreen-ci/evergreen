@@ -38,8 +38,9 @@ notify:
 
 jira:
   host: "$JIRA_SERVER"
-  username: "$CROWD_USER"
-  password: "$CROWD_PW"
+  basic_auth:
+    username: "$CROWD_USER"
+    password: "$CROWD_PW"
 
 providers:
   aws:
