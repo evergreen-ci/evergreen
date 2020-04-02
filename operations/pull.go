@@ -2,13 +2,14 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -81,7 +82,8 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "could not make working directory")
 			}
 
-			fmt.Printf("Beginning download for task '%s'\n", taskID)
+			grip.SetSender(send.MakePlainLogger())
+			grip.Infof("Beginning download for task '%s'\n", taskID)
 
 			if err := bucket.Pull(ctx, pail.SyncOptions{
 				Local:  workingDir,
@@ -90,7 +92,7 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "error while pulling task directory")
 			}
 
-			fmt.Println("Download complete.")
+			grip.Infof("Download complete.")
 
 			return nil
 		},
