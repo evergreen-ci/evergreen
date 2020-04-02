@@ -82,7 +82,8 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "could not make working directory")
 			}
 
-			grip.SetSender(send.MakePlainLogger())
+			_ = grip.SetSender(send.MakePlainLogger())
+
 			grip.Infof("Beginning download for task '%s'\n", taskID)
 
 			if err := bucket.Pull(ctx, pail.SyncOptions{
