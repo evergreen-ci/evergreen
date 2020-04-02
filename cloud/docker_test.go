@@ -272,8 +272,6 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NotNil(s.distro.ProviderSettingsList[0].Delete("image_url"))
-
 	intent := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 
 	s.NotPanics(func() {
