@@ -4538,14 +4538,16 @@ func TestStartingHostsByClient(t *testing.T) {
 			Id:     "h2",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameDocker,
+				Provider:             evergreen.ProviderNameDocker,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
 		{
 			Id:     "h3",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameDocker,
+				Provider:             evergreen.ProviderNameDocker,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
 		{
@@ -4578,35 +4580,43 @@ func TestStartingHostsByClient(t *testing.T) {
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   evergreen.DefaultEC2Region,
 		}:
-			assert.Len(t, hosts, 2)
-			assert.Contains(t, hosts, startingHosts[0])
-			assert.Contains(t, hosts, startingHosts[1])
+			require.Len(t, hosts, 2)
+			compareHosts(t, hosts[0], startingHosts[0])
+			compareHosts(t, hosts[1], startingHosts[1])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameDocker,
 		}:
-			assert.Len(t, hosts, 2)
-			assert.Contains(t, hosts, startingHosts[2])
-			assert.Contains(t, hosts, startingHosts[3])
+			require.Len(t, hosts, 2)
+			compareHosts(t, hosts[0], startingHosts[2])
+			compareHosts(t, hosts[1], startingHosts[3])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west1",
+			Region:   "us-west-1",
 			Key:      "key1",
 			Secret:   "secret1",
 		}:
-			assert.Len(t, hosts, 1)
-			assert.Contains(t, hosts, startingHosts[4])
+			require.Len(t, hosts, 1)
+			compareHosts(t, hosts[0], startingHosts[4])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west1",
+			Region:   "us-west-1",
 			Key:      "key2",
 			Secret:   "secret2",
 		}:
-			assert.Len(t, hosts, 1)
-			assert.Contains(t, hosts, startingHosts[5])
+			require.Len(t, hosts, 1)
+
+			compareHosts(t, hosts[0], startingHosts[5])
 		default:
 			assert.Fail(t, "unrecognized client options")
 		}
 	}
+}
+
+func compareHosts(t *testing.T, host1, host2 Host) {
+	assert.Equal(t, host1.Id, host2.Id)
+	assert.Equal(t, host1.Status, host2.Status)
+	assert.Equal(t, host1.Distro.Provider, host2.Distro.Provider)
+	assert.Equal(t, host1.Distro.ProviderSettingsList[0].ExportMap(), host2.Distro.ProviderSettingsList[0].ExportMap())
 }
 
 func TestFindHostsInRange(t *testing.T) {

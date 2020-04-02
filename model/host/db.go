@@ -1245,14 +1245,23 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 			"$match": bson.M{StatusKey: evergreen.HostStarting},
 		},
 		{
+			"$project": bson.M{
+				"host":          "$$ROOT",
+				"settings_list": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey),
+			},
+		},
+		{
+			"$unwind": "$settings_list",
+		},
+		{
 			"$group": bson.M{
 				"_id": bson.M{
-					"provider": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
-					"region":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey),
-					"key":      "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsKeyKey),
-					"secret":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsSecretKey),
+					"provider": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderKey),
+					"region":   bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
+					"key":      bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
+					"secret":   bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
 				},
-				"hosts": bson.M{"$push": "$$ROOT"},
+				"hosts": bson.M{"$push": "$host"},
 			},
 		},
 	}
