@@ -1262,7 +1262,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 			return catcher.Resolve()
 		}
 		for _, h := range hosts {
-			catcher.Wrap(env.RemoteQueue().Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
+			catcher.Wrap(queue.Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "could not enqueue jobs to update static host SSH keys")
 		}
 
 		return catcher.Resolve()
@@ -1300,9 +1300,29 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(0).Format(TSFormat)
 		for _, user := range users {
-			catcher.Wrap(env.RemoteQueue().Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+			catcher.Wrap(queue.Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.BackgroundCleanup {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background data cleanup",
+				"impact":  "data will accumulate",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		return queue.Put(ctx, NewTestResultsCleanupJob(util.RoundPartOfMinute(0)))
+
 	}
 }
