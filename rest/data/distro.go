@@ -120,7 +120,7 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	// Run aggregation with the aggregation pipeline
 	pipeline := task.CostDataByDistroIdPipeline(distroId, starttime, duration)
 	res := []task.DistroCost{}
-	if err := task.Aggregate(pipeline, &res); err != nil {
+	if err = task.Aggregate(pipeline, &res); err != nil {
 		return nil, err
 	}
 

@@ -33,6 +33,7 @@ func fetchTestDistro() distro.Distro {
 			birch.EC.String("ami", "ami-97785bed"),
 			birch.EC.String("instance_type", "t2.micro"),
 			birch.EC.String("key_name", "mci"),
+			birch.EC.String("region", "us-east-1"),
 			birch.EC.Boolean("is_vpc", true),
 			birch.EC.Double("bid_price", .005),
 			// TODO : The below settings require access to our staging environment. We
