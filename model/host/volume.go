@@ -3,7 +3,9 @@ package host
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -43,9 +45,39 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 }
 
 func FindVolumesToDelete() ([]Volume, error) {
-	return FindVolumes(bson.M{
-		ExpirationTimeKey: bson.M{"$lte": time.Now()},
-	})
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{VolumeExpirationKey: bson.M{"$lte": time.Now()}},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         Collection,
+				"localField":   "_id",
+				"foreignField": "volumes.volume_id",
+				"as":           "hosts",
+			},
+		},
+		{
+			"$project": bson.M{
+				"hosts": bson.M{"$filter": bson.M{
+					"input": "$hosts",
+					"as":    "host",
+					"cond":  bson.M{"$ne": []string{"$$host.status", evergreen.HostTerminated}},
+				},
+				}},
+		},
+		{
+			"$match": bson.M{"$expr": bson.M{"$eq": bson.A{bson.M{"$size": "$hosts"}, 0}}},
+		},
+	}
+
+	volumes := []Volume{}
+	err := db.Aggregate(VolumesCollection, pipeline, &volumes)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't find volumes to delete")
+	}
+
+	return volumes, nil
 }
 
 // FindVolumeByID finds a volume by its ID field.
