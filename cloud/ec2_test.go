@@ -363,16 +363,19 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 	s.Require().NoError(s.h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
-
 	_, err := s.onDemandManager.SpawnHost(ctx, s.h)
 	s.NoError(err)
 
@@ -385,6 +388,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
 	s.Equal("keyName", *runInput.KeyName)
+	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
 	s.Equal("sg-123456", *runInput.SecurityGroups[0])
@@ -403,17 +407,21 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 	s.Require().NoError(h.Insert())
 
@@ -447,16 +455,20 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 	s.Require().NoError(h.Insert())
 
@@ -471,6 +483,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
+	s.Require().NotNil(mock.RequestSpotInstancesInput)
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
@@ -490,17 +503,21 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 	s.Require().NoError(h.Insert())
 
@@ -533,17 +550,21 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("key_name", ""),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 	s.Require().NoError(h.Insert())
 
@@ -558,17 +579,21 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("key_name", ""),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "device",
-			"virtual_name": "virtual"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
 	)}
 
 	project := "example_project"
@@ -1254,6 +1279,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 			birch.EC.String("aws_access_key_id", "key_id"),
 			birch.EC.String("subnet_id", "subnet-123456"),
 			birch.EC.Double("bid_price", 0.001),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
 	}
@@ -1263,7 +1289,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal("key", ec2Settings.KeyName)
 	s.Equal("ami", ec2Settings.AMI)
 	s.Equal("instance", ec2Settings.InstanceType)
-	s.Len(ec2Settings.SecurityGroupIDs, 1)
+	s.Require().Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
@@ -1299,7 +1325,7 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("region", evergreen.DefaultEC2Region),
-			birch.EC.String("aws_access_key_id", "key_id"),
+			birch.EC.String("aws_access_key_id", "key"),
 			birch.EC.String("aws_secret_access_key", "secret"),
 		)},
 	}

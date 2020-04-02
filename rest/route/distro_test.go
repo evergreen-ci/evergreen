@@ -605,9 +605,12 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		birch.EC.String("key_name", "mci"),
 		birch.EC.String("security_group", "mci"),
 		birch.EC.String("ami", "ami-2814683f"),
-		birch.EC.Interface("mount_points", map[string]interface{}{
-			"device_name":  "/dev/xvdb",
-			"virtual_name": "ephemeral0"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "/dev/xvdb"),
+				birch.EC.String("virtual_name", "ephemeral0"),
+			)),
+		)),
 	)}
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
@@ -737,7 +740,8 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 
 	s.Require().Len(apiDistro.ProviderSettingsList, 1)
 	doc = apiDistro.ProviderSettingsList[0]
-	mappedDoc := doc.Lookup("mount_points").MutableDocument()
+	mappedDoc, ok := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocumentOK()
+	s.True(ok)
 	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
 	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
 	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
@@ -1372,6 +1376,12 @@ func getMockDistrosConnector() *data.MockConnector {
 						birch.EC.String("key_name", "mci"),
 						birch.EC.String("security_group", "mci"),
 						birch.EC.String("ami", "ami-2814683f"),
+						birch.EC.Array("mount_points", birch.NewArray(
+							birch.VC.Document(birch.NewDocument(
+								birch.EC.String("device_name", "/dev/xvdb"),
+								birch.EC.String("virtual_name", "ephemeral0"),
+							)),
+						)),
 						birch.EC.Interface("mount_points", map[string]interface{}{
 							"device_name":  "/dev/xvdb",
 							"virtual_name": "ephemeral0"}),
