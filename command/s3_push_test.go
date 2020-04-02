@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -67,7 +68,9 @@ func TestS3PushExecute(t *testing.T) {
 			item := iter.Item()
 			require.NotNil(t, item)
 			assert.Equal(t, filepath.Base(tmpFile.Name()), filepath.Base(item.Name()))
-			assert.Equal(t, conf.Task.S3Path(conf.Task.DisplayName), filepath.Dir(item.Name()))
+			// Fix Windows file path separators
+			localPath := strings.Replace(filepath.Dir(item.Name()), "\\", "/", -1)
+			assert.Equal(t, conf.Task.S3Path(conf.Task.DisplayName), localPath)
 			r, err := item.Get(ctx)
 			require.NoError(t, err)
 			defer func() {
