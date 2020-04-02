@@ -221,6 +221,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
 		PatchingDisabled    bool                           `json:"patching_disabled"`
 		RepotrackerDisabled bool                           `json:"repotracker_disabled"`
+		TaskSync            restModel.APITaskSyncOptions   `json:"task_sync"`
 		AlertConfig         map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`

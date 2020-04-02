@@ -291,6 +291,28 @@ Evergreen Projects
           </div>
         </div>
 
+        <div class="variables" ng-show="isAdmin">
+          <div class="form-group">
+            <div class="col-header col-lg-8 form-control-static"> <h3>Task Sync</h3> </div>
+            <div class="col-lg-8">
+              <input type="checkbox" id="task-sync-config-enabled-checkbox" ng-model="settingsFormData.task_sync.config_enabled" />
+              <label for="task-sync-config-enabled-checkbox">Enable for Project Config Commands</label>
+              <div class="muted small">Enable commands (e.g. s3.push, s3.pull) to sync the task directory in S3 from the config file.</div>
+            </div>
+            <div class="col-lg-8">
+              <input type="checkbox" id="task-sync-patch-enabled-checkbox" ng-model="settingsFormData.task_sync.patch_enabled" />
+              <label for="task-sync-patch-enabled-checkbox">Enable for Tasks in Patches</label>
+              <div class="muted small">Users have the option to sync the task directory to S3 at the end of any task in a patch.</div>
+            </div>
+          </div>
+          <div class="panel panel-danger" ng-show="settingsFormData.task_sync.config_enabled || settingsFormData.task_sync.patch_enabled">
+            <div class="panel-heading">
+            <i class="fa fa-exclamation-circle"></i>
+              Enabling this feature can allow any files containing secrets in the task's working directory to be read by any logged in user.
+            </div>
+          </div>
+        </div>
+
         <div class="variables">
           <div class="form-group">
             <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>

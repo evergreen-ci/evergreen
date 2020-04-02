@@ -14,6 +14,7 @@ type UIProjectFields struct {
 	Owner       string `json:"owner_name"`
 }
 
+// kim: TODO: figure out difference between APIProject and APIProjectRef
 type APIProject struct {
 	BatchTime           int                  `json:"batch_time"`
 	Branch              *string              `json:"branch_name"`
@@ -32,6 +33,8 @@ type APIProject struct {
 	TracksPushEvents    bool                 `json:"tracks_push_events"`
 	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
 	CommitQueue         APICommitQueueParams `json:"commit_queue"`
+	// kim: TODO: figure out if this is necessary. Probably not?
+	// TaskSync          APITaskSyncOptions `json:"task_sync"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -132,6 +135,29 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	return serviceParams, nil
 }
 
+type APITaskSyncOptions struct {
+	ConfigEnabled bool `json:"config_enabled"`
+	PatchEnabled  bool `json:"patch_enabled"`
+}
+
+func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case model.TaskSyncOptions:
+		opts.ConfigEnabled = v.ConfigEnabled
+		opts.PatchEnabled = v.PatchEnabled
+		return nil
+	default:
+		return errors.Errorf("invalid type '%T' for API S3 task sync options", v)
+	}
+}
+
+func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
+	return model.TaskSyncOptions{
+		ConfigEnabled: opts.ConfigEnabled,
+		PatchEnabled:  opts.PatchEnabled,
+	}, nil
+}
+
 type APIProjectRef struct {
 	Owner                *string              `json:"owner_name"`
 	Repo                 *string              `json:"repo_name"`
@@ -148,6 +174,7 @@ type APIProjectRef struct {
 	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
 	DefaultLogger        *string              `json:"default_logger"`
 	CommitQueue          APICommitQueueParams `json:"commit_queue"`
+	TaskSync             APITaskSyncOptions   `json:"task_sync"`
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
 	RepotrackerDisabled  bool                 `json:"repotracker_disabled"`
@@ -172,6 +199,15 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "can't convert commit queue params")
 	}
 
+	i, err := p.TaskSync.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert API task sync options to service representation")
+	}
+	taskSync, ok := i.(model.TaskSyncOptions)
+	if !ok {
+		return nil, errors.Errorf("expected task sync options but was actually '%T'", i)
+	}
+
 	projectRef := model.ProjectRef{
 		Owner:                FromStringPtr(p.Owner),
 		Repo:                 FromStringPtr(p.Repo),
@@ -188,6 +224,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DefaultLogger:        FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:     p.PRTestingEnabled,
 		CommitQueue:          commitQueue.(model.CommitQueueParams),
+		TaskSync:             taskSync,
 		Tracked:              p.Tracked,
 		PatchingDisabled:     p.PatchingDisabled,
 		RepotrackerDisabled:  p.RepotrackerDisabled,
@@ -247,6 +284,11 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.Wrap(err, "can't convert commit queue parameters")
 	}
 
+	var taskSync APITaskSyncOptions
+	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
+		return errors.Wrap(err, "cannot convert task sync options to API representation")
+	}
+
 	p.Owner = ToStringPtr(projectRef.Owner)
 	p.Repo = ToStringPtr(projectRef.Repo)
 	p.Branch = ToStringPtr(projectRef.Branch)
@@ -262,6 +304,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.CommitQueue = cq
+	p.TaskSync = taskSync
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
