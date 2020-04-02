@@ -18,13 +18,14 @@ type jiraCommentJournal struct {
 
 // MakeJiraCommentLogger is the same as NewJiraCommentLogger but uses a warning
 // level of Trace
-func MakeJiraCommentLogger(id string, opts *JiraOptions) (Sender, error) {
-	return NewJiraCommentLogger(id, opts, LevelInfo{level.Trace, level.Trace})
+func MakeJiraCommentLogger(ctx context.Context, id string, opts *JiraOptions) (Sender, error) {
+	return NewJiraCommentLogger(ctx, id, opts, LevelInfo{level.Trace, level.Trace})
 }
 
 // NewJiraCommentLogger constructs a Sender that creates issues to jira, given
-// options defined in a JiraOptions struct. id parameter is the ID of the issue
-func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, error) {
+// options defined in a JiraOptions struct. id parameter is the ID of the issue.
+// ctx is used as the request context in the OAuth HTTP client
+func NewJiraCommentLogger(ctx context.Context, id string, opts *JiraOptions, l LevelInfo) (Sender, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -39,7 +40,16 @@ func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, er
 		return nil, err
 	}
 
-	if err := j.opts.client.Authenticate(opts.Username, opts.Password, opts.UseBasicAuth); err != nil {
+	authOpts := jiraAuthOpts{
+		username:           opts.BasicAuthOpts.Username,
+		password:           opts.BasicAuthOpts.Password,
+		addBasicAuthHeader: opts.BasicAuthOpts.UseBasicAuth,
+		accessToken:        opts.Oauth1Opts.AccessToken,
+		tokenSecret:        opts.Oauth1Opts.TokenSecret,
+		privateKey:         opts.Oauth1Opts.PrivateKey,
+		consumerKey:        opts.Oauth1Opts.ConsumerKey,
+	}
+	if err := j.opts.client.Authenticate(ctx, authOpts); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
@@ -66,9 +76,6 @@ func (j *jiraCommentJournal) Send(m message.Composer) {
 		issue := j.issueID
 		if c, ok := m.Raw().(*message.JIRAComment); ok {
 			issue = c.IssueID
-		}
-		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password, j.opts.UseBasicAuth); err != nil {
-			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
 		if err := j.opts.client.PostComment(issue, m.String()); err != nil {
 			j.ErrorHandler()(err, m)

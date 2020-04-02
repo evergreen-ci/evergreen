@@ -97,10 +97,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		buildBaronProjects: bbGetConfig(settings),
 		render:             gimlet.NewHTMLRenderer(ropts),
 		renderText:         gimlet.NewTextRenderer(ropts),
-		jiraHandler: thirdparty.NewJiraHandler(
-			settings.Jira.GetHostURL(),
-			settings.Jira.BasicAuthConfig.Username,
-			settings.Jira.BasicAuthConfig.Password),
+		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.ToJiraOptions()),
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:  evergreen.APIKeyHeader,
 			HeaderUserName: evergreen.APIUserHeader,

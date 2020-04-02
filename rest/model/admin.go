@@ -918,12 +918,17 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
-	return evergreen.JiraConfig{
-		Host:            FromStringPtr(a.Host),
-		DefaultProject:  FromStringPtr(a.DefaultProject),
-		BasicAuthConfig: a.BasicAuthConfig.ToService(),
-		OAuth1Config:    a.OAuth1Config.ToService(),
-	}, nil
+	c := evergreen.JiraConfig{
+		Host:           FromStringPtr(a.Host),
+		DefaultProject: FromStringPtr(a.DefaultProject),
+	}
+	if a.BasicAuthConfig != nil {
+		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
+	}
+	if a.OAuth1Config != nil {
+		c.OAuth1Config = a.OAuth1Config.ToService()
+	}
+	return c, nil
 }
 
 type APIJiraBasicAuth struct {

@@ -3,7 +3,7 @@ package send
 import (
 	"errors"
 
-	"github.com/fuyufjh/splunk-hec-go"
+	hec "github.com/fuyufjh/splunk-hec-go"
 )
 
 type splunkClientMock struct {

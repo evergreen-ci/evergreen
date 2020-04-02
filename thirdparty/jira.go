@@ -1,12 +1,18 @@
 package thirdparty
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
+	"net/http"
 	"net/url"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -90,14 +96,12 @@ type User struct {
 }
 
 type JiraHandler struct {
-	MyHttp     httpClient
-	JiraServer string
-	UserName   string
-	Password   string
+	client *http.Client
+	opts   send.JiraOptions
 }
 
 // JiraHost returns the hostname of the jira service as configured.
-func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.JiraServer }
+func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.opts.BaseURL }
 
 // CreateTicket takes a map of fields to initialize a JIRA ticket with. Returns a response containing the
 // new ticket's key, id, and API URL. See the JIRA API documentation for help.
@@ -105,8 +109,20 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 	postArgs := struct {
 		Fields map[string]interface{} `json:"fields"`
 	}{fields}
-	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue", jiraHandler.JiraServer)
-	res, err := jiraHandler.MyHttp.doPost(apiEndpoint, jiraHandler.UserName, jiraHandler.Password, postArgs)
+	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue", jiraHandler.JiraHost())
+	body := &bytes.Buffer{}
+	if err := json.NewEncoder(body).Encode(postArgs); err != nil {
+		return nil, errors.Wrap(err, "unable to serialize ticket body")
+	}
+	req, err := http.NewRequest(http.MethodPost, apiEndpoint, body)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to form create ticket request")
+	}
+	req.Header.Add("Content-Type", "application/json")
+	if jiraHandler.opts.BasicAuthOpts.Username != "" {
+		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
+	}
+	res, err := jiraHandler.client.Do(req)
 	if res != nil {
 		defer res.Body.Close()
 	}
@@ -127,11 +143,23 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 
 // UpdateTicket sets the given fields of the ticket with the given key. Returns any errors JIRA returns.
 func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]interface{}) error {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
+	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
 	putArgs := struct {
 		Fields map[string]interface{} `json:"fields"`
 	}{fields}
-	res, err := jiraHandler.MyHttp.doPut(apiEndpoint, jiraHandler.UserName, jiraHandler.Password, putArgs)
+	body := &bytes.Buffer{}
+	if err := json.NewEncoder(body).Encode(putArgs); err != nil {
+		return errors.Wrap(err, "unable to serialize ticket body")
+	}
+	req, err := http.NewRequest(http.MethodPut, apiEndpoint, body)
+	if err != nil {
+		return errors.Wrap(err, "unable to form update ticket request")
+	}
+	req.Header.Add("Content-Type", "application/json")
+	if jiraHandler.opts.BasicAuthOpts.Username != "" {
+		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
+	}
+	res, err := jiraHandler.client.Do(req)
 	if res != nil {
 		defer res.Body.Close()
 	}
@@ -148,9 +176,15 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]inter
 
 // GetJIRATicket returns the ticket with the given key.
 func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
-
-	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
+	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
+	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to form get ticket request")
+	}
+	if jiraHandler.opts.BasicAuthOpts.Username != "" {
+		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
+	}
+	res, err := jiraHandler.client.Do(req)
 	if res != nil {
 		defer res.Body.Close()
 	}
@@ -183,9 +217,15 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 // JQLSearch runs the given JQL query against the given jira instance and returns
 // the results in a JiraSearchResults
 func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraServer, url.QueryEscape(query), startAt, maxResults)
-
-	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
+	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraHost(), url.QueryEscape(query), startAt, maxResults)
+	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to form JQL request")
+	}
+	if jiraHandler.opts.BasicAuthOpts.Username != "" {
+		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
+	}
+	res, err := jiraHandler.client.Do(req)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -237,11 +277,24 @@ func (jiraHandler *JiraHandler) JQLSearchAll(query string) ([]JiraTicket, error)
 
 }
 
-func NewJiraHandler(server string, user string, password string) JiraHandler {
+func NewJiraHandler(opts send.JiraOptions) JiraHandler {
+	httpClient := http.DefaultClient
+	if opts.Oauth1Opts.PrivateKey != nil {
+		var err error
+		credentials := send.JiraOauthCredentials{
+			PrivateKey:  opts.Oauth1Opts.PrivateKey,
+			AccessToken: opts.Oauth1Opts.AccessToken,
+			TokenSecret: opts.Oauth1Opts.TokenSecret,
+			ConsumerKey: opts.Oauth1Opts.ConsumerKey,
+		}
+		ctx, _ := evergreen.GetEnvironment().Context()
+		httpClient, err = send.Oauth1Client(ctx, credentials)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "unable to setup jira oauth client",
+		}))
+	}
 	return JiraHandler{
-		liveHttp{},
-		server,
-		user,
-		password,
+		opts:   opts,
+		client: httpClient,
 	}
 }

@@ -3,6 +3,7 @@ package evergreen
 import (
 	"strings"
 
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -82,4 +83,22 @@ func (c JiraConfig) GetHostURL() string {
 	}
 
 	return "https://" + c.Host
+}
+
+func (c JiraConfig) ToJiraOptions() *send.JiraOptions {
+	return &send.JiraOptions{
+		Name:    "evergreen",
+		BaseURL: c.GetHostURL(),
+		BasicAuthOpts: send.JiraBasicAuth{
+			Username:     c.BasicAuthConfig.Username,
+			Password:     c.BasicAuthConfig.Password,
+			UseBasicAuth: true,
+		},
+		Oauth1Opts: send.JiraOauth1{
+			AccessToken: c.OAuth1Config.AccessToken,
+			TokenSecret: c.OAuth1Config.TokenSecret,
+			PrivateKey:  []byte(c.OAuth1Config.PrivateKey),
+			ConsumerKey: c.OAuth1Config.ConsumerKey,
+		},
+	}
 }
