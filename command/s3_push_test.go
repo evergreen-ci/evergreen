@@ -19,20 +19,19 @@ import (
 
 func TestS3PushParseParams(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *s3Push){
-		"SetsDefaults": func(t *testing.T, c *s3Push) {
-			require.NoError(t, c.ParseParams(map[string]interface{}{}))
-			assert.Equal(t, (defaultS3MaxRetries), c.MaxRetries)
-		},
 		"SetsValues": func(t *testing.T, c *s3Push) {
 			params := map[string]interface{}{
-				"exclude_filter": "exclude_pattern",
+				"exclude":        "exclude_pattern",
 				"build_variants": []string{"some_build_variant"},
 				"max_retries":    uint(5),
 			}
 			require.NoError(t, c.ParseParams(params))
-			assert.Equal(t, params["exclude_filter"], c.ExcludeFilter)
+			assert.Equal(t, params["exclude"], c.ExcludeFilter)
 			assert.Equal(t, params["build_variants"], c.BuildVariants)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
+		},
+		"SucceedsWithNoParameters": func(t *testing.T, c *s3Push) {
+			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -62,13 +61,13 @@ func TestS3PushExecute(t *testing.T) {
 			conf.WorkDir = tmpDir
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
+			iter, err := c.bucket.List(ctx, conf.S3Path(conf.Task.DisplayName))
 			require.NoError(t, err)
 			require.True(t, iter.Next(ctx))
 			item := iter.Item()
 			require.NotNil(t, item)
 			assert.Equal(t, filepath.Base(tmpFile.Name()), filepath.Base(item.Name()))
-			assert.Equal(t, conf.S3Path(), filepath.Dir(item.Name()))
+			assert.Equal(t, conf.S3Path(conf.Task.DisplayName), filepath.Dir(item.Name()))
 			r, err := item.Get(ctx)
 			require.NoError(t, err)
 			defer func() {
@@ -98,7 +97,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
+			iter, err := c.bucket.List(ctx, conf.S3Path(conf.Task.DisplayName))
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
 		},
@@ -120,7 +119,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.BuildVariants = []string{"other_build_variant"}
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
+			iter, err := c.bucket.List(ctx, conf.S3Path(conf.Task.DisplayName))
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
 		},
