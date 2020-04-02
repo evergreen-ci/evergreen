@@ -50,7 +50,7 @@ func makeTestResultsCleanupJob() *dataCleanupTestResults {
 func NewTestResultsCleanupJob(ts time.Time) amboy.Job {
 	j := makeTestResultsCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", testResultsCleanupJobName, ts.Format(TSFormat)))
-	j.UpdateTimeInfo(amboy.TimeInfo{MaxTime: 50 * time.Second})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 50 * time.Second})
 	return j
 }
 
