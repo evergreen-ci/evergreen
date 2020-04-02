@@ -1216,17 +1216,18 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetS3TaskCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
+func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
 		method:  http.MethodGet,
 		version: apiVersion2,
-		path:    "/task/s3_read_credentials",
+		path:    "/task/sync_read_credentials",
 	}
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't make request to get task read-only credentials")
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		respErr := gimlet.ErrorResponse{}
 		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
@@ -1236,33 +1237,34 @@ func (c *communicatorImpl) GetS3TaskCredentials(ctx context.Context) (*evergreen
 	}
 	creds := &evergreen.S3Credentials{}
 	if err := util.ReadJSONInto(resp.Body, creds); err != nil {
-		return nil, errors.Wrap(err, "could not read credentials from response body")
+		return nil, errors.Wrap(err, "problem reading credentials from response body")
 	}
 
 	return creds, nil
 }
 
-func (c *communicatorImpl) GetS3TaskPath(ctx context.Context, taskID string) (string, error) {
+func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
 	info := requestInfo{
 		method:  http.MethodGet,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/tasks/%s/s3_path", taskID),
+		path:    fmt.Sprintf("/tasks/%s/sync_path", taskID),
 	}
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "couldn't make request to get task read-only credentials")
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		respErr := gimlet.ErrorResponse{}
 		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
 			return "", errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
 		}
-		return "", errors.Wrap(respErr, "problem getting task's S3 path")
+		return "", errors.Wrap(respErr, "problem getting task sync path")
 	}
 	var path string
 	if err = util.ReadJSONInto(resp.Body, &path); err != nil {
-		return "", errors.Wrap(err, "problem reading response body")
+		return "", errors.Wrap(err, "problem reading task sync path from response body")
 	}
 
 	return path, nil

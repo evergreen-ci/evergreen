@@ -200,9 +200,9 @@ type Communicator interface {
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 
-	// GetS3TaskCredentials returns the credentials to fetch task directory
-	// dumps from S3.
-	GetS3TaskCredentials(ctx context.Context) (*evergreen.S3Credentials, error)
-	// GetS3TaskPath returns the path to the task directory dump in S3.
-	GetS3TaskPath(ctx context.Context, taskID string) (string, error)
+	// GetTaskSyncReadCredentials returns the credentials to fetch task
+	// directory from S3.
+	GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error)
+	// GetTaskSyncPath returns the path to the task directory in S3.
+	GetTaskSyncPath(ctx context.Context, taskID string) (string, error)
 }

@@ -203,18 +203,18 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 	s.Equal(time.Time{}, s.h.finishedBefore)
 }
 
-func TestGetS3TaskReadCredentials(t *testing.T) {
+func TestGetTaskSyncReadCredentials(t *testing.T) {
 	creds := evergreen.S3Credentials{
 		Key:    "key",
 		Secret: "secret",
 		Bucket: "bucket",
 	}
-	rh := makeS3TaskReadCredentialsGetHandler(&data.MockConnector{
+	rh := makeTaskSyncReadCredentialsGetHandler(&data.MockConnector{
 		MockAdminConnector: data.MockAdminConnector{
 			MockSettings: &evergreen.Settings{
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
-						S3TaskRead: creds,
+						TaskSyncRead: creds,
 					},
 				},
 			},
@@ -229,7 +229,7 @@ func TestGetS3TaskReadCredentials(t *testing.T) {
 	assert.Equal(t, creds, respCreds)
 }
 
-func TestGetS3TaskPath(t *testing.T) {
+func TestGetTaskSyncPath(t *testing.T) {
 	expected := task.Task{
 		Id:           "task_id",
 		Project:      "project",
@@ -237,12 +237,12 @@ func TestGetS3TaskPath(t *testing.T) {
 		BuildVariant: "build_variant",
 		DisplayName:  "name",
 	}
-	h := makeS3TaskPathGetHandler(&data.MockConnector{
+	h := makeTaskSyncPathGetHandler(&data.MockConnector{
 		MockTaskConnector: data.MockTaskConnector{
 			CachedTasks: []task.Task{expected},
 		},
 	})
-	rh, ok := h.(*s3TaskPathGetHandler)
+	rh, ok := h.(*taskSyncPathGetHandler)
 	require.True(t, ok)
 	rh.taskID = expected.Id
 

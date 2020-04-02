@@ -225,15 +225,15 @@ func MockConfig() *evergreen.Settings {
 					Secret: "s3_secret",
 					Bucket: "s3_bucket",
 				},
-				S3Task: evergreen.S3Credentials{
-					Key:    "s3_task_key",
-					Secret: "s3_task_secret",
-					Bucket: "s3_task_bucket",
+				TaskSync: evergreen.S3Credentials{
+					Key:    "task_sync_key",
+					Secret: "task_sync_secret",
+					Bucket: "task_sync_bucket",
 				},
-				S3TaskRead: evergreen.S3Credentials{
-					Key:    "s3_task_read_key",
-					Secret: "s3_task_read_secret",
-					Bucket: "s3_task_bucket",
+				TaskSyncRead: evergreen.S3Credentials{
+					Key:    "task_sync_read_key",
+					Secret: "task_sync_read_secret",
+					Bucket: "task_sync_bucket",
 				},
 				S3BaseURL: "s3_base_url",
 			},

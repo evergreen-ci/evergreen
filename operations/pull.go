@@ -51,12 +51,12 @@ func Pull() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			creds, err := client.GetS3TaskCredentials(ctx)
+			creds, err := client.GetTaskSyncReadCredentials(ctx)
 			if err != nil {
 				return errors.Wrap(err, "could not fetch credentials")
 			}
 
-			s3Path, err := client.GetS3TaskPath(ctx, taskID)
+			path, err := client.GetTaskSyncPath(ctx, taskID)
 			if err != nil {
 				return errors.Wrap(err, "could not get location of task directory in S3")
 			}
@@ -85,7 +85,7 @@ func Pull() cli.Command {
 
 			if err := bucket.Pull(ctx, pail.SyncOptions{
 				Local:  workingDir,
-				Remote: s3Path,
+				Remote: path,
 			}); err != nil {
 				return errors.Wrap(err, "error while pulling task directory")
 			}

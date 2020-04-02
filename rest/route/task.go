@@ -298,21 +298,21 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(taskModel)
 }
 
-// GET /tasks/{task_id}/s3_path
+// GET /tasks/{task_id}/sync_path
 
-type s3TaskPathGetHandler struct {
+type taskSyncPathGetHandler struct {
 	taskID string
 	sc     data.Connector
 }
 
-func makeS3TaskPathGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &s3TaskPathGetHandler{
+func makeTaskSyncPathGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &taskSyncPathGetHandler{
 		sc: sc,
 	}
 }
 
-func (rh *s3TaskPathGetHandler) Factory() gimlet.RouteHandler {
-	return &s3TaskPathGetHandler{
+func (rh *taskSyncPathGetHandler) Factory() gimlet.RouteHandler {
+	return &taskSyncPathGetHandler{
 		sc: rh.sc,
 	}
 }
@@ -320,12 +320,12 @@ func (rh *s3TaskPathGetHandler) Factory() gimlet.RouteHandler {
 // ParseAndValidate fetches the needed data from the request and errors otherwise.
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
-func (rh *s3TaskPathGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *taskSyncPathGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
 	return nil
 }
 
-func (rh *s3TaskPathGetHandler) Run(ctx context.Context) gimlet.Responder {
+func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := rh.sc.FindTaskById(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
@@ -333,33 +333,33 @@ func (rh *s3TaskPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(t.S3Path(t.DisplayName))
 }
 
-// GET /task/s3_read_credentials
+// GET /task/sync_read_credentials
 
-type s3TaskReadCredentialsGetHandler struct {
+type taskSyncReadCredentialsGetHandler struct {
 	taskID string
 	sc     data.Connector
 }
 
-func makeS3TaskReadCredentialsGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &s3TaskReadCredentialsGetHandler{
+func makeTaskSyncReadCredentialsGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &taskSyncReadCredentialsGetHandler{
 		sc: sc,
 	}
 }
 
-func (rh *s3TaskReadCredentialsGetHandler) Factory() gimlet.RouteHandler {
-	return &s3TaskReadCredentialsGetHandler{
+func (rh *taskSyncReadCredentialsGetHandler) Factory() gimlet.RouteHandler {
+	return &taskSyncReadCredentialsGetHandler{
 		sc: rh.sc,
 	}
 }
 
-func (rh *s3TaskReadCredentialsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (rh *s3TaskReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
+func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := rh.sc.GetEvergreenSettings()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	return gimlet.NewJSONResponse(settings.Providers.AWS.S3TaskRead)
+	return gimlet.NewJSONResponse(settings.Providers.AWS.TaskSyncRead)
 }

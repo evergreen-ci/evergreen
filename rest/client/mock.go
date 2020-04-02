@@ -676,10 +676,10 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetS3TaskCredentials(context.Context) (*evergreen.S3Credentials, error) {
+func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credentials, error) {
 	return &evergreen.S3Credentials{}, nil
 }
 
-func (c *Mock) GetS3TaskPath(context.Context, string) (string, error) {
+func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
 	return "", nil
 }

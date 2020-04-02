@@ -107,14 +107,10 @@ func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error
 		return nil
 	}
 
-	if err := conf.S3Data.Validate(); err != nil {
-		return errors.Wrap(err, "invalid S3 task credentials")
-	}
-
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(conf.S3Data.Key, conf.S3Data.Secret, ""),
+		Credentials: pail.CreateAWSCredentials(conf.TaskSync.Key, conf.TaskSync.Secret, ""),
 		Region:      endpoints.UsEast1RegionID,
-		Name:        conf.S3Data.Bucket,
+		Name:        conf.TaskSync.Bucket,
 		MaxRetries:  int(c.MaxRetries),
 		Permissions: pail.S3PermissionsPrivate,
 	}
