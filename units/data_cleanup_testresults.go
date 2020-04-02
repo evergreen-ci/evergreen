@@ -50,6 +50,7 @@ func makeTestResultsCleanupJob() *dataCleanupTestResults {
 func NewTestResultsCleanupJob(ts time.Time) amboy.Job {
 	j := makeTestResultsCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", testResultsCleanupJobName, ts.Format(TSFormat)))
+	j.UpdateTimeInfo(amboy.TimeInfo{MaxTime: 50 * time.Second})
 	return j
 }
 
@@ -86,7 +87,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 
 	lock := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		go func() {
 			defer func() { j.AddError(recovery.HandlePanicWithError(recover(), nil, "double batch deletes")) }()
