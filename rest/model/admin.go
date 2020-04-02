@@ -896,19 +896,21 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIJiraConfig struct {
-	Host           *string `json:"host"`
-	Username       *string `json:"username"`
-	Password       *string `json:"password"`
-	DefaultProject *string `json:"default_project"`
+	Host            *string           `json:"host"`
+	DefaultProject  *string           `json:"default_project"`
+	BasicAuthConfig *APIJiraBasicAuth `json:"basic_auth"`
+	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
 }
 
 func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
 		a.Host = ToStringPtr(v.Host)
-		a.Username = ToStringPtr(v.Username)
-		a.Password = ToStringPtr(v.Password)
 		a.DefaultProject = ToStringPtr(v.DefaultProject)
+		a.BasicAuthConfig = &APIJiraBasicAuth{}
+		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
+		a.OAuth1Config = &APIJiraOAuth1{}
+		a.OAuth1Config.BuildFromService(v.OAuth1Config)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -917,11 +919,51 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
 	return evergreen.JiraConfig{
-		Host:           FromStringPtr(a.Host),
-		Username:       FromStringPtr(a.Username),
-		Password:       FromStringPtr(a.Password),
-		DefaultProject: FromStringPtr(a.DefaultProject),
+		Host:            FromStringPtr(a.Host),
+		DefaultProject:  FromStringPtr(a.DefaultProject),
+		BasicAuthConfig: a.BasicAuthConfig.ToService(),
+		OAuth1Config:    a.OAuth1Config.ToService(),
 	}, nil
+}
+
+type APIJiraBasicAuth struct {
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+}
+
+func (a *APIJiraBasicAuth) BuildFromService(c evergreen.JiraBasicAuthConfig) {
+	a.Username = ToStringPtr(c.Username)
+	a.Password = ToStringPtr(c.Password)
+}
+
+func (a *APIJiraBasicAuth) ToService() evergreen.JiraBasicAuthConfig {
+	return evergreen.JiraBasicAuthConfig{
+		Username: FromStringPtr(a.Username),
+		Password: FromStringPtr(a.Password),
+	}
+}
+
+type APIJiraOAuth1 struct {
+	PrivateKey  *string `json:"private_key"`
+	AccessToken *string `json:"access_token"`
+	TokenSecret *string `json:"token_secret"`
+	ConsumerKey *string `json:"consumer_key"`
+}
+
+func (a *APIJiraOAuth1) BuildFromService(c evergreen.JiraOAuth1Config) {
+	a.PrivateKey = ToStringPtr(c.PrivateKey)
+	a.AccessToken = ToStringPtr(c.AccessToken)
+	a.TokenSecret = ToStringPtr(c.TokenSecret)
+	a.ConsumerKey = ToStringPtr(c.ConsumerKey)
+}
+
+func (a *APIJiraOAuth1) ToService() evergreen.JiraOAuth1Config {
+	return evergreen.JiraOAuth1Config{
+		PrivateKey:  FromStringPtr(a.PrivateKey),
+		AccessToken: FromStringPtr(a.AccessToken),
+		TokenSecret: FromStringPtr(a.TokenSecret),
+		ConsumerKey: FromStringPtr(a.ConsumerKey),
+	}
 }
 
 type APILDAPRoleMapping struct {

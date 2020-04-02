@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -95,6 +96,14 @@ type S3Credentials struct {
 	Key    string `bson:"key" json:"key" yaml:"key"`
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
+}
+
+func (c *S3Credentials) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(c.Key == "", "key must not be empty")
+	catcher.NewWhen(c.Secret == "", "secret must not be empty")
+	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
+	return catcher.Resolve()
 }
 
 // DockerConfig stores auth info for Docker.

@@ -256,6 +256,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/evergreen-ci/aviation/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/golang/protobuf/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
@@ -350,7 +351,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
-	mkdir vendor/github.com/vektah/gqlparser/.v2 && pushd vendor/github.com/vektah/gqlparser && mv * .v2 && mv .v2 v2 && popd
+	mkdir -p vendor/github.com/vektah/gqlparser/v2 && find vendor/github.com/vektah/gqlparser -maxdepth 1 -mindepth 1 -not -name "v2" -exec mv {} vendor/github.com/vektah/gqlparser/v2 \;
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go

@@ -32,7 +32,7 @@ func TestJiraNetworkFail(t *testing.T) {
 	Convey("With a JIRA rest interface with broken network", t, func() {
 		stub := stubHttp{nil, errors.New("Generic network error")}
 
-		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
+		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.BasicAuthConfig.Username, testConfig.Jira.BasicAuthConfig.Password}
 
 		Convey("fetching tickets should return a non-nil err", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
@@ -50,7 +50,7 @@ func TestJiraUnauthorized(t *testing.T) {
 		stub.res.Status = "401 Unauthorized"
 		stub.res.Body = ioutil.NopCloser(&bytes.Buffer{})
 
-		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
+		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.BasicAuthConfig.Username, testConfig.Jira.BasicAuthConfig.Password}
 
 		Convey("fetching tickets should return 401 unauth error", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
@@ -63,7 +63,7 @@ func TestJiraUnauthorized(t *testing.T) {
 func TestJiraIntegration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestJiraIntegration")
 	Convey("With a JIRA rest interface that makes a valid request", t, func() {
-		jira := JiraHandler{liveHttp{}, testConfig.Jira.GetHostURL(), testConfig.Jira.Username, testConfig.Jira.Password}
+		jira := JiraHandler{liveHttp{}, testConfig.Jira.GetHostURL(), testConfig.Jira.BasicAuthConfig.Username, testConfig.Jira.BasicAuthConfig.Password}
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
