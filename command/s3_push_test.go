@@ -174,6 +174,9 @@ func TestS3PushExecute(t *testing.T) {
 				},
 				ProjectRef: &model.ProjectRef{
 					Identifier: "project_identifier",
+					TaskSync: model.TaskSyncOptions{
+						ConfigEnabled: true,
+					},
 				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "task_sync_key",

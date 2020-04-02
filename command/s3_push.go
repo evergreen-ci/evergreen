@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -20,7 +21,7 @@ type s3Push struct {
 func s3PushFactory() Command { return &s3Push{} }
 
 func (*s3Push) Name() string {
-	return "s3.push"
+	return evergreen.S3PushCommandName
 }
 
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
@@ -31,6 +32,9 @@ func (c *s3Push) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	if !conf.ProjectRef.TaskSync.ConfigEnabled {
+		return errors.Errorf("%s is not enabled for this project", c.Name())
+	}
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}

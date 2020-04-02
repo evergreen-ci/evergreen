@@ -33,8 +33,6 @@ type APIProject struct {
 	TracksPushEvents    bool                 `json:"tracks_push_events"`
 	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
 	CommitQueue         APICommitQueueParams `json:"commit_queue"`
-	// kim: TODO: figure out if this is necessary. Probably not?
-	// TaskSync          APITaskSyncOptions `json:"task_sync"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {

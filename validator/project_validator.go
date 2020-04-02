@@ -95,6 +95,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateCreateHosts,
 	validateDuplicateTaskDefinition,
 	validateGenerateTasks,
+	validateTaskSync,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -1174,4 +1175,18 @@ func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName s
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1)
+}
+
+// validateTaskSync validates a project's task sync commands.
+// kim: TODO: test
+// kim: TODO: validation that ProjectRef has this enabled? Idk how that would
+// work with the `evergreen validate` command, which has no awareness of the
+// project.
+func validateTaskSync(p *model.Project) ValidationErrors {
+	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
+	// It's nonsensical to call s3.push multiple times in a task, since the
+	// earlier calls will be overwriten by the later ones.
+	return validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1)
+	// kim: TODO: s3.pull commands must refer to valid tasks with s3.push
+	// kim: TODO: s3.pull task must have dependency on s3.push task
 }
