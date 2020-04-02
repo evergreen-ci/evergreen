@@ -94,7 +94,7 @@ func (c *ServiceFlags) Set() error {
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
 			drBackupDisabledKey:             c.DRBackupDisabled,
-			backgroundCleanupDsiabledKey:    c.BackgroundCleanup,
+			backgroundCleanupDisabledKey:    c.BackgroundCleanup,
 			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
 		},
 	}, options.Update().SetUpsert(true))
