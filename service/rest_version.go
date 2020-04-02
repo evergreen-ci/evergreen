@@ -322,6 +322,36 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 }
 
 // Returns a JSON response with the marshaled output of the version
+// specified in the request.
+func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveRESTContext(r)
+	srcVersion := projCtx.Version
+	if srcVersion == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "version not found"})
+		return
+	}
+
+	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
+		return
+	}
+	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
+		p := &model.Project{}
+		pp, err = model.LoadProjectInto([]byte(srcVersion.Config), srcVersion.Identifier, p)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
+			return
+		}
+	}
+	bytes, err := bson.Marshal(pp)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading to bson"})
+	}
+	gimlet.WriteBinary(w, bytes)
+}
+
+// Returns a JSON response with the marshaled output of the version
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)

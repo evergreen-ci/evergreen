@@ -253,8 +253,8 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	return ref, nil
 }
 
-// GetVersionConfig fetches the config requests project details from the API server for a given project ID.
-func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
+// GetConfig fetches the config yaml from the API server for a given project ID.
+func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	resp, err := ac.get(fmt.Sprintf("versions/%v/config", versionId), nil)
 	if err != nil {
 		return nil, err
@@ -262,15 +262,29 @@ func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	ref := &model.Project{}
-	yamlBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+	return respBytes, nil
+
+}
+
+// GetProjct fetches the project details from the API server for a given project ID.
+func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
+	resp, err := ac.get(fmt.Sprintf("versions/%v/parser_project", versionId), nil)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
-		return nil, err
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
 	}
-	return ref, nil
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+
+	return model.GetProjectFromBSON(respBytes)
 }
 
 // GetLastGreen returns the most recent successful version for the given project and variants.

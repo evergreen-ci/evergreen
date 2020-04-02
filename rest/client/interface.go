@@ -58,10 +58,12 @@ type Communicator interface {
 	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
-	// GetProjectRef loads the task's project.
+	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
+	// GetProject loads the project using the task's version ID
+	GetProject(context.Context, TaskData) (*model.Project, error)
 	// GetVersion loads the task's Version
 	GetVersion(context.Context, TaskData) (*model.Version, error)
 	// GetExpansions returns all expansions for the task known by the app server
