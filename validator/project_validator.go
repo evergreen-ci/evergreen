@@ -95,7 +95,6 @@ var projectSyntaxValidators = []projectValidator{
 	validateCreateHosts,
 	validateDuplicateTaskDefinition,
 	validateGenerateTasks,
-	validateTaskSync,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -103,6 +102,7 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
+	validateTaskSync,
 }
 
 func (vr ValidationError) Error() string {
@@ -1181,7 +1181,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 // kim: TODO: test
 // kim: TODO: validation that ProjectRef has this enabled? Idk how that would
 // work with the `evergreen validate` command, which has no awareness of the
-// project.
+// project that this thing is associated with.
 func validateTaskSync(p *model.Project) ValidationErrors {
 	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
 	// It's nonsensical to call s3.push multiple times in a task, since the

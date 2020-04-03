@@ -236,6 +236,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
+	// kim: TODO: check for task sync against project ref
 
 	patchDoc.PatchedConfig = projectYaml
 	if patchDoc.Patches[0].ModuleName != "" {

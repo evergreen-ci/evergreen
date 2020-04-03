@@ -1291,7 +1291,8 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
 }
 
-// TasksThatCallCommand returns a map of tasks that call a given command.
+// TasksThatCallCommand returns a map of tasks that call a given command to the
+// number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
 	// get all functions that call `generate.tasks`
 	fs := map[string]int{}
@@ -1321,8 +1322,15 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 	return ts
-
 }
+
+// kim: TODO:
+// go through all tasks that call s3.pull
+//	   - get params from PluginCommandConf
+//     - check that task from s3.pull params refer to a real task, possibly on a
+//       different buildvariant
+//     - check that task contains an s3.push
+//     - check that s3.pull task has a dependency on s3.push task
 
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.

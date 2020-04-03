@@ -81,9 +81,11 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 type s3Pull struct {
 	s3Base
 	base
-	TaskName     string `mapstructure:"task" plugin:"expand"`
-	WorkingDir   string `mapstructure:"working_directory" plugin:"expand"`
-	DeleteOnSync bool   `mapstructure:"delete_on_sync"`
+
+	FromBuildVariantName string `mapstructure:"from_build_variant" plugin:"expand"`
+	TaskName             string `mapstructure:"task" plugin:"expand"`
+	WorkingDir           string `mapstructure:"working_directory" plugin:"expand"`
+	DeleteOnSync         bool   `mapstructure:"delete_on_sync"`
 }
 
 func s3PullFactory() Command { return &s3Pull{} }
@@ -112,6 +114,9 @@ func (c *s3Pull) expandParams(conf *model.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(c.s3Base.expandParams(conf))
 	catcher.Add(util.ExpandValues(c, conf.Expansions))
+	if c.FromBuildVariantName == "" {
+		c.FromBuildVariantName = conf.Task.BuildVariant
+	}
 	return catcher.Resolve()
 }
 
@@ -153,7 +158,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pullMsg)
 	if err := c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   c.WorkingDir,
-		Remote:  conf.Task.S3Path(c.TaskName),
+		Remote:  conf.Task.S3Path(c.FromBuildVariantName, c.TaskName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pulling task data from S3")

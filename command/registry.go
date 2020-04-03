@@ -46,14 +46,14 @@ func init() {
 		"s3.put":                        s3PutFactory,
 		"s3Copy.copy":                   s3CopyFactory,
 		evergreen.S3PushCommandName:     s3PushFactory,
-		// kim: TODO: rename s3.pull to S3PullCommandName
-		"shell.cleanup":        shellCleanupFactory,
-		"shell.exec":           shellExecFactory,
-		"shell.track":          shellTrackFactory,
-		"subprocess.exec":      subprocessExecFactory,
-		"subprocess.scripting": subprocessScriptingFactory,
-		"setup.initial":        initialSetupFactory,
-		"timeout.update":       timeoutUpdateFactory,
+		evergreen.S3PullCommandName:     s3PullFactory,
+		"shell.cleanup":                 shellCleanupFactory,
+		"shell.exec":                    shellExecFactory,
+		"shell.track":                   shellTrackFactory,
+		"subprocess.exec":               subprocessExecFactory,
+		"subprocess.scripting":          subprocessScriptingFactory,
+		"setup.initial":                 initialSetupFactory,
+		"timeout.update":                timeoutUpdateFactory,
 	}
 
 	for name, factory := range cmds {
