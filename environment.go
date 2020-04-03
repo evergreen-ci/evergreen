@@ -554,8 +554,8 @@ func (e *envState) initSenders(ctx context.Context) error {
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
 			Name:         "evergreen",
 			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
+			Username:     jira.BasicAuthConfig.Username,
+			Password:     jira.BasicAuthConfig.Password,
 			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
@@ -566,8 +566,8 @@ func (e *envState) initSenders(ctx context.Context) error {
 		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
 			Name:         "evergreen",
 			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
+			Username:     jira.BasicAuthConfig.Username,
+			Password:     jira.BasicAuthConfig.Password,
 			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {

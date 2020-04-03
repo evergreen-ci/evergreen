@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -589,4 +590,20 @@ index ce0542e91..718dd8099 100644
 
 	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
 	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
+}
+
+func TestGetPatchSummariesByCountLong(t *testing.T) {
+	str := strings.Repeat("this is a long string", 100)
+	msg := fmt.Sprintf(`From foo@bar.com
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 10:41:34 -0500
+Subject: EVG-6799 remove one commit validation
+
+---\n%s\n`, str)
+	assert.True(t, len([]byte(str)) > 1000)
+	reader := ioutil.NopCloser(strings.NewReader(msg))
+	defer assert.NoError(t, reader.Close())
+	summaries, err := GetPatchSummariesByCommit(reader)
+	assert.NoError(t, err)
+	assert.NotNil(t, summaries)
 }

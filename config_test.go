@@ -338,9 +338,15 @@ func (s *AdminSuite) TestHostinitConfig() {
 
 func (s *AdminSuite) TestJiraConfig() {
 	config := JiraConfig{
-		Host:           "host",
-		Username:       "username",
-		Password:       "password",
+		Host: "host",
+		BasicAuthConfig: JiraBasicAuthConfig{
+			Username: "username",
+			Password: "password",
+		},
+		OAuth1Config: JiraOAuth1Config{
+			PrivateKey:  "asdf",
+			AccessToken: "fdsa",
+		},
 		DefaultProject: "proj",
 	}
 

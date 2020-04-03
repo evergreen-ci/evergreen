@@ -1,8 +1,0 @@
-language: go
-env:
-    - GIMME_OS=linux GIMME_ARCH=amd64
-go:
-  - "1.8"
-  - "1.9"
-  - "1.10"
-script: make build coverage

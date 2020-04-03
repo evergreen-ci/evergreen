@@ -23,7 +23,7 @@ type Query {
     testName: String = ""
     statuses: [String!]! = []
   ): [TestResult!]
-  taskFiles(taskId: String!): [GroupedFiles!]!
+  taskFiles(taskId: String!): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
@@ -93,6 +93,11 @@ type PatchBuildVariantTask {
   status: String!
 }
 
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
+}
+
 type GroupedFiles {
   taskName: String
   files: [File!]
@@ -129,6 +134,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
+  baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
 }
 
