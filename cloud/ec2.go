@@ -944,7 +944,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		if v == nil {
 			continue
 		}
-		if err = m.extendVolumeExiration(ctx, v); err != nil {
+		if err = m.extendVolumeExpiration(ctx, v); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error updating volume expiration",
 				"user":          user,
@@ -1210,7 +1210,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
 	}
 
-	if err = m.extendVolumeExiration(ctx, v); err != nil {
+	if err = m.extendVolumeExpiration(ctx, v); err != nil {
 		return errors.Wrapf(err, "can't update expiration for volume '%s'", volumeID)
 	}
 
@@ -1270,7 +1270,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
 }
 
-func (m *ec2Manager) extendVolumeExiration(ctx context.Context, volume *host.Volume) error {
+func (m *ec2Manager) extendVolumeExpiration(ctx context.Context, volume *host.Volume) error {
 	if err := volume.SetExpiration(time.Now().Add(evergreen.DefaultSpawnHostExpiration)); err != nil {
 		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)
 	}
