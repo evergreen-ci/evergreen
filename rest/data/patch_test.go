@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -729,6 +728,5 @@ func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchPatchesF
 }
 
 func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TearDownSuite() {
-	fmt.Println("TEARRR DOWN KINGGGG")
 	s.Require().NoError(s.teardown())
 }
