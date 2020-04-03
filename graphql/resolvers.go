@@ -253,17 +253,20 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+	usr := route.MustHaveUser(ctx)
+	userIdParam := usr.Username()
+	if userID != nil {
+		userIdParam = *userID
+	}
+	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	patchPointers := []*restModel.APIPatch{}
-	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userID, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	if err != nil {
 		return patchPointers, InternalServerError.Send(ctx, err.Error())
 	}
-
 	for _, p := range patches {
 		patchPointers = append(patchPointers, &p)
 	}
-
 	return patchPointers, nil
 }
 

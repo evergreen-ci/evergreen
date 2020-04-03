@@ -4,7 +4,7 @@ type Query {
     page: Int = 0
     patchName: String = ""
     statuses: [String!] = []
-    userId: String!
+    userId: String
     includeCommitQueue: Boolean = false
   ): [Patch!]!
   patch(id: String!): Patch!
