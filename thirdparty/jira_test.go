@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockHttp struct {
@@ -29,7 +30,7 @@ func TestJiraNetworkFail(t *testing.T) {
 		Convey("fetching tickets should return a non-nil err", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
 			So(ticket, ShouldBeNil)
-			So(err.Error(), ShouldContain, "Generic network error")
+			assert.Contains(t, err.Error(), "Generic network error")
 		})
 	})
 }
