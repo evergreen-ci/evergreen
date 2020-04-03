@@ -242,7 +242,7 @@ func (tc *taskContext) hadTimedOut() bool {
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
-	if tc.project == nil && tc.version == nil {
+	if tc.project == nil {
 		grip.Info("Fetching project config.")
 		err := a.fetchProjectConfig(ctx, tc)
 		if err != nil {
@@ -265,7 +265,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(tc.version.Requester) {
+	if evergreen.IsGitHubPatchRequester(tc.taskModel.Requester) {
 		grip.Info("Fetching patch document for Github PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
@@ -276,7 +276,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	grip.Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, tc.version, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	return model.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {

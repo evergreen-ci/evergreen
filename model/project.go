@@ -979,25 +979,20 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Task.Version == "" {
 		return nil, errors.New("task has no version")
 	}
-	if tc.Version == nil {
-		return nil, errors.New("version is nil")
-	}
-
-	var p Project
-	if _, err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	if tc.Project == nil {
+		return nil, errors.New("project is nil")
 	}
 
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
 		return &TaskGroup{
-			SetupTask:          p.Pre,
-			TeardownTask:       p.Post,
-			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || p.PreErrorFailsTask,
+			SetupTask:          tc.Project.Pre,
+			TeardownTask:       tc.Project.Post,
+			Timeout:            tc.Project.Timeout,
+			SetupGroupFailTask: tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
 		}, nil
 	}
-	tg := p.FindTaskGroup(taskGroup)
+	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
 	}
