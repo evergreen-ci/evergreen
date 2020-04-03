@@ -153,12 +153,12 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	if task == nil {
 		return errors.New("task not found.")
 	}
-	config, err := rc.GetConfig(task.Version)
+	project, err := rc.GetProject(task.Version)
 	if err != nil {
 		return err
 	}
 
-	project, err := ac.GetProjectRef(task.Project)
+	pRef, err := ac.GetProjectRef(task.Project)
 	if err != nil {
 		return err
 	}
@@ -187,12 +187,12 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, project, config, cloneDir, token, mfest)
+	err = cloneSource(task, pRef, project, cloneDir, token, mfest)
 	if err != nil {
 		return err
 	}
 	if patch != nil && !noPatch {
-		err = applyPatch(patch, cloneDir, config, config.FindBuildVariant(task.BuildVariant))
+		err = applyPatch(patch, cloneDir, project, project.FindBuildVariant(task.BuildVariant))
 		if err != nil {
 			return err
 		}

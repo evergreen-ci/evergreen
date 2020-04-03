@@ -209,6 +209,28 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 	return v, nil
 }
 
+func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+	info.setTaskPathSuffix("parser_project")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get project for task %s", taskData.ID)
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusConflict {
+		return nil, errors.New("conflict; wrong secret")
+	}
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading body")
+	}
+	return model.GetProjectFromBSON(respBytes)
+}
+
 func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
 	e := util.Expansions{}
 	info := requestInfo{
