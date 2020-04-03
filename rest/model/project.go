@@ -14,7 +14,6 @@ type UIProjectFields struct {
 	Owner       string `json:"owner_name"`
 }
 
-// kim: TODO: figure out difference between APIProject and APIProjectRef
 type APIProject struct {
 	BatchTime           int                  `json:"batch_time"`
 	Branch              *string              `json:"branch_name"`

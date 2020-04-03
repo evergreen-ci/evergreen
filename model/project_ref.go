@@ -167,6 +167,7 @@ var (
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey            = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey     = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -659,6 +660,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
+				projectRefTaskSyncKey:            projectRef.TaskSync,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,
 				projectRefRepotrackerDisabledKey: projectRef.RepotrackerDisabled,
 				projectRefNotifyOnFailureKey:     projectRef.NotifyOnBuildFailure,

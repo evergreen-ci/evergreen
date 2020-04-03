@@ -219,9 +219,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		TracksPushEvents    bool                           `json:"tracks_push_events"`
 		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
 		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
+		TaskSync            restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled    bool                           `json:"patching_disabled"`
 		RepotrackerDisabled bool                           `json:"repotracker_disabled"`
-		TaskSync            restModel.APITaskSyncOptions   `json:"task_sync"`
 		AlertConfig         map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -405,6 +405,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	i, err := responseRef.TaskSync.ToService()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API task sync options to service representation"))
+		return
+	}
+	taskSync, ok := i.(model.TaskSyncOptions)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task sync options but was actually '%T'", i))
+		return
+	}
+
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range responseRef.Triggers {
 		catcher.Add(trigger.Validate(id))
@@ -436,6 +447,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
+	projectRef.TaskSync = taskSync
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.RepotrackerDisabled = responseRef.RepotrackerDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure

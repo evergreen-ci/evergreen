@@ -35,6 +35,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	if !conf.ProjectRef.TaskSync.ConfigEnabled {
 		return errors.Errorf("%s is not enabled for this project", c.Name())
 	}
+
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
