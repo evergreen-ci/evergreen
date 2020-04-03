@@ -1036,7 +1036,6 @@ func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
-		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
 }

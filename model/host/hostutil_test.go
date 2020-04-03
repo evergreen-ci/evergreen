@@ -1090,7 +1090,6 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/.evergreen.yml" +
 		" && cp /home/user/evergreen /home/user/cli_bin" +
 		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
-		" && chown -R user /home/user/cli_bin" +
 		" && chmod +x /home/user/cli_bin/evergreen"
 	assert.Equal(t, expected, cmd)
 }
