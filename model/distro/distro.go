@@ -51,7 +51,7 @@ type Distro struct {
 	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                    `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IcecreamSettings      IcecreamSettings        `bson:"icecream_settings" josn:"icecream_settings" yaml:"icecream_settings"`
+	IcecreamSettings      IcecreamSettings        `bson:"icecream_settings" json:"icecream_settings" yaml:"icecream_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
