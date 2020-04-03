@@ -253,12 +253,12 @@ func TestDeleteWithLimit(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 10000, num)
 
-		wg := &sync.WaitGroup{}
+		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err = DeleteWithLimit(ctx, env, time.Now(), 1000)
+				_, err := DeleteWithLimit(ctx, env, time.Now(), 1000)
 				require.NoError(t, err)
 			}()
 		}
