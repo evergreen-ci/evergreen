@@ -640,13 +640,13 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	if err != nil {
 		return errors.Wrap(err, "error getting host resources")
 	}
-	expireOn := expireInDays(evergreen.SpawnHostExpireDays)
+	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
 	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags: []*ec2.Tag{
 			{
 				Key:   aws.String("expire-on"),
-				Value: aws.String(expireOn),
+				Value: aws.String(expireOnValue),
 			},
 		},
 	})
@@ -655,9 +655,9 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		return errors.Wrapf(h.MarkShouldNotExpire(expireOn), "error marking host should not expire in db for '%s'", h.Id)
+		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "error marking host should not expire in db for '%s'", h.Id)
 	}
-	return errors.Wrapf(h.MarkShouldExpire(expireOn), "error marking host should in db for '%s'", h.Id)
+	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "error marking host should in db for '%s'", h.Id)
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
@@ -1197,7 +1197,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Errorf("no volume '%s' found", volumeID)
 	}
 
-	if err := m.client.Create(m.credentials, m.region); err != nil {
+	if err = m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

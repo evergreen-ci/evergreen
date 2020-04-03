@@ -1194,15 +1194,6 @@ func FindOneVolume(query interface{}) (*Volume, error) {
 	return v, err
 }
 
-func FindVolumes(query interface{}) ([]Volume, error) {
-	volumes := []Volume{}
-	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return volumes, err
-}
-
 func FindDistroForHost(hostID string) (string, error) {
 	h, err := FindOne(ById(hostID))
 	if err != nil {
@@ -1215,7 +1206,13 @@ func FindDistroForHost(hostID string) (string, error) {
 }
 
 func FindVolumesByUser(userID string) ([]Volume, error) {
-	return FindVolumes(bson.M{VolumeCreatedByKey: userID})
+	volumes := []Volume{}
+	query := bson.M{
+		VolumeCreatedByKey: userID,
+	}
+	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
+
+	return volumes, err
 }
 
 type ClientOptions struct {

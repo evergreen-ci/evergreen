@@ -2245,10 +2245,10 @@ func makeExpireOnTag(expireOn string) Tag {
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(expireOn string) error {
+func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
-	h.addTag(makeExpireOnTag(expireOn), true)
+	h.addTag(makeExpireOnTag(expireOnValue), true)
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -2265,10 +2265,10 @@ func (h *Host) MarkShouldNotExpire(expireOn string) error {
 
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
-func (h *Host) MarkShouldExpire(expireOn string) error {
+func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	h.NoExpiration = false
 	h.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
-	h.addTag(makeExpireOnTag(expireOn), true)
+	h.addTag(makeExpireOnTag(expireOnValue), true)
 	return UpdateOne(bson.M{
 		IdKey: h.Id,
 	},

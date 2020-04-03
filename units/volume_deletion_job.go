@@ -25,8 +25,8 @@ func init() {
 
 type volumeDeletionJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	volumeID string `bson:"volume_id" json:"volume_id" yaml:"volume_id"`
-	provider string `bson:"provider" json:"provider" yaml:"provider"`
+	volumeID string `bson:"volume_id" yaml:"volume_id"`
+	provider string `bson:"provider" yaml:"provider"`
 
 	volume *host.Volume
 	env    evergreen.Environment
