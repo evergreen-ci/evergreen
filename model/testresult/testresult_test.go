@@ -258,8 +258,8 @@ func TestDeleteWithLimit(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err = DeleteWithLimit(ctx, env, time.Now(), 1000)
-				require.NoError(t, err)
+				_, delErr := DeleteWithLimit(ctx, env, time.Now(), 1000)
+				require.NoError(t, delErr)
 			}()
 		}
 		wg.Wait()
