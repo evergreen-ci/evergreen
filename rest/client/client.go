@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -105,7 +106,7 @@ func (c *communicatorImpl) resetClient() {
 	defer c.mutex.Unlock()
 
 	if c.httpClient != nil {
-		util.PutHTTPClient(c.httpClient)
+		utility.PutHTTPClient(c.httpClient)
 	}
 
 	conf := util.NewDefaultHTTPRetryConf()
@@ -114,7 +115,7 @@ func (c *communicatorImpl) resetClient() {
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *communicatorImpl) Close() { util.PutHTTPClient(c.httpClient) }
+func (c *communicatorImpl) Close() { utility.PutHTTPClient(c.httpClient) }
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {

@@ -110,7 +110,7 @@ func listTaggedProjects(ctx context.Context, confPath string, tag string) error 
 
 	matching := []model.ProjectRef{}
 	for _, prj := range projs {
-		if prj.Enabled && util.StringSliceContains(prj.Tags, tag) {
+		if prj.Enabled && utility.StringSliceContains(prj.Tags, tag) {
 			matching = append(matching, prj)
 		}
 	}

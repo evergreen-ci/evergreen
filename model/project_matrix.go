@@ -176,7 +176,7 @@ func (mdef matrixDefinition) contains(mv matrixValue) bool {
 		if !ok {
 			return false
 		}
-		if !util.StringSliceContains(axis, v) {
+		if !utility.StringSliceContains(axis, v) {
 			return false
 		}
 	}

@@ -142,7 +142,7 @@ func (s3pc *s3put) validate() error {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
-	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
+	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Add(errors.Errorf("invalid visibility setting: %v", s3pc.Visibility))
 	}
 
@@ -197,7 +197,7 @@ func (s3pc *s3put) shouldRunForVariant(buildVariantName string) bool {
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.StringSliceContains(s3pc.BuildVariants, buildVariantName)
+	return utility.StringSliceContains(s3pc.BuildVariants, buildVariantName)
 }
 
 // Implementation of Execute.  Expands the parameters, and then puts the
@@ -215,9 +215,9 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	}
 
 	// create pail bucket
-	httpClient := util.GetHTTPClient()
+	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	if err := s3pc.createPailBucket(httpClient); err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}

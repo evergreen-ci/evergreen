@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -46,7 +46,7 @@ func NewGithubPRLogger(ctx context.Context, name string, token string, statusSen
 	}
 
 	base := send.MakeBase(name, func() {}, func() error {
-		util.PutHTTPClient(tc)
+		utility.PutHTTPClient(tc)
 		cancel()
 		return nil
 	})

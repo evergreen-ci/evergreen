@@ -101,7 +101,7 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.StringSliceContains(c.BuildVariants, buildVariantName)
+	return utility.StringSliceContains(c.BuildVariants, buildVariantName)
 }
 
 // Apply the expansions from the relevant task config to all appropriate
@@ -126,9 +126,9 @@ func (c *s3get) Execute(ctx context.Context,
 	}
 
 	// create pail bucket
-	httpClient := util.GetHTTPClient()
+	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	err := c.createPailBucket(httpClient)
 	if err != nil {
 		return errors.Wrap(err, "problem connecting to s3")

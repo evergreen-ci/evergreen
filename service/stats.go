@@ -263,7 +263,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 	orderedVersionIDs := make([]string, 0, len(versionIds))
 	// Populate the versions field if with commits, otherwise patches field
-	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
 		versions, err := model.VersionFind(model.VersionByIds(versionIds).
 			WithFields(model.VersionIdKey, model.VersionCreateTimeKey, model.VersionMessageKey,
 				model.VersionAuthorKey, model.VersionRevisionKey))

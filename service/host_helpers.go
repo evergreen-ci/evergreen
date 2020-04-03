@@ -35,7 +35,7 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 	case "updateStatus":
 		currentStatus := h.Status
 		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
+		if !utility.StringSliceContains(validUpdateToStatuses, newStatus) {
 			return "", gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf(InvalidStatusError, newStatus),

@@ -249,7 +249,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(uis.Settings.GithubOrgs) > 0 && !util.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
+	if len(uis.Settings.GithubOrgs) > 0 && !utility.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
 		http.Error(w, "owner not validated in settings", http.StatusBadRequest)
 		return
 	}
@@ -764,7 +764,7 @@ func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []mo
 
 	for _, a := range existingAliasDefinitions {
 		// only consider aliases that won't be deleted
-		if !util.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
+		if !utility.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
 			return true, nil
 		}
 	}

@@ -359,7 +359,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAdmins := util.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
 	newProjectRef.Admins = []string{}
 	for _, admin := range allAdmins {
-		if !util.StringSliceContains(adminsToDelete, admin) {
+		if !utility.StringSliceContains(adminsToDelete, admin) {
 			newProjectRef.Admins = append(newProjectRef.Admins, admin)
 		}
 	}

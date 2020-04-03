@@ -100,7 +100,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	if err != nil {
 		return nil, err
 	}
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	hookObj := github.Hook{
 		Active: github.Bool(true),
@@ -142,7 +142,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get http client")
 	}
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

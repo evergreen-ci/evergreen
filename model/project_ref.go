@@ -729,7 +729,7 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) > 0 && !util.StringSliceContains(validOrgs, p.Owner) {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil
@@ -834,7 +834,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		if adminUser == nil {
 			return errors.Errorf("no user '%s' found", addedUser)
 		}
-		if !util.StringSliceContains(adminUser.Roles(), role.ID) {
+		if !utility.StringSliceContains(adminUser.Roles(), role.ID) {
 			err = adminUser.AddRole(role.ID)
 			if err != nil {
 				return errors.Wrapf(err, "error adding role to user %s", addedUser)

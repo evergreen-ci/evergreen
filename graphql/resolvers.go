@@ -296,7 +296,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		}
 
 		// favorite projects are filtered out and appended to their own array
-		if util.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
+		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
 			favorites = append(favorites, &uiProj)
 			continue
 		}
@@ -406,7 +406,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if len(baseStatuses) > 0 {
 		tasksFilteredByBaseStatus := []*TaskResult{}
 		for _, taskResult := range taskResults {
-			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+			if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
 				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
 			}
 		}

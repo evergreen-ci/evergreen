@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -659,7 +660,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
+			if !utility.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
 				logger.Execution().Infof(
 					"Skipping patch for module %v: the current build variant does not use it",
 					module.Name)

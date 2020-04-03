@@ -198,7 +198,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
-	if !util.StringSliceContains(allowedTypes, requestedType) {
+	if !utility.StringSliceContains(allowedTypes, requestedType) {
 		return errors.New("This instance type has not been allowed by admins")
 	}
 	env := evergreen.GetEnvironment()

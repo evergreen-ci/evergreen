@@ -117,7 +117,7 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 // findOnlyAPIUser finds an API-only user by ID and verifies that it is a valid
 // user against the list of authoritative valid users.
 func findOnlyAPIUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
-	if !util.StringSliceContains(validIDs, id) {
+	if !utility.StringSliceContains(validIDs, id) {
 		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
 	}
 	dbUser, err := user.FindOne(db.Query(bson.M{

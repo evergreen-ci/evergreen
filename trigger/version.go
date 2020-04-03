@@ -222,7 +222,7 @@ func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.version.Requester) {
+	if t.data.Status != evergreen.VersionFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.version.Requester) {
 		return nil, nil
 	}
 

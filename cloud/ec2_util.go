@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -333,7 +334,7 @@ func generateDeviceNameForVolume(opts generateDeviceNameOptions) (string, error)
 	}
 	for _, char := range letters {
 		curName := fmt.Sprintf(pattern, char)
-		if !util.StringSliceContains(opts.existingDeviceNames, curName) {
+		if !utility.StringSliceContains(opts.existingDeviceNames, curName) {
 			return curName, nil
 		}
 	}

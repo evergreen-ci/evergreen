@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 )
 
@@ -127,7 +127,7 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	out := make([]Task, 0)
 	for _, task := range tasks {
 		status := task.ResultStatus()
-		if util.StringSliceContains(statuses, status) {
+		if utility.StringSliceContains(statuses, status) {
 			out = append(out, task)
 		}
 	}

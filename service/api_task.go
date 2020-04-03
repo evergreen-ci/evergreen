@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -113,7 +114,7 @@ func checkHostHealth(h *host.Host) bool {
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData &&
-		util.StringSliceContains([]string{
+		utility.StringSliceContains([]string{
 			evergreen.HostStarting,
 			evergreen.HostProvisioning,
 		}, h.Status) {

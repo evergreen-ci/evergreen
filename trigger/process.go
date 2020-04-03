@@ -164,7 +164,7 @@ projectLoop:
 			if trigger.DateCutoff != nil && time.Now().Add(-24*time.Duration(*trigger.DateCutoff)*time.Hour).After(t.IngestTime) {
 				continue
 			}
-			if util.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
+			if utility.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
 				continue
 			}
 			if trigger.TaskRegex != "" {

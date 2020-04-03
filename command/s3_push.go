@@ -52,8 +52,8 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
 
-	httpClient := util.GetHTTPClient()
-	defer util.PutHTTPClient(httpClient)
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping s3.push for task directory for build variant '%s'", conf.BuildVariant.Name)
@@ -99,7 +99,7 @@ func (c *s3Push) shouldRunOnBuildVariant(bv string) bool {
 	if len(c.BuildVariants) == 0 {
 		return true
 	}
-	return util.StringSliceContains(c.BuildVariants, bv)
+	return utility.StringSliceContains(c.BuildVariants, bv)
 }
 
 func (c *s3Push) createBucket(client *http.Client, conf *model.TaskConfig) error {

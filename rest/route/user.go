@@ -165,7 +165,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 	if err := util.ReadJSONInto(r.Body, &permissions); err != nil {
 		return errors.Wrap(err, "request body is not a valid Permissions request")
 	}
-	if !util.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
 		return errors.Errorf("'%s' is not a valid resource_type", permissions.ResourceType)
 	}
 	if len(permissions.Resources) == 0 {
@@ -241,7 +241,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 		return errors.Wrap(err, "request body is an invalid format")
 	}
 	h.resourceType = request.ResourceType
-	if !util.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
 		return errors.New("resource_type is not a valid value")
 	}
 
@@ -299,7 +299,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		scopesToRemove = append(scopesToRemove, scope.ID)
 	}
 	for _, role := range roles {
-		if util.StringSliceContains(scopesToRemove, role.Scope) {
+		if utility.StringSliceContains(scopesToRemove, role.Scope) {
 			rolesToRemove = append(rolesToRemove, role.ID)
 		}
 	}

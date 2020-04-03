@@ -63,7 +63,7 @@ func validS3Permissions(perm string) bool {
 		string(s3.ObjectCannedACLBucketOwnerFullControl),
 	}
 
-	return util.StringSliceContains(perms, perm)
+	return utility.StringSliceContains(perms, perm)
 }
 
 func getS3OpBackoff() *backoff.Backoff {

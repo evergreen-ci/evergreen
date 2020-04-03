@@ -160,7 +160,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 		return false, errors.Wrap(err, "call to Github API failed")
 	}
 	mergePermissions := []string{"admin", "write"}
-	hasPermission := util.StringSliceContains(mergePermissions, permission)
+	hasPermission := utility.StringSliceContains(mergePermissions, permission)
 
 	return inOrg && hasPermission, nil
 }

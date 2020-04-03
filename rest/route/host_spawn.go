@@ -440,14 +440,14 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
 	}
 
-	if util.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
+	if utility.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
 		})
 	}
 	if h.attachment.DeviceName != "" {
-		if util.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
+		if utility.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Errorf("host '%s' already has a volume with device name '%s'", h.hostID, h.attachment.DeviceName).Error(),

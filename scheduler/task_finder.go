@@ -77,7 +77,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -191,7 +191,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -311,7 +311,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",

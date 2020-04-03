@@ -304,7 +304,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "problem getting cloud host instance status",
 		}))
 
-		if !util.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
+		if !utility.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
 			if err := j.host.Terminate(evergreen.User, "unable to get cloud status for host"); err != nil {
 				j.AddError(err)
 			}

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -1245,7 +1246,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		updateRegions := map[string]bool{}
 		for _, key := range settings.SSHKeyPairs {
 			for region := range allRegions {
-				if util.StringSliceContains(key.EC2Regions, region) {
+				if utility.StringSliceContains(key.EC2Regions, region) {
 					continue
 				}
 				updateRegions[region] = true

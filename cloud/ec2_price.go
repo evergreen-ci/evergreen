@@ -485,8 +485,8 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
 	grip.Debugln("Loading EBS pricing from", endpoint)
 
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	var data []byte
 

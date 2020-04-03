@@ -54,7 +54,7 @@ func (c *azInstanceTypeCache) azSupportsInstanceType(ctx context.Context, client
 		c.azToInstanceTypes[az] = instanceTypes
 	}
 
-	return util.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
+	return utility.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
 }
 
 type EC2FleetManagerOptions struct {

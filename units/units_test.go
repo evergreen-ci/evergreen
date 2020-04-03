@@ -3,7 +3,7 @@ package units
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -17,7 +17,7 @@ func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 		"bond-recall-download-file",
 	}
 	for id := range registry.JobTypeNames() {
-		if util.StringSliceContains(disabled, id) {
+		if utility.StringSliceContains(disabled, id) {
 			continue
 		}
 		grip.Infoln("testing job is remote ready:", id)

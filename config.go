@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -629,7 +630,7 @@ func (p *SSHKeyPair) AddEC2Region(region string) error {
 		return errors.WithStack(err)
 	}
 
-	if !util.StringSliceContains(p.EC2Regions, region) {
+	if !utility.StringSliceContains(p.EC2Regions, region) {
 		p.EC2Regions = append(p.EC2Regions, region)
 	}
 

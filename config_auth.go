@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -156,7 +157,7 @@ func (c *AuthConfig) checkDuplicateUsers() error {
 
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.ErrorfWhen(!util.StringSliceContains([]string{
+	catcher.ErrorfWhen(!utility.StringSliceContains([]string{
 		"",
 		AuthLDAPKey,
 		AuthOktaKey,

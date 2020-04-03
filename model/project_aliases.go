@@ -187,12 +187,12 @@ func isValidRegexOrTag(curItem, aliasRegex string, curTags, aliasTags []string, 
 
 	isValidTag := false
 	for _, tag := range aliasTags {
-		if util.StringSliceContains(curTags, tag) {
+		if utility.StringSliceContains(curTags, tag) {
 			isValidTag = true
 			break
 		}
 		// a negated tag
-		if len(tag) > 0 && tag[0] == '!' && !util.StringSliceContains(curTags, tag[1:]) {
+		if len(tag) > 0 && tag[0] == '!' && !utility.StringSliceContains(curTags, tag[1:]) {
 			isValidTag = true
 			break
 		}

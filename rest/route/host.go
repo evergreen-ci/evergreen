@@ -53,7 +53,7 @@ func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request)
 	}
 
 	for hostID, status := range h.HostToStatus {
-		if !util.StringSliceContains(evergreen.ValidUserSetStatus, status.Status) {
+		if !utility.StringSliceContains(evergreen.ValidUserSetStatus, status.Status) {
 			return fmt.Errorf("Invalid host status '%s' for host '%s'", status.Status, hostID)
 		}
 	}

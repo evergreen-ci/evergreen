@@ -168,7 +168,7 @@ func TestParseAndUpload(t *testing.T) {
 	}
 	count := 0
 	for _, message := range messages {
-		if util.StringSliceContains(messagesToCheck, message.Message) {
+		if utility.StringSliceContains(messagesToCheck, message.Message) {
 			count++
 		}
 	}

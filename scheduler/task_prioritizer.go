@@ -246,7 +246,7 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 		switch {
 		case task.Priority > evergreen.MaxTaskPriority:
 			priorityTasks = append(priorityTasks, task)
-		case util.StringSliceContains(evergreen.SystemVersionRequesterTypes, task.Requester):
+		case utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, task.Requester):
 			repoTrackerTasks = append(repoTrackerTasks, task)
 		case evergreen.IsPatchRequester(task.Requester):
 			patchTasks = append(patchTasks, task)

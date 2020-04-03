@@ -98,7 +98,7 @@ func (h *checkTagForProject) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	if !util.StringSliceContains(pref.Tags, h.tag) {
+	if !utility.StringSliceContains(pref.Tags, h.tag) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("project '%s' does not have tag '%s'", h.projectID, h.tag),

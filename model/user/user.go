@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -212,7 +213,7 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 
 // AddFavoritedProject adds a project ID to the user favorites in user DB model
 func (u *DBUser) AddFavoritedProject(identifier string) error {
-	if util.StringSliceContains(u.FavoriteProjects, identifier) {
+	if utility.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("cannot add duplicate project '%s'", identifier)
 	}
 	update := bson.M{
@@ -229,7 +230,7 @@ func (u *DBUser) AddFavoritedProject(identifier string) error {
 
 // RemoveFavoriteProject removes a project ID from the user favorites in user DB model
 func (u *DBUser) RemoveFavoriteProject(identifier string) error {
-	if !util.StringSliceContains(u.FavoriteProjects, identifier) {
+	if !utility.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("project '%s' does not exist in user's favorites", identifier)
 	}
 
@@ -250,7 +251,7 @@ func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 }
 
 func (u *DBUser) AddRole(role string) error {
-	if util.StringSliceContains(u.SystemRoles, role) {
+	if utility.StringSliceContains(u.SystemRoles, role) {
 		return errors.Errorf("cannot add duplicate role '%s'", role)
 	}
 	update := bson.M{

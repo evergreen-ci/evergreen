@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -204,7 +204,7 @@ func validateSingleProviderSettings(d *distro.Distro) error {
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
 func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
-	if util.StringSliceContains(distroIds, d.Id) {
+	if utility.StringSliceContains(distroIds, d.Id) {
 		return ValidationErrors{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
 	return nil
@@ -231,7 +231,7 @@ func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors 
 			Message: fmt.Sprintf("'%s' cannot have aliases", d.Id),
 		})
 	}
-	if util.StringSliceContains(distroAliases, d.Id) {
+	if utility.StringSliceContains(distroAliases, d.Id) {
 		errs = append(errs, ValidationError{
 			Level:   Error,
 			Message: fmt.Sprintf("cannot have alias that resolves to '%s'", d.Id),
@@ -379,7 +379,7 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 	errs := ValidationErrors{}
 	settings := d.HostAllocatorSettings
 
-	if !util.StringSliceContains(evergreen.ValidHostAllocators, settings.Version) {
+	if !utility.StringSliceContains(evergreen.ValidHostAllocators, settings.Version) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid host_allocator_settings.version '%s' for distro '%s'", settings.Version, d.Id),
 			Level:   Error,
@@ -425,7 +425,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	errs := ValidationErrors{}
 	settings := d.PlannerSettings
 
-	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, settings.Version) {
+	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, settings.Version) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.version '%s' for distro '%s'", settings.Version, d.Id),
 			Level:   Error,
@@ -486,7 +486,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 
 // ensureHasValidFinderSettings checks that the distro's FinderSettings are valid
 func ensureHasValidFinderSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if !util.StringSliceContains(evergreen.ValidTaskFinderVersions, d.FinderSettings.Version) {
+	if !utility.StringSliceContains(evergreen.ValidTaskFinderVersions, d.FinderSettings.Version) {
 		return ValidationErrors{
 			{
 				Message: fmt.Sprintf("invalid finder_settings.version '%s' for distro '%s'", d.FinderSettings.Version, d.Id),
@@ -500,7 +500,7 @@ func ensureHasValidFinderSettings(ctx context.Context, d *distro.Distro, s *ever
 
 // ensureHasValidDispatcherSettings checks that the distro's DispatcherSettings are valid
 func ensureHasValidDispatcherSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if !util.StringSliceContains(evergreen.ValidTaskDispatcherVersions, d.DispatcherSettings.Version) {
+	if !utility.StringSliceContains(evergreen.ValidTaskDispatcherVersions, d.DispatcherSettings.Version) {
 		return ValidationErrors{
 			{
 				Message: fmt.Sprintf("invalid dispatcher_settings.version '%s' for distro '%s'", d.DispatcherSettings.Version, d.Id),

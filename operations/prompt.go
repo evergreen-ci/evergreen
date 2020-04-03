@@ -32,10 +32,10 @@ func confirm(message string, defaultYes bool) bool {
 
 	for {
 		reply = prompt(message)
-		if util.StringSliceContains(yes, strings.ToLower(reply)) {
+		if utility.StringSliceContains(yes, strings.ToLower(reply)) {
 			return true
 		}
-		if util.StringSliceContains(no, strings.ToLower(reply)) {
+		if utility.StringSliceContains(no, strings.ToLower(reply)) {
 			return false
 		}
 	}

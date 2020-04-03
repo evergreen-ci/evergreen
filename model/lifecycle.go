@@ -709,7 +709,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				!b.IsPatchBuild() && task.SkipOnNonPatchBuild(); skipTask {
 				continue
 			}
-			if createAll || util.StringSliceContains(taskNames, task.Name) {
+			if createAll || utility.StringSliceContains(taskNames, task.Name) {
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
@@ -719,7 +719,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					!b.IsPatchBuild() && taskFromVariant.SkipOnNonPatchBuild(); skipTask {
 					continue
 				}
-				if createAll || util.StringSliceContains(taskNames, taskFromVariant.Name) {
+				if createAll || utility.StringSliceContains(taskNames, taskFromVariant.Name) {
 					tasksToCreate = append(tasksToCreate, taskFromVariant)
 				}
 			}
@@ -750,7 +750,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		if id == "" {
 			continue
 		}
-		if !createAll && !util.StringSliceContains(displayNames, dt.Name) {
+		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
 			continue
 		}
 		execTaskIds := []string{}

@@ -427,7 +427,7 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 			return nil, errors.Wrap(err, "Error getting formatted patch")
 		}
 	} else {
-		if !util.StringSliceContains(extraArgs, "--binary") {
+		if !utility.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")
 		}
 		fullPatch, err = gitDiff(mergeBase, ref, commits, extraArgs...)

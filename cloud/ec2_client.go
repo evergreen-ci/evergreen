@@ -162,7 +162,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
-		c.httpClient = util.GetHTTPClient()
+		c.httpClient = utility.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
 			Region:      aws.String(region),
@@ -180,7 +180,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 
 func (c *awsClientImpl) Close() {
 	if c.httpClient != nil {
-		util.PutHTTPClient(c.httpClient)
+		utility.PutHTTPClient(c.httpClient)
 		c.httpClient = nil
 	}
 }

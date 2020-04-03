@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -324,7 +325,7 @@ func (t *Task) SatisfiesDependency(depTask *Task) bool {
 }
 
 func (t *Task) IsPatchRequest() bool {
-	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
+	return utility.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
 func (t *Task) IsSystemUnresponsive() bool {
@@ -1406,7 +1407,7 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 
 	for _, t := range tasks {
 		for _, result := range results {
-			if (result.TaskID == t.Id || util.StringSliceContains(t.ExecutionTasks, result.TaskID)) && result.Execution == t.Execution {
+			if (result.TaskID == t.Id || utility.StringSliceContains(t.ExecutionTasks, result.TaskID)) && result.Execution == t.Execution {
 				t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
 			}
 		}

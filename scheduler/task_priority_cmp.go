@@ -105,8 +105,8 @@ func byRuntime(t1, t2 task.Task, comp *CmpBasedTaskComparator) (int, error) {
 
 func tasksAreFromOneProject(t1, t2 task.Task) bool { return t1.Project == t2.Project }
 func tasksAreCommitBuilds(t1, t2 task.Task) bool {
-	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
-		util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
+		utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
 		return true
 	}
 	return false

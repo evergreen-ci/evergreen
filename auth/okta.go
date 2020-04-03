@@ -33,8 +33,8 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 			}
 			return id[:emailDomainStart]
 		},
-		GetHTTPClient: util.GetHTTPClient,
-		PutHTTPClient: util.PutHTTPClient,
+		GetHTTPClient: utility.GetHTTPClient,
+		PutHTTPClient: utility.PutHTTPClient,
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: user.PutLoginCache,
 			GetUserByToken:  func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },

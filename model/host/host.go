@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -361,7 +362,7 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 func (h *Host) IsEphemeral() bool {
-	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
@@ -1404,7 +1405,7 @@ func (h *Host) AddSSHKeyName(name string) error {
 		return errors.WithStack(err)
 	}
 
-	if !util.StringSliceContains(h.SSHKeyNames, name) {
+	if !utility.StringSliceContains(h.SSHKeyNames, name) {
 		h.SSHKeyNames = append(h.SSHKeyNames, name)
 	}
 
@@ -1849,7 +1850,7 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.UpHostStatus, h.Status) {
 			out = append(out, h)
 		}
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -136,10 +137,10 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 	}
 	for _, d := range distros {
 		if projectID != "" && len(d.ValidProjects) > 0 {
-			if util.StringSliceContains(d.ValidProjects, projectID) {
+			if utility.StringSliceContains(d.ValidProjects, projectID) {
 				ids = append(ids, d.Id)
 				for _, alias := range d.Aliases {
-					if !util.StringSliceContains(aliases, alias) {
+					if !utility.StringSliceContains(aliases, alias) {
 						aliases = append(aliases, alias)
 					}
 				}
@@ -147,7 +148,7 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 		} else {
 			ids = append(ids, d.Id)
 			for _, alias := range d.Aliases {
-				if !util.StringSliceContains(aliases, alias) {
+				if !utility.StringSliceContains(aliases, alias) {
 					aliases = append(aliases, alias)
 				}
 			}
@@ -473,7 +474,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 	}
 
 	if project.CommandType != "" {
-		if !util.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
+		if !utility.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("project '%s' contains an invalid "+
@@ -525,7 +526,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 			}
 			buildVariantTasks[task.Name] = true
 			for _, distro := range task.Distros {
-				if !util.StringSliceContains(distroIDs, distro) && !util.StringSliceContains(distroAliases, distro) {
+				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant "+
@@ -544,7 +545,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 			}
 		}
 		for _, distro := range buildVariant.RunOn {
-			if !util.StringSliceContains(distroIDs, distro) && !util.StringSliceContains(distroAliases, distro) {
+			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' in project "+
@@ -776,7 +777,7 @@ func validateCommands(section string, project *model.Project,
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%s section in %s: %s", section, commandName, err)})
 		}
 		if cmd.Type != "" {
-			if !util.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
+			if !utility.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
 				msg := fmt.Sprintf("%s section in '%s': invalid command type: '%s'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}
@@ -928,12 +929,12 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 			}
 			vs := project.FindVariantsWithTask(r.Name)
 			if r.Variant != "" && r.Variant != model.AllVariants {
-				if !util.StringSliceContains(vs, r.Variant) {
+				if !utility.StringSliceContains(vs, r.Variant) {
 					errs = append(errs, ValidationError{Message: fmt.Sprintf(
 						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, r.Variant)})
 				}
 			} else {
-				if !util.StringSliceContains(vs, bvt.Variant) {
+				if !utility.StringSliceContains(vs, bvt.Variant) {
 					errs = append(errs, ValidationError{Message: fmt.Sprintf(
 						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, bvt.Variant)})
 				}
