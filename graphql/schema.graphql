@@ -1,5 +1,12 @@
 type Query {
-  userPatches(userId: String!): [Patch!]!
+  userPatches(
+    limit: Int = 0
+    page: Int = 0
+    patchName: String = ""
+    statuses: [String!] = []
+    userId: String!
+    includeCommitQueue: Boolean = false
+  ): [Patch!]!
   patch(id: String!): Patch!
   task(taskId: String!): Task
   projects: Projects!

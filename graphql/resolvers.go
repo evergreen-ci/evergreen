@@ -253,9 +253,9 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
 	patchPointers := []*restModel.APIPatch{}
-	patches, err := r.sc.FindPatchesByUser(userID, time.Now(), 10)
+	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userID, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	if err != nil {
 		return patchPointers, InternalServerError.Send(ctx, err.Error())
 	}
