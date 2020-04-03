@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
@@ -411,6 +412,7 @@ type APIDistro struct {
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
 func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
+	pp.Println("kim: BuildFromService()")
 	var d distro.Distro
 	switch v := h.(type) {
 	case distro.Distro:
@@ -506,6 +508,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 
 // ToService returns a service layer distro using the data from APIDistro
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
+	pp.Println("kim: ToService()")
 	d := distro.Distro{}
 	d.Id = FromStringPtr(apiDistro.Name)
 	d.Aliases = apiDistro.Aliases
@@ -602,6 +605,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
+
 	i, err = apiDistro.IcecreamSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIIcecreamSettings to distro.IcecreamSettings")
@@ -610,6 +614,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.Errorf("Unexpected type %T for distro.IcecreamSettings", i)
 	}
+	pp.Println("icecream settings:", icecreamSettings)
 	d.IcecreamSettings = icecreamSettings
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 
