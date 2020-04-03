@@ -1342,18 +1342,44 @@ func (a *APISubnet) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys              []APIEC2Key `json:"ec2_keys"`
-	Subnets              []APISubnet `json:"subnets"`
-	S3Key                *string     `json:"s3_key"`
-	S3Secret             *string     `json:"s3_secret"`
-	Bucket               *string     `json:"bucket"`
-	S3BaseURL            *string     `json:"s3_base_url"`
-	S3TaskKey            *string     `json:"s3_task_key"`
-	S3TaskSecret         *string     `json:"s3_task_secret"`
-	S3TaskBucket         *string     `json:"s3_task_bucket"`
-	DefaultSecurityGroup *string     `json:"default_security_group"`
-	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
-	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
+	EC2Keys              []APIEC2Key       `json:"ec2_keys"`
+	Subnets              []APISubnet       `json:"subnets"`
+	S3                   *APIS3Credentials `json:"s3_credentials"`
+	TaskSync             *APIS3Credentials `json:"task_sync"`
+	TaskSyncRead         *APIS3Credentials `json:"task_sync_read"`
+	S3BaseURL            *string           `json:"s3_base_url"`
+	DefaultSecurityGroup *string           `json:"default_security_group"`
+	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
+	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
+}
+
+type APIS3Credentials struct {
+	Key    *string `json:"key"`
+	Secret *string `json:"secret"`
+	Bucket *string `json:"bucket"`
+}
+
+func (a *APIS3Credentials) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.S3Credentials:
+		a.Key = ToStringPtr(v.Key)
+		a.Secret = ToStringPtr(v.Secret)
+		a.Bucket = ToStringPtr(v.Bucket)
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIS3Credentials) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.S3Credentials{
+		Key:    FromStringPtr(a.Key),
+		Secret: FromStringPtr(a.Secret),
+		Bucket: FromStringPtr(a.Bucket),
+	}, nil
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1375,12 +1401,24 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
 
-		a.S3Key = ToStringPtr(v.S3Key)
-		a.S3Secret = ToStringPtr(v.S3Secret)
-		a.Bucket = ToStringPtr(v.Bucket)
-		a.S3TaskKey = ToStringPtr(v.S3TaskKey)
-		a.S3TaskSecret = ToStringPtr(v.S3TaskSecret)
-		a.S3TaskBucket = ToStringPtr(v.S3TaskBucket)
+		s3Creds := &APIS3Credentials{}
+		if err := s3Creds.BuildFromService(v.S3); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.S3 = s3Creds
+
+		taskSync := &APIS3Credentials{}
+		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.TaskSync = taskSync
+
+		taskSyncRead := &APIS3Credentials{}
+		if err := taskSyncRead.BuildFromService(v.TaskSyncRead); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.TaskSyncRead = taskSyncRead
+
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1399,16 +1437,54 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3Key:                FromStringPtr(a.S3Key),
-		S3Secret:             FromStringPtr(a.S3Secret),
-		Bucket:               FromStringPtr(a.Bucket),
 		S3BaseURL:            FromStringPtr(a.S3BaseURL),
-		S3TaskKey:            FromStringPtr(a.S3TaskKey),
-		S3TaskSecret:         FromStringPtr(a.S3TaskSecret),
-		S3TaskBucket:         FromStringPtr(a.S3TaskBucket),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 	}
+
+	var i interface{}
+	var err error
+	var ok bool
+
+	i, err = a.S3.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var s3 evergreen.S3Credentials
+	if i != nil {
+		s3, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.S3 = s3
+
+	i, err = a.TaskSync.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var taskSync evergreen.S3Credentials
+	if i != nil {
+		taskSync, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.TaskSync = taskSync
+
+	i, err = a.TaskSyncRead.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var taskSyncRead evergreen.S3Credentials
+	if i != nil {
+		taskSyncRead, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.TaskSyncRead = taskSyncRead
+
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
 	}

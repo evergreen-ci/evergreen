@@ -689,3 +689,11 @@ func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int
 func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, bool) ([]string, error) {
 	return nil, nil
 }
+
+func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credentials, error) {
+	return &evergreen.S3Credentials{}, nil
+}
+
+func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
+	return "", nil
+}

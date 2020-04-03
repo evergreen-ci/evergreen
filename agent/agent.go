@@ -355,7 +355,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 	taskConfig.Redacted = tc.expVars.PrivateVars
-	taskConfig.S3Data = a.opts.SetupData.S3Task
+	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {

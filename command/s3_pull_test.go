@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -52,7 +52,7 @@ func TestS3PullExecute(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string){
 		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Equal(t, pulledContent, fileContent)
 		},
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Empty(t, files)
 		},
 		"NoopsIfIgnoringBuildVariant": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -149,17 +149,17 @@ func TestS3PullExecute(t *testing.T) {
 		},
 		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			c.bucket = nil
-			conf.S3Data.Key = ""
+			conf.TaskSync.Key = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			c.bucket = nil
-			conf.S3Data.Secret = ""
+			conf.TaskSync.Secret = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			c.bucket = nil
-			conf.S3Data.Bucket = ""
+			conf.TaskSync.Bucket = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 	} {
@@ -169,7 +169,7 @@ func TestS3PullExecute(t *testing.T) {
 			conf := &model.TaskConfig{
 				Task: &task.Task{
 					Id:           "id",
-					Secret:       "secret",
+					Project:      "project",
 					Version:      "version",
 					BuildVariant: "build_variant",
 					DisplayName:  "display_name",
@@ -180,10 +180,10 @@ func TestS3PullExecute(t *testing.T) {
 				ProjectRef: &model.ProjectRef{
 					Identifier: "project_identifier",
 				},
-				S3Data: apimodels.S3TaskSetupData{
-					Key:    "s3_key",
-					Secret: "s3_secret",
-					Bucket: "s3_bucket",
+				TaskSync: evergreen.S3Credentials{
+					Key:    "key",
+					Secret: "secret",
+					Bucket: "bucket",
 				},
 			}
 			comm := client.NewMock("localhost")

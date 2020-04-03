@@ -241,3 +241,18 @@ func mutuallyExclusiveArgs(required bool, flags ...string) cli.BeforeFunc {
 		return nil
 	}
 }
+
+func requireWorkingDirFlag(dirFlagName string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		wd := c.String(dirFlagName)
+		if wd == "" {
+			var err error
+			wd, err = os.Getwd()
+			if err != nil {
+				return errors.Wrap(err, "cannot find working directory")
+			}
+			return c.Set(dirFlagName, wd)
+		}
+		return nil
+	}
+}

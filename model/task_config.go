@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -28,7 +27,7 @@ type TaskConfig struct {
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout
-	S3Data          apimodels.S3TaskSetupData
+	TaskSync        evergreen.S3Credentials
 
 	mu sync.RWMutex
 }
@@ -115,11 +114,6 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	}
 
 	return dir, nil
-}
-
-// S3Path returns the path to the working directory dump in S3 for a task.
-func (c *TaskConfig) S3Path(task string) string {
-	return strings.Join([]string{c.ProjectRef.Identifier, c.Task.Version, c.Task.BuildVariant, task, "latest"}, "/")
 }
 
 func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {

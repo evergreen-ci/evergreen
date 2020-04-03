@@ -55,14 +55,15 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 	if c.bucket != nil {
 		return nil
 	}
-	if err := conf.S3Data.Validate(); err != nil {
-		return errors.Wrap(err, "invalid S3 task credentials")
+
+	if err := conf.TaskSync.Validate(); err != nil {
+		return errors.Wrap(err, "invalid credentials for task sync")
 	}
 
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(conf.S3Data.Key, conf.S3Data.Secret, ""),
+		Credentials: pail.CreateAWSCredentials(conf.TaskSync.Key, conf.TaskSync.Secret, ""),
 		Region:      endpoints.UsEast1RegionID,
-		Name:        conf.S3Data.Bucket,
+		Name:        conf.TaskSync.Bucket,
 		MaxRetries:  int(c.MaxRetries),
 		Permissions: pail.S3PermissionsPrivate,
 	}
@@ -79,12 +80,10 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 // s3Pull is a command to download the task directory from S3.
 type s3Pull struct {
 	s3Base
+	base
 	TaskName     string `mapstructure:"task" plugin:"expand"`
 	WorkingDir   string `mapstructure:"working_directory" plugin:"expand"`
 	DeleteOnSync bool   `mapstructure:"delete_on_sync"`
-
-	bucket pail.Bucket
-	base
 }
 
 func s3PullFactory() Command { return &s3Pull{} }
@@ -150,7 +149,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pullMsg)
 	if err := c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   c.WorkingDir,
-		Remote:  conf.S3Path(c.TaskName),
+		Remote:  conf.Task.S3Path(c.TaskName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pulling task data from S3")

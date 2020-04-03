@@ -79,18 +79,7 @@ func Fetch() cli.Command {
 			requireClientConfig,
 			setPlainLogger,
 			requireStringFlag(taskFlagName),
-			func(c *cli.Context) error {
-				wd := c.String(dirFlagName)
-				if wd == "" {
-					var err error
-					wd, err = os.Getwd()
-					if err != nil {
-						return errors.Wrap(err, "cannot find working directory")
-					}
-					return c.Set(dirFlagName, wd)
-				}
-				return nil
-			},
+			requireWorkingDirFlag(dirFlagName),
 			func(c *cli.Context) error {
 				if c.Bool(sourceFlagName) || c.Bool(artifactsFlagName) {
 					return nil
