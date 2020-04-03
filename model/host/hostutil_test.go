@@ -202,6 +202,7 @@ func TestJasperCommands(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				startAgentMonitor,
 				markDone,
 			}
@@ -258,6 +259,7 @@ func TestJasperCommands(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
 				getTaskData,
 				markDone,
@@ -406,6 +408,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				startAgentMonitor,
 				markDone,
@@ -469,6 +472,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				setupSpawnHost,
 				markDone,
@@ -1079,7 +1083,6 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/.evergreen.yml" +
 		" && cp /home/user/evergreen /home/user/cli_bin" +
 		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
-		" && chown -R user /home/user/cli_bin" +
 		" && chmod +x /home/user/cli_bin/evergreen"
 	assert.Equal(t, expected, cmd)
 }
