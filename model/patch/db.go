@@ -104,6 +104,32 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	return db.Query(q)
 }
 
+func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
+	queryInterface := bson.M{
+		AuthorKey: user,
+	}
+	if patchName != "" {
+		queryInterface["$or"] = []bson.M{
+			{DescriptionKey: bson.M{"$regex": patchName, "$options": "i"}},
+			{NumberKey: bson.M{"$regex": patchName, "$options": "i"}},
+		}
+	}
+	if len(statuses) > 0 {
+		queryInterface[StatusKey] = bson.M{"$in": statuses}
+	}
+	if includeCommitQueue == false {
+		queryInterface[AliasKey] = commitQueueFilter
+	}
+	q := db.Query(queryInterface).Sort([]string{"-" + CreateTimeKey})
+	if page > 0 {
+		q = q.Skip(page * limit)
+	}
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	return q
+}
+
 // ByUserPaginated produces a query that returns patches by the given user
 // before/after the input time, sorted by creation time and limited
 func ByUserPaginated(user string, ts time.Time, limit int) db.Q {
