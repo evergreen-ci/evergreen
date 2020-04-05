@@ -2,8 +2,9 @@ package operations
 
 import (
 	"io"
+	"io/ioutil"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -123,7 +124,12 @@ func Export() cli.Command {
 				return errors.Errorf("%v is not a valid stats type", statType)
 			}
 
-			return util.WriteToFile(body, filePath)
+			payload, err := ioutil.ReadAll(body)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			return utility.WriteRawFile(filePath, payload)
 		},
 	}
 }

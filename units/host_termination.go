@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -67,7 +66,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBu
 	j.TerminateIfBusy = terminateIfBusy
 	j.Reason = reason
 	j.SetPriority(2)
-	ts := util.RoundPartOfHour(2).Format(TSFormat)
+	ts := utility.RoundPartOfHour(2).Format(TSFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
@@ -274,7 +273,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	settings := j.env.Settings()
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
+	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
 		idleTimeStartsAt = j.host.StartTime
 	}
 

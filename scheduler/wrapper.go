@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -27,7 +28,7 @@ type Configuration struct {
 }
 
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
-	schedulerInstanceID := util.RandomString()
+	schedulerInstanceID := utility.RandomString()
 
 	distro, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {

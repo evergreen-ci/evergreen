@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,7 +57,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		InstanceType:       "instance-type-2",
 	}
 
-	ts := util.RoundPartOfMinute(1).Format(TSFormat)
+	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 	j := NewSpawnhostModifyJob(&h, changes, ts)
 
 	j.Run(context.Background())

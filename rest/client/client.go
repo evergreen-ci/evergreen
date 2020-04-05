@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -305,7 +304,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				TaskName:      tk.DisplayName,
 				TaskID:        tk.Id,
 				Execution:     int32(tk.Execution),
-				Tags:          append(tk.Tags, util.RandomString()),
+				Tags:          append(tk.Tags, utility.RandomString()),
 				ProcessName:   logType,
 				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
 				Storage:       timber.LogStorageS3,

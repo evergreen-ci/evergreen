@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -50,7 +50,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 			}
 		}
 
-		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
+		if t.DispatchTime != utility.ZeroTime && t.Status == evergreen.TaskUndispatched {
 			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
@@ -414,7 +414,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
 		return nil
 	}
-	if util.IsZeroTime(t.StartTime) {
+	if utility.IsZeroTime(t.StartTime) {
 		grip.Warning(message.Fields{
 			"message":      "Task is missing start time",
 			"task_id":      t.Id,
@@ -1113,7 +1113,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	hasFinishedTasks := false
 	hasUnstartedTasks := false
 	startTime := time.Unix(1<<62, 0)
-	endTime := util.ZeroTime
+	endTime := utility.ZeroTime
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
@@ -1157,7 +1157,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
-	if endTime != util.ZeroTime && !hasUnstartedTasks {
+	if endTime != utility.ZeroTime && !hasUnstartedTasks {
 		update[task.FinishTimeKey] = endTime
 	}
 

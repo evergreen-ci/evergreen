@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -385,7 +384,7 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 			u = &DBUser{
 				Id:       evergreen.GithubPatchUser,
 				DispName: "Github Pull Requests",
-				APIKey:   util.RandomString(),
+				APIKey:   utility.RandomString(),
 			}
 			if err = u.Insert(); err != nil {
 				return nil, errors.Wrap(err, "failed to create github patch user")
@@ -426,7 +425,7 @@ func PutLoginCache(g gimlet.User) (string, error) {
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 0,
 	}
 	if token == "" {
-		token = util.RandomString()
+		token = utility.RandomString()
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey)] = token
 	}
 	if accessToken := g.GetAccessToken(); accessToken != "" {

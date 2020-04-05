@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -58,7 +57,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 		j.HasError = true
 	}
 
-	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, util.RoundPartOfHour(10)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, utility.RoundPartOfHour(10)))
 	j.SetPriority(-1)
 	return j
 }

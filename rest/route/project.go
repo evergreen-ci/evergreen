@@ -370,7 +370,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for i, trigger := range newProjectRef.Triggers {
 		catcher.Add(trigger.Validate(newProjectRef.Identifier))
 		if trigger.DefinitionID == "" {
-			newProjectRef.Triggers[i].DefinitionID = util.RandomString()
+			newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
 	newProjectRef.Triggers = append(oldProject.Triggers, newProjectRef.Triggers...)
@@ -430,7 +430,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// run the repotracker for the project
 	if newRevision != "" {
-		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()

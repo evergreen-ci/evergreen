@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -18,7 +18,7 @@ func NewTaskCache(id string, displayName string, activated bool) TaskCache {
 		Id:          id,
 		DisplayName: displayName,
 		Status:      evergreen.TaskUndispatched,
-		StartTime:   util.ZeroTime,
+		StartTime:   utility.ZeroTime,
 		TimeTaken:   time.Duration(0),
 		Activated:   activated,
 	}
@@ -109,7 +109,7 @@ func ResetCachedTask(buildId, taskId string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
+				TasksKey + ".$." + TaskCacheStartTimeKey: utility.ZeroTime,
 				TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
 				StatusKey:                                evergreen.BuildStarted,
 			},

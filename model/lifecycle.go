@@ -403,7 +403,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	for _, t := range allTasks {
-		if t.DispatchTime != util.ZeroTime {
+		if t.DispatchTime != utility.ZeroTime {
 			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
@@ -448,7 +448,7 @@ func RestartBuildTasks(buildId string, caller string) error {
 	}
 
 	for _, t := range allTasks {
-		if t.DispatchTime != util.ZeroTime {
+		if t.DispatchTime != utility.ZeroTime {
 			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
@@ -576,7 +576,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
 
-	activatedTime := util.ZeroTime
+	activatedTime := utility.ZeroTime
 	if args.Activated {
 		activatedTime = time.Now()
 	}
@@ -1008,14 +1008,14 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		})
 	}
 
-	activatedTime := util.ZeroTime
+	activatedTime := utility.ZeroTime
 	if b.Activated {
 		activatedTime = time.Now()
 	}
 
 	t := &task.Task{
 		Id:                  id,
-		Secret:              util.RandomString(),
+		Secret:              utility.RandomString(),
 		DisplayName:         buildVarTask.Name,
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
@@ -1023,11 +1023,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		DistroAliases:       distroAliases,
 		CreateTime:          createTime,
 		IngestTime:          time.Now(),
-		ScheduledTime:       util.ZeroTime,
-		StartTime:           util.ZeroTime, // Certain time fields must be initialized
-		FinishTime:          util.ZeroTime, // to our own util.ZeroTime value (which is
-		DispatchTime:        util.ZeroTime, // Unix epoch 0, not Go's time.Time{})
-		LastHeartbeat:       util.ZeroTime,
+		ScheduledTime:       utility.ZeroTime,
+		StartTime:           utility.ZeroTime, // Certain time fields must be initialized
+		FinishTime:          utility.ZeroTime, // to our own utility.ZeroTime value (which is
+		DispatchTime:        utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		LastHeartbeat:       utility.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
 		ActivatedTime:       activatedTime,
@@ -1057,7 +1057,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 func createDisplayTask(id string, displayName string, execTasks []string,
 	bv *BuildVariant, b *build.Build, v *Version, p *Project, createTime time.Time) (*task.Task, error) {
 
-	activatedTime := util.ZeroTime
+	activatedTime := utility.ZeroTime
 	if b.Activated {
 		activatedTime = time.Now()
 	}
@@ -1077,12 +1077,12 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,
 		IngestTime:          time.Now(),
-		StartTime:           util.ZeroTime,
-		FinishTime:          util.ZeroTime,
+		StartTime:           utility.ZeroTime,
+		FinishTime:          utility.ZeroTime,
 		Activated:           b.Activated,
 		ActivatedTime:       activatedTime,
-		DispatchTime:        util.ZeroTime,
-		ScheduledTime:       util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
+		ScheduledTime:       utility.ZeroTime,
 		TriggerID:           v.TriggerID,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,

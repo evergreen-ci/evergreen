@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -162,10 +161,10 @@ func (t TestHistoryParameters) QueryString() string {
 	if t.AfterRevision != "" {
 		out = append(out, "afterRevision="+t.AfterRevision)
 	}
-	if !util.IsZeroTime(t.BeforeDate) {
+	if !utility.IsZeroTime(t.BeforeDate) {
 		out = append(out, "beforeDate="+t.BeforeDate.Format(time.RFC3339))
 	}
-	if !util.IsZeroTime(t.AfterDate) {
+	if !utility.IsZeroTime(t.AfterDate) {
 		out = append(out, "afterDate="+t.AfterDate.Format(time.RFC3339))
 	}
 
@@ -497,7 +496,7 @@ func (t *TestHistoryParameters) validate() []string {
 		}
 	}
 
-	if (!util.IsZeroTime(t.AfterDate) || !util.IsZeroTime(t.BeforeDate)) &&
+	if (!utility.IsZeroTime(t.AfterDate) || !utility.IsZeroTime(t.BeforeDate)) &&
 		(t.AfterRevision != "" || t.BeforeRevision != "") {
 		validationErrors = append(validationErrors, "cannot have both date and revision time range parameter")
 	}
@@ -639,12 +638,12 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	}
 
 	// add in date to  task query if necessary
-	if !util.IsZeroTime(testHistoryParameters.BeforeDate) || !util.IsZeroTime(testHistoryParameters.AfterDate) {
+	if !utility.IsZeroTime(testHistoryParameters.BeforeDate) || !utility.IsZeroTime(testHistoryParameters.AfterDate) {
 		startTimeClause := bson.M{}
-		if !util.IsZeroTime(testHistoryParameters.BeforeDate) {
+		if !utility.IsZeroTime(testHistoryParameters.BeforeDate) {
 			startTimeClause["$lte"] = testHistoryParameters.BeforeDate
 		}
-		if !util.IsZeroTime(testHistoryParameters.AfterDate) {
+		if !utility.IsZeroTime(testHistoryParameters.AfterDate) {
 			startTimeClause["$gte"] = testHistoryParameters.AfterDate
 		}
 		taskMatchQuery[task.StartTimeKey] = startTimeClause
@@ -823,12 +822,12 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 	if len(params.TaskRequestType) > 0 {
 		query[task.RequesterKey] = params.TaskRequestType
 	}
-	if !util.IsZeroTime(params.BeforeDate) || !util.IsZeroTime(params.AfterDate) {
+	if !utility.IsZeroTime(params.BeforeDate) || !utility.IsZeroTime(params.AfterDate) {
 		startTimeClause := bson.M{}
-		if !util.IsZeroTime(params.BeforeDate) {
+		if !utility.IsZeroTime(params.BeforeDate) {
 			startTimeClause["$lte"] = params.BeforeDate
 		}
-		if !util.IsZeroTime(params.AfterDate) {
+		if !utility.IsZeroTime(params.AfterDate) {
 			startTimeClause["$gte"] = params.AfterDate
 		}
 		query[task.StartTimeKey] = startTimeClause

@@ -144,7 +144,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
 
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, util.RoundPartOfMinute(1).Format(units.TSFormat))
+	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, utility.RoundPartOfMinute(1).Format(units.TSFormat))
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
@@ -287,7 +287,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Stop the host
-	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, stopJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
@@ -369,7 +369,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Start the host
-	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))

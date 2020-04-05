@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -356,7 +355,7 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 }
 
 func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
 
@@ -463,7 +462,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	createTemplateResponse, err := m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
 		// mandatory field may only contain letters, numbers, and the following characters: - ( ) . / _
-		LaunchTemplateName: aws.String(util.RandomString()),
+		LaunchTemplateName: aws.String(utility.RandomString()),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "can't upload config template to AWS")

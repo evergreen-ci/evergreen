@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1061,11 +1060,11 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	} else {
 		path = fmt.Sprintf("%s/output", path)
 	}
-	if !util.IsZeroTime(startTime) && !util.IsZeroTime(endTime) {
+	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if !util.IsZeroTime(startTime) {
+	} else if !utility.IsZeroTime(startTime) {
 		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if !util.IsZeroTime(endTime) {
+	} else if !utility.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
 	}
 

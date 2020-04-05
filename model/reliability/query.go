@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -36,10 +36,10 @@ func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(f.ValidateCommon())
 
-	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+	if !f.AfterDate.Equal(utility.GetUTCDay(f.AfterDate)) {
 		catcher.New("Invalid AfterDate value")
 	}
-	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+	if !f.BeforeDate.Equal(utility.GetUTCDay(f.BeforeDate)) {
 		catcher.New("Invalid BeforeDate value")
 	}
 	if f.BeforeDate.Before(f.AfterDate) {

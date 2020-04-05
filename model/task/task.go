@@ -611,7 +611,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	}
 	if t.IsPartOfDisplay() {
 		//when dispatching an execution task, mark its parent as dispatched
-		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == util.ZeroTime {
+		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == utility.ZeroTime {
 			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
 		}
 	}
@@ -635,8 +635,8 @@ func (t *Task) MarkAsUndispatched() error {
 				StatusKey: evergreen.TaskUndispatched,
 			},
 			"$unset": bson.M{
-				DispatchTimeKey:  util.ZeroTime,
-				LastHeartbeatKey: util.ZeroTime,
+				DispatchTimeKey:  utility.ZeroTime,
+				LastHeartbeatKey: utility.ZeroTime,
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
@@ -738,7 +738,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 				"$in": ids,
 			},
 			ScheduledTimeKey: bson.M{
-				"$lte": util.ZeroTime,
+				"$lte": utility.ZeroTime,
 			},
 		},
 		bson.M{
@@ -866,7 +866,7 @@ func (t *Task) ActivateTask(caller string) error {
 func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
-	t.ScheduledTime = util.ZeroTime
+	t.ScheduledTime = utility.ZeroTime
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -874,7 +874,7 @@ func (t *Task) DeactivateTask(caller string) error {
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     false,
-				ScheduledTimeKey: util.ZeroTime,
+				ScheduledTimeKey: utility.ZeroTime,
 			},
 		},
 	)
@@ -889,7 +889,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	// if there is no start time set, either set it to the create time
 	// or set 2 hours previous to the finish time.
-	if util.IsZeroTime(t.StartTime) {
+	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		t.StartTime = timedOutStart
 		if timedOutStart.Before(t.IngestTime) {
@@ -957,21 +957,21 @@ func (t *Task) displayTaskPriority() int {
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
 	t.Activated = true
-	t.Secret = util.RandomString()
-	t.DispatchTime = util.ZeroTime
-	t.StartTime = util.ZeroTime
-	t.ScheduledTime = util.ZeroTime
-	t.FinishTime = util.ZeroTime
+	t.Secret = utility.RandomString()
+	t.DispatchTime = utility.ZeroTime
+	t.StartTime = utility.ZeroTime
+	t.ScheduledTime = utility.ZeroTime
+	t.FinishTime = utility.ZeroTime
 	t.ResetWhenFinished = false
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
 			SecretKey:        t.Secret,
 			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  util.ZeroTime,
-			StartTimeKey:     util.ZeroTime,
-			ScheduledTimeKey: util.ZeroTime,
-			FinishTimeKey:    util.ZeroTime,
+			DispatchTimeKey:  utility.ZeroTime,
+			StartTimeKey:     utility.ZeroTime,
+			ScheduledTimeKey: utility.ZeroTime,
+			FinishTimeKey:    utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:           "",
@@ -997,12 +997,12 @@ func ResetTasks(taskIds []string) error {
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     true,
-				SecretKey:        util.RandomString(),
+				SecretKey:        utility.RandomString(),
 				StatusKey:        evergreen.TaskUndispatched,
-				DispatchTimeKey:  util.ZeroTime,
-				StartTimeKey:     util.ZeroTime,
-				ScheduledTimeKey: util.ZeroTime,
-				FinishTimeKey:    util.ZeroTime,
+				DispatchTimeKey:  utility.ZeroTime,
+				StartTimeKey:     utility.ZeroTime,
+				ScheduledTimeKey: utility.ZeroTime,
+				FinishTimeKey:    utility.ZeroTime,
 			},
 			"$unset": bson.M{
 				DetailsKey: "",
@@ -1143,8 +1143,8 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 		TaskCreateTime:       task.CreateTime,
 		ExecutionDisplayName: ExecutionDisplayName,
 
-		TestStartTime: util.FromPythonTime(t.StartTime).In(time.UTC),
-		TestEndTime:   util.FromPythonTime(t.EndTime).In(time.UTC),
+		TestStartTime: utility.FromPythonTime(t.StartTime).In(time.UTC),
+		TestEndTime:   utility.FromPythonTime(t.EndTime).In(time.UTC),
 	}
 }
 
@@ -1710,7 +1710,7 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 
 func (t *Task) FetchExpectedDuration() util.DurationStats {
 	if t.DurationPrediction.TTL == 0 {
-		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
+		t.DurationPrediction.TTL = utility.JitterInterval(predictionTTL)
 	}
 
 	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
@@ -1925,11 +1925,11 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 // tasks should not include display tasks so they aren't double counted
 func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	var timeTaken time.Duration
-	earliestStartTime := util.MaxTime
-	latestFinishTime := util.ZeroTime
+	earliestStartTime := utility.MaxTime
+	latestFinishTime := utility.ZeroTime
 	for _, t := range tasks {
 		timeTaken += t.TimeTaken
-		if !util.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
+		if !utility.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
 			earliestStartTime = t.StartTime
 		}
 		if t.FinishTime.After(latestFinishTime) {
@@ -1937,7 +1937,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 		}
 	}
 
-	if earliestStartTime == util.MaxTime || latestFinishTime == util.ZeroTime {
+	if earliestStartTime == utility.MaxTime || latestFinishTime == utility.ZeroTime {
 		return 0, 0
 	}
 

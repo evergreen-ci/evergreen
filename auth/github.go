@@ -10,8 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -54,7 +54,7 @@ func NewGithubUserManager(g *evergreen.GithubAuthConfig, loginDomain string) (gi
 		ClientSecret:           g.ClientSecret,
 		AuthorizedUsers:        g.Users,
 		AuthorizedOrganization: g.Organization,
-		Salt:                   util.RandomString(),
+		Salt:                   utility.RandomString(),
 		LoginDomain:            loginDomain,
 	}, nil
 }

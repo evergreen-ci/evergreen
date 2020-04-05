@@ -81,7 +81,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idleTimeStartAt := h.LastTaskCompletedTime
-	if idleTimeStartAt.IsZero() || idleTimeStartAt == util.ZeroTime {
+	if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
 		idleTimeStartAt = h.StartTime
 	}
 
@@ -339,7 +339,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
 	}
 
-	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
@@ -354,7 +354,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		if err != nil {
 			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
 		}
-		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
 		}

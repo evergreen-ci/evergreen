@@ -16,8 +16,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -543,7 +543,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 		u = &user.DBUser{
 			Id:       evergreen.GithubPatchUser,
 			DispName: "Github Pull Requests",
-			APIKey:   util.RandomString(),
+			APIKey:   utility.RandomString(),
 		}
 		if err = u.Insert(); err != nil {
 			return nil, errors.Wrap(err, "failed to create github pull request user")

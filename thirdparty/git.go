@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -20,7 +20,7 @@ import (
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
 func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
-	handle, err := ioutil.TempFile("", util.RandomString())
+	handle, err := ioutil.TempFile("", utility.RandomString())
 	if err != nil {
 		return nil, errors.New("Unable to create local patch file")
 	}

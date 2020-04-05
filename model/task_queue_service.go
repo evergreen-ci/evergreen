@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -467,7 +467,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 
-		if nextTaskFromDB.StartTime != util.ZeroTime {
+		if nextTaskFromDB.StartTime != utility.ZeroTime {
 			continue
 		}
 
@@ -503,5 +503,5 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
 // and did not succeed. But rely on EndTask to block later tasks.
 func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
-	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
+	return unit.maxHosts == 1 && !utility.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
 }

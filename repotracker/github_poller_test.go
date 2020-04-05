@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
@@ -163,7 +163,7 @@ func TestGetRevisionsSince(t *testing.T) {
 
 				Convey("date for author commit should never be prior to 2008", func() {
 					for _, revision := range revisions {
-						So(util.IsZeroTime(revision.CreateTime), ShouldBeFalse)
+						So(utility.IsZeroTime(revision.CreateTime), ShouldBeFalse)
 						So(revision.CreateTime.After(minTime), ShouldBeTrue)
 					}
 				})

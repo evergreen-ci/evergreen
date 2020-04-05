@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -91,7 +91,7 @@ func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	if s == nil {
 		catcher.New("StartAt should not be nil")
 	}
-	if !s.Date.Equal(util.GetUTCDay(s.Date)) {
+	if !s.Date.Equal(utility.GetUTCDay(s.Date)) {
 		catcher.New("Invalid StartAt Date value")
 	}
 	switch groupBy {
@@ -174,10 +174,10 @@ func (f *StatsFilter) ValidateCommon() error {
 // validateDates performs common date validation for test / task stats.
 func (f *StatsFilter) validateDates() error {
 	catcher := grip.NewBasicCatcher()
-	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+	if !f.AfterDate.Equal(utility.GetUTCDay(f.AfterDate)) {
 		catcher.New("Invalid AfterDate value")
 	}
-	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+	if !f.BeforeDate.Equal(utility.GetUTCDay(f.BeforeDate)) {
 		catcher.New("Invalid BeforeDate value")
 	}
 	if !f.BeforeDate.After(f.AfterDate) {

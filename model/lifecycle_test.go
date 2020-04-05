@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -385,7 +385,7 @@ func TestBuildSetActivated(t *testing.T) {
 					BuildId:      "dependent_build",
 					Status:       evergreen.TaskUndispatched,
 					Activated:    false,
-					DispatchTime: util.ZeroTime,
+					DispatchTime: utility.ZeroTime,
 				}
 				So(dependency.Insert(), ShouldBeNil)
 
@@ -394,7 +394,7 @@ func TestBuildSetActivated(t *testing.T) {
 					BuildId:      "dependent_build",
 					Status:       evergreen.TaskUndispatched,
 					Activated:    false,
-					DispatchTime: util.ZeroTime,
+					DispatchTime: utility.ZeroTime,
 				}
 				So(canary.Insert(), ShouldBeNil)
 
@@ -1003,7 +1003,7 @@ buildvariants:
 			So(build.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
 			So(build.Activated, ShouldBeFalse)
-			So(build.ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(build.ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(build.Project, ShouldEqual, project.Identifier)
 			So(build.Revision, ShouldEqual, v.Revision)
 			So(build.Status, ShouldEqual, evergreen.BuildCreated)
@@ -1039,7 +1039,7 @@ buildvariants:
 			So(tasks[2].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldBeFalse)
-			So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[2].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[2].Requester, ShouldEqual, build.Requester)
 			So(tasks[2].Version, ShouldEqual, v.Id)
@@ -1055,7 +1055,7 @@ buildvariants:
 			So(tasks[3].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldBeFalse)
-			So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[3].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[3].Requester, ShouldEqual, build.Requester)
 			So(tasks[3].Version, ShouldEqual, v.Id)
@@ -1071,7 +1071,7 @@ buildvariants:
 			So(tasks[4].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[4].Activated, ShouldBeFalse)
-			So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[4].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[4].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[4].Requester, ShouldEqual, build.Requester)
 			So(tasks[4].Version, ShouldEqual, v.Id)
@@ -1087,7 +1087,7 @@ buildvariants:
 			So(tasks[5].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 			So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[5].Activated, ShouldBeFalse)
-			So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
+			So(tasks[5].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[5].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[5].Requester, ShouldEqual, build.Requester)
 			So(tasks[5].Version, ShouldEqual, v.Id)
@@ -1111,7 +1111,7 @@ buildvariants:
 				So(err, ShouldBeNil)
 				So(build.Id, ShouldNotEqual, "")
 				So(build.Activated, ShouldBeTrue)
-				So(build.ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(build.ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
 
 				So(len(tasks), ShouldEqual, 6)
 				So(tasks[2].Id, ShouldNotEqual, "")
@@ -1123,7 +1123,7 @@ buildvariants:
 				So(tasks[2].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldBeTrue)
-				So(tasks[2].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[2].ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
 				So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[2].Requester, ShouldEqual, build.Requester)
 				So(tasks[2].Version, ShouldEqual, v.Id)
@@ -1139,7 +1139,7 @@ buildvariants:
 				So(tasks[3].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldBeTrue)
-				So(tasks[3].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[3].ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
 				So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[3].Requester, ShouldEqual, build.Requester)
 				So(tasks[3].Version, ShouldEqual, v.Id)
@@ -1155,7 +1155,7 @@ buildvariants:
 				So(tasks[4].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[4].Activated, ShouldBeTrue)
-				So(tasks[4].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[4].ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
 				So(tasks[4].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[4].Requester, ShouldEqual, build.Requester)
 				So(tasks[4].Version, ShouldEqual, v.Id)
@@ -1171,7 +1171,7 @@ buildvariants:
 				So(tasks[5].CreateTime.Equal(args.TaskCreateTime), ShouldBeTrue)
 				So(tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[5].Activated, ShouldBeTrue)
-				So(tasks[5].ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
+				So(tasks[5].ActivatedTime.Equal(utility.ZeroTime), ShouldBeFalse)
 				So(tasks[5].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[5].Requester, ShouldEqual, build.Requester)
 				So(tasks[5].Version, ShouldEqual, v.Id)

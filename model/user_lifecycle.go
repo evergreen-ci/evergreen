@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,7 +55,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		bson.M{
 			"$set": setFields,
 			"$setOnInsert": bson.M{
-				user.APIKeyKey: util.RandomString(),
+				user.APIKeyKey: utility.RandomString(),
 			},
 		},
 		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),

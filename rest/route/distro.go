@@ -642,7 +642,7 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	catcher := grip.NewBasicCatcher()
 	var hostIDs []string
 	for _, host := range hosts {
-		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if (host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts) || (host.UserHost && h.opts.IncludeSpawnHosts) {
 			if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)); err != nil {
 				catcher.Wrapf(err, "problem enqueueing job to run script on host '%s'", host.Id)
@@ -747,7 +747,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
-		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
 			catcher.Wrapf(err, "problem enqueueing job to update icecream config file on host '%s'", host.Id)
 			continue

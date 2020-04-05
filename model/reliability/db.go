@@ -23,7 +23,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -38,8 +38,8 @@ func (filter TaskReliabilityFilter) dateBoundaries() []time.Time {
 		numDays = 1
 	}
 
-	start = util.GetUTCDay(start)
-	end = util.GetUTCDay(end)
+	start = utility.GetUTCDay(start)
+	end = utility.GetUTCDay(end)
 
 	boundaries := []time.Time{}
 	duration := 24 * time.Hour * time.Duration(numDays)

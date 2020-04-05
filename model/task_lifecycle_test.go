@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -959,7 +959,7 @@ func TestTryResetTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
+				So(testTask.FinishTime, ShouldResemble, utility.ZeroTime)
 				So(testTask.Activated, ShouldBeTrue)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
@@ -967,7 +967,7 @@ func TestTryResetTask(t *testing.T) {
 				So(oldTask, ShouldNotBeNil)
 				So(oldTask.Execution, ShouldEqual, 1)
 				So(oldTask.Details, ShouldResemble, *detail)
-				So(oldTask.FinishTime, ShouldNotResemble, util.ZeroTime)
+				So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 
 				// should also reset the build status to "started"
 				buildFromDb, err := build.FindOne(build.ById(b.Id))
@@ -1036,7 +1036,7 @@ func TestTryResetTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, *detail)
 				So(testTask.Status, ShouldEqual, detail.Status)
-				So(testTask.FinishTime, ShouldNotResemble, util.ZeroTime)
+				So(testTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
 				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
@@ -1044,7 +1044,7 @@ func TestTryResetTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(a.FinishTime, ShouldResemble, util.ZeroTime)
+				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
 			})
 		})
 	})
@@ -2295,7 +2295,7 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 		Id:            "t",
 		Status:        evergreen.TaskStarted,
 		Activated:     true,
-		ActivatedTime: util.ZeroTime,
+		ActivatedTime: utility.ZeroTime,
 		BuildId:       "b",
 	}
 	assert.NoError(runningTask.Insert())
@@ -2642,7 +2642,7 @@ tasks:
 		Project:             "proj",
 		Activated:           false,
 		RevisionOrderNumber: 2,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2727,7 +2727,7 @@ tasks:
 		Project:             "proj",
 		Activated:           false,
 		RevisionOrderNumber: 4,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2747,7 +2747,7 @@ tasks:
 		Project:             "proj",
 		Activated:           true,
 		RevisionOrderNumber: 5,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2762,7 +2762,7 @@ tasks:
 		Activated:           true,
 		RevisionOrderNumber: 5,
 		GeneratedBy:         "g5",
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}

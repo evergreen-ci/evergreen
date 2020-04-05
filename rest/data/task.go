@@ -9,8 +9,8 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -353,10 +353,10 @@ func (mtc *MockTaskConnector) ResetTask(taskId, username string) error {
 			t.Activated = true
 			t.Secret = "new secret"
 			t.Status = evergreen.TaskUndispatched
-			t.DispatchTime = util.ZeroTime
-			t.StartTime = util.ZeroTime
-			t.ScheduledTime = util.ZeroTime
-			t.FinishTime = util.ZeroTime
+			t.DispatchTime = utility.ZeroTime
+			t.StartTime = utility.ZeroTime
+			t.ScheduledTime = utility.ZeroTime
+			t.FinishTime = utility.ZeroTime
 			t.LocalTestResults = []task.TestResult{}
 			mtc.CachedTasks[ix] = t
 		}

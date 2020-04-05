@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -175,7 +174,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		// Generate API key if none are explicitly set.
 		for i := range c.OnlyAPI.Users {
 			if c.OnlyAPI.Users[i].Key == "" {
-				c.OnlyAPI.Users[i].Key = util.RandomString()
+				c.OnlyAPI.Users[i].Key = utility.RandomString()
 			}
 		}
 	}

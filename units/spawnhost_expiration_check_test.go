@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,7 +41,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 		Status: cloud.StatusRunning,
 	})
 
-	ts := util.RoundPartOfHour(0).Format(TSFormat)
+	ts := utility.RoundPartOfHour(0).Format(TSFormat)
 	j := NewSpawnhostExpirationCheckJob(ts, &h)
 	j.Run(context.Background())
 	assert.NoError(t, j.Error())

@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -57,7 +57,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		User:    user,
 		Section: section,
 		Changes: ConfigDataChange{Before: before, After: after},
-		GUID:    util.RandomString(),
+		GUID:    utility.RandomString(),
 	}
 	event := EventLogEntry{
 		Timestamp:    time.Now(),

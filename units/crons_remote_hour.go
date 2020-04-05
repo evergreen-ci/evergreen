@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -37,7 +37,7 @@ func NewCronRemoteHourJob() amboy.Job {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteHourJobName, util.RoundPartOfHour(0).Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteHourJobName, utility.RoundPartOfHour(0).Format(TSFormat)))
 	return j
 }
 
@@ -65,7 +65,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		catcher.Add(op(ctx, queue))
 	}
 
-	catcher.Add(AddBackupJobs(ctx, j.env, util.RoundPartOfHour(0)))
+	catcher.Add(AddBackupJobs(ctx, j.env, utility.RoundPartOfHour(0)))
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{

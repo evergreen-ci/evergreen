@@ -115,7 +115,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 			Page: commitPage,
 		},
 	}
-	if !util.IsZeroTime(until) {
+	if !utility.IsZeroTime(until) {
 		options.Until = until
 	}
 

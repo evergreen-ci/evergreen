@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -199,7 +199,7 @@ func (j *convertHostToLegacyProvisioningJob) tryRequeue(ctx context.Context) err
 	if j.CurrentAttempt >= maxProvisioningConversionAttempts {
 		return errors.New("exceeded max provisioning conversion attempts")
 	}
-	ts := util.RoundPartOfMinute(0).Format(TSFormat)
+	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
 	retryJob := NewConvertHostToLegacyProvisioningJob(j.env, *j.host, fmt.Sprintf("%s.attempt-%d", ts, j.CurrentAttempt+1), j.CurrentAttempt+1)
 	retryJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),

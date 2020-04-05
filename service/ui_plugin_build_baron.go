@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -358,7 +357,7 @@ func (uis *UIServer) makeNotification(project string, t *task.Task) (*notificati
 			IssueType: jiraIssueType,
 		},
 	}
-	n, err := notification.New("", util.RandomString(), &sub, payload)
+	n, err := notification.New("", utility.RandomString(), &sub, payload)
 	if err != nil {
 		return nil, err
 	}

@@ -240,13 +240,13 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 			// and: https://docs.travis-ci.com/user/pull-requests/#my-pull-request-isnt-being-built
 			ref = "merge"
 			commitToTest = conf.GithubPatchData.MergeCommitSHA
-			branchName = fmt.Sprintf("evg-merge-test-%s", util.RandomString())
+			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
 			commitToTest = conf.GithubPatchData.HeadHash
-			branchName = fmt.Sprintf("evg-pr-test-%s", util.RandomString())
+			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
 		gitCommands = append(gitCommands, []string{
 			fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
@@ -288,7 +288,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
-		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
+		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
 			fmt.Sprintf("git checkout '%s'", branchName),

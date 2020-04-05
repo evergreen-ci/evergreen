@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -927,7 +926,7 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 
 	if d.ID == "" {
-		d.ID = util.RandomString()
+		d.ID = utility.RandomString()
 	}
 
 	return catcher.Resolve()

@@ -216,12 +216,7 @@ func (c *s3get) get(ctx context.Context) error {
 	// either untar the remote, or just write to a file
 	if c.LocalFile != "" {
 		// remove the file, if it exists
-		exists, err := util.FileExists(c.LocalFile)
-		if err != nil {
-			return errors.Wrapf(err, "error checking existence of local file %v",
-				c.LocalFile)
-		}
-		if exists {
+		if utility.FileExists(c.LocalFile) {
 			if err := os.RemoveAll(c.LocalFile); err != nil {
 				return errors.Wrapf(err, "error clearing local file %v", c.LocalFile)
 			}

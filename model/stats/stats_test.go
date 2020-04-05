@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -540,8 +540,8 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// The results are sorted so we know the order
 	require.Equal("p5", statsList[0].ProjectId)
 	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(util.GetUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(util.GetUTCDay(commit1), statsList[0].Day, 0)
+	require.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
+	require.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
 	require.Equal([]string{"task1"}, statsList[0].Tasks)
 
 	// Find stats for p5 for a period around finish1
@@ -553,13 +553,13 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// The results are sorted so we know the order
 	require.Equal("p5", statsList[0].ProjectId)
 	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(util.GetUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(util.GetUTCDay(commit1), statsList[0].Day, 0)
+	require.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
+	require.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
 	require.Equal([]string{"task1"}, statsList[0].Tasks)
 	require.Equal("p5", statsList[1].ProjectId)
 	require.Equal("r2", statsList[1].Requester)
-	require.WithinDuration(util.GetUTCHour(commit2), statsList[1].Hour, 0)
-	require.WithinDuration(util.GetUTCDay(commit2), statsList[1].Day, 0)
+	require.WithinDuration(utility.GetUTCHour(commit2), statsList[1].Hour, 0)
+	require.WithinDuration(utility.GetUTCDay(commit2), statsList[1].Day, 0)
 	require.Len(statsList[1].Tasks, 3)
 	require.Contains(statsList[1].Tasks, "task2")
 	require.Contains(statsList[1].Tasks, "task2bis")
@@ -879,7 +879,7 @@ func (s *statsSuite) countDailyTaskDocs() int {
 
 func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.TestResult, error) {
 	var lastTestResult *testresult.TestResult
-	start := util.GetUTCHour(testStatsID.Date)
+	start := utility.GetUTCHour(testStatsID.Date)
 	end := start.Add(time.Hour)
 
 	qry := bson.M{
@@ -911,7 +911,7 @@ func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestSt
 	var lastTestStats *dbTestStats
 	testResults := []dbTestStats{}
 
-	start := util.GetUTCDay(testStatsID.Date)
+	start := utility.GetUTCDay(testStatsID.Date)
 	end := start.Add(24 * time.Hour)
 
 	qry := bson.M{

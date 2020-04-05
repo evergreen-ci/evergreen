@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,7 +34,7 @@ func (s *TaskHistorySuite) SetupTest() {
 		// backwards in time, in descending order
 		now = now.Add(-time.Minute)
 		version := model.Version{
-			Id:                  util.RandomString(),
+			Id:                  utility.RandomString(),
 			RevisionOrderNumber: 101 - i,
 			CreateTime:          now,
 			Identifier:          s.projectID,
@@ -47,7 +47,7 @@ func (s *TaskHistorySuite) SetupTest() {
 	// Middle version with the same createTime as the last version in versionsBefore
 	// and the first version in versionsAfter
 	s.middleVersion = model.Version{
-		Id:                  util.RandomString(),
+		Id:                  utility.RandomString(),
 		RevisionOrderNumber: 51,
 		CreateTime:          now,
 		Identifier:          s.projectID,
@@ -57,7 +57,7 @@ func (s *TaskHistorySuite) SetupTest() {
 
 	for i := 0; i < 50; i++ {
 		version := model.Version{
-			Id:                  util.RandomString(),
+			Id:                  utility.RandomString(),
 			RevisionOrderNumber: 50 - i,
 			CreateTime:          now,
 			Identifier:          s.projectID,

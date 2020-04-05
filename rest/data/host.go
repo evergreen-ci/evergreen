@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -251,7 +250,7 @@ func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, us
 			continue
 		}
 
-		if !util.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
+		if !utility.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
 			continue
 		}
 

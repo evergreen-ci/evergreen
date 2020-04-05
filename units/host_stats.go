@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -97,7 +97,7 @@ func (j *hostStatsJob) Run(_ context.Context) {
 	})
 
 	for _, h := range taskSpawned {
-		if !util.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
+		if !utility.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
 			j.logger.Warning(message.Fields{
 				"message":         "long running host spawned by task",
 				"id":              h.Id,
