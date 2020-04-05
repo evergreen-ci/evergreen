@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -78,9 +78,9 @@ func (j *backupMDBCollectionJob) Run(ctx context.Context) {
 	}
 	conf := j.env.Settings().Backup
 
-	client := util.GetHTTPClient()
+	client := utility.GetHTTPClient()
 	client.Timeout = 60 * time.Minute
-	defer util.PutHTTPClient(client)
+	defer utility.PutHTTPClient(client)
 
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(conf.Key, conf.Secret, ""),

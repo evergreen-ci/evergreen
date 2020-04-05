@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"

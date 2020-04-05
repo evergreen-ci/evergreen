@@ -39,12 +39,7 @@ type githubPRLogger struct {
 func NewGithubPRLogger(ctx context.Context, name string, token string, statusSender send.Sender) (send.Sender, error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
-	tc, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		defer cancel()
-		return nil, errors.Wrap(err, "can't get oauth session")
-	}
-
+	tc := utility.GetOAuth2HTTPClient(token)
 	base := send.MakeBase(name, func() {}, func() error {
 		utility.PutHTTPClient(tc)
 		cancel()

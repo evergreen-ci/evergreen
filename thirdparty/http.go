@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -89,8 +89,8 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 	req.SetBasicAuth(username, password)
 	req.Header.Add("Content-Type", "application/json")
 
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
@@ -115,8 +115,8 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 	req.SetBasicAuth(username, password)
 	req.Header.Add("Content-Type", "application/json")
 
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)

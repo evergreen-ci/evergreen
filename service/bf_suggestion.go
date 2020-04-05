@@ -13,7 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -41,8 +41,8 @@ type bfSuggestionClient struct {
 
 // Send a request to the BF Suggestion server.
 func (bfsc *bfSuggestionClient) request(ctx context.Context, req *http.Request) ([]byte, error) {
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	if bfsc.username != "" {
 		req.SetBasicAuth(bfsc.username, bfsc.password)

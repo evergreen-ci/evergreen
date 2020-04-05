@@ -6,10 +6,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/okta"
 	"github.com/evergreen-ci/gimlet/usercache"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
