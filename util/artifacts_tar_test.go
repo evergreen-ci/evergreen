@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/logging"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -93,16 +94,13 @@ func TestArchiveRoundTrip(t *testing.T) {
 		defer f2.Close()
 		defer gz2.Close()
 		So(err, ShouldBeNil)
-		exists, err := FileExists(filepath.Join(testDir, "testdata", "artifacts_out"))
-		So(err, ShouldBeNil)
+		exists := utility.FileExists(filepath.Join(testDir, "testdata", "artifacts_out"))
 		So(exists, ShouldBeTrue)
-		exists, err = FileExists(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "test.pdb"))
-		So(err, ShouldBeNil)
+		exists = utility.FileExists(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "test.pdb"))
 		So(exists, ShouldBeFalse)
 
 		// Dereference symlinks
-		exists, err = FileExists(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "my_symlink.txt"))
-		So(err, ShouldBeNil)
+		exists = utility.FileExists(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "my_symlink.txt"))
 		So(exists, ShouldBeTrue)
 		contents, err := ioutil.ReadFile(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "my_symlink.txt"))
 		So(err, ShouldBeNil)

@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -855,8 +854,8 @@ func TestTaskSetResultsFields(t *testing.T) {
 	StartTime := 1569431862.508
 	EndTime := 1569431887.2
 
-	TestStartTime := util.FromPythonTime(StartTime).In(time.UTC)
-	TestEndTime := util.FromPythonTime(EndTime).In(time.UTC)
+	TestStartTime := utility.FromPythonTime(StartTime).In(time.UTC)
+	TestEndTime := utility.FromPythonTime(EndTime).In(time.UTC)
 
 	testresults := []TestResult{
 		{

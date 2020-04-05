@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -514,7 +514,7 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 		for _, u := range users {
 			foundNames = append(foundNames, u.Username())
 		}
-		left, right := util.StringSliceSymmetricDifference(foundNames, names)
+		left, right := utility.StringSliceSymmetricDifference(foundNames, names)
 		return len(left) == 0 && len(right) == 0
 	}
 

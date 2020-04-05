@@ -76,7 +76,7 @@ func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.Error(err)
-	s.EqualError(err, "Argument read error: error attempting to unmarshal into *map[string]route.hostStatus: unexpected end of JSON input")
+	s.EqualError(err, "Argument read error: unexpected end of JSON input")
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {

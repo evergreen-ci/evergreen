@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -42,8 +42,8 @@ func TestTestBuildFromService(t *testing.T) {
 					LineNum:   15,
 					LogID:     "",
 					ExitCode:  1,
-					StartTime: util.ToPythonTime(sTime),
-					EndTime:   util.ToPythonTime(eTime),
+					StartTime: utility.ToPythonTime(sTime),
+					EndTime:   utility.ToPythonTime(eTime),
 				},
 			},
 			{
