@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 )
 
 // prompt writes a prompt to the user on stdout, reads a newline-terminated response from stdin,

@@ -31,7 +31,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	s3CopyReq := &apimodels.S3CopyRequest{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), s3CopyReq)
+	err := utility.ReadJSON(util.NewRequestReader(r), s3CopyReq)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return

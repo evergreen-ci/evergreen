@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)

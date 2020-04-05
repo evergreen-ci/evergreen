@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 )
 
 const (
@@ -68,10 +69,10 @@ func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Req
 			}
 		}
 		// dedupe id slices before returning, for simplicity
-		resp.TaskIds = util.UniqueStrings(resp.TaskIds)
-		resp.HostIds = util.UniqueStrings(resp.HostIds)
-		resp.HostRunningTasks = util.UniqueStrings(resp.HostRunningTasks)
-		resp.TaskHostIds = util.UniqueStrings(resp.TaskHostIds)
+		resp.TaskIds = utility.UniqueStrings(resp.TaskIds)
+		resp.HostIds = utility.UniqueStrings(resp.HostIds)
+		resp.HostRunningTasks = utility.UniqueStrings(resp.HostRunningTasks)
+		resp.TaskHostIds = utility.UniqueStrings(resp.TaskHostIds)
 	}
 	gimlet.WriteJSON(w, resp)
 }

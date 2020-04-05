@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
@@ -83,7 +83,7 @@ func deployDataTransforms() cli.Command {
 			settings := env.Settings()
 
 			anserConf := &model.ConfigurationManualMigration{}
-			err = util.ReadFromYAMLFile(migrationConfFn, anserConf)
+			err = utility.ReadYAMLFile(migrationConfFn, anserConf)
 			if err != nil {
 				return errors.Wrap(err, "problem parsing configuration file")
 			}

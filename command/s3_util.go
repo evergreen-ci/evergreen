@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
 )
 

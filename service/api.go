@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -256,7 +257,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), log)
+	err := utility.ReadJSON(util.NewRequestReader(r), log)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -280,7 +281,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	results := &task.LocalTestResults{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), results)
+	err := utility.ReadJSON(util.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -323,7 +324,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		CreateTime:      time.Now(),
 	}
 
-	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
+	err := utility.ReadJSON(util.NewRequestReader(r), &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
@@ -348,8 +349,7 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	_, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
-	if err != nil {
+	if err := gimlet.GetJSON(r.Body, taskLog); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "unable to read logs from request"))
 		return
 	}

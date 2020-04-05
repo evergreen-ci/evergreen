@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -235,7 +236,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
 	}{}
 
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -589,7 +590,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	toAdd, toRemove := util.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
+	toAdd, toRemove := utility.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
 	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

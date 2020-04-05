@@ -44,7 +44,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	})
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), taskStartInfo); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %s", t.Id))
 		return
 	}
@@ -158,7 +158,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -729,7 +729,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	isOldAgent := agentRevisionIsOld(h)
 	// if agent revision is old, we should indicate an exit if there are errors
 	details := &apimodels.GetNextTaskDetails{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		if isOldAgent {
 			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{

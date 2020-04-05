@@ -11,9 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,7 +43,7 @@ func (h *userSettingsPostHandler) Factory() gimlet.RouteHandler {
 
 func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.settings = model.APIUserSettings{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, &h.settings))
+	return errors.WithStack(utility.ReadJSON(r.Body, &h.settings))
 }
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -162,7 +162,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 		return errors.New("no user found")
 	}
 	permissions := RequestedPermissions{}
-	if err := util.ReadJSONInto(r.Body, &permissions); err != nil {
+	if err := utility.ReadJSON(r.Body, &permissions); err != nil {
 		return errors.Wrap(err, "request body is not a valid Permissions request")
 	}
 	if !utility.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
@@ -237,7 +237,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 		return errors.New("no user found")
 	}
 	request := deletePermissionsRequest{}
-	if err := util.ReadJSONInto(r.Body, &request); err != nil {
+	if err := utility.ReadJSON(r.Body, &request); err != nil {
 		return errors.Wrap(err, "request body is an invalid format")
 	}
 	h.resourceType = request.ResourceType

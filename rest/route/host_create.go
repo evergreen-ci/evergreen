@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -42,7 +42,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	h.taskID = taskID
 
-	if err := util.ReadJSONInto(r.Body, &h.createHost); err != nil {
+	if err := utility.ReadJSON(r.Body, &h.createHost); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),

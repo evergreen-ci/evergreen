@@ -11,10 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/util"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
@@ -194,7 +193,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	}
 
 	tracker := jasper.NewOOMTracker()
-	s.NoError(util.ReadJSONInto(resp.Body, tracker))
+	s.NoError(utility.ReadJSON(resp.Body, tracker))
 	wasOomKilled, pids := tracker.Report()
 	s.False(wasOomKilled)
 	s.Len(pids, 0)

@@ -10,7 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"

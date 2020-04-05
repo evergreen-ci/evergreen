@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
@@ -52,7 +53,7 @@ func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 
 func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	hph.options = &model.HostRequestOptions{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, hph.options))
+	return errors.WithStack(utility.ReadJSON(r.Body, hph.options))
 }
 
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -110,7 +111,7 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 	defer body.Close()
 
 	h.options = &host.HostModifyOptions{}
-	if err := util.ReadJSONInto(body, h.options); err != nil {
+	if err := utility.ReadJSON(body, h.options); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 
@@ -255,7 +256,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
-	if err := util.ReadJSONInto(body, &options); err != nil {
+	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
@@ -342,7 +343,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
-	if err := util.ReadJSONInto(body, &options); err != nil {
+	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
@@ -415,7 +416,7 @@ func (h *attachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(util.ReadJSONInto(r.Body, h.attachment)); err != nil {
+	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
 		return errors.Wrap(err, "error parsing input")
 	}
 
@@ -545,7 +546,7 @@ func (h *detachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(util.ReadJSONInto(r.Body, h.attachment)); err != nil {
+	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
 		return err
 	}
 	if h.attachment == nil {
@@ -638,7 +639,7 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
-	if err := util.ReadJSONInto(r.Body, h.volume); err != nil {
+	if err := utility.ReadJSON(r.Body, h.volume); err != nil {
 		return err
 	}
 	if h.volume.Size == 0 {
@@ -942,7 +943,7 @@ func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1018,7 +1019,7 @@ func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1115,7 +1116,7 @@ func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
 func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostScriptOpts := model.APIHostScript{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScriptOpts); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
 	hs.script = hostScriptOpts.Script
@@ -1207,7 +1208,7 @@ func (h *hostGetProcesses) Factory() gimlet.RouteHandler {
 func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostProcesses := []model.APIHostProcess{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostProcesses); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &hostProcesses); err != nil {
 		return errors.Wrap(err, "can't read host processes from json")
 	}
 	h.hostProcesses = hostProcesses

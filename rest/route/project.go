@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -356,7 +357,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, admin := range requestProjectRef.DeleteAdmins {
 		adminsToDelete = append(adminsToDelete, model.FromStringPtr(admin))
 	}
-	allAdmins := util.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
+	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
 	newProjectRef.Admins = []string{}
 	for _, admin := range allAdmins {
 		if !utility.StringSliceContains(adminsToDelete, admin) {

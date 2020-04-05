@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +46,7 @@ func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request)
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, &h.HostToStatus); err != nil {
+	if err := utility.ReadJSON(body, &h.HostToStatus); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 	if len(h.HostToStatus) == 0 {
@@ -337,7 +338,7 @@ func (h *hostFilterGetHandler) Factory() gimlet.RouteHandler {
 func (h *hostFilterGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	if err := util.ReadJSONInto(body, &h.params); err != nil {
+	if err := utility.ReadJSON(body, &h.params); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 

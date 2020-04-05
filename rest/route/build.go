@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -86,7 +87,7 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, b); err != nil {
+	if err := utility.ReadJSON(body, b); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 

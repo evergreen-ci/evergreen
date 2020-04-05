@@ -21,6 +21,7 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -40,7 +41,7 @@ func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 		return nil, errors.Wrap(err, "failed to get agent setup info")
 	}
 	defer resp.Body.Close()
-	if err = util.ReadJSONInto(resp.Body, out); err != nil {
+	if err = utility.ReadJSON(resp.Body, out); err != nil {
 		return nil, errors.Wrap(err, "failed to get agent setup info")
 	}
 	return out, nil
@@ -95,7 +96,7 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if err = util.ReadJSONInto(resp.Body, taskEndResp); err != nil {
+	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
 		message := fmt.Sprintf("Error unmarshalling task end response: %v", err)
 		return nil, errors.New(message)
 	}
@@ -125,7 +126,7 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	if err = util.ReadJSONInto(resp.Body, task); err != nil {
+	if err = utility.ReadJSON(resp.Body, task); err != nil {
 		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
 		return nil, err
 	}
@@ -150,7 +151,7 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	if err = util.ReadJSONInto(resp.Body, projectRef); err != nil {
+	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
 		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
 		return nil, err
 	}
@@ -175,7 +176,7 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	if err = util.ReadJSONInto(resp.Body, d); err != nil {
+	if err = utility.ReadJSON(resp.Body, d); err != nil {
 		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	err = util.ReadJSONInto(resp.Body, v)
+	err = utility.ReadJSON(resp.Body, v)
 	if err != nil {
 		err = errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
 		return nil, err
@@ -226,7 +227,7 @@ func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData)
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	err = util.ReadJSONInto(resp.Body, &e)
+	err = utility.ReadJSON(resp.Body, &e)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
 	}
@@ -260,7 +261,7 @@ func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bo
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
-	if err = util.ReadJSONInto(resp.Body, heartbeatResponse); err != nil {
+	if err = utility.ReadJSON(resp.Body, heartbeatResponse); err != nil {
 		err = errors.Wrapf(err, "Error unmarshaling heartbeat response for task %s", taskData.ID)
 		return false, err
 	}
@@ -286,7 +287,7 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 		err = errors.Errorf("fetching expansions failed: got 'unauthorized' response.")
 		return nil, err
 	}
-	if err = util.ReadJSONInto(resp.Body, resultVars); err != nil {
+	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
 		err = errors.Wrapf(err, "failed to read vars from response for task %s", taskData.ID)
 		return nil, err
 	}
@@ -306,7 +307,7 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 		return nil, errors.Wrap(err, "failed to get task")
 	}
 	defer resp.Body.Close()
-	if err = util.ReadJSONInto(resp.Body, nextTask); err != nil {
+	if err = utility.ReadJSON(resp.Body, nextTask); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
@@ -330,7 +331,7 @@ func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.B
 	}
 	defer resp.Body.Close()
 
-	if err = util.ReadJSONInto(resp.Body, bi); err != nil {
+	if err = utility.ReadJSON(resp.Body, bi); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
@@ -435,7 +436,7 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("could not fetch patch for task with id '%s'; expected status code 200 OK, got %d %s", taskData.ID, resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
-	if err = util.ReadJSONInto(resp.Body, &patch); err != nil {
+	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
 		return nil, errors.Wrapf(err, "problem parsing patch response for %s", taskData.ID)
 	}
 
@@ -488,7 +489,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 	logReply := struct {
 		ID string `json:"_id"`
 	}{}
-	if err = util.ReadJSONInto(resp.Body, &logReply); err != nil {
+	if err = utility.ReadJSON(resp.Body, &logReply); err != nil {
 		message := fmt.Sprintf("Error unmarshalling post test log response: %v", err)
 		return "", errors.New(message)
 	}
@@ -551,7 +552,7 @@ func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (
 	defer resp.Body.Close()
 
 	mfest := manifest.Manifest{}
-	if err = util.ReadJSONInto(resp.Body, &mfest); err != nil {
+	if err = utility.ReadJSON(resp.Body, &mfest); err != nil {
 		return nil, errors.Wrapf(err, "problem parsing manifest response for %s", taskData.ID)
 	}
 
@@ -572,7 +573,7 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	defer resp.Body.Close()
 
 	response := gimlet.ErrorResponse{}
-	if err = util.ReadJSONInto(resp.Body, &response); err == nil {
+	if err = utility.ReadJSON(resp.Body, &response); err == nil {
 		return response.Message, nil
 	}
 
@@ -592,7 +593,7 @@ func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	}
 	defer resp.Body.Close()
 
-	if err = util.ReadJSONInto(resp.Body, kv); err != nil {
+	if err = utility.ReadJSON(resp.Body, kv); err != nil {
 		return errors.Wrapf(err, "problem parsing keyval inc response %s", taskData.ID)
 	}
 
@@ -694,7 +695,7 @@ func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	}
 	defer resp.Body.Close()
 	generated := &apimodels.GeneratePollResponse{}
-	if err := util.ReadJSONInto(resp.Body, generated); err != nil {
+	if err := utility.ReadJSON(resp.Body, generated); err != nil {
 		return nil, errors.Wrapf(err, "problem reading generated from response body for '%s'", td.ID)
 	}
 	return generated, nil
@@ -715,7 +716,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	defer resp.Body.Close()
 
 	ids := []string{}
-	if err = util.ReadJSONInto(resp.Body, &ids); err != nil {
+	if err = utility.ReadJSON(resp.Body, &ids); err != nil {
 		return nil, errors.Wrap(err, "problem reading ids from `create.host` response")
 	}
 	return ids, nil
@@ -736,7 +737,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 	defer resp.Body.Close()
 
 	hosts := []restmodel.CreateHost{}
-	if err := util.ReadJSONInto(resp.Body, &hosts); err != nil {
+	if err := utility.ReadJSON(resp.Body, &hosts); err != nil {
 		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
 	}
 	return hosts, nil

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 )
 
@@ -144,7 +145,7 @@ func perfHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 		err = model.DeleteTaskJSONTagFromTask(taskId, name)
 	case http.MethodPost:
 		tc := model.TagContainer{}
-		err = util.ReadJSONInto(util.NewRequestReader(r), &tc)
+		err = utility.ReadJSON(util.NewRequestReader(r), &tc)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

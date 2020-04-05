@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -105,7 +106,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
 	}
 	patchUpdateReq := graphql.PatchVariantsTasksRequest{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &patchUpdateReq); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 

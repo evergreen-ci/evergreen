@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
