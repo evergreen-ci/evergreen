@@ -83,13 +83,14 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 
 	totalDocs, _ := j.env.DB().Collection(testresult.Collection).EstimatedDocumentCount(ctx)
 
+LOOP:
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			break LOOP
 		default:
 			if time.Since(startAt) >= 50*time.Second {
-				break
+				break LOOP
 			}
 			opStart := time.Now()
 			num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
