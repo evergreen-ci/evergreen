@@ -104,7 +104,7 @@
       }
     },
     {
-      "query_file": "unexisting-user.graphql",
+      "query_file": "nonexisting-user.graphql",
       "result": { "data": { "userPatches": [] } }
     }
   ]
