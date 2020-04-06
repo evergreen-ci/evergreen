@@ -482,7 +482,11 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 // changeOwnerCommand returns the command to modify the given file on the host
 // to be owned by the distro owner.
 func (h *Host) changeOwnerCommand(path string) string {
-	return fmt.Sprintf("chown -R %s %s", h.Distro.User, path)
+	cmd := fmt.Sprintf("chown -R %s %s", h.Distro.User, path)
+	if h.Distro.IsWindows() {
+		return cmd
+	}
+	return "sudo " + cmd
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
@@ -1033,10 +1037,13 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
+		// We have to do this because the evergreen config file is already baked
+		// into the AMI and owned by the privileged user.
+		h.changeOwnerCommand(h.spawnHostConfigFile()),
 		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
+		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
-		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
 }
 
