@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1231,13 +1230,13 @@ func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*eve
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		respErr := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+		if err = utility.ReadJSON(resp.Body, &respErr); err != nil {
 			return nil, errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
 		}
 		return nil, errors.Wrap(respErr, "problem getting task read-only credentials")
 	}
 	creds := &evergreen.S3Credentials{}
-	if err := util.ReadJSONInto(resp.Body, creds); err != nil {
+	if err := utility.ReadJSON(resp.Body, creds); err != nil {
 		return nil, errors.Wrap(err, "problem reading credentials from response body")
 	}
 
@@ -1258,13 +1257,13 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		respErr := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+		if err = utility.ReadJSON(resp.Body, &respErr); err != nil {
 			return "", errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
 		}
 		return "", errors.Wrap(respErr, "problem getting task sync path")
 	}
 	var path string
-	if err = util.ReadJSONInto(resp.Body, &path); err != nil {
+	if err = utility.ReadJSON(resp.Body, &path); err != nil {
 		return "", errors.Wrap(err, "problem reading task sync path from response body")
 	}
 

@@ -1323,7 +1323,7 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(ctx, NewTestResultsCleanupJob(util.RoundPartOfMinute(0)))
+		return queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(0)))
 
 	}
 }

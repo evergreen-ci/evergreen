@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -30,10 +31,7 @@ type s3Base struct {
 }
 
 func (c *s3Base) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding S3 parameters")
-	}
-	return nil
+	return errors.Wrapf(mapstructure.Decode(params, c), "error decoding S3 parameters")
 }
 
 func (c *s3Base) shouldRunOnBuildVariant(bv string) bool {
@@ -41,14 +39,11 @@ func (c *s3Base) shouldRunOnBuildVariant(bv string) bool {
 		return true
 	}
 
-	return util.StringSliceContains(c.BuildVariants, bv)
+	return utility.StringSliceContains(c.BuildVariants, bv)
 }
 
 func (c *s3Base) expandParams(conf *model.TaskConfig) error {
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
+	return errors.WithStack(util.ExpandValues(c, conf.Expansions))
 }
 
 func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, parallelOpts pail.ParallelBucketOptions) error {
@@ -125,8 +120,8 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		return nil
 	}
 
-	httpClient := util.GetHTTPClient()
-	defer util.PutHTTPClient(httpClient)
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
 		Workers:      runtime.NumCPU(),
