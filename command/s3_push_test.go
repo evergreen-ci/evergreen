@@ -62,7 +62,7 @@ func TestS3PushExecute(t *testing.T) {
 			conf.WorkDir = tmpDir
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.DisplayName))
+			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)
 			require.True(t, iter.Next(ctx))
 			item := iter.Item()
@@ -70,7 +70,7 @@ func TestS3PushExecute(t *testing.T) {
 			assert.Equal(t, filepath.Base(tmpFile.Name()), filepath.Base(item.Name()))
 			// Fix Windows file path separators
 			localPath := strings.Replace(filepath.Dir(item.Name()), "\\", "/", -1)
-			assert.Equal(t, conf.Task.S3Path(conf.Task.DisplayName), localPath)
+			assert.Equal(t, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName), localPath)
 			r, err := item.Get(ctx)
 			require.NoError(t, err)
 			defer func() {
@@ -100,7 +100,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.DisplayName))
+			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
 		},
@@ -122,7 +122,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.BuildVariants = []string{"other_build_variant"}
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.DisplayName))
+			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
 		},
