@@ -368,9 +368,9 @@ func amboyCmd() cli.Command {
 	)
 
 	opts := &amboyCLI.ServiceOptions{
-		BaseURL:          "http://localhost:2285",
-		ReportingPrefix:  "/amboy/remote/reporting",
-		ManagementPrefix: "/amboy/remote/pool",
+		BaseURL:                       "http://localhost:2285",
+		QueueManagementPrefix:         "/amboy/remote/management",
+		AbortablePoolManagementPrefix: "/amboy/remote/pool",
 	}
 
 	cmd := amboyCLI.Amboy(opts)
@@ -388,11 +388,11 @@ func amboyCmd() cli.Command {
 	cmd.Before = func(c *cli.Context) error {
 		opts.Client = util.GetHTTPClient()
 		if c.Bool(useLocalFlagName) {
-			opts.ReportingPrefix = "/amboy/local/reporting"
-			opts.ManagementPrefix = "/amboy/local/pool"
+			opts.QueueManagementPrefix = "/amboy/local/management"
+			opts.AbortablePoolManagementPrefix = "/amboy/local/pool"
 		} else if c.Bool(useGroupFlagName) {
-			opts.ReportingPrefix = "/amboy/group/reporting"
-			opts.ManagementPrefix = "/amboy/group/pool"
+			opts.QueueManagementPrefix = "/amboy/group/management"
+			opts.AbortablePoolManagementPrefix = "/amboy/group/pool"
 		}
 		return nil
 	}
