@@ -18,7 +18,7 @@ func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *t
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
-			Version: apiData.TaskConfig.Version.Id,
+			Version: apiData.TaskConfig.Task.Version,
 			Patches: []patch.ModulePatch{
 				{
 					ModuleName: "enterprise",

@@ -233,7 +233,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.Wrap(err, "error populating expansions")
 	}
 
-	config, err := model.NewTaskConfig(&testHost.Distro, v, project,
+	config, err := model.NewTaskConfig(&testHost.Distro, project,
 		taskOne, projectRef, nil, e)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create task config")
