@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -200,4 +201,57 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 	s.Equal([]string(nil), s.h.statuses)
 	s.True(s.h.startedAfter.Unix()-time.Now().AddDate(0, 0, -7).Unix() <= 0)
 	s.Equal(time.Time{}, s.h.finishedBefore)
+}
+
+func TestGetTaskSyncReadCredentials(t *testing.T) {
+	creds := evergreen.S3Credentials{
+		Key:    "key",
+		Secret: "secret",
+		Bucket: "bucket",
+	}
+	rh := makeTaskSyncReadCredentialsGetHandler(&data.MockConnector{
+		MockAdminConnector: data.MockAdminConnector{
+			MockSettings: &evergreen.Settings{
+				Providers: evergreen.CloudProviders{
+					AWS: evergreen.AWSConfig{
+						TaskSyncRead: creds,
+					},
+				},
+			},
+		},
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resp := rh.Run(ctx)
+	require.NotNil(t, resp)
+	respCreds, ok := resp.Data().(evergreen.S3Credentials)
+	require.True(t, ok)
+	assert.Equal(t, creds, respCreds)
+}
+
+func TestGetTaskSyncPath(t *testing.T) {
+	expected := task.Task{
+		Id:           "task_id",
+		Project:      "project",
+		Version:      "version",
+		BuildVariant: "build_variant",
+		DisplayName:  "name",
+	}
+	h := makeTaskSyncPathGetHandler(&data.MockConnector{
+		MockTaskConnector: data.MockTaskConnector{
+			CachedTasks: []task.Task{expected},
+		},
+	})
+	rh, ok := h.(*taskSyncPathGetHandler)
+	require.True(t, ok)
+	rh.taskID = expected.Id
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resp := rh.Run(ctx)
+
+	require.NotNil(t, resp)
+	path, ok := resp.Data().(string)
+	require.True(t, ok)
+	assert.Equal(t, path, expected.S3Path(expected.DisplayName))
 }

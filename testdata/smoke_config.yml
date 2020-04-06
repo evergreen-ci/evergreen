@@ -63,6 +63,3 @@ keys:
 repotracker:
   numnewreporevisionstofetch: 10
   maxreporevisionstosearch: 10
-
-service_flags:
-  background_cleanup: true

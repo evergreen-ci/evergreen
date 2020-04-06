@@ -195,6 +195,20 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Versi
 	}, nil
 }
 
+func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
+	var err error
+	var data []byte
+	_, file, _, _ := runtime.Caller(0)
+
+	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
+	if err != nil {
+		grip.Error(err)
+	}
+	proj := &serviceModel.Project{}
+	_, err = serviceModel.LoadProjectInto(data, "", proj)
+	return proj, err
+}
+
 func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
 	e := util.Expansions{
 		"foo": "bar",
@@ -674,4 +688,12 @@ func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int
 
 func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, bool) ([]string, error) {
 	return nil, nil
+}
+
+func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credentials, error) {
+	return &evergreen.S3Credentials{}, nil
+}
+
+func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
+	return "", nil
 }
