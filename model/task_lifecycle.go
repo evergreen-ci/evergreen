@@ -240,7 +240,8 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	if t.IsPartOfSingleHostTaskGroup() {
-		tasks, err := GetTasksInTaskGroup(t)
+		var tasks []task.Task
+		tasks, err = GetTasksInTaskGroup(t)
 		if err != nil {
 			return errors.Wrapf(err, "couldn't get tasks in group '%s'", t.TaskGroup)
 		}
