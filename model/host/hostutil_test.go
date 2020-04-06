@@ -1081,7 +1081,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +
 		" && sudo chown -R user /home/user/.evergreen.yml" +
-		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/.evergreen.yml" +
+		" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n\" > /home/user/.evergreen.yml" +
 		" && chmod +x /home/user/evergreen" +
 		" && cp /home/user/evergreen /home/user/cli_bin" +
 		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)"
