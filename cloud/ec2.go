@@ -953,7 +953,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 				"distro":        h.Distro.Id,
 				"volume":        attachedVolume.VolumeID,
 			}))
-			return err
+			return errors.Wrapf(err, "error updating volume '%s' expiration", v.ID)
 		}
 	}
 
