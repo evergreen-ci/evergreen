@@ -1030,19 +1030,7 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults
 	var tasksErrored []string
 
 	for _, t := range tasks {
-		p, err := FindProjectFromVersionID(t.Version)
-		if err != nil || p == nil {
-			tasksErrored = append(tasksErrored, t.Id)
-			grip.Error(message.Fields{
-				"task":    t.Id,
-				"status":  "failed",
-				"message": "error retrieving project",
-				"error":   err.Error(),
-			})
-			continue
-		}
-		err = TryResetTask(t.Id, user, evergreen.RESTV2Package, nil)
-		if err != nil {
+		if err := TryResetTask(t.Id, user, evergreen.RESTV2Package, nil); err != nil {
 			tasksErrored = append(tasksErrored, t.Id)
 			grip.Error(message.Fields{
 				"task":    t.Id,
