@@ -22,6 +22,8 @@ import (
 
 type projectValidator func(*model.Project) ValidationErrors
 
+type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
+
 type ValidationErrorLevel int64
 
 const (
@@ -95,6 +97,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateCreateHosts,
 	validateDuplicateTaskDefinition,
 	validateGenerateTasks,
+	validateTaskSyncCommands,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -102,7 +105,10 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
-	validateTaskSync,
+}
+
+var projectSettingsValidators = []projectSettingsValidator{
+	validateTaskSyncSettings,
 }
 
 func (vr ValidationError) Error() string {
@@ -182,6 +188,16 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
 	return validationErrs
+}
+
+// CheckProjectSettings checks the project configuration against the project
+// settings.
+func CheckProjectSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+	var errs ValidationErrors
+	for _, validateSettings := range projectSettingsValidators {
+		errs = append(errs, validateSettings(p, ref)...)
+	}
+	return errs
 }
 
 func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
@@ -1131,19 +1147,19 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
-	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
+	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3, Error)
 	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 50)...)
 	return errs
 }
 
-func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) (errs ValidationErrors) {
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if count, ok := ts[t.Name]; ok {
 				if count > times {
 					errs = append(errs, ValidationError{
 						Message: fmt.Sprintf("variant %s task %s may only call %s %d times but calls it %d times", bv.Name, t.Name, commandName, times, count),
-						Level:   Error,
+						Level:   level,
 					})
 				}
 			}
@@ -1174,19 +1190,161 @@ func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName s
 // does, the server will noop it.
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
-	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1)
+	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1, Error)
 }
 
-// validateTaskSync validates a project's task sync commands.
+// validateTaskSyncCommands validates project's task sync commands. It does not
+// check that the project settings allow task syncing - see
+// validateTaskSyncSettings.
 // kim: TODO: test
-// kim: TODO: validation that ProjectRef has this enabled? Idk how that would
-// work with the `evergreen validate` command, which has no awareness of the
-// project that this thing is associated with.
-func validateTaskSync(p *model.Project) ValidationErrors {
-	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
+func validateTaskSyncCommands(p *model.Project) ValidationErrors {
+	var errs ValidationErrors
+
+	getS3PullParameters := func(taskName string, c model.PluginCommandConf) (task, buildvariant string, ValidationErrors) {
+		i, ok := c.Params["task"]
+		if !ok {
+			return "", "", ValidationErrors{
+				{
+					Level:   Error,
+					Message: fmt.Sprintf("task %s with command %s needs task to pull from specified in parameters", taskName, c.Command),
+				},
+			}
+		}
+		taskName, ok := i.(string)
+		if !ok {
+			return "", "", ValidationErrors{
+				{
+					Level:   Error,
+					Message: fmt.Sprintf("task %s with command %s did not supply task to pull from as string argument, got %T", taskName, c.Command, i),
+				},
+			}
+		}
+		i, ok = c.Params["from_build_variant"]
+		if !ok {
+			return taskName, "", nil
+		}
+		buildVariantName, ok := i.(string)
+		if !ok {
+			return "", "", ValidationErrors{
+				{
+					Level: Error,
+					Message: fmt.Sprintf("task %s with command %s did not supply build variant to pull from as string argument, got %T", taskName, c.Command, i),
+				},
+			}
+		}
+		return taskName, buildVariantName, nil
+	}
+
+	s3PushFuncs := map[string]int{}
+	s3PullsFromTask := map[string]model.ProjectTask{}
+	// s3PullFuncs := map[string]*taskSyncParams{}
+	for funcName, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
+		for _, c := range cmds.List() {
+			if c.Command == evergreen.S3PushCommandName {
+				// initTaskSyncParams(s3PushFuncs, c.Command)
+				s3PushFuncs[funcName] += 1
+			} else if c.Command == evergreen.S3PullCommandName {
+				// getS3PullTaskName("", c)
+				// initTaskSyncParams(s3PullFuncs, c.Command)
+				// s3PullFuncs[funcName] += 1
+				// s3PullFuncs[funcName].timesCalled += 1
+			}
+		}
+	}
+
+	s3PushCalls := map[string]int{}
+	s3PullDependencies := map[string][]string{}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+			}
+			if c.Command == evergreen.S3PushCommandName {
+				s3PushCalls[t.Name] += 1
+			} else if c.Command == evergreen.S3PullCommandName {
+				// kim: TODO: keep track of build variant that is being pulled
+				// from
+				pullFromTaskName, _/*pullFromBuildVariant*/, getPullTaskErrs := getS3PullTaskName(t.Name, c)
+				if getPullTaskErrs != nil {
+					errs = append(errs, getPullTaskErrs...)
+					continue
+				}
+				for _, findTask := range p.Tasks {
+					if findTask.Name == pullFromTaskName {
+
+					}
+				}
+				s3PullsFromTask[t.Name] = pullFromTaskName
+				for _, dependency := range t.DependsOn {
+					s3PullDependencies[t.Name] = append(s3PullDependencies[t.Name], dependency.Name)
+				}
+			}
+		}
+	}
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			// kim: TODO: ensure that if no buildvariant is specified for task
+			// to pull, the s3.pull buildvariant runs the task.
+			// kim: TODO: ensure that if a buildvariant is specified for task to
+			// pull, the buildvariant runs the task.
+		}
+	}
+
+	for s3PullTaskName, pullFromTaskName := range s3PullsFromTask {
+		// The s3.pull task must call s3.push.
+		if _, ok := s3PushCalls[pullFromTaskName]; !ok {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("task %s uses command %s to pull from task %s but it does not contain command %s", s3PullTaskName, evergreen.S3PullCommandName, evergreen.S3PushCommandName),
+			})
+		}
+
+		// The s3.pull task must depend on the s3.push task.
+		if !util.StringSliceContains(taskS3PullDependsOn[s3PullTaskName], pullFromTaskName) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("task %s uses command %s to pull from task %s but it does not depend on the task", s3PullTaskName, evergreen.S3PullCommandName, evergreen.S3PushCommandName, pullFromTaskName),
+			})
+		}
+	}
+
 	// It's nonsensical to call s3.push multiple times in a task, since the
 	// earlier calls will be overwriten by the later ones.
-	return validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1)
-	// kim: TODO: s3.pull commands must refer to valid tasks with s3.push
-	// kim: TODO: s3.pull task must have dependency on s3.push task
+	errs = append(errs, validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1, Warning)...)
+
+	// kim: TODO:
+	// go through all tasks that call s3.pull
+	//	   - get params from PluginCommandConf
+	//     - check that task from s3.pull params refer to a real task, possibly on a
+	//       different buildvariant
+	//     - check that task contains an s3.push
+	//     - check that s3.pull task has a dependency on s3.push task
+	//     - check that both are invoked in same scenarios (i.e. patches vs
+	//     versions)
+	return errs
+}
+
+// validateTaskSyncSettings checks that task sync in the project config is valid
+// given the project's settings.
+func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+	var errs ValidationErrors
+	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
+	s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName)
+	if !ref.TaskSync.ConfigEnabled {
+		if len(s3PushCalls) != 0 {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
+			})
+		}
+		if len(s3PullCalls) != 0 {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
+			})
+		}
+	}
+	return errs
 }
