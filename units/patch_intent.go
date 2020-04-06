@@ -228,7 +228,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "can't get patched config")
 	}
 	if errs := validator.CheckProjectSyntax(project); len(errs) != 0 {
-		catcher := grip.NewBasicCatcher()
 		for _, validatorErr := range errs {
 			if validatorErr.Level == validator.Error {
 				j.gitHubError = InvalidConfig
@@ -238,7 +237,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if errs := validator.CheckProjectSettings(project, pref); len(errs) != 0 {
-		catcher := grip.NewBasicCatcher()
 		for _, validationErr := range errs {
 			if validationErr.Level == validator.Error {
 				j.gitHubError = InvalidConfig
