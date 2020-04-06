@@ -58,10 +58,12 @@ type Communicator interface {
 	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
-	// GetProjectRef loads the task's project.
+	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
+	// GetProject loads the project using the task's version ID
+	GetProject(context.Context, TaskData) (*model.Project, error)
 	// GetVersion loads the task's Version
 	GetVersion(context.Context, TaskData) (*model.Version, error)
 	// GetExpansions returns all expansions for the task known by the app server
@@ -199,4 +201,10 @@ type Communicator interface {
 
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
+
+	// GetTaskSyncReadCredentials returns the credentials to fetch task
+	// directory from S3.
+	GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error)
+	// GetTaskSyncPath returns the path to the task directory in S3.
+	GetTaskSyncPath(ctx context.Context, taskID string) (string, error)
 }

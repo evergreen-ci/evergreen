@@ -873,19 +873,13 @@ Evergreen - Distros
           </div>
           <div ng-show="activeDistro.is_virtual_workstation">
             <label class="distro-label">Icecream Scheduler Host:</label>
-            <input ng-required="activeDistro.is_virtual_workstation" ng-readonly="readOnly" name="icecreamSchedulerHost" type="text"
+            <input ng-readonly="readOnly" name="icecreamSchedulerHost" type="text"
               class="form-control" ng-model="activeDistro.icecream_settings.scheduler_host"
               placeholder="Host name to connect to the icecream scheduler">
-            <div class="icon fa fa-warning distro-error"
-              ng-show="form.icecreamSchedulerHost.$dirty && form.icecreamSchedulerHost.$error.required || form.icecreamSchedulerHost.$invalid"> Icecream scheduler host is required
-            </div><br>
             <label class="distro-label">Icecream Config File Path:</label>
-            <input ng-required="activeDistro.is_virtual_workstation" ng-readonly="readOnly" name="icecreamConfigPath" type="text"
+            <input ng-readonly="readOnly" name="icecreamConfigPath" type="text"
               class="form-control" ng-model="activeDistro.icecream_settings.config_path"
               placeholder="Path to the icecream config file">
-            <div class="icon fa fa-warning distro-error"
-              ng-show="form.icecreamConfigPath.$dirty && form.icecreamConfigPath.$error.required || form.icecreamConfigPath.$invalid"> Icecream config path is required
-            </div><br>
           </div>
           <p class="distro-checkbox checkbox">
             <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.use_legacy_agent">

@@ -383,6 +383,11 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	fetchClient := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+
+	// User data runs as the privileged user, so ensure that the binary has
+	// permissions that allow it to be modified after user data is finished.
+	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+
 	var postFetchClient string
 	var err error
 	if h.StartedBy == evergreen.User {
@@ -441,7 +446,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		)
 
 		bashCmds := append(writeSetupScriptCmds, setupJasperCmds...)
-		bashCmds = append(bashCmds, fetchClient, h.SetupCommand(), postFetchClient, markDone)
+		bashCmds = append(bashCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range bashCmds {
 			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
@@ -469,9 +474,19 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 
 	bashCmds := append(bashPrefix, setupScriptCmds)
 	bashCmds = append(bashCmds, writeCredentialsCmds, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
-	bashCmds = append(bashCmds, fetchClient, postFetchClient, markDone)
+	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+}
+
+// changeOwnerCommand returns the command to modify the given file on the host
+// to be owned by the distro owner.
+func (h *Host) changeOwnerCommand(path string) string {
+	cmd := fmt.Sprintf("chown -R %s %s", h.Distro.User, path)
+	if h.Distro.IsWindows() {
+		return cmd
+	}
+	return "sudo " + cmd
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
@@ -1022,11 +1037,13 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
+		// We have to do this because the evergreen config file is already baked
+		// into the AMI and owned by the privileged user.
+		h.changeOwnerCommand(h.spawnHostConfigFile()),
 		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
+		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
-		fmt.Sprintf("chown -R %s %s", h.Distro.User, h.spawnHostConfigDir()),
-		fmt.Sprintf("chmod +x %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName())),
 	}, " && ")
 }
 

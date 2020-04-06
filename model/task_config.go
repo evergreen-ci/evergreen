@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -18,7 +17,6 @@ import (
 
 type TaskConfig struct {
 	Distro          *distro.Distro
-	Version         *Version
 	ProjectRef      *ProjectRef
 	Project         *Project
 	Task            *task.Task
@@ -28,7 +26,7 @@ type TaskConfig struct {
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout
-	S3Data          apimodels.S3TaskSetupData
+	TaskSync        evergreen.S3Credentials
 
 	mu sync.RWMutex
 }
@@ -62,7 +60,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
-func NewTaskConfig(d *distro.Distro, v *Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
@@ -80,7 +78,6 @@ func NewTaskConfig(d *distro.Distro, v *Version, p *Project, t *task.Task, r *Pr
 
 	taskConfig := &TaskConfig{
 		Distro:       d,
-		Version:      v,
 		ProjectRef:   r,
 		Project:      p,
 		Task:         t,
@@ -117,18 +114,9 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	return dir, nil
 }
 
-// S3Path returns the path to the working directory dump in S3 for a task.
-func (c *TaskConfig) S3Path() string {
-	return filepath.Join(c.ProjectRef.Identifier, c.Task.Version, c.Task.BuildVariant, c.Task.DisplayName, "latest")
-}
-
 func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if t == nil {
 		return nil, errors.New("no task to make a TaskConfig from")
-	}
-	v, err := VersionFindOne(VersionById(t.Version))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding version")
 	}
 	dat, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
@@ -143,6 +131,10 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	d, err := distro.FindOne(distro.ById(distroIDs[0]))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding distro")
+	}
+	v, err := VersionFindOne(VersionById(t.Version))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
 	}
 	proj, _, err := LoadProjectForVersion(v, v.Identifier, true)
 	if err != nil {
@@ -177,7 +169,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}
 
-	tc, err := NewTaskConfig(&d, v, proj, t, projRef, p, e)
+	tc, err := NewTaskConfig(&d, proj, t, projRef, p, e)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making TaskConfig")
 	}

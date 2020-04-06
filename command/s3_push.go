@@ -11,20 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
 // s3Push is a command to upload the task directory to s3.
 type s3Push struct {
-	// ExcludeFilter contains a regexp describing files that should be
-	// excluded from the operation.
-	ExcludeFilter string `mapstructure:"exclude_filter" plugin:"expand"`
-	// BuildVariants contains all build variants this command should be run on.
-	BuildVariants []string `mapstructure:"build_variants"`
-	MaxRetries    uint     `mapstructure:"max_retries"`
-
-	bucket pail.Bucket
+	s3Base
 	base
 }
 
@@ -34,16 +26,9 @@ func (*s3Push) Name() string {
 	return "s3.push"
 }
 
-const (
-	defaultS3MaxRetries uint = 10
-)
-
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
+	if err := c.s3Base.ParseParams(params); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
-	}
-	if c.MaxRetries == 0 {
-		c.MaxRetries = defaultS3MaxRetries
 	}
 	return nil
 }
@@ -53,18 +38,20 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
 
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-
 	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping s3.push for task directory for build variant '%s'", conf.BuildVariant.Name)
+		logger.Task().Infof("Skipping s3.push for build variant '%s'", conf.BuildVariant.Name)
 		return nil
 	}
 
-	if err := c.createBucket(httpClient, conf); err != nil {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
+		Workers:      runtime.NumCPU(),
+		DeleteOnSync: true,
+	}); err != nil {
 		return errors.Wrap(err, "could not set up S3 task bucket")
 	}
-
 	if err := c.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "could not find S3 task bucket")
 	}
@@ -73,14 +60,14 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err != nil {
 		return errors.Wrap(err, "could not get task working directory")
 	}
-	putMsg := "Pushing task directory files into S3"
+	pushMsg := "Pushing task directory files into S3"
 	if c.ExcludeFilter != "" {
-		putMsg += ", excluding files matching filter " + c.ExcludeFilter
+		pushMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
-	logger.Task().Infof(putMsg)
+	logger.Task().Infof(pushMsg)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  conf.S3Path(),
+		Remote:  conf.Task.S3Path(conf.Task.DisplayName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")

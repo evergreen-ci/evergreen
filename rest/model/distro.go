@@ -602,6 +602,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
+
 	i, err = apiDistro.IcecreamSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIIcecreamSettings to distro.IcecreamSettings")

@@ -217,7 +217,7 @@ type userPermissionsDeleteHandler struct {
 }
 
 func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
-	return &userPermissionsPostHandler{
+	return &userPermissionsDeleteHandler{
 		sc: sc,
 		rm: rm,
 	}

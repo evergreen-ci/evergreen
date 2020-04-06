@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -479,6 +480,14 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 		}
 	}
 	return p, pp, nil
+}
+
+func GetProjectFromBSON(data []byte) (*Project, error) {
+	pp := &ParserProject{}
+	if err := bson.Unmarshal(data, pp); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
+	}
+	return TranslateProject(pp)
 }
 
 // LoadProjectInto loads the raw data from the config file into project

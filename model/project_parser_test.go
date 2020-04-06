@@ -15,6 +15,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1364,6 +1365,32 @@ func TestTryUpsert(t *testing.T) {
 			testCase(t)
 		})
 	}
+}
+
+func TestParserProjectRoundtrip(t *testing.T) {
+	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+	yml, err := ioutil.ReadFile(filepath)
+	assert.NoError(t, err)
+
+	original, err := createIntermediateProject(yml)
+	assert.NoError(t, err)
+
+	// to and from yaml
+	yamlBytes, err := yaml.Marshal(original)
+	assert.NoError(t, err)
+	pp := &ParserProject{}
+	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
+
+	// to and from BSON
+	bsonBytes, err := bson.Marshal(original)
+	assert.NoError(t, err)
+	bsonPP := &ParserProject{}
+	assert.NoError(t, bson.Unmarshal(bsonBytes, bsonPP))
+
+	// ensure bson actually worked
+	newBytes, err := yaml.Marshal(bsonPP)
+	assert.NoError(t, err)
+	assert.True(t, bytes.Equal(yamlBytes, newBytes))
 }
 
 func TestParserProjectPersists(t *testing.T) {

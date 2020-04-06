@@ -186,16 +186,12 @@ func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 		SplunkServerURL:   as.Settings.Splunk.ServerURL,
 		SplunkClientToken: as.Settings.Splunk.Token,
 		SplunkChannel:     as.Settings.Splunk.Channel,
-		S3Key:             as.Settings.Providers.AWS.S3Key,
-		S3Secret:          as.Settings.Providers.AWS.S3Secret,
-		S3Bucket:          as.Settings.Providers.AWS.Bucket,
-		S3Task: apimodels.S3TaskSetupData{
-			Key:    as.Settings.Providers.AWS.S3TaskKey,
-			Secret: as.Settings.Providers.AWS.S3TaskSecret,
-			Bucket: as.Settings.Providers.AWS.S3TaskBucket,
-		},
-		S3Base:       as.Settings.Providers.AWS.S3BaseURL,
-		LogkeeperURL: as.Settings.LoggerConfig.LogkeeperURL,
+		S3Key:             as.Settings.Providers.AWS.S3.Key,
+		S3Secret:          as.Settings.Providers.AWS.S3.Secret,
+		S3Bucket:          as.Settings.Providers.AWS.S3.Bucket,
+		TaskSync:          as.Settings.Providers.AWS.TaskSync,
+		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
+		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
 	}
 	gimlet.WriteJSON(w, out)
 }

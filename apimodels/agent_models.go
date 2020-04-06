@@ -70,31 +70,16 @@ type ExpansionVars struct {
 }
 
 type AgentSetupData struct {
-	SumoLogicEndpoint string          `json:"sumo_logic_endpoint"`
-	SplunkServerURL   string          `json:"splunk_server_url"`
-	SplunkClientToken string          `json:"splunk_client_token"`
-	SplunkChannel     string          `json:"splunk_channel"`
-	S3Base            string          `json:"s3_base"`
-	S3Key             string          `json:"s3_key"`
-	S3Secret          string          `json:"s3_secret"`
-	S3Bucket          string          `json:"s3_bucket"`
-	S3Task            S3TaskSetupData `json:"s3_task"`
-	LogkeeperURL      string          `json:"logkeeper_url"`
-}
-
-// S3TaskSetupData contains information for tasks running S3 commands.
-type S3TaskSetupData struct {
-	Key    string `json:"key"`
-	Secret string `json:"secret"`
-	Bucket string `json:"bucket"`
-}
-
-func (d *S3TaskSetupData) Validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(d.Key == "", "S3 key is missing")
-	catcher.NewWhen(d.Secret == "", "S3 secret is missing")
-	catcher.NewWhen(d.Bucket == "", "S3 bucket name is missing")
-	return catcher.Resolve()
+	SumoLogicEndpoint string                  `json:"sumo_logic_endpoint"`
+	SplunkServerURL   string                  `json:"splunk_server_url"`
+	SplunkClientToken string                  `json:"splunk_client_token"`
+	SplunkChannel     string                  `json:"splunk_channel"`
+	S3Base            string                  `json:"s3_base"`
+	S3Key             string                  `json:"s3_key"`
+	S3Secret          string                  `json:"s3_secret"`
+	S3Bucket          string                  `json:"s3_bucket"`
+	TaskSync          evergreen.S3Credentials `json:"task_sync"`
+	LogkeeperURL      string                  `json:"logkeeper_url"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

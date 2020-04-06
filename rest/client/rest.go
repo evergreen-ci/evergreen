@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -609,7 +610,7 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	info := requestInfo{
 		method:  http.MethodPatch,
 		version: apiVersion2,
-		path:    fmt.Sprintf("distros/%s/execute", distro),
+		path:    fmt.Sprintf("/distros/%s/execute", distro),
 	}
 
 	var result struct {
@@ -1214,4 +1215,58 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	}
 
 	return result, nil
+}
+
+func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "/task/sync_read_credentials",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+			return nil, errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return nil, errors.Wrap(respErr, "problem getting task read-only credentials")
+	}
+	creds := &evergreen.S3Credentials{}
+	if err := util.ReadJSONInto(resp.Body, creds); err != nil {
+		return nil, errors.Wrap(err, "problem reading credentials from response body")
+	}
+
+	return creds, nil
+}
+
+func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/tasks/%s/sync_path", taskID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &respErr); err != nil {
+			return "", errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return "", errors.Wrap(respErr, "problem getting task sync path")
+	}
+	var path string
+	if err = util.ReadJSONInto(resp.Body, &path); err != nil {
+		return "", errors.Wrap(err, "problem reading task sync path from response body")
+	}
+
+	return path, nil
 }

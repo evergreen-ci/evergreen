@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -77,20 +78,32 @@ type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
-	S3Key    string `bson:"s3_key" json:"s3_key" yaml:"s3_key"`
-	S3Secret string `bson:"s3_secret" json:"s3_secret" yaml:"s3_secret"`
-	Bucket   string `bson:"bucket" json:"bucket" yaml:"bucket"`
-	// Data for agents storing task data
-	S3TaskKey    string `bson:"s3_task_key" json:"s3_task_key" yaml:"s3_task_key"`
-	S3TaskSecret string `bson:"s3_task_secret" json:"s3_task_secret" yaml:"s3_task_secret"`
-	S3TaskBucket string `bson:"s3_task_bucket" json:"s3_task_bucket" yaml:"s3_task_bucket"`
-	S3BaseURL    string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	S3 S3Credentials `bson:"s3_credentials"`
+	// TaskSync stores credentials for storing task data in S3.
+	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
+	// TaskSyncRead stores credentials for reading task data in S3.
+	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
+	S3BaseURL    string        `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
+}
+
+type S3Credentials struct {
+	Key    string `bson:"key" json:"key" yaml:"key"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
+}
+
+func (c *S3Credentials) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(c.Key == "", "key must not be empty")
+	catcher.NewWhen(c.Secret == "", "secret must not be empty")
+	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
+	return catcher.Resolve()
 }
 
 // DockerConfig stores auth info for Docker.
