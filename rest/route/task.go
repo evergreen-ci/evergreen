@@ -330,7 +330,7 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
-	return gimlet.NewJSONResponse(t.S3Path(t.DisplayName))
+	return gimlet.NewJSONResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
 // GET /task/sync_read_credentials

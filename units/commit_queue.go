@@ -258,6 +258,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	errs := validator.CheckProjectSyntax(projectConfig)
+	errs = append(errs, validator.CheckProjectSettings(projectConfig, projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationError := range errs {
 		if validationError.Level == validator.Error {
@@ -354,7 +355,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	if err = addMergeTaskAndVariant(patchDoc, project); err != nil {
+	if err = addMergeTaskAndVariant(patchDoc, project, projectRef); err != nil {
 		j.logError(err, "can't set patch project config", nextItem)
 		j.dequeue(cq, nextItem)
 		return
@@ -581,7 +582,7 @@ func validateBranch(branch *github.Branch) error {
 	return nil
 }
 
-func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
+func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving Evergreen config")
@@ -656,6 +657,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
+	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationError := range validationErrors {
 		if validationError.Level == validator.Error {

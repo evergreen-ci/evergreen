@@ -1324,14 +1324,6 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 	return ts
 }
 
-// kim: TODO:
-// go through all tasks that call s3.pull
-//	   - get params from PluginCommandConf
-//     - check that task from s3.pull params refer to a real task, possibly on a
-//       different buildvariant
-//     - check that task contains an s3.push
-//     - check that s3.pull task has a dependency on s3.push task
-
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
 func (p *Project) IsGenerateTask(taskName string) bool {

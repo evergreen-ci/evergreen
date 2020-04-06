@@ -1193,30 +1193,34 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1, Error)
 }
 
-func validateTaskSyncCommand(p *model.Project) ValidationErrors {
+// validateTaskSyncCommands validates that the task sync operations are valid.
+// In particular, s3.push should be called at most once per task and s3.pull
+// should refer to a valid task running s3.push.
+// TODO (EVG-7736): add validation to ensure referential integrity of s3.pull to
+// a valid s3.push task.
+func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.S3PushCommandName)
 	return validateTimesCalledPerTask(p, ts, evergreen.S3PushCommandName, 1, Warning)
 }
 
-// validateTaskSyncSettings checks that task sync in the project config is valid
-// given the project's settings.
+// validateTaskSyncSettings checks that task sync in the project settings have
+// enabled task sync for the config.
 func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+	if ref.TaskSync.ConfigEnabled {
+		return nil
+	}
 	var errs ValidationErrors
-	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
-	s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName)
-	if !ref.TaskSync.ConfigEnabled {
-		if len(s3PushCalls) != 0 {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
-			})
-		}
-		if len(s3PullCalls) != 0 {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
-			})
-		}
+	if s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName); len(s3PushCalls) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
+		})
+	}
+	if s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName); len(s3PullCalls) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
+		})
 	}
 	return errs
 }
