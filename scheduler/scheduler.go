@@ -175,10 +175,13 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			taskGroupInfo = info
 		} else {
 			taskGroupInfo = model.TaskGroupInfo{
-				Name:             name,
-				Count:            1,
-				MaxHosts:         task.TaskGroupMaxHosts,
-				ExpectedDuration: duration,
+				Name:     name,
+				MaxHosts: task.TaskGroupMaxHosts,
+			}
+
+			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+				taskGroupInfo.Count++
+				taskGroupInfo.ExpectedDuration += duration
 			}
 		}
 
