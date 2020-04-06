@@ -148,11 +148,10 @@ func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user s
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem fetching converting patch")
+			return nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
-
 	return apiPatches, nil
 }
 
