@@ -142,7 +142,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
 	var isAliasQueue bool
-	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
+	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
 		depCache[t.Id] = t
@@ -157,48 +157,54 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 		duration := task.FetchExpectedDuration().Average
 
-		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
-			task.ExpectedDuration = duration
-			distroExpectedDuration += duration
-		}
-
 		if task.DistroId != distroID {
 			isAliasQueue = true
 		}
 
-		var taskGroupInfo model.TaskGroupInfo
-		if info, exists := taskGroupInfosMap[name]; exists {
+		var exists bool
+		var info *model.TaskGroupInfo
+		if info, exists = taskGroupInfosMap[name]; exists {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				info.Count++
 				info.ExpectedDuration += duration
 			}
-			taskGroupInfo = info
-		} else {
-			taskGroupInfo = model.TaskGroupInfo{
+		} else if task.TaskGroup != "" {
+			info := &model.TaskGroupInfo{
 				Name:     name,
 				MaxHosts: task.TaskGroupMaxHosts,
 			}
 
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
-				taskGroupInfo.Count++
-				taskGroupInfo.ExpectedDuration += duration
+				info.Count++
+				info.ExpectedDuration += duration
 			}
+
+		}
+
+		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+			task.ExpectedDuration = duration
+			distroExpectedDuration += duration
 		}
 
 		if duration >= maxDurationThreshold {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
-				taskGroupInfo.CountOverThreshold++
-				taskGroupInfo.DurationOverThreshold += duration
+				if info != nil {
+					info.CountOverThreshold++
+					info.DurationOverThreshold += duration
+				}
 				distroCountOverThreshold++
 			}
 		}
-		taskGroupInfosMap[name] = taskGroupInfo
+
+		if name != "" && info != nil {
+			taskGroupInfosMap[name] = info
+		}
 		tasks[i] = task
 	}
 
 	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))
-	for _, info := range taskGroupInfosMap {
-		taskGroupInfos = append(taskGroupInfos, info)
+	for tgName := range taskGroupInfosMap {
+		taskGroupInfos = append(taskGroupInfos, *taskGroupInfosMap[tgName])
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
