@@ -52,7 +52,7 @@ func ConvertToComposerWithLevel(p level.Priority, message interface{}) Composer 
 func convert(p level.Priority, message interface{}, overRideLevel bool) Composer {
 	switch message := message.(type) {
 	case Composer:
-		if overRideLevel || message.Priority() == level.Invalid {
+		if overRideLevel || message.Priority() != level.Invalid {
 			_ = message.SetPriority(p)
 		}
 		return message
