@@ -551,13 +551,13 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		sender, err = send.NewJiraLogger(ctx, jira.ToJiraOptions(), levelInfo)
+		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira issue logger")
 		}
 		e.senders[SenderJIRAIssue] = sender
 
-		sender, err = send.NewJiraCommentLogger(ctx, "", jira.ToJiraOptions(), levelInfo)
+		sender, err = send.NewJiraCommentLogger(ctx, "", jira.Export(), levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira comment logger")
 		}

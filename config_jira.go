@@ -85,7 +85,7 @@ func (c JiraConfig) GetHostURL() string {
 	return "https://" + c.Host
 }
 
-func (c JiraConfig) ToJiraOptions() *send.JiraOptions {
+func (c JiraConfig) Export() *send.JiraOptions {
 	return &send.JiraOptions{
 		Name:    "evergreen",
 		BaseURL: c.GetHostURL(),
