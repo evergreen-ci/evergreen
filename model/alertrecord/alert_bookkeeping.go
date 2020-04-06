@@ -36,6 +36,7 @@ const (
 	SlowProvisionWarning       = "slow_provision"
 	ProvisionFailed            = "provision_failed"
 	spawnHostWarningTemplate   = "spawn_%dhour"
+	volumeWarningTemplate      = "volume_%dhour"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"
@@ -45,6 +46,7 @@ type AlertRecord struct {
 	SubscriptionID      string           `bson:"subscription_id"`
 	Type                string           `bson:"type"`
 	HostId              string           `bson:"host_id,omitempty"`
+	VolumeId            string           `bson:"volume_id,omitempty"`
 	TaskId              string           `bson:"task_id,omitempty"`
 	TaskStatus          string           `bson:"task_status,omitempty"`
 	ProjectId           string           `bson:"project_id,omitempty"`
@@ -71,6 +73,7 @@ var (
 	TaskIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "TaskId")
 	taskStatusKey          = bsonutil.MustHaveTag(AlertRecord{}, "TaskStatus")
 	HostIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "HostId")
+	VolumeIdKey            = bsonutil.MustHaveTag(AlertRecord{}, "VolumeId")
 	TaskNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TaskName")
 	VariantKey             = bsonutil.MustHaveTag(AlertRecord{}, "Variant")
 	ProjectIdKey           = bsonutil.MustHaveTag(AlertRecord{}, "ProjectId")
@@ -195,6 +198,14 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 	return FindOne(db.Query(q).Limit(1))
 }
 
+func FindByVolumeExpirationWithHours(volumeID string, hours int) (*AlertRecord, error) {
+	alerttype := fmt.Sprintf(volumeWarningTemplate, hours)
+	q := subscriptionIDQuery(legacyAlertsSubscription)
+	q[TypeKey] = alerttype
+	q[VolumeIdKey] = volumeID
+	return FindOne(db.Query(q).Limit(1))
+}
+
 func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
@@ -219,6 +230,19 @@ func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alerttype,
 		HostId:         hostID,
+		AlertTime:      time.Now(),
+	}
+
+	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", alerttype)
+}
+
+func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
+	alerttype := fmt.Sprintf(volumeWarningTemplate, hours)
+	record := AlertRecord{
+		Id:             mgobson.NewObjectId(),
+		SubscriptionID: legacyAlertsSubscription,
+		Type:           alerttype,
+		VolumeId:       volumeID,
 		AlertTime:      time.Now(),
 	}
 

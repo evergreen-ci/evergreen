@@ -44,10 +44,10 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 		bson.M{VolumeExpirationKey: v.Expiration})
 }
 
-func FindVolumesToDelete() ([]Volume, error) {
+func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{VolumeExpirationKey: bson.M{"$lte": time.Now()}},
+			"$match": bson.M{VolumeExpirationKey: bson.M{"$lte": expirationTime}},
 		},
 		{
 			"$lookup": bson.M{
@@ -59,12 +59,15 @@ func FindVolumesToDelete() ([]Volume, error) {
 		},
 		{
 			"$project": bson.M{
-				"hosts": bson.M{"$filter": bson.M{
-					"input": "$hosts",
-					"as":    "host",
-					"cond":  bson.M{"$ne": []string{"$$host.status", evergreen.HostTerminated}},
+				"hosts": bson.M{
+					"$filter": bson.M{
+						"input": "$hosts",
+						"as":    "host",
+						"cond":  bson.M{"$ne": []string{"$$host.status", evergreen.HostTerminated}},
+					},
 				},
-				}},
+				VolumeExpirationKey: 1,
+			},
 		},
 		{
 			"$match": bson.M{"$expr": bson.M{"$eq": bson.A{bson.M{"$size": "$hosts"}, 0}}},

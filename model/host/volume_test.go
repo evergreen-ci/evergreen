@@ -14,7 +14,7 @@ func TestFindVolumesToDelete(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 
 	volumes := []Volume{
-		{ID: "v0", Expiration: time.Now().Add(time.Hour)},
+		{ID: "v0", Expiration: time.Date(2010, time.December, 10, 23, 0, 0, 0, time.UTC)},
 		{ID: "v1", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 		{ID: "v2", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 		{ID: "v3", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
@@ -39,7 +39,7 @@ func TestFindVolumesToDelete(t *testing.T) {
 		require.NoError(t, h.Insert())
 	}
 
-	toDelete, err := FindVolumesToDelete()
+	toDelete, err := FindVolumesToDelete(time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	assert.Len(t, toDelete, 2)
 	expectedVolumeIDs := []string{"v2", "v3"}

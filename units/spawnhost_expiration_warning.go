@@ -114,7 +114,7 @@ func tryHostNotifcation(h *host.Host, numHours int) error {
 		return err
 	}
 	if shouldExec {
-		event.LogExpirationWarningSent(h.Id)
+		event.LogSpawnhostExpirationWarningSent(h.Id)
 		if err = alertrecord.InsertNewSpawnHostExpirationRecord(h.Id, numHours); err != nil {
 			return err
 		}
