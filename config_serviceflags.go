@@ -29,7 +29,7 @@ type ServiceFlags struct {
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
 	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
 	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled  bool `bson:"background_cleanup" json:"background_cleanup"`
+	BackgroundCleanupDisabled  bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
