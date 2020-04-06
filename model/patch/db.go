@@ -109,10 +109,7 @@ func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuse
 		AuthorKey: user,
 	}
 	if patchName != "" {
-		queryInterface["$or"] = []bson.M{
-			{DescriptionKey: bson.M{"$regex": patchName, "$options": "i"}},
-			{NumberKey: bson.M{"$regex": patchName, "$options": "i"}},
-		}
+		queryInterface[DescriptionKey] = bson.M{"$regex": patchName, "$options": "i"}
 	}
 	if len(statuses) > 0 {
 		queryInterface[StatusKey] = bson.M{"$in": statuses}
