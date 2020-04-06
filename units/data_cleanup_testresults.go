@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,7 +13,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/sometimes"
 )
 
@@ -50,7 +48,7 @@ func makeTestResultsCleanupJob() *dataCleanupTestResults {
 func NewTestResultsCleanupJob(ts time.Time) amboy.Job {
 	j := makeTestResultsCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", testResultsCleanupJobName, ts.Format(TSFormat)))
-	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 50 * time.Second})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
 	return j
 }
 
@@ -68,7 +66,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 		return
 	}
 
-	if flags.BackgroundCleanup {
+	if flags.BackgroundCleanupDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job_type": testResultsCleanupJobName,
 			"job_id":   j.ID(),
@@ -85,39 +83,24 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 
 	totalDocs, _ := j.env.DB().Collection(testresult.Collection).EstimatedDocumentCount(ctx)
 
-	lock := &sync.Mutex{}
-	wg := &sync.WaitGroup{}
-	for i := 0; i < 4; i++ {
-		wg.Add(1)
-		go func() {
-			defer func() { j.AddError(recovery.HandlePanicWithError(recover(), nil, "double batch deletes")) }()
-			defer wg.Done()
-
-			for {
-				select {
-				case <-ctx.Done():
-					break
-				default:
-					if time.Since(startAt) >= 45*time.Second {
-						break
-					}
-					opStart := time.Now()
-					num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
-					j.AddError(err)
-					opTime := time.Since(opStart)
-					func() {
-						lock.Lock()
-						defer lock.Unlock()
-						batches++
-						numDocs += num
-						timeSpent += opTime
-					}()
-				}
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		default:
+			if time.Since(startAt) >= 50*time.Second {
+				break
 			}
-		}()
+			opStart := time.Now()
+			num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
+			j.AddError(err)
+
+			batches++
+			numDocs += num
+			timeSpent += time.Since(opStart)
+		}
 	}
 
-	wg.Wait()
 	grip.Info(message.Fields{
 		"job_id":             j.ID(),
 		"job_type":           j.Type().Name,
