@@ -1462,10 +1462,11 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	return tasks[0].LocalTestResults, nil
 }
 
-// SetResetWhenFinished requests that a display task reset itself when finished. Will mark itself as system failed
+// SetResetWhenFinished requests that a display task or single-host task group
+// reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
-	if !t.DisplayOnly {
-		return errors.Errorf("%s is not a display task", t.Id)
+	if !t.DisplayOnly && !t.IsPartOfSingleHostTaskGroup() {
+		return errors.Errorf("%s is not a display task or in a task group", t.Id)
 	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
@@ -1762,6 +1763,10 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 		variants = append(variants, doc["_id"])
 	}
 	return variants, nil
+}
+
+func (t *Task) IsPartOfSingleHostTaskGroup() bool {
+	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
 }
 
 func (t *Task) IsPartOfDisplay() bool {

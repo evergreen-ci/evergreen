@@ -1038,6 +1038,27 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	return tg, nil
 }
 
+// getTasksInTaskGroup finds the TaskGroup for the given task, and returns all tasks in the group
+func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
+	proj, err := FindProjectFromVersionID(t.Version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+	}
+	tg := proj.FindTaskGroup(t.TaskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("problem finding task group '%s'", t.TaskGroup)
+	}
+
+	tasks, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, tg.Tasks, t.BuildVariant))
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
+	}
+	if len(tasks) == 0 {
+		return nil, errors.New("no tasks in task group")
+	}
+	return tasks, nil
+}
+
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {
