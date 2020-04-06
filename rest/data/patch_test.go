@@ -630,11 +630,9 @@ func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
 		}
 		return nil
 	}
-
 	s.teardown = func() error {
 		return db.Clear(patch.Collection)
 	}
-
 	suite.Run(t, s)
 }
 
