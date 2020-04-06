@@ -264,8 +264,8 @@ func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, 
 	if err != nil {
 		return patchPointers, InternalServerError.Send(ctx, err.Error())
 	}
-	for _, p := range patches {
-		patchPointers = append(patchPointers, &p)
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
 	}
 	return patchPointers, nil
 }
