@@ -121,6 +121,14 @@ func ActivatePreviousTask(taskId, caller string) error {
 	return errors.WithStack(SetActiveState(prevTask.Id, caller, true))
 }
 
+func resetManyTasks(tasks []task.Task, caller string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, t := range tasks {
+		catcher.Add(resetTask(t.Id, caller))
+	}
+	return catcher.Resolve()
+}
+
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId, caller string) error {
 	t, err := task.FindOneNoMerge(task.ById(taskId))
@@ -228,9 +236,18 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		}
 	}
 
-	if err = resetTask(t.Id, user); err != nil {
+	if t.IsPartOfSingleHostTaskGroup() {
+		tasks, err := GetTasksInTaskGroup(t)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't get tasks in group '%s'", t.TaskGroup)
+		}
+		if err = resetManyTasks(tasks, user); err != nil {
+			return errors.WithStack(err)
+		}
+	} else if err = resetTask(t.Id, user); err != nil {
 		return err
 	}
+
 	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 		event.LogTaskRestarted(t.Id, t.Execution, user)
 	} else {
@@ -476,6 +493,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 				"time_taken": t.TimeTaken,
 			}))
 			return errors.Wrap(err, "error updating build")
+		}
+		if err = checkResetSingleHostTaskGroup(t); err != nil {
+			return errors.Wrap(err, "problem resetting task group")
 		}
 	}
 
@@ -1093,6 +1113,11 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
 		return errors.Wrap(checkResetDisplayTask(t.DisplayTask), "can't check display task reset")
+	} else if t.IsPartOfSingleHostTaskGroup() {
+		if err = t.SetResetWhenFinished(); err != nil {
+			return errors.Wrap(err, "can't mark task group for reset")
+		}
+		return errors.Wrap(checkResetSingleHostTaskGroup(t), "can't check task group reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &t.Details), "problem resetting task")
@@ -1181,25 +1206,53 @@ func UpdateDisplayTask(t *task.Task) error {
 	return nil
 }
 
+func checkResetSingleHostTaskGroup(t *task.Task) error {
+	if !t.IsPartOfSingleHostTaskGroup() {
+		return nil
+	}
+	tasks, err := GetTasksInTaskGroup(t)
+	if err != nil {
+		return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
+	}
+	shouldReset := false
+	for _, tgTask := range tasks {
+		if tgTask.ResetWhenFinished {
+			shouldReset = true
+		}
+		if tgTask.Blocked() { // should restart if tasks are blocked
+			break
+		}
+		if !tgTask.IsFinished() { // not finished and not blocked so don't restart
+			return nil
+		}
+	}
+
+	if !shouldReset { // no task in task group has requested a reset
+		return nil
+	}
+	details := &apimodels.TaskEndDetail{
+		Type:   evergreen.CommandTypeSystem,
+		Status: evergreen.TaskFailed,
+	}
+	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting task group")
+}
+
 func checkResetDisplayTask(t *task.Task) error {
-	finishedNow := true
+	if !t.ResetWhenFinished {
+		return nil
+	}
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrapf(err, "can't get exec tasks for '%s'", t.Id)
 	}
 	for _, execTask := range execTasks {
 		if !execTask.IsFinished() {
-			finishedNow = false
+			return nil // all tasks not finished
 		}
 	}
-
-	if finishedNow && t.ResetWhenFinished {
-		details := &apimodels.TaskEndDetail{
-			Type:   evergreen.CommandTypeSystem,
-			Status: evergreen.TaskFailed,
-		}
-		return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
+	details := &apimodels.TaskEndDetail{
+		Type:   evergreen.CommandTypeSystem,
+		Status: evergreen.TaskFailed,
 	}
-
-	return nil
+	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
 }
