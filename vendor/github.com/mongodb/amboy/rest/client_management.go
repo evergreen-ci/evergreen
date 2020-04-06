@@ -130,6 +130,34 @@ func (c *ManagementClient) RecentJobErrors(ctx context.Context, jobType string, 
 	return out, nil
 }
 
+// MarkComplete marks the job with the given name complete.
+func (c *ManagementClient) MarkComplete(ctx context.Context, name string) error {
+	path := fmt.Sprintf("/jobs/mark_complete/%s", name)
+	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem building request")
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error processing request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var msg string
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			msg = errors.Wrap(err, "problem reading response body").Error()
+		} else {
+			msg = string(data)
+		}
+		return errors.Errorf("status code '%s' returned with message: '%s'", resp.Status, msg)
+	}
+
+	return nil
+}
+
 // MarkCompleteByType marks all jobs of the given type complete.
 func (c *ManagementClient) MarkCompleteByType(ctx context.Context, jobType string) error {
 	path := fmt.Sprintf("/jobs/mark_complete_by_type/%s", jobType)
@@ -148,7 +176,7 @@ func (c *ManagementClient) MarkCompleteByType(ctx context.Context, jobType strin
 		var msg string
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			msg = fmt.Sprintf("problem reading response body: '%s'", err.Error())
+			msg = errors.Wrap(err, "problem reading response body").Error()
 		} else {
 			msg = string(data)
 		}
