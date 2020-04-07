@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -891,6 +892,18 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 		baseTaskMetadata.BaseTaskDuration = nil
 	}
 	return &baseTaskMetadata, nil
+}
+
+func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask) (*string, error) {
+	host, err := host.FindOne(host.ById(*at.HostId))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *at.Id))
+	}
+	if host == nil || host.Distro.Provider == evergreen.HostTypeStatic || host.Distro.Provider == evergreen.ProviderNameDocker || host.Distro.SpawnAllowed == false {
+		return nil, nil
+	}
+	link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
+	return &link, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

@@ -212,6 +212,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
+  spawnHostLink: String
   patchMetadata: PatchMetadata!
   id: String!
   createTime: Time

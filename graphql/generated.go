@@ -223,6 +223,7 @@ type ComplexityRoot struct {
 		Restarts          func(childComplexity int) int
 		Revision          func(childComplexity int) int
 		ScheduledTime     func(childComplexity int) int
+		SpawnHostLink     func(childComplexity int) int
 		StartTime         func(childComplexity int) int
 		Status            func(childComplexity int) int
 		TaskGroup         func(childComplexity int) int
@@ -329,6 +330,7 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 }
 type TaskResolver interface {
+	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
@@ -1253,6 +1255,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ScheduledTime(childComplexity), true
 
+	case "Task.spawnHostLink":
+		if e.complexity.Task.SpawnHostLink == nil {
+			break
+		}
+
+		return e.complexity.Task.SpawnHostLink(childComplexity), true
+
 	case "Task.startTime":
 		if e.complexity.Task.StartTime == nil {
 			break
@@ -1846,6 +1855,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
+  spawnHostLink: String
   patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
@@ -5312,6 +5322,37 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	res := resTmp.([]*apimodels.LogMessage)
 	fc.Result = res
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_spawnHostLink(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().SpawnHostLink(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -9924,6 +9965,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Task")
+		case "spawnHostLink":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_spawnHostLink(ctx, field, obj)
+				return res
+			})
 		case "patchMetadata":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
