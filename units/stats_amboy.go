@@ -93,7 +93,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(ctx),
 		})
 
-		if evergreen.EnableAmboyRemoteManagement {
+		if j.env.Settings().ServiceFlags.EnableAmboyRemoteManagement {
 			j.collectExtendedRemoteStats(ctx)
 			j.collectExtendedGroupRemoteStats(ctx)
 		}
