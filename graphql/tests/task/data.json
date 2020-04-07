@@ -250,7 +250,8 @@
       "_id": "dep1",
       "version": "5e4ff3abe3c3317e352062e4",
       "display_name": "dep1",
-      "build_variant": "ubuntu"
+      "build_variant": "ubuntu",
+      "host_id": "host1"
     },
     {
       "_id": "dep2",
@@ -285,7 +286,8 @@
     {
       "_id": "task2",
       "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [{ "_id": "dep1", "status": "*", "unattainable": false }]
+      "depends_on": [{ "_id": "dep1", "status": "*", "unattainable": false }],
+      "host_id": "host2"
     },
     {
       "_id": "task3",
@@ -293,12 +295,14 @@
       "depends_on": [
         { "_id": "dep1", "status": "started", "unattainable": false }
       ],
-      "status": "failed"
+      "status": "failed",
+      "host_id": "host3"
     },
     {
       "_id": "task4",
       "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [{ "_id": "dep2", "status": "*", "unattainable": false }]
+      "depends_on": [{ "_id": "dep2", "status": "*", "unattainable": false }],
+      "host_id": "host4"
     },
     {
       "_id": "task5",
@@ -318,6 +322,40 @@
       "_id": "task7",
       "version": "5e4ff3abe3c3317e352062e4",
       "depends_on": [{ "_id": "dep5", "status": "", "unattainable": false }]
+    }
+  ],
+  "hosts": [
+    {
+      "_id": "host1",
+      "distro": {
+        "_id": "localhost1",
+        "provider": "not static and not docker",
+        "spawn_allowed": true
+      }
+    },
+    {
+      "_id": "host2",
+      "distro": {
+        "_id": "localhost2",
+        "provider": "static",
+        "spawn_allowed": true
+      }
+    },
+    {
+      "_id": "host3",
+      "distro": {
+        "_id": "localhost3",
+        "provider": "docker",
+        "spawn_allowed": true
+      }
+    },
+    {
+      "_id": "host4",
+      "distro": {
+        "_id": "localhost3",
+        "provider": "not static and not docker",
+        "spawn_allowed": false
+      }
     }
   ]
 }
