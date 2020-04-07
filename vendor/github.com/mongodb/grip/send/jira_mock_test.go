@@ -1,6 +1,7 @@
 package send
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -27,7 +28,7 @@ func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
 	return nil
 }
 
-func (j *jiraClientMock) Authenticate(_ string, _ string, _ bool) error {
+func (j *jiraClientMock) Authenticate(_ context.Context, _ jiraAuthOpts) error {
 	if j.failAuth {
 		return errors.New("mock failed authentication")
 	}

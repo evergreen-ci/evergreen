@@ -459,6 +459,16 @@ func (m *queueManager) RecentJobErrors(ctx context.Context, jobType string, wind
 
 }
 
+func (m *queueManager) CompleteJob(ctx context.Context, name string) error {
+	j, exists := m.queue.Get(ctx, name)
+	if !exists {
+		return errors.Errorf("cannot recover job with name '%s'", name)
+	}
+
+	m.queue.Complete(ctx, j)
+	return nil
+}
+
 func (m *queueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
 	for stat := range m.queue.JobStats(ctx) {
 		if stat.Completed {

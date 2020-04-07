@@ -50,7 +50,6 @@ func (s *QueueService) App() *gimlet.APIApp {
 	app.AddRoute("/job/{name}").Version(1).Get().Handler(s.Fetch)
 	app.AddRoute("/job/status/{name}").Version(1).Get().Handler(s.JobStatus)
 	app.AddRoute("/job/wait/{name}").Version(1).Get().Handler(s.WaitJob)
-	app.AddRoute("/job/mark_complete/{name}").Version(1).Post().Handler(s.MarkJobComplete)
 
 	return app
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/yaml.v2"
 )
 
 const OutputBufferSize = 1000
@@ -1022,25 +1023,27 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 		return "", errors.New("missing spawn host owner")
 	}
 
-	confJSON, err := h.spawnHostConfigJSON(settings)
+	conf, err := h.spawnHostConfig(settings)
 	if err != nil {
-		return "", errors.Wrap(err, "could not create JSON configuration settings")
+		return "", errors.Wrap(err, "could not create configuration settings")
 	}
 
-	return h.spawnHostSetupConfigDirCommands(confJSON), nil
+	return h.spawnHostSetupConfigDirCommands(conf), nil
 }
 
 // spawnHostSetupConfigDirCommands the shell script that sets up the
 // config directory on a spawn host. In particular, it makes the client binary
 // directory, puts both the evergreen yaml and the client into it, and attempts
 // to add the directory to the path.
-func (h *Host) spawnHostSetupConfigDirCommands(confJSON []byte) string {
+func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
 		// We have to do this because the evergreen config file is already baked
 		// into the AMI and owned by the privileged user.
 		h.changeOwnerCommand(h.spawnHostConfigFile()),
-		fmt.Sprintf("echo '%s' > %s", confJSON, h.spawnHostConfigFile()),
+		// Note: this will likely fail if the configuration file content
+		// contains quotes.
+		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
@@ -1063,27 +1066,27 @@ func (h *Host) spawnHostConfigFile() string {
 	return filepath.Join(h.Distro.HomeDir(), evergreen.DefaultEvergreenConfig)
 }
 
-// spawnHostConfigJSON returns evergreen yaml configuration for a spawn host in
-// JSON format.
-func (h *Host) spawnHostConfigJSON(settings *evergreen.Settings) ([]byte, error) {
+// spawnHostCLIConfig returns the evergreen configuration for a spawn host CLI
+// in yaml format.
+func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get owner %s for host", h.ProvisionOptions.OwnerId)
 	}
 
 	conf := struct {
-		APIKey        string `json:"api_key"`
-		APIServerHost string `json:"api_server_host"`
-		UIServerHost  string `json:"ui_server_host"`
-		User          string `json:"user"`
+		User          string `yaml:"user"`
+		APIKey        string `yaml:"api_key"`
+		APIServerHost string `yaml:"api_server_host"`
+		UIServerHost  string `yaml:"ui_server_host"`
 	}{
+		User:          owner.Id,
 		APIKey:        owner.APIKey,
 		APIServerHost: settings.ApiUrl + "/api",
 		UIServerHost:  settings.Ui.Url,
-		User:          owner.Id,
 	}
 
-	return json.Marshal(conf)
+	return yaml.Marshal(conf)
 }
 
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data

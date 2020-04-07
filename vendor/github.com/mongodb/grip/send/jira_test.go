@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -23,23 +24,25 @@ func (j *JiraSuite) SetupSuite() {}
 
 func (j *JiraSuite) SetupTest() {
 	j.opts = &JiraOptions{
-		Name:     "bot",
-		BaseURL:  "url",
-		Username: "username",
-		Password: "password",
-		client:   &jiraClientMock{},
+		Name:    "bot",
+		BaseURL: "url",
+		BasicAuthOpts: JiraBasicAuth{
+			Username: "username",
+			Password: "password",
+		},
+		client: &jiraClientMock{},
 	}
 }
 
 func (j *JiraSuite) TestMockSenderWithNewConstructor() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 }
 
 func (j *JiraSuite) TestConstructorMustCreate() {
 	j.opts.client = &jiraClientMock{failCreate: true}
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 
 	j.Nil(sender)
 	j.Error(err)
@@ -47,25 +50,39 @@ func (j *JiraSuite) TestConstructorMustCreate() {
 
 func (j *JiraSuite) TestConstructorMustPassAuthTest() {
 	j.opts.client = &jiraClientMock{failAuth: true}
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 
 	j.Nil(sender)
 	j.Error(err)
 }
 
 func (j *JiraSuite) TestConstructorErrorsWithInvalidConfigs() {
-	sender, err := NewJiraLogger(nil, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), nil, LevelInfo{level.Trace, level.Info})
 
 	j.Nil(sender)
 	j.Error(err)
 
-	sender, err = NewJiraLogger(&JiraOptions{}, LevelInfo{level.Trace, level.Info})
+	sender, err = NewJiraLogger(context.Background(), &JiraOptions{}, LevelInfo{level.Trace, level.Info})
 	j.Nil(sender)
 	j.Error(err)
+
+	opts := &JiraOptions{
+		BasicAuthOpts: JiraBasicAuth{
+			Username: "foo",
+			Password: "bar",
+		},
+		Oauth1Opts: JiraOauth1{
+			AccessToken: "12345",
+		},
+	}
+
+	sender, err = NewJiraLogger(context.Background(), opts, LevelInfo{level.Trace, level.Info})
+	j.Nil(sender)
+	j.EqualError(err, "must specify exactly 1 method of authentication")
 }
 
 func (j *JiraSuite) TestSendMethod() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 
@@ -87,7 +104,7 @@ func (j *JiraSuite) TestSendMethod() {
 }
 
 func (j *JiraSuite) TestSendMethodWithError() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 
@@ -167,7 +184,7 @@ func (j *JiraSuite) TestGetFieldsWithFields() {
 }
 
 func (j *JiraSuite) TestTruncate() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 
@@ -202,7 +219,7 @@ func (j *JiraSuite) TestTruncate() {
 }
 
 func (j *JiraSuite) TestCustomFields() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 
@@ -233,7 +250,7 @@ func (j *JiraSuite) TestCustomFields() {
 }
 
 func (j *JiraSuite) TestPopulateKey() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 	mock, ok := j.opts.client.(*jiraClientMock)
@@ -268,7 +285,7 @@ func (j *JiraSuite) TestPopulateKey() {
 }
 
 func (j *JiraSuite) TestWhenCallbackNil() {
-	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	sender, err := NewJiraLogger(context.Background(), j.opts, LevelInfo{level.Trace, level.Info})
 	j.NotNil(sender)
 	j.NoError(err)
 	mock, ok := j.opts.client.(*jiraClientMock)
