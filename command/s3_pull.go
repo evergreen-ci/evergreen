@@ -13,15 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type s3Base struct {
-	// BuildVariants contains all build variants this command should be run on.
-	BuildVariants []string `mapstructure:"build_variants"`
 	// ExcludeFilter contains a regexp describing files that should be
 	// excluded from the operation.
 	ExcludeFilter string `mapstructure:"exclude" plugin:"expand"`
@@ -32,14 +29,6 @@ type s3Base struct {
 
 func (c *s3Base) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(mapstructure.Decode(params, c), "error decoding S3 parameters")
-}
-
-func (c *s3Base) shouldRunOnBuildVariant(bv string) bool {
-	if len(c.BuildVariants) == 0 {
-		return true
-	}
-
-	return utility.StringSliceContains(c.BuildVariants, bv)
 }
 
 func (c *s3Base) expandParams(conf *model.TaskConfig) error {
@@ -116,20 +105,6 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
-
-	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping s3.pull for build variant '%s'", conf.BuildVariant.Name)
-		return nil
-	}
-
-	// If no buildvariant is explicitly stated, pull from this task's
-	// build variant.
-	if c.FromBuildVariant == "" {
-		c.FromBuildVariant = conf.Task.BuildVariant
-	}
-
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
 		Workers:      runtime.NumCPU(),

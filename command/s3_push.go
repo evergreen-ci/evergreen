@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -32,14 +31,6 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
-
-	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping s3.push for build variant '%s'", conf.BuildVariant.Name)
-		return nil
-	}
-
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
 		Workers:      runtime.NumCPU(),
