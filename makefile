@@ -161,7 +161,7 @@ $(buildDir)/golangci-lint:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags "-w" -o $@ $<
 
 # end lint setup targets
 
@@ -170,7 +170,7 @@ generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
 $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
 
 # generated config for go tests
