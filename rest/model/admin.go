@@ -1725,27 +1725,28 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled       bool `json:"task_dispatch_disabled"`
-	HostInitDisabled           bool `json:"host_init_disabled"`
-	MonitorDisabled            bool `json:"monitor_disabled"`
-	AlertsDisabled             bool `json:"alerts_disabled"`
-	AgentStartDisabled         bool `json:"agent_start_disabled"`
-	RepotrackerDisabled        bool `json:"repotracker_disabled"`
-	SchedulerDisabled          bool `json:"scheduler_disabled"`
-	GithubPRTestingDisabled    bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled         bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled    bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
-	CacheStatsOldTasksDisabled bool `json:"cache_stats_old_tasks_disabled"`
-	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
-	PlannerDisabled            bool `json:"planner_disabled"`
-	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
-	DRBackupDisabled           bool `json:"dr_backup_disabled"`
-	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled  bool `json:"background_cleanup_disabled"`
+	TaskDispatchDisabled          bool `json:"task_dispatch_disabled"`
+	HostInitDisabled              bool `json:"host_init_disabled"`
+	MonitorDisabled               bool `json:"monitor_disabled"`
+	AlertsDisabled                bool `json:"alerts_disabled"`
+	AgentStartDisabled            bool `json:"agent_start_disabled"`
+	RepotrackerDisabled           bool `json:"repotracker_disabled"`
+	SchedulerDisabled             bool `json:"scheduler_disabled"`
+	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled       bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled           bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled         bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled    bool `json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled    bool `json:"cache_stats_old_tasks_disabled"`
+	TaskReliabilityDisabled       bool `json:"task_reliability_disabled"`
+	CommitQueueDisabled           bool `json:"commit_queue_disabled"`
+	PlannerDisabled               bool `json:"planner_disabled"`
+	HostAllocatorDisabled         bool `json:"host_allocator_disabled"`
+	DRBackupDisabled              bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled      bool `json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled     bool `json:"background_cleanup_disabled"`
+	AmboyRemoteManagementDisabled bool `json:"amboy_remote_management_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2009,6 +2010,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.DRBackupDisabled = v.DRBackupDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
+		as.AmboyRemoteManagementDisabled = v.AmboyRemoteManagementDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -2018,33 +2020,34 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:         as.TaskDispatchDisabled,
-		HostInitDisabled:             as.HostInitDisabled,
-		MonitorDisabled:              as.MonitorDisabled,
-		AlertsDisabled:               as.AlertsDisabled,
-		AgentStartDisabled:           as.AgentStartDisabled,
-		RepotrackerDisabled:          as.RepotrackerDisabled,
-		SchedulerDisabled:            as.SchedulerDisabled,
-		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
-		EventProcessingDisabled:      as.EventProcessingDisabled,
-		JIRANotificationsDisabled:    as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:   as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:   as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled: as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:          as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
-		CacheStatsOldTasksDisabled:   as.CacheStatsOldTasksDisabled,
-		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
-		CommitQueueDisabled:          as.CommitQueueDisabled,
-		PlannerDisabled:              as.PlannerDisabled,
-		HostAllocatorDisabled:        as.HostAllocatorDisabled,
-		DRBackupDisabled:             as.DRBackupDisabled,
-		BackgroundCleanupDisabled:    as.BackgroundCleanupDisabled,
-		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
+		TaskDispatchDisabled:          as.TaskDispatchDisabled,
+		HostInitDisabled:              as.HostInitDisabled,
+		MonitorDisabled:               as.MonitorDisabled,
+		AlertsDisabled:                as.AlertsDisabled,
+		AgentStartDisabled:            as.AgentStartDisabled,
+		RepotrackerDisabled:           as.RepotrackerDisabled,
+		SchedulerDisabled:             as.SchedulerDisabled,
+		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,
+		EventProcessingDisabled:       as.EventProcessingDisabled,
+		JIRANotificationsDisabled:     as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:    as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:    as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:  as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:       as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:       as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:           as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:         as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:    as.CacheStatsEndpointDisabled,
+		CacheStatsOldTasksDisabled:    as.CacheStatsOldTasksDisabled,
+		TaskReliabilityDisabled:       as.TaskReliabilityDisabled,
+		CommitQueueDisabled:           as.CommitQueueDisabled,
+		PlannerDisabled:               as.PlannerDisabled,
+		HostAllocatorDisabled:         as.HostAllocatorDisabled,
+		DRBackupDisabled:              as.DRBackupDisabled,
+		BackgroundCleanupDisabled:     as.BackgroundCleanupDisabled,
+		BackgroundReauthDisabled:      as.BackgroundReauthDisabled,
+		AmboyRemoteManagementDisabled: as.AmboyRemoteManagementDisabled,
 	}, nil
 }
 
