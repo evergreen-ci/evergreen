@@ -96,7 +96,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
 	validateCreateHosts,
-	validateDuplicateTaskDefinition,
+	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateTaskSyncCommands,
 }
@@ -464,7 +464,8 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Checks that the basic fields that are required by any project are present.
+// Checks that the basic fields that are required by any project are present and
+// valid.
 func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
@@ -1043,7 +1044,7 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 		for name, count := range counts {
 			if count > 1 {
 				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("%s is listed in task group %s more than once", name, tg.Name),
+					Message: fmt.Sprintf("%s is listed in task group %s %d times", name, tg.Name, count),
 					Level:   Error,
 				})
 			}
@@ -1104,7 +1105,9 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateDuplicateTaskDefinition(p *model.Project) ValidationErrors {
+// validateDuplicateBVTasks ensures that no task is used multiple times
+// in any given build variant.
+func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 	errors := []ValidationError{}
 
 	for _, bv := range p.BuildVariants {
