@@ -170,7 +170,7 @@ generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
 $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
-	$(gobin) build -ldflags "-w -o  $@ $<
+	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
 
 # generated config for go tests
