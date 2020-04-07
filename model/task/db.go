@@ -273,16 +273,6 @@ func ByCommit(revision, buildVariant, displayName, project, requester string) db
 	})
 }
 
-// ByStatusAndActivation creates a query that returns tasks of a certain status and activation state.
-func ByStatusAndActivation(status string, active bool) db.Q {
-	return db.Query(bson.M{
-		ActivatedKey: active,
-		StatusKey:    status,
-		//Filter out blacklisted tasks
-		PriorityKey: bson.M{"$gte": 0},
-	})
-}
-
 func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) db.Q {
 	return db.Query(bson.M{
 		VersionKey: bson.M{
@@ -924,6 +914,20 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return Find(ByVersions(versionIds).
 		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
+}
+
+func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
+	tasks, err := Find(db.Query(bson.M{
+		BuildIdKey:   buildId,
+		TaskGroupKey: taskGroup,
+	}))
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks in task group")
+	}
+	if len(tasks) == 0 {
+		return nil, errors.New("no tasks in task group")
+	}
+	return tasks, nil
 }
 
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
