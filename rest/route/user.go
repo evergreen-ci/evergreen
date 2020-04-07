@@ -364,3 +364,87 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.NewJSONResponse(permissions)
 }
+
+type userRolesPostHandler struct {
+	sc     data.Connector
+	rm     gimlet.RoleManager
+	userID string
+	roles  []string
+}
+
+func makeModifyUserRoles(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &userRolesPostHandler{
+		sc: sc,
+		rm: rm,
+	}
+}
+
+func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
+	return &userRolesPostHandler{
+		sc: h.sc,
+		rm: h.rm,
+	}
+}
+
+func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	var roles []string
+	if err := util.ReadJSONInto(r.Body, &roles); err != nil {
+		return errors.Wrap(err, "request body is not an array of strings")
+	}
+	h.roles = roles
+
+	return nil
+}
+
+func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := h.sc.FindUserById(h.userID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
+	}
+	if u == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	dbUser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "unexpected structure for user",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+	dbRoles, err := h.rm.GetRoles(h.roles)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error finding roles",
+		}))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "no roles found",
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	foundRoles := []string{}
+	for _, found := range dbRoles {
+		foundRoles = append(foundRoles, found.ID)
+	}
+	nonexistent, _ := util.StringSliceSymmetricDifference(h.roles, foundRoles)
+	if len(nonexistent) > 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("roles not found: %v", nonexistent),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	for _, toAdd := range h.roles {
+		if err = dbUser.AddRole(toAdd); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    "error adding role",
+				StatusCode: http.StatusInternalServerError,
+			})
+		}
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}

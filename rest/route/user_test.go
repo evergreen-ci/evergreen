@@ -295,7 +295,7 @@ func TestGetUserPermissions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
 	rm := env.RoleManager()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	u := user.DBUser{
 		Id:          "user",
 		SystemRoles: []string{"role1"},
@@ -311,4 +311,41 @@ func TestGetUserPermissions(t *testing.T) {
 	assert.Len(t, data, 1)
 	assert.Equal(t, "project", data[0].Type)
 	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource1"][evergreen.PermissionProjectSettings])
+}
+
+func TestPostUserRoles(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
+	rm := evergreen.GetEnvironment().RoleManager()
+	u := user.DBUser{
+		Id: "user",
+	}
+	require.NoError(t, u.Insert())
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	handler := userRolesPostHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+	ctx := context.Background()
+
+	body := `{ "foo": "bar" }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.Error(t, handler.Parse(ctx, request))
+
+	body = `["notarole"]`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.Equal(t, http.StatusNotFound, resp.Status())
+
+	body = `["role1"]`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 }
