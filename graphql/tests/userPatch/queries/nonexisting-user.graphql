@@ -1,0 +1,5 @@
+{
+  userPatches(userId: "unexisting user") {
+    id
+  }
+}

@@ -178,7 +178,7 @@ type ComplexityRoot struct {
 		TaskLogs           func(childComplexity int, taskID string) int
 		TaskTests          func(childComplexity int, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User               func(childComplexity int) int
-		UserPatches        func(childComplexity int, userID string) int
+		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
 	}
 
 	RecentTaskLogs struct {
@@ -317,7 +317,7 @@ type PatchResolver interface {
 	BaseVersionID(ctx context.Context, obj *model.APIPatch) (*string, error)
 }
 type QueryResolver interface {
-	UserPatches(ctx context.Context, userID string) ([]*model.APIPatch, error)
+	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*model.APIPatch, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Task(ctx context.Context, taskID string) (*model.APITask, error)
 	Projects(ctx context.Context) (*Projects, error)
@@ -985,7 +985,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.UserPatches(childComplexity, args["userId"].(string)), true
+		return e.complexity.Query.UserPatches(childComplexity, args["limit"].(*int), args["page"].(*int), args["patchName"].(*string), args["statuses"].([]string), args["userId"].(*string), args["includeCommitQueue"].(*bool)), true
 
 	case "RecentTaskLogs.agentLogs":
 		if e.complexity.RecentTaskLogs.AgentLogs == nil {
@@ -1633,7 +1633,14 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
-  userPatches(userId: String!): [Patch!]!
+  userPatches(
+    limit: Int = 0
+    page: Int = 0
+    patchName: String = ""
+    statuses: [String!] = []
+    userId: String
+    includeCommitQueue: Boolean = false
+  ): [Patch!]!
   patch(id: String!): Patch!
   task(taskId: String!): Task
   projects: Projects!
@@ -2297,14 +2304,54 @@ func (ec *executionContext) field_Query_task_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_userPatches_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["userId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["userId"] = arg0
+	args["limit"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["page"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["patchName"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchName"] = arg2
+	var arg3 []string
+	if tmp, ok := rawArgs["statuses"]; ok {
+		arg3, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["statuses"] = arg3
+	var arg4 *string
+	if tmp, ok := rawArgs["userId"]; ok {
+		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userId"] = arg4
+	var arg5 *bool
+	if tmp, ok := rawArgs["includeCommitQueue"]; ok {
+		arg5, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["includeCommitQueue"] = arg5
 	return args, nil
 }
 
@@ -4743,7 +4790,7 @@ func (ec *executionContext) _Query_userPatches(ctx context.Context, field graphq
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().UserPatches(rctx, args["userId"].(string))
+		return ec.resolvers.Query().UserPatches(rctx, args["limit"].(*int), args["page"].(*int), args["patchName"].(*string), args["statuses"].([]string), args["userId"].(*string), args["includeCommitQueue"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
