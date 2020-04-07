@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -44,11 +43,7 @@ func (s *StaticSettings) Validate() error {
 }
 
 func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -34,12 +35,12 @@ func (s *OpenStackSuite) SetupTest() {
 	s.distro = distro.Distro{
 		Id:       "host",
 		Provider: evergreen.ProviderNameOpenstack,
-		ProviderSettings: &map[string]interface{}{
-			"image_name":     "image",
-			"flavor_name":    "flavor",
-			"key_name":       "key",
-			"security_group": "group",
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("image_name", "image"),
+			birch.EC.String("flavor_name", "flavor"),
+			birch.EC.String("key_name", "key"),
+			birch.EC.String("security_group", "group"),
+		)},
 	}
 	s.hostOpts = host.CreateOptions{}
 }
@@ -243,8 +244,8 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	s.Nil(h)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         evergreen.ProviderNameOpenstack,
-		ProviderSettings: &map[string]interface{}{"image_name": ""},
+		Provider:             evergreen.ProviderNameOpenstack,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("image_name", ""))},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(h)
@@ -279,12 +280,12 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	dist := distro.Distro{
 		Id:       "id",
 		Provider: evergreen.ProviderNameOpenstack,
-		ProviderSettings: &map[string]interface{}{
-			"image_name":     "image",
-			"flavor_name":    "flavor",
-			"key_name":       "key",
-			"security_group": "group",
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("image_name", "image"),
+			birch.EC.String("flavor_name", "flavor"),
+			birch.EC.String("key_name", "key"),
+			birch.EC.String("security_group", "group"),
+		)},
 	}
 
 	mock, ok := s.client.(*openStackClientMock)

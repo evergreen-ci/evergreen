@@ -108,14 +108,14 @@ func (s *EC2Suite) SetupTest() {
 	s.mock.Instance = nil
 
 	s.distro = distro.Distro{
-		ProviderSettings: &map[string]interface{}{
-			"key_name":           "key",
-			"aws_access_key_id":  "key_id",
-			"ami":                "ami",
-			"instance_type":      "instance",
-			"security_group_ids": []string{"abcdef"},
-			"bid_price":          float64(0.001),
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("key_name", "key"),
+			birch.EC.String("aws_access_key_id", "key_id"),
+			birch.EC.String("ami", "ami"),
+			birch.EC.String("instance_type", "instance"),
+			birch.EC.Double("bid_price", 0.001),
+			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+		)},
 		Provider: evergreen.ProviderNameEc2OnDemand,
 	}
 
@@ -357,22 +357,25 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	}
 	s.h.Distro.Id = "distro_id"
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "keyName",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"user_data":          someUserData,
-	}
+	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", "keyName"),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 	s.Require().NoError(s.h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
-
 	_, err := s.onDemandManager.SpawnHost(ctx, s.h)
 	s.NoError(err)
 
@@ -385,6 +388,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
 	s.Equal("keyName", *runInput.KeyName)
+	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
 	s.Equal("sg-123456", *runInput.SecurityGroups[0])
@@ -403,18 +407,22 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "keyName",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"is_vpc":             true,
-		"user_data":          someUserData,
-	}
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", "keyName"),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -447,17 +455,21 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "keyName",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"user_data":          someUserData,
-	}
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", "keyName"),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -471,6 +483,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
+	s.Require().NotNil(mock.RequestSpotInstancesInput)
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
@@ -490,18 +503,22 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "keyName",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"is_vpc":             true,
-		"user_data":          someUserData,
-	}
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", "keyName"),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -533,18 +550,22 @@ func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"is_vpc":             true,
-		"user_data":          someUserData,
-	}
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", ""),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 	s.Require().NoError(h.Insert())
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -558,18 +579,22 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettings = &map[string]interface{}{
-		"ami":           "ami",
-		"instance_type": "instanceType",
-		"key_name":      "",
-		"mount_points": []map[string]string{
-			map[string]string{"device_name": "device", "virtual_name": "virtual"},
-		},
-		"security_group_ids": []string{"sg-123456"},
-		"subnet_id":          "subnet-123456",
-		"is_vpc":             true,
-		"user_data":          someUserData,
-	}
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", ""),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.Boolean("is_vpc", true),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+	)}
 
 	project := "example_project"
 	t := &task.Task{
@@ -901,43 +926,43 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		{
 			Id: "sir-1",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "sir-3",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-4",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-5",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-6",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 	}
@@ -1099,16 +1124,16 @@ func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
 		{
 			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: s.distro.ProviderSettings,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
 		},
@@ -1161,7 +1186,7 @@ func (s *EC2Suite) TestGetRegion() {
 	r := ec2Settings.getRegion()
 	s.Equal(evergreen.DefaultEC2Region, r)
 
-	(*s.h.Distro.ProviderSettings)["region"] = evergreen.DefaultEC2Region
+	s.h.Distro.ProviderSettingsList[0].Set(birch.EC.String("region", r))
 	s.NoError(ec2Settings.FromDistroSettings(s.h.Distro, evergreen.DefaultEC2Region))
 	r = ec2Settings.getRegion()
 	s.Equal(evergreen.DefaultEC2Region, r)
@@ -1247,14 +1272,16 @@ func (s *EC2Suite) TestCacheHostData() {
 
 func (s *EC2Suite) TestFromDistroSettings() {
 	d := distro.Distro{
-		ProviderSettings: &map[string]interface{}{
-			"key_name":           "key",
-			"aws_access_key_id":  "key_id",
-			"ami":                "ami",
-			"instance_type":      "instance",
-			"security_group_ids": []string{"abcdef"},
-			"bid_price":          float64(0.001),
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami"),
+			birch.EC.String("instance_type", "instance"),
+			birch.EC.String("key_name", "key"),
+			birch.EC.String("aws_access_key_id", "key_id"),
+			birch.EC.String("subnet_id", "subnet-123456"),
+			birch.EC.Double("bid_price", 0.001),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+		)},
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
@@ -1262,7 +1289,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	s.Equal("key", ec2Settings.KeyName)
 	s.Equal("ami", ec2Settings.AMI)
 	s.Equal("instance", ec2Settings.InstanceType)
-	s.Len(ec2Settings.SecurityGroupIDs, 1)
+	s.Require().Len(ec2Settings.SecurityGroupIDs, 1)
 	s.Equal("abcdef", ec2Settings.SecurityGroupIDs[0])
 	s.Equal(float64(0.001), ec2Settings.BidPrice)
 	s.Equal(evergreen.DefaultEC2Region, ec2Settings.Region)
@@ -1287,7 +1314,6 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	doc2 := &birch.Document{}
 	s.NoError(doc2.UnmarshalBSON(bytes))
 	d.ProviderSettingsList = []*birch.Document{doc1, doc2}
-	d.ProviderSettings = nil
 
 	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
 	s.Equal(ec2Settings.Region, "us-east-2")
@@ -1297,11 +1323,11 @@ func (s *EC2Suite) TestFromDistroSettings() {
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
 		Provider: evergreen.ProviderNameEc2OnDemand,
-		ProviderSettings: &map[string]interface{}{
-			"region":                evergreen.DefaultEC2Region,
-			"aws_access_key_id":     "key",
-			"aws_secret_access_key": "secret",
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+			birch.EC.String("aws_access_key_id", "key"),
+			birch.EC.String("aws_secret_access_key", "secret"),
+		)},
 	}
 
 	managerOpts, err := GetManagerOptions(d1)

@@ -33,13 +33,12 @@ func TestCheckDistro(t *testing.T) {
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{
-					"ami":                "a",
-					"key_name":           "a",
-					"instance_type":      "a",
-					"security_group_ids": []string{"a"},
-					"mount_points":       nil,
-				},
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(
+					birch.EC.String("ami", "a"),
+					birch.EC.String("key_name", "a"),
+					birch.EC.String("instance_type", "a"),
+					birch.EC.SliceString("security_group_ids", []string{"a"}),
+				)},
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
@@ -68,13 +67,12 @@ func TestCheckDistro(t *testing.T) {
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{
-					"ami":                "a",
-					"key_name":           "a",
-					"instance_type":      "a",
-					"security_group_ids": []string{"a"},
-					"mount_points":       nil,
-				},
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(
+					birch.EC.String("ami", "a"),
+					birch.EC.String("key_name", "a"),
+					birch.EC.String("instance_type", "a"),
+					birch.EC.SliceString("security_group_ids", []string{"a"}),
+				)},
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
@@ -92,13 +90,12 @@ func TestCheckDistro(t *testing.T) {
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{
-					"ami":                "a",
-					"key_name":           "a",
-					"instance_type":      "a",
-					"security_group_ids": []string{"a"},
-					"mount_points":       nil,
-				},
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(
+					birch.EC.String("ami", "a"),
+					birch.EC.String("key_name", "a"),
+					birch.EC.String("instance_type", "a"),
+					birch.EC.SliceString("security_group_ids", []string{"a"}),
+				)},
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
@@ -127,13 +124,12 @@ func TestCheckDistro(t *testing.T) {
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{
-					"ami":                "",
-					"key_name":           "a",
-					"instance_type":      "a",
-					"security_group_ids": []string{"a"},
-					"mount_points":       nil,
-				},
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(
+					birch.EC.String("ami", "a"),
+					birch.EC.String("key_name", "a"),
+					birch.EC.String("instance_type", "a"),
+					birch.EC.SliceString("security_group_ids", []string{"a"}),
+				)},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -226,37 +222,32 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
-			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"instance_type":      "a",
-				"security_group_ids": []string{"a"},
-				"key_name":           "a",
-				"mount_points":       nil,
-			}},
-			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":                "a",
-				"security_group_ids": []string{"a"},
-				"key_name":           "a",
-				"mount_points":       nil,
-			}},
-			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":           "a",
-				"instance_type": "a",
-				"key_name":      "a",
-				"mount_points":  nil,
-			}},
-			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":                "a",
-				"instance_type":      "a",
-				"security_group_ids": []string{"a"},
-				"mount_points":       nil,
-			}},
-			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":                "a",
-				"key_name":           "a",
-				"instance_type":      "a",
-				"security_group_ids": []string{"a"},
-				"mount_points":       nil,
-			}},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("key_name", "a"),
+				birch.EC.String("instance_type", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a"}),
+			)}},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "a"),
+				birch.EC.String("key_name", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a"}),
+			)}},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "a"),
+				birch.EC.String("key_name", "a"),
+				birch.EC.String("instance_type", "a"),
+			)}},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "a"),
+				birch.EC.String("instance_type", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a"}),
+			)}},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "a"),
+				birch.EC.String("key_name", "a"),
+				birch.EC.String("instance_type", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a"}),
+			)}},
 		}
 		i++
 		Convey("an error should be returned if the distro does not contain an id", func() {

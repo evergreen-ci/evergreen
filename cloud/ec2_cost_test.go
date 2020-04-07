@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -200,14 +202,14 @@ func (s *CostIntegrationSuite) SetupTest() {
 	s.h = &host.Host{
 		Id: "h1",
 		Distro: distro.Distro{
-			ProviderSettings: &map[string]interface{}{
-				"key_name":           "key",
-				"aws_access_key_id":  "key_id",
-				"ami":                "ami",
-				"instance_type":      "instance",
-				"security_group_ids": []string{"abcdef"},
-				"bid_price":          float64(0.001),
-			},
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "ami"),
+				birch.EC.String("key_name", "key"),
+				birch.EC.String("instance_type", "instance"),
+				birch.EC.String("aws_access_key_id", "key_id"),
+				birch.EC.Double("bid_price", 0.001),
+				birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+			)},
 			Provider: evergreen.ProviderNameEc2OnDemand,
 		},
 	}

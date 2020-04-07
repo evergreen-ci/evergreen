@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -91,9 +92,9 @@ func TestModifySpawnHostProviderSettings(t *testing.T) {
 	config.Providers.AWS.Subnets = []evergreen.Subnet{{AZ: "us-east-1a", SubnetID: "new_id"}}
 
 	d := distro.Distro{
-		ProviderSettings: &map[string]interface{}{
-			"subnet_id": "old_id",
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("subnet_id", "old_id"),
+		)},
 	}
 
 	settingsList, err := modifySpawnHostProviderSettings(d, &config, "", vol.ID)

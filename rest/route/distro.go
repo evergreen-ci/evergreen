@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -533,10 +532,6 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 ////////////////////////////////////////////////////////////////////////
 
 func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
-	if apiDistro.ProviderSettings != nil && len(apiDistro.ProviderSettings) > 0 {
-		return nil, gimlet.MakeJSONErrorResponder(errors.New("must use provider_settings list to update settings"))
-	}
-
 	i, err := apiDistro.ToService()
 	if err != nil {
 		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIDistro to distro.Distro"))
@@ -546,13 +541,6 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("Unexpected type %T for distro.Distro", i),
-		})
-	}
-
-	if err = cloud.UpdateProviderSettings(d); err != nil {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
 		})
 	}
 

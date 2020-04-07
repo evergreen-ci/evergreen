@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -407,19 +407,18 @@ func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, 
 	return end.Sub(start).Minutes(), nil
 }
 
-// Get mock region from ProviderSettings object
-func getMockManagerOptions(provider string, providerSettings *map[string]interface{}) (ManagerOpts, error) {
+// Get mock region from ProviderSettingsList
+func getMockManagerOptions(provider string, providerSettingsList []*birch.Document) (ManagerOpts, error) {
 	opts := ManagerOpts{Provider: provider}
-	if providerSettings == nil {
+	if len(providerSettingsList) == 0 {
 		return opts, nil
 	}
 
-	s := &MockProviderSettings{}
-	if err := mapstructure.Decode(providerSettings, s); err != nil {
-		return opts, errors.Wrap(err, "can't decode ProviderSettings")
+	region, ok := providerSettingsList[0].Lookup("region").StringValueOK()
+	if !ok {
+		return ManagerOpts{}, errors.New("cannot get region from provider settings")
 	}
-	opts.Region = s.Region
-
+	opts.Region = region
 	return opts, nil
 }
 

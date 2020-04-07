@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -27,19 +28,20 @@ func fetchTestDistro() distro.Distro {
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
 		Provider: evergreen.ProviderNameEc2Spot,
-		ProviderSettings: &map[string]interface{}{
-			"ami":           "ami-97785bed",
-			"instance_type": "t2.micro",
-			"key_name":      "mci",
-			"bid_price":     .005,
-			"is_vpc":        true,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-97785bed"),
+			birch.EC.String("instance_type", "t2.micro"),
+			birch.EC.String("key_name", "mci"),
+			birch.EC.String("region", "us-east-1"),
+			birch.EC.Boolean("is_vpc", true),
+			birch.EC.Double("bid_price", .005),
 			// TODO : The below settings require access to our staging environment. We
 			// hope to make settings test data better in the future so that we do not
 			// have to include values like these in our test code.
-			"security_group_ids": []string{"sg-601a6c13"},
-			"subnet_id":          "subnet-517c941a",
-			"vpc_name":           "stage_dynamic_vpc",
-		},
+			birch.EC.String("vpc_name", "stage_dynamic_vpc"),
+			birch.EC.String("subnet_id", "subnet-517c941a"),
+			birch.EC.SliceString("security_group_ids", []string{"sg-601a6c13"}),
+		)},
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 10,
 		},

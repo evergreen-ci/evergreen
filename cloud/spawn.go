@@ -72,10 +72,6 @@ func (so *SpawnOptions) validate() error {
 		return err
 	}
 
-	if !evergreen.UseSpawnHostRegions && so.Region != "" && so.Region != evergreen.DefaultEC2Region {
-		return errors.Wrap(err, "no configurable regions supported")
-	}
-
 	// validate public key
 	rsa := "ssh-rsa"
 	dss := "ssh-dss"
@@ -126,7 +122,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if err != nil {
 		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}
-
 	if so.Region == "" && IsEc2Provider(d.Provider) {
 		u := gimlet.GetUser(ctx)
 		dbUser, ok := u.(*user.DBUser)
@@ -149,7 +144,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get new provider settings")
 	}
-	d.ProviderSettings = nil
 
 	if so.InstanceType != "" {
 		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
