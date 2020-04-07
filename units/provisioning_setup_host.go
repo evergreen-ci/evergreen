@@ -768,6 +768,9 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 			if err != nil {
 				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
 			}
+			if err = h.SetHomeVolumeID(volume.ID); err != nil {
+				return errors.Wrapf(err, "can't set home volume ID in host")
+			}
 		}
 
 		// attach to the host
