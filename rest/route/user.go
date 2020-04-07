@@ -389,10 +389,7 @@ func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	h.userID = vars["user_id"]
-	if h.userID == "" {
-		return errors.New("no user found")
-	}
-	roles := []string{}
+	var roles []string
 	if err := util.ReadJSONInto(r.Body, &roles); err != nil {
 		return errors.Wrap(err, "request body is not an array of strings")
 	}
