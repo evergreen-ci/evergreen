@@ -2293,6 +2293,17 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	)
 }
 
+func (h *Host) SetHomeVolumeID(volumeID string) error {
+	h.HomeVolumeID = volumeID
+	return UpdateOne(bson.M{
+		IdKey:           h.Id,
+		HomeVolumeIDKey: "",
+	},
+		bson.M{
+			"$set": bson.M{HomeVolumeIDKey: volumeID},
+		})
+}
+
 func (h *Host) HomeVolume() *VolumeAttachment {
 	for _, vol := range h.Volumes {
 		if vol.IsHome {
