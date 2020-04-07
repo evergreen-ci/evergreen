@@ -89,7 +89,7 @@ var (
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	drBackupDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DRBackupDisabled")
 	backgroundReauthDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
-	backgroundCleanupDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanup")
+	backgroundCleanupDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 
 	// AuthConfig keys
 	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
