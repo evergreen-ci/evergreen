@@ -72,7 +72,7 @@ type ProjectRef struct {
 	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	// List of commands
-	WorkstationConfig []WorkstationCommand `bson:"workstation_config" json:"workstation_config"`
+	WorkstationConfig []WorkstationCommand `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 }
 
 type CommitQueueParams struct {

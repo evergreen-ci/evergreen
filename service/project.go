@@ -461,14 +461,16 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}
 
-	grip.Debugf("NUMBER OF COMMANDS: %d\n", len(responseRef.WorkstationConfig))
 	projectRef.WorkstationConfig = []model.WorkstationCommand{}
 	for _, obj := range responseRef.WorkstationConfig {
-		grip.Debugf("APICommand: %s\n", restModel.FromStringPtr(obj.Command))
-		i, err := obj.ToService()
+		command := model.WorkstationCommand{}
+		i, err = obj.ToService()
 		catcher.Add(err)
-		command := i.(model.WorkstationCommand)
-		grip.Debugf("COMMAND: %s\n", command.Command)
+		command, ok = i.(model.WorkstationCommand)
+		if !ok {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected workstation command but was actually '%T'", i))
+			return
+		}
 		projectRef.WorkstationConfig = append(projectRef.WorkstationConfig, command)
 	}
 
