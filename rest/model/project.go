@@ -155,6 +155,31 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIWorkstationCommand struct {
+	Command   *string `bson:"command" json:"command"`
+	Directory *string `bson:"directory" json:"directory"`
+}
+
+func (c *APIWorkstationCommand) ToService() (interface{}, error) {
+	res := model.WorkstationCommand{}
+	res.Command = FromStringPtr(c.Command)
+	res.Directory = FromStringPtr(c.Directory)
+	return res, nil
+}
+
+func (c *APIWorkstationCommand) BuildFromService(h interface{}) error {
+	var command model.WorkstationCommand
+	switch h.(type) {
+	case model.WorkstationCommand:
+		command = h.(model.WorkstationCommand)
+	case *model.WorkstationCommand:
+		command = *h.(*model.WorkstationCommand)
+	}
+	c.Command = ToStringPtr(command.Command)
+	c.Directory = ToStringPtr(command.Directory)
+	return nil
+}
+
 type APIProjectRef struct {
 	Owner                *string              `json:"owner_name"`
 	Repo                 *string              `json:"repo_name"`
@@ -180,12 +205,13 @@ type APIProjectRef struct {
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
 	Tags                 []*string            `json:"tags"`
 
-	Revision            *string                `json:"revision"`
-	Triggers            []APITriggerDefinition `json:"triggers"`
-	Aliases             []APIProjectAlias      `json:"aliases"`
-	Variables           APIProjectVars         `json:"variables"`
-	Subscriptions       []APISubscription      `json:"subscriptions"`
-	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
+	Revision            *string                 `json:"revision"`
+	Triggers            []APITriggerDefinition  `json:"triggers"`
+	Aliases             []APIProjectAlias       `json:"aliases"`
+	Variables           APIProjectVars          `json:"variables"`
+	WorkstationConfig   []APIWorkstationCommand `json:"workstation_config"`
+	Subscriptions       []APISubscription       `json:"subscriptions"`
+	DeleteSubscriptions []*string               `json:"delete_subscriptions,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

@@ -71,6 +71,8 @@ type ProjectRef struct {
 
 	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
+	// List of commands
+	WorkstationConfig []WorkstationCommand `bson:"workstation_config" json:"workstation_config"`
 }
 
 type CommitQueueParams struct {
@@ -131,6 +133,11 @@ type PeriodicBuildDefinition struct {
 	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
+type WorkstationCommand struct {
+	Command   string `bson:"command" json:"command"`
+	Directory string `bson:"directory" json:"directory"`
+}
+
 func (a AlertConfig) GetSettingsMap() map[string]string {
 	ret := make(map[string]string)
 	for k, v := range a.Settings {
@@ -173,6 +180,7 @@ var (
 	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPeriodicBuildsKey      = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefTagsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
+	projectRefWorkstationConfigKey   = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -666,6 +674,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefNotifyOnFailureKey:     projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:            projectRef.Triggers,
 				projectRefPeriodicBuildsKey:      projectRef.PeriodicBuilds,
+				projectRefWorkstationConfigKey:   projectRef.WorkstationConfig,
 			},
 		},
 	)

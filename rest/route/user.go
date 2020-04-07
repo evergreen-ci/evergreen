@@ -390,7 +390,7 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 	vars := gimlet.GetVars(r)
 	h.userID = vars["user_id"]
 	var roles []string
-	if err := util.ReadJSONInto(r.Body, &roles); err != nil {
+	if err := utility.ReadJSON(r.Body, &roles); err != nil {
 		return errors.Wrap(err, "request body is not an array of strings")
 	}
 	h.roles = roles
@@ -430,7 +430,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, found := range dbRoles {
 		foundRoles = append(foundRoles, found.ID)
 	}
-	nonexistent, _ := util.StringSliceSymmetricDifference(h.roles, foundRoles)
+	nonexistent, _ := utility.StringSliceSymmetricDifference(h.roles, foundRoles)
 	if len(nonexistent) > 0 {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("roles not found: %v", nonexistent),
