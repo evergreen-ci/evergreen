@@ -223,6 +223,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 
 	apps = append(apps, localAbort, remoteAbort, groupAbort, localManagement)
 
+	var err error
 	serviceFlags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting service flags")
