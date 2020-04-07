@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -356,10 +357,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, admin := range requestProjectRef.DeleteAdmins {
 		adminsToDelete = append(adminsToDelete, model.FromStringPtr(admin))
 	}
-	allAdmins := util.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
+	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
 	newProjectRef.Admins = []string{}
 	for _, admin := range allAdmins {
-		if !util.StringSliceContains(adminsToDelete, admin) {
+		if !utility.StringSliceContains(adminsToDelete, admin) {
 			newProjectRef.Admins = append(newProjectRef.Admins, admin)
 		}
 	}
@@ -369,7 +370,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for i, trigger := range newProjectRef.Triggers {
 		catcher.Add(trigger.Validate(newProjectRef.Identifier))
 		if trigger.DefinitionID == "" {
-			newProjectRef.Triggers[i].DefinitionID = util.RandomString()
+			newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
 	newProjectRef.Triggers = append(oldProject.Triggers, newProjectRef.Triggers...)
@@ -429,7 +430,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// run the repotracker for the project
 	if newRevision != "" {
-		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()

@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -125,15 +125,15 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 		return currentBuckets, errors.Errorf("invalid resource start time %v that is after the time frame %v", start, frameEnd)
 	}
 
-	if util.IsZeroTime(start) {
+	if utility.IsZeroTime(start) {
 		return currentBuckets, errors.New("start time is zero")
 	}
 
-	if !util.IsZeroTime(end) && (end.Before(frameStart) || end.Equal(frameStart)) {
+	if !utility.IsZeroTime(end) && (end.Before(frameStart) || end.Equal(frameStart)) {
 		return currentBuckets, errors.Errorf("invalid resource end time, %v that is before the time frame, %v", end, frameStart)
 	}
 
-	if !util.IsZeroTime(end) && end.Before(start) {
+	if !utility.IsZeroTime(end) && end.Before(start) {
 		return currentBuckets, errors.Errorf("termination time, %v is before start time, %v and exists", end, start)
 	}
 
@@ -156,7 +156,7 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 	endBucket := time.Duration(len(currentBuckets) - 1)
 	endOffset := bucketSize * (endBucket + 1)
 
-	if !(util.IsZeroTime(end) || end.After(frameEnd) || end.Equal(frameEnd)) {
+	if !(utility.IsZeroTime(end) || end.After(frameEnd) || end.Equal(frameEnd)) {
 		endOffset = end.Sub(frameStart)
 		endBucket = endOffset / bucketSize
 	}
@@ -295,7 +295,7 @@ func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) 
 	if err != nil {
 		return nil, err
 	}
-	intBucketSize := util.FromNanoseconds(bounds.BucketSize)
+	intBucketSize := utility.FromNanoseconds(bounds.BucketSize)
 	buckets := AvgBuckets{}
 	pipeline := []bson.M{
 		// find all tasks that have started within the time frame for a given distro and only valid statuses.
@@ -429,7 +429,7 @@ func convertBucketsToNanoseconds(buckets AvgBuckets, bounds FrameBounds) AvgBuck
 		}
 		for j := 0; j < len(buckets); j++ {
 			if buckets[j].Id == i {
-				currentBucket.AverageTime = util.ToNanoseconds(buckets[j].AverageTime)
+				currentBucket.AverageTime = utility.ToNanoseconds(buckets[j].AverageTime)
 				currentBucket.NumberTasks = buckets[j].NumberTasks
 				break
 			}

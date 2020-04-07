@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -18,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -142,7 +142,7 @@ func (ac *legacyClient) ValidateLocalConfig(data []byte) (validator.ValidationEr
 	}
 	if resp.StatusCode == http.StatusBadRequest {
 		errors := validator.ValidationErrors{}
-		err = util.ReadJSONInto(resp.Body, &errors)
+		err = utility.ReadJSON(resp.Body, &errors)
 		if err != nil {
 			return nil, NewAPIError(resp)
 		}
@@ -171,7 +171,7 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 		return nil, NewAPIError(resp)
 	}
 	patches := []patch.Patch{}
-	if err := util.ReadJSONInto(resp.Body, &patches); err != nil {
+	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
 		return nil, err
 	}
 	return patches, nil
@@ -187,7 +187,7 @@ func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error)
 		return nil, NewAPIError(resp)
 	}
 	result := &service.RestPatch{}
-	if err := util.ReadJSONInto(resp.Body, result); err != nil {
+	if err := utility.ReadJSON(resp.Body, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -203,7 +203,7 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 		return nil, NewAPIError(resp)
 	}
 	apiModel := &restModel.APIPatch{}
-	if err = util.ReadJSONInto(resp.Body, apiModel); err != nil {
+	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
 		return nil, err
 	}
 	i, err := apiModel.ToService()
@@ -227,7 +227,7 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.ProjectRef{}
-	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
+	if err := utility.ReadJSON(resp.Body, ref); err != nil {
 		return nil, err
 	}
 	return ref, nil
@@ -302,7 +302,7 @@ func (ac *legacyClient) GetLastGreen(project string, variants []string) (*model.
 		return nil, NewAPIError(resp)
 	}
 	v := &model.Version{}
-	if err := util.ReadJSONInto(resp.Body, v); err != nil {
+	if err := utility.ReadJSON(resp.Body, v); err != nil {
 		return nil, err
 	}
 	return v, nil
@@ -369,7 +369,7 @@ func (ac *legacyClient) ListProjects() ([]model.ProjectRef, error) {
 		return nil, NewAPIError(resp)
 	}
 	projs := []model.ProjectRef{}
-	if err := util.ReadJSONInto(resp.Body, &projs); err != nil {
+	if err := utility.ReadJSON(resp.Body, &projs); err != nil {
 		return nil, err
 	}
 	return projs, nil
@@ -384,7 +384,7 @@ func (ac *legacyClient) ListTasks(project string) ([]model.ProjectTask, error) {
 		return nil, NewAPIError(resp)
 	}
 	tasks := []model.ProjectTask{}
-	if err := util.ReadJSONInto(resp.Body, &tasks); err != nil {
+	if err := utility.ReadJSON(resp.Body, &tasks); err != nil {
 		return nil, err
 	}
 	return tasks, nil
@@ -399,7 +399,7 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 		return nil, NewAPIError(resp)
 	}
 	variants := []model.BuildVariant{}
-	if err := util.ReadJSONInto(resp.Body, &variants); err != nil {
+	if err := utility.ReadJSON(resp.Body, &variants); err != nil {
 		return nil, err
 	}
 	return variants, nil
@@ -414,7 +414,7 @@ func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
 		return nil, errors.Wrap(NewAPIError(resp), "bad status from api server")
 	}
 	distros := []distro.Distro{}
-	if err := util.ReadJSONInto(resp.Body, &distros); err != nil {
+	if err := utility.ReadJSON(resp.Body, &distros); err != nil {
 		return nil, errors.Wrap(err, "error reading json")
 	}
 	return distros, nil
@@ -470,7 +470,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Patch *patch.Patch `json:"patch"`
 	}{}
 
-	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
+	if err := utility.ReadJSON(resp.Body, &reply); err != nil {
 		return nil, err
 	}
 
@@ -491,7 +491,7 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	}
 
 	reply := service.RestTask{}
-	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
+	if err := utility.ReadJSON(resp.Body, &reply); err != nil {
 		return nil, err
 	}
 	return &reply, nil
@@ -571,7 +571,7 @@ func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, er
 		Modules []string `json:"modules"`
 	}{}
 
-	err = util.ReadJSONInto(resp.Body, &data)
+	err = utility.ReadJSON(resp.Body, &data)
 	if err != nil {
 		return out, err
 	}
@@ -599,7 +599,7 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 		} `json:"versions"`
 	}{}
 
-	err = util.ReadJSONInto(resp.Body, &v)
+	err = utility.ReadJSON(resp.Body, &v)
 	if err != nil {
 		return nil, err
 	}

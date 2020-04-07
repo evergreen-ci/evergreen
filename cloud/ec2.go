@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1245,7 +1246,7 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 }
 
 func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
 	if err := m.client.Create(m.credentials, m.region); err != nil {

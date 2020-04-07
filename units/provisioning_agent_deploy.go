@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -93,7 +93,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
+	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
 		grip.Debug(message.Fields{
 			"host_id": j.host.Id,
 			"status":  j.host.Status,

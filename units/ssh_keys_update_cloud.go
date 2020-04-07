@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -86,7 +86,7 @@ func (j *cloudUpdateSSHKeysJob) Run(ctx context.Context) {
 		switch j.Provider {
 		case evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot:
 			// Ignore if region already contains the public key.
-			if util.StringSliceContains(pair.EC2Regions, j.Region) {
+			if utility.StringSliceContains(pair.EC2Regions, j.Region) {
 				continue
 			}
 		default:

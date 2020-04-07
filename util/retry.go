@@ -4,9 +4,10 @@ import (
 	"context"
 	"math"
 	"math/rand"
+	"net/http"
 	"time"
 
-	"github.com/PuerkitoBio/rehttp"
+	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
 )
@@ -92,9 +93,9 @@ func RetryWithArgs(ctx context.Context, op RetriableFunc, args RetryArgs) error 
 	return Retry(ctx, op, args.MaxAttempts, args.MinDelay, args.MaxDelay)
 }
 
-func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
+func RehttpDelay(initialSleep time.Duration, numAttempts int) utility.HTTPDelayFunction {
 	backoff := getBackoff(numAttempts, initialSleep, 0)
-	return func(attempt rehttp.Attempt) time.Duration {
-		return backoff.ForAttempt(float64(attempt.Index))
+	return func(index int, req *http.Request, resp *http.Response, err error) time.Duration {
+		return backoff.ForAttempt(float64(index))
 	}
 }

@@ -1,4 +1,4 @@
-package util
+package utility
 
 import (
 	"math/rand"
@@ -15,6 +15,16 @@ var MaxTime time.Time = time.Unix(1<<63-62135596801, 999999999)
 // UTC ZeroTime.
 func IsZeroTime(t time.Time) bool {
 	return t.Equal(ZeroTime) || t.IsZero()
+}
+
+// UnixMilli returns t as a Unix time, the number of nanoseconds elapsed since
+// January 1, 1970 UTC. The result is undefined if the Unix time in nanoseconds
+// in cannot be represented by an int64 (a date before the year 1678 or after
+// 2262). Note that this means the result of calling UnixMilli on the zero Time
+// on the zero Time is undefined. The result does not depend on the location
+// associated with t.
+func UnixMilli(t time.Time) int64 {
+	return t.UnixNano() / 1e6
 }
 
 // fromNanoSeconds returns milliseconds of a duration for queries in the database.

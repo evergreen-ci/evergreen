@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +32,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Status: cloud.StatusRunning,
 		})
 
-		ts := util.RoundPartOfMinute(1).Format(TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 		j := NewSpawnhostStartJob(&h, "user", ts)
 
 		j.Run(context.Background())
@@ -51,7 +51,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 			Status: cloud.StatusStopped,
 		})
 
-		ts := util.RoundPartOfMinute(1).Format(TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 		j := NewSpawnhostStartJob(&h, "user", ts)
 
 		j.Run(context.Background())

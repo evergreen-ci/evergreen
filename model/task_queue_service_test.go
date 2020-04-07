@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -37,7 +37,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		BuildId:           "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:         "tg_compile_and_test",
 		TaskGroupMaxHosts: 1,
-		StartTime:         util.ZeroTime,
+		StartTime:         utility.ZeroTime,
 		BuildVariant:      "archlinux",
 		Version:           "5d8cd23da4cf4747f4210333",
 		Project:           "genny",
@@ -70,7 +70,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -106,7 +106,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -140,7 +140,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -174,7 +174,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		BuildId:             "build_1",
 		TaskGroup:           "",
 		TaskGroupMaxHosts:   0,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "version_1",
 		Project:             "project_1",
@@ -224,7 +224,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
-	s.NotEqual(util.ZeroTime, service.lastUpdated)
+	s.NotEqual(utility.ZeroTime, service.lastUpdated)
 
 	spec := TaskSpec{}
 
@@ -283,7 +283,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -341,7 +341,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -379,7 +379,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -431,7 +431,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "archlinux",
 		Version:             "5d8cd23da4cf4747f4210333",
 		Project:             "genny",
@@ -485,7 +485,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
-	s.NotEqual(util.ZeroTime, service.lastUpdated)
+	s.NotEqual(utility.ZeroTime, service.lastUpdated)
 
 	spec := TaskSpec{}
 
@@ -637,7 +637,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		t := task.Task{
 			Id:                ID,
 			DistroId:          distroID,
-			StartTime:         util.ZeroTime,
+			StartTime:         utility.ZeroTime,
 			TaskGroup:         group,
 			BuildVariant:      variant,
 			Version:           version,
@@ -659,7 +659,7 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
-	s.NotEqual(util.ZeroTime, service.lastUpdated)
+	s.NotEqual(utility.ZeroTime, service.lastUpdated)
 
 	s.Len(service.itemNodeMap, 100)
 	s.Len(service.nodeItemMap, 100)
@@ -792,7 +792,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -844,7 +844,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -873,7 +873,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -909,7 +909,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      1,
-		StartTime:           util.ZeroTime,
+		StartTime:           utility.ZeroTime,
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
@@ -1176,8 +1176,8 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 			endTime = time.Now()
 			status = evergreen.TaskFailed
 		} else {
-			startTime = util.ZeroTime
-			endTime = util.ZeroTime
+			startTime = utility.ZeroTime
+			endTime = utility.ZeroTime
 			status = ""
 		}
 		t := task.Task{
@@ -1570,8 +1570,8 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 			Version:           "version_1",
 			TaskGroupMaxHosts: 1,
 			Project:           "project_1",
-			StartTime:         util.ZeroTime,
-			FinishTime:        util.ZeroTime,
+			StartTime:         utility.ZeroTime,
+			FinishTime:        utility.ZeroTime,
 		}
 		s.Require().NoError(t.Insert())
 
@@ -1666,8 +1666,8 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 			Version:           version,
 			Project:           project,
 			TaskGroupMaxHosts: maxHosts,
-			StartTime:         util.ZeroTime,
-			FinishTime:        util.ZeroTime,
+			StartTime:         utility.ZeroTime,
+			FinishTime:        utility.ZeroTime,
 		}
 		s.Require().NoError(t.Insert())
 	}
@@ -1743,7 +1743,7 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 	s.Equal(len(service.order), len(service.units), "order and units should have same length")
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
-	s.NotEqual(util.ZeroTime, service.lastUpdated)
+	s.NotEqual(utility.ZeroTime, service.lastUpdated)
 
 	s.Contains(service.order, compositeGroupID("group_1", "variant_1", "project_1", "version_1"))
 	s.Contains(service.units, compositeGroupID("group_1", "variant_1", "project_1", "version_1"))
@@ -1780,7 +1780,7 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 	t := task.Task{
 		Id:        "a-standalone-task",
 		TaskGroup: "",
-		StartTime: util.ZeroTime,
+		StartTime: utility.ZeroTime,
 	}
 	s.Require().NoError(t.Insert())
 
@@ -1824,8 +1824,8 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 			endTime = time.Now()
 			status = evergreen.TaskFailed
 		} else {
-			startTime = util.ZeroTime
-			endTime = util.ZeroTime
+			startTime = utility.ZeroTime
+			endTime = utility.ZeroTime
 			status = ""
 		}
 		t := task.Task{

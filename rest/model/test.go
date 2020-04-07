@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/grip"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 )
 
 // APITest contains the data to be returned whenever a test is used in the
@@ -43,8 +43,8 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.ExitCode = v.ExitCode
 		at.Id = ToStringPtr(v.ID.Hex())
 
-		startTime := util.FromPythonTime(v.StartTime)
-		endTime := util.FromPythonTime(v.EndTime)
+		startTime := utility.FromPythonTime(v.StartTime)
+		endTime := utility.FromPythonTime(v.EndTime)
 		at.Duration = v.EndTime - v.StartTime
 		at.StartTime = ToTimePtr(startTime)
 		at.EndTime = ToTimePtr(endTime)
@@ -102,7 +102,7 @@ func (at *APITest) ToService() (interface{}, error) {
 		LogID:     FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
-		StartTime: util.ToPythonTime(start),
-		EndTime:   util.ToPythonTime(end),
+		StartTime: utility.ToPythonTime(start),
+		EndTime:   utility.ToPythonTime(end),
 	}, nil
 }

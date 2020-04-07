@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -505,7 +506,7 @@ func (c *LoggerConfig) IsValid() error {
 
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(ValidLogSenders, o.Type) {
+	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
 		catcher.Errorf("%s is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
@@ -741,7 +742,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
 	for _, t := range projBV.Tasks { // create Ids for each task that can run on the variant and is requested by the patch.
-		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
 		} else if tg, ok := tgMap[t.Name]; ok {
 			for _, name := range tg.Tasks {
@@ -751,7 +752,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	}
 	for _, t := range projBV.DisplayTasks {
 		// create Ids for each task that can run on the variant and is requested by the patch.
-		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), proj, projBV, rev, v))
 		}
 	}
@@ -919,7 +920,7 @@ func (p *Project) GetVariantMappings() map[string]string {
 
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
-	return len(p.Variants) == 0 || util.StringSliceContains(p.Variants, variant)
+	return len(p.Variants) == 0 || utility.StringSliceContains(p.Variants, variant)
 }
 
 // GetDisplayName returns the  display name of the plugin command. If none is
@@ -1268,10 +1269,10 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 		} else {
 			pairs = append(pairs, aliasPairs...)
 			for _, pair := range displayTaskPairs {
-				if !util.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
+				if !utility.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
 					patchDoc.BuildVariants = append(patchDoc.BuildVariants, pair.Variant)
 				}
-				if !util.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
+				if !utility.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
 					patchDoc.Tasks = append(patchDoc.Tasks, pair.TaskName)
 				}
 			}
@@ -1330,7 +1331,7 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 	displayTasks := []TVPair{}
 	alreadyAdded := map[string]bool{}
 	for _, bv := range p.BuildVariants {
-		if !util.StringSliceContains(variants, bv.Name) {
+		if !utility.StringSliceContains(variants, bv.Name) {
 			continue
 		}
 		for _, taskName := range tasks {
@@ -1341,7 +1342,7 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 			}
 		}
 		for _, dt := range bv.DisplayTasks {
-			if util.StringSliceContains(tasks, dt.Name) {
+			if utility.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
 				for _, et := range dt.ExecutionTasks {
 					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})

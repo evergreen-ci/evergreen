@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -105,16 +105,16 @@ func (c *communicatorImpl) resetClient() {
 	defer c.mutex.Unlock()
 
 	if c.httpClient != nil {
-		util.PutHTTPClient(c.httpClient)
+		utility.PutHTTPClient(c.httpClient)
 	}
 
-	conf := util.NewDefaultHTTPRetryConf()
+	conf := utility.NewDefaultHTTPRetryConf()
 	conf.Statuses = append(conf.Statuses, http.StatusBadRequest)
-	c.httpClient = util.GetHTTPRetryableClient(conf)
+	c.httpClient = utility.GetHTTPRetryableClient(conf)
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *communicatorImpl) Close() { util.PutHTTPClient(c.httpClient) }
+func (c *communicatorImpl) Close() { utility.PutHTTPClient(c.httpClient) }
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {
@@ -304,7 +304,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				TaskName:      tk.DisplayName,
 				TaskID:        tk.Id,
 				Execution:     int32(tk.Execution),
-				Tags:          append(tk.Tags, util.RandomString()),
+				Tags:          append(tk.Tags, utility.RandomString()),
 				ProcessName:   logType,
 				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
 				Storage:       timber.LogStorageS3,

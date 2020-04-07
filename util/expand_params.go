@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -105,7 +106,7 @@ func expandStruct(inputVal reflect.Value, expansions *Expansions) error {
 		tagParts := strings.Split(fieldTag, ",")
 
 		// see if the field is expandable
-		if !StringSliceContains(tagParts, pluginExpandAllowed) {
+		if !utility.StringSliceContains(tagParts, pluginExpandAllowed) {
 			continue
 		}
 

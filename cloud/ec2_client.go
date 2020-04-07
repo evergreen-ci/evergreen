@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -162,7 +163,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
-		c.httpClient = util.GetHTTPClient()
+		c.httpClient = utility.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
 			Region:      aws.String(region),
@@ -180,7 +181,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 
 func (c *awsClientImpl) Close() {
 	if c.httpClient != nil {
-		util.PutHTTPClient(c.httpClient)
+		utility.PutHTTPClient(c.httpClient)
 		c.httpClient = nil
 	}
 }

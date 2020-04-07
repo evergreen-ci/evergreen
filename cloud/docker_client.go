@@ -24,7 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -128,7 +128,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
 	// Create HTTP client
-	c.httpClient = util.GetHTTPClient()
+	c.httpClient = utility.GetHTTPClient()
 
 	// allow connections to Docker daemon with self-signed certificates
 	transport, ok := c.httpClient.Transport.(*http.Transport)
@@ -426,7 +426,7 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 }
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
-	if util.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
+	if utility.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
 		return &ContainerStatus{HasStarted: false}, nil
 	}
 	container, err := c.GetContainer(ctx, parent, containerID)

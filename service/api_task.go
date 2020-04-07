@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,7 +44,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	})
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), taskStartInfo); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %s", t.Id))
 		return
 	}
@@ -80,7 +81,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idleTimeStartAt := h.LastTaskCompletedTime
-	if idleTimeStartAt.IsZero() || idleTimeStartAt == util.ZeroTime {
+	if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
 		idleTimeStartAt = h.StartTime
 	}
 
@@ -113,7 +114,7 @@ func checkHostHealth(h *host.Host) bool {
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData &&
-		util.StringSliceContains([]string{
+		utility.StringSliceContains([]string{
 			evergreen.HostStarting,
 			evergreen.HostProvisioning,
 		}, h.Status) {
@@ -157,7 +158,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -338,7 +339,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
 	}
 
-	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
@@ -353,7 +354,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		if err != nil {
 			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
 		}
-		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
 		}
@@ -728,7 +729,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	isOldAgent := agentRevisionIsOld(h)
 	// if agent revision is old, we should indicate an exit if there are errors
 	details := &apimodels.GetNextTaskDetails{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		if isOldAgent {
 			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{

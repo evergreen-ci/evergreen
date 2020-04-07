@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -166,7 +166,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			So(resp.StatusCode, ShouldEqual, 200)
 			out := map[string]string{}
 
-			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
+			So(utility.ReadJSON(resp.Body, &out), ShouldBeNil)
 			So(len(out), ShouldEqual, 1)
 			_, ok := out["build_revision"]
 			So(ok, ShouldBeTrue)
@@ -209,7 +209,7 @@ func TestStuckHostEndpoints(t *testing.T) {
 			So(resp.StatusCode, ShouldEqual, 200)
 			out := stuckHostResp{}
 
-			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
+			So(utility.ReadJSON(resp.Body, &out), ShouldBeNil)
 			So(out.Status, ShouldEqual, apiStatusSuccess)
 
 		})

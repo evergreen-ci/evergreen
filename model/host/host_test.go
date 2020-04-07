@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
@@ -277,13 +278,13 @@ func TestSetStopped(t *testing.T) {
 	assert.NoError(t, h.SetStopped(""))
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
-	assert.True(t, util.IsZeroTime(h.StartTime))
+	assert.True(t, utility.IsZeroTime(h.StartTime))
 
 	h, err := FindOneId("h1")
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
-	assert.True(t, util.IsZeroTime(h.StartTime))
+	assert.True(t, utility.IsZeroTime(h.StartTime))
 }
 
 func TestSetHostTerminated(t *testing.T) {
@@ -437,7 +438,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgent)
 			assert.False(t, h.NeedsNewAgentMonitor)
@@ -448,7 +449,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
@@ -459,7 +460,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
@@ -471,7 +472,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.False(t, h.NeedsNewAgentMonitor)
 		},
@@ -481,7 +482,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			require.NoError(t, h.MarkAsReprovisioning())
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)

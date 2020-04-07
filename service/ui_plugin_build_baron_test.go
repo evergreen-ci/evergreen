@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -91,7 +91,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		}
 		]
 	}`
-	err := util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err := utility.ReadJSON(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
 	assert.Nil(err)
 
 	tickets, err := altEndpoint.parseResponseData(data)
@@ -141,7 +141,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		}
 		]
 	}`
-	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = utility.ReadJSON(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
 	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)
@@ -158,7 +158,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		"status": "ok",
 		"suggestions": []
 	}`
-	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = utility.ReadJSON(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
 	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)
@@ -174,7 +174,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		"execution": 0,
 		"status": "scheduled"
 	}`
-	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = utility.ReadJSON(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
 	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)

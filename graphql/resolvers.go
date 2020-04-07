@@ -19,8 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -308,7 +308,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		}
 
 		// favorite projects are filtered out and appended to their own array
-		if util.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
+		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
 			favorites = append(favorites, &uiProj)
 			continue
 		}
@@ -418,7 +418,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if len(baseStatuses) > 0 {
 		tasksFilteredByBaseStatus := []*TaskResult{}
 		for _, taskResult := range taskResults {
-			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+			if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
 				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
 			}
 		}

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -179,7 +180,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		Region               string     `json:"region"`
 	}{}
 
-	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
+	err := utility.ReadJSON(util.NewRequestReader(r), &putParams)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
@@ -250,7 +251,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	updateParams := restModel.APISpawnHostModify{}
 	ctx := r.Context()
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -311,7 +312,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Stop the host
-		ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 		stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
 		if err = uis.queue.Put(ctx, stopJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -328,7 +329,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Start the host
-		ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 		startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
 		if err = uis.queue.Put(ctx, startJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)

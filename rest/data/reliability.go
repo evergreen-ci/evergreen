@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -48,7 +48,7 @@ func (msc *MockTaskReliabilityConnector) GetTaskReliabilityScores(filter reliabi
 // SetTaskReliabilityScores sets the cached task stats by generating 'numStats' stats.
 func (msc *MockTaskReliabilityConnector) SetTaskReliabilityScores(baseTaskName string, numStats int) {
 	msc.CachedTaskReliability = make([]model.APITaskReliability, numStats)
-	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
+	day := utility.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTaskReliability[i] = model.APITaskReliability{
 			TaskName:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTaskName, i)),

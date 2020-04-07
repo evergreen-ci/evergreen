@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -236,7 +237,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
 	}{}
 
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -250,7 +251,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(uis.Settings.GithubOrgs) > 0 && !util.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
+	if len(uis.Settings.GithubOrgs) > 0 && !utility.StringSliceContains(uis.Settings.GithubOrgs, responseRef.Owner) {
 		http.Error(w, "owner not validated in settings", http.StatusBadRequest)
 		return
 	}
@@ -420,7 +421,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	for i, trigger := range responseRef.Triggers {
 		catcher.Add(trigger.Validate(id))
 		if trigger.DefinitionID == "" {
-			responseRef.Triggers[i].DefinitionID = util.RandomString()
+			responseRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
@@ -466,7 +467,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.ForceRepotrackerRun {
-		ts := util.RoundPartOfHour(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
@@ -602,7 +603,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	toAdd, toRemove := util.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
+	toAdd, toRemove := utility.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
 	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -730,7 +731,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(1).Format(units.TSFormat)
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
@@ -777,7 +778,7 @@ func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []mo
 
 	for _, a := range existingAliasDefinitions {
 		// only consider aliases that won't be deleted
-		if !util.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
+		if !utility.StringSliceContains(deletedAliasDefinitionIDs, a.ID.Hex()) {
 			return true, nil
 		}
 	}

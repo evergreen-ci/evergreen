@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,7 +38,7 @@ func (s *ArtifactsSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	path := filepath.Join(s.tmpdir, "example.json")
-	s.NoError(util.WriteJSONInto(path,
+	s.NoError(utility.WriteJSONFile(path,
 		[]*artifact.File{
 			{
 				Name: "name_of_artifact",

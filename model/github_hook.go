@@ -8,7 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -96,11 +96,8 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 		return nil, errors.New("Evergreen is not configured for Github Webhooks")
 	}
 
-	httpClient, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return nil, err
-	}
-	defer util.PutHTTPClient(httpClient)
+	httpClient := utility.GetOAuth2HTTPClient(token)
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	hookObj := github.Hook{
 		Active: github.Bool(true),
@@ -138,11 +135,9 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get github token")
 	}
-	httpClient, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get http client")
-	}
-	defer util.PutHTTPClient(httpClient)
+
+	httpClient := utility.GetOAuth2HTTPClient(token)
+	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

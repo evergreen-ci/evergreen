@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -699,7 +700,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					toRemove = append(toRemove, removed...)
 				}
 				for _, t := range bv.Tasks {
-					if !util.StringSliceContains(toRemove, t.Name) {
+					if !utility.StringSliceContains(toRemove, t.Name) {
 						prunedTasks = append(prunedTasks, t)
 					}
 				}

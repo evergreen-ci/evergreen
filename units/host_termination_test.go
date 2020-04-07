@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +23,7 @@ import (
 func init() {
 	reporting.QuietMode()
 
-	if !util.StringSliceContains(evergreen.ProviderSpawnable, evergreen.ProviderNameMock) {
+	if !utility.StringSliceContains(evergreen.ProviderSpawnable, evergreen.ProviderNameMock) {
 		evergreen.ProviderSpawnable = append(evergreen.ProviderSpawnable, evergreen.ProviderNameMock)
 	}
 }
@@ -181,8 +181,8 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			for _, h := range decommissioned {
 				ids = append(ids, h.Id)
 			}
-			So(util.StringSliceContains(ids, host3.Id), ShouldBeTrue)
-			So(util.StringSliceContains(ids, host4.Id), ShouldBeTrue)
+			So(utility.StringSliceContains(ids, host3.Id), ShouldBeTrue)
+			So(utility.StringSliceContains(ids, host4.Id), ShouldBeTrue)
 		})
 	})
 }

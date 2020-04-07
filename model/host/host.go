@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -346,7 +346,7 @@ func (h *Host) IdleTime() time.Duration {
 	}
 
 	// if the host has been provisioned, the idle time is how long it has been provisioned
-	if !util.IsZeroTime(h.ProvisionTime) {
+	if !utility.IsZeroTime(h.ProvisionTime) {
 		return time.Since(h.ProvisionTime)
 	}
 
@@ -356,7 +356,7 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 func (h *Host) IsEphemeral() bool {
-	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
@@ -474,7 +474,7 @@ func (h *Host) SetStopped(user string) error {
 		bson.M{"$set": bson.M{
 			StatusKey:    evergreen.HostStopped,
 			DNSKey:       "",
-			StartTimeKey: util.ZeroTime,
+			StartTimeKey: utility.ZeroTime,
 		}},
 	)
 	if err != nil {
@@ -485,7 +485,7 @@ func (h *Host) SetStopped(user string) error {
 
 	h.Status = evergreen.HostStopped
 	h.Host = ""
-	h.StartTime = util.ZeroTime
+	h.StartTime = utility.ZeroTime
 
 	return nil
 }
@@ -511,7 +511,7 @@ func (h *Host) SetQuarantined(user string, logs string) error {
 // CreateSecret generates a host secret and updates the host both locally
 // and in the database.
 func (h *Host) CreateSecret() error {
-	secret := util.RandomString()
+	secret := utility.RandomString()
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{SecretKey: secret}},
@@ -866,7 +866,7 @@ func (h *Host) MarkAsReprovisioning() error {
 	err := UpdateOne(bson.M{IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision},
 		bson.M{
 			"$set": bson.M{
-				AgentStartTimeKey:       util.ZeroTime,
+				AgentStartTimeKey:       utility.ZeroTime,
 				ProvisionedKey:          false,
 				StatusKey:               evergreen.HostProvisioning,
 				NeedsNewAgentKey:        needsAgent,
@@ -876,7 +876,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
 	}
 
-	h.AgentStartTime = util.ZeroTime
+	h.AgentStartTime = utility.ZeroTime
 	h.Provisioned = false
 	h.Status = evergreen.HostProvisioning
 	h.NeedsNewAgent = needsAgent
@@ -1069,7 +1069,7 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
-	if util.IsZeroTime(h.LastCommunicationTime) {
+	if utility.IsZeroTime(h.LastCommunicationTime) {
 		return true
 	}
 
@@ -1399,7 +1399,7 @@ func (h *Host) AddSSHKeyName(name string) error {
 		return errors.WithStack(err)
 	}
 
-	if !util.StringSliceContains(h.SSHKeyNames, name) {
+	if !utility.StringSliceContains(h.SSHKeyNames, name) {
 		h.SSHKeyNames = append(h.SSHKeyNames, name)
 	}
 
@@ -1844,7 +1844,7 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.UpHostStatus, h.Status) {
 			out = append(out, h)
 		}
 	}

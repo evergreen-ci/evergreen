@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -169,7 +169,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 			results = names
 		} else {
 			// intersect all evaluated criteria
-			results = util.StringSliceIntersection(results, names)
+			results = utility.StringSliceIntersection(results, names)
 		}
 	}
 	if len(results) == 0 {

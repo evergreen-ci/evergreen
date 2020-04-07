@@ -68,7 +68,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -955,8 +955,8 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 		numDays = 1
 	}
 
-	start = util.GetUTCDay(start)
-	end = util.GetUTCDay(end)
+	start = utility.GetUTCDay(start)
+	end = utility.GetUTCDay(end)
 	duration := 24 * time.Hour * time.Duration(numDays)
 	boundary := start
 	boundaries := []time.Time{}

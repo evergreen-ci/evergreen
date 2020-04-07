@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -507,7 +507,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 }
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
-	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) || t.IsSystemUnresponsive() {
+	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) || t.IsSystemUnresponsive() {
 		return false, nil, nil
 	}
 
@@ -764,7 +764,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		t.task.LocalTestResults = results
 	}
 
-	if !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
+	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
@@ -976,7 +976,7 @@ func detailStatusToHumanSpeak(status string) string {
 
 // this is very similar to taskRegression, but different enough
 func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
+	if t.task.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
 		return nil, nil
 	}
 

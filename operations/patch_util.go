@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -427,7 +427,7 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 			return nil, errors.Wrap(err, "Error getting formatted patch")
 		}
 	} else {
-		if !util.StringSliceContains(extraArgs, "--binary") {
+		if !utility.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")
 		}
 		fullPatch, err = gitDiff(mergeBase, ref, commits, extraArgs...)

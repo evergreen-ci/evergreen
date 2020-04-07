@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -336,7 +337,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.StringSliceContains(variant.Modules, module.Name) {
+			if !utility.StringSliceContains(variant.Modules, module.Name) {
 				continue
 			}
 

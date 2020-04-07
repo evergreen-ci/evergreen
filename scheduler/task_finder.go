@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -77,7 +77,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -191,7 +191,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -311,7 +311,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !util.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",

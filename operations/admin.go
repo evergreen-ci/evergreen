@@ -11,11 +11,11 @@ import (
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	amboyCLI "github.com/mongodb/amboy/cli"
 	"github.com/mongodb/anser/backup"
 	amodel "github.com/mongodb/anser/model"
@@ -386,7 +386,7 @@ func amboyCmd() cli.Command {
 	}
 
 	cmd.Before = func(c *cli.Context) error {
-		opts.Client = util.GetHTTPClient()
+		opts.Client = utility.GetHTTPClient()
 		if c.Bool(useLocalFlagName) {
 			opts.QueueManagementPrefix = "/amboy/local/management"
 			opts.AbortablePoolManagementPrefix = "/amboy/local/pool"
@@ -398,7 +398,7 @@ func amboyCmd() cli.Command {
 	}
 
 	cmd.After = func(c *cli.Context) error {
-		util.PutHTTPClient(opts.Client)
+		utility.PutHTTPClient(opts.Client)
 		return nil
 	}
 
@@ -522,9 +522,9 @@ func adminBackup() cli.Command {
 			env.RemoteQueue().Runner().Close(ctx)
 			env.RemoteQueueGroup().Close(ctx)
 
-			client := util.GetHTTPClient()
+			client := utility.GetHTTPClient()
 			client.Timeout = 30 * 24 * time.Hour
-			defer util.PutHTTPClient(client)
+			defer utility.PutHTTPClient(client)
 
 			conf := env.Settings().Backup
 			conf.Prefix = c.String(prefixFlagName)

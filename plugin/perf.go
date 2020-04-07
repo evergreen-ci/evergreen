@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -55,7 +55,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				DataFunc: func(context UIContext) (interface{}, error) {
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{util.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
+					}{utility.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
 				},
 			},
 		},

@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +40,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 
 	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
 	for k, v := range matched {
-		if !util.StringSliceContains(exclude, k) {
+		if !utility.StringSliceContains(exclude, k) {
 			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
 		}
 	}

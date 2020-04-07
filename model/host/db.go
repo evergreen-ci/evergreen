@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -486,7 +486,7 @@ func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
 		NeedsReprovisionKey:     bson.M{"$exists": true, "$ne": ""},
 		ReprovisioningLockedKey: true,
 		"$or": []bson.M{
-			{LastCommunicationTimeKey: util.ZeroTime},
+			{LastCommunicationTimeKey: utility.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
@@ -591,7 +591,7 @@ func ByDynamicWithinTime(startTime, endTime time.Time) db.Q {
 				},
 				bson.M{
 					CreateTimeKey:      bson.M{"$lt": endTime},
-					TerminationTimeKey: util.ZeroTime,
+					TerminationTimeKey: utility.ZeroTime,
 					StatusKey:          evergreen.HostRunning,
 					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
 				},
@@ -698,7 +698,7 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 				{
 					task.StatusKey:        evergreen.TaskUndispatched,
 					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
-					task.LastHeartbeatKey: bson.M{"$ne": util.ZeroTime},
+					task.LastHeartbeatKey: bson.M{"$ne": utility.ZeroTime},
 				},
 			},
 		},
@@ -738,7 +738,7 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 				}},
 			}},
 			{"$or": []bson.M{
-				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: utility.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
@@ -769,7 +769,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 				}},
 			}},
 			{"$or": []bson.M{
-				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: utility.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxUncommunicativeInterval)}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
@@ -996,7 +996,7 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	}
 
 	createTimeFilter := bson.M{"$gt": params.CreatedAfter}
-	if !util.IsZeroTime(params.CreatedBefore) {
+	if !utility.IsZeroTime(params.CreatedBefore) {
 		createTimeFilter["$lt"] = params.CreatedBefore
 	}
 

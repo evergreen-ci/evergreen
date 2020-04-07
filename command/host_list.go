@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -126,7 +127,7 @@ waitForHosts:
 	}
 
 	if c.Path != "" {
-		if err = util.WriteJSONInto(c.Path, hosts); err != nil {
+		if err = utility.WriteJSONFile(c.Path, hosts); err != nil {
 			return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
 		}
 	}

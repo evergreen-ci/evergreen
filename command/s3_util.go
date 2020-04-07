@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
 )
 
@@ -63,7 +64,7 @@ func validS3Permissions(perm string) bool {
 		string(s3.ObjectCannedACLBucketOwnerFullControl),
 	}
 
-	return util.StringSliceContains(perms, perm)
+	return utility.StringSliceContains(perms, perm)
 }
 
 func getS3OpBackoff() *backoff.Backoff {

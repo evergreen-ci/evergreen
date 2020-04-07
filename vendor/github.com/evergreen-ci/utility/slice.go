@@ -1,4 +1,4 @@
-package util
+package utility
 
 import "strings"
 
@@ -79,4 +79,26 @@ func SplitCommas(originals []string) []string {
 		splitted = append(splitted, strings.Split(original, ",")...)
 	}
 	return splitted
+}
+
+// GetSetDifference returns the elements in A that are not in B
+func GetSetDifference(a, b []string) []string {
+	setB := make(map[string]struct{})
+	setDifference := make(map[string]struct{})
+
+	for _, e := range b {
+		setB[e] = struct{}{}
+	}
+	for _, e := range a {
+		if _, ok := setB[e]; !ok {
+			setDifference[e] = struct{}{}
+		}
+	}
+
+	d := make([]string, 0, len(setDifference))
+	for k := range setDifference {
+		d = append(d, k)
+	}
+
+	return d
 }

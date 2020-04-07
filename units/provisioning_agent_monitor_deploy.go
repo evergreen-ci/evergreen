@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -189,7 +189,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 
 // hostDown checks if the host is down.
 func (j *agentMonitorDeployJob) hostDown() bool {
-	return util.StringSliceContains(evergreen.DownHostStatus, j.host.Status)
+	return utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status)
 }
 
 // disableHost changes the host so that it is down and enqueues a job to

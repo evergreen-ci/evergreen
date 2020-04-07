@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -91,7 +91,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	}
 
 	// patch is done
-	if !util.IsZeroTime(patchDoc.FinishTime) {
+	if !utility.IsZeroTime(patchDoc.FinishTime) {
 		j.dequeue(cq, nextItem)
 		status := evergreen.MergeTestSucceeded
 		if patchDoc.Status == evergreen.PatchFailed {

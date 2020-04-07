@@ -1,38 +1,27 @@
-package util
+package utility
 
 import (
+	"sort"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStringSliceIntersection(t *testing.T) {
-	Convey("With two test string arrays [A B C D], [C D E]", t, func() {
-		a := []string{"A", "B", "C", "D"}
-		b := []string{"C", "D", "E"}
+	a := []string{"A", "B", "C", "D"}
+	b := []string{"C", "D", "E"}
 
-		Convey("intersection [C D] should be returned", func() {
-			So(len(StringSliceIntersection(a, b)), ShouldEqual, 2)
-			So(StringSliceIntersection(a, b), ShouldContain, "C")
-			So(StringSliceIntersection(a, b), ShouldContain, "D")
-		})
-	})
+	assert.Equal(t, 2, len(StringSliceIntersection(a, b)))
+	assert.Contains(t, StringSliceIntersection(a, b), "C")
+	assert.Contains(t, StringSliceIntersection(a, b), "D")
 }
 
 func TestUniqueStrings(t *testing.T) {
-	Convey("With a test string slice ", t, func() {
-		Convey("[a b c a a d d e] should become [a b c d e]", func() {
-			in := []string{"a", "b", "c", "a", "a", "d", "d", "e"}
-			out := UniqueStrings(in)
-			So(out, ShouldResemble, []string{"a", "b", "c", "d", "e"})
-		})
-		Convey("[a b c] should remain [a b c]", func() {
-			in := []string{"a", "b", "c"}
-			out := UniqueStrings(in)
-			So(out, ShouldResemble, []string{"a", "b", "c"})
-		})
-	})
+	assert.EqualValues(t, []string{"a", "b", "c", "d", "e"},
+		UniqueStrings([]string{"a", "b", "c", "a", "a", "d", "d", "e"}))
+
+	assert.EqualValues(t, []string{"a", "b", "c"},
+		UniqueStrings([]string{"a", "b", "c"}))
 }
 
 func TestSplitCommas(t *testing.T) {
@@ -82,4 +71,18 @@ func TestStringSliceSymmetricDifference(t *testing.T) {
 	empty1, empty2 := StringSliceSymmetricDifference([]string{}, []string{})
 	assert.Equal(t, []string{}, empty1)
 	assert.Equal(t, []string{}, empty2)
+}
+
+func TestGetSetDifference(t *testing.T) {
+	assert := assert.New(t)
+	setA := []string{"one", "four", "five", "three", "two"}
+	setB := []string{"five", "two"}
+	difference := GetSetDifference(setA, setB)
+	sort.Strings(difference)
+
+	// GetSetDifference returns the elements in A that are not in B
+	assert.Equal(3, len(difference))
+	assert.Equal("four", difference[0])
+	assert.Equal("one", difference[1])
+	assert.Equal("three", difference[2])
 }

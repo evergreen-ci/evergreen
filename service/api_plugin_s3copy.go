@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -30,7 +31,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	s3CopyReq := &apimodels.S3CopyRequest{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), s3CopyReq)
+	err := utility.ReadJSON(util.NewRequestReader(r), s3CopyReq)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -82,9 +83,9 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Now copy the file into the permanent location
-	client := util.GetHTTPClient()
+	client := utility.GetHTTPClient()
 	client.Timeout = 10 * time.Minute
-	defer util.PutHTTPClient(client)
+	defer utility.PutHTTPClient(client)
 	srcOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,

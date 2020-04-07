@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -264,7 +264,7 @@ func (s *HostConnectorSuite) TestLimit() {
 }
 
 func (s *HostConnectorSuite) TestSpawnHost() {
-	testDistroID := util.RandomString()
+	testDistroID := utility.RandomString()
 	const testPublicKey = "ssh-rsa 1234567890abcdef"
 	const testPublicKeyName = "testPubKey"
 	const testUserID = "TestSpawnHostUser"

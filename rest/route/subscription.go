@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -35,7 +35,7 @@ func (s *subscriptionPostHandler) Factory() gimlet.RouteHandler {
 
 func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	s.Subscriptions = &[]model.APISubscription{}
-	if err := util.ReadJSONInto(r.Body, s.Subscriptions); err != nil {
+	if err := utility.ReadJSON(r.Body, s.Subscriptions); err != nil {
 		return err
 	}
 

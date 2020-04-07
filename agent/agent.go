@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -231,7 +232,7 @@ LOOP:
 				tc = &taskContext{}
 			}
 
-			jitteredSleep = util.JitterInterval(agentSleepInterval)
+			jitteredSleep = utility.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
 			agentSleepInterval = agentSleepInterval * 2

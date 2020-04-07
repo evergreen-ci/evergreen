@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 )
 
@@ -45,12 +46,8 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 		for _, includePattern := range includes {
 			dir, filematch := filepath.Split(includePattern)
 			dir = filepath.Join(rootPath, dir)
-			exists, err := FileExists(dir)
-			if err != nil {
-				outputChan <- ArchiveContentFile{err: err}
-				continue
-			}
-			if !exists {
+
+			if !utility.FileExists(dir) {
 				continue
 			}
 

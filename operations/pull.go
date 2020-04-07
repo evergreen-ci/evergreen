@@ -6,8 +6,8 @@ import (
 	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -62,8 +62,8 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "could not get location of task directory in S3")
 			}
 
-			httpClient := util.GetHTTPClient()
-			defer util.PutHTTPClient(httpClient)
+			httpClient := utility.GetHTTPClient()
+			defer utility.PutHTTPClient(httpClient)
 			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, pail.S3Options{
 				Name:        creds.Bucket,
 				Credentials: pail.CreateAWSCredentials(creds.Key, creds.Secret, ""),

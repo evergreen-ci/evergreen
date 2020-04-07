@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -134,7 +134,7 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
 
-			if util.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {
+			if utility.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
@@ -147,7 +147,7 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
-	return util.StringSliceContains(project.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
+	return utility.StringSliceContains(project.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
 		Resource:      project.Identifier,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -158,7 +159,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for _, s3CopyFile := range c.S3CopyFiles {
-		if len(s3CopyFile.BuildVariants) > 0 && !util.StringSliceContains(
+		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
 			continue
 		}

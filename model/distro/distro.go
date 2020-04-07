@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -137,7 +137,7 @@ func (d *Distro) SetBSON(raw mgobson.Raw) error {
 // for legacy or non-legacy bootstrapping.
 func (d *Distro) ValidateBootstrapSettings() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
+	if !utility.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
 		catcher.Errorf("'%s' is not a valid bootstrap method", d.BootstrapSettings.Method)
 	}
 
@@ -145,7 +145,7 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		return catcher.Resolve()
 	}
 
-	if !util.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
+	if !utility.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
 		catcher.Errorf("'%s' is not a valid communication method", d.BootstrapSettings.Communication)
 	}
 
@@ -414,7 +414,7 @@ func (d *Distro) Platform() (string, string) {
 }
 
 func (d *Distro) IsEphemeral() bool {
-	return util.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
+	return utility.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
 }
 
 func (d *Distro) BinaryName() string {
@@ -533,7 +533,7 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
-	if !util.StringSliceContains(validArches, arch) {
+	if !utility.StringSliceContains(validArches, arch) {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
@@ -542,7 +542,7 @@ func ValidateArch(arch string) error {
 // ValidateCloneMethod checks that the clone mechanism is one of the supported
 // methods.
 func ValidateCloneMethod(method string) error {
-	if !util.StringSliceContains(validCloneMethods, method) {
+	if !utility.StringSliceContains(validCloneMethods, method) {
 		return errors.Errorf("'%s' is not a valid clone method", method)
 	}
 	return nil
@@ -629,7 +629,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.Version == "" {
 		resolved.Version = config.HostAllocator
 	}
-	if !util.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
+	if !utility.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid HostAllocationSettings.Version", resolved.Version)
 	}
 	if resolved.AcceptableHostIdleTime == 0 {
@@ -695,7 +695,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.Version == "" {
 		resolved.Version = config.Planner
 	}
-	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
+	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
 	}
 	if resolved.TargetTime == 0 {

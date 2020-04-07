@@ -10,7 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -35,7 +35,7 @@ type StatsStatus struct {
 
 // createDefaultStatsStatus creates a StatsStatus for projects that don't have a status in the DB yet.
 func createDefaultStatsStatus(projectId string) StatsStatus {
-	defaultBackFillStart := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
+	defaultBackFillStart := utility.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
 	return StatsStatus{
 		ProjectId:           projectId,
 		LastJobRun:          defaultBackFillStart,
@@ -100,7 +100,7 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 		"hour":      opts.Window,
 		"tasks":     opts.Tasks,
 	})
-	start := util.GetUTCHour(opts.Window)
+	start := utility.GetUTCHour(opts.Window)
 	end := start.Add(time.Hour)
 	// Generate the stats based on tasks.
 	pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
@@ -138,7 +138,7 @@ func GenerateDailyTestStatsFromHourly(ctx context.Context, opts GenerateOptions)
 		"hour":      opts.Window,
 		"tasks":     opts.Tasks,
 	})
-	start := util.GetUTCDay(opts.Window)
+	start := utility.GetUTCDay(opts.Window)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTestStatsFromHourlyPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 	err := aggregateIntoCollection(ctx, HourlyTestStatsCollection, pipeline, DailyTestStatsCollection)
@@ -163,7 +163,7 @@ func GenerateDailyTaskStats(ctx context.Context, opts GenerateOptions) error {
 		"hour":      opts.Window,
 		"tasks":     opts.Tasks,
 	})
-	start := util.GetUTCDay(opts.Window)
+	start := utility.GetUTCDay(opts.Window)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTaskStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 	err := aggregateIntoCollection(ctx, task.Collection, pipeline, DailyTaskStatsCollection)
@@ -179,7 +179,7 @@ func GenerateDailyTaskStats(ctx context.Context, opts GenerateOptions) error {
 			"hour":      opts.Window,
 			"tasks":     opts.Tasks,
 		})
-		start = util.GetUTCDay(opts.Window)
+		start = utility.GetUTCDay(opts.Window)
 		end = start.Add(24 * time.Hour)
 		pipeline = dailyTaskStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, DailyTaskStatsCollection)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
@@ -209,12 +209,12 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 		for iter.Next(&logObj) {
 			for _, logMsg := range logObj.Messages {
 				if len(severities) > 0 &&
-					!util.StringSliceContains(severities, logMsg.Severity) {
+					!utility.StringSliceContains(severities, logMsg.Severity) {
 					continue
 				}
 				if len(msgTypes) > 0 {
-					if !(util.StringSliceContains(msgTypes, logMsg.Type) ||
-						util.StringSliceContains(oldMsgTypes, logMsg.Type)) {
+					if !(utility.StringSliceContains(msgTypes, logMsg.Type) ||
+						utility.StringSliceContains(oldMsgTypes, logMsg.Type)) {
 						continue
 					}
 				}
@@ -273,12 +273,12 @@ func FindMostRecentLogMessages(taskId string, execution int, numMsgs int,
 			for _, logMsg := range messages {
 				// filter by severity and type
 				if len(severities) != 0 &&
-					!util.StringSliceContains(severities, logMsg.Severity) {
+					!utility.StringSliceContains(severities, logMsg.Severity) {
 					continue
 				}
 				if len(msgTypes) != 0 {
-					if !(util.StringSliceContains(msgTypes, logMsg.Type) ||
-						util.StringSliceContains(oldMsgTypes, logMsg.Type)) {
+					if !(utility.StringSliceContains(msgTypes, logMsg.Type) ||
+						utility.StringSliceContains(oldMsgTypes, logMsg.Type)) {
 						continue
 					}
 				}

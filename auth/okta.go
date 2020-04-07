@@ -6,10 +6,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/okta"
 	"github.com/evergreen-ci/gimlet/usercache"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -33,8 +33,8 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 			}
 			return id[:emailDomainStart]
 		},
-		GetHTTPClient: util.GetHTTPClient,
-		PutHTTPClient: util.PutHTTPClient,
+		GetHTTPClient: utility.GetHTTPClient,
+		PutHTTPClient: utility.PutHTTPClient,
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: user.PutLoginCache,
 			GetUserByToken:  func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },
