@@ -46,5 +46,7 @@ imports:
   version: 74a29b9fac7397d933f47e33eba94d2d83a464a2
 - name: github.com/google/go-querystring
   version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+- name: github.com/dghubble/oauth1
+  version: 96a35f616385a5c02ffd39a19922f1742e117acb
 
 devImports: []

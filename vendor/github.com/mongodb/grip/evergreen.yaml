@@ -119,6 +119,8 @@ tasks:
 buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
+    expansions:
+      build_env: "PATH=/opt/golang/go1.13/bin:$PATH GOROOT=/opt/golang/go1.13"
     run_on:
       - archlinux-test
       - archlinux-build

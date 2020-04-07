@@ -17,6 +17,7 @@ type Management interface {
 	JobIDsByState(context.Context, string, CounterFilter) (*JobReportIDs, error)
 	RecentErrors(context.Context, time.Duration, ErrorFilter) (*JobErrorsReport, error)
 	RecentJobErrors(context.Context, string, time.Duration, ErrorFilter) (*JobErrorsReport, error)
+	CompleteJob(context.Context, string) error
 	CompleteJobsByType(context.Context, string) error
 }
 

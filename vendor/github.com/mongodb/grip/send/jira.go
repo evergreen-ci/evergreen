@@ -2,7 +2,8 @@ package send
 
 import (
 	"context"
-	"errors"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,8 +12,10 @@ import (
 	"strings"
 
 	jira "github.com/andygrunwald/go-jira"
+	"github.com/dghubble/oauth1"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"github.com/trivago/tgo/tcontainer"
 )
 
@@ -26,25 +29,37 @@ type jiraJournal struct {
 
 // JiraOptions include configurations for the JIRA client
 type JiraOptions struct {
-	Name         string // Name of the journaler
-	BaseURL      string // URL of the JIRA instance
+	Name          string // Name of the journaler
+	BaseURL       string // URL of the JIRA instance
+	BasicAuthOpts JiraBasicAuth
+	Oauth1Opts    JiraOauth1
+	HTTPClient    *http.Client
+	client        jiraClient
+}
+
+type JiraBasicAuth struct {
+	UseBasicAuth bool
 	Username     string
 	Password     string
-	UseBasicAuth bool
+}
 
-	HTTPClient *http.Client
-	client     jiraClient
+type JiraOauth1 struct {
+	PrivateKey  []byte
+	AccessToken string
+	TokenSecret string
+	ConsumerKey string
 }
 
 // MakeJiraLogger is the same as NewJiraLogger but uses a warning
 // level of Trace
-func MakeJiraLogger(opts *JiraOptions) (Sender, error) {
-	return NewJiraLogger(opts, LevelInfo{level.Trace, level.Trace})
+func MakeJiraLogger(ctx context.Context, opts *JiraOptions) (Sender, error) {
+	return NewJiraLogger(ctx, opts, LevelInfo{level.Trace, level.Trace})
 }
 
 // NewJiraLogger constructs a Sender that creates issues to jira, given
-// options defined in a JiraOptions struct.
-func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
+// options defined in a JiraOptions struct. ctx is used as the request context
+// in the OAuth HTTP client
+func NewJiraLogger(ctx context.Context, opts *JiraOptions, l LevelInfo) (Sender, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -58,7 +73,16 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 		return nil, err
 	}
 
-	if err := j.opts.client.Authenticate(opts.Username, opts.Password, opts.UseBasicAuth); err != nil {
+	authOpts := jiraAuthOpts{
+		username:           opts.BasicAuthOpts.Username,
+		password:           opts.BasicAuthOpts.Password,
+		addBasicAuthHeader: opts.BasicAuthOpts.UseBasicAuth,
+		accessToken:        opts.Oauth1Opts.AccessToken,
+		tokenSecret:        opts.Oauth1Opts.TokenSecret,
+		privateKey:         opts.Oauth1Opts.PrivateKey,
+		consumerKey:        opts.Oauth1Opts.ConsumerKey,
+	}
+	if err := j.opts.client.Authenticate(ctx, authOpts); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
@@ -91,9 +115,6 @@ func (j *jiraJournal) Send(m message.Composer) {
 			issueFields.Description = issueFields.Description[:32767]
 		}
 
-		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password, j.opts.UseBasicAuth); err != nil {
-			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
-		}
 		issueKey, err := j.opts.client.PostIssue(issueFields)
 		if err != nil {
 			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
@@ -122,12 +143,8 @@ func (o *JiraOptions) Validate() error {
 		errs = append(errs, "no baseURL specified")
 	}
 
-	if o.Username == "" {
-		errs = append(errs, "no username specified")
-	}
-
-	if o.Password == "" {
-		errs = append(errs, "no password specified")
+	if (o.BasicAuthOpts.Username == "") == (o.Oauth1Opts.AccessToken == "") {
+		return errors.New("must specify exactly 1 method of authentication")
 	}
 
 	if o.client == nil {
@@ -229,36 +246,67 @@ func populateKey(m message.Composer, issueKey string) {
 
 type jiraClient interface {
 	CreateClient(*http.Client, string) error
-	Authenticate(string, string, bool) error
+	Authenticate(context.Context, jiraAuthOpts) error
 	PostIssue(*jira.IssueFields) (string, error)
 	PostComment(string, string) error
 }
 
+type jiraAuthOpts struct {
+	// basic or password auth
+	username           string
+	password           string
+	addBasicAuthHeader bool
+
+	// oauth 1.0
+	privateKey  []byte
+	accessToken string
+	tokenSecret string
+	consumerKey string
+}
+
 type jiraClientImpl struct {
 	*jira.Client
+	baseURL string
 }
 
 func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error {
 	var err error
+	c.baseURL = baseURL
 	c.Client, err = jira.NewClient(client, baseURL)
 	return err
 }
 
-func (c *jiraClientImpl) Authenticate(username string, password string, useBasic bool) error {
-	if useBasic {
-		c.Client.Authentication.SetBasicAuth(username, password)
+func (c *jiraClientImpl) Authenticate(ctx context.Context, opts jiraAuthOpts) error {
+	if opts.username != "" {
+		if opts.addBasicAuthHeader {
+			c.Client.Authentication.SetBasicAuth(opts.username, opts.password)
 
-	} else {
-		authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
+		} else {
+			authed, err := c.Client.Authentication.AcquireSessionCookie(opts.username, opts.password)
+			if err != nil {
+				return fmt.Errorf("problem authenticating to jira as '%s' [%s]", opts.username, err.Error())
+			}
+
+			if !authed {
+				return fmt.Errorf("problem authenticating to jira as '%s'", opts.username)
+			}
+		}
+		return nil
+	} else if opts.accessToken != "" {
+		credentials := JiraOauthCredentials{
+			PrivateKey:  opts.privateKey,
+			AccessToken: opts.accessToken,
+			TokenSecret: opts.tokenSecret,
+			ConsumerKey: opts.consumerKey,
+		}
+		httpClient, err := Oauth1Client(ctx, credentials)
 		if err != nil {
-			return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
+			return err
 		}
-
-		if !authed {
-			return fmt.Errorf("problem authenticating to jira as '%s'", username)
-		}
+		return c.CreateClient(httpClient, c.baseURL)
 	}
-	return nil
+
+	return errors.New("no authentication method specified")
 }
 
 func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) (string, error) {
@@ -285,4 +333,36 @@ func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) (string, error
 func (c *jiraClientImpl) PostComment(issueID string, commentToPost string) error {
 	_, _, err := c.Client.Issue.AddComment(issueID, &jira.Comment{Body: commentToPost})
 	return err
+}
+
+type JiraOauthCredentials struct {
+	PrivateKey  []byte
+	AccessToken string
+	TokenSecret string
+	ConsumerKey string
+}
+
+// Oauth1Client is used to generate a http.Client that supports OAuth 1.0, to be used as the
+// HTTP client in the Jira client implementation above
+func Oauth1Client(ctx context.Context, credentials JiraOauthCredentials) (*http.Client, error) {
+	keyDERBlock, _ := pem.Decode(credentials.PrivateKey)
+	if keyDERBlock == nil {
+		return nil, errors.New("unable to decode jira private key")
+	}
+	if !(keyDERBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyDERBlock.Type, " PRIVATE KEY")) {
+		return nil, errors.Errorf("malformed key block type: %s", keyDERBlock.Type)
+	}
+	privateKey, err := x509.ParsePKCS1PrivateKey(keyDERBlock.Bytes)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to parse jira private key")
+	}
+	oauthConfig := oauth1.Config{
+		ConsumerKey: credentials.ConsumerKey,
+		CallbackURL: "oob",
+		Signer: &oauth1.RSASigner{
+			PrivateKey: privateKey,
+		},
+	}
+	oauthToken := oauth1.NewToken(credentials.AccessToken, credentials.TokenSecret)
+	return oauthConfig.Client(ctx, oauthToken), nil
 }

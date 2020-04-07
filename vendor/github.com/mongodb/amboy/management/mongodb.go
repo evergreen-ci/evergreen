@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -570,6 +571,24 @@ func (db *dbQueueManager) RecentJobErrors(ctx context.Context, jobType string, w
 	}, nil
 }
 
+func (db *dbQueueManager) CompleteJob(ctx context.Context, name string) error {
+	if db.opts.Group != "" {
+		name = fmt.Sprintf("%s.%s", db.opts.Group, name)
+	}
+	query := bson.M{
+		"_id":              name,
+		"status.completed": false,
+	}
+
+	update := bson.M{
+		"$set": bson.M{"status.completed": true},
+		"$inc": bson.M{"status.mod_count": 3},
+	}
+
+	_, err := db.collection.UpdateOne(ctx, query, update)
+	return errors.Wrapf(err, "problem marking job with name '%s' complete", name)
+}
+
 func (db *dbQueueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
 	query := bson.M{
 		"type":             jobType,
@@ -585,5 +604,5 @@ func (db *dbQueueManager) CompleteJobsByType(ctx context.Context, jobType string
 	}
 
 	_, err := db.collection.UpdateMany(ctx, query, update)
-	return errors.Wrap(err, "problem marking jobs complete by type")
+	return errors.Wrapf(err, "problem marking jobs complete by type '%s'", jobType)
 }

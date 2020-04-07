@@ -607,7 +607,7 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					if strings.Contains(ec2err.Message(), "not a valid EBS device name") {
+					if strings.Contains(ec2err.Message(), "InvalidParameterValue") {
 						return false, err
 					}
 				}

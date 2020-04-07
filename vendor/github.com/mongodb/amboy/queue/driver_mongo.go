@@ -522,18 +522,20 @@ func (d *mongoDriver) doUpdate(ctx context.Context, job *registry.JobInterchange
 	query := getAtomicQuery(d.instanceID, job.Name, job.Status.ModificationCount)
 	res, err := d.getCollection().ReplaceOne(ctx, query, job)
 	if err != nil {
-		if isMongoDupKey(err) {
-			grip.Debug(message.Fields{
-				"id":        d.instanceID,
-				"service":   "amboy.queue.mongo",
-				"operation": "save job",
-				"name":      job.Name,
-				"is_group":  d.opts.UseGroups,
-				"group":     d.opts.GroupName,
-				"outcome":   "duplicate key error, ignoring stale job",
-			})
-			return nil
-		}
+		grip.Debug(message.Fields{
+			"id":        d.instanceID,
+			"service":   "amboy.queue.mongo",
+			"operation": "save job",
+			"job_id":    job.Name,
+			"job_type":  job.Type,
+			"scopes":    job.Scopes,
+			"stat":      job.Status,
+			"is_group":  d.opts.UseGroups,
+			"group":     d.opts.GroupName,
+			"outcome":   "duplicate key error, ignoring stale job",
+			"dup_key":   isMongoDupKey(err),
+		})
+
 		return errors.Wrapf(err, "problem saving document %s: %+v", job.Name, res)
 	}
 

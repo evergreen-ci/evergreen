@@ -47,6 +47,7 @@ func TestManagementSuiteBackedByMongoDB(t *testing.T) {
 	}
 
 	s.setup = func() {
+		s.Require().NoError(client.Database(opts.DB).Drop(ctx))
 		args := queue.MongoDBQueueCreationOptions{
 			Size:   2,
 			Name:   name,
@@ -92,6 +93,7 @@ func TestManagementSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	opts.GroupName = "foo"
 
 	s.setup = func() {
+		s.Require().NoError(client.Database(opts.DB).Drop(ctx))
 		args := queue.MongoDBQueueCreationOptions{
 			Size:   2,
 			Name:   name,
@@ -126,6 +128,7 @@ func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options:  opts,
 			Name:     name,
+			Group:    "foo",
 			ByGroups: true,
 		}, client)
 		require.NoError(t, err)
@@ -136,6 +139,7 @@ func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	opts.GroupName = "foo"
 
 	s.setup = func() {
+		s.Require().NoError(client.Database(opts.DB).Drop(ctx))
 		args := queue.MongoDBQueueCreationOptions{
 			Size:   2,
 			Name:   name,
@@ -280,6 +284,32 @@ func (s *ManagementSuite) TestRecentJobErrors() {
 	}
 }
 
+func (s *ManagementSuite) TestCompleteJob() {
+	j1 := job.NewShellJob("ls", "")
+	s.Require().NoError(s.queue.Put(s.ctx, j1))
+	j2 := newTestJob("complete")
+	s.Require().NoError(s.queue.Put(s.ctx, j2))
+	j3 := newTestJob("uncomplete")
+	s.Require().NoError(s.queue.Put(s.ctx, j3))
+
+	s.Require().NoError(s.manager.CompleteJob(s.ctx, "complete"))
+	jobCount := 0
+	for jobStats := range s.queue.JobStats(s.ctx) {
+		if jobStats.ID == "complete" {
+			s.True(jobStats.Completed)
+			_, ok := s.manager.(*dbQueueManager)
+			if ok {
+				s.Equal(3, jobStats.ModificationCount)
+			}
+		} else {
+			s.False(jobStats.Completed)
+			s.Equal(0, jobStats.ModificationCount)
+		}
+		jobCount++
+	}
+	s.Equal(3, jobCount)
+}
+
 func (s *ManagementSuite) TestCompleteJobsByType() {
 	j1 := job.NewShellJob("ls", "")
 	s.Require().NoError(s.queue.Put(s.ctx, j1))
@@ -289,6 +319,7 @@ func (s *ManagementSuite) TestCompleteJobsByType() {
 	s.Require().NoError(s.queue.Put(s.ctx, j3))
 
 	s.Require().NoError(s.manager.CompleteJobsByType(s.ctx, "test"))
+	jobCount := 0
 	for jobStats := range s.queue.JobStats(s.ctx) {
 		if jobStats.ID == "0" || jobStats.ID == "1" {
 			s.True(jobStats.Completed)
@@ -300,7 +331,9 @@ func (s *ManagementSuite) TestCompleteJobsByType() {
 			s.False(jobStats.Completed)
 			s.Equal(0, jobStats.ModificationCount)
 		}
+		jobCount++
 	}
+	s.Equal(3, jobCount)
 }
 
 type testJob struct {

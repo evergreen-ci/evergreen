@@ -1314,7 +1314,7 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if flags.BackgroundCleanup {
+		if flags.BackgroundCleanupDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background data cleanup",
 				"impact":  "data will accumulate",
@@ -1323,7 +1323,6 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(0)))
-
+		return queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2)))
 	}
 }

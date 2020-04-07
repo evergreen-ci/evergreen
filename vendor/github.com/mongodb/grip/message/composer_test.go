@@ -1,7 +1,6 @@
 package message
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -9,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -407,4 +407,33 @@ func TestJiraIssueAnnotationOnlySupportsStrings(t *testing.T) {
 	assert.Error(m.Annotate("k", 1))
 	assert.Error(m.Annotate("k", true))
 	assert.Error(m.Annotate("k", nil))
+}
+
+type causer interface {
+	Cause() error
+}
+
+func TestErrors(t *testing.T) {
+	for name, cmp := range map[string]Composer{
+		"Wrapped": WrapError(errors.New("err"), "msg"),
+		"Plain":   NewError(errors.New("err")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Run("Interfaces", func(t *testing.T) {
+				assert.Implements(t, (*error)(nil), cmp)
+				assert.Implements(t, (*causer)(nil), cmp)
+			})
+			t.Run("Value", func(t *testing.T) {
+				assert.Equal(t, cmp.(error).Error(), cmp.String())
+			})
+			t.Run("Causer", func(t *testing.T) {
+				cause := errors.Cause(cmp.(error))
+				assert.NotEqual(t, cause, cmp)
+			})
+			t.Run("ExtendedFormat", func(t *testing.T) {
+				assert.NotEqual(t, fmt.Sprintf("%+v", cmp), fmt.Sprintf("%v", cmp))
+			})
+
+		})
+	}
 }
