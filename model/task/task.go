@@ -177,8 +177,8 @@ func (t *Task) GetTaskGroupString() string {
 }
 
 // S3Path returns the path to a task's directory dump in S3.
-func (t *Task) S3Path(name string) string {
-	return strings.Join([]string{t.Project, t.Version, t.BuildVariant, name, "latest"}, "/")
+func (t *Task) S3Path(bv, name string) string {
+	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
 }
 
 // Dependency represents a task that must be completed before the owning

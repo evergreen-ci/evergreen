@@ -4,12 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ProviderSettings exposes provider-specific configuration settings for a Manager.
@@ -228,7 +226,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
-		return getMockManagerOptions(d.Provider, d.ProviderSettings)
+		return getMockManagerOptions(d.Provider, d.ProviderSettingsList)
 	}
 	return ManagerOpts{Provider: d.Provider}, nil
 }
@@ -240,45 +238,4 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 		return cm, nil
 	}
 	return nil, errors.New("Error converting manager to container manager")
-}
-
-// If ProviderSettings is populated, then it was modified via UI and we should save this to the list.
-// Otherwise, repopulate ProviderSettings from the list to maintain the UI. This is only necessary temporarily.
-func UpdateProviderSettings(d *distro.Distro) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := CreateSettingsListFromLegacy(d); err != nil {
-			return errors.Wrapf(err, "error creating new settings list for distro '%s'", d.Id)
-		}
-	} else if len(d.ProviderSettingsList) > 0 {
-		region := ""
-		if len(d.ProviderSettingsList) > 1 {
-			region = evergreen.DefaultEC2Region
-		}
-		doc, err := d.GetProviderSettingByRegion(region)
-		if err != nil {
-			return errors.Wrapf(err, "unable to get default provider settings for distro '%s'", d.Id)
-		}
-		docMap := doc.ExportMap()
-		d.ProviderSettings = &docMap
-	}
-	return nil
-}
-
-func CreateSettingsListFromLegacy(d *distro.Distro) error {
-	doc := &birch.Document{}
-	if d.ProviderSettings != nil {
-		bytes, err := bson.Marshal(d.ProviderSettings)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-	}
-
-	if IsEc2Provider(d.Provider) {
-		doc = doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
-	}
-	d.ProviderSettingsList = []*birch.Document{doc}
-	return nil
 }

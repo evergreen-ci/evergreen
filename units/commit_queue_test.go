@@ -213,8 +213,9 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 
 	project := &model.Project{}
 	patchDoc := &patch.Patch{}
+	ref := &model.ProjectRef{}
 
-	s.NoError(addMergeTaskAndVariant(patchDoc, project))
+	s.NoError(addMergeTaskAndVariant(patchDoc, project, ref))
 
 	s.Require().Len(patchDoc.BuildVariants, 1)
 	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])

@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -111,20 +110,6 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := bson.Unmarshal(bytes, s); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
-	} else if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
-		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-		grip.Debug(message.Fields{
-			"message": "mapstructure comparison",
-			"input":   *d.ProviderSettings,
-			"output":  *s,
-		})
-
-		if region != evergreen.DefaultEC2Region && region != "" {
-			return errors.Errorf("only default region should be saved in provider settings")
-		}
-		s.Region = s.getRegion()
 	}
 	return nil
 }

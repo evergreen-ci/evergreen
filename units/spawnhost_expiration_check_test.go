@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -28,9 +29,9 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 		Provider: evergreen.ProviderNameMock,
 		Distro: distro.Distro{
 			Provider: evergreen.ProviderNameMock,
-			ProviderSettings: &map[string]interface{}{
-				"region": "test-region",
-			},
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("region", "test-region"),
+			)},
 		},
 		NoExpiration:   true,
 		ExpirationTime: time.Now(),

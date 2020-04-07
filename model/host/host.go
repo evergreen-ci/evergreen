@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -219,11 +218,7 @@ type DockerOptions struct {
 }
 
 func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
@@ -20,7 +21,7 @@ type s3Push struct {
 func s3PushFactory() Command { return &s3Push{} }
 
 func (*s3Push) Name() string {
-	return "s3.push"
+	return evergreen.S3PushCommandName
 }
 
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
@@ -61,7 +62,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pushMsg)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  conf.Task.S3Path(conf.Task.DisplayName),
+		Remote:  conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")

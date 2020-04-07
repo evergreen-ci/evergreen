@@ -32,7 +32,7 @@ func TestS3PullParseParams(t *testing.T) {
 			assert.Equal(t, params["exclude"], c.ExcludeFilter)
 			assert.Equal(t, params["build_variants"], c.BuildVariants)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
-			assert.Equal(t, params["task"], c.TaskName)
+			assert.Equal(t, params["task"], c.Task)
 			assert.Equal(t, params["working_directory"], c.WorkingDir)
 			assert.Equal(t, params["delete_on_sync"], c.DeleteOnSync)
 		},
@@ -48,11 +48,9 @@ func TestS3PullParseParams(t *testing.T) {
 }
 
 func TestS3PullExecute(t *testing.T) {
-	taskName := "test"
-
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string){
 		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -76,7 +74,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Equal(t, pulledContent, fileContent)
 		},
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -101,7 +99,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Empty(t, files)
 		},
 		"NoopsIfIgnoringBuildVariant": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(taskName))
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
 			require.NoError(t, err)
@@ -179,6 +177,9 @@ func TestS3PullExecute(t *testing.T) {
 				},
 				ProjectRef: &model.ProjectRef{
 					Identifier: "project_identifier",
+					TaskSync: model.TaskSyncOptions{
+						ConfigEnabled: true,
+					},
 				},
 				TaskSync: evergreen.S3Credentials{
 					Key:    "key",
@@ -197,7 +198,7 @@ func TestS3PullExecute(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpDir))
 			}()
-			c := &s3Pull{TaskName: taskName}
+			c := &s3Pull{Task: "task", FromBuildVariant: "from_build_variant"}
 			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
 				Path: tmpDir,
 			})

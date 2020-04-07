@@ -25,8 +25,7 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// agent can't properly unmarshal provider settings map
-	h.Distro.ProviderSettings = nil
+	// agent can't properly unmarshal provider settings
 	h.Distro.ProviderSettingsList = nil
 	gimlet.WriteJSON(w, h.Distro)
 }

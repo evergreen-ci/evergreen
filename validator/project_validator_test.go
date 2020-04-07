@@ -2249,3 +2249,132 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(aliases, "distro2-alias")
 	assert.Contains(aliases, "distro1and2-alias")
 }
+
+func TestValidateTaskSyncCommands(t *testing.T) {
+	t.Run("TaskWithNoS3PushCallsPasses", func(t *testing.T) {
+		p := &model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name:     t.Name(),
+					Commands: []model.PluginCommandConf{},
+				},
+			},
+		}
+		assert.Empty(t, validateTaskSyncCommands(p))
+	})
+	t.Run("TaskWithMultipleS3PushCallsFails", func(t *testing.T) {
+		p := &model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name: t.Name(),
+					Commands: []model.PluginCommandConf{
+						{
+							Command: evergreen.S3PushCommandName,
+						},
+						{
+							Command: evergreen.S3PushCommandName,
+						},
+					},
+				},
+			},
+			BuildVariants: []model.BuildVariant{
+				{
+					Name: "build_variant",
+					Tasks: []model.BuildVariantTaskUnit{
+						{
+							Name: t.Name(),
+						},
+					},
+				},
+			},
+		}
+		assert.NotEmpty(t, validateTaskSyncCommands(p))
+	})
+}
+
+func TestValidateTaskSyncSettings(t *testing.T) {
+	for testName, testParams := range map[string]struct {
+		tasks                    []model.ProjectTask
+		taskSyncEnabledForConfig bool
+		expectError              bool
+	}{
+		"NoTaskSyncPasses": {
+			expectError: false,
+		},
+		"ConfigWithTaskSyncWhenEnabledPasses": {
+			taskSyncEnabledForConfig: true,
+			tasks: []model.ProjectTask{
+				{
+					Commands: []model.PluginCommandConf{
+						{
+							Command: evergreen.S3PushCommandName,
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		"ConfigWithS3PushWhenDisabledFails": {
+			tasks: []model.ProjectTask{
+				{
+					Commands: []model.PluginCommandConf{
+						{
+							Command: evergreen.S3PushCommandName,
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		"ConfigWithS3PullWhenDisabledFails": {
+			tasks: []model.ProjectTask{
+				{
+					Commands: []model.PluginCommandConf{
+						{
+							Command: evergreen.S3PullCommandName,
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		"ConfigWithoutTaskSyncWhenEnabledPasses": {
+			taskSyncEnabledForConfig: true,
+			expectError:              false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ref := &model.ProjectRef{
+				TaskSync: model.TaskSyncOptions{
+					ConfigEnabled: testParams.taskSyncEnabledForConfig,
+				},
+			}
+			p := &model.Project{Tasks: testParams.tasks}
+			errs := validateTaskSyncSettings(p, ref)
+			if testParams.expectError {
+				assert.NotEmpty(t, errs)
+			} else {
+				assert.Empty(t, errs)
+			}
+		})
+	}
+	ref := &model.ProjectRef{}
+	p := &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Commands: []model.PluginCommandConf{
+					{
+						Command: evergreen.S3PushCommandName,
+					},
+				},
+			},
+		},
+	}
+	assert.NotEmpty(t, validateTaskSyncSettings(p, ref))
+
+	ref.TaskSync.ConfigEnabled = true
+	assert.Empty(t, validateTaskSyncSettings(p, ref))
+
+	p.Tasks = []model.ProjectTask{}
+	assert.Empty(t, validateTaskSyncSettings(p, ref))
+}

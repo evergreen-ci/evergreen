@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -104,12 +105,11 @@ func TestDistroCostConnectorSuite(t *testing.T) {
 		}
 		assert.NoError(testTask2.Insert())
 
-		var settings = make(map[string]interface{})
-		settings["instance_type"] = fmt.Sprintf("value_%d", i)
+		settings := birch.NewDocument(birch.EC.String("instance_type", fmt.Sprintf("value_%d", i)))
 		testDistro := &distro.Distro{
-			Id:               fmt.Sprintf("%d", i),
-			Provider:         "provider",
-			ProviderSettings: &settings,
+			Id:                   fmt.Sprintf("%d", i),
+			Provider:             "provider",
+			ProviderSettingsList: []*birch.Document{settings},
 		}
 		assert.NoError(testDistro.Insert())
 	}
@@ -120,8 +120,7 @@ func TestDistroCostConnectorSuite(t *testing.T) {
 func TestMockDistroConnectorSuite(t *testing.T) {
 	s := new(DistroCostConnectorSuite)
 
-	var settings = make(map[string]interface{})
-	settings["instance_type"] = "type"
+	settings := birch.NewDocument(birch.EC.String("instance_type", "type"))
 
 	s.ctx = &MockConnector{
 		MockDistroConnector: MockDistroConnector{
@@ -134,8 +133,8 @@ func TestMockDistroConnectorSuite(t *testing.T) {
 					StartTime: s.starttime, FinishTime: s.starttime.Add(time.Duration(1))},
 			},
 			CachedDistros: []*distro.Distro{
-				{Id: "distro1", Provider: "ec2", ProviderSettings: &settings},
-				{Id: "distro2", Provider: "gce", ProviderSettings: &settings},
+				{Id: "distro1", Provider: "ec2", ProviderSettingsList: []*birch.Document{settings}},
+				{Id: "distro2", Provider: "gce", ProviderSettingsList: []*birch.Document{settings}},
 			},
 		},
 	}

@@ -76,9 +76,11 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 type s3Pull struct {
 	s3Base
 	base
-	TaskName     string `mapstructure:"task" plugin:"expand"`
-	WorkingDir   string `mapstructure:"working_directory" plugin:"expand"`
-	DeleteOnSync bool   `mapstructure:"delete_on_sync"`
+
+	FromBuildVariant string `mapstructure:"from_build_variant" plugin:"expand"`
+	Task             string `mapstructure:"task" plugin:"expand"`
+	WorkingDir       string `mapstructure:"working_directory" plugin:"expand"`
+	DeleteOnSync     bool   `mapstructure:"delete_on_sync"`
 }
 
 func s3PullFactory() Command { return &s3Pull{} }
@@ -94,7 +96,7 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
-	if c.TaskName == "" {
+	if c.Task == "" {
 		return errors.New("task must not be empty")
 	}
 	if c.WorkingDir == "" {
@@ -118,6 +120,12 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping s3.pull for build variant '%s'", conf.BuildVariant.Name)
 		return nil
+	}
+
+	// If no buildvariant is explicitly stated, pull from this task's
+	// build variant.
+	if c.FromBuildVariant == "" {
+		c.FromBuildVariant = conf.Task.BuildVariant
 	}
 
 	httpClient := utility.GetHTTPClient()
@@ -144,7 +152,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pullMsg)
 	if err := c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   c.WorkingDir,
-		Remote:  conf.Task.S3Path(c.TaskName),
+		Remote:  conf.Task.S3Path(c.FromBuildVariant, c.Task),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pulling task data from S3")

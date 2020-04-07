@@ -253,5 +253,5 @@ func TestGetTaskSyncPath(t *testing.T) {
 	require.NotNil(t, resp)
 	path, ok := resp.Data().(string)
 	require.True(t, ok)
-	assert.Equal(t, path, expected.S3Path(expected.DisplayName))
+	assert.Equal(t, path, expected.S3Path(expected.BuildVariant, expected.DisplayName))
 }

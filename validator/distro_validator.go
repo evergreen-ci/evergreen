@@ -146,7 +146,6 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 	errs := ValidationErrors{}
 	definedRegions := map[string]bool{}
-	d.ProviderSettings = nil
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
@@ -193,7 +192,7 @@ func validateSingleProviderSettings(d *distro.Distro) error {
 		return errors.WithStack(err)
 	}
 	if err = settings.FromDistroSettings(*d, ""); err != nil {
-		return errors.Wrapf(err, "distro '%v' decode error", distro.ProviderSettingsKey)
+		return errors.Wrapf(err, "distro '%v' decode error", distro.ProviderSettingsListKey)
 	}
 
 	if err := settings.Validate(); err != nil {
