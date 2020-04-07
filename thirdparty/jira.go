@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -283,7 +283,7 @@ func (jiraHandler *JiraHandler) HttpClient() *http.Client {
 }
 
 func NewJiraHandler(opts send.JiraOptions) JiraHandler {
-	httpClient := util.GetHTTPClient()
+	httpClient := utility.GetHTTPClient()
 	if opts.Oauth1Opts.PrivateKey != nil {
 		var err error
 		credentials := send.JiraOauthCredentials{
