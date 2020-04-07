@@ -223,13 +223,17 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 
 	apps = append(apps, localAbort, remoteAbort, groupAbort, localManagement)
 
-	var err error
 	serviceFlags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting service flags")
 	}
 	if !serviceFlags.AmboyRemoteManagementDisabled {
-		remoteManager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
+		var (
+			remoteManager management.Management
+			groupManager  management.Management
+		)
+
+		remoteManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 			Name:    settings.Amboy.Name,
 			Options: opts,
 		}, env.Client())
@@ -241,7 +245,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 		remoteManagement.SetPrefix("/amboy/remote/management")
 		apps = append(apps, remoteManagement)
 
-		groupManager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
+		groupManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
 			Name:     settings.Amboy.Name,
 			Options:  opts,
 			ByGroups: true,
