@@ -2301,7 +2301,8 @@ func (h *Host) SetHomeVolumeID(volumeID string) error {
 	},
 		bson.M{
 			"$set": bson.M{HomeVolumeIDKey: volumeID},
-		})
+		},
+	)
 }
 
 func (h *Host) HomeVolume() *VolumeAttachment {
