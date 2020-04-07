@@ -316,6 +316,8 @@ const (
 const (
 	GenerateTasksCommandName = "generate.tasks"
 	CreateHostCommandName    = "host.create"
+	S3PushCommandName        = "s3.push"
+	S3PullCommandName        = "s3.pull"
 )
 
 type SenderKey int

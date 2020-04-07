@@ -48,6 +48,9 @@ type ProjectRef struct {
 	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
+	// TaskSync holds settings for synchronizing task directories to S3.
+	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked             bool `bson:"tracked" json:"tracked"`
 	PatchingDisabled    bool `bson:"patching_disabled" json:"patching_disabled"`
@@ -74,6 +77,13 @@ type CommitQueueParams struct {
 	Enabled     bool   `bson:"enabled" json:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method"`
 	PatchType   string `bson:"patch_type" json:"patch_type"`
+}
+
+// TaskSyncOptions contains information about which features are allowed for
+// syncing task directories to S3.
+type TaskSyncOptions struct {
+	ConfigEnabled bool `bson:"config_enabled" json:"config_enabled"`
+	PatchEnabled  bool `bson:"patch_enabled" json:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -157,6 +167,7 @@ var (
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey            = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey     = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -649,6 +660,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
+				projectRefTaskSyncKey:            projectRef.TaskSync,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,
 				projectRefRepotrackerDisabledKey: projectRef.RepotrackerDisabled,
 				projectRefNotifyOnFailureKey:     projectRef.NotifyOnBuildFailure,

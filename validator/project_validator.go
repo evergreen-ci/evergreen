@@ -22,6 +22,8 @@ import (
 
 type projectValidator func(*model.Project) ValidationErrors
 
+type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
+
 type ValidationErrorLevel int64
 
 const (
@@ -95,6 +97,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateCreateHosts,
 	validateDuplicateTaskDefinition,
 	validateGenerateTasks,
+	validateTaskSyncCommands,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -102,6 +105,10 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
+}
+
+var projectSettingsValidators = []projectSettingsValidator{
+	validateTaskSyncSettings,
 }
 
 func (vr ValidationError) Error() string {
@@ -181,6 +188,16 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
 	return validationErrs
+}
+
+// CheckProjectSettings checks the project configuration against the project
+// settings.
+func CheckProjectSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+	var errs ValidationErrors
+	for _, validateSettings := range projectSettingsValidators {
+		errs = append(errs, validateSettings(p, ref)...)
+	}
+	return errs
 }
 
 func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
@@ -1130,19 +1147,19 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
-	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
+	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3, Error)
 	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 50)...)
 	return errs
 }
 
-func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) (errs ValidationErrors) {
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if count, ok := ts[t.Name]; ok {
 				if count > times {
 					errs = append(errs, ValidationError{
 						Message: fmt.Sprintf("variant %s task %s may only call %s %d times but calls it %d times", bv.Name, t.Name, commandName, times, count),
-						Level:   Error,
+						Level:   level,
 					})
 				}
 			}
@@ -1173,5 +1190,37 @@ func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName s
 // does, the server will noop it.
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
-	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1)
+	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1, Error)
+}
+
+// validateTaskSyncCommands validates that the task sync operations are valid.
+// In particular, s3.push should be called at most once per task and s3.pull
+// should refer to a valid task running s3.push.
+// TODO (EVG-7736): add validation to ensure referential integrity of s3.pull to
+// a valid s3.push task.
+func validateTaskSyncCommands(p *model.Project) ValidationErrors {
+	ts := p.TasksThatCallCommand(evergreen.S3PushCommandName)
+	return validateTimesCalledPerTask(p, ts, evergreen.S3PushCommandName, 1, Warning)
+}
+
+// validateTaskSyncSettings checks that task sync in the project settings have
+// enabled task sync for the config.
+func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+	if ref.TaskSync.ConfigEnabled {
+		return nil
+	}
+	var errs ValidationErrors
+	if s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName); len(s3PushCalls) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
+		})
+	}
+	if s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName); len(s3PullCalls) != 0 {
+		errs = append(errs, ValidationError{
+			Level:   Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
+		})
+	}
+	return errs
 }

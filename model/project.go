@@ -1286,7 +1286,8 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
 }
 
-// TasksThatCallCommand returns a map of tasks that call a given command.
+// TasksThatCallCommand returns a map of tasks that call a given command to the
+// number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
 	// get all functions that call `generate.tasks`
 	fs := map[string]int{}
@@ -1316,7 +1317,6 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 	return ts
-
 }
 
 // IsGenerateTask indicates that the task generates other tasks, which the
