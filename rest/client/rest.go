@@ -418,6 +418,31 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	return hosts, nil
 }
 
+func (c *communicatorImpl) ConfigureSpawnHost(ctx context.Context, opts host.HostConfigureOptions) (string, error) {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("host/configure"),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		err = errors.Wrapf(err, "error sending request to configure workstation")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
+			return "", errors.Wrapf(err, "Got %d code. Problem reading error", resp.StatusCode)
+		}
+		return "", errors.Wrap(errMsg, "problem configuring workstation")
+	}
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error reading response string")
+	}
+	return string(bytes), nil
+}
+
 func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme evergreen.BannerTheme) error {
 	info := requestInfo{
 		method:  post,

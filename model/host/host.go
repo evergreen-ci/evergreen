@@ -299,6 +299,11 @@ type HostModifyOptions struct {
 	NewName            string
 }
 
+type HostConfigureOptions struct {
+	Project   string
+	Directory string
+}
+
 type SpawnHostUsage struct {
 	TotalHosts            int `bson:"total_hosts"`
 	TotalStoppedHosts     int `bson:"total_stopped_hosts"`

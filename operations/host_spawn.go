@@ -221,6 +221,58 @@ func hostModify() cli.Command {
 	}
 }
 
+func hostConfigure() cli.Command {
+	return cli.Command{
+		Name:  "configure",
+		Usage: "run setup commands for a virtual workstation",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(projectFlagName, "p"),
+				Usage: "name of an evergreen project to run commands from",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(dirFlagName, "d"),
+				Usage: "directory to run commands from (will override project configuration)",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(quietFlagName, "q"),
+				Usage: "surpress output",
+			},
+		},
+		Before: requireProjectFlag,
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			project := c.String(projectFlagName)
+			directory := c.String(dirFlagName)
+			quiet := c.Bool(quietFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			opts := host.HostConfigureOptions{
+				Project:   project,
+				Directory: directory,
+			}
+
+			output, err := client.ConfigureSpawnHost(ctx, opts)
+			if err != nil {
+				return err
+			}
+			if !quiet {
+				grip.Info(output)
+			}
+			return nil
+		},
+	}
+}
+
 func hostStop() cli.Command {
 	const waitFlagName = "wait"
 	return cli.Command{
