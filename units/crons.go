@@ -1323,6 +1323,10 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2)))
+		catcher := grip.NewBasicCatcher()
+		// catcher.Add(queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))))
+		catcher.Add(queue.Put(ctx, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))))
+
+		return catcher.Resolve()
 	}
 }
