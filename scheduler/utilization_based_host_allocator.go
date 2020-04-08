@@ -25,6 +25,15 @@ type TaskGroupData struct {
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+	grip.Info(message.Fields{
+		"message":            "utilization-based host allocator input",
+		"runner":             RunnerName,
+		"distro":             hostAllocatorData.Distro.Id,
+		"existing_hosts":     len(hostAllocatorData.ExistingHosts),
+		"free_host_fraction": hostAllocatorData.FreeHostFraction,
+		"uses_containers":    hostAllocatorData.UsesContainers,
+		"queue_info":         hostAllocatorData.DistroQueueInfo,
+	})
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
