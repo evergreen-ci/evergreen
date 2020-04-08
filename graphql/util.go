@@ -263,7 +263,7 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) {
 // GetAPITaskFromTask builds an APITask from the given task
 func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromService(task)
+	err := apiTask.BuildFromService(&task)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
 	}
