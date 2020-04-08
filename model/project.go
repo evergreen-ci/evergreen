@@ -1290,7 +1290,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // TasksThatCallCommand returns a map of tasks that call a given command to the
 // number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
-	// get all functions that call `generate.tasks`
+	// get all functions that call the command.
 	fs := map[string]int{}
 	for f, cmds := range p.Functions {
 		if cmds == nil {
@@ -1303,7 +1303,7 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 
-	// get all tasks that call `generate.tasks`
+	// get all tasks that call the command.
 	ts := map[string]int{}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {

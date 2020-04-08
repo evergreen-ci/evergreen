@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -1197,16 +1198,6 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1, Error)
 }
 
-// validateTaskSyncCommands validates that the task sync operations are valid.
-// In particular, s3.push should be called at most once per task and s3.pull
-// should refer to a valid task running s3.push.
-// TODO (EVG-7736): add validation to ensure referential integrity of s3.pull to
-// a valid s3.push task.
-func validateTaskSyncCommands(p *model.Project) ValidationErrors {
-	ts := p.TasksThatCallCommand(evergreen.S3PushCommandName)
-	return validateTimesCalledPerTask(p, ts, evergreen.S3PushCommandName, 1, Warning)
-}
-
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
 func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
@@ -1226,5 +1217,293 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
 		})
 	}
+	return errs
+}
+
+// BVsWithTasksThatCallCommand creates a mapping from build variants to tasks
+// that run the given command cmd, including the list of matching commands for
+// each task.
+// kim: TODO: test this scary piece of code.
+func BVsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[string][]model.PluginCommandConf, ValidationErrors) {
+	// build variant -> tasks that run cmd -> all matching commands
+	bvToTasksWithCmds := map[string]map[string][]model.PluginCommandConf{}
+	var errs ValidationErrors
+
+	// addCmdsForTaskInBV adds commands that run for a task in a build variant
+	// to the mapping.
+	addCmdsForTaskInBV := func(bvToTaskWithCmds map[string]map[string][]model.PluginCommandConf, bv, taskUnit string, cmds []model.PluginCommandConf) {
+		if _, ok := bvToTaskWithCmds[bv]; !ok {
+			bvToTasksWithCmds[bv] = map[string][]model.PluginCommandConf{}
+		}
+		bvToTasksWithCmds[bv][taskUnit] = append(bvToTasksWithCmds[bv][taskUnit], cmds...)
+	}
+
+	// kim: TODO: verify that project configs do not have more levels of
+	// build variant filtering than this.
+
+	for _, bv := range p.BuildVariants {
+		var preAndPostCmds []model.PluginCommandConf
+		preAndPostCmds = append(preAndPostCmds, CommandsRunOnBV(p.Pre.List(), cmd, bv.Name)...)
+		preAndPostCmds = append(preAndPostCmds, CommandsRunOnBV(p.Post.List(), cmd, bv.Name)...)
+
+		for _, bvtu := range bv.Tasks {
+			// kim: TODO: figure out how to treat task groups. Maybe just ignore
+			// them?
+			if bvtu.IsGroup {
+				if tg := p.FindTaskGroup(bvtu.Name); tg != nil {
+					var setupAndTeardownCmds []model.PluginCommandConf
+					setupAndTeardownCmds = append(setupAndTeardownCmds, CommandsRunOnBV(tg.SetupGroup.List(), cmd, bv.Name)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, CommandsRunOnBV(tg.SetupTask.List(), cmd, bv.Name)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, CommandsRunOnBV(tg.TeardownGroup.List(), cmd, bv.Name)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, CommandsRunOnBV(tg.TeardownTask.List(), cmd, bv.Name)...)
+					for _, tgTask := range tg.Tasks {
+						// All setup/teardown group/task commands that apply for
+						// this build variant will run for this task group.
+						addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, bvtu.Name, setupAndTeardownCmds)
+
+						if projTask := p.FindProjectTask(tgTask); projTask != nil {
+							if cmds := CommandsRunOnBV(projTask.Commands, cmd, bv.Name); len(cmds) != 0 {
+								addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, bvtu.Name, cmds)
+							}
+						} else {
+							errs = append(errs, ValidationError{
+								Level:   Error,
+								Message: fmt.Sprintf("cannot find definition of task %s used in task group %s", tgTask, tg.Name),
+							})
+						}
+					}
+				}
+			} else {
+				// All pre/post commands that apply for this build variant will
+				// run for this task.
+				addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, bvtu.Name, preAndPostCmds)
+
+				if projTask := p.FindProjectTask(bvtu.Name); projTask != nil {
+					if cmds := CommandsRunOnBV(projTask.Commands, cmd, bv.Name); len(cmds) != 0 {
+						addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, bvtu.Name, cmds)
+					}
+				} else {
+					errs = append(errs, ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("cannot find definition of task %s", bvtu.Name),
+					})
+				}
+			}
+		}
+	}
+	return bvToTasksWithCmds, errs
+}
+
+// CommandsRunOnBV returns all commands in cmds that match the command name cmd
+// and run on a given build variant.
+func CommandsRunOnBV(cmds []model.PluginCommandConf, cmd, bv string) []model.PluginCommandConf {
+	var matchingCmds []model.PluginCommandConf
+	for _, c := range cmds {
+		if c.Command == cmd && c.RunOnVariant(bv) {
+			matchingCmds = append(matchingCmds, c)
+		}
+	}
+	return matchingCmds
+}
+
+// validateTaskSyncCommands validates project's task sync commands.  In
+// particular, s3.push should be called at most once per task and s3.pull should
+// refer to a valid task running s3.push.  It does not check that the project
+// settings allow task syncing - see validateTaskSyncSettings.
+// kim: TODO: test
+func validateTaskSyncCommands(p *model.Project) ValidationErrors {
+	var errs ValidationErrors
+
+	// A task should not call s3.push multiple times.
+	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
+	errs = append(errs, validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1, Warning)...)
+
+	// getS3PullParameters returns the parameters from the s3.pull command that
+	// referencing the push task.
+	getS3PullParameters := func(taskName string, c model.PluginCommandConf) (task, bv string, errs ValidationErrors) {
+		i, ok := c.Params["task"]
+		if !ok {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("task %s with command %s needs task to pull from specified in parameters", taskName, c.Command),
+			})
+			return "", "", errs
+		} else {
+			task, ok = i.(string)
+			if !ok {
+				errs = append(errs, ValidationError{
+					Level:   Error,
+					Message: fmt.Sprintf("task (or task group) %s with command %s did not supply task to pull from as string argument, got %T", taskName, c.Command, i),
+				})
+				return "", "", errs
+			}
+		}
+
+		i, ok = c.Params["from_build_variant"]
+		if !ok {
+			return task, "", nil
+		}
+		bv, ok = i.(string)
+		if !ok {
+			return task, "", ValidationErrors{
+				{
+					Level:   Error,
+					Message: fmt.Sprintf("task (or task group) %s with command %s did not supply build variant to pull from as string argument, got %T", taskName, c.Command, i),
+				},
+			}
+		}
+		return task, bv, nil
+	}
+
+	bvToTaskCmds, bvToTaskErrs := BVsWithTasksThatCallCommand(p, evergreen.S3PullCommandName)
+	if len(bvToTaskErrs) != 0 {
+		errs = append(errs, bvToTaskErrs...)
+		return errs
+	}
+	pp.Println("got mapping of {bv: {task: [cmds]}} for s3.pull:", bvToTaskCmds)
+	for bv, taskCmds := range bvToTaskCmds {
+		for task, cmds := range taskCmds {
+			for _, cmd := range cmds {
+				s3PushTaskName, s3PushBVName, s3PullErrs := getS3PullParameters(task, cmd)
+				if len(s3PullErrs) != 0 {
+					errs = append(errs, s3PullErrs...)
+					continue
+				}
+				if s3PushBVName == "" {
+					s3PushBVName = bv
+				}
+
+				pp.Println("got s3.pull parameters:", s3PushBVName, s3PushTaskName)
+
+				// Since s3.pull depends on the task running s3.push to run
+				// first, ensure that this task for this build variant has a
+				// dependency on the referenced task and build variant.
+				// A better way to do this might be to automatically define
+				// these dependencies, although it means that users might be
+				// surprised that dependencies not defined in the project config
+				// might be created.
+				// kim: TODO: check dependencies. If task group, check depends
+				// on for BuildVariantTaskUnit and fall back to checking
+				// individual tasks. If regular task, just check dependencies
+				// graph.
+
+				// Find the task in the build variant referenced by s3.pull and
+				// ensure that it exists and calls s3.push.
+
+				// kim: TODO: verify that this is okay to call for tasks and
+				// task groups from bvToTaskCmds
+				if s3PushTask := p.FindTaskForVariant(s3PushTaskName, s3PushBVName); s3PushTask != nil {
+					if projTask := p.FindProjectTask(task); projTask != nil {
+						s3PushCmds := CommandsRunOnBV(projTask.Commands, evergreen.S3PullCommandName, s3PushBVName)
+						if len(s3PushCmds) == 0 {
+							errs = append(errs, ValidationError{
+								Level:   Error,
+								Message: fmt.Sprintf("task %s contains command %s that pulls from build variant %s task %s, which does not call %s", task, cmd.Command, s3PushBVName, s3PushTaskName, evergreen.S3PullCommandName),
+							})
+						}
+					} else {
+						errs = append(errs, ValidationError{
+							Level:   Error,
+							Message: fmt.Sprintf("task %s contains command %s that pulls from build variant %s task %s, which does not exist", task, cmd.Command, s3PushBVName, s3PushTaskName),
+						})
+					}
+				} else {
+					errs = append(errs, ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("task %s contains command %s that pulls from build variant %s task %s, which does not exist", task, cmd.Command, s3PushBVName, s3PushTaskName),
+					})
+				}
+			}
+		}
+	}
+
+	// s3PushFuncs := map[string]int{}
+	// s3PullsFromTask := map[string]model.ProjectTask{}
+	// // s3PullFuncs := map[string]*taskSyncParams{}
+	// for funcName, cmds := range p.Functions {
+	//     if cmds == nil {
+	//         continue
+	//     }
+	//     for _, c := range cmds.List() {
+	//         if c.Command == evergreen.S3PushCommandName {
+	//             // initTaskSyncParams(s3PushFuncs, c.Command)
+	//             s3PushFuncs[funcName] += 1
+	//         } else if c.Command == evergreen.S3PullCommandName {
+	//             // getS3PullTaskName("", c)
+	//             // initTaskSyncParams(s3PullFuncs, c.Command)
+	//             // s3PullFuncs[funcName] += 1
+	//             // s3PullFuncs[funcName].timesCalled += 1
+	//         }
+	//     }
+	// }
+	//
+	// s3PushCalls := map[string]int{}
+	// s3PullDependencies := map[string][]string{}
+	// for _, t := range p.Tasks {
+	//     for _, c := range t.Commands {
+	//         if c.Function != "" {
+	//         }
+	//         if c.Command == evergreen.S3PushCommandName {
+	//             s3PushCalls[t.Name] += 1
+	//         } else if c.Command == evergreen.S3PullCommandName {
+	//             // kim: TODO: keep track of build variant that is being pulled
+	//             // from
+	//             pullFromTaskName, _ [>pullFromBuildVariant<], getPullTaskErrs := getS3PullTaskName(t.Name, c)
+	//             if getPullTaskErrs != nil {
+	//                 errs = append(errs, getPullTaskErrs...)
+	//                 continue
+	//             }
+	//             for _, findTask := range p.Tasks {
+	//                 if findTask.Name == pullFromTaskName {
+	//
+	//                 }
+	//             }
+	//             s3PullsFromTask[t.Name] = pullFromTaskName
+	//             for _, dependency := range t.DependsOn {
+	//                 s3PullDependencies[t.Name] = append(s3PullDependencies[t.Name], dependency.Name)
+	//             }
+	//         }
+	//     }
+	// }
+	// for _, bv := range p.BuildVariants {
+	//     for _, t := range bv.Tasks {
+	//         // kim: TODO: ensure that if no buildvariant is specified for task
+	//         // to pull, the s3.pull buildvariant runs the task.
+	//         // kim: TODO: ensure that if a buildvariant is specified for task to
+	//         // pull, the buildvariant runs the task.
+	//     }
+	// }
+	//
+	// for s3PullTaskName, pullFromTaskName := range s3PullsFromTask {
+	//     // The s3.pull task must call s3.push.
+	//     if _, ok := s3PushCalls[pullFromTaskName]; !ok {
+	//         errs = append(errs, ValidationError{
+	//             Level:   Error,
+	//             Message: fmt.Sprintf("task %s uses command %s to pull from task %s but it does not contain command %s", s3PullTaskName, evergreen.S3PullCommandName, evergreen.S3PushCommandName),
+	//         })
+	//     }
+	//
+	//     // The s3.pull task must depend on the s3.push task.
+	//     if !util.StringSliceContains(taskS3PullDependsOn[s3PullTaskName], pullFromTaskName) {
+	//         errs = append(errs, ValidationError{
+	//             Level:   Error,
+	//             Message: fmt.Sprintf("task %s uses command %s to pull from task %s but it does not depend on the task", s3PullTaskName, evergreen.S3PullCommandName, evergreen.S3PushCommandName, pullFromTaskName),
+	//         })
+	//     }
+	// }
+	//
+	// // It's nonsensical to call s3.push multiple times in a task, since the
+	// // earlier calls will be overwriten by the later ones.
+	// errs = append(errs, validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1, Warning)...)
+	//
+	// // kim: TODO:
+	// // go through all tasks that call s3.pull
+	// //	   - get params from PluginCommandConf
+	// //     - check that task from s3.pull params refer to a real task, possibly on a
+	// //       different buildvariant
+	// //     - check that task contains an s3.push
+	// //     - check that s3.pull task has a dependency on s3.push task
+	// //     - check that both are invoked in same scenarios (i.e. patches vs
+	// //     versions)
 	return errs
 }
