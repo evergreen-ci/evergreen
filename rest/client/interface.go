@@ -150,7 +150,6 @@ type Communicator interface {
 	ModifySpawnHost(context.Context, string, host.HostModifyOptions) error
 	StopSpawnHost(context.Context, string, string, bool) error
 	StartSpawnHost(context.Context, string, string, bool) error
-	ConfigureSpawnHost(context.Context, host.HostConfigureOptions) (string, error)
 	TerminateSpawnHost(context.Context, string) error
 	ChangeSpawnHostPassword(context.Context, string, string) error
 	ExtendSpawnHostExpiration(context.Context, string, int) error

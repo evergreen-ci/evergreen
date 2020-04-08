@@ -398,10 +398,6 @@ func (*Mock) StartSpawnHost(context.Context, string, string, bool) error {
 	return errors.New("(*Mock) StartSpawnHost is not implemented")
 }
 
-func (*Mock) ConfigureSpawnHost(context.Context, host.HostConfigureOptions) (string, error) {
-	return "", errors.New("(*Mock) ConfigureSpawnHost is not implemented")
-}
-
 func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
 	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
 }

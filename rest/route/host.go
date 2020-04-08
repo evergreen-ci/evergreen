@@ -6,18 +6,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -382,89 +378,4 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// GET /host/configure
-
-type hostConfigureHandler struct {
-	opts host.HostConfigureOptions
-	sc   data.Connector
-	env  evergreen.Environment
-}
-
-func makeHostConfigure(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
-	return &hostConfigureHandler{
-		sc:  sc,
-		env: env,
-	}
-}
-
-func (h *hostConfigureHandler) Factory() gimlet.RouteHandler {
-	return &hostConfigureHandler{
-		sc:  h.sc,
-		env: h.env,
-	}
-}
-
-func (h *hostConfigureHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
-	defer body.Close()
-	if err := utility.ReadJSON(body, &h.opts); err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
-	return nil
-}
-
-func (h *hostConfigureHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := h.sc.FindProjectById(h.opts.Project)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "problem finding project '%s'", h.opts.Project))
-	}
-
-	if len(proj.WorkstationConfig) == 0 {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no commands configured for project '%s'", h.opts.Project),
-			StatusCode: http.StatusBadRequest,
-		})
-	}
-	userHome, err := homedir.Dir()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem finding home directory"))
-
-	}
-	cmdOut := util.NewMBCappedWriter()
-	cmds := []*jasper.Command{}
-	for _, obj := range proj.WorkstationConfig {
-		dir := h.getDirectory(obj.Directory, userHome)
-		// what if a user wants to clone something that isn't this default? Should the command EQUAL git clone?
-		if strings.Contains(obj.Command, "git clone") {
-			// add repo/branch
-			obj.Command = fmt.Sprintf("git clone -branch %s git@github.com:%s/%s.git", proj.Branch, proj.Owner, proj.Repo)
-
-		}
-		cmds = append(cmds, h.env.JasperManager().CreateCommand(ctx).Directory(dir).Add([]string{obj.Command}).
-			RedirectErrorToOutput(true).SetOutputWriter(cmdOut))
-	}
-	// should this be done in a job because of timeout? Or will that be confusing for the user because no info?
-	for _, cmd := range cmds {
-		if err := cmd.Run(ctx); err != nil {
-			gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error running command"))
-		}
-	}
-	return gimlet.NewJSONResponse(cmdOut.String())
-}
-
-// If the user configured a directory, use that.  Otherwise if the project
-// specified the directory, use that. Otherwise use the home directory.
-func (h *hostConfigureHandler) getDirectory(projectDir string, homeDir string) string {
-	if h.opts.Directory != "" {
-		return h.opts.Directory
-	}
-	if projectDir != "" {
-		return projectDir
-	}
-	return homeDir
 }
