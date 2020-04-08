@@ -1033,6 +1033,7 @@ func TestTryResetTask(t *testing.T) {
 			So(anotherTask.Insert(), ShouldBeNil)
 
 			var err error
+
 			Convey("should reset if GQL package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, evergreen.GQLPackage, detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
