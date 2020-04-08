@@ -895,6 +895,10 @@ func TestMarkEnd(t *testing.T) {
 }
 
 func TestTryResetTask(t *testing.T) {
+	Convey("With a task that does not exist", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection), "Error clearing task collection")
+		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
+	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
