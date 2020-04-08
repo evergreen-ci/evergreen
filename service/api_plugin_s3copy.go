@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -21,7 +20,6 @@ import (
 const (
 	s3CopyRetrySleepTimeSec = 5
 	s3CopyRetryNumRetries   = 5
-	region                  = endpoints.UsEast1RegionID
 )
 
 // Takes a request for a task's file to be copied from

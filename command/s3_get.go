@@ -162,7 +162,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "unable to create local_file directory")
 		}
 	}
 
@@ -172,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "unable to create extract_to directory")
 		}
 	}
 

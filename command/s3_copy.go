@@ -66,7 +66,7 @@ type s3Loc struct {
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
 
-	// Buckt is the s3 bucket for the file.
+	// Bucket is the s3 bucket for the file.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
 	// Path is the file path within the bucket.
