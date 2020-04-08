@@ -273,7 +273,6 @@ const (
 var (
 	// Providers where hosts can be created and terminated automatically.
 	ProviderSpawnable = []string{
-		ProviderNameDocker,
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,
