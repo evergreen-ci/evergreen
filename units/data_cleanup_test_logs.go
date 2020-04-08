@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -16,25 +16,26 @@ import (
 	"github.com/mongodb/grip/sometimes"
 )
 
-const testResultsCleanupJobName = "data-cleanup-testresults"
+const testLogsCleanupJobName = "data-cleanup-testlogs"
 
 func init() {
-	registry.AddJobType(testResultsCleanupJobName, func() amboy.Job {
-		return makeTestResultsCleanupJob()
+	registry.AddJobType(testLogsCleanupJobName, func() amboy.Job {
+		return makeTestLogsCleanupJob()
 	})
 }
 
-type dataCleanupTestResults struct {
+type dataCleanupTestLogs struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	env evergreen.Environment
 }
 
-func makeTestResultsCleanupJob() *dataCleanupTestResults {
-	j := &dataCleanupTestResults{
+func makeTestLogsCleanupJob() *dataCleanupTestLogs {
+	j := &dataCleanupTestLogs{
 		Base: job.Base{
+
 			JobType: amboy.JobType{
-				Name:    testResultsCleanupJobName,
+				Name:    testLogsCleanupJobName,
 				Version: 0,
 			},
 		},
@@ -45,14 +46,14 @@ func makeTestResultsCleanupJob() *dataCleanupTestResults {
 	return j
 }
 
-func NewTestResultsCleanupJob(ts time.Time) amboy.Job {
-	j := makeTestResultsCleanupJob()
-	j.SetID(fmt.Sprintf("%s.%s", testResultsCleanupJobName, ts.Format(TSFormat)))
+func NewTestLogsCleanupJob(ts time.Time) amboy.Job {
+	j := makeTestLogsCleanupJob()
+	j.SetID(fmt.Sprintf("%s.%s", testLogsCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
 	return j
 }
 
-func (j *dataCleanupTestResults) Run(ctx context.Context) {
+func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	startAt := time.Now()
 
@@ -68,7 +69,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 
 	if flags.BackgroundCleanupDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job_type": testResultsCleanupJobName,
+			"job_type": testLogsCleanupJobName,
 			"job_id":   j.ID(),
 			"message":  "disaster recovery backups disabled, also disabling cleanup",
 		})
@@ -81,7 +82,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 		timeSpent time.Duration
 	)
 
-	totalDocs, _ := j.env.DB().Collection(testresult.Collection).EstimatedDocumentCount(ctx)
+	totalDocs, _ := j.env.DB().Collection(model.TestLogCollection).EstimatedDocumentCount(ctx)
 
 LOOP:
 	for {
@@ -93,7 +94,7 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
+			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
 			j.AddError(err)
 
 			batches++
@@ -104,9 +105,9 @@ LOOP:
 
 	grip.Info(message.Fields{
 		"job_id":             j.ID(),
+		"collection":         model.TestLogCollection,
 		"job_type":           j.Type().Name,
 		"total_docs":         totalDocs,
-		"collection":         testresult.Collection,
 		"message":            "timing-info",
 		"run_start_at":       startAt,
 		"has_errors":         j.HasErrors(),
@@ -117,4 +118,5 @@ LOOP:
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
 	})
+
 }
