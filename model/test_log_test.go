@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestTestLogInsertAndFind(t *testing.T) {
@@ -54,7 +53,7 @@ func TestTestLogInsertAndFind(t *testing.T) {
 
 }
 
-func TestDeleteWithLimit(t *testing.T) {
+func TestDeleteTestLogsWithLimit(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -69,8 +68,8 @@ func TestDeleteWithLimit(t *testing.T) {
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()).Hex()}).Insert())
-		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()).Hex()}).Insert())
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour))}))
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour))}))
 
 		num, err := db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
@@ -88,9 +87,9 @@ func TestDeleteWithLimit(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
 		for i := 0; i < 10000; i++ {
 			if i%2 == 0 {
-				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()).Hex()}).Insert())
+				require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour))}))
 			} else {
-				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()).Hex()}).Insert())
+				require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour))}))
 			}
 		}
 		num, err := db.Count(TestLogCollection, bson.M{})
