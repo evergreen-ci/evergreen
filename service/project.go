@@ -463,7 +463,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	projectRef.WorkstationConfig = []model.WorkstationCommand{}
 	for _, obj := range responseRef.WorkstationConfig {
-		command := model.WorkstationCommand{}
+		var command model.WorkstationCommand
 		i, err = obj.ToService()
 		catcher.Add(err)
 		command, ok = i.(model.WorkstationCommand)

@@ -478,9 +478,6 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     if ($scope.patch_alias) {
       $scope.addPatchAlias();
     }
-    $scope.settingsFormData.workstation_config = _.filter($scope.settingsFormData.workstation_config, function (d) {
-        return $scope.validWorkstationCommand(d);
-    });
 
     $scope.settingsFormData.subscriptions = _.filter($scope.subscriptions, function (d) {
       return d.changed;
@@ -558,10 +555,8 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       if (!$scope.settingsFormData.workstation_config) {
           $scope.settingsFormData.workstation_config = [];
       }
-      if ($scope.validWorkstationCommand($scope.workstation_command)) {
-          $scope.settingsFormData.workstation_config = $scope.settingsFormData.workstation_config.concat($scope.workstation_command);
-          $scope.workstation_command = {};
-      }
+      $scope.settingsFormData.workstation_config = $scope.settingsFormData.workstation_config.concat($scope.workstation_command);
+      $scope.workstation_command = {};
   }
 
   $scope.removeProjectVar = function (name) {
@@ -767,7 +762,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   }
 
   $scope.validWorkstationCommand = function(obj) {
-    return obj.command !== undefined && obj.command !== ""
+    return obj !== undefined && obj.command !== undefined && obj.command !== ""
   }
 
   $scope.showTriggerModal = function (index) {
