@@ -233,7 +233,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				j.gitHubError = InvalidConfig
 				catcher.Add(validatorErr)
 			}
-			return errors.Errorf("invalid patched config:\n%s", catcher.Resolve())
+			return errors.Wrapf(catcher.Resolve(), "invalid patched config")
 		}
 	}
 	if errs := validator.CheckProjectSettings(project, pref); len(errs) != 0 {
