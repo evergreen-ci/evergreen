@@ -168,7 +168,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 				info.Count++
 				info.ExpectedDuration += duration
 			}
-		} else if task.TaskGroup != "" {
+		} else {
 			info = &model.TaskGroupInfo{
 				Name:     name,
 				MaxHosts: task.TaskGroupMaxHosts,
@@ -178,7 +178,6 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 				info.Count++
 				info.ExpectedDuration += duration
 			}
-
 		}
 
 		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
@@ -196,9 +195,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			}
 		}
 
-		if name != "" && info != nil {
-			taskGroupInfosMap[name] = info
-		}
+		taskGroupInfosMap[name] = info
 		tasks[i] = task
 	}
 
