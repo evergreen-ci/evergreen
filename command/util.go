@@ -13,7 +13,7 @@ func dirExists(path string) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrap(err, "problem running stat on path")
 	}
 
 	if !stat.IsDir() {
