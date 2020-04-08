@@ -866,7 +866,7 @@ $http.get(templateUrl).success(function(template) {
 
     const cedar = ApiTaskdata.cedarAPI("/rest/v1/perf/task_name/" + task +
         "?variant=" + variant + "&project=" + project)
-      .then(resp => $filter("expandedHistoryConverter")(resp.data, scope.task.execution))
+      .then(resp => $filter("expandedHistoryConverter")(resp.data))
       .catch(err => $log.warn('error loading cedar data', err));
 
     return $q.all({
