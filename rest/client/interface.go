@@ -64,8 +64,6 @@ type Communicator interface {
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
 	// GetProject loads the project using the task's version ID
 	GetProject(context.Context, TaskData) (*model.Project, error)
-	// GetVersion loads the task's Version
-	GetVersion(context.Context, TaskData) (*model.Version, error)
 	// GetExpansions returns all expansions for the task known by the app server
 	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with

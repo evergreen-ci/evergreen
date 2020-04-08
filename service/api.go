@@ -182,37 +182,6 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-
-	// Get the version for this task, so we can get its config data
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if v == nil {
-		http.Error(w, "version not found", http.StatusNotFound)
-		return
-	}
-
-	pp, err := model.ParserProjectFindOneById(t.Version)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		v.Config = string(config)
-	}
-	gimlet.WriteJSON(w, v)
-}
-
 func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
@@ -595,7 +564,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
-	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
