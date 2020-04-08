@@ -1,0 +1,23 @@
+{
+  "tasks": [
+    {
+      "_id": "task1",
+      "build_id": "build1"
+    },
+    {
+      "_id": "task2"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "build1",
+      "tasks": [{ "id": "task1" }],
+      "version": "version1"
+    }
+  ],
+  "versions": [
+    {
+      "_id": "version1"
+    }
+  ]
+}
