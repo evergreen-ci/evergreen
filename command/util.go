@@ -7,23 +7,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-func dirExists(path string) bool {
+func dirExists(path string) (bool, error) {
 	stat, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
 	}
 
 	if !stat.IsDir() {
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, nil
 }
 
 func createEnclosingDirectoryIfNeeded(path string) error {
 	localDir := filepath.Dir(path)
 
-	if dirExists(path) {
+	exists, err := dirExists(path)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return nil
 	}
 
