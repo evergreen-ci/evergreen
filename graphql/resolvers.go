@@ -899,11 +899,20 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *at.Id))
 	}
-	if host == nil || host.Distro.Provider == evergreen.HostTypeStatic || host.Distro.Provider == evergreen.ProviderNameDocker || host.Distro.SpawnAllowed == false {
+	if host == nil {
 		return nil, nil
 	}
-	link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
-	return &link, nil
+	hasSpawnableProvider := false
+	for _, spawnableProvider := range evergreen.ProviderSpawnable {
+		if host.Distro.Provider == spawnableProvider {
+			hasSpawnableProvider = true
+		}
+	}
+	if hasSpawnableProvider && host.Distro.SpawnAllowed {
+		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
+		return &link, nil
+	}
+	return nil, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

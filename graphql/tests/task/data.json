@@ -329,7 +329,7 @@
       "_id": "host1",
       "distro": {
         "_id": "localhost1",
-        "provider": "not static and not docker",
+        "provider": "gce",
         "spawn_allowed": true
       }
     },
@@ -353,7 +353,7 @@
       "_id": "host4",
       "distro": {
         "_id": "localhost3",
-        "provider": "not static and not docker",
+        "provider": "gce",
         "spawn_allowed": false
       }
     }
