@@ -25,6 +25,7 @@ type TaskGroupData struct {
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+	logInput(hostAllocatorData)
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
@@ -89,6 +90,21 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	})
 
 	return numNewHostsToRequest, nil
+}
+
+func logInput(data HostAllocatorData) {
+	existingHosts := []string{}
+	for _, h := range data.ExistingHosts {
+		existingHosts = append(existingHosts, h.Id)
+	}
+	grip.Info(message.Fields{
+		"message":            "utilization-based host allocator input",
+		"distro":             data.Distro.Id,
+		"existing_hosts":     existingHosts,
+		"free_host_fraction": data.FreeHostFraction,
+		"uses_containers":    data.UsesContainers,
+		"queue_info":         data.DistroQueueInfo,
+	})
 }
 
 // Calculate the number of hosts needed by taking the total task scheduled task time
