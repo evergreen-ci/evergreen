@@ -499,17 +499,14 @@ filters.common.filter('conditional', function () {
     }
   })
   .filter('expandedHistoryConverter', function () {
-    return function (data, execution) {
+    return function (data) {
       if (!data) {
         return null;
-      }
-      if (!execution) {
-        execution = latestExecution(data);
       }
       let output = [];
 
       _.each(data, function (test) {
-        const converted = convertSingleTest(test, execution);
+        const converted = convertSingleTest(test);
         if (converted) {
           output.push(converted);
         }
