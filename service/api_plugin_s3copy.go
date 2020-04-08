@@ -88,7 +88,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	defer utility.PutHTTPClient(client)
 	srcOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-		Region:      region,
+		Region:      s3CopyReq.S3SourceRegion,
 		Name:        s3CopyReq.S3SourceBucket,
 		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}
@@ -98,7 +98,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	destOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-		Region:      region,
+		Region:      s3CopyReq.S3DestinationRegion,
 		Name:        s3CopyReq.S3DestinationBucket,
 		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}

@@ -28,6 +28,10 @@ type s3get struct {
 	// RemoteFile is the filepath of the file to get, within its bucket
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
+	// Region is the s3 region where the bucket is located. It defaults to
+	// "us-east-1".
+	Region string `mapstructure:"region" plugin:"region"`
+
 	// Bucket is the s3 bucket holding the desired file
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
@@ -75,6 +79,10 @@ func (c *s3get) validateParams() error {
 	}
 	if c.RemoteFile == "" {
 		return errors.New("remote_file cannot be blank")
+	}
+
+	if c.Region == "" {
+		c.Region = endpoints.UsEast1RegionID
 	}
 
 	// make sure the bucket is valid
@@ -154,7 +162,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
-			return errors.Wrap(err, "unable to create local_file directory")
+			return errors.WithStack(err)
 		}
 	}
 
@@ -164,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
-			return errors.Wrap(err, "unable to create extract_to directory")
+			return errors.WithStack(err)
 		}
 	}
 
@@ -242,7 +250,7 @@ func (c *s3get) get(ctx context.Context) error {
 func (c *s3get) createPailBucket(httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      c.Region,
 		Name:        c.Bucket,
 	}
 	bucket, err := pail.NewS3BucketWithHTTPClient(httpClient, opts)
