@@ -426,7 +426,7 @@ func (c *communicatorImpl) ConfigureSpawnHost(ctx context.Context, opts host.Hos
 	}
 	resp, err := c.request(ctx, info, opts)
 	if err != nil {
-		err = errors.Wrapf(err, "error sending request to configure workstation")
+		return "", errors.Wrapf(err, "error sending request to configure workstation")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
