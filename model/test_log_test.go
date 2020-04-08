@@ -61,22 +61,22 @@ func TestDeleteWithLimit(t *testing.T) {
 
 	t.Run("DetectsOutOfBounds", func(t *testing.T) {
 		assert.Panics(t, func() {
-			_, _ = DeleteWithLimit(ctx, env, time.Now(), 200*1000)
+			_, _ = DeleteTestLogsWithLimit(ctx, env, time.Now(), 200*1000)
 		})
 		assert.NotPanics(t, func() {
-			_, _ = DeleteWithLimit(ctx, env, time.Now(), 1)
+			_, _ = DeleteTestLogsWithLimit(ctx, env, time.Now(), 1)
 		})
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex())}).Insert())
-		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex())}).Insert())
+		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()).Hex()}).Insert())
+		require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()).Hex()}).Insert())
 
 		num, err := db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, num)
 
-		num, err = DeleteWithLimit(ctx, env, time.Now(), 2)
+		num, err = DeleteTestLogsWithLimit(ctx, env, time.Now(), 2)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, num)
 
@@ -88,9 +88,9 @@ func TestDeleteWithLimit(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
 		for i := 0; i < 10000; i++ {
 			if i%2 == 0 {
-				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex())}).Insert())
+				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()).Hex()}).Insert())
 			} else {
-				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex())}).Insert())
+				require.NoError(t, (&TestLog{Id: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()).Hex()}).Insert())
 			}
 		}
 		num, err := db.Count(TestLogCollection, bson.M{})
@@ -102,7 +102,7 @@ func TestDeleteWithLimit(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, delErr := DeleteWithLimit(ctx, env, time.Now(), 1000)
+				_, delErr := DeleteTestLogsWithLimit(ctx, env, time.Now(), 1000)
 				require.NoError(t, delErr)
 			}()
 		}

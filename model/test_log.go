@@ -73,7 +73,7 @@ func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 	return tl, errors.WithStack(err)
 }
 
-func DeleteTestLogWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
+func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
 	if limit > 100*1000 {
 		panic("cannot delete more than 100k documents in a single operation")
 	}

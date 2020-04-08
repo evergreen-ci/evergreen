@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -94,7 +93,7 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
+			num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
 			j.AddError(err)
 
 			batches++
