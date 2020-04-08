@@ -257,15 +257,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       return nulls;
     }
 
-    if (a === b) {
-      return 0;
-    }
-
-    if (rowA && rowB) {
-      return rowA.entity.order - rowB.entity.order;
-    }
-
-    return a - b;
+    return EvgUiGridUtil.sortByOrder(a, b, rowA, rowB);
   };
 
   vm.gridOptions = {
