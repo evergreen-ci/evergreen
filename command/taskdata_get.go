@@ -53,7 +53,7 @@ func (c *taskDataGet) Execute(ctx context.Context,
 	}
 
 	if err = createEnclosingDirectoryIfNeeded(c.File); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "unable to create directory for 'file' parameter")
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
