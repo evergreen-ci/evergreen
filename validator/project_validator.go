@@ -290,75 +290,30 @@ func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
 // Makes sure that the dependencies for the tasks in the project form a
 // valid dependency graph (no cycles).
 func checkDependencyGraph(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
+	var errs ValidationErrors
 
-	// map of task name and variant -> BuildVariantTaskUnit
-	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
-
-	// generate task nodes for every task and variant combination
+	tvToTaskUnit := makeTVToTaskUnit(project)
 	visited := map[model.TVPair]bool{}
-	allNodes := []model.TVPair{}
 
-	taskGroups := map[string]struct{}{}
-	for _, tg := range project.TaskGroups {
-		taskGroups[tg.Name] = struct{}{}
-	}
-	for _, bv := range project.BuildVariants {
-		tasksToAdd := []model.BuildVariantTaskUnit{}
-		for _, t := range bv.Tasks {
-			if _, ok := taskGroups[t.Name]; ok {
-				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, project)...)
-			} else {
-				tasksToAdd = append(tasksToAdd, t)
-			}
-		}
-		for _, t := range tasksToAdd {
-			t.Populate(project.GetSpecForTask(t.Name))
-			node := model.TVPair{
-				Variant:  bv.Name,
-				TaskName: t.Name,
-			}
-
-			tasksByNameAndVariant[node] = t
-			visited[node] = false
-			allNodes = append(allNodes, node)
-		}
+	for node := range tvToTaskUnit {
+		visited[node] = false
 	}
 
-	// run through the task nodes, checking their dependency graphs for cycles
-	for _, node := range allNodes {
-		// the visited nodes
-		if err := dependencyCycleExists(node, visited, tasksByNameAndVariant); err != nil {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf(
-						"dependency error for '%s' task: %s", node.TaskName, err),
-				},
-			)
+	for node := range tvToTaskUnit {
+		if err := dependencyCycleExists(node, visited, tvToTaskUnit); err != nil {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("dependency error for '%s' task: %s", node.TaskName, err.Error()),
+			})
 		}
 	}
-	// tvToTaskUnit := makeTVToBVTU(project)
-	// visited := map[model.TVPair]bool{}
-	//
-	// for node := range tvToTaskUnit {
-	//     visited[node] = false
-	// }
-	//
-	// for node := range tvToTaskUnit {
-	//     if err := dependencyCycleExists(node, visited, tvToTaskUnit); err != nil {
-	//         errs = append(errs, ValidationError{
-	//             Level:   Error,
-	//             Message: fmt.Sprintf("dependency error for '%s' task: %s", node.TaskName, err.Error()),
-	//         })
-	//     }
-	// }
 
 	return errs
 }
 
-// makeTVToBVTU generates a graph of dependencies where each node
-// represents a task and build variant.
-func makeTVToBVTU(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit {
+// makeTVToTaskUnit generates all task-variant pairs mapped to their
+// corresponding task unit within a build variant.
+func makeTVToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit {
 	// map of task name and variant -> BuildVariantTaskUnit
 	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
 
@@ -407,53 +362,57 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 	visited[node] = true
 
 	task := tasksByNameAndVariant[node]
-	depNodes := []model.TVPair{}
-	// build a list of all possible dependency nodes for the task
-	for _, dep := range task.DependsOn {
-		if dep.Variant != model.AllVariants {
-			// handle regular dependencies
-			dn := model.TVPair{TaskName: dep.Name}
-			if dep.Variant == "" {
-				// use the current variant if none is specified
-				dn.Variant = node.Variant
-			} else {
-				dn.Variant = dep.Variant
-			}
-			// handle * case by grabbing all the variant's tasks that aren't the current one
-			if dn.TaskName == model.AllDependencies {
-				for n := range visited {
-					if n.TaskName != node.TaskName && n.Variant == dn.Variant {
-						depNodes = append(depNodes, n)
-					}
-				}
-			} else {
-				// normal case: just append the variant
-				depNodes = append(depNodes, dn)
-			}
-		} else {
-			// handle the all-variants case by adding all nodes that are
-			// of the same task (but not the current node)
-			if dep.Name != model.AllDependencies {
-				for n := range visited {
-					if n.TaskName == dep.Name && (n != node) {
-						depNodes = append(depNodes, n)
-					}
-				}
-			} else {
-				// edge case where variant and task name are both *
-				for n := range visited {
-					if n != node {
-						depNodes = append(depNodes, n)
-					}
-				}
-			}
-		}
-	}
 
-	// for each of the task's dependencies, make a recursive call
-	for _, dn := range depNodes {
-		if err := dependencyCycleExists(dn, visited, tasksByNameAndVariant); err != nil {
-			return err
+	// depNodes := []model.TVPair{}
+	// // build a list of all possible dependency nodes for the task
+	// for _, dep := range task.DependsOn {
+	//     if dep.Variant != model.AllVariants {
+	//         // handle regular dependencies
+	//         dn := model.TVPair{TaskName: dep.Name}
+	//         if dep.Variant == "" {
+	//             // use the current variant if none is specified
+	//             dn.Variant = node.Variant
+	//         } else {
+	//             dn.Variant = dep.Variant
+	//         }
+	//         // handle * case by grabbing all the variant's tasks that aren't the current one
+	//         if dn.TaskName == model.AllDependencies {
+	//             for n := range visited {
+	//                 if n.TaskName != node.TaskName && n.Variant == dn.Variant {
+	//                     depNodes = append(depNodes, n)
+	//                 }
+	//             }
+	//         } else {
+	//             // normal case: just append the variant
+	//             depNodes = append(depNodes, dn)
+	//         }
+	//     } else {
+	//         // handle the all-variants case by adding all nodes that are
+	//         // of the same task (but not the current node)
+	//         if dep.Name != model.AllDependencies {
+	//             for n := range visited {
+	//                 if n.TaskName == dep.Name && (n != node) {
+	//                     depNodes = append(depNodes, n)
+	//                 }
+	//             }
+	//         } else {
+	//             // edge case where variant and task name are both *
+	//             for n := range visited {
+	//                 if n != node {
+	//                     depNodes = append(depNodes, n)
+	//                 }
+	//             }
+	//         }
+	//     }
+	// }
+
+	depsToNodes := GetTaskUnitDependencies(node, task, visited)
+	for _, depNodes := range depsToNodes {
+		// For each of the task's dependencies, recursively check for cycles.
+		for _, dn := range depNodes {
+			if err := dependencyCycleExists(dn, visited, tasksByNameAndVariant); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -599,15 +558,10 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{
-							Message: fmt.Sprintf("task '%s' in buildvariant "+
-								"'%s' in project '%s' references an "+
-								"invalid distro '%s'.\n"+
-								"Valid distros include:\n\t- %s\n"+
-								"Valid distro aliases include:\n\t- %s",
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' in project "+
+								"'%s' references a nonexistent distro '%s'.\n"+
 								task.Name, buildVariant.Name, project.Identifier,
-								distro,
-								strings.Join(distroIDs, "\n\t- "),
-								strings.Join(distroAliases, "\n\t- ")),
+								distro),
 							Level: Warning,
 						},
 					)
@@ -619,13 +573,9 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' in project "+
-							"'%s' references an invalid distro '%s'.\n"+
-							"Valid distros include:\n\t- %s\n"+
-							"Valid distro aliases include:\n\t- %s",
+							"'%s' references a nonexistent distro '%s'.\n"+
 							buildVariant.Name,
-							project.Identifier, distro,
-							strings.Join(distroIDs, "\n\t- "),
-							strings.Join(distroAliases, "\n\t- ")),
+							project.Identifier, distro),
 						Level: Warning,
 					},
 				)
@@ -1274,7 +1224,7 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 // BVsWithTasksThatCallCommand creates a mapping from build variants to tasks
 // that run the given command cmd, including the list of matching commands for
 // each task.
-// kim: TODO: test this scary piece of code.
+// kim: TODO: test
 func BVsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[string][]model.PluginCommandConf, ValidationErrors) {
 	// build variant -> tasks that run cmd -> all matching commands
 	bvToTasksWithCmds := map[string]map[string][]model.PluginCommandConf{}
@@ -1442,7 +1392,7 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 		return task, bv, nil
 	}
 
-	pp.Println("making map of bvs with tasks for s3.pull")
+	// pp.Println("making map of bvs with tasks for s3.pull")
 	bvToTaskCmds, bvToTaskErrs := BVsWithTasksThatCallCommand(p, evergreen.S3PullCommandName)
 	if len(bvToTaskErrs) != 0 {
 		errs = append(errs, bvToTaskErrs...)
@@ -1450,9 +1400,9 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 	}
 
 	// Keep a dependency graph to check the dependencies of s3.pull tasks later.
-	// tvToTaskUnit := makeTVToBVTU(p)
+	tvToTaskUnit := makeTVToTaskUnit(p)
 
-	pp.Println("got mapping of {bv: {task: [cmds]}} for s3.pull:", bvToTaskCmds)
+	// pp.Println("got mapping of {bv: {task: [cmds]}} for s3.pull:", bvToTaskCmds)
 	for bv, taskCmds := range bvToTaskCmds {
 		for task, cmds := range taskCmds {
 			for _, cmd := range cmds {
@@ -1471,50 +1421,72 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 				// first, ensure that this task for this build variant has a
 				// dependency on the referenced task and build variant.
 
-				// kim: TODO: check dependencies. If task group, check depends
-				// on for BuildVariantTaskUnit and fall back to checking
-				// individual tasks. If regular task, just check dependencies
-				// graph.
-				// kim: TODO: check correctness of depends_on assumptions for
-				// task groups and BVTUs
-				if s3PullTask := p.FindTaskForVariant(task, bv); s3PullTask != nil {
-					// We have to set this to ensure that dependencies that do
-					// not explicitly define their variant that the dependency
-					// is referring to the current variant.
-
-					// visited := map[model.TVPair]bool{}
-					//
-					// for node := range tvToTaskUnit {
-					//     visited[node] = false
-					// }
-
-					s3PullTask.Variant = bv
-					if !TaskUnitDependsOnBVTaskSuccess(s3PullTask, s3PushBVName, s3PushTaskName) {
-						errs = append(errs, ValidationError{
-							Level: Error,
-							Message: fmt.Sprintf("task '%s' on build variant '%s' runs command '%s',"+
-								" so that task must depend on task '%s' in build variant '%s', which runs the command '%s'",
-								task, bv, evergreen.S3PullCommandName,
-								s3PushTaskName, s3PushBVName, evergreen.S3PushCommandName),
-						})
-					}
-					// kim: TODO: remove because task group tasks should have
-					// been expanded.
-					/*} else if s3PullTaskGroup := p.FindTaskGroup(task); s3PullTaskGroup != nil {
-					p.BuildVariants.Get(bv)
-					pp.Println("found task group", task)*/
-				} else {
+				s3PushTaskNode := model.TVPair{TaskName: s3PushTaskName, Variant: s3PushBVName}
+				s3PullTaskNode := model.TVPair{TaskName: task, Variant: bv}
+				if s3PushTaskNode == s3PullTaskNode {
 					errs = append(errs, ValidationError{
-						Level:   Error,
-						Message: fmt.Sprintf("could not find build variant '%s' with task '%s' which runs command '%s'", bv, task, evergreen.S3PullCommandName),
+						Level: Error,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' running command '%s'"+
+							"cannot depend on itself to run command '%s'",
+							s3PullTaskNode.TaskName, s3PullTaskNode.Variant, evergreen.S3PullCommandName,
+							evergreen.S3PushCommandName),
+					})
+					continue
+				}
+				visited := map[model.TVPair]bool{}
+
+				for node := range tvToTaskUnit {
+					visited[node] = false
+				}
+
+				s3PullTask, ok := tvToTaskUnit[s3PullTaskNode]
+				if !ok {
+					errs = append(errs, ValidationError{
+						Level: Error,
+						Message: fmt.Sprintf("could not find task '%s' in build variant '%s'"+
+							" which runs command '%s'",
+							s3PushTaskNode.TaskName, s3PushTaskNode.Variant, evergreen.S3PullCommandName),
+					})
+					continue
+				}
+
+				pp.Println("checking dependencies")
+				depReqs := dependencyRequirements{
+					lastDepNeedsSuccess: true,
+					skipOnPatches:       s3PullTask.SkipOnPatchBuild(),
+					skipOnNonPatches:    s3PullTask.SkipOnNonPatchBuild(),
+				}
+				pp.Println("source dep reqs:", depReqs)
+				s3PushTaskMustSucceed, err := SuccessfulDependencyMustRun(s3PushTaskNode, s3PullTaskNode, depReqs, visited, tvToTaskUnit)
+				if err != nil {
+					errs = append(errs, ValidationError{
+						Level: Error,
+						Message: fmt.Sprintf("encountered problem while searching"+
+							"for dependency of task '%s' in build variant '%s' (which runs command '%s')"+
+							" on task '%s' in build variant '%s'",
+							s3PullTaskNode.TaskName, s3PullTaskNode.Variant, evergreen.S3PullCommandName,
+							s3PushTaskNode.TaskName, s3PushTaskNode.Variant),
+					})
+				} else if !s3PushTaskMustSucceed {
+					errMsg := "task '%s' on build variant '%s' (which runs command '%s')" +
+						" must depend on task '%s' in build variant '%s' (which must run command '%s') running and succeeding"
+					if !depReqs.skipOnPatches && !depReqs.skipOnNonPatches {
+						errMsg += " for both patches and non-patches"
+					} else if !depReqs.skipOnPatches {
+						errMsg += " for patches"
+					} else if !depReqs.skipOnNonPatches {
+						errMsg += " for non-patches"
+					}
+					errs = append(errs, ValidationError{
+						Level: Error,
+						Message: fmt.Sprintf(errMsg,
+							s3PullTaskNode.TaskName, s3PullTaskNode.Variant, evergreen.S3PullCommandName,
+							s3PushTaskNode.TaskName, s3PushTaskNode.Variant, evergreen.S3PushCommandName),
 					})
 				}
 
 				// Find the task in the build variant referenced by s3.pull and
 				// ensure that it exists and calls s3.push.
-
-				// kim: TODO: verify that this is okay to call for tasks and
-				// task groups from bvToTaskCmds
 				if s3PushTask := p.FindTaskForVariant(s3PushTaskName, s3PushBVName); s3PushTask != nil {
 					if projTask := p.FindProjectTask(task); projTask != nil {
 						s3PushCmds := CommandsRunOnBV(projTask.Commands, evergreen.S3PullCommandName, s3PushBVName)
@@ -1543,30 +1515,114 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 	return errs
 }
 
-// TaskUnitDependsOnBVTaskSuccess returns whether this task unit depends on the
-// success of the given task in the given build variant.
-func TaskUnitDependsOnBVTaskSuccess(tu *model.BuildVariantTaskUnit, bv, task string) bool {
-	pp.Println("checking for dependency on bv", bv, "task", task)
-	for _, dep := range tu.DependsOn {
-		if dep.Name != task && dep.Name != model.AllDependencies {
-			continue
-		}
-		// If the dependency is optional for patches and the task unit can run
-		// in patches, it is not guaranteed to run.
-		taskUnitRunsInPatches := tu.Patchable == nil || *tu.Patchable
-		if dep.PatchOptional && taskUnitRunsInPatches {
-			continue
-		}
-		if dep.Status != evergreen.TaskSucceeded && dep.Status != "" {
-			continue
-		}
-		if dep.Variant == "" {
-			dep.Variant = tu.Variant
-		}
-		if dep.Variant != bv && dep.Variant != model.AllVariants {
-			continue
-		}
-		return true
+type dependencyRequirements struct {
+	lastDepNeedsSuccess bool
+	skipOnPatches       bool
+	skipOnNonPatches    bool
+}
+
+// SuccessfulDependencyMustRun checks whether or not the current task in a build
+// variant depends on the success of the target task in the build variant.
+// kim: TODO: test
+func SuccessfulDependencyMustRun(target model.TVPair, current model.TVPair, depReqs dependencyRequirements, visited map[model.TVPair]bool, tvToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit) (bool, error) {
+	isVisited, ok := visited[current]
+	// If the node is missing, the dependency graph is malformed.
+	if !ok {
+		return false, errors.Errorf("dependency '%s' in variant '%s' is not present in the project config", current.TaskName, current.Variant)
 	}
-	return false
+	// If a node is revisited on this DFS, the dependency graph cannot be
+	// checked because it has a cycle.
+	if isVisited {
+		return false, errors.Errorf("dependency '%s' in variant '%s' is in a dependency cycle", current.TaskName, current.Variant)
+	}
+	if current == target {
+		return depReqs.lastDepNeedsSuccess, nil
+	}
+
+	visited[current] = true
+
+	taskUnit := tvToTaskUnit[current]
+	// Even if current depends on target according to the dependency graph, if
+	// the current task will not run in the same cases as the source (e.g. the
+	// source task runs on patches but current task does not), the dependency is
+	// not reachable from this branch.
+	if !depReqs.skipOnPatches && taskUnit.SkipOnPatchBuild() {
+		pp.Println("failed due to skip on patch build")
+		return false, nil
+	}
+	if !depReqs.skipOnNonPatches && taskUnit.SkipOnNonPatchBuild() {
+		return false, nil
+	}
+
+	depsToNodes := GetTaskUnitDependencies(current, taskUnit, visited)
+	for dep, depNodes := range depsToNodes {
+		// If the task must run on patches but this dependency is optional on
+		// patches, we cannot traverse this dependency branch.
+		if !depReqs.skipOnPatches && dep.PatchOptional {
+			pp.Println("failed due to patch optional but not skipping patches")
+			continue
+		}
+		depReqs.lastDepNeedsSuccess = dep.Status == "" || dep.Status == evergreen.TaskSucceeded
+
+		for _, depNode := range depNodes {
+			reachable, err := SuccessfulDependencyMustRun(target, depNode, depReqs, visited, tvToTaskUnit)
+			if err != nil {
+				return false, errors.Wrap(err, "dependency graph has problems")
+			}
+			if reachable {
+				return true, nil
+			}
+		}
+	}
+
+	visited[current] = false
+
+	return false, nil
+}
+
+// GetTaskUnitDependencies returns a map of this task unit's dependencies to
+// and all the task-build variant pairs the task unit depends on.
+// kim: TODO: test
+func GetTaskUnitDependencies(node model.TVPair, taskUnit model.BuildVariantTaskUnit, allNodes map[model.TVPair]bool) map[model.TaskUnitDependency][]model.TVPair {
+	depsToNodes := map[model.TaskUnitDependency][]model.TVPair{}
+	for _, dep := range taskUnit.DependsOn {
+		if dep.Variant != model.AllVariants {
+			// handle regular dependencies
+			dn := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
+			if dn.Variant == "" {
+				// use the current variant if none is specified
+				dn.Variant = node.Variant
+			}
+			// handle * case by grabbing all the variant's tasks that aren't the current one
+			if dn.TaskName == model.AllDependencies {
+				for n := range allNodes {
+					if n.TaskName != node.TaskName && n.Variant == dn.Variant {
+						depsToNodes[dep] = append(depsToNodes[dep], n)
+					}
+				}
+			} else {
+				// normal case: just append the variant
+				depsToNodes[dep] = append(depsToNodes[dep], dn)
+			}
+		} else {
+			// handle the all-variants case by adding all nodes that are
+			// of the same task (but not the current node)
+			if dep.Name != model.AllDependencies {
+				for n := range allNodes {
+					if n.TaskName == dep.Name && (n != node) {
+						depsToNodes[dep] = append(depsToNodes[dep], n)
+					}
+				}
+			} else {
+				// edge case where variant and task name are both *
+				for n := range allNodes {
+					if n != node {
+						depsToNodes[dep] = append(depsToNodes[dep], n)
+					}
+				}
+			}
+		}
+	}
+
+	return depsToNodes
 }

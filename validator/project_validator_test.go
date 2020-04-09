@@ -1736,7 +1736,7 @@ func TestTaskGroupValidation(t *testing.T) {
 	assert.NoError(err)
 	validationErrs := validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group more than once")
+	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group 2 times")
 
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
@@ -2075,7 +2075,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err := model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs := validateDuplicateTaskDefinition(&p)
+	errs := validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -2096,7 +2096,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -2120,7 +2120,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 }
