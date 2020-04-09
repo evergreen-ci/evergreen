@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -21,7 +20,6 @@ import (
 const (
 	s3CopyRetrySleepTimeSec = 5
 	s3CopyRetryNumRetries   = 5
-	region                  = endpoints.UsEast1RegionID
 )
 
 // Takes a request for a task's file to be copied from
@@ -88,7 +86,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	defer utility.PutHTTPClient(client)
 	srcOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-		Region:      region,
+		Region:      s3CopyReq.S3SourceRegion,
 		Name:        s3CopyReq.S3SourceBucket,
 		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}
@@ -98,7 +96,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	destOpts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-		Region:      region,
+		Region:      s3CopyReq.S3DestinationRegion,
 		Name:        s3CopyReq.S3DestinationBucket,
 		Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 	}

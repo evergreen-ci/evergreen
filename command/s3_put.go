@@ -46,6 +46,10 @@ type s3put struct {
 	// within an s3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
+	// Region is the s3 region where the bucket is located. It defaults to
+	// "us-east-1".
+	Region string `mapstructure:"region" plugin:"region"`
+
 	// Bucket is the s3 bucket to use when storing the desired file
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
@@ -145,6 +149,10 @@ func (s3pc *s3put) validate() error {
 
 	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Add(errors.Errorf("invalid visibility setting: %v", s3pc.Visibility))
+	}
+
+	if s3pc.Region == "" {
+		s3pc.Region = endpoints.UsEast1RegionID
 	}
 
 	// make sure the bucket is valid
@@ -423,7 +431,7 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	}
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,

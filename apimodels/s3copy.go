@@ -6,8 +6,10 @@ package apimodels
 type S3CopyRequest struct {
 	AwsKey              string `json:"aws_key"`
 	AwsSecret           string `json:"aws_secret"`
+	S3SourceRegion      string `json:"s3_source_region"`
 	S3SourceBucket      string `json:"s3_source_bucket"`
 	S3SourcePath        string `json:"s3_source_path"`
+	S3DestinationRegion string `json:"s3_destination_region"`
 	S3DestinationBucket string `json:"s3_destination_bucket"`
 	S3DestinationPath   string `json:"s3_destination_path"`
 	S3DisplayName       string `json:"display_name"`
