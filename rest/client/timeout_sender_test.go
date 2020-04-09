@@ -76,17 +76,20 @@ func (s *logSenderSuite) SetupSuite() {
 func (s *logSenderSuite) TearDownSuite() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	timer := time.NewTimer(0)
 	for {
-		if ctx.Err() != nil {
+		select {
+		case <-ctx.Done():
 			grip.Errorf("timed out when removing temp dir %s", s.tempDir)
 			return
+		case <-timer.C:
+			err := os.RemoveAll(s.tempDir)
+			if err == nil {
+				return
+			}
+			grip.Error(errors.Wrapf(err, "failed to remove temp dir in %s, trying again", s.T().Name()))
+			timer.Reset(500 * time.Millisecond)
 		}
-		err := os.RemoveAll(s.tempDir)
-		if err == nil {
-			return
-		}
-		grip.Error(errors.Wrapf(err, "failed to remove temp dir in %s, trying again", s.T().Name()))
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
