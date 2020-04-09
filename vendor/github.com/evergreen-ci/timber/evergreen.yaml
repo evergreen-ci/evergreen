@@ -83,7 +83,7 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/cover.html"]
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/output.coverage.html"]
       remote_file: timber/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -94,7 +94,7 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/cover.out"]
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/output.coverage"]
       remote_file: timber/${task_id}/
       bucket: mciuploads
       content_type: text/plain

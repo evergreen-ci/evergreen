@@ -224,7 +224,7 @@ func MakeLoggerWithContext(ctx context.Context, name string, opts *LoggerOptions
 			rpcOpts = append(rpcOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 		}
 
-		conn, err := grpc.DialContext(ctx, opts.RPCAddress, rpcOpts...)
+		conn, err = grpc.DialContext(ctx, opts.RPCAddress, rpcOpts...)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem dialing rpc server")
 		}

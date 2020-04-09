@@ -65,15 +65,15 @@ func DialCedar(ctx context.Context, client *http.Client, opts *DialCedarOptions)
 		return nil, errors.Wrap(err, "problem building credentials payload")
 	}
 
-	ca, err := makeCedarCertRequest(ctx, client, httpAddress+"/rest/v1/admin/ca", nil)
+	ca, err := makeCedarCertRequest(ctx, client, http.MethodGet, httpAddress+"/rest/v1/admin/ca", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting cedar root cert")
 	}
-	crt, err := makeCedarCertRequest(ctx, client, httpAddress+"/rest/v1/admin/users/certificate", bytes.NewBuffer(credsPayload))
+	crt, err := makeCedarCertRequest(ctx, client, http.MethodPost, httpAddress+"/rest/v1/admin/users/certificate", bytes.NewBuffer(credsPayload))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting cedar user cert")
 	}
-	key, err := makeCedarCertRequest(ctx, client, httpAddress+"/rest/v1/admin/users/certificate/key", bytes.NewBuffer(credsPayload))
+	key, err := makeCedarCertRequest(ctx, client, http.MethodPost, httpAddress+"/rest/v1/admin/users/certificate/key", bytes.NewBuffer(credsPayload))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting cedar user key")
 	}
@@ -90,8 +90,8 @@ func DialCedar(ctx context.Context, client *http.Client, opts *DialCedarOptions)
 	})
 }
 
-func makeCedarCertRequest(ctx context.Context, client *http.Client, url string, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, url, body)
+func makeCedarCertRequest(ctx context.Context, client *http.Client, method, url string, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating http request")
 	}
