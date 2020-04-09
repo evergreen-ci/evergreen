@@ -478,8 +478,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }
 
       // clear home volume settings when switching between distros
-      $scope.isVirtualWorkstation = false
-      $scope.homeVolumeSize = 500
+      $scope.isVirtualWorkstation = $scope.selectedDistro.virtual_workstation_allowed && !$scope.spawnTaskChecked;
+      $scope.homeVolumeSize = 500;
     };
 
     $scope.setRegion = function(region) {
