@@ -109,10 +109,23 @@ mciModule.factory('EvgUiGridUtil', function() {
     }, colDef)
   }
 
+  function sortByOrder(a, b, rowA, rowB) {
+    if (a === b) {
+      return 0;
+    }
+
+    if (rowA && rowB) {
+      return rowA.entity.order - rowB.entity.order;
+    }
+
+    return a - b;
+  }
+
   return {
     applyMultiselectOptions: applyMultiselectOptions,
     getColAccessor: getColAccessor,
     multiselectColDefMixin: multiselectColDefMixin,
     multiselectConditionFn: multiselectConditionFn,
+    sortByOrder: sortByOrder,
   }
 })
