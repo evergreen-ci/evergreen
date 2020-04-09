@@ -359,6 +359,10 @@ func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
+func IsIntentHostId(id string) bool {
+	return strings.HasPrefix(id, "evg-")
+}
+
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := "not changing status of already terminated host"
