@@ -816,7 +816,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
-	if err := model.TryResetTask(taskID, username, evergreen.GQLPackage, nil); err != nil {
+	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
 	}
 	t, err := r.sc.FindTaskById(taskID)

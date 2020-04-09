@@ -226,7 +226,6 @@ func IsFailedTaskStatus(status string) bool {
 // evergreen package names
 const (
 	UIPackage      = "EVERGREEN_UI"
-	GQLPackage     = "EVERGREEN_GQL"
 	RESTV2Package  = "EVERGREEN_REST_V2"
 	MonitorPackage = "EVERGREEN_MONITOR"
 )
