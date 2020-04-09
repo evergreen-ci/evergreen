@@ -89,4 +89,37 @@ describe('PerfDiscoveryServiceTest', function() {
     expect(col.filter).toBeDefined()
     expect(col.filter.noTerm).toBe(false)
   })
+
+  function createRow(value) {
+    return {
+      entity: {
+        order: value
+      }
+    };
+  }
+
+  it('should return 0 if values are equal', () => {
+    const value = gridUtil.sortByOrder(5, 5);
+    expect(value).toEqual(0);
+  });
+
+  it('should return 0 if order values are equal', () => {
+    const value = gridUtil.sortByOrder(3, 5, createRow(5), createRow(5));
+    expect(value).toEqual(0);
+  });
+
+  it('should return negative if row a is less than row b', () => {
+    const value = gridUtil.sortByOrder(3, 5, createRow(3), createRow(5));
+    expect(value).toBeLessThan(0);
+  });
+
+  it('should return positive if row a is greater than row b', () => {
+    const value = gridUtil.sortByOrder(3, 5, createRow(5), createRow(3));
+    expect(value).toBeGreaterThan(0);
+  });
+
+  it('should sort by revision if rows are not available', () => {
+    const value = gridUtil.sortByOrder(3, 5, createRow(5));
+    expect(value).toBeLessThan(0);
+  });
 })
