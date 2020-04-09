@@ -329,6 +329,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.periodic_builds = data.ProjectRef.periodic_builds || [];
         $scope.permissions = data.permissions || {};
         $scope.github_valid_orgs = data.github_valid_orgs;
+        $scope.workstation_command = {};
         _.each($scope.project_triggers, function (trigger) {
           if (trigger.command) {
             trigger.file = trigger.generate_file;
@@ -638,12 +639,12 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     return "";
   }
 
-    $scope.removeWorkstationCommand = function (i) {
-      if ($scope.settingsFormData.workstation_config[i]) {
-        $scope.settingsFormData.workstation_config.splice(i, 1);
-        $scope.isDirty = true;
-      }
-    };
+  $scope.removeWorkstationCommand = function (i) {
+    if ($scope.settingsFormData.workstation_config[i]) {
+      $scope.settingsFormData.workstation_config.splice(i, 1);
+      $scope.isDirty = true;
+    }
+  };
 
   $scope.triggerLabel = function (trigger) {
     if (!trigger || !trigger.project) {

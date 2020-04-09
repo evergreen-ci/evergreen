@@ -241,13 +241,12 @@ func hostConfigure() cli.Command {
 				Usage: "suppress output",
 			},
 		},
-		Before: requireProjectFlag,
+		Before: mergeBeforeFuncs(setPlainLogger, requireProjectFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			project := c.String(projectFlagName)
 			directory := c.String(dirFlagName)
 			quiet := c.Bool(quietFlagName)
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -265,6 +264,9 @@ func hostConfigure() cli.Command {
 				return errors.Wrapf(err, "can't find project for queue id '%s'", project)
 			}
 			cmds, err := getJasperCommands(projectRef, directory, quiet)
+			if err != nil {
+				return errors.Wrapf(err, "error getting commands")
+			}
 			for _, cmd := range cmds {
 				if err := cmd.Run(ctx); err != nil {
 					gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error running command"))
@@ -287,14 +289,14 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet boo
 	for _, obj := range projectRef.WorkstationConfig {
 		dir := userHome
 		if directory != "" {
-			dir = directory
+			dir = fmt.Sprintf("%s/%s", dir, directory)
 		} else if obj.Directory != "" {
-			dir = obj.Directory
+			dir = fmt.Sprintf("%s/%s", dir, obj.Directory)
 		}
 		// what if a user wants to clone something that isn't this default? Should the command EQUAL git clone?
 		if strings.Contains(obj.Command, "git clone") {
 			// add repo/branch
-			obj.Command = fmt.Sprintf("git clone -branch %s git@github.com:%s/%s.git", projectRef.Branch, projectRef.Owner, projectRef.Repo)
+			obj.Command = fmt.Sprintf("git clone -b %s git@github.com:%s/%s.git", projectRef.Branch, projectRef.Owner, projectRef.Repo)
 
 		}
 		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
@@ -303,6 +305,7 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet boo
 			cmd = cmd.SetOutputSender(level.Info, grip.GetSender())
 		}
 		cmds = append(cmds, cmd)
+		grip.Infof("Command: %s, Directory: %s", obj.Command, dir)
 	}
 	return cmds, nil
 }
