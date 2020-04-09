@@ -346,7 +346,12 @@ tasks:
   - name: coverage
     tags: ["report"]
     commands:
-      - func: get-project
+      - command: git.get_project
+        type: setup
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+          token: ${github_token}
+          shallow_clone: false
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
