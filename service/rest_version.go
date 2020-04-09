@@ -150,7 +150,8 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 
 	// add one to limit to determine if a new page is necessary
-	versions, err := model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).Limit(l + 1))
+	versions, err := model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
+		Limit(l + 1).WithoutFields(model.VersionConfigKey))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		grip.Error(errors.Wrap(err, msg))
@@ -273,24 +274,11 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
-	var err error
-	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
-	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
-	}
-	if pp != nil && pp.ConfigUpdateNumber >= destVersion.ConfigUpdateNumber {
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
-		}
-		destVersion.Config = string(config)
-	}
-
 	gimlet.WriteJSON(w, destVersion)
 }
 
 // Returns a JSON response with the marshaled output of the version
-// specified in the request.
+// specified in the request (we still want this in yaml).
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	srcVersion := projCtx.Version

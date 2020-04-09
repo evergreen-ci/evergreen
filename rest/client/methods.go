@@ -183,33 +183,6 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 	return d, nil
 }
 
-// GetVersion loads the task's version.
-func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*model.Version, error) {
-	v := &model.Version{}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("version")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get version for task %s", taskData.ID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
-	err = utility.ReadJSON(resp.Body, v)
-	if err != nil {
-		err = errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
-		return nil, err
-	}
-	return v, nil
-}
-
 func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
 		method:   get,

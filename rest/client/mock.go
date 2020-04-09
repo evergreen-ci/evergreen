@@ -177,24 +177,6 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 	}, nil
 }
 
-// GetVersion return a mock Version.
-func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
-	var err error
-	var data []byte
-
-	_, file, _, _ := runtime.Caller(0)
-
-	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
-	if err != nil {
-		grip.Error(err)
-	}
-	config := string(data)
-	return &serviceModel.Version{
-		Id:     "mock_version_id",
-		Config: config,
-	}, nil
-}
-
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
 	var err error
 	var data []byte
