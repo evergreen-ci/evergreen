@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -88,9 +89,6 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	if c.Task == "" {
 		return errors.New("task must not be empty")
 	}
-	if c.WorkingDir == "" {
-		return errors.New("working directory cannot be empty")
-	}
 	return nil
 }
 
@@ -105,6 +103,15 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
+	if c.FromBuildVariant == "" {
+		c.FromBuildVariant = conf.Task.BuildVariant
+	}
+	if c.WorkingDir == "" {
+		c.WorkingDir = conf.WorkDir
+	}
+
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
 		Workers:      runtime.NumCPU(),
@@ -120,13 +127,21 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		fmt.Sprintf("the working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'",
 			c.WorkingDir, conf.WorkDir))
 
-	pullMsg := "Pulling task directory files from S3"
+	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
+		return errors.Wrap(err, "problem making working directory")
+	}
+	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	if err != nil {
+		return errors.Wrap(err, "could not get working directory")
+	}
+
+	pullMsg := fmt.Sprintf("Pulling task directory files from S3 from task '%s' on build variant '%s'", c.Task, c.FromBuildVariant)
 	if c.ExcludeFilter != "" {
 		pullMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
 	logger.Task().Infof(pullMsg)
-	if err := c.bucket.Pull(ctx, pail.SyncOptions{
-		Local:   c.WorkingDir,
+	if err = c.bucket.Pull(ctx, pail.SyncOptions{
+		Local:   wd,
 		Remote:  conf.Task.S3Path(c.FromBuildVariant, c.Task),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -32,6 +33,9 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
 
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
 		Workers:      runtime.NumCPU(),
 		DeleteOnSync: true,
@@ -44,7 +48,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 
 	wd, err := conf.GetWorkingDirectory("")
 	if err != nil {
-		return errors.Wrap(err, "could not get task working directory")
+		return errors.Wrap(err, "could not get working directory")
 	}
 	pushMsg := "Pushing task directory files into S3"
 	if c.ExcludeFilter != "" {
