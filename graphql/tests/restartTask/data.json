@@ -2,10 +2,12 @@
   "tasks": [
     {
       "_id": "task1",
-      "build_id": "build1"
+      "build_id": "build1",
+      "status": "success"
     },
     {
-      "_id": "task2"
+      "_id": "task2",
+      "status": "success"
     }
   ],
   "builds": [
