@@ -1,0 +1,6 @@
+mutation {
+  restartTask(taskId: "task1") {
+    status
+    id
+  }
+}

@@ -895,6 +895,10 @@ func TestMarkEnd(t *testing.T) {
 }
 
 func TestTryResetTask(t *testing.T) {
+	Convey("With a task that does not exist", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection), "Error clearing task collection")
+		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
+	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
@@ -1030,6 +1034,11 @@ func TestTryResetTask(t *testing.T) {
 
 			var err error
 
+			Convey("should reset if ui package tries to reset", func() {
+				So(TryResetTask(testTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+			})
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))

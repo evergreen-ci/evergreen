@@ -279,16 +279,8 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	if task == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(task)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return &apiTask, nil
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *task)
+	return apiTask, err
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
@@ -744,16 +736,8 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", taskID, err.Error()))
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", taskID, err.Error()))
-	}
-	return &apiTask, nil
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
@@ -826,17 +810,25 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
-	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
+}
 
-	return &apiTask, nil
+func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	usr := route.MustHaveUser(ctx)
+	username := usr.Username()
+	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
+	}
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
 }
 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {

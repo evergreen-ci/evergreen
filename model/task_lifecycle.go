@@ -161,6 +161,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	if t == nil {
+		return fmt.Errorf("cannot restart task %s because it could not be found", taskId)
+	}
 	if t.IsPartOfDisplay() {
 		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
 	}
