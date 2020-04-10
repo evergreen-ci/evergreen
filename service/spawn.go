@@ -173,6 +173,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData             string     `json:"userdata"`
 		UseTaskConfig        bool       `json:"use_task_config"`
 		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+		NoExpiration         bool       `json:"no_expiration"`
 		HomeVolumeSize       int        `json:"home_volume_size"`
 		HomeVolumeID         string     `json:"home_volume_id"`
 		InstanceTags         []host.Tag `json:"instance_tags"`
@@ -209,6 +210,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		InstanceTags:         putParams.InstanceTags,
 		InstanceType:         putParams.InstanceType,
 		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
+		NoExpiration:         putParams.NoExpiration,
 		HomeVolumeSize:       putParams.HomeVolumeSize,
 		HomeVolumeID:         putParams.HomeVolumeID,
 	}
@@ -216,7 +218,6 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
 		return

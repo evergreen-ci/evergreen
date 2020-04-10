@@ -18,6 +18,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
+    $scope.noExpiration = false;
     $scope.homeVolumeSize = 500;
     $scope.homeVolumeID;
     $scope.allowedInstanceTypes = [];
@@ -291,8 +292,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
       $scope.spawnInfo.is_virtual_workstation = $scope.isVirtualWorkstation;
-      $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
-      $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
+      if ($scope.isVirtualWorkstation) {
+          $scope.spawnInfo.no_expiration = $scope.noExpiration;
+          $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
+          $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
+      }
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
@@ -460,7 +464,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setSpawnableDistro = function (spawnableDistro) {
       $scope.selectedDistro = spawnableDistro;
       $scope.spawnInfo.distroId = spawnableDistro.name;
-
+      $scope.selectedRegion = "us-east-1";
       // if multiple regions, preference the user region
       if ($scope.selectedDistro.regions.length > 1) {
         if ($scope.defaultRegion !== "") {
@@ -468,17 +472,19 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             // valid region
             if ($scope.defaultRegion === $scope.selectedDistro.regions[i]) {
               $scope.selectedRegion = $scope.defaultRegion;
+              break;
             }
           }
         }
-        // if preferred region not configured for this distro, default to the first region in this list
-        if ($scope.selectedRegion === undefined) {
-          $scope.selectedRegion = $scope.selectedDistro.regions[0];
-        }
+      }
+      // if preferred region not configured for this distro, default to the first region in this list
+      if ($scope.selectedRegion === "" && $scope.selectedDistro.regions.length === 1) {
+        $scope.selectedRegion = $scope.selectedDistro.regions[0];
       }
 
       // clear home volume settings when switching between distros
       $scope.isVirtualWorkstation = $scope.selectedDistro.virtual_workstation_allowed && !$scope.spawnTaskChecked;
+      $scope.noExpiration = $scope.selectedDistro.virtual_workstation_allowed && ($scope.availableUnexpirableHosts() > 0);
       $scope.homeVolumeSize = 500;
     };
 

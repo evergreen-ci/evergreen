@@ -286,6 +286,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['public_key'] = spawnInfo.spawnKey.key;
         config.data['userdata'] = spawnInfo.userData;
         config.data['is_virtual_workstation'] = spawnInfo.is_virtual_workstation;
+        config.data['no_expiration'] = spawnInfo.no_expiration;
         config.data['home_volume_size'] = spawnInfo.home_volume_size;
         config.data['home_volume_id'] = spawnInfo.home_volume_id;
         config.data['use_task_config'] = spawnInfo.useTaskConfig;

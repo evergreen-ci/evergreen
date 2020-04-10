@@ -577,9 +577,6 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 
 func (d *Distro) GetRegionsList() []string {
 	regions := []string{}
-	if len(d.ProviderSettingsList) <= 1 {
-		return regions
-	}
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {

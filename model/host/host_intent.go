@@ -65,6 +65,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		IsVirtualWorkstation:  options.IsVirtualWorkstation,
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
+		NoExpiration:          options.NoExpiration,
 	}
 
 	if options.ExpirationDuration != nil {
