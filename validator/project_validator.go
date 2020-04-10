@@ -184,11 +184,11 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	// distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
-	// if err != nil {
-	//     validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
-	// }
-	// validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
+	distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
+	if err != nil {
+		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
+	}
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
 	return validationErrs
 }
 

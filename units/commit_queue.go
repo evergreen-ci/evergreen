@@ -602,6 +602,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		Tasks: []model.BuildVariantTaskUnit{
 			{
 				Name:             evergreen.MergeTaskGroup,
+				IsGroup:          true,
 				CommitQueueMerge: true,
 			},
 		},
