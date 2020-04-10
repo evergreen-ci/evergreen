@@ -283,21 +283,21 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet boo
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding home directory")
 	}
-	if len(projectRef.WorkstationConfig) == 0 {
-		return nil, errors.Errorf("no commands configured for project '%s'", projectRef.Identifier)
-	}
-	for _, obj := range projectRef.WorkstationConfig {
-		dir := userHome
-		if directory != "" {
-			dir = fmt.Sprintf("%s/%s", dir, directory)
-		} else if obj.Directory != "" {
-			dir = fmt.Sprintf("%s/%s", dir, obj.Directory)
-		}
-		// what if a user wants to clone something that isn't this default? Should the command EQUAL git clone?
-		if strings.Contains(obj.Command, "git clone") {
-			// add repo/branch
-			obj.Command = fmt.Sprintf("git clone -b %s git@github.com:%s/%s.git", projectRef.Branch, projectRef.Owner, projectRef.Repo)
+	// add git clone to run first if enabled
+	projectRef.AddGitCloneToWorkstationCommands()
 
+	if len(projectRef.WorkstationConfig.SetupCommands) == 0 {
+		return nil, errors.Errorf("no setup commands configured for project '%s'", projectRef.Identifier)
+	}
+	for _, obj := range projectRef.WorkstationConfig.SetupCommands {
+		dir := filepath.Join(userHome, projectRef.Identifier)
+		if directory != "" {
+			dir = filepath.Join(userHome, directory)
+		} else if obj.Directory != "" {
+			dir = filepath.Join(userHome, obj.Directory)
+		}
+		if err = os.MkdirAll(dir, 0644); err != nil {
+			return nil, errors.Wrapf(err, "error making directory '%s'", dir)
 		}
 		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
 			SetErrorSender(level.Error, grip.GetSender())
@@ -305,7 +305,7 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet boo
 			cmd = cmd.SetOutputSender(level.Info, grip.GetSender())
 		}
 		cmds = append(cmds, cmd)
-		grip.Infof("Command: %s, Directory: %s", obj.Command, dir)
+		grip.Infof("Command: %s", obj.Command)
 	}
 	return cmds, nil
 }

@@ -72,7 +72,7 @@ type ProjectRef struct {
 	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	// List of commands
-	WorkstationConfig []WorkstationCommand `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
+	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -133,7 +133,12 @@ type PeriodicBuildDefinition struct {
 	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
-type WorkstationCommand struct {
+type WorkstationConfig struct {
+	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	GitClone      bool                      `bson:"git_clone" json:"git_clone"`
+}
+
+type WorkstationSetupCommand struct {
 	Command   string `bson:"command" json:"command"`
 	Directory string `bson:"directory" json:"directory"`
 }
@@ -876,6 +881,17 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectRef) AddGitCloneToWorkstationCommands() {
+	if !p.WorkstationConfig.GitClone {
+		return
+	}
+	newCmd := WorkstationSetupCommand{}
+	newCmd.Command = fmt.Sprintf("git clone -b %s https://github.com/%s/%s.git", p.Branch, p.Owner, p.Repo)
+	newCmdsList := []WorkstationSetupCommand{newCmd}
+	p.WorkstationConfig.SetupCommands = append(newCmdsList, p.WorkstationConfig.SetupCommands...)
+	return
 }
 
 func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {

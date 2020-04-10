@@ -227,15 +227,15 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                              `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                              `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription       `json:"subscriptions"`
-		DeleteSubscriptions   []string                          `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition         `json:"triggers"`
-		FilesIgnoredFromCache []string                          `json:"files_ignored_from_cache"`
-		DisabledStatsCache    bool                              `json:"disabled_stats_cache"`
-		PeriodicBuilds        []*model.PeriodicBuildDefinition  `json:"periodic_builds"`
-		WorkstationConfig     []restModel.APIWorkstationCommand `json:"workstation_config"`
+		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
+		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
+		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
+		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
+		Triggers              []model.TriggerDefinition        `json:"triggers"`
+		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
+		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
+		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
+		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
@@ -461,18 +461,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}
 
-	projectRef.WorkstationConfig = []model.WorkstationCommand{}
-	for _, obj := range responseRef.WorkstationConfig {
-		var command model.WorkstationCommand
-		i, err = obj.ToService()
-		catcher.Add(err)
-		command, ok = i.(model.WorkstationCommand)
-		if !ok {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected workstation command but was actually '%T'", i))
-			return
-		}
-		projectRef.WorkstationConfig = append(projectRef.WorkstationConfig, command)
+	i, err = responseRef.WorkstationConfig.ToService()
+	catcher.Add(err)
+	config, ok := i.(model.WorkstationConfig)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected workstation config but was actually '%T'", i))
+		return
 	}
+	projectRef.WorkstationConfig = config
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {

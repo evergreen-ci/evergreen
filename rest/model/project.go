@@ -155,28 +155,44 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIWorkstationCommand struct {
+type APIWorkstationConfig struct {
+	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	GitClone      bool                         `bson:"git_clone" json:"git_clone"`
+}
+
+type APIWorkstationSetupCommand struct {
 	Command   *string `bson:"command" json:"command"`
 	Directory *string `bson:"directory" json:"directory"`
 }
 
-func (c *APIWorkstationCommand) ToService() (interface{}, error) {
-	res := model.WorkstationCommand{}
-	res.Command = FromStringPtr(c.Command)
-	res.Directory = FromStringPtr(c.Directory)
+func (c *APIWorkstationConfig) ToService() (interface{}, error) {
+	res := model.WorkstationConfig{}
+	res.GitClone = c.GitClone
+	for _, apiCmd := range c.SetupCommands {
+		cmd := model.WorkstationSetupCommand{}
+		cmd.Command = FromStringPtr(apiCmd.Command)
+		cmd.Directory = FromStringPtr(apiCmd.Directory)
+		res.SetupCommands = append(res.SetupCommands, cmd)
+	}
 	return res, nil
 }
 
-func (c *APIWorkstationCommand) BuildFromService(h interface{}) error {
-	var command model.WorkstationCommand
+func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
+	var config model.WorkstationConfig
 	switch h.(type) {
-	case model.WorkstationCommand:
-		command = h.(model.WorkstationCommand)
-	case *model.WorkstationCommand:
-		command = *h.(*model.WorkstationCommand)
+	case model.WorkstationConfig:
+		config = h.(model.WorkstationConfig)
+	case *model.WorkstationConfig:
+		config = *h.(*model.WorkstationConfig)
 	}
-	c.Command = ToStringPtr(command.Command)
-	c.Directory = ToStringPtr(command.Directory)
+
+	c.GitClone = config.GitClone
+	for _, cmd := range config.SetupCommands {
+		apiCmd := APIWorkstationSetupCommand{}
+		apiCmd.Command = ToStringPtr(cmd.Command)
+		apiCmd.Directory = ToStringPtr(cmd.Directory)
+		c.SetupCommands = append(c.SetupCommands, apiCmd)
+	}
 	return nil
 }
 
@@ -205,13 +221,13 @@ type APIProjectRef struct {
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
 	Tags                 []*string            `json:"tags"`
 
-	Revision            *string                 `json:"revision"`
-	Triggers            []APITriggerDefinition  `json:"triggers"`
-	Aliases             []APIProjectAlias       `json:"aliases"`
-	Variables           APIProjectVars          `json:"variables"`
-	WorkstationConfig   []APIWorkstationCommand `json:"workstation_config"`
-	Subscriptions       []APISubscription       `json:"subscriptions"`
-	DeleteSubscriptions []*string               `json:"delete_subscriptions,omitempty"`
+	Revision            *string                `json:"revision"`
+	Triggers            []APITriggerDefinition `json:"triggers"`
+	Aliases             []APIProjectAlias      `json:"aliases"`
+	Variables           APIProjectVars         `json:"variables"`
+	WorkstationConfig   APIWorkstationConfig   `json:"workstation_config"`
+	Subscriptions       []APISubscription      `json:"subscriptions"`
+	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

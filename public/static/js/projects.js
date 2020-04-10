@@ -329,7 +329,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.periodic_builds = data.ProjectRef.periodic_builds || [];
         $scope.permissions = data.permissions || {};
         $scope.github_valid_orgs = data.github_valid_orgs;
-        $scope.workstation_command = {};
+        $scope.cur_command = {};
         _.each($scope.project_triggers, function (trigger) {
           if (trigger.command) {
             trigger.file = trigger.generate_file;
@@ -367,7 +367,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           commit_queue: data.ProjectRef.commit_queue || {},
-          workstation_config: data.ProjectRef.workstation_config || [],
+          workstation_config: data.ProjectRef.workstation_config || {},
           notify_on_failure: $scope.projectRef.notify_on_failure,
           force_repotracker_run: false,
           delete_aliases: [],
@@ -554,10 +554,14 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.addWorkstationCommand = function() {
       if (!$scope.settingsFormData.workstation_config) {
-          $scope.settingsFormData.workstation_config = [];
+          $scope.settingsFormData.workstation_config = {};
       }
-      $scope.settingsFormData.workstation_config = $scope.settingsFormData.workstation_config.concat($scope.workstation_command);
-      $scope.workstation_command = {};
+      if (!$scope.settingsFormData.workstation_config.setup_commands) {
+        scope.settingsFormData.workstation_config.setup_commands = []
+      }
+      $scope.settingsFormData.workstation_config.setup_commands =
+          $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
+      $scope.cur_command = {};
   }
 
   $scope.removeProjectVar = function (name) {
@@ -640,8 +644,8 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   }
 
   $scope.removeWorkstationCommand = function (i) {
-    if ($scope.settingsFormData.workstation_config[i]) {
-      $scope.settingsFormData.workstation_config.splice(i, 1);
+    if ($scope.settingsFormData.workstation_config && $scope.settingsFormData.workstation_config.setup_commands[i]) {
+      $scope.settingsFormData.workstation_config.setup_commands.splice(i, 1);
       $scope.isDirty = true;
     }
   };
