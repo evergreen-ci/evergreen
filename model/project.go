@@ -65,8 +65,12 @@ type Project struct {
 type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
-	Name      string `yaml:"name,omitempty" bson:"name"`
-	IsGroup   bool   `yaml:"-" bson:"-"`
+	Name string `yaml:"name,omitempty" bson:"name"`
+	// IsGroup indicates that it is a task group or a task within a task group.
+	IsGroup bool `yaml:"-" bson:"-"`
+	// GroupName is the task group name if this is a task in a task group. If
+	// it is the task group itself, it is not populated (Name is the task group
+	// name).
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.

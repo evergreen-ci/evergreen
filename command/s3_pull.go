@@ -67,8 +67,8 @@ type s3Pull struct {
 	s3Base
 	base
 
-	FromBuildVariant string `mapstructure:"from_build_variant" plugin:"expand"`
-	Task             string `mapstructure:"task" plugin:"expand"`
+	FromBuildVariant string `mapstructure:"from_build_variant"`
+	Task             string `mapstructure:"task"`
 	WorkingDir       string `mapstructure:"working_directory" plugin:"expand"`
 	DeleteOnSync     bool   `mapstructure:"delete_on_sync"`
 }
