@@ -529,7 +529,28 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				return nil, false, errors.WithStack(err)
 			}
 			if numHosts > nextTask.TaskGroupMaxHosts {
-				currentHost.ClearRunningTask()
+				grip.Debug(message.Fields{
+					"message":                  "task group race, not dispatching",
+					"distro_id":                nextTask.DistroId,
+					"task_id":                  nextTask.Id,
+					"host_id":                  currentHost.Id,
+					"taskspec_group":           spec.Group,
+					"taskspec_build_variant":   spec.BuildVariant,
+					"taskspec_version":         spec.Version,
+					"taskspec_project":         spec.Project,
+					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				})
+				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
+					"message":                  "problem clearing task group task from host after dispatch race",
+					"distro_id":                nextTask.DistroId,
+					"task_id":                  nextTask.Id,
+					"host_id":                  currentHost.Id,
+					"taskspec_group":           spec.Group,
+					"taskspec_build_variant":   spec.BuildVariant,
+					"taskspec_version":         spec.Version,
+					"taskspec_project":         spec.Project,
+					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				}))
 				ok = false // continue loop after dequeueing task
 			}
 		}
