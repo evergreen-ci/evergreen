@@ -2,6 +2,7 @@ package host
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -57,4 +58,23 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 	}
 
 	return out[0].TotalVolumeSize, nil
+}
+
+func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
+	volume, err := FindVolumeByID(volumeID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
+	}
+	if volume == nil {
+		return nil, errors.Errorf("volume '%s' does not exist", volumeID)
+	}
+	var sourceHost *Host
+	sourceHost, err = FindHostWithVolume(volumeID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get source host for volume '%s'", volumeID)
+	}
+	if sourceHost != nil {
+		return nil, errors.Errorf("volume '%s' is already attached to host '%s'", volumeID, sourceHost.Id)
+	}
+	return volume, nil
 }

@@ -742,20 +742,12 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		var volume *host.Volume
 		if h.HomeVolumeID != "" {
-			volume, err = host.FindVolumeByID(h.HomeVolumeID)
+			volume, err = host.ValidateVolumeCanBeAttached(h.HomeVolumeID)
 			if err != nil {
-				return errors.Wrapf(err, "can't get volume '%s'", h.HomeVolumeID)
+				return err
 			}
-			if volume == nil {
-				return errors.Errorf("volume '%s' does not exist", h.HomeVolumeID)
-			}
-			var sourceHost *host.Host
-			sourceHost, err = host.FindHostWithVolume(h.HomeVolumeID)
-			if err != nil {
-				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
-			}
-			if sourceHost != nil {
-				return errors.Errorf("volume '%s' is already attached to host '%s'", h.HomeVolumeID, sourceHost.Id)
+			if volume.AvailabilityZone != h.Zone {
+				return errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone)
 			}
 		} else {
 			// create the volume
