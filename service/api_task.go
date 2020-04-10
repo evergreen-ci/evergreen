@@ -513,6 +513,48 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if err != nil {
 			return nil, false, errors.WithStack(err)
 		}
+
+		// It's possible for dispatchers on different app servers to race, assigning
+		// different tasks in a task group to more hosts than the task group's max hosts. We
+		// must therefore check that the number of hosts running this task group does not
+		// exceed the max after updating the running task on the host. If it does, we back
+		// out.
+		//
+		// If the host just ran a task in the group, then it's eligible for running
+		// more tasks in the group, regardless of how many hosts are running. We only check
+		// the number of hosts running this task group if the task group is new to the host.
+		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
+			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+			if err != nil {
+				return nil, false, errors.WithStack(err)
+			}
+			if numHosts > nextTask.TaskGroupMaxHosts {
+				grip.Debug(message.Fields{
+					"message":                  "task group race, not dispatching",
+					"distro_id":                nextTask.DistroId,
+					"task_id":                  nextTask.Id,
+					"host_id":                  currentHost.Id,
+					"taskspec_group":           spec.Group,
+					"taskspec_build_variant":   spec.BuildVariant,
+					"taskspec_version":         spec.Version,
+					"taskspec_project":         spec.Project,
+					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				})
+				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
+					"message":                  "problem clearing task group task from host after dispatch race",
+					"distro_id":                nextTask.DistroId,
+					"task_id":                  nextTask.Id,
+					"host_id":                  currentHost.Id,
+					"taskspec_group":           spec.Group,
+					"taskspec_build_variant":   spec.BuildVariant,
+					"taskspec_version":         spec.Version,
+					"taskspec_project":         spec.Project,
+					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				}))
+				ok = false // continue loop after dequeueing task
+			}
+		}
+
 		// Dequeue the task so we don't get it on another iteration of the loop.
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
@@ -533,6 +575,14 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		return nextTask, false, nil
 	}
 	return nil, false, nil
+}
+
+func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
+	return t.TaskGroup != "" &&
+		(h.LastGroup != t.TaskGroup ||
+			h.LastBuildVariant != t.BuildVariant ||
+			h.LastProject != t.Project ||
+			h.LastVersion != t.Version)
 }
 
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
