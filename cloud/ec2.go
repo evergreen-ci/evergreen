@@ -622,22 +622,24 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 
 // setNoExpiration changes whether a host should expire
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
-	resources, err := m.getResources(ctx, h)
-	if err != nil {
-		return errors.Wrap(err, "error getting host resources")
-	}
 	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
-	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String("expire-on"),
-				Value: aws.String(expireOnValue),
+	if !host.IsIntentHostId(h.Id) {
+		resources, err := m.getResources(ctx, h)
+		if err != nil {
+			return errors.Wrap(err, "error getting host resources")
+		}
+		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags: []*ec2.Tag{
+				{
+					Key:   aws.String("expire-on"),
+					Value: aws.String(expireOnValue),
+				},
 			},
-		},
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+		}
 	}
 
 	if noExpiration {

@@ -666,6 +666,18 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.Equal([]host.Tag{host.Tag{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
 	s.Equal(changes.InstanceType, found.InstanceType)
+
+	intent := host.Host{
+		Id:           "evg-1234",
+		NoExpiration: false,
+	}
+	s.NoError(intent.Insert())
+	noExpiration := true
+	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.True(found.NoExpiration)
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
