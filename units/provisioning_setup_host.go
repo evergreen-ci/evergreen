@@ -249,7 +249,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 	case distro.BootstrapMethodUserData:
 		// Updating the host LCT prevents the agent monitor deploy job from
 		// running. The agent monitor should be started by the user data script.
-		grip.Error(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
+		grip.Warning(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
 			"message": "failed to update host's last communication time",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -276,7 +276,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 		return nil
 	case distro.BootstrapMethodSSH:
 		if err = setupJasper(ctx, j.env, settings, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not set up Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
