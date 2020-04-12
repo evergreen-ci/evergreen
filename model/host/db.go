@@ -1118,7 +1118,6 @@ func lastContainerFinishTimePipeline() []bson.M {
 
 // AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
 func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
-
 	var times []FinishTime
 	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
 	if err != nil {
@@ -1197,7 +1196,7 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),
 		message.Fields{
 			"host_id":   h.Id,
-			"volume_id": newVolume.VolumeID,
+			"volume_id": volumeId,
 			"op":        "host volume accounting",
 			"message":   "problem un-setting host info on volume records",
 		}))
