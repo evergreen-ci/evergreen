@@ -103,6 +103,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject    func(childComplexity int, identifier string) int
 		RemoveFavoriteProject func(childComplexity int, identifier string) int
 		RestartTask           func(childComplexity int, taskID string) int
+		SaveSubscription      func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch         func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
 		ScheduleTask          func(childComplexity int, taskID string) int
 		SetTaskPriority       func(childComplexity int, taskID string, priority int) int
@@ -312,6 +313,7 @@ type MutationResolver interface {
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
+	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -592,6 +594,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.saveSubscription":
+		if e.complexity.Mutation.SaveSubscription == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveSubscription_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveSubscription(childComplexity, args["subscription"].(model.APISubscription)), true
 
 	case "Mutation.schedulePatch":
 		if e.complexity.Mutation.SchedulePatch == nil {
@@ -1702,6 +1716,7 @@ type Mutation {
   abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -1746,6 +1761,27 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+input SubscriberInput {
+  type: String
+  target: Map
+}
+
+input SubscriptionInput {
+  resourceType: String
+  trigger: String
+  selectors: [SelectorInput]
+  regexSelectors: [SelectorInput]
+  subscriber: SubscriberInput
+  ownerType: String
+  owner: String
+  triggerData: StringMap
+}
+
+input SelectorInput {
+  type: String
+  data: String
 }
 
 type PatchBuildVariant {
@@ -1980,6 +2016,8 @@ type LogMessage {
 
 scalar Time
 scalar Duration
+scalar Map
+scalar StringMap
 `, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -2041,6 +2079,20 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveSubscription_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.APISubscription
+	if tmp, ok := rawArgs["subscription"]; ok {
+		arg0, err = ec.unmarshalNSubscriptionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subscription"] = arg0
 	return args, nil
 }
 
@@ -3650,6 +3702,47 @@ func (ec *executionContext) _Mutation_restartTask(ctx context.Context, field gra
 	res := resTmp.(*model.APITask)
 	fc.Result = res
 	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_saveSubscription_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SaveSubscription(rctx, args["subscription"].(model.APISubscription))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -9117,6 +9210,114 @@ func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSelectorInput(ctx context.Context, obj interface{}) (model.APISelector, error) {
+	var it model.APISelector
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "type":
+			var err error
+			it.Type, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "data":
+			var err error
+			it.Data, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, obj interface{}) (model.APISubscriber, error) {
+	var it model.APISubscriber
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "type":
+			var err error
+			it.Type, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "target":
+			var err error
+			it.Target, err = ec.unmarshalOMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context, obj interface{}) (model.APISubscription, error) {
+	var it model.APISubscription
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "resourceType":
+			var err error
+			it.ResourceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "trigger":
+			var err error
+			it.Trigger, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "selectors":
+			var err error
+			it.Selectors, err = ec.unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "regexSelectors":
+			var err error
+			it.RegexSelectors, err = ec.unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "subscriber":
+			var err error
+			it.Subscriber, err = ec.unmarshalOSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "ownerType":
+			var err error
+			it.OwnerType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "owner":
+			var err error
+			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "triggerData":
+			var err error
+			it.TriggerData, err = ec.unmarshalOStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj interface{}) (VariantTasks, error) {
 	var it VariantTasks
 	var asMap = obj.(map[string]interface{})
@@ -9494,6 +9695,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "restartTask":
 			out.Values[i] = ec._Mutation_restartTask(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "saveSubscription":
+			out.Values[i] = ec._Mutation_saveSubscription(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -11574,6 +11780,10 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 	return ec.marshalNString2string(ctx, sel, *v)
 }
 
+func (ec *executionContext) unmarshalNSubscriptionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, v interface{}) (model.APISubscription, error) {
+	return ec.unmarshalInputSubscriptionInput(ctx, v)
+}
+
 func (ec *executionContext) marshalNTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
 	return ec._Task(ctx, sel, &v)
 }
@@ -12160,6 +12370,20 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalOInt2int(ctx, sel, *v)
 }
 
+func (ec *executionContext) unmarshalOMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return graphql.UnmarshalMap(v)
+}
+
+func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalMap(v)
+}
+
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {
 	return ec._PatchBuildVariantTask(ctx, sel, &v)
 }
@@ -12231,6 +12455,30 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) (model.APISelector, error) {
+	return ec.unmarshalInputSelectorInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) ([]model.APISelector, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APISelector, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
@@ -12342,6 +12590,24 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalOString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalOStringMap2map(ctx context.Context, v interface{}) (map[string]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return UnmarshalStringMap(v)
+}
+
+func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return MarshalStringMap(v)
+}
+
+func (ec *executionContext) unmarshalOSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, v interface{}) (model.APISubscriber, error) {
+	return ec.unmarshalInputSubscriberInput(ctx, v)
 }
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {

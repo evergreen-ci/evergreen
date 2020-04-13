@@ -831,6 +831,16 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
+	usr := route.MustHaveUser(ctx)
+	username := usr.Username()
+	err := r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
+	}
+	return true, nil
+}
+
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	displayName := usr.DisplayName()
