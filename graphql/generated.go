@@ -1769,13 +1769,13 @@ input SubscriberInput {
 }
 
 input SubscriptionInput {
-  resource_type: String!
-  trigger: String!
+  resource_type: String
+  trigger: String
   selectors: [SelectorInput!]!
   regex_selectors: [SelectorInput!]!
   subscriber: SubscriberInput!
-  owner_type: String!
-  owner: String!
+  owner_type: String
+  owner: String
   trigger_data: StringMap!
 }
 
@@ -9265,13 +9265,13 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 		switch k {
 		case "resource_type":
 			var err error
-			it.ResourceType, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.ResourceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "trigger":
 			var err error
-			it.Trigger, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Trigger, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9295,13 +9295,13 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 			}
 		case "owner_type":
 			var err error
-			it.OwnerType, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.OwnerType, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "owner":
 			var err error
-			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

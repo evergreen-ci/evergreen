@@ -98,13 +98,13 @@ input SubscriberInput {
 }
 
 input SubscriptionInput {
-  resource_type: String!
-  trigger: String!
+  resource_type: String
+  trigger: String
   selectors: [SelectorInput!]!
   regex_selectors: [SelectorInput!]!
   subscriber: SubscriberInput!
-  owner_type: String!
-  owner: String!
+  owner_type: String
+  owner: String
   trigger_data: StringMap!
 }
 
