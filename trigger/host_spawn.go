@@ -73,6 +73,14 @@ func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 				Title: "SSH Command",
 				Value: fmt.Sprintf("`%s`", sshCommand(t.host)),
 			})
+
+		if t.host.IsVirtualWorkstation {
+			attachment.Fields = append(attachment.Fields,
+				&message.SlackAttachmentField{
+					Title: "IDE",
+					Value: fmt.Sprintf("<%s/host/%s/ide|IDE>", t.uiConfig.Url, t.host.Id),
+				})
+		}
 	}
 
 	return &notification.SlackPayload{
