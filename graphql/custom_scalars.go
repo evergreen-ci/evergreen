@@ -26,13 +26,12 @@ func UnmarshalStringMap(v interface{}) (map[string]string, error) {
 		return stringMap, fmt.Errorf("%T is not a StringMap", v)
 	}
 	for key, value := range stringInterface {
-		strKey := fmt.Sprintf("%v", key)
 		_, ok := value.(string)
 		if !ok {
-			return stringMap, fmt.Errorf("%v is not a StringMap. Value %v for key %v should be type string but got %T", v, value, strKey, value)
+			return stringMap, fmt.Errorf("%v is not a StringMap. Value %v for key %v should be type string but got %T", v, value, key, value)
 		}
 		strValue := fmt.Sprintf("%v", value)
-		stringMap[strKey] = strValue
+		stringMap[key] = strValue
 	}
 	return stringMap, nil
 }
