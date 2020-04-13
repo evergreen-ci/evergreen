@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "error-regex-selectors.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error saving subscription: 400 (Bad Request): Invalid regex selectors: Selector had empty type or data",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "invalid-input.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Field SubscriptionInput.trigger_data of required type StringMap! was not provided.",
+            "locations": [{ "line": 3, "column": 19 }],
+            "extensions": { "code": "GRAPHQL_VALIDATION_FAILED" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}
