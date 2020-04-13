@@ -17,6 +17,8 @@ const (
 	Forbidden GqlError = "FORBIDDEN"
 	// ResourceNotFound conveys the requested resource does not exist
 	ResourceNotFound GqlError = "RESOURCE_NOT_FOUND"
+	// InputValidationError conveys that the given input is not formatted properly
+	InputValidationError GqlError = "INPUT_VALIDATION_ERROR"
 )
 
 // Send sends a gql error to the client formatted with
@@ -28,6 +30,8 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 		return formError(ctx, message, Forbidden)
 	case ResourceNotFound:
 		return formError(ctx, message, ResourceNotFound)
+	case InputValidationError:
+		return formError(ctx, message, InputValidationError)
 	default:
 		return gqlerror.ErrorPathf(graphql.GetResolverContext(ctx).Path(), message)
 	}
