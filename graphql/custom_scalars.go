@@ -18,9 +18,19 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 }
 
 func UnmarshalStringMap(v interface{}) (map[string]string, error) {
-	if m, ok := v.(map[string]string); ok {
-		return m, nil
+	stringMap := make(map[string]string)
+	stringInterface, ok := v.(map[string]interface{})
+	if !ok {
+		return stringMap, fmt.Errorf("%T is not a StringMap", v)
 	}
-
-	return nil, fmt.Errorf("%T is not a string map", v)
+	for key, value := range stringInterface {
+		strKey := fmt.Sprintf("%v", key)
+		_, ok := value.(string)
+		if !ok {
+			return stringMap, fmt.Errorf("%v is not a StringMap. Value %v for key %v should be type string but got %T", v, value, strKey, value)
+		}
+		strValue := fmt.Sprintf("%v", value)
+		stringMap[strKey] = strValue
+	}
+	return stringMap, nil
 }
