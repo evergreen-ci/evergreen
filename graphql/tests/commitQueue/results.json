@@ -20,6 +20,7 @@
     {
       "query_file": "invalid-commit-id.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
             "message": "Error finding commit Queue for `invalid_id`: no commit queue found for 'invalid_id'",
