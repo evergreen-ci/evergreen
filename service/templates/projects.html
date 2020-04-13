@@ -633,7 +633,58 @@ Evergreen Projects
             </div>
           </div>
         </div>
+        <!-- Commands for Virtual Workstations -->
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static">
+              <h3>Virtual Workstations Commands</h3>
+              <div class="muted small">Commands to be run for this project, and optionally a subdirectory to run in (starting at home/[[settingsFormData.identifier]]/).
+                These will be run in order using the setup CLI command from the workstation.</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-4">
+              <input type="checkbox" id="workstation_git_clone" ng-model="settingsFormData.workstation_config.git_clone"/>
+              <label for="workstation_git_clone">Git Clone</label>
+              <div class="muted small">
+                If git clone is checked, will run "git clone -b [[settingsFormData.branch_name]] https://github.com/[[settingsFormData.owner_name]]/[[settingsFormData.repo_name]].git" as defined in this project.</div>
+            </div>
+            <div class="form-group">
+          </div>
+          <div id="workstation-header" class="form-group">
+            <div class="col-lg-4"> <label class="control-label"> Command </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Directory </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
 
+          <div id="workstation-list" class="form-group" ng-repeat="obj in settingsFormData.workstation_config.setup_commands track by $index">
+            <div class="col-lg-4">
+              <textarea class="form-control" ng-model="obj.command" placeholder="command"></textarea>
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="obj.directory" type="text" placeholder="directory">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeWorkstationCommand($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-lg-4">
+              <textarea class="form-control" ng-model="cur_command.command" placeholder="command"></textarea>
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="cur_command.directory" class="form-control" type="text" placeholder="directory">
+            </div>
+            <div class="col-lg-2">
+              <button class="plus-button btn btn-primary " ng-disabled="!validWorkstationCommand(cur_command)" type="button" ng-click="addWorkstationCommand()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
         <div id="caching-info">
             <div class="h3">Historical Data Caching Info </div>
             <div class="form-group">

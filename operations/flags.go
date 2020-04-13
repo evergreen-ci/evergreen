@@ -28,6 +28,8 @@ const (
 	forceFlagName          = "force"
 	activeFlagName         = "active"
 	refFlagName            = "ref"
+	quietFlagName          = "quiet"
+	dirFlagName            = "dir"
 	uncommittedChangesFlag = "uncommitted"
 	subscriptionTypeFlag   = "subscription-type"
 
