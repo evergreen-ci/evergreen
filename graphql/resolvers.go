@@ -712,6 +712,36 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	return result, nil
 }
 
+func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*APICommitQueue, error) {
+	apiCommitQueue, err := r.sc.FindCommitQueueByID(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding commit Queue for `%s`: %s", id, err))
+	}
+	APICommitQueueItems := []*APICommitQueueItem{}
+	for _, APIQueueItem := range apiCommitQueue.Queue {
+		APIModules := []*APIModule{}
+		for _, apiModule := range APIQueueItem.Modules {
+			module := APIModule{
+				Module: apiModule.Module,
+				Issue:  apiModule.Issue,
+			}
+			APIModules = append(APIModules, &module)
+		}
+
+		item := APICommitQueueItem{
+			Issue:   APIQueueItem.Issue,
+			Version: APIQueueItem.Version,
+			Modules: APIModules,
+		}
+		APICommitQueueItems = append(APICommitQueueItems, &item)
+	}
+	APICommitQueue := APICommitQueue{
+		ProjectID: apiCommitQueue.ProjectID,
+		Queue:     APICommitQueueItems,
+	}
+
+	return &APICommitQueue, nil
+}
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
