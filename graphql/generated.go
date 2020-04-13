@@ -1763,11 +1763,6 @@ input DisplayTask {
   ExecTasks: [String!]!
 }
 
-input SubscriberInput {
-  type: String!
-  target: String!
-}
-
 input SubscriptionInput {
   resource_type: String
   trigger: String
@@ -1782,6 +1777,11 @@ input SubscriptionInput {
 input SelectorInput {
   type: String!
   data: String!
+}
+
+input SubscriberInput {
+  type: String!
+  target: String!
 }
 
 type PatchBuildVariant {
