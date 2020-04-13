@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 )
 
+// MarshalStringMap handles marshaling StringMap
 func MarshalStringMap(val map[string]string) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
@@ -17,6 +18,7 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 	})
 }
 
+// UnmarshalStringMap handles unmarshaling StringMap
 func UnmarshalStringMap(v interface{}) (map[string]string, error) {
 	stringMap := make(map[string]string)
 	stringInterface, ok := v.(map[string]interface{})
