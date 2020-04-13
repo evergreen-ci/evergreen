@@ -638,7 +638,7 @@ Evergreen Projects
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static">
               <h3>Virtual Workstations Commands</h3>
-              <div class="muted small">Commands to be run for this project, and optionally a subdirectory to run in (starting at home/{project}/).
+              <div class="muted small">Commands to be run for this project, and optionally a subdirectory to run in (starting at home/[[settingsFormData.identifier]]/).
                 These will be run in order using the setup CLI command from the workstation.</div>
             </div>
           </div>
@@ -647,7 +647,7 @@ Evergreen Projects
               <input type="checkbox" id="workstation_git_clone" ng-model="settingsFormData.workstation_config.git_clone"/>
               <label for="workstation_git_clone">Git Clone</label>
               <div class="muted small">
-                If git clone is checked, this command will run first and the repo and branch will be taken from this project.</div>
+                If git clone is checked, will run "git clone -b [[settingsFormData.branch_name]] https://github.com/[[settingsFormData.owner_name]]/[[settingsFormData.repo_name]].git" as defined in this project.</div>
             </div>
             <div class="form-group">
           </div>
