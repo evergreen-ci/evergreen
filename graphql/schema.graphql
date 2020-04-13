@@ -93,24 +93,24 @@ input DisplayTask {
 }
 
 input SubscriberInput {
-  type: String
-  target: String
+  type: String!
+  target: String!
 }
 
 input SubscriptionInput {
-  resource_type: String
-  trigger: String
-  selectors: [SelectorInput]
-  regex_selectors: [SelectorInput]
-  subscriber: SubscriberInput
-  owner_type: String
-  owner: String
-  trigger_data: StringMap
+  resource_type: String!
+  trigger: String!
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String!
+  owner: String!
+  trigger_data: StringMap!
 }
 
 input SelectorInput {
-  type: String
-  data: String
+  type: String!
+  data: String!
 }
 
 type PatchBuildVariant {

@@ -1764,24 +1764,24 @@ input DisplayTask {
 }
 
 input SubscriberInput {
-  type: String
-  target: String
+  type: String!
+  target: String!
 }
 
 input SubscriptionInput {
-  resource_type: String
-  trigger: String
-  selectors: [SelectorInput]
-  regex_selectors: [SelectorInput]
-  subscriber: SubscriberInput
-  owner_type: String
-  owner: String
-  trigger_data: StringMap
+  resource_type: String!
+  trigger: String!
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String!
+  owner: String!
+  trigger_data: StringMap!
 }
 
 input SelectorInput {
-  type: String
-  data: String
+  type: String!
+  data: String!
 }
 
 type PatchBuildVariant {
@@ -2016,7 +2016,6 @@ type LogMessage {
 
 scalar Time
 scalar Duration
-scalar Map
 scalar StringMap
 `, BuiltIn: false},
 }
@@ -9218,13 +9217,13 @@ func (ec *executionContext) unmarshalInputSelectorInput(ctx context.Context, obj
 		switch k {
 		case "type":
 			var err error
-			it.Type, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Type, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "data":
 			var err error
-			it.Data, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Data, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9242,13 +9241,13 @@ func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, o
 		switch k {
 		case "type":
 			var err error
-			it.Type, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Type, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "target":
 			var err error
-			it.Target, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Target, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9266,49 +9265,49 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 		switch k {
 		case "resource_type":
 			var err error
-			it.ResourceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.ResourceType, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "trigger":
 			var err error
-			it.Trigger, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Trigger, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "selectors":
 			var err error
-			it.Selectors, err = ec.unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, v)
+			it.Selectors, err = ec.unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "regex_selectors":
 			var err error
-			it.RegexSelectors, err = ec.unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, v)
+			it.RegexSelectors, err = ec.unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "subscriber":
 			var err error
-			it.Subscriber, err = ec.unmarshalOSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, v)
+			it.Subscriber, err = ec.unmarshalNSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "owner_type":
 			var err error
-			it.OwnerType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.OwnerType, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "owner":
 			var err error
-			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "trigger_data":
 			var err error
-			it.TriggerData, err = ec.unmarshalOStringMap2map(ctx, v)
+			it.TriggerData, err = ec.unmarshalNStringMap2map(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -11690,6 +11689,30 @@ func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑci
 	return v
 }
 
+func (ec *executionContext) unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) (model.APISelector, error) {
+	return ec.unmarshalInputSelectorInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx context.Context, v interface{}) ([]model.APISelector, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APISelector, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -11778,6 +11801,33 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalNString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalNStringMap2map(ctx context.Context, v interface{}) (map[string]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return UnmarshalStringMap(v)
+}
+
+func (ec *executionContext) marshalNStringMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := MarshalStringMap(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, v interface{}) (model.APISubscriber, error) {
+	return ec.unmarshalInputSubscriberInput(ctx, v)
 }
 
 func (ec *executionContext) unmarshalNSubscriptionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, v interface{}) (model.APISubscription, error) {
@@ -12443,30 +12493,6 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._PatchTime(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) (model.APISelector, error) {
-	return ec.unmarshalInputSelectorInput(ctx, v)
-}
-
-func (ec *executionContext) unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) ([]model.APISelector, error) {
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
-	}
-	var err error
-	res := make([]model.APISelector, len(vSlice))
-	for i := range vSlice {
-		res[i], err = ec.unmarshalOSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
 	var res SortDirection
 	return res, res.UnmarshalGQL(v)
@@ -12576,24 +12602,6 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalOString2string(ctx, sel, *v)
-}
-
-func (ec *executionContext) unmarshalOStringMap2map(ctx context.Context, v interface{}) (map[string]string, error) {
-	if v == nil {
-		return nil, nil
-	}
-	return UnmarshalStringMap(v)
-}
-
-func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]string) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return MarshalStringMap(v)
-}
-
-func (ec *executionContext) unmarshalOSubscriberInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, v interface{}) (model.APISubscriber, error) {
-	return ec.unmarshalInputSubscriberInput(ctx, v)
 }
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
