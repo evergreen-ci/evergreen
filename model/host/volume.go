@@ -1,22 +1,46 @@
 package host
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Volume struct {
-	ID               string `bson:"_id" json:"id"`
-	CreatedBy        string `bson:"created_by" json:"created_by"`
-	Type             string `bson:"type" json:"type"`
-	Size             int    `bson:"size" json:"size"`
-	AvailabilityZone string `bson:"availability_zone" json:"availability_zone"`
+	ID               string    `bson:"_id" json:"id"`
+	CreatedBy        string    `bson:"created_by" json:"created_by"`
+	Type             string    `bson:"type" json:"type"`
+	Size             int       `bson:"size" json:"size"`
+	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
+	CreationDate     time.Time `bson:"created_at" json:"created_at"`
+	Host             string    `bson:"host" json:"host"`
 }
 
 // Insert a volume into the volumes collection.
 func (v *Volume) Insert() error {
+	v.CreationDate = time.Now()
 	return db.Insert(VolumesCollection, v)
+}
+
+func (v *Volume) SetHost(id string) error {
+	err := db.Update(VolumesCollection,
+		bson.M{VolumeIDKey: v.ID},
+		bson.M{"$set": bson.M{VolumeHostKey: id}})
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	v.Host = id
+	return nil
+}
+
+func UnsetVolumeHost(id string) error {
+	return errors.WithStack(db.Update(VolumesCollection,
+		bson.M{VolumeIDKey: id},
+		bson.M{"$unset": bson.M{VolumeHostKey: true}}))
 }
 
 // Remove a volume from the volumes collection.
@@ -26,7 +50,7 @@ func (v *Volume) Remove() error {
 	return db.Remove(
 		VolumesCollection,
 		bson.M{
-			IdKey: v.ID,
+			VolumeIDKey: v.ID,
 		},
 	)
 }
