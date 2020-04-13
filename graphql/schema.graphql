@@ -94,18 +94,18 @@ input DisplayTask {
 
 input SubscriberInput {
   type: String
-  target: Map
+  target: String
 }
 
 input SubscriptionInput {
-  resourceType: String
+  resource_type: String
   trigger: String
   selectors: [SelectorInput]
-  regexSelectors: [SelectorInput]
+  regex_selectors: [SelectorInput]
   subscriber: SubscriberInput
-  ownerType: String
+  owner_type: String
   owner: String
-  triggerData: StringMap
+  trigger_data: StringMap
 }
 
 input SelectorInput {
@@ -345,5 +345,4 @@ type LogMessage {
 
 scalar Time
 scalar Duration
-scalar Map
 scalar StringMap
