@@ -24,7 +24,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
-			j := NewUserDataDoneJob(env, *h, "id")
+			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			readyJob, ok := j.(*userDataDoneJob)
 			require.True(t, ok)
 
@@ -33,7 +33,7 @@ func TestUserDataDoneJob(t *testing.T) {
 		"RunNoopsIfHostNotProvisioning": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			require.NoError(t, h.SetRunning(evergreen.User))
 
-			j := NewUserDataDoneJob(env, *h, "id")
+			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
@@ -44,12 +44,12 @@ func TestUserDataDoneJob(t *testing.T) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
-			j := NewUserDataDoneJob(env, *h, "id")
+			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 		},
 		"RunChecksForPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			j := NewUserDataDoneJob(env, *h, "id")
+			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
