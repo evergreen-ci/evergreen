@@ -13,7 +13,7 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {
-			panic(err)
+			w.Write([]byte(fmt.Sprintf("Error marshaling StringMap %v: %v", val, err.Error())))
 		}
 	})
 }
