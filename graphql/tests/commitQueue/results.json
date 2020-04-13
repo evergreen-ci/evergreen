@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "query_file": "commit-queue.graphql",
+      "result": {
+        "data": {
+          "commitQueue": {
+            "ProjectID": "mongodb-mongo-master",
+            "Queue": [
+              {
+                "Issue": "5e94c2dfe3c3312519b59480",
+                "Version": "",
+                "Modules": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "invalid-commit-id.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error finding commit Queue for `invalid_id`: no commit queue found for 'invalid_id'",
+            "path": ["commitQueue"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

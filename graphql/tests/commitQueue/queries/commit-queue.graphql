@@ -1,0 +1,13 @@
+{
+  commitQueue(id: "mongodb-mongo-master") {
+    ProjectID
+    Queue {
+      Issue
+      Version
+      Modules {
+        Module
+        Issue
+      }
+    }
+  }
+}

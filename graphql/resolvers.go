@@ -735,12 +735,11 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*APICommitQ
 		}
 		APICommitQueueItems = append(APICommitQueueItems, &item)
 	}
-	APICommitQueue := APICommitQueue{
+	return &APICommitQueue{
 		ProjectID: apiCommitQueue.ProjectID,
 		Queue:     APICommitQueueItems,
-	}
+	}, nil
 
-	return &APICommitQueue, nil
 }
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
