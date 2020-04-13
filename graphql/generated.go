@@ -1765,18 +1765,18 @@ input DisplayTask {
 
 input SubscriberInput {
   type: String
-  target: Map
+  target: String
 }
 
 input SubscriptionInput {
-  resourceType: String
+  resource_type: String
   trigger: String
   selectors: [SelectorInput]
-  regexSelectors: [SelectorInput]
+  regex_selectors: [SelectorInput]
   subscriber: SubscriberInput
-  ownerType: String
+  owner_type: String
   owner: String
-  triggerData: StringMap
+  trigger_data: StringMap
 }
 
 input SelectorInput {
@@ -9248,7 +9248,7 @@ func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, o
 			}
 		case "target":
 			var err error
-			it.Target, err = ec.unmarshalOMap2map(ctx, v)
+			it.Target, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9264,7 +9264,7 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 
 	for k, v := range asMap {
 		switch k {
-		case "resourceType":
+		case "resource_type":
 			var err error
 			it.ResourceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
@@ -9282,7 +9282,7 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
-		case "regexSelectors":
+		case "regex_selectors":
 			var err error
 			it.RegexSelectors, err = ec.unmarshalOSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, v)
 			if err != nil {
@@ -9294,7 +9294,7 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
-		case "ownerType":
+		case "owner_type":
 			var err error
 			it.OwnerType, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
@@ -9306,7 +9306,7 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
-		case "triggerData":
+		case "trigger_data":
 			var err error
 			it.TriggerData, err = ec.unmarshalOStringMap2map(ctx, v)
 			if err != nil {
@@ -12368,20 +12368,6 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return ec.marshalOInt2int(ctx, sel, *v)
-}
-
-func (ec *executionContext) unmarshalOMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
-	if v == nil {
-		return nil, nil
-	}
-	return graphql.UnmarshalMap(v)
-}
-
-func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return graphql.MarshalMap(v)
 }
 
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {
