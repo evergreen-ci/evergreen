@@ -197,11 +197,11 @@ func (s *ManagementSuite) TearDownSuite() {
 
 func (s *ManagementSuite) TestJobStatusInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
-		r, err := s.manager.JobStatus(s.ctx, CounterFilter(f))
+		r, err := s.manager.JobStatus(s.ctx, StatusFilter(f))
 		s.Error(err)
 		s.Nil(r)
 
-		rr, err := s.manager.JobIDsByState(s.ctx, "foo", CounterFilter(f))
+		rr, err := s.manager.JobIDsByState(s.ctx, "foo", StatusFilter(f))
 		s.Error(err)
 		s.Nil(rr)
 	}
@@ -228,7 +228,7 @@ func (s *ManagementSuite) TestErrorsWithInvalidFilter() {
 }
 
 func (s *ManagementSuite) TestJobCounterHighLevel() {
-	for _, f := range []CounterFilter{InProgress, Pending, Stale} {
+	for _, f := range []StatusFilter{InProgress, Pending, Stale} {
 		r, err := s.manager.JobStatus(s.ctx, f)
 		s.NoError(err)
 		s.NotNil(r)
@@ -237,9 +237,9 @@ func (s *ManagementSuite) TestJobCounterHighLevel() {
 }
 
 func (s *ManagementSuite) TestJobCountingIDHighLevel() {
-	for _, f := range []CounterFilter{InProgress, Pending, Stale} {
+	for _, f := range []StatusFilter{InProgress, Pending, Stale, Completed} {
 		r, err := s.manager.JobIDsByState(s.ctx, "foo", f)
-		s.NoError(err)
+		s.NoError(err, "%s", f)
 		s.NotNil(r)
 	}
 }
@@ -318,7 +318,7 @@ func (s *ManagementSuite) TestCompleteJobsByType() {
 	j3 := newTestJob("1")
 	s.Require().NoError(s.queue.Put(s.ctx, j3))
 
-	s.Require().NoError(s.manager.CompleteJobsByType(s.ctx, "test"))
+	s.Require().NoError(s.manager.CompleteJobsByType(s.ctx, Pending, "test"))
 	jobCount := 0
 	for jobStats := range s.queue.JobStats(s.ctx) {
 		if jobStats.ID == "0" || jobStats.ID == "1" {

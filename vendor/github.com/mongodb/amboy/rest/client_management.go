@@ -12,31 +12,31 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ManagementClient provides a wrapper for communicating with an amboy rest
+// managementClient provides a wrapper for communicating with an amboy rest
 // service for queue management. It implements the management.Management
 // interface and allows you to remotely interact with running jobs on a system.
 // with running jobs on a system.
-type ManagementClient struct {
+type managementClient struct {
 	client *http.Client
 	url    string
 }
 
-// NewManagementClient constructs a ManagementClient instance constructing a
-// new HTTP client.
-func NewManagementClient(url string) *ManagementClient {
+// NewManagementClient constructs a management.Management instance,
+// with its own HTTP client. All calls
+func NewManagementClient(url string) management.Management {
 	return NewManagementClientFromExisting(&http.Client{}, url)
 }
 
-// NewManagementClientFromExisting constructs a new ManagementClient instance
+// NewManagementClientFromExisting constructs a new managementClient instance
 // from an existing HTTP Client.
-func NewManagementClientFromExisting(client *http.Client, url string) *ManagementClient {
-	return &ManagementClient{
+func NewManagementClientFromExisting(client *http.Client, url string) management.Management {
+	return &managementClient{
 		client: client,
 		url:    url,
 	}
 }
 
-func (c *ManagementClient) doRequest(ctx context.Context, path string, out interface{}) error {
+func (c *managementClient) doRequest(ctx context.Context, path string, out interface{}) error {
 	req, err := http.NewRequest(http.MethodGet, c.url+path, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")
@@ -62,8 +62,8 @@ func (c *ManagementClient) doRequest(ctx context.Context, path string, out inter
 }
 
 // JobStatus a count, by job type, for all jobs that match the Counter filter.
-// CounterFilter values are defined as constants in the management package.
-func (c *ManagementClient) JobStatus(ctx context.Context, filter management.CounterFilter) (*management.JobStatusReport, error) {
+// StatusFilter values are defined as constants in the management package.
+func (c *managementClient) JobStatus(ctx context.Context, filter management.StatusFilter) (*management.JobStatusReport, error) {
 	out := &management.JobStatusReport{}
 
 	if err := c.doRequest(ctx, "/status/"+string(filter), out); err != nil {
@@ -77,7 +77,7 @@ func (c *ManagementClient) JobStatus(ctx context.Context, filter management.Coun
 // in the window defined by the duration value. You must specify a timing
 // filter (e.g. Latency or Duration) with a constant defined in the management
 // package.
-func (c *ManagementClient) RecentTiming(ctx context.Context, dur time.Duration, filter management.RuntimeFilter) (*management.JobRuntimeReport, error) {
+func (c *managementClient) RecentTiming(ctx context.Context, dur time.Duration, filter management.RuntimeFilter) (*management.JobRuntimeReport, error) {
 	out := &management.JobRuntimeReport{}
 
 	path := fmt.Sprintf("/timing/%s/%d", string(filter), int64(dur.Seconds()))
@@ -92,7 +92,7 @@ func (c *ManagementClient) RecentTiming(ctx context.Context, dur time.Duration, 
 // JobIDsByState returns a list of job IDs for each job type, for all jobs
 // matching the filter. Filter value are defined as constants in the management
 // package.
-func (c *ManagementClient) JobIDsByState(ctx context.Context, jobType string, filter management.CounterFilter) (*management.JobReportIDs, error) {
+func (c *managementClient) JobIDsByState(ctx context.Context, jobType string, filter management.StatusFilter) (*management.JobReportIDs, error) {
 	out := &management.JobReportIDs{}
 
 	if err := c.doRequest(ctx, fmt.Sprintf("/status/%s/%s", string(filter), jobType), out); err != nil {
@@ -105,7 +105,7 @@ func (c *ManagementClient) JobIDsByState(ctx context.Context, jobType string, fi
 // RecentErrors returns an error report for jobs that have completed in the
 // window that have had errors. Use the filter to de-duplicate errors.
 // ErrorFilter values are defined as constants in the management package.
-func (c *ManagementClient) RecentErrors(ctx context.Context, dur time.Duration, filter management.ErrorFilter) (*management.JobErrorsReport, error) {
+func (c *managementClient) RecentErrors(ctx context.Context, dur time.Duration, filter management.ErrorFilter) (*management.JobErrorsReport, error) {
 	out := &management.JobErrorsReport{}
 
 	path := fmt.Sprintf("/errors/%s/%d", string(filter), int64(dur.Seconds()))
@@ -119,7 +119,7 @@ func (c *ManagementClient) RecentErrors(ctx context.Context, dur time.Duration, 
 // RecentJobErrors returns an error report for jobs of a specific type that
 // have encountered errors that have completed within the specified window. The
 // ErrorFilter values are defined as constants in the management package.
-func (c *ManagementClient) RecentJobErrors(ctx context.Context, jobType string, dur time.Duration, filter management.ErrorFilter) (*management.JobErrorsReport, error) {
+func (c *managementClient) RecentJobErrors(ctx context.Context, jobType string, dur time.Duration, filter management.ErrorFilter) (*management.JobErrorsReport, error) {
 	out := &management.JobErrorsReport{}
 
 	path := fmt.Sprintf("/errors/%s/%s/%d", string(filter), jobType, int64(dur.Seconds()))
@@ -130,8 +130,8 @@ func (c *ManagementClient) RecentJobErrors(ctx context.Context, jobType string, 
 	return out, nil
 }
 
-// MarkComplete marks the job with the given name complete.
-func (c *ManagementClient) MarkComplete(ctx context.Context, name string) error {
+// CompleteJob marks the job with the given name complete.
+func (c *managementClient) CompleteJob(ctx context.Context, name string) error {
 	path := fmt.Sprintf("/jobs/mark_complete/%s", name)
 	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
 	if err != nil {
@@ -158,9 +158,37 @@ func (c *ManagementClient) MarkComplete(ctx context.Context, name string) error 
 	return nil
 }
 
-// MarkCompleteByType marks all jobs of the given type complete.
-func (c *ManagementClient) MarkCompleteByType(ctx context.Context, jobType string) error {
-	path := fmt.Sprintf("/jobs/mark_complete_by_type/%s", jobType)
+// CompleteJobsByType marks all jobs of the given type complete.
+func (c *managementClient) CompleteJobsByType(ctx context.Context, f management.StatusFilter, jobType string) error {
+	path := fmt.Sprintf("/jobs/mark_complete_by_type/%s/%s", jobType, f)
+	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem building request")
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error processing request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var msg string
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			msg = errors.Wrap(err, "problem reading response body").Error()
+		} else {
+			msg = string(data)
+		}
+		return errors.Errorf("status code '%s' returned with message: '%s'", resp.Status, msg)
+	}
+
+	return nil
+}
+
+// CompleteJobs marks all jobs of the given type complete.
+func (c *managementClient) CompleteJobs(ctx context.Context, f management.StatusFilter) error {
+	path := fmt.Sprintf("/jobs/mark_many_complete/%s", f)
 	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")

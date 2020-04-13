@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/rest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -67,7 +68,7 @@ func (o *ServiceOptions) abortablePoolManagementFlags(base ...cli.Flag) []cli.Fl
 	)
 }
 
-func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client *rest.ManagementClient) error) error {
+func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client management.Management) error) error {
 	if o.Client == nil {
 		o.Client = http.DefaultClient
 	}

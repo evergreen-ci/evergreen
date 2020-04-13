@@ -27,7 +27,7 @@ func NewQueueManager(q amboy.Queue) Management {
 	}
 }
 
-func (m *queueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
+func (m *queueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobStatusReport, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -63,6 +63,22 @@ func (m *queueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobStat
 				if ok {
 					counters[job.Type().Name]++
 				}
+			}
+		}
+	case Completed:
+		for stat := range m.queue.JobStats(ctx) {
+			if stat.InProgress {
+				job, ok := m.queue.Get(ctx, stat.ID)
+				if ok {
+					counters[job.Type().Name]++
+				}
+			}
+		}
+	case All:
+		for stat := range m.queue.JobStats(ctx) {
+			job, ok := m.queue.Get(ctx, stat.ID)
+			if ok {
+				counters[job.Type().Name]++
 			}
 		}
 	}
@@ -157,7 +173,7 @@ func (m *queueManager) RecentTiming(ctx context.Context, window time.Duration, f
 	}, nil
 }
 
-func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
+func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f StatusFilter) (*JobReportIDs, error) {
 	var err error
 	if err = f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -181,7 +197,7 @@ func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f Coun
 					continue
 				}
 			}
-			if stat.InProgress {
+			if !stat.Completed && stat.InProgress {
 				ids = append(ids, stat.ID)
 			}
 		}
@@ -206,6 +222,18 @@ func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f Coun
 				}
 			}
 			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
+				ids = append(ids, stat.ID)
+			}
+		}
+	case Completed:
+		for stat := range m.queue.JobStats(ctx) {
+			if jobType != "" {
+				job, ok := m.queue.Get(ctx, stat.ID)
+				if !ok && job.Type().Name != jobType {
+					continue
+				}
+			}
+			if stat.Completed {
 				ids = append(ids, stat.ID)
 			}
 		}
@@ -469,16 +497,85 @@ func (m *queueManager) CompleteJob(ctx context.Context, name string) error {
 	return nil
 }
 
-func (m *queueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
+func (m *queueManager) CompleteJobsByType(ctx context.Context, f StatusFilter, jobType string) error {
+	if err := f.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if f == Completed {
+		return errors.New("invalid specification of completed job type")
+	}
+
+	for stat := range m.queue.JobStats(ctx) {
+		job, ok := m.queue.Get(ctx, stat.ID)
+		if ok && job.Type().Name != jobType {
+			continue
+		}
+
+		switch f {
+		case Stale:
+			if !stat.InProgress || time.Since(stat.ModificationTime) < amboy.LockTimeout {
+				continue
+			}
+		case InProgress:
+			if !stat.InProgress {
+				continue
+			}
+		case All, Pending:
+			// pass: (because there's no fallthrough
+			// everything else should be in progress)
+			if stat.Completed {
+				continue
+			}
+		default:
+			// futureproofing...
+			continue
+		}
+
+		m.queue.Complete(ctx, job)
+	}
+
+	return nil
+}
+
+func (m *queueManager) CompleteJobs(ctx context.Context, f StatusFilter) error {
+	if err := f.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+	if f == Completed {
+		return errors.New("invalid specification of completed job type")
+	}
+
 	for stat := range m.queue.JobStats(ctx) {
 		if stat.Completed {
 			continue
 		}
 
-		job, ok := m.queue.Get(ctx, stat.ID)
-		if ok && job.Type().Name != jobType {
+		switch f {
+		case Stale:
+			if stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
+				continue
+			}
+		case InProgress:
+			if !stat.InProgress {
+				continue
+			}
+		case Pending:
+			if stat.InProgress {
+				continue
+			}
+		case All:
+			// pass
+		default:
+			// futureproofing...
 			continue
 		}
+
+		job, ok := m.queue.Get(ctx, stat.ID)
+		if !ok {
+			continue
+		}
+
 		m.queue.Complete(ctx, job)
 	}
 
