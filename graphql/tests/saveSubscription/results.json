@@ -1,8 +1,77 @@
 {
   "tests": [
     {
-      "query_file": "success.graphql",
+      "query_file": "task-success.graphql",
       "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "build-success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "version-success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "project-success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "task-not-found-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding task by id not-real: 404 (Not Found): task with id not-real not found",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+
+    {
+      "query_file": "build-success.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
+      "query_file": "build-not-found-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding build by id not-real: 404 (Not Found): build with id not-real not found",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "project-not-found-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding project by id not-real: 404 (Not Found): project with id 'not-real' not found",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "version-not-found-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding version by id not-real: 404 (Not Found): version with id not-real not found",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
     },
     {
       "query_file": "error-regex-selectors.graphql",
@@ -18,13 +87,52 @@
       }
     },
     {
-      "query_file": "invalid-input.graphql",
+      "query_file": "invalid-input-format.graphql",
       "result": {
         "errors": [
           {
             "message": "Field SubscriptionInput.trigger_data of required type StringMap! was not provided.",
             "locations": [{ "line": 3, "column": 19 }],
             "extensions": { "code": "GRAPHQL_VALIDATION_FAILED" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input-validation-error-1.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input-validation-error-2.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "input-validation-error-3.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "path": ["saveSubscription"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
         ],
         "data": null

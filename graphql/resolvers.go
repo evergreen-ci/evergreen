@@ -834,6 +834,64 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
+
+	var id string
+	var idType string
+	for _, s := range subscription.Selectors {
+		if *s.Type == "object" {
+			idType = *s.Data
+		}
+		if *s.Type == "id" {
+			id = *s.Data
+		}
+		if *s.Type == "project" {
+			idType = "project"
+			id = *s.Data
+		}
+	}
+	if id == "" || idType == "" {
+		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	}
+	switch idType {
+	case "task":
+		t, err := r.sc.FindTaskById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, err.Error()))
+		}
+		if t == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
+		}
+		break
+	case "build":
+		b, err := r.sc.FindBuildById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, err.Error()))
+		}
+		if b == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
+		}
+		break
+	case "version":
+		v, err := r.sc.FindVersionById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, err.Error()))
+		}
+		if v == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
+		}
+		break
+	case "project":
+		p, err := r.sc.FindProjectById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, err.Error()))
+		}
+		if p == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
+		}
+		break
+	default:
+		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	}
 	err := r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))

@@ -4,7 +4,6 @@ mutation {
       subscriber: { type: "slack", target: "@arjun.patel" }
       resource_type: "TASK"
       trigger: "outcome"
-      trigger_data: {}
       regex_selectors: [{ type: "", data: "" }]
       selectors: [
         { type: "object", data: "task" }

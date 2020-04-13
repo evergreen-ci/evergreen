@@ -5,7 +5,7 @@ mutation {
       resource_type: "TASK"
       trigger: "outcome"
       trigger_data: {}
-      regex_selectors: [{ type: "", data: "" }]
+      regex_selectors: []
       selectors: [
         { type: "object", data: "task" }
         {
