@@ -309,7 +309,8 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "depends_on": [
         { "_id": "dep2", "status": "failed", "unattainable": false }
-      ]
+      ],
+      "host_id": "host5"
     },
     {
       "_id": "task6",
@@ -355,6 +356,14 @@
         "_id": "localhost3",
         "provider": "gce",
         "spawn_allowed": false
+      }
+    },
+    {
+      "_id": "host5",
+      "distro": {
+        "_id": "localhost3",
+        "provider": "docker",
+        "spawn_allowed": true
       }
     }
   ]
