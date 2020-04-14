@@ -427,6 +427,9 @@ Evergreen - Distros
               <div>
                 <div>
                   <label class="distro-label">User Data:</label>
+                  <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox">
+                    <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.settings.merge_user_data_parts">Merge with existing user data
+                  </span>
                 </div>
                 <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7"
                   ng-model="activeDistro.settings.user_data" style="margin-left: 0px; font-family: monospace"></textarea>
@@ -710,9 +713,10 @@ Evergreen - Distros
           </div>
 
           <div>
-            <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
-                type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
             <label class="distro-label">Setup Script:</label>
+            <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox">
+              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo
+            </span>
           </div>
           <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
             style="margin-left: 0px; font-family: monospace"></textarea>
