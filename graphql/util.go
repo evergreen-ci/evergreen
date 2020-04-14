@@ -235,6 +235,60 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 }
 
+type PatchProjectVariantsAndTasks struct {
+	Variants []BuildVariantUI
+	Tasks    []string
+}
+
+type BuildVariantUI struct {
+	Name        string
+	DisplayName string
+	Tasks       []string
+}
+
+func GetPatchProjectVariantsAndTasks(patchedConfig string, patchProject string) (*PatchProjectVariantsAndTasks, error) {
+	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
+	project := &model.Project{}
+	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
+		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
+	}
+
+	// retrieve tasks and variant mappings' names
+	variantMappings := []BuildVariantUI{}
+	for _, variant := range project.BuildVariants {
+		variantUI := BuildVariantUI{}
+		variantUI.Name = variant.Name
+		variantUI.DisplayName = variant.DisplayName
+
+		tasksForVariant := []string{}
+		for _, TaskFromVariant := range variant.Tasks {
+			if TaskFromVariant.IsGroup {
+				groupTasks := model.CreateTasksFromGroup(TaskFromVariant, project)
+				for _, t := range groupTasks {
+					tasksForVariant = append(tasksForVariant, t.Name)
+				}
+			} else {
+				tasksForVariant = append(tasksForVariant, TaskFromVariant.Name)
+			}
+		}
+		variantUI.Tasks = tasksForVariant
+		variantMappings = append(variantMappings, variantUI)
+	}
+
+	tasksList := []string{}
+	for _, task := range project.Tasks {
+		// add a task name to the list if it's patchable
+		if !(task.Patchable != nil && !*task.Patchable) {
+			tasksList = append(tasksList, task.Name)
+		}
+	}
+	p := PatchProjectVariantsAndTasks{
+		Variants: variantMappings,
+		Tasks:    tasksList,
+	}
+	return &p, nil
+}
+
 type PatchVariantsTasksRequest struct {
 	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
 	Variants      []string             `json:"variants"`                 // old format

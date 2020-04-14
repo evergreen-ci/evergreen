@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen-X/model/patch"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -240,6 +241,35 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find base version ID for patch %s", *obj.Id))
 	}
 	return &baseVersion.Id, nil
+}
+
+func (r *patchResolver) Project(ctx context.Context, ap *restModel.APIPatch) (*PatchProject, error) {
+	// Project data is only needed to configure non-activated patches
+	if ap.Activated && *ap.Version != "" {
+		return nil, nil
+	}
+	patch, err := patch.FindOne(patch.ById(patch.NewId(*ap.Id)))
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch %s", *ap.Id))
+	}
+	patchProjectVariantsAndTasks, err := GetPatchProjectVariantsAndTasks(patch.PatchedConfig, patch.Project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *ap.Id, err.Error()))
+	}
+	variants := []*ProjectBuildVariant{}
+	for _, v := range patchProjectVariantsAndTasks.Variants {
+		variant := ProjectBuildVariant{
+			Name:        v.Name,
+			DisplayName: v.DisplayName,
+			Tasks:       v.Tasks,
+		}
+		variants = append(variants, &variant)
+	}
+	patchProject := PatchProject{
+		Variants: variants,
+		Tasks:    patchProjectVariantsAndTasks.Tasks,
+	}
+	return &patchProject, nil
 }
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {

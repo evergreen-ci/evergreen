@@ -60,6 +60,11 @@ type PatchMetadata struct {
 	Author string `json:"author"`
 }
 
+type PatchProject struct {
+	Variants []*ProjectBuildVariant `json:"variants"`
+	Tasks    []string               `json:"tasks"`
+}
+
 type PatchReconfigure struct {
 	Description   string          `json:"description"`
 	VariantsTasks []*VariantTasks `json:"variantsTasks"`
@@ -69,6 +74,12 @@ type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
 	SubmittedAt string  `json:"submittedAt"`
+}
+
+type ProjectBuildVariant struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Tasks       []string `json:"tasks"`
 }
 
 type Projects struct {
