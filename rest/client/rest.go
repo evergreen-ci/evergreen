@@ -212,6 +212,29 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 	return nil
 }
 
+func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *host.VolumeModifyOptions) error {
+	info := requestInfo{
+		method:  patch,
+		path:    fmt.Sprintf("volumes/%s", volumeID),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to modify volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem modifying volume and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem modifying volume")
+	}
+
+	return nil
+}
+
 func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVolume, error) {
 	info := requestInfo{
 		method:  get,

@@ -132,6 +132,7 @@ func hostModify() cli.Command {
 		addTagFlagName       = "tag"
 		deleteTagFlagName    = "delete-tag"
 		instanceTypeFlagName = "type"
+		displayNameFlagName  = "name"
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
@@ -152,6 +153,10 @@ func hostModify() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "change instance type to `TYPE`",
+			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "set a user-friendly name for host",
 			},
 			cli.IntFlag{
 				Name:  extendFlagName,
@@ -175,6 +180,7 @@ func hostModify() cli.Command {
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
 			noExpire := c.Bool(noExpireFlagName)
+			displayName := c.String(displayNameFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
@@ -200,6 +206,7 @@ func hostModify() cli.Command {
 				InstanceType:       instanceType,
 				AddHours:           time.Duration(extension) * time.Hour,
 				SubscriptionType:   subscriptionType,
+				NewName:            displayName,
 			}
 
 			if noExpire {
@@ -499,6 +506,43 @@ func hostDetach() cli.Command {
 	}
 }
 
+func hostModifyVolume() cli.Command {
+	const (
+		idFlagName = "id"
+	)
+	return cli.Command{
+		Name:  "modify",
+		Usage: "modify a volume",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlagName,
+				Usage: "`ID` of volume to modify",
+			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "new user-friendly name for volume",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeID := c.String(idFlagName)
+			name := c.String(displayNameFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			return client.ModifyVolume(ctx, volumeID, &host.VolumeModifyOptions{NewName: name})
+		},
+	}
+}
+
 func hostListVolume() cli.Command {
 	return cli.Command{
 		Name:   "list",
@@ -538,13 +582,15 @@ func printVolumes(volumes []restModel.APIVolume, userID string) {
 	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
 		grip.Infof("\n%-18s: %s\n", "ID", restModel.FromStringPtr(v.ID))
+		if restModel.FromStringPtr(v.DisplayName) != "" {
+			grip.Infof("%-18s: %s\n", "Name", restModel.FromStringPtr(v.DisplayName))
+		}
 		grip.Infof("%-18s: %d\n", "Size", v.Size)
 		grip.Infof("%-18s: %s\n", "Type", restModel.FromStringPtr(v.Type))
 		grip.Infof("%-18s: %s\n", "Availability Zone", restModel.FromStringPtr(v.AvailabilityZone))
 		if restModel.FromStringPtr(v.HostID) != "" {
 			grip.Infof("%-18s: %s\n", "Device Name", restModel.FromStringPtr(v.DeviceName))
 			grip.Infof("%-18s: %s\n", "Attached to Host", restModel.FromStringPtr(v.HostID))
-
 		}
 	}
 }
@@ -572,12 +618,17 @@ func hostCreateVolume() cli.Command {
 				Name:  joinFlagNames(zoneFlag, "z"),
 				Usage: "set volume `AVAILABILITY ZONE` (default us-east-1a)",
 			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "set a user-friendly name for volume",
+			},
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeType := c.String(typeFlag)
 			volumeZone := c.String(zoneFlag)
+			volumeName := c.String(displayNameFlagName)
 			volumeSize := c.Int(sizeFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -594,6 +645,7 @@ func hostCreateVolume() cli.Command {
 				Type:             volumeType,
 				Size:             volumeSize,
 				AvailabilityZone: volumeZone,
+				DisplayName:      volumeName,
 			}
 
 			volume, err := client.CreateVolume(ctx, volumeRequest)

@@ -92,7 +92,7 @@
              Volume:
             </span>
             <strong>
-              [[ homeVolumeID ? homeVolumeID : "New Volume" ]]
+              [[homeVolumeDisplay]]
               <span class="fa fa-caret-down"></span>
             </strong>
           </button>
@@ -105,7 +105,7 @@
             </li>
             <li role="presentation" ng-repeat="volume in $parent.availableVolumes">
               <a role="menuitem" ng-click="setVolume(volume)">
-                [[ volume.volume_id ]]
+                [[ volume.display_name ? volume.display_name : volume.volume_id ]]
               </a>
             </li>
           </ul>

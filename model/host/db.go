@@ -94,6 +94,7 @@ var (
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
 	VolumeIDKey                  = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeDisplayNameKey         = bsonutil.MustHaveTag(Volume{}, "DisplayName")
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")

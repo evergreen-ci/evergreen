@@ -791,6 +791,73 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// PATCH /rest/v2/volumes/{volume_id}
+
+type modifyVolumeHandler struct {
+	sc  data.Connector
+	env evergreen.Environment
+
+	volumeID string
+	opts     *host.VolumeModifyOptions
+}
+
+func makeModifyVolume(sc data.Connector) gimlet.RouteHandler {
+	return &modifyVolumeHandler{
+		sc: sc,
+	}
+}
+
+func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
+	return &modifyVolumeHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	h.opts = &host.VolumeModifyOptions{}
+	if err := utility.ReadJSON(r.Body, h.opts); err != nil {
+
+		return err
+	}
+	h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
+	return err
+}
+
+func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+
+	volume, err := h.sc.FindVolumeById(h.volumeID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	// Volume does not exist
+	if volume == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("attachment '%s' does not exist", h.volumeID),
+		})
+	}
+
+	// Only allow users to modify their own volumes
+	if u.Id != volume.CreatedBy {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("not authorized to modify attachment '%s'", volume.ID),
+		})
+	}
+
+	if h.opts.NewName != "" {
+		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /rest/v2/volumes
 
 type getVolumesHandler struct {
@@ -1258,12 +1325,15 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 
 func validateID(id string) (string, error) {
 	if strings.TrimSpace(id) == "" {
+		grip.Debug(message.Fields{
+			"ticket":  "volume modify",
+			"message": "missing/empty Id",
+		})
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "missing/empty id",
 		}
 	}
-
 	return id, nil
 }
 

@@ -495,15 +495,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setVolume = function (volume) {
       if (volume) {
         $scope.homeVolumeID = volume.volume_id;
+        $scope.homeVolumeDisplay = (volume.display_name ? volume.display_name : volume.volume_id);
       } else {
         $scope.homeVolumeID = "";
+        $scope.homeVolumeDisplay = "New Volume";
       }
     }
 
     $scope.setAvailableVolumes = function(volumes) {
       $scope.availableVolumes = volumes;
       if (volumes.length > 0) {
-        $scope.homeVolumeID = volumes[0].volume_id;
+        $scope.setVolume(volumes[0]);
       }
     }
 
