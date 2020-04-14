@@ -109,7 +109,6 @@ func (c *communicatorImpl) resetClient() {
 	}
 
 	conf := utility.NewDefaultHTTPRetryConf()
-	conf.Statuses = append(conf.Statuses, http.StatusBadRequest)
 	c.httpClient = utility.GetHTTPRetryableClient(conf)
 	c.httpClient.Timeout = heartbeatTimeout
 }
