@@ -78,6 +78,25 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+enum SubscriptionResourceType {
+  VERSION
+  BUILD
+  TASK
+}
+
+enum SelectorType {
+  object
+  id
+  project
+}
+
+enum SubscriberType {
+  email
+  slack
+  jira-comment
+  jira-issue
+  evergreen-webhook
+}
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -93,7 +112,7 @@ input DisplayTask {
 }
 
 input SubscriptionInput {
-  resource_type: String
+  resource_type: SubscriptionResourceType
   trigger: String
   selectors: [SelectorInput!]!
   regex_selectors: [SelectorInput!]!
@@ -104,12 +123,12 @@ input SubscriptionInput {
 }
 
 input SelectorInput {
-  type: String!
+  type: SelectorType!
   data: String!
 }
 
 input SubscriberInput {
-  type: String!
+  type: SubscriberType!
   target: String!
 }
 
