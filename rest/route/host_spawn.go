@@ -816,8 +816,7 @@ func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.opts = &host.VolumeModifyOptions{}
-	if err := utility.ReadJSON(r.Body, h.opts); err != nil {
-
+	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
 		return err
 	}
 	h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
@@ -853,7 +852,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
-	return nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
