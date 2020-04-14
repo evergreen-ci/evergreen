@@ -17,6 +17,7 @@ import (
 func Pull() cli.Command {
 	const (
 		taskFlagName = "task"
+		dirFlagName  = "dir"
 	)
 	return cli.Command{
 		Name:  "pull",

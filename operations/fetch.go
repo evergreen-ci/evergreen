@@ -34,6 +34,7 @@ const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
 	const (
+		dirFlagName       = "dir"
 		taskFlagName      = "task"
 		sourceFlagName    = "source"
 		artifactsFlagName = "artifacts"

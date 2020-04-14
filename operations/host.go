@@ -9,7 +9,6 @@ func Host() cli.Command {
 		Subcommands: []cli.Command{
 			hostCreate(),
 			hostModify(),
-			hostConfigure(),
 			hostStop(),
 			hostStart(),
 			hostAttach(),
