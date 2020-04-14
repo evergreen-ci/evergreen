@@ -70,6 +70,337 @@
           }
         }
       }
+    },
+    {
+      "query_file": "project-finalized-patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "project": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-not-finalized-patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "project": {
+              "tasks": [
+                "coverage",
+                "smoke-test-task",
+                "smoke-test-endpoints",
+                "smoke-test-agent-monitor",
+                "generate-lint",
+                "js-test",
+                "dist",
+                "test-thirdparty-docker",
+                "test-auth",
+                "test-rest-route",
+                "test-rest-client",
+                "test-rest-model",
+                "test-command",
+                "test-units",
+                "test-agent",
+                "test-rest-data",
+                "test-operations",
+                "test-db",
+                "test-cloud",
+                "test-scheduler",
+                "test-service",
+                "test-monitor",
+                "test-evergreen",
+                "test-thirdparty",
+                "test-trigger",
+                "test-util",
+                "test-validator",
+                "test-model",
+                "test-model-alertrecord",
+                "test-model-artifact",
+                "test-model-build",
+                "test-model-event",
+                "test-model-host",
+                "test-model-notification",
+                "test-model-patch",
+                "test-model-stats",
+                "test-model-task",
+                "test-model-testresult",
+                "test-model-user",
+                "test-model-distro",
+                "test-model-commitqueue",
+                "test-model-manifest",
+                "test-plugin",
+                "test-migrations",
+                "test-model-grid",
+                "test-graphql",
+                "docker-cleanup",
+                "test-repotracker"
+              ],
+              "variants": [
+                {
+                  "name": "ubuntu1604",
+                  "displayName": "Ubuntu 16.04",
+                  "tasks": [
+                    "dist",
+                    "smoke-test-task",
+                    "smoke-test-endpoints",
+                    "smoke-test-agent-monitor",
+                    "test-thirdparty-docker",
+                    "test-auth",
+                    "test-rest-route",
+                    "test-rest-client",
+                    "test-rest-model",
+                    "test-command",
+                    "test-units",
+                    "test-agent",
+                    "test-rest-data",
+                    "test-operations",
+                    "test-db",
+                    "test-cloud",
+                    "test-scheduler",
+                    "test-service",
+                    "test-monitor",
+                    "test-evergreen",
+                    "test-thirdparty",
+                    "test-trigger",
+                    "test-util",
+                    "test-validator",
+                    "test-model",
+                    "test-model-alertrecord",
+                    "test-model-artifact",
+                    "test-model-build",
+                    "test-model-event",
+                    "test-model-host",
+                    "test-model-notification",
+                    "test-model-patch",
+                    "test-model-stats",
+                    "test-model-task",
+                    "test-model-testresult",
+                    "test-model-user",
+                    "test-model-distro",
+                    "test-model-commitqueue",
+                    "test-model-manifest",
+                    "test-plugin",
+                    "test-migrations",
+                    "test-model-grid",
+                    "test-graphql",
+                    "test-repotracker",
+                    "js-test"
+                  ]
+                },
+                {
+                  "name": "ubuntu1604-docker",
+                  "displayName": "Ubuntu 16.04 (Docker)",
+                  "tasks": [
+                    "dist",
+                    "smoke-test-task",
+                    "smoke-test-endpoints",
+                    "smoke-test-agent-monitor",
+                    "test-thirdparty-docker",
+                    "test-auth",
+                    "test-rest-route",
+                    "test-rest-client",
+                    "test-rest-model",
+                    "test-command",
+                    "test-units",
+                    "test-agent",
+                    "test-rest-data",
+                    "test-operations",
+                    "test-db",
+                    "test-cloud",
+                    "test-scheduler",
+                    "test-service",
+                    "test-monitor",
+                    "test-evergreen",
+                    "test-thirdparty",
+                    "test-trigger",
+                    "test-util",
+                    "test-validator",
+                    "test-model",
+                    "test-model-alertrecord",
+                    "test-model-artifact",
+                    "test-model-build",
+                    "test-model-event",
+                    "test-model-host",
+                    "test-model-notification",
+                    "test-model-patch",
+                    "test-model-stats",
+                    "test-model-task",
+                    "test-model-testresult",
+                    "test-model-user",
+                    "test-model-distro",
+                    "test-model-commitqueue",
+                    "test-model-manifest",
+                    "test-plugin",
+                    "test-migrations",
+                    "test-model-grid",
+                    "test-graphql",
+                    "test-repotracker"
+                  ]
+                },
+                {
+                  "name": "race-detector",
+                  "displayName": "Race Detector",
+                  "tasks": [
+                    "test-thirdparty-docker",
+                    "test-auth",
+                    "test-rest-route",
+                    "test-rest-client",
+                    "test-rest-model",
+                    "test-command",
+                    "test-units",
+                    "test-agent",
+                    "test-rest-data",
+                    "test-operations",
+                    "test-db",
+                    "test-cloud",
+                    "test-scheduler",
+                    "test-service",
+                    "test-monitor",
+                    "test-evergreen",
+                    "test-thirdparty",
+                    "test-trigger",
+                    "test-util",
+                    "test-validator",
+                    "test-model",
+                    "test-model-alertrecord",
+                    "test-model-artifact",
+                    "test-model-build",
+                    "test-model-event",
+                    "test-model-host",
+                    "test-model-notification",
+                    "test-model-patch",
+                    "test-model-stats",
+                    "test-model-task",
+                    "test-model-testresult",
+                    "test-model-user",
+                    "test-model-distro",
+                    "test-model-commitqueue",
+                    "test-model-manifest",
+                    "test-plugin",
+                    "test-migrations",
+                    "test-model-grid",
+                    "test-graphql",
+                    "test-repotracker"
+                  ]
+                },
+                {
+                  "name": "lint",
+                  "displayName": "Lint",
+                  "tasks": ["generate-lint"]
+                },
+                {
+                  "name": "coverage",
+                  "displayName": "Coverage",
+                  "tasks": ["coverage"]
+                },
+                {
+                  "name": "osx",
+                  "displayName": "OSX",
+                  "tasks": [
+                    "dist",
+                    "test-thirdparty-docker",
+                    "test-auth",
+                    "test-rest-route",
+                    "test-rest-client",
+                    "test-rest-model",
+                    "test-command",
+                    "test-units",
+                    "test-agent",
+                    "test-rest-data",
+                    "test-operations",
+                    "test-db",
+                    "test-cloud",
+                    "test-scheduler",
+                    "test-service",
+                    "test-monitor",
+                    "test-evergreen",
+                    "test-thirdparty",
+                    "test-trigger",
+                    "test-util",
+                    "test-validator",
+                    "test-model",
+                    "test-model-alertrecord",
+                    "test-model-artifact",
+                    "test-model-build",
+                    "test-model-event",
+                    "test-model-host",
+                    "test-model-notification",
+                    "test-model-patch",
+                    "test-model-stats",
+                    "test-model-task",
+                    "test-model-testresult",
+                    "test-model-user",
+                    "test-model-distro",
+                    "test-model-commitqueue",
+                    "test-model-manifest",
+                    "test-plugin",
+                    "test-migrations",
+                    "test-model-grid",
+                    "test-graphql",
+                    "test-repotracker"
+                  ]
+                },
+                {
+                  "name": "windows",
+                  "displayName": "Windows",
+                  "tasks": [
+                    "test-thirdparty-docker",
+                    "test-rest-client",
+                    "test-command",
+                    "test-agent",
+                    "test-thirdparty",
+                    "test-util",
+                    "test-operations"
+                  ]
+                },
+                {
+                  "name": "rhel71-power8",
+                  "displayName": "RHEL 7.1 POWER8",
+                  "tasks": [
+                    "test-thirdparty-docker",
+                    "test-rest-client",
+                    "test-command",
+                    "test-agent",
+                    "test-thirdparty",
+                    "test-util"
+                  ]
+                },
+                {
+                  "name": "rhel72-s390x",
+                  "displayName": "RHEL 7.2 zLinux",
+                  "tasks": [
+                    "test-thirdparty-docker",
+                    "test-rest-client",
+                    "test-command",
+                    "test-agent",
+                    "test-thirdparty",
+                    "test-util"
+                  ]
+                },
+                {
+                  "name": "ubuntu1604-arm64",
+                  "displayName": "Ubuntu 16.04 ARM",
+                  "tasks": [
+                    "test-thirdparty-docker",
+                    "test-rest-client",
+                    "test-command",
+                    "test-agent",
+                    "test-thirdparty",
+                    "test-util"
+                  ]
+                },
+                {
+                  "name": "linux-docker",
+                  "displayName": "ArchLinux (Docker)",
+                  "tasks": ["docker-cleanup"]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
