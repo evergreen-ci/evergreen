@@ -705,14 +705,8 @@ func TestValidateBVNames(t *testing.T) {
 			}
 
 			validationResults := validateBVNames(project)
-			numErrors, numWarnings := 0, 0
-			for _, val := range validationResults {
-				if val.Level == Error {
-					numErrors++
-				} else if val.Level == Warning {
-					numWarnings++
-				}
-			}
+			numErrors := len(validationResults.AtLevel(Error))
+			numWarnings := len(validationResults.AtLevel(Warning))
 
 			So(numWarnings, ShouldEqual, 1)
 			So(numErrors, ShouldEqual, 0)
@@ -2207,7 +2201,8 @@ buildvariants:
 	assert.NotNil(pp)
 	errs := CheckProjectSyntax(&proj)
 	assert.Len(errs, 1, "one warning was found")
-	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
+	// kim: TODO: test with project ref and project config containing s3.push
+	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 }
 
 func TestGetDistrosForProject(t *testing.T) {

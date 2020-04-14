@@ -123,8 +123,15 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
+	pref, err := model.FindOneProjectRef(t.Project)
+	if err != nil {
+		return j.handleError(pp, v, errors.WithStack(err))
+	}
+	if pref == nil {
+		return j.handleError(pp, v, errors.Errorf("project '%s' not found", t.Project))
+	}
 	start = time.Now()
-	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+	if err = validator.CheckProjectConfigurationIsValid(p, pref); err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
 	grip.Debug(message.Fields{

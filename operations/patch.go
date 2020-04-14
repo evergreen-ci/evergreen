@@ -19,7 +19,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -53,18 +53,20 @@ func Patch() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			args := c.Args()
 			params := &patchParams{
-				Project:     c.String(projectFlagName),
-				Variants:    utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				SkipConfirm: c.Bool(yesFlagName),
-				Description: c.String(patchDescriptionFlagName),
-				Finalize:    c.Bool(patchFinalizeFlagName),
-				Browse:      c.Bool(patchBrowseFlagName),
-				ShowSummary: c.Bool(patchVerboseFlagName),
-				Large:       c.Bool(largeFlagName),
-				Alias:       c.String(patchAliasFlagName),
-				Ref:         c.String(refFlagName),
-				Uncommitted: c.Bool(uncommittedChangesFlag),
+				Project:           c.String(projectFlagName),
+				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
+				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				SkipConfirm:       c.Bool(yesFlagName),
+				Description:       c.String(patchDescriptionFlagName),
+				Finalize:          c.Bool(patchFinalizeFlagName),
+				Browse:            c.Bool(patchBrowseFlagName),
+				ShowSummary:       c.Bool(patchVerboseFlagName),
+				Large:             c.Bool(largeFlagName),
+				Alias:             c.String(patchAliasFlagName),
+				Ref:               c.String(refFlagName),
+				Uncommitted:       c.Bool(uncommittedChangesFlag),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -147,6 +149,7 @@ func PatchFile() cli.Command {
 				Finalize:    c.Bool(patchFinalizeFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
+				SyncTasks:   utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 			}
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)

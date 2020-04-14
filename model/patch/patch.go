@@ -38,25 +38,28 @@ type DisplayTask struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id              mgobson.ObjectId `bson:"_id,omitempty"`
-	Description     string           `bson:"desc"`
-	Project         string           `bson:"branch"`
-	Githash         string           `bson:"githash"`
-	PatchNumber     int              `bson:"patch_number"`
-	Author          string           `bson:"author"`
-	Version         string           `bson:"version"`
-	Status          string           `bson:"status"`
-	CreateTime      time.Time        `bson:"create_time"`
-	StartTime       time.Time        `bson:"start_time"`
-	FinishTime      time.Time        `bson:"finish_time"`
-	BuildVariants   []string         `bson:"build_variants"`
-	Tasks           []string         `bson:"tasks"`
-	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
-	Patches         []ModulePatch    `bson:"patches"`
-	Activated       bool             `bson:"activated"`
-	PatchedConfig   string           `bson:"patched_config"`
-	Alias           string           `bson:"alias"`
-	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	Id                mgobson.ObjectId `bson:"_id,omitempty"`
+	Description       string           `bson:"desc"`
+	Project           string           `bson:"branch"`
+	Githash           string           `bson:"githash"`
+	PatchNumber       int              `bson:"patch_number"`
+	Author            string           `bson:"author"`
+	Version           string           `bson:"version"`
+	Status            string           `bson:"status"`
+	CreateTime        time.Time        `bson:"create_time"`
+	StartTime         time.Time        `bson:"start_time"`
+	FinishTime        time.Time        `bson:"finish_time"`
+	BuildVariants     []string         `bson:"build_variants"`
+	Tasks             []string         `bson:"tasks"`
+	VariantsTasks     []VariantTasks   `bson:"variants_tasks"`
+	SyncBuildVariants []string         `bson:"sync_build_variants"`
+	SyncTasks         []string         `bson:"sync_tasks"`
+	SyncVariantsTasks []VariantTasks   `bson:"sync_variants_tasks"`
+	Patches           []ModulePatch    `bson:"patches"`
+	Activated         bool             `bson:"activated"`
+	PatchedConfig     string           `bson:"patched_config"`
+	Alias             string           `bson:"alias"`
+	GithubPatchData   GithubPatch      `bson:"github_patch_data,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -157,42 +160,49 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 	return nil
 }
 
-// SyncVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
+// UpdateVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
 // in the given list of VariantTasks. This is to ensure schema backwards compatibility for T shaped
 // patches. This mutates the patch in memory but does not update it in the database; for that, use
 // SetVariantsTasks.
-func (p *Patch) SyncVariantsTasks(variantsTasks []VariantTasks) {
+func (p *Patch) UpdateVariantsTasks(variantsTasks []VariantTasks) {
+	bvs, tasks := ResolveVariantTasks(variantsTasks)
+	p.BuildVariants = bvs
+	p.Tasks = tasks
+	p.VariantsTasks = variantsTasks
+}
+
+// ResolveVariantTasks returns all build variants and all tasks that will run
+// based on the given VariantTasks.
+// kim: TODO: test
+func ResolveVariantTasks(vts []VariantTasks) (bvs []string, tasks []string) {
 	taskSet := map[string]bool{}
-	variantSet := map[string]bool{}
+	bvSet := map[string]bool{}
 
 	// TODO after fully switching over to new schema, remove support for standalone
 	// Variants and Tasks field
-	for _, v := range variantsTasks {
-		variantSet[v.Variant] = true
-		for _, t := range v.Tasks {
+	for _, vt := range vts {
+		bvSet[vt.Variant] = true
+		for _, t := range vt.Tasks {
 			taskSet[t] = true
 		}
 	}
-	tasks := []string{}
-	variants := []string{}
-	for k := range variantSet {
-		variants = append(variants, k)
+
+	for k := range bvSet {
+		bvs = append(bvs, k)
 	}
 
 	for k := range taskSet {
 		tasks = append(tasks, k)
 	}
 
-	p.VariantsTasks = variantsTasks
-	p.Tasks = tasks
-	p.BuildVariants = variants
+	return bvs, tasks
 }
 
 // SetVariantsTasks updates the variant/tasks pairs in the database.
 // Also updates the Tasks and Variants fields to maintain backwards compatibility between
 // the old and new fields.
 func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
-	p.SyncVariantsTasks(variantsTasks)
+	p.UpdateVariantsTasks(variantsTasks)
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{

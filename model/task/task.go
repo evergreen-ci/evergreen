@@ -167,6 +167,9 @@ type Task struct {
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
+	// ShouldSync indicates whether the task should sync its task directory with
+	// S3 when it is complete.
+	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -671,7 +674,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
-	return errors.Wrap(err, "problem marketing generate.tasks complete")
+	return errors.Wrap(err, "problem marking generate.tasks complete")
 }
 
 func GenerateNotRun() ([]Task, error) {

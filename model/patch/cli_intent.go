@@ -34,6 +34,14 @@ type cliIntent struct {
 	// Tasks is a list of tasks associated with the patch
 	Tasks []string `bson:"tasks"`
 
+	// SyncBuildVariants are all build variants in a patch that should run task
+	// sync.
+	SyncBuildVariants []string `bson:"sync_build_variants"`
+
+	// SyncTasks are all tasks in a patch that should run task sync when the
+	// task ends.
+	SyncTasks []string `bson:"sync_tasks"`
+
 	// Finalize is whether or not the patch should finalized
 	Finalize bool `bson:"finalize"`
 
@@ -139,14 +147,16 @@ func (g *cliIntent) RequesterIdentity() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	return &Patch{
-		Description:   c.Description,
-		Author:        c.User,
-		Project:       c.ProjectID,
-		Githash:       c.BaseHash,
-		Status:        evergreen.PatchCreated,
-		BuildVariants: c.BuildVariants,
-		Alias:         c.Alias,
-		Tasks:         c.Tasks,
+		Description:       c.Description,
+		Author:            c.User,
+		Project:           c.ProjectID,
+		Githash:           c.BaseHash,
+		Status:            evergreen.PatchCreated,
+		BuildVariants:     c.BuildVariants,
+		Alias:             c.Alias,
+		Tasks:             c.Tasks,
+		SyncBuildVariants: c.SyncBuildVariants,
+		SyncTasks:         c.SyncTasks,
 		Patches: []ModulePatch{
 			{
 				ModuleName: c.Module,
@@ -160,7 +170,7 @@ func (c *cliIntent) NewPatch() *Patch {
 	}
 }
 
-func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string) (Intent, error) {
+func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string, syncBVs, syncTasks []string) (Intent, error) {
 	if user == "" {
 		return nil, errors.New("no user provided")
 	}
@@ -182,18 +192,20 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 	}
 
 	return &cliIntent{
-		DocumentID:    mgobson.NewObjectId().Hex(),
-		IntentType:    CliIntentType,
-		PatchContent:  patchContent,
-		Description:   description,
-		BuildVariants: variants,
-		Tasks:         tasks,
-		User:          user,
-		ProjectID:     project,
-		BaseHash:      baseHash,
-		Finalize:      finalize,
-		Module:        module,
-		Alias:         alias,
+		DocumentID:        mgobson.NewObjectId().Hex(),
+		IntentType:        CliIntentType,
+		PatchContent:      patchContent,
+		Description:       description,
+		BuildVariants:     variants,
+		Tasks:             tasks,
+		SyncBuildVariants: syncBVs,
+		SyncTasks:         syncTasks,
+		User:              user,
+		ProjectID:         project,
+		BaseHash:          baseHash,
+		Finalize:          finalize,
+		Module:            module,
+		Alias:             alias,
 	}, nil
 }
 

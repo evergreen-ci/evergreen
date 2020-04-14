@@ -51,29 +51,33 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project     string
-	Variants    []string
-	Tasks       []string
-	Description string
-	Alias       string
-	SkipConfirm bool
-	Finalize    bool
-	Browse      bool
-	Large       bool
-	ShowSummary bool
-	Uncommitted bool
-	Ref         string
+	Project           string
+	Alias             string
+	Variants          []string
+	Tasks             []string
+	SyncBuildVariants []string
+	SyncTasks         []string
+	Description       string
+	SkipConfirm       bool
+	Finalize          bool
+	Browse            bool
+	Large             bool
+	ShowSummary       bool
+	Uncommitted       bool
+	Ref               string
 }
 
 type patchSubmission struct {
-	projectId   string
-	patchData   string
-	description string
-	base        string
-	alias       string
-	variants    []string
-	tasks       []string
-	finalize    bool
+	projectId         string
+	patchData         string
+	description       string
+	base              string
+	alias             string
+	variants          []string
+	tasks             []string
+	syncBuildVariants []string
+	syncTasks         []string
+	finalize          bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
@@ -96,14 +100,16 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 	}
 
 	patchSub := patchSubmission{
-		projectId:   p.Project,
-		patchData:   diffData.fullPatch,
-		description: p.Description,
-		base:        diffData.base,
-		variants:    p.Variants,
-		tasks:       p.Tasks,
-		finalize:    p.Finalize,
-		alias:       p.Alias,
+		projectId:         p.Project,
+		patchData:         diffData.fullPatch,
+		description:       p.Description,
+		base:              diffData.base,
+		variants:          p.Variants,
+		tasks:             p.Tasks,
+		alias:             p.Alias,
+		syncBuildVariants: p.SyncBuildVariants,
+		syncTasks:         p.SyncTasks,
+		finalize:          p.Finalize,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

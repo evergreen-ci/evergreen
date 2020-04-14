@@ -518,6 +518,33 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 			"total_time": time.Since(start).String(),
 		})
 	}
+
+	// If task sync was requested for the end of this task, run it now.
+	a.killProcs(ctx, tc, false)
+	start = time.Now()
+	if taskSyncCmds := getTaskEndSyncCommands(tc); taskSyncCmds != nil {
+		err = a.runCommands(ctx, tc, taskSyncCmds.List(), runCommandsOptions{})
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running task sync.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running task sync.",
+			"total_time": time.Since(start).String(),
+		})
+	}
+}
+
+func getTaskEndSyncCommands(tc *taskContext) *model.YAMLCommandSet {
+	if !tc.taskModel.ShouldSync {
+		return nil
+	}
+	// kim: TODO: check if task end sync enabled for this task
+	return &model.YAMLCommandSet{
+		SingleCommand: &model.PluginCommandConf{
+			Type:    evergreen.CommandTypeSetup,
+			Command: evergreen.S3PushCommandName,
+		},
+	}
 }
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {

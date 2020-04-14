@@ -216,6 +216,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
+	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncTasks) != 0 || len(patchDoc.SyncBuildVariants) != 0) {
+		j.gitHubError = PatchTaskSyncDisabled
+		return errors.New("task sync at the end of a patched task is disabled by project settings")
+	}
+
+	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
 	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
@@ -228,26 +234,17 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "can't get patched config")
 	}
 	if errs := validator.CheckProjectSyntax(project); len(errs) != 0 {
-		for _, validatorErr := range errs {
-			if validatorErr.Level == validator.Error {
-				j.gitHubError = InvalidConfig
-				catcher.Add(validatorErr)
-			}
-			if catcher.HasErrors() {
-				return errors.Wrapf(catcher.Resolve(), "invalid patched config")
-			}
+		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
+			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 		}
 	}
 	if errs := validator.CheckProjectSettings(project, pref); len(errs) != 0 {
-		for _, validationErr := range errs {
-			if validationErr.Level == validator.Error {
-				j.gitHubError = InvalidConfig
-				catcher.Add(validationErr)
-			}
+		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
+			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 		}
-		if catcher.HasErrors() {
-			return errors.Wrapf(catcher.Resolve(), "invalid patched config for current project settings")
-		}
+	}
+	if validationCatcher.HasErrors() {
+		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
 	patchDoc.PatchedConfig = projectYaml
@@ -345,7 +342,16 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
-	defer j.intent.SetProcessed() //nolint: errcheck
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -470,7 +476,16 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 		return false, errors.New("github pr testing is disabled, not processing pull request")
 	}
-	defer j.intent.SetProcessed() //nolint: errcheck
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
 
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {

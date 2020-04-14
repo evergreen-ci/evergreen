@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -76,6 +74,17 @@ func (v ValidationErrors) Priority() level.Priority {
 }
 func (v ValidationErrors) SetPriority(_ level.Priority) error {
 	return nil
+}
+
+// AtLevel returns all validation errors that match the given level.
+func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, err := range v {
+		if err.Level == level {
+			errs = append(errs, err)
+		}
+	}
+	return errs
 }
 
 // Functions used to validate the syntax of a project configuration file.
@@ -222,38 +231,26 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 }
 
 // verify that the project configuration semantics and configuration syntax is valid
-func CheckProjectConfigurationIsValid(project *model.Project) error {
+func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
+	catcher := grip.NewBasicCatcher()
 	syntaxErrs := CheckProjectSyntax(project)
-	if len(syntaxErrs) > 0 {
-		syntaxErrsAtErrorLevel := ValidationErrors{}
-		for _, err := range syntaxErrs {
-			if err.Level == Error {
-				syntaxErrsAtErrorLevel = append(syntaxErrsAtErrorLevel, err)
-			}
-		}
-		if len(syntaxErrsAtErrorLevel) > 0 {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("project syntax is invalid: %s", ValidationErrorsToString(syntaxErrs)),
-			}
+	if len(syntaxErrs) != 0 {
+		if errs := syntaxErrs.AtLevel(Error); len(errs) != 0 {
+			catcher.Errorf("project contains syntax errors: %s", ValidationErrorsToString(errs))
 		}
 	}
 	semanticErrs := CheckProjectSemantics(project)
-	if len(semanticErrs) > 0 {
-		semanticErrsAtErrorLevel := ValidationErrors{}
-		for _, err := range semanticErrs {
-			if err.Level == Error {
-				semanticErrsAtErrorLevel = append(semanticErrsAtErrorLevel, err)
-			}
-		}
-		if len(semanticErrsAtErrorLevel) > 0 {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("project semantics is invalid: %s", ValidationErrorsToString(semanticErrs)),
-			}
+	if len(semanticErrs) != 0 {
+		if errs := semanticErrs.AtLevel(Error); len(errs) != 0 {
+			catcher.Errorf("project contains semantic errors: %s", ValidationErrorsToString(errs))
 		}
 	}
-	return nil
+	if settingsErrs := CheckProjectSettings(project, pref); len(settingsErrs) != 0 {
+		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
+			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
+		}
+	}
+	return catcher.Resolve()
 }
 
 // ensure that if any task spec references 'model.AllDependencies', it

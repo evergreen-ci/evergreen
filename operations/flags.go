@@ -9,29 +9,31 @@ import (
 )
 
 const (
-	confFlagName           = "conf"
-	overwriteConfFlagName  = "overwrite"
-	adminFlagsFlagName     = "flags"
-	pathFlagName           = "path"
-	projectFlagName        = "project"
-	variantsFlagName       = "variants"
-	patchIDFlagName        = "patch"
-	moduleFlagName         = "module"
-	yesFlagName            = "yes"
-	tasksFlagName          = "tasks"
-	largeFlagName          = "large"
-	hostFlagName           = "host"
-	regionFlagName         = "region"
-	startTimeFlagName      = "time"
-	limitFlagName          = "limit"
-	messageFlagName        = "message"
-	forceFlagName          = "force"
-	activeFlagName         = "active"
-	refFlagName            = "ref"
-	quietFlagName          = "quiet"
-	dirFlagName            = "dir"
-	uncommittedChangesFlag = "uncommitted"
-	subscriptionTypeFlag   = "subscription-type"
+	confFlagName              = "conf"
+	overwriteConfFlagName     = "overwrite"
+	adminFlagsFlagName        = "flags"
+	pathFlagName              = "path"
+	projectFlagName           = "project"
+	variantsFlagName          = "variants"
+	patchIDFlagName           = "patch"
+	moduleFlagName            = "module"
+	yesFlagName               = "yes"
+	tasksFlagName             = "tasks"
+	syncBuildVariantsFlagName = "sync_variants"
+	syncTasksFlagName         = "sync_tasks"
+	largeFlagName             = "large"
+	hostFlagName              = "host"
+	regionFlagName            = "region"
+	startTimeFlagName         = "time"
+	limitFlagName             = "limit"
+	messageFlagName           = "message"
+	forceFlagName             = "force"
+	activeFlagName            = "active"
+	refFlagName               = "ref"
+	quietFlagName             = "quiet"
+	dirFlagName               = "dir"
+	uncommittedChangesFlag    = "uncommitted"
+	subscriptionTypeFlag      = "subscription-type"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -92,6 +94,20 @@ func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(tasksFlagName, "t"),
 		Usage: "task names",
+	})
+}
+
+func addSyncBuildVariantsFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  syncBuildVariantsFlagName,
+		Usage: "tasks to sync when task ends",
+	})
+}
+
+func addSyncTasksFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  syncTasksFlagName,
+		Usage: "tasks to sync when task ends",
 	})
 }
 

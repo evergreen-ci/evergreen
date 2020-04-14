@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -251,12 +252,22 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID)
+	// kim: TODO: verify that this is correct
+	// kim: TODO: test
+	patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
+	if err != nil {
+		return errors.Wrapf(err, "error getting patch associated with version '%s'", v.Id)
+	}
+	if patchDoc == nil {
+		return errors.Errorf("patch for version '%s' not found", v.Id)
+	}
+
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, patchDoc.SyncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, patchDoc.SyncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
