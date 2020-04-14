@@ -844,8 +844,8 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		switch *s.Type {
 		case "object":
 			idType = *s.Data
-		break	
-		case "id": 	
+			break
+		case "id":
 			id = *s.Data
 			break
 		case "project":
