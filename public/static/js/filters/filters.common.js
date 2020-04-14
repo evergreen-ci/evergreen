@@ -503,16 +503,34 @@ filters.common.filter('conditional', function () {
       if (!data) {
         return null;
       }
-      let output = [];
+      let resultsByTask = {};
 
       _.each(data, function (test) {
         const converted = convertSingleTest(test);
-        if (converted) {
-          output.push(converted);
+        if (!converted) {
+          return
         }
+        let taskData = resultsByTask[converted.task_id];
+        if (!taskData) {
+          resultsByTask[converted.task_id] = converted;
+          return;
+        }
+        if (taskData.data && taskData.data.results) {
+          let existingTestIndex = _.findIndex(taskData.data.results, {
+            name: converted.data.results[0].name
+          });
+          if (existingTestIndex === -1) {
+            taskData.data.results = taskData.data.results.concat(converted.data.results);
+            return;
+          }
+          if (!converted.data.results || !converted.data.results[0]) {
+            return;
+          }
+          Object.assign(taskData.data.results[existingTestIndex].results, converted.data.results[0].results);
+        }
+        resultsByTask[converted.task_id] = taskData;
       })
-
-      return output;
+      return _.toArray(resultsByTask);
     }
   })
   // merges two sets of perf results, taking metadata from the second sample but giving test result preference to the first one
