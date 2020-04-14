@@ -971,8 +971,9 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 		return nil, nil
 	}
 	hasSpawnableProvider := false
+
 	for _, spawnableProvider := range evergreen.ProviderSpawnable {
-		if host.Distro.Provider == spawnableProvider {
+		if host.Distro.Provider == spawnableProvider && host.Distro.Provider != evergreen.ProviderNameDocker {
 			hasSpawnableProvider = true
 		}
 	}
