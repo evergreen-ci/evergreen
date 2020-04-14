@@ -713,31 +713,31 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*APICommitQueue, error) {
-	apiCommitQueue, err := r.sc.FindCommitQueueByID(id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding commit Queue for `%s`: %s", id, err))
+	commitQueue, err := r.sc.FindCommitQueueByID(id)
+	if err != nil || commitQueue == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding commit Queue for `%s`: %s", id, err))
 	}
-	APICommitQueueItems := []*APICommitQueueItem{}
-	for _, APIQueueItem := range apiCommitQueue.Queue {
-		APIModules := []*APIModule{}
-		for _, apiModule := range APIQueueItem.Modules {
+	apiCommitQueueItems := []*APICommitQueueItem{}
+	for _, apiQueueItem := range commitQueue.Queue {
+		apiModules := []*APIModule{}
+		for _, apiModule := range apiQueueItem.Modules {
 			module := APIModule{
 				Module: apiModule.Module,
 				Issue:  apiModule.Issue,
 			}
-			APIModules = append(APIModules, &module)
+			apiModules = append(apiModules, &module)
 		}
 
 		item := APICommitQueueItem{
-			Issue:   APIQueueItem.Issue,
-			Version: APIQueueItem.Version,
-			Modules: APIModules,
+			Issue:   apiQueueItem.Issue,
+			Version: apiQueueItem.Version,
+			Modules: apiModules,
 		}
-		APICommitQueueItems = append(APICommitQueueItems, &item)
+		apiCommitQueueItems = append(apiCommitQueueItems, &item)
 	}
 	return &APICommitQueue{
-		ProjectID: apiCommitQueue.ProjectID,
-		Queue:     APICommitQueueItems,
+		ProjectID: commitQueue.ProjectID,
+		Queue:     apiCommitQueueItems,
 	}, nil
 
 }

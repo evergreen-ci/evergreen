@@ -26,7 +26,7 @@
             "message": "Error finding commit Queue for `invalid_id`: no commit queue found for 'invalid_id'",
             "path": ["commitQueue"],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
