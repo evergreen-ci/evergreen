@@ -439,16 +439,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":                  "database error while retrieving the db.tasks document for the next task to be assigned to this host",
-				"distro_id":                d.Id,
-				"host_id":                  currentHost.Id,
-				"next_task_id":             queueItem.Id,
-				"last_task_id":             currentHost.LastTask,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":      "database error while retrieving the db.tasks document for the next task to be assigned to this host",
+				"distro_id":    d.Id,
+				"host_id":      currentHost.Id,
+				"next_task_id": queueItem.Id,
+				"last_task_id": currentHost.LastTask,
 			}))
 			return nil, false, err
 		}
@@ -462,15 +457,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if !nextTask.IsDispatchable() {
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
-				"distro_id":                d.Id,
-				"task_id":                  nextTask.Id,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":   "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro_id": d.Id,
+				"task_id":   nextTask.Id,
+				"host_id":   currentHost.Id,
 			}))
 
 			continue
@@ -489,15 +479,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		if !projectRef.Enabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
-				"distro_id":                nextTask.DistroId,
-				"task_id":                  nextTask.Id,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":   "projectRef.Enabled is false, but there was an issue dequeuing the task",
+				"distro_id": nextTask.DistroId,
+				"task_id":   nextTask.Id,
+				"host_id":   currentHost.Id,
 			}))
 
 			continue
@@ -530,26 +515,26 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			}
 			if numHosts > nextTask.TaskGroupMaxHosts {
 				grip.Debug(message.Fields{
-					"message":                  "task group race, not dispatching",
-					"distro_id":                nextTask.DistroId,
-					"task_id":                  nextTask.Id,
-					"host_id":                  currentHost.Id,
-					"taskspec_group":           spec.Group,
-					"taskspec_build_variant":   spec.BuildVariant,
-					"taskspec_version":         spec.Version,
-					"taskspec_project":         spec.Project,
-					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+					"message":              "task group race, not dispatching",
+					"distro_id":            nextTask.DistroId,
+					"task_id":              nextTask.Id,
+					"host_id":              currentHost.Id,
+					"task_group":           nextTask.TaskGroup,
+					"task_build_variant":   nextTask.BuildVariant,
+					"task_version":         nextTask.Version,
+					"task_project":         nextTask.Project,
+					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 				})
 				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
-					"message":                  "problem clearing task group task from host after dispatch race",
-					"distro_id":                nextTask.DistroId,
-					"task_id":                  nextTask.Id,
-					"host_id":                  currentHost.Id,
-					"taskspec_group":           spec.Group,
-					"taskspec_build_variant":   spec.BuildVariant,
-					"taskspec_version":         spec.Version,
-					"taskspec_project":         spec.Project,
-					"taskspec_group_max_hosts": spec.GroupMaxHosts,
+					"message":              "problem clearing task group task from host after dispatch race",
+					"distro_id":            nextTask.DistroId,
+					"task_id":              nextTask.Id,
+					"host_id":              currentHost.Id,
+					"task_group":           nextTask.TaskGroup,
+					"task_build_variant":   nextTask.BuildVariant,
+					"task_version":         nextTask.Version,
+					"task_project":         nextTask.Project,
+					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 				}))
 				ok = false // continue loop after dequeueing task
 			}
@@ -557,15 +542,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
-			"distro_id":                nextTask.DistroId,
-			"task_id":                  nextTask.Id,
-			"host_id":                  currentHost.Id,
-			"taskspec_group":           spec.Group,
-			"taskspec_build_variant":   spec.BuildVariant,
-			"taskspec_version":         spec.Version,
-			"taskspec_project":         spec.Project,
-			"taskspec_group_max_hosts": spec.GroupMaxHosts,
+			"message":   "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"distro_id": nextTask.DistroId,
+			"task_id":   nextTask.Id,
+			"host_id":   currentHost.Id,
 		}))
 
 		if !ok {
