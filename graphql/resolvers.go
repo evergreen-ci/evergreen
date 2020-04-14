@@ -838,15 +838,20 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	var id string
 	var idType string
 	for _, s := range subscription.Selectors {
-		if *s.Type == "object" {
+		if s.Type == nil {
+			continue
+		}
+		switch *s.Type {
+		case "object":
 			idType = *s.Data
-		}
-		if *s.Type == "id" {
+		break	
+		case "id": 	
 			id = *s.Data
-		}
-		if *s.Type == "project" {
+			break
+		case "project":
 			idType = "project"
 			id = *s.Data
+			break
 		}
 	}
 	if id == "" || idType == "" {
