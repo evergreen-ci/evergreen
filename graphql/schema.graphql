@@ -324,13 +324,13 @@ type LogMessage {
 
 type CommitQueue {
   ProjectID: String
-  Queue: [CommitQueueItem]
+  Queue: [CommitQueueItem!]
 }
 
 type CommitQueueItem {
   Issue: String
   Version: String
-  Modules: [Module]
+  Modules: [Module!]
 }
 
 type Module {
