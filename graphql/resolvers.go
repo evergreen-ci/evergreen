@@ -897,13 +897,8 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 	if host == nil {
 		return nil, nil
 	}
-	hasSpawnableProvider := false
-	for _, spawnableProvider := range evergreen.ProviderSpawnable {
-		if host.Distro.Provider == spawnableProvider && host.Distro.Provider != evergreen.ProviderNameDocker {
-			hasSpawnableProvider = true
-		}
-	}
-	if hasSpawnableProvider && host.Distro.SpawnAllowed {
+	hasUserSpawnableProvider := utility.StringSliceContains(evergreen.ProviderUserSpawnable, host.Distro.Provider)
+	if hasUserSpawnableProvider && host.Distro.SpawnAllowed {
 		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
 		return &link, nil
 	}
