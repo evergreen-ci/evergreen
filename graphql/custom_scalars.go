@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/mongodb/grip"
 )
 
 // MarshalStringMap handles marshaling StringMap
@@ -13,7 +14,10 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Error marshaling StringMap %v: %v", val, err.Error())))
+			_, err = w.Write([]byte(fmt.Sprintf("Error marshaling StringMap %v: %v", val, err.Error())))
+			if err != nil {
+				grip.Error(err)				
+			}
 		}
 	})
 }
@@ -29,7 +33,7 @@ func UnmarshalStringMap(v interface{}) (map[string]string, error) {
 		_, ok := value.(string)
 		if !ok {
 			return nil, fmt.Errorf("%v is not a StringMap. Value %v for key %v should be type string but got %T", v, value, key, value)
-		}
+		}	
 		strValue := fmt.Sprintf("%v", value)
 		stringMap[key] = strValue
 	}
