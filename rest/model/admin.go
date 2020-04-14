@@ -328,6 +328,7 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int     `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int     `json:"group_ttl"`
+	RequireRemotePriority                 bool    `json:"require_remote_priority"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -343,6 +344,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
+		a.RequireRemotePriority = v.RequireRemotePriority
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -361,6 +363,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
+		RequireRemotePriority:                 a.RequireRemotePriority,
 	}, nil
 }
 

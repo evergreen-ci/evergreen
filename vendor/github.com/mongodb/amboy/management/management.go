@@ -12,30 +12,33 @@ import (
 // the running jobs in an amboy queue and gives users broader capabilities than
 // the Queue interface itself.
 type Management interface {
-	JobStatus(context.Context, CounterFilter) (*JobStatusReport, error)
+	JobStatus(context.Context, StatusFilter) (*JobStatusReport, error)
 	RecentTiming(context.Context, time.Duration, RuntimeFilter) (*JobRuntimeReport, error)
-	JobIDsByState(context.Context, string, CounterFilter) (*JobReportIDs, error)
+	JobIDsByState(context.Context, string, StatusFilter) (*JobReportIDs, error)
 	RecentErrors(context.Context, time.Duration, ErrorFilter) (*JobErrorsReport, error)
 	RecentJobErrors(context.Context, string, time.Duration, ErrorFilter) (*JobErrorsReport, error)
+	CompleteJobsByType(context.Context, StatusFilter, string) error
 	CompleteJob(context.Context, string) error
-	CompleteJobsByType(context.Context, string) error
+	CompleteJobs(context.Context, StatusFilter) error
 }
 
-// CounterFilter defines a number of dimensions with which to filter
-// current jobs in a queue.
-type CounterFilter string
+// StatusFilter defines a number of dimensions with which to filter
+// current jobs in a queue by status
+type StatusFilter string
 
 // nolint
 const (
-	InProgress CounterFilter = "in-progress"
-	Pending                  = "pending"
-	Stale                    = "stale"
+	InProgress StatusFilter = "in-progress"
+	Pending                 = "pending"
+	Stale                   = "stale"
+	Completed               = "completed"
+	All                     = "all"
 )
 
 // Validate returns an error if a filter value is not valid.
-func (t CounterFilter) Validate() error {
+func (t StatusFilter) Validate() error {
 	switch t {
-	case InProgress, Pending, Stale:
+	case InProgress, Pending, Stale, Completed, All:
 		return nil
 	default:
 		return errors.Errorf("%s is not a valid counter filter type", t)

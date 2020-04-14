@@ -522,20 +522,6 @@ func (d *mongoDriver) doUpdate(ctx context.Context, job *registry.JobInterchange
 	query := getAtomicQuery(d.instanceID, job.Name, job.Status.ModificationCount)
 	res, err := d.getCollection().ReplaceOne(ctx, query, job)
 	if err != nil {
-		grip.Debug(message.Fields{
-			"id":        d.instanceID,
-			"service":   "amboy.queue.mongo",
-			"operation": "save job",
-			"job_id":    job.Name,
-			"job_type":  job.Type,
-			"scopes":    job.Scopes,
-			"stat":      job.Status,
-			"is_group":  d.opts.UseGroups,
-			"group":     d.opts.GroupName,
-			"outcome":   "duplicate key error, ignoring stale job",
-			"dup_key":   isMongoDupKey(err),
-		})
-
 		return errors.Wrapf(err, "problem saving document %s: %+v", job.Name, res)
 	}
 
@@ -676,8 +662,8 @@ func (d *mongoDriver) getNextQuery() bson.M {
 			},
 			{
 				"status.completed": false,
-				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
 				"status.in_prog":   true,
+				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
 			},
 		},
 	}
@@ -789,6 +775,19 @@ RETRY:
 				}
 
 				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
+					grip.Debug(message.WrapError(err, message.Fields{
+						"id":        d.instanceID,
+						"service":   "amboy.queue.mongo",
+						"operation": "dispatch job",
+						"job_id":    job.ID(),
+						"job_type":  job.Type,
+						"scopes":    job.Scopes,
+						"stat":      job.Status,
+						"is_group":  d.opts.UseGroups,
+						"group":     d.opts.GroupName,
+						"dup_key":   isMongoDupKey(err),
+					}))
+
 					job = nil
 					continue CURSOR
 				}

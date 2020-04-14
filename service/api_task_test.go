@@ -311,6 +311,64 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				So(err, ShouldNotBeNil)
 			})
 		})
+		Convey("with a host running a task in a task group", func() {
+			host1 := host.Host{
+				Id:                      "host1",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "task1",
+				RunningTaskGroup:        "group1",
+				RunningTaskBuildVariant: "variant1",
+				RunningTaskVersion:      "version1",
+				RunningTaskProject:      "exists",
+			}
+			So(host1.Insert(), ShouldBeNil)
+			host2 := host.Host{
+				Id:                      "host2",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "",
+				RunningTaskGroup:        "",
+				RunningTaskBuildVariant: "",
+				RunningTaskVersion:      "",
+				RunningTaskProject:      "",
+			}
+			So(host2.Insert(), ShouldBeNil)
+			task3 := task.Task{
+				Id:                "task3",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group1",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+			}
+			So(task3.Insert(), ShouldBeNil)
+			task4 := task.Task{
+				Id:                "task4",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group2",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+			}
+			So(task4.Insert(), ShouldBeNil)
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: task3.Id},
+				{Id: task4.Id},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &host2, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			// task 3 should not be dispatched, because it's already running on max
+			// hosts, instead it should be task 4
+			So(t.Id, ShouldEqual, task4.Id)
+			h, err := host.FindOne(host.ById(host2.Id))
+			So(err, ShouldBeNil)
+			So(h.RunningTask, ShouldEqual, task4.Id)
+		})
 	})
 }
 
@@ -518,6 +576,64 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				_, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &anotherHost, details)
 				So(err, ShouldNotBeNil)
 			})
+		})
+		Convey("with a host running a task in a task group", func() {
+			host1 := host.Host{
+				Id:                      "host1",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "task1",
+				RunningTaskGroup:        "group1",
+				RunningTaskBuildVariant: "variant1",
+				RunningTaskVersion:      "version1",
+				RunningTaskProject:      "exists",
+			}
+			So(host1.Insert(), ShouldBeNil)
+			host2 := host.Host{
+				Id:                      "host2",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "",
+				RunningTaskGroup:        "",
+				RunningTaskBuildVariant: "",
+				RunningTaskVersion:      "",
+				RunningTaskProject:      "",
+			}
+			So(host2.Insert(), ShouldBeNil)
+			task3 := task.Task{
+				Id:                "task3",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group1",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+			}
+			So(task3.Insert(), ShouldBeNil)
+			task4 := task.Task{
+				Id:                "task4",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group2",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+			}
+			So(task4.Insert(), ShouldBeNil)
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: task3.Id},
+				{Id: task4.Id},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &host2, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			// task 3 should not be dispatched, because it's already running on max
+			// hosts, instead it should be task 4
+			So(t.Id, ShouldEqual, task4.Id)
+			h, err := host.FindOne(host.ById(host2.Id))
+			So(err, ShouldBeNil)
+			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
 	})
 }

@@ -140,6 +140,16 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 			return nil, errors.WithStack(err)
 		}
 	}
+	if so.HomeVolumeID != "" {
+		var volume *host.Volume
+		volume, err = host.ValidateVolumeCanBeAttached(so.HomeVolumeID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if AztoRegion(volume.AvailabilityZone) != so.Region {
+			return nil, errors.Errorf("cannot use volume in zone '%s' with host in region '%s'", volume.AvailabilityZone, so.Region)
+		}
+	}
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {

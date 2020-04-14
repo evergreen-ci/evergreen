@@ -60,6 +60,13 @@ var (
 		return c.Set(hostFlagName, host)
 	}
 
+	requireProjectFlag = func(c *cli.Context) error {
+		if c.String(projectFlagName) == "" {
+			return errors.New("must specify a project")
+		}
+		return nil
+	}
+
 	requirePatchIDFlag = func(c *cli.Context) error {
 		patch := c.String(patchIDFlagName)
 		if patch == "" {

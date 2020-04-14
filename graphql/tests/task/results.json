@@ -190,10 +190,6 @@
       "result": { "data": { "task": { "spawnHostLink": null } } }
     },
     {
-      "query_file": "spawnHostLink-distro-provider-docker.graphql",
-      "result": { "data": { "task": { "spawnHostLink": null } } }
-    },
-    {
       "query_file": "spawnHostLink-distro-provider-static.graphql",
       "result": { "data": { "task": { "spawnHostLink": null } } }
     },

@@ -19,6 +19,7 @@ type AmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int    `bson:"group_background_create_frequency" json:"group_background_create_frequency" yaml:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int    `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
 	GroupTTLMinutes                       int    `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
+	RequireRemotePriority                 bool   `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
 }
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
@@ -61,6 +62,7 @@ func (c *AmboyConfig) Set() error {
 			"group_background_create_frequency": c.GroupBackgroundCreateFrequencyMinutes,
 			"group_prune_frequency":             c.GroupPruneFrequencyMinutes,
 			"group_ttl":                         c.GroupTTLMinutes,
+			"require_remote_priority":           c.RequireRemotePriority,
 		},
 	}, options.Update().SetUpsert(true))
 

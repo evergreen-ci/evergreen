@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -96,6 +97,7 @@ var (
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeHostKey                = bsonutil.MustHaveTag(Volume{}, "Host")
 	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 )
@@ -1116,7 +1118,6 @@ func lastContainerFinishTimePipeline() []bson.M {
 
 // AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
 func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
-
 	var times []FinishTime
 	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
 	if err != nil {
@@ -1161,6 +1162,15 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
+
+	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
+		message.Fields{
+			"host_id":   h.Id,
+			"volume_id": newVolume.VolumeID,
+			"op":        "host volume acocunting",
+			"message":   "problem setting host info on volume records",
+		}))
+
 	return nil
 }
 
@@ -1182,6 +1192,15 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
+
+	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),
+		message.Fields{
+			"host_id":   h.Id,
+			"volume_id": volumeId,
+			"op":        "host volume accounting",
+			"message":   "problem un-setting host info on volume records",
+		}))
+
 	return nil
 }
 
