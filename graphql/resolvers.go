@@ -839,7 +839,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	var idType string
 	for _, s := range subscription.Selectors {
 		if s.Type == nil {
-			continue
+			return false, InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
 		}
 		switch *s.Type {
 		case "object":
