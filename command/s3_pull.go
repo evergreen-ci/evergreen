@@ -20,8 +20,6 @@ import (
 )
 
 type s3Base struct {
-	// BuildVariants contains all build variants this command should be run on.
-	BuildVariants []string `mapstructure:"build_variants"`
 	// ExcludeFilter contains a regexp describing files that should be
 	// excluded from the operation.
 	ExcludeFilter string `mapstructure:"exclude" plugin:"expand"`
@@ -32,14 +30,6 @@ type s3Base struct {
 
 func (c *s3Base) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(mapstructure.Decode(params, c), "error decoding S3 parameters")
-}
-
-func (c *s3Base) shouldRunOnBuildVariant(bv string) bool {
-	if len(c.BuildVariants) == 0 {
-		return true
-	}
-
-	return utility.StringSliceContains(c.BuildVariants, bv)
 }
 
 func (c *s3Base) expandParams(conf *model.TaskConfig) error {
@@ -77,8 +67,8 @@ type s3Pull struct {
 	s3Base
 	base
 
-	FromBuildVariant string `mapstructure:"from_build_variant" plugin:"expand"`
-	Task             string `mapstructure:"task" plugin:"expand"`
+	FromBuildVariant string `mapstructure:"from_build_variant"`
+	Task             string `mapstructure:"task"`
 	WorkingDir       string `mapstructure:"working_directory" plugin:"expand"`
 	DeleteOnSync     bool   `mapstructure:"delete_on_sync"`
 }
@@ -99,9 +89,6 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	if c.Task == "" {
 		return errors.New("task must not be empty")
 	}
-	if c.WorkingDir == "" {
-		return errors.New("working directory cannot be empty")
-	}
 	return nil
 }
 
@@ -116,16 +103,11 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
-
-	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping s3.pull for build variant '%s'", conf.BuildVariant.Name)
-		return nil
-	}
-
-	// If no buildvariant is explicitly stated, pull from this task's
-	// build variant.
 	if c.FromBuildVariant == "" {
 		c.FromBuildVariant = conf.Task.BuildVariant
+	}
+	if c.WorkingDir == "" {
+		c.WorkingDir = conf.WorkDir
 	}
 
 	httpClient := utility.GetHTTPClient()
@@ -145,13 +127,21 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		fmt.Sprintf("the working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'",
 			c.WorkingDir, conf.WorkDir))
 
-	pullMsg := "Pulling task directory files from S3"
+	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
+		return errors.Wrap(err, "problem making working directory")
+	}
+	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	if err != nil {
+		return errors.Wrap(err, "could not get working directory")
+	}
+
+	pullMsg := fmt.Sprintf("Pulling task directory files from S3 from task '%s' on build variant '%s'", c.Task, c.FromBuildVariant)
 	if c.ExcludeFilter != "" {
 		pullMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
 	logger.Task().Infof(pullMsg)
-	if err := c.bucket.Pull(ctx, pail.SyncOptions{
-		Local:   c.WorkingDir,
+	if err = c.bucket.Pull(ctx, pail.SyncOptions{
+		Local:   wd,
 		Remote:  conf.Task.S3Path(c.FromBuildVariant, c.Task),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {

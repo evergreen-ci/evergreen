@@ -22,7 +22,6 @@ func TestS3PullParseParams(t *testing.T) {
 		"SetsValues": func(t *testing.T, c *s3Pull) {
 			params := map[string]interface{}{
 				"exclude":           "exclude_pattern",
-				"build_variants":    []string{"some_build_variant"},
 				"max_retries":       uint(5),
 				"task":              "task_name",
 				"working_directory": "working_dir",
@@ -30,7 +29,6 @@ func TestS3PullParseParams(t *testing.T) {
 			}
 			require.NoError(t, c.ParseParams(params))
 			assert.Equal(t, params["exclude"], c.ExcludeFilter)
-			assert.Equal(t, params["build_variants"], c.BuildVariants)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
 			assert.Equal(t, params["task"], c.Task)
 			assert.Equal(t, params["working_directory"], c.WorkingDir)
@@ -92,32 +90,6 @@ func TestS3PullExecute(t *testing.T) {
 			}()
 
 			c.ExcludeFilter = ".*"
-			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-
-			files, err := ioutil.ReadDir(c.WorkingDir)
-			require.NoError(t, err)
-			assert.Empty(t, files)
-		},
-		"NoopsIfIgnoringBuildVariant": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
-			require.NoError(t, os.MkdirAll(taskDir, 0777))
-			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-			}()
-			fileContent := []byte("foobar")
-			_, err = tmpFile.Write(fileContent)
-			assert.NoError(t, tmpFile.Close())
-			require.NoError(t, err)
-
-			c.WorkingDir, err = ioutil.TempDir("", "s3-pull-output")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(c.WorkingDir))
-			}()
-
-			c.BuildVariants = []string{"other_build_variant"}
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
 
 			files, err := ioutil.ReadDir(c.WorkingDir)

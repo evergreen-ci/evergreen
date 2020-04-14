@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1736,7 +1738,7 @@ func TestTaskGroupValidation(t *testing.T) {
 	assert.NoError(err)
 	validationErrs := validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group more than once")
+	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group 2 times")
 
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
@@ -2075,7 +2077,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err := model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs := validateDuplicateTaskDefinition(&p)
+	errs := validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -2096,7 +2098,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -2120,7 +2122,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateBVTasks(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 }
@@ -2377,4 +2379,1778 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 
 	p.Tasks = []model.ProjectTask{}
 	assert.Empty(t, validateTaskSyncSettings(p, ref))
+}
+
+func TestTVToTaskUnit(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		expectedTVToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit
+		project              model.Project
+	}{
+		"MapsTasksAndPopulates": {
+			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "setup", Variant: "rhel"}: {
+					Name:            "setup",
+					Variant:         "rhel",
+					Priority:        20,
+					ExecTimeoutSecs: 20,
+				}, {TaskName: "compile", Variant: "ubuntu"}: {
+					Name:             "compile",
+					Variant:          "ubuntu",
+					ExecTimeoutSecs:  10,
+					CommitQueueMerge: true,
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "setup",
+							Variant: "rhel",
+						},
+					},
+				}, {TaskName: "compile", Variant: "suse"}: {
+					Name:            "compile",
+					Variant:         "suse",
+					ExecTimeoutSecs: 10,
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "setup",
+							Variant: "rhel",
+						},
+					},
+				},
+			},
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name:            "setup",
+						Priority:        10,
+						ExecTimeoutSecs: 10,
+					}, {
+						Name:            "compile",
+						ExecTimeoutSecs: 10,
+						DependsOn: []model.TaskUnitDependency{
+							{
+								Name:    "setup",
+								Variant: "rhel",
+							},
+						},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "rhel",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:            "setup",
+								Priority:        20,
+								ExecTimeoutSecs: 20,
+							},
+						},
+					}, {
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:             "compile",
+								CommitQueueMerge: true,
+							},
+						},
+					}, {
+						Name: "suse",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "compile",
+							},
+						},
+					},
+				},
+			},
+		},
+		"MapsTaskGroupTasksAndPopulates": {
+			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "setup", Variant: "rhel"}: {
+					Name:            "setup",
+					Variant:         "rhel",
+					Priority:        20,
+					ExecTimeoutSecs: 20,
+				}, {TaskName: "compile", Variant: "ubuntu"}: {
+					Name:             "compile",
+					Variant:          "ubuntu",
+					IsGroup:          true,
+					GroupName:        "compile_group",
+					ExecTimeoutSecs:  10,
+					CommitQueueMerge: true,
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "setup",
+							Variant: "rhel",
+						},
+					},
+				}, {TaskName: "compile", Variant: "suse"}: {
+					Name:            "compile",
+					Variant:         "suse",
+					IsGroup:         true,
+					GroupName:       "compile_group",
+					ExecTimeoutSecs: 10,
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "setup",
+							Variant: "rhel",
+						},
+					},
+				},
+			},
+			project: model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:  "compile_group",
+						Tasks: []string{"compile"},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name:            "setup",
+						Priority:        10,
+						ExecTimeoutSecs: 10,
+					}, {
+						Name:            "compile",
+						ExecTimeoutSecs: 10,
+						DependsOn: []model.TaskUnitDependency{
+							{
+								Name:    "setup",
+								Variant: "rhel",
+							},
+						},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "rhel",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:            "setup",
+								Priority:        20,
+								ExecTimeoutSecs: 20,
+							},
+						},
+					}, {
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:             "compile_group",
+								CommitQueueMerge: true,
+							},
+						},
+					}, {
+						Name: "suse",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "compile_group",
+							},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tvToTaskUnit := tvToTaskUnit(&testCase.project)
+			assert.Len(t, tvToTaskUnit, len(testCase.expectedTVToTaskUnit))
+			for expectedTV := range testCase.expectedTVToTaskUnit {
+				assert.Contains(t, tvToTaskUnit, expectedTV)
+				taskUnit := tvToTaskUnit[expectedTV]
+				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
+				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
+				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
+				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
+				assert.Equal(t, expectedTaskUnit.Priority, taskUnit.Priority)
+				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.Distros, taskUnit.Distros)
+				assert.Empty(t, missingActual)
+				assert.Empty(t, missingExpected)
+				assert.Len(t, taskUnit.DependsOn, len(expectedTaskUnit.DependsOn))
+				for _, dep := range expectedTaskUnit.DependsOn {
+					assert.Contains(t, taskUnit.DependsOn, dep)
+				}
+				assert.Len(t, taskUnit.Requires, len(expectedTaskUnit.Requires))
+				for _, dep := range expectedTaskUnit.Requires {
+					assert.Contains(t, taskUnit.Requires, dep)
+				}
+				assert.Equal(t, expectedTaskUnit.ExecTimeoutSecs, taskUnit.ExecTimeoutSecs)
+				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
+				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
+			}
+		})
+	}
+}
+
+func TestDependenciesForTaskUnit(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		expectedDepsToTVs map[model.TaskUnitDependency][]model.TVPair
+		tv                model.TVPair
+		taskUnit          model.BuildVariantTaskUnit
+		allTVs            []model.TVPair
+	}{
+		"WithExplicitVariants": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name:    "setup",
+						Variant: "rhel",
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: "setup", Variant: "rhel"}: []model.TVPair{
+					{TaskName: "setup", Variant: "rhel"},
+				},
+			},
+		},
+		"WithDependencyVariantsBasedOnTaskUnit": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name: "setup",
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "rhel"},
+				{TaskName: "setup", Variant: "ubuntu"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: "setup"}: []model.TVPair{
+					{TaskName: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"WithOneTaskAndAllVariants": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name:    "setup",
+						Variant: model.AllVariants,
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "rhel"},
+				{TaskName: "setup", Variant: "ubuntu"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: "setup", Variant: model.AllVariants}: []model.TVPair{
+					{TaskName: "setup", Variant: "rhel"},
+					{TaskName: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"WithAllTasksAndOneVariant": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name:    model.AllDependencies,
+						Variant: "rhel",
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "rhel"},
+				{TaskName: "setup", Variant: "ubuntu"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: model.AllDependencies, Variant: "rhel"}: []model.TVPair{
+					{TaskName: "setup", Variant: "rhel"},
+				},
+			},
+		},
+		"WithAllTasksAndOneVariantBasedOnTaskUnit": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name: model.AllDependencies,
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "rhel"},
+				{TaskName: "setup", Variant: "ubuntu"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: model.AllDependencies}: []model.TVPair{
+					{TaskName: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"WithAllTasksAndAllVariants": {
+			tv: model.TVPair{
+				TaskName: "compile",
+				Variant:  "ubuntu",
+			},
+			taskUnit: model.BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []model.TaskUnitDependency{
+					{
+						Name:    model.AllDependencies,
+						Variant: model.AllVariants,
+					},
+				},
+			},
+			allTVs: []model.TVPair{
+				{TaskName: "setup", Variant: "rhel"},
+				{TaskName: "compile", Variant: "rhel"},
+				{TaskName: "setup", Variant: "ubuntu"},
+				{TaskName: "compile", Variant: "ubuntu"},
+			},
+			expectedDepsToTVs: map[model.TaskUnitDependency][]model.TVPair{
+				model.TaskUnitDependency{Name: model.AllDependencies, Variant: model.AllVariants}: []model.TVPair{
+					{TaskName: "setup", Variant: "rhel"},
+					{TaskName: "compile", Variant: "rhel"},
+					{TaskName: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			depsToTVs := dependenciesForTaskUnit(testCase.tv, testCase.taskUnit, testCase.allTVs)
+			assert.Len(t, depsToTVs, len(testCase.expectedDepsToTVs))
+			for expectedDep, expectedTVs := range testCase.expectedDepsToTVs {
+				assert.Contains(t, depsToTVs, expectedDep)
+				assert.Equal(t, expectedTVs, depsToTVs[expectedDep])
+			}
+		})
+	}
+}
+
+func TestDependencyMustRun(t *testing.T) {
+	falsePrimitive := false
+	falsePtr := &falsePrimitive
+	truePrimitive := true
+	truePtr := &truePrimitive
+	for testName, testCase := range map[string]struct {
+		source                model.TVPair
+		target                model.TVPair
+		depReqs               dependencyRequirements
+		tvToTaskUnit          map[model.TVPair]model.BuildVariantTaskUnit
+		expectDependencyFound bool
+	}{
+		"FindsDependency": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {},
+			},
+			expectDependencyFound: true,
+		},
+		"FindsDependencyWithoutExplicitBV": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {},
+			},
+			expectDependencyFound: true,
+		},
+		"FindsDependencyTransitively": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel"},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: true,
+		},
+		"FailsIfDependencySkipsPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+				},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfIntermediateDependencySkipsPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel"},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfDependencySkipsNonPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+				},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfIntermediateDependencySkipsNonPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel"},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfDependencyIsPatchOptional": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:          "B",
+							Variant:       "ubuntu",
+							PatchOptional: true,
+						},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfIntermediateDependencyIsPatchOptional": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel", PatchOptional: true},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"OnlyLastDependencyRequiresSuccessStatus": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Status: evergreen.TaskFailed},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel"},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: true,
+		},
+		"FailsIfDependencyDoesNotRequireSuccessStatus": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{
+							Name:    "B",
+							Variant: "ubuntu",
+							Status:  evergreen.TaskFailed,
+						},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"FailsIfLastDependencyDoesNotRequireSuccessStatus": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"DependencyCanSkipPatchesIfSourceSkipsPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+				},
+			},
+			expectDependencyFound: true,
+		},
+		"IntermediateDependencyCanSkipPatchesIfSourceSkipsPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: false,
+		},
+		"DependencyCanSkipNonPatchesIfSourceSkipsNonPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: false,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+				},
+			},
+			expectDependencyFound: true,
+		},
+		"IntermediateDependencyCanSkipNonPatchesIfSourceSkipsNonPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "C", Variant: "rhel"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: false,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "C", Variant: "rhel"},
+					},
+				},
+				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			visited := map[model.TVPair]bool{}
+			allNodes := []model.TVPair{}
+
+			for tv := range testCase.tvToTaskUnit {
+				visited[tv] = false
+				allNodes = append(allNodes, tv)
+			}
+
+			dependencyFound, err := dependencyMustRun(testCase.target, testCase.source, testCase.depReqs, allNodes, visited, testCase.tvToTaskUnit)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expectDependencyFound, dependencyFound)
+		})
+	}
+}
+
+func TestParseS3PullParameters(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		expectError bool
+		params      map[string]interface{}
+	}{
+		"PassesWithPopulatedParameters": {
+			expectError: false,
+			params: map[string]interface{}{
+				"task":               "t",
+				"from_build_variant": "bv",
+			},
+		},
+		"PassesWithPopulatedTaskOnly": {
+			expectError: false,
+			params: map[string]interface{}{
+				"task": "t",
+			},
+		},
+		"FailsForEmptyParameters": {
+			expectError: true,
+			params:      map[string]interface{}{},
+		},
+		"FailsForNilParameters": {
+			expectError: true,
+		},
+		"FailsForMissingTask": {
+			expectError: true,
+			params: map[string]interface{}{
+				"from_build_variant": "bv",
+			},
+		},
+		"FailsForNonStringTaskArgument": {
+			expectError: true,
+			params: map[string]interface{}{
+				"task":               0,
+				"from_build_variant": "bv",
+			},
+		},
+		"FailsForNonStringBuildVariantArgument": {
+			expectError: true,
+			params: map[string]interface{}{
+				"task":               "task",
+				"from_build_variant": 0,
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			cmd := model.PluginCommandConf{
+				Command: evergreen.S3PullCommandName,
+				Params:  testCase.params,
+			}
+			task, bv, err := parseS3PullParameters(cmd)
+			if testCase.expectError {
+				assert.Error(t, err)
+				assert.Empty(t, task)
+				assert.Empty(t, bv)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, testCase.params["task"], task)
+				if fromBV, ok := testCase.params["from_build_variant"]; ok {
+					assert.Equal(t, fromBV, bv)
+				} else {
+					assert.Empty(t, bv)
+				}
+			}
+		})
+	}
+}
+
+func TestBVsWithTasksThatCallCommand(t *testing.T) {
+	findCmdByDisplayName := func(cmds []model.PluginCommandConf, name string) *model.PluginCommandConf {
+		for _, cmd := range cmds {
+			if cmd.DisplayName == name {
+				return &cmd
+			}
+		}
+		return nil
+	}
+	cmd := evergreen.S3PullCommandName
+	t.Run("CommandsIn", func(t *testing.T) {
+		for testName, testCase := range map[string]struct {
+			project                    model.Project
+			expectedBVsToTasksWithCmds map[string]map[string][]model.PluginCommandConf
+		}{
+			"Task": {
+				project: model.Project{
+					Tasks: []model.ProjectTask{
+						{
+							Name: "setup",
+							Commands: []model.PluginCommandConf{
+								{
+									DisplayName: "push_dir",
+									Command:     evergreen.S3PushCommandName,
+								},
+							},
+						}, {
+							Name: "pull",
+							Commands: []model.PluginCommandConf{
+								{
+									DisplayName: "pull_dir",
+									Command:     evergreen.S3PullCommandName,
+								},
+							},
+						}, {
+							Name: "pull_twice",
+							Commands: []model.PluginCommandConf{
+								{
+									DisplayName: "pull_dir1",
+									Command:     evergreen.S3PullCommandName,
+								},
+								{
+									DisplayName: "pull_dir2",
+									Command:     evergreen.S3PullCommandName,
+								},
+							},
+						}, {
+							Name: "test",
+							Commands: []model.PluginCommandConf{
+								{
+									DisplayName: "pull_dir_for_test",
+									Command:     evergreen.S3PullCommandName,
+									Variants:    []string{"rhel", "debian"},
+								},
+								{
+									DisplayName: "generate_test",
+									Command:     evergreen.GenerateTasksCommandName,
+								},
+							},
+						}, {
+							Name: "lint",
+							Commands: []model.PluginCommandConf{
+								{
+									DisplayName: "generate_lint",
+									Command:     evergreen.GenerateTasksCommandName,
+								},
+							},
+						},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "pull"},
+							},
+						},
+						{
+							Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+								{Name: "pull_twice"},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "lint"},
+							},
+						}, {
+							Name: "debian",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "pull"},
+								{Name: "test"},
+								{Name: "lint"},
+							},
+						}, {
+							Name: "fedora",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "pull"},
+								{Name: "test"},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"pull": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir_for_test",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+						"pull_twice": {
+							{
+								DisplayName: "pull_dir1",
+								Command:     evergreen.S3PullCommandName,
+							},
+							{
+								DisplayName: "pull_dir2",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"debian": {
+						"pull": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+						"test": {
+							{
+								DisplayName: "pull_dir_for_test",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"fedora": {
+						"pull": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"TaskFunctionExpandsCommands": {
+				project: model.Project{
+					Functions: map[string]*model.YAMLCommandSet{
+						"pull_func": &model.YAMLCommandSet{
+							SingleCommand: &model.PluginCommandConf{
+								Command:     evergreen.S3PullCommandName,
+								DisplayName: "pull_dir",
+							},
+						},
+						"test_func": &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Command:     evergreen.S3PullCommandName,
+									DisplayName: "pull_dir_for_test",
+								}, {
+									Command:     evergreen.GenerateTasksCommandName,
+									DisplayName: "generate_test",
+								},
+							},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{
+							Name: "setup",
+							Commands: []model.PluginCommandConf{
+								{
+									Function: "pull_func",
+								},
+							},
+						}, {
+							Name: "test",
+							Commands: []model.PluginCommandConf{
+								{
+									Function: "test_func",
+								},
+							},
+						},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "setup"},
+							},
+						},
+						{
+							Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"setup": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir_for_test",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"Pre": {
+				project: model.Project{
+					Pre: &model.YAMLCommandSet{
+						MultiCommand: []model.PluginCommandConf{
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+								Variants:    []string{"ubuntu", "rhel"},
+							},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"Post": {
+				project: model.Project{
+					Post: &model.YAMLCommandSet{
+						MultiCommand: []model.PluginCommandConf{
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+								Variants:    []string{"ubuntu", "rhel"},
+							},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{Name: "test"},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"SetupGroupInTaskGroup": {
+				project: model.Project{
+					TaskGroups: []model.TaskGroup{
+						{
+							Name: "test_group",
+							SetupGroup: &model.YAMLCommandSet{
+								MultiCommand: []model.PluginCommandConf{
+									{
+										DisplayName: "pull_dir",
+										Command:     evergreen.S3PullCommandName,
+										Variants:    []string{"ubuntu", "rhel"},
+									},
+								},
+							},
+							Tasks: []string{"test"},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"SetupTaskInTaskGroup": {
+				project: model.Project{
+					TaskGroups: []model.TaskGroup{
+						{
+							Name: "test_group",
+							SetupTask: &model.YAMLCommandSet{
+								MultiCommand: []model.PluginCommandConf{
+									{
+										DisplayName: "pull_dir",
+										Command:     evergreen.S3PullCommandName,
+										Variants:    []string{"ubuntu", "rhel"},
+									},
+								},
+							},
+							Tasks: []string{"test"},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"TasksInTaskGroup": {
+				project: model.Project{
+					TaskGroups: []model.TaskGroup{
+						{
+							Name:  "test_group",
+							Tasks: []string{"test"},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{
+							Name: "test",
+							Commands: []model.PluginCommandConf{
+								{
+									Command:     evergreen.S3PullCommandName,
+									DisplayName: "pull_dir",
+									Variants:    []string{"ubuntu", "rhel"},
+								},
+							},
+						},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"TeardownGroupInTaskGroup": {
+				project: model.Project{
+					TaskGroups: []model.TaskGroup{
+						{
+							Name: "test_group",
+							TeardownGroup: &model.YAMLCommandSet{
+								MultiCommand: []model.PluginCommandConf{
+									{
+										DisplayName: "pull_dir",
+										Command:     evergreen.S3PullCommandName,
+										Variants:    []string{"ubuntu", "rhel"},
+									},
+								},
+							},
+							Tasks: []string{"test"},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+						{Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+			"TeardownTaskInTaskGroup": {
+				project: model.Project{
+					TaskGroups: []model.TaskGroup{
+						{
+							Name: "test_group",
+							TeardownTask: &model.YAMLCommandSet{
+								MultiCommand: []model.PluginCommandConf{
+									{
+										DisplayName: "pull_dir",
+										Command:     evergreen.S3PullCommandName,
+										Variants:    []string{"ubuntu", "rhel"},
+									},
+								},
+							},
+							Tasks: []string{"test"},
+						},
+					},
+					Tasks: []model.ProjectTask{
+						{Name: "test"},
+					},
+					BuildVariants: []model.BuildVariant{
+						{
+							Name: "ubuntu",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "rhel",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						}, {
+							Name: "archlinux",
+							Tasks: []model.BuildVariantTaskUnit{
+								{
+									Name:    "test_group",
+									IsGroup: true,
+								},
+							},
+						},
+					},
+				},
+				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
+					"ubuntu": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+					"rhel": {
+						"test": {
+							{
+								DisplayName: "pull_dir",
+								Command:     evergreen.S3PullCommandName,
+							},
+						},
+					},
+				},
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				bvsToTasksWithCmds, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
+				require.NoError(t, err)
+				assert.Len(t, bvsToTasksWithCmds, len(testCase.expectedBVsToTasksWithCmds))
+				for bv, expectedTasks := range testCase.expectedBVsToTasksWithCmds {
+					assert.Contains(t, bvsToTasksWithCmds, bv)
+					tasks := bvsToTasksWithCmds[bv]
+					assert.Len(t, tasks, len(expectedTasks))
+					for taskName, expectedCmds := range expectedTasks {
+						assert.Contains(t, tasks, taskName)
+						cmds := tasks[taskName]
+						assert.Len(t, cmds, len(expectedCmds))
+						for _, expectedCmd := range expectedCmds {
+							cmd := findCmdByDisplayName(cmds, expectedCmd.DisplayName)
+							require.NotNil(t, cmd)
+							assert.Equal(t, expectedCmd.Command, cmd.Command)
+						}
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("MissingDefintiion", func(t *testing.T) {
+		for testName, project := range map[string]model.Project{
+			"ForTaskReferencedInBV": model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "test",
+								IsGroup: true,
+							},
+						},
+					},
+				},
+			},
+			"ForTaskGroupReferencedInBV": model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "test_group",
+								IsGroup: true,
+							},
+						},
+					},
+				},
+			},
+			"ForTaskReferencedInTaskGroupInBV": model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:  "test_group",
+						Tasks: []string{"test"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "test_group",
+								IsGroup: true,
+							},
+						},
+					},
+				},
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				_, err := bvsWithTasksThatCallCommand(&project, cmd)
+				assert.Error(t, err)
+			})
+		}
+	})
+}
+
+func TestCommandsRunOnBV(t *testing.T) {
+	cmd := evergreen.S3PullCommandName
+	variant := "variant"
+	for testName, testCase := range map[string]struct {
+		expectedCmdNames []string
+		cmds             []model.PluginCommandConf
+		variant          string
+		funcs            map[string]*model.YAMLCommandSet
+	}{
+		"FindsMatchingCommands": {
+			cmds: []model.PluginCommandConf{
+				{
+					Command:     cmd,
+					DisplayName: "display",
+				}, {
+					Command: "foo",
+				},
+			},
+			variant:          variant,
+			expectedCmdNames: []string{"display"},
+		},
+		"FindsMatchingCommandsInFunction": {
+			cmds: []model.PluginCommandConf{
+				{
+					Function: "function",
+				},
+			},
+			funcs: map[string]*model.YAMLCommandSet{
+				"function": &model.YAMLCommandSet{
+					SingleCommand: &model.PluginCommandConf{
+						Command:     cmd,
+						DisplayName: "display",
+					},
+				},
+			},
+			expectedCmdNames: []string{"display"},
+			variant:          variant,
+		},
+		"FindsMatchingCommandsFilteredByVariant": {
+			cmds: []model.PluginCommandConf{
+				{
+					Command:     cmd,
+					DisplayName: "display1",
+				}, {
+					Command:  cmd,
+					Variants: []string{"other_variant"},
+				}, {
+					Command:     cmd,
+					DisplayName: "display2",
+					Variants:    []string{variant},
+				}, {
+					Command:     cmd,
+					DisplayName: "display3",
+					Variants:    []string{"other_variant", variant},
+				},
+			},
+			expectedCmdNames: []string{"display1", "display2", "display3"},
+			variant:          variant,
+		},
+		"FindsMatchingCommandsInFunctionFilteredByVariant": {},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			cmds := commandsRunOnBV(testCase.cmds, cmd, variant, testCase.funcs)
+			assert.Len(t, cmds, len(testCase.expectedCmdNames))
+			for _, cmd := range cmds {
+				assert.True(t, utility.StringSliceContains(testCase.expectedCmdNames, cmd.DisplayName))
+			}
+		})
+	}
+}
+
+func TestValidateTVRunsCommand(t *testing.T) {
+	cmd := evergreen.S3PushCommandName
+	for testName, testCase := range map[string]struct {
+		project     model.Project
+		tv          model.TVPair
+		expectError bool
+	}{
+		"FindsTaskWithCommand": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: cmd,
+							},
+						},
+					},
+				},
+			},
+			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
+			expectError: false,
+		},
+		"FailsForCommandsInTaskButFiltered": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task",
+						Commands: []model.PluginCommandConf{
+							{
+								Command:  cmd,
+								Variants: []string{"other_variant"},
+							},
+						},
+					},
+				},
+			},
+			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
+			expectError: true,
+		},
+		"FailsForNonexistentTaskDefinition": {
+			project:     model.Project{},
+			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
+			expectError: true,
+		},
+		"FailsForCommandNotInTask": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "task"},
+				},
+			},
+			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			err := validateTVRunsCommand(testCase.tv, cmd, &testCase.project)
+			if testCase.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateTVDependsOnTV(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		source       model.TVPair
+		target       model.TVPair
+		tvToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit
+		expectError  bool
+	}{
+		"PassesForValidDependency": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "rhel"},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "rhel"},
+					},
+				},
+				{TaskName: "B", Variant: "rhel"}: {},
+			},
+			expectError: false,
+		},
+		"PassesForValidDependencyImplicitlyInSameBuildVariant": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {},
+			},
+			expectError: false,
+		},
+		"FailsForDependencyOnSelf": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {},
+			},
+			expectError: true,
+		},
+		"FailsForNoDependency": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {},
+			},
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			err := validateTVDependsOnTV(testCase.source, testCase.target, testCase.tvToTaskUnit)
+			if testCase.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
