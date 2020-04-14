@@ -235,6 +235,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
+		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
@@ -459,6 +460,15 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}
+
+	i, err = responseRef.WorkstationConfig.ToService()
+	catcher.Add(err)
+	config, ok := i.(model.WorkstationConfig)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected workstation config but was actually '%T'", i))
+		return
+	}
+	projectRef.WorkstationConfig = config
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
