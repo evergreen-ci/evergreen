@@ -33,11 +33,6 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
 
-	if !c.shouldRunOnBuildVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping s3.push for build variant '%s'", conf.BuildVariant.Name)
-		return nil
-	}
-
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
 
@@ -53,7 +48,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 
 	wd, err := conf.GetWorkingDirectory("")
 	if err != nil {
-		return errors.Wrap(err, "could not get task working directory")
+		return errors.Wrap(err, "could not get working directory")
 	}
 	pushMsg := "Pushing task directory files into S3"
 	if c.ExcludeFilter != "" {
