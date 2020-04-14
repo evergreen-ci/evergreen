@@ -376,14 +376,6 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		}
 
 		if unit.runningHosts < unit.maxHosts {
-			// TODO: For a multi-host task group, it's not possible to correctly
-			// dispatch tasks based on number of hosts running tasks in the task group
-			// without a transaction. When we use a driver that supports transactions,
-			// we likely want to rewrite this code to use transactions. Currently it's
-			// possible to dispatch a multi-host task group to more hosts than max
-			// hosts. Before transactions are available, it might be possible to do this
-			// better by performing this query again, just before returning from this
-			// function.
 			numHosts, err = host.NumHostsByTaskSpec(unit.group, unit.variant, unit.project, unit.version)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{

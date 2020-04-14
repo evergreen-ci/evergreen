@@ -109,6 +109,12 @@
               </a>
             </li>
           </ul>
+          <div>
+            <input type="checkbox" style="padding-left:15px;" ng-disabled="availableUnexpirableHosts() <= 0" ng-model="$parent.noExpiration"> Set Never Expire </input>
+            <span class="warning-text" ng-show="availableUnexpirableHosts() <= 0"><i class="fa fa-warning"></i>
+          Can have at most [[ maxUnexpirableHostsPerUser ]] unexpirable hosts
+            </span>
+          </div>
         </div>
         <div ng-show="!$parent.homeVolumeID">
           <label> Volume size (GB) </label>

@@ -281,6 +281,7 @@ var (
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
 		ProviderNameMock,
+		ProviderNameDocker,
 	}
 
 	ProviderContainer = []string{

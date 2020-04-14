@@ -47,7 +47,6 @@ func newSimpleRemoteOrdered(size int) remoteQueue {
 // ready. if there is only one Edge reported, blocked will attempt to
 // dispatch the dependent job.
 func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
-	var err error
 	start := time.Now()
 	for {
 		select {
@@ -58,19 +57,6 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				Start: time.Now(),
 			}
 			job.UpdateTimeInfo(ti)
-			job, err = q.driver.Get(ctx, job.ID())
-			if job == nil {
-				continue
-
-			}
-			if err != nil {
-				grip.Warning(err)
-				continue
-			}
-
-			if job.Status().Completed {
-				continue
-			}
 
 			dep := job.Dependency()
 
@@ -87,6 +73,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 					id, time.Since(start))
 				return job
 			case dependency.Passed:
+				q.dispatcher.Release(ctx, job)
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Unresolved:
@@ -96,33 +83,40 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 						"edges": dep.Edges(),
 						"dep":   dep.Type(),
 					}))
+				q.dispatcher.Release(ctx, job)
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Blocked:
-				// this is just an optimization; if there's one dependency its easy
-				// to move that job *up* in the queue by submitting it here. there's a
-				// chance, however, that it's already in progress and we'll end up
-				// running it twice.
 				edges := dep.Edges()
-				grip.Debugf("job %s is blocked. eep! [%v]", id, edges)
+				grip.Debug(message.Fields{
+					"job":       id,
+					"edges":     edges,
+					"dep":       dep.Type(),
+					"job_type":  job.Type().Name,
+					"num_edges": len(edges),
+					"message":   "job is blocked",
+				})
+
 				if len(edges) == 1 {
+					// this is just an optimization; if there's one dependency its easy
+					// to move that job up in the queue by submitting it here.
 					dj, ok := q.Get(ctx, edges[0])
-					if ok {
+					if ok && isDispatchable(dj.Status()) {
 						// might need to make this non-blocking.
-						q.channel <- dj
+						q.dispatcher.Release(ctx, job)
+						if q.dispatcher.Dispatch(ctx, dj) == nil {
+							q.channel <- dj
+						}
 						continue
 					}
-				} else if len(edges) == 0 {
-					grip.Debugf("blocked task %s has no edges", id)
-				} else {
-					grip.Debugf("job '%s' has %d dependencies, passing for now",
-						id, len(edges))
 				}
 
+				q.dispatcher.Release(ctx, job)
 				q.addBlocked(id)
 
 				continue
 			default:
+				q.dispatcher.Release(ctx, job)
 				grip.Warning(message.MakeFieldsMessage("detected invalid dependency",
 					message.Fields{
 						"job":   id,

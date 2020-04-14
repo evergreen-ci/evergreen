@@ -155,6 +155,47 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIWorkstationConfig struct {
+	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	GitClone      bool                         `bson:"git_clone" json:"git_clone"`
+}
+
+type APIWorkstationSetupCommand struct {
+	Command   *string `bson:"command" json:"command"`
+	Directory *string `bson:"directory" json:"directory"`
+}
+
+func (c *APIWorkstationConfig) ToService() (interface{}, error) {
+	res := model.WorkstationConfig{}
+	res.GitClone = c.GitClone
+	for _, apiCmd := range c.SetupCommands {
+		cmd := model.WorkstationSetupCommand{}
+		cmd.Command = FromStringPtr(apiCmd.Command)
+		cmd.Directory = FromStringPtr(apiCmd.Directory)
+		res.SetupCommands = append(res.SetupCommands, cmd)
+	}
+	return res, nil
+}
+
+func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
+	var config model.WorkstationConfig
+	switch h.(type) {
+	case model.WorkstationConfig:
+		config = h.(model.WorkstationConfig)
+	case *model.WorkstationConfig:
+		config = *h.(*model.WorkstationConfig)
+	}
+
+	c.GitClone = config.GitClone
+	for _, cmd := range config.SetupCommands {
+		apiCmd := APIWorkstationSetupCommand{}
+		apiCmd.Command = ToStringPtr(cmd.Command)
+		apiCmd.Directory = ToStringPtr(cmd.Directory)
+		c.SetupCommands = append(c.SetupCommands, apiCmd)
+	}
+	return nil
+}
+
 type APIProjectRef struct {
 	Owner                *string              `json:"owner_name"`
 	Repo                 *string              `json:"repo_name"`
@@ -184,6 +225,7 @@ type APIProjectRef struct {
 	Triggers            []APITriggerDefinition `json:"triggers"`
 	Aliases             []APIProjectAlias      `json:"aliases"`
 	Variables           APIProjectVars         `json:"variables"`
+	WorkstationConfig   APIWorkstationConfig   `json:"workstation_config"`
 	Subscriptions       []APISubscription      `json:"subscriptions"`
 	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
 }
