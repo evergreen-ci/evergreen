@@ -712,35 +712,14 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	return result, nil
 }
 
-func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*APICommitQueue, error) {
+func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
 	commitQueue, err := r.sc.FindCommitQueueByID(id)
 	if err != nil || commitQueue == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding commit Queue for `%s`: %s", id, err))
 	}
-	apiCommitQueueItems := []*APICommitQueueItem{}
-	for _, apiQueueItem := range commitQueue.Queue {
-		apiModules := []*APIModule{}
-		for _, apiModule := range apiQueueItem.Modules {
-			module := APIModule{
-				Module: apiModule.Module,
-				Issue:  apiModule.Issue,
-			}
-			apiModules = append(apiModules, &module)
-		}
-
-		item := APICommitQueueItem{
-			Issue:   apiQueueItem.Issue,
-			Version: apiQueueItem.Version,
-			Modules: apiModules,
-		}
-		apiCommitQueueItems = append(apiCommitQueueItems, &item)
-	}
-	return &APICommitQueue{
-		ProjectID: commitQueue.ProjectID,
-		Queue:     apiCommitQueueItems,
-	}, nil
-
+	return commitQueue, nil
 }
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {

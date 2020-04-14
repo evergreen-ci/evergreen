@@ -34,7 +34,7 @@ type Query {
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
-  commitQueue(id: String!): APICommitQueue!
+  commitQueue(id: String!): CommitQueue!
 }
 
 type Mutation {
@@ -322,18 +322,18 @@ type LogMessage {
   version: Int
 }
 
-type APICommitQueue {
+type CommitQueue {
   ProjectID: String
-  Queue: [APICommitQueueItem]
+  Queue: [CommitQueueItem]
 }
 
-type APICommitQueueItem {
+type CommitQueueItem {
   Issue: String
   Version: String
-  Modules: [APIModule]
+  Modules: [Module]
 }
 
-type APIModule {
+type Module {
   Module: String
   Issue: String
 }

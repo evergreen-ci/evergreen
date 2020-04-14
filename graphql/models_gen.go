@@ -11,22 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
-type APICommitQueue struct {
-	ProjectID *string               `json:"ProjectID"`
-	Queue     []*APICommitQueueItem `json:"Queue"`
-}
-
-type APICommitQueueItem struct {
-	Issue   *string      `json:"Issue"`
-	Version *string      `json:"Version"`
-	Modules []*APIModule `json:"Modules"`
-}
-
-type APIModule struct {
-	Module *string `json:"Module"`
-	Issue  *string `json:"Issue"`
-}
-
 type BaseTaskMetadata struct {
 	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
 	BaseTaskLink     string             `json:"baseTaskLink"`
