@@ -423,8 +423,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return taskResults, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*restModel.APITest, error) {
-
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -473,13 +472,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	testPointers := []*restModel.APITest{}
-	for _, t := range tests {
+	for _, t := range paginatedFilteredTests {
 		apiTest := restModel.APITest{}
 		err := apiTest.BuildFromService(&t)
 		if err != nil {
@@ -495,7 +494,22 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
-	return testPointers, nil
+	allTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, "", []string{}, "", 1, 0, 0, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all tests: %s", err.Error()))
+	}
+	allFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, "", 1, 0, 0, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all filtered tests: %s", err.Error()))
+	}
+
+	taskTestResult := TaskTestResult{
+		TestResults:       testPointers,
+		TotalTestCount:    len(allTests),
+		FilteredTestCount: len(allFilteredTests),
+	}
+
+	return &taskTestResult, nil
 }
 
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error) {
