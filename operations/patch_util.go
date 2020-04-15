@@ -85,7 +85,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		return nil, err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
 			return nil, errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
