@@ -352,6 +352,7 @@ type CommitQueue {
 type CommitQueueItem {
   Issue: String
   Version: String
+  EnqueueTime: Time
   Modules: [Module!]
 }
 

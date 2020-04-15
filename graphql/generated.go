@@ -58,9 +58,10 @@ type ComplexityRoot struct {
 	}
 
 	CommitQueueItem struct {
-		Issue   func(childComplexity int) int
-		Modules func(childComplexity int) int
-		Version func(childComplexity int) int
+		EnqueueTime func(childComplexity int) int
+		Issue       func(childComplexity int) int
+		Modules     func(childComplexity int) int
+		Version     func(childComplexity int) int
 	}
 
 	Dependency struct {
@@ -403,6 +404,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueue.Queue(childComplexity), true
+
+	case "CommitQueueItem.EnqueueTime":
+		if e.complexity.CommitQueueItem.EnqueueTime == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueItem.EnqueueTime(childComplexity), true
 
 	case "CommitQueueItem.Issue":
 		if e.complexity.CommitQueueItem.Issue == nil {
@@ -2102,6 +2110,7 @@ type CommitQueue {
 type CommitQueueItem {
   Issue: String
   Version: String
+  EnqueueTime: Time
   Modules: [Module!]
 }
 
@@ -2777,6 +2786,37 @@ func (ec *executionContext) _CommitQueueItem_Version(ctx context.Context, field 
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueueItem_EnqueueTime(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueItem) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueueItem",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EnqueueTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueueItem_Modules(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueItem) (ret graphql.Marshaler) {
@@ -9792,6 +9832,8 @@ func (ec *executionContext) _CommitQueueItem(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._CommitQueueItem_Issue(ctx, field, obj)
 		case "Version":
 			out.Values[i] = ec._CommitQueueItem_Version(ctx, field, obj)
+		case "EnqueueTime":
+			out.Values[i] = ec._CommitQueueItem_EnqueueTime(ctx, field, obj)
 		case "Modules":
 			out.Values[i] = ec._CommitQueueItem_Modules(ctx, field, obj)
 		default:

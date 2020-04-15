@@ -2,6 +2,7 @@ package model
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/pkg/errors"
@@ -13,9 +14,10 @@ type APICommitQueue struct {
 }
 
 type APICommitQueueItem struct {
-	Issue   *string     `json:"issue"`
-	Version *string     `json:"version"`
-	Modules []APIModule `json:"modules"`
+	Issue       *string     `json:"issue"`
+	Version     *string     `json:"version"`
+	EnqueueTime *time.Time  `json:"enqueueTime"`
+	Modules     []APIModule `json:"modules"`
 }
 
 type APIModule struct {
@@ -60,6 +62,8 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	}
 	item.Issue = ToStringPtr(cqItemService.Issue)
 	item.Version = ToStringPtr(cqItemService.Version)
+	item.EnqueueTime = ToTimePtr(cqItemService.EnqueueTime)
+
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
 			Module: ToStringPtr(module.Module),
