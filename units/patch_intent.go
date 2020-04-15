@@ -271,7 +271,21 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0
+
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+
+	// If the user requested task sync in their patch, it should resolve into
+	// task sync running on at least one task in a build variant.
+	if shouldTaskSync && (len(patchDoc.SyncBuildVariants) == 0 || len(patchDoc.SyncTasks) == 0) {
+		j.gitHubError = NoSyncTasksOrVariants
+		if len(patchDoc.SyncBuildVariants) == 0 && len(patchDoc.SyncTasks) == 0 {
+			return errors.New("patch requests task sync but tasks and build variants specified did not resolve into any valid tasks or build variants")
+		} else if len(patchDoc.SyncBuildVariants) == 0 {
+			return errors.New("patch requests task sync but build variants could not be resolved to actual build variants")
+		}
+		return errors.New("patch requests task sync but task names could not be resolved to tasks within any of the specified build variants")
+	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {

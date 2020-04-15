@@ -534,6 +534,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
+// getTaskEndSyncCommands returns the commands to sync the task to S3 if it was
+// requested for this task.
 func getTaskEndSyncCommands(tc *taskContext) *model.YAMLCommandSet {
 	if !tc.taskModel.ShouldSync {
 		return nil

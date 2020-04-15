@@ -1293,6 +1293,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	// patchDoc.UpdateVariantsTasks(tvs.TVPairsToVariantTasks())
 
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
+	// kim: TODO: test proper resolution of these fields
 	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
 }
 

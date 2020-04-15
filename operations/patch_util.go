@@ -220,9 +220,9 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
-		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
-	}
+	// if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
+	//     return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
+	// }
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")

@@ -167,7 +167,8 @@ type Task struct {
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
-	// ShouldSync indicates whether the task should sync its task directory with
+
+	// ShouldSync indicates whether the task should sync its task directory to
 	// S3 when it is complete.
 	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
 }

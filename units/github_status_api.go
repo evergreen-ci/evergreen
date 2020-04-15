@@ -39,6 +39,7 @@ const (
 	PatchingDisabled      = "patching was disabled"
 	PatchTaskSyncDisabled = "task sync was disabled for patches"
 	NoTasksOrVariants     = "no tasks/variants were configured"
+	NoSyncTasksOrVariants = "no tasks/variants were configured for sync"
 	GitHubInternalError   = "GitHub returned an error"
 	InvalidConfig         = "config file was invalid"
 	OtherErrors           = "Evergreen error"
