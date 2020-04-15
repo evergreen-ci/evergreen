@@ -688,7 +688,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &tasks)
 	s.NoError(err)
-	s.Len(tasks[0].DependsOn, 3)
+	s.Require().Len(tasks, 1)
+	s.Require().Len(tasks[0].DependsOn, 3)
 	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
 	for _, dependency := range tasks[0].DependsOn {
 		expected[dependency.TaskId] = true
@@ -770,7 +771,7 @@ buildvariants:
 	taskWithDeps := task.Task{}
 	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &taskWithDeps)
 	s.NoError(err)
-	s.Len(taskWithDeps.DependsOn, 1)
+	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
 }
 
