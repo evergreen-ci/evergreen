@@ -303,6 +303,9 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 		projBuildVariant.Tasks = projTasks
 		variants = append(variants, &projBuildVariant)
 	}
+	sort.SliceStable(variants, func(i, j int) bool {
+		return variants[i].DisplayName < variants[j].DisplayName
+	})
 	// convert tasks to UI data structure
 	tasks := []string{}
 	for _, task := range patchProjectVariantsAndTasks.Tasks {
