@@ -23,7 +23,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Error finding commit Queue for `invalid_id`: no commit queue found for 'invalid_id'",
+            "message": "error finding commit queue for invalid_id: no commit queue found for 'invalid_id'",
             "path": ["commitQueue"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
