@@ -236,57 +236,47 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 }
 
-type PatchProjectVariantsAndTasks struct {
-	Variants []BuildVariantUI
-	Tasks    []string
+type VariantsAndTasksFromProject struct {
+	Variants map[string]model.BuildVariant
+	Tasks    []struct{ Name string }
+	Project  model.Project
 }
 
-type BuildVariantUI struct {
-	Name        string
-	DisplayName string
-	Tasks       []string
-}
-
-func getPatchProjectVariantsAndTasks(patchedConfig string, patchProject string) (*PatchProjectVariantsAndTasks, error) {
+func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 
 	// retrieve tasks and variant mappings' names
-	variantMappings := []BuildVariantUI{}
+	variantMappings := make(map[string]model.BuildVariant)
 	for _, variant := range project.BuildVariants {
-		variantUI := BuildVariantUI{}
-		variantUI.Name = variant.Name
-		variantUI.DisplayName = variant.DisplayName
-
-		tasksForVariant := []string{}
+		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, TaskFromVariant := range variant.Tasks {
 			if TaskFromVariant.IsGroup {
-				groupTasks := model.CreateTasksFromGroup(TaskFromVariant, project)
-				for _, t := range groupTasks {
-					tasksForVariant = append(tasksForVariant, t.Name)
-				}
+				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
 			} else {
-				tasksForVariant = append(tasksForVariant, TaskFromVariant.Name)
+				tasksForVariant = append(tasksForVariant, TaskFromVariant)
 			}
 		}
-		variantUI.Tasks = tasksForVariant
-		variantMappings = append(variantMappings, variantUI)
+		variant.Tasks = tasksForVariant
+		variantMappings[variant.Name] = variant
 	}
 
-	tasksList := []string{}
+	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
 		// add a task name to the list if it's patchable
 		if !(task.Patchable != nil && !*task.Patchable) {
-			tasksList = append(tasksList, task.Name)
+			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
-	p := PatchProjectVariantsAndTasks{
+
+	variantsAndTasksFromProject := VariantsAndTasksFromProject{
 		Variants: variantMappings,
 		Tasks:    tasksList,
+		Project:  *project,
 	}
-	return &p, nil
+	return &variantsAndTasksFromProject, nil
 }
 
 // GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
@@ -295,25 +285,37 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, patchId string) (
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch %s", patchId))
 	}
-	patchProjectVariantsAndTasks, err := getPatchProjectVariantsAndTasks(patch.PatchedConfig, patch.Project)
+	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(patch.PatchedConfig, patch.Project)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", patchId, err.Error()))
 	}
+
+	// convert variants to UI data structure
 	variants := []*ProjectBuildVariant{}
-	for _, v := range patchProjectVariantsAndTasks.Variants {
-		sort.SliceStable(v.Tasks, func(i, j int) bool {
-			return v.Tasks[i] < v.Tasks[j]
-		})
-		variant := ProjectBuildVariant{
-			Name:        v.Name,
-			DisplayName: v.DisplayName,
-			Tasks:       v.Tasks,
+	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		projBuildVariant := ProjectBuildVariant{
+			Name:        buildVariant.Name,
+			DisplayName: buildVariant.DisplayName,
 		}
-		variants = append(variants, &variant)
+		projTasks := []string{}
+		for _, taskUnit := range buildVariant.Tasks {
+			projTasks = append(projTasks, taskUnit.Name)
+		}
+		sort.SliceStable(projTasks, func(i, j int) bool {
+			return projTasks[i] < projTasks[j]
+		})
+		projBuildVariant.Tasks = projTasks
+		variants = append(variants, &projBuildVariant)
 	}
+	// convert tasks to UI data structure
+	tasks := []string{}
+	for _, task := range patchProjectVariantsAndTasks.Tasks {
+		tasks = append(tasks, task.Name)
+	}
+
 	patchProject := PatchProject{
 		Variants: variants,
-		Tasks:    patchProjectVariantsAndTasks.Tasks,
+		Tasks:    tasks,
 	}
 	return &patchProject, nil
 }
