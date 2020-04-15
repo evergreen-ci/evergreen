@@ -86,7 +86,6 @@
       "result": {
         "data": {
           "patch": {
-            "tasks": ["test-graphql"],
             "project": {
               "variants": [
                 {
