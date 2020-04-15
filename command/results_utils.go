@@ -59,19 +59,3 @@ func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 
 	return nil
 }
-
-// sendJSONLogs is responsible for sending the specified logs
-// to the API Server. If successful, it returns a log ID that can be used
-// to refer to the log object in test results.
-func sendJSONLogs(ctx context.Context, logger client.LoggerProducer,
-	comm client.Communicator, td client.TaskData, logs *model.TestLog) (string, error) {
-
-	logger.Execution().Infof("Attaching test logs for %s", logs.Name)
-	logID, err := comm.SendTestLog(ctx, td, logs)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	logger.Task().Info("Attach test logs succeeded")
-	return logID, nil
-}

@@ -45,6 +45,7 @@ type Mutation {
   abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -89,6 +90,27 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+input SubscriptionInput {
+  resource_type: String
+  trigger: String
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String
+  owner: String
+  trigger_data: StringMap!
+}
+
+input SelectorInput {
+  type: String!
+  data: String!
+}
+
+input SubscriberInput {
+  type: String!
+  target: String!
 }
 
 type PatchBuildVariant {
@@ -334,3 +356,4 @@ type LogMessage {
 
 scalar Time
 scalar Duration
+scalar StringMap

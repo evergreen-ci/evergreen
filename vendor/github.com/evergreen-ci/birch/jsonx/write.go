@@ -2,7 +2,9 @@ package jsonx
 
 // code in this file from: https://github.com/json-iterator/go/blob/master/stream_str.go
 
-import "unicode/utf8"
+import (
+	"unicode/utf8"
+)
 
 var safeSet = [utf8.RuneSelf]bool{
 	' ':      true,
@@ -163,9 +165,7 @@ func writeJSONString(s []byte) []byte {
 		i++
 		continue
 	}
-	if start < len(s) {
-		out = append(out, []byte(s[start:])...)
-	}
+
 	out = append(out, []byte(s[start:])...)
 	return append(out, '"')
 }

@@ -185,19 +185,23 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
+	succeeded := 0
 	for i, log := range logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
 
-		logID, err := sendJSONLogs(ctx, logger, comm, td, log)
+		logID, err := comm.SendTestLog(ctx, td, log)
 		if err != nil {
 			logger.Task().Warningf("problem uploading logs for %s", log.Name)
 			continue
+		} else {
+			succeeded++
 		}
 		tests[logIdxToTestIdx[i]].LogId = logID
 		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
+	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(logs))
 
 	return sendJSONResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
 }

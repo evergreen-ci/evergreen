@@ -341,6 +341,9 @@ func isDispatchable(stat amboy.JobStatusInfo) bool {
 		return false
 	}
 	if stat.InProgress {
+		if time.Since(stat.ModificationTime) > amboy.LockTimeout {
+			return true
+		}
 		return false
 	}
 

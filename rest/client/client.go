@@ -108,9 +108,7 @@ func (c *communicatorImpl) resetClient() {
 		utility.PutHTTPClient(c.httpClient)
 	}
 
-	conf := utility.NewDefaultHTTPRetryConf()
-	conf.Statuses = append(conf.Statuses, http.StatusBadRequest)
-	c.httpClient = utility.GetHTTPRetryableClient(conf)
+	c.httpClient = utility.GetDefaultHTTPRetryableClient()
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
@@ -312,7 +310,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				FlushInterval: opt.BufferDuration,
 				ClientConn:    c.cedarGRPCClient,
 			}
-			sender, err = timber.NewLogger(opt.BuilderID, levelInfo, timberOpts)
+			sender, err = timber.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating buildlogger logger")
 			}

@@ -125,13 +125,6 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ensure docker password wasn't auto-filled from form
-	if newDistro.Provider != evergreen.ProviderNameDocker && newDistro.Provider != evergreen.ProviderNameDockerMock {
-		for i := range newDistro.ProviderSettingsList {
-			newDistro.ProviderSettingsList[i].Delete("docker_registry_pw")
-		}
-	}
-
 	if newDistro.PlannerSettings.Version == "" {
 		newDistro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	}

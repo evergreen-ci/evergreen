@@ -630,7 +630,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
 
   $scope.isDefaultRegion = function() {
     // default region cannot be empty
-    if ($scope.activeDistro === undefined || $scope.activeDistro.settings === undefined || $scope.activeDistro.settings.region === "us-east-1") {
+    if (!$scope.activeDistro || !$scope.activeDistro.settings || $scope.activeDistro.settings.region === "us-east-1") {
       return true;
     }
     return false;
