@@ -152,12 +152,12 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return custom, errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
+		return "", errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
 	bootstrap, err := h.BootstrapScript(settings, creds)
 	if err != nil {
-		return custom, errors.Wrap(err, "could not generate user data for provisioning host")
+		return "", errors.Wrap(err, "could not generate user data for provisioning host")
 	}
 
 	if mergeParts {
@@ -169,7 +169,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		"custom.txt":    custom,
 	})
 	if err != nil {
-		return custom, errors.Wrap(err, "error creating user data with multiple parts")
+		return "", errors.Wrap(err, "error creating user data with multiple parts")
 	}
 
 	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
