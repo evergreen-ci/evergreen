@@ -45,6 +45,7 @@ type Mutation {
   abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -77,6 +78,25 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+enum SubscriptionResourceType {
+  VERSION
+  BUILD
+  TASK
+}
+
+enum SelectorType {
+  object
+  id
+  project
+}
+
+enum SubscriberType {
+  email
+  slack
+  jira-comment
+  jira-issue
+  evergreen-webhook
+}
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -89,6 +109,27 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+input SubscriptionInput {
+  resource_type: SubscriptionResourceType
+  trigger: String
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String
+  owner: String
+  trigger_data: StringMap!
+}
+
+input SelectorInput {
+  type: SelectorType!
+  data: String!
+}
+
+input SubscriberInput {
+  type: SubscriberType!
+  target: String!
 }
 
 type PatchBuildVariant {
@@ -323,3 +364,4 @@ type LogMessage {
 
 scalar Time
 scalar Duration
+scalar StringMap

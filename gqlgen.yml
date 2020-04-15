@@ -13,6 +13,14 @@ resolver:
   filename: graphql/resolvers.go
   type: Resolver
 models:
+  SubscriptionInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  SelectorInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SubscriberInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+  StringMap:
+    model: github.com/evergreen-ci/evergreen/graphql.StringMap
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
   File:
