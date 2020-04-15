@@ -242,12 +242,12 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 	return &baseVersion.Id, nil
 }
 
-func (r *patchResolver) Project(ctx context.Context, ap *restModel.APIPatch) (*PatchProject, error) {
+func (r *patchResolver) Project(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
 	// Project data is only needed to configure non-activated patches
-	if ap.Activated && *ap.Version != "" {
+	if apiPatch.Activated && *apiPatch.Version != "" {
 		return nil, nil
 	}
-	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, *ap.Id)
+	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
 	if err != nil {
 		return nil, err
 	}

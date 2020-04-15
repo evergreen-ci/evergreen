@@ -280,14 +280,10 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 }
 
 // GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
-func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, patchId string) (*PatchProject, error) {
-	patch, err := patch.FindOne(patch.ById(patch.NewId(patchId)))
+func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
+	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(*apiPatch.PatchedConfig, *apiPatch.Project)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch %s", patchId))
-	}
-	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(patch.PatchedConfig, patch.Project)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", patchId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}
 
 	// convert variants to UI data structure
