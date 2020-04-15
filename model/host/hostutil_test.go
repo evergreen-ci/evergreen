@@ -1098,9 +1098,10 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 	t.Run("WithWindowsHost", func(t *testing.T) {
 		for testName, testCase := range map[string]func(t *testing.T, h *Host){
 			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
-				expectedCmd := "if (Test-Path -Path /jasper_binary_dir/user_data_started) { exit }" +
-					"\r\nNew-Item -Force -ItemType Directory -Path /jasper_binary_dir" +
-					"\r\nNew-Item -ItemType File -Path /jasper_binary_dir/user_data_started"
+				expectedCmd := "if (Test-Path -Path /root_dir/jasper_binary_dir/user_data_started) { exit }" +
+					"\r\n/root_dir/bin/bash -l -c @'" +
+					"\nmkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started" +
+					"\n'@"
 				cmd, err := h.CheckUserDataStartedCommand()
 				require.NoError(t, err)
 				assert.Equal(t, expectedCmd, cmd)
@@ -1118,6 +1119,8 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 						Arch: distro.ArchWindowsAmd64,
 						BootstrapSettings: distro.BootstrapSettings{
 							JasperBinaryDir: "/jasper_binary_dir",
+							RootDir:         "/root_dir",
+							ShellPath:       "/bin/bash",
 						},
 					},
 				}
@@ -1128,7 +1131,7 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 	t.Run("WithNonWindowsHost", func(t *testing.T) {
 		for testName, testCase := range map[string]func(t *testing.T, h *Host){
 			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
-				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || touch /jasper_binary_dir/user_data_started"
+				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
 				cmd, err := h.CheckUserDataStartedCommand()
 				require.NoError(t, err)
 				assert.Equal(t, expectedCmd, cmd)

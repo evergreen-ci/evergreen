@@ -509,15 +509,15 @@ func (h *Host) CheckUserDataStartedCommand() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
+	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
 	if h.Distro.IsWindows() {
 		return fmt.Sprintf(strings.Join([]string{
 			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
-			fmt.Sprintf("New-Item -Force -ItemType Directory -Path %s", filepath.Dir(h.Distro.AbsPathNotCygwinCompatible(path))),
-			fmt.Sprintf("New-Item -ItemType File -Path %s", h.Distro.AbsPathNotCygwinCompatible(path)),
+			fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd)),
 		}, "\r\n")), nil
 	}
 
-	return fmt.Sprintf("[ -a %s ] && exit || touch %s", path, path), nil
+	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd), nil
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
