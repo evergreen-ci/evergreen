@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -300,6 +301,9 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, patchId string) (
 	}
 	variants := []*ProjectBuildVariant{}
 	for _, v := range patchProjectVariantsAndTasks.Variants {
+		sort.SliceStable(v.Tasks, func(i, j int) bool {
+			return v.Tasks[i] < v.Tasks[j]
+		})
 		variant := ProjectBuildVariant{
 			Name:        v.Name,
 			DisplayName: v.DisplayName,
