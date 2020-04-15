@@ -207,6 +207,7 @@ type ComplexityRoot struct {
 		Execution         func(childComplexity int) int
 		ExecutionTasks    func(childComplexity int) int
 		ExpectedDuration  func(childComplexity int) int
+		FailedTestCount   func(childComplexity int) int
 		FinishTime        func(childComplexity int) int
 		GenerateTask      func(childComplexity int) int
 		GeneratedBy       func(childComplexity int) int
@@ -334,6 +335,7 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 }
 type TaskResolver interface {
+	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
 
@@ -1157,6 +1159,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ExpectedDuration(childComplexity), true
 
+	case "Task.failedTestCount":
+		if e.complexity.Task.FailedTestCount == nil {
+			break
+		}
+
+		return e.complexity.Task.FailedTestCount(childComplexity), true
+
 	case "Task.finishTime":
 		if e.complexity.Task.FinishTime == nil {
 			break
@@ -1913,6 +1922,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
+  failedTestCount: Int!
   spawnHostLink: String
   patchMetadata: PatchMetadata!
   id: String!
@@ -5531,6 +5541,40 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	res := resTmp.([]*apimodels.LogMessage)
 	fc.Result = res
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_failedTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().FailedTestCount(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_spawnHostLink(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -10292,6 +10336,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Task")
+		case "failedTestCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_failedTestCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "spawnHostLink":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

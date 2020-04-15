@@ -923,6 +923,14 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &patch.PatchNumber, nil
 }
 
+func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
+	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(*obj.Id, "", []string{evergreen.TestFailedStatus}, "", 1, 0, 0, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+	}
+	return len(tests), nil
+}
+
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
 	patch, err := r.sc.FindPatchById(*obj.Version)
 	if err != nil {

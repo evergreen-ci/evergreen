@@ -34,6 +34,8 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
+      failedTestCount:
+        resolver: true
       reliesOn:
         resolver: true
       patchMetadata:
