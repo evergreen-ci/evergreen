@@ -246,8 +246,7 @@ type BuildVariantUI struct {
 	Tasks       []string
 }
 
-func GetPatchProjectVariantsAndTasks(patchedConfig string, patchProject string) (*PatchProjectVariantsAndTasks, error) {
-	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
+func getPatchProjectVariantsAndTasks(patchedConfig string, patchProject string) (*PatchProjectVariantsAndTasks, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
@@ -287,6 +286,32 @@ func GetPatchProjectVariantsAndTasks(patchedConfig string, patchProject string) 
 		Tasks:    tasksList,
 	}
 	return &p, nil
+}
+
+// GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
+func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, patchId string) (*PatchProject, error) {
+	patch, err := patch.FindOne(patch.ById(patch.NewId(patchId)))
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch %s", patchId))
+	}
+	patchProjectVariantsAndTasks, err := getPatchProjectVariantsAndTasks(patch.PatchedConfig, patch.Project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", patchId, err.Error()))
+	}
+	variants := []*ProjectBuildVariant{}
+	for _, v := range patchProjectVariantsAndTasks.Variants {
+		variant := ProjectBuildVariant{
+			Name:        v.Name,
+			DisplayName: v.DisplayName,
+			Tasks:       v.Tasks,
+		}
+		variants = append(variants, &variant)
+	}
+	patchProject := PatchProject{
+		Variants: variants,
+		Tasks:    patchProjectVariantsAndTasks.Tasks,
+	}
+	return &patchProject, nil
 }
 
 type PatchVariantsTasksRequest struct {

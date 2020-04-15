@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -248,28 +247,11 @@ func (r *patchResolver) Project(ctx context.Context, ap *restModel.APIPatch) (*P
 	if ap.Activated && *ap.Version != "" {
 		return nil, nil
 	}
-	patch, err := patch.FindOne(patch.ById(patch.NewId(*ap.Id)))
+	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, *ap.Id)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch %s", *ap.Id))
+		return nil, err
 	}
-	patchProjectVariantsAndTasks, err := GetPatchProjectVariantsAndTasks(patch.PatchedConfig, patch.Project)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *ap.Id, err.Error()))
-	}
-	variants := []*ProjectBuildVariant{}
-	for _, v := range patchProjectVariantsAndTasks.Variants {
-		variant := ProjectBuildVariant{
-			Name:        v.Name,
-			DisplayName: v.DisplayName,
-			Tasks:       v.Tasks,
-		}
-		variants = append(variants, &variant)
-	}
-	patchProject := PatchProject{
-		Variants: variants,
-		Tasks:    patchProjectVariantsAndTasks.Tasks,
-	}
-	return &patchProject, nil
+	return patchProject, nil
 }
 
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
