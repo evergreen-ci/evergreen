@@ -62,3 +62,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   LogMessage:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
+  CommitQueue:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueue
+  CommitQueueItem:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueItem
+  Module:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIModule

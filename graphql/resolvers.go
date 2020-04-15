@@ -712,6 +712,17 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	return result, nil
 }
 
+func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
+	commitQueue, err := r.sc.FindCommitQueueByID(id)
+	if err != nil {
+		if errors.Cause(err) == err {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, error.Error(err)))
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, error.Error(err)))
+	}
+	return commitQueue, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
