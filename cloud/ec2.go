@@ -72,8 +72,15 @@ type EC2ProviderSettings struct {
 	// BidPrice is the price we are willing to pay for a spot instance.
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 
-	// UserData are commands to run after the instance starts.
-	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
+	// UserData specifies configuration that runs after the instance starts.
+	UserData string `mapstructure:"user_data" json:"user_data,omitempty" bson:"user_data,omitempty"`
+
+	// MergeUserDataParts specifies whether multiple user data parts should be
+	// merged into a single user data part.
+	// EVG-7760: This is primarily a workaround for a problem with Windows not
+	// allowing multiple scripts of the same type as part of a multipart user
+	// data upload.
+	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -258,7 +265,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
+	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
 		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
@@ -370,7 +377,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
+	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
 		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
