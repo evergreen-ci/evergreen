@@ -33,6 +33,11 @@ func directiveToContentType() map[string]string {
 	}
 }
 
+// closingTags returns all cloud-init closing tags for directives.
+func closingTags() []string {
+	return []string{"</powershell>", "</script>"}
+}
+
 // makeMultipartUserData returns user data in a multipart MIME format with the
 // given files and their content.
 func makeMultipartUserData(files map[string]string) (string, error) {
@@ -130,33 +135,59 @@ func parseUserDataContentType(userData string) (string, error) {
 	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
 }
 
-// bootstrapUserData returns the multipart user data with logic to bootstrap and
-// set up the host and the custom user data. Care should be taken when adding
-// more to this script, since the script length is subject to a 16 kB hard limit
+// bootstrapUserData returns the user data with logic to bootstrap and set up
+// the host and the custom user data.
+// If mergeParts is true, the bootstrap part and the custom part will
+// be combined into a single user datapart, so they must be the same type (e.g.
+// if shell scripts, both must be the same shell scripting language).
+// Care should be taken when adding more content to user data, since the user
+// data length is subject to a 16 kB hard limit
 // (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
-func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customScript string) (string, error) {
+// We could possibly increase the length by gzip compressing it.
+func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
-		return customScript, nil
+		return custom, nil
 	}
 	settings := env.Settings()
 
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return customScript, errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
+		return "", errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
-	bootstrapScript, err := h.BootstrapScript(settings, creds)
+	bootstrap, err := h.BootstrapScript(settings, creds)
 	if err != nil {
-		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
+		return "", errors.Wrap(err, "could not generate user data for provisioning host")
+	}
+
+	if mergeParts {
+		return mergeUserDataParts(h, bootstrap, custom), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 	}
 
 	multipartUserData, err := makeMultipartUserData(map[string]string{
-		"bootstrap.txt": bootstrapScript,
-		"user-data.txt": customScript,
+		"bootstrap.txt": bootstrap,
+		"custom.txt":    custom,
 	})
 	if err != nil {
-		return customScript, errors.Wrap(err, "error creating user data with multiple parts")
+		return "", errors.Wrap(err, "error creating user data with multiple parts")
 	}
 
 	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+}
+
+// mergeUserDataParts combines two user data parts into a single one. The two
+// user data parts must be the same type.
+func mergeUserDataParts(h *host.Host, bootstrap, custom string) string {
+	lineSeparator := "\n"
+	if h.Distro.IsWindows() {
+		lineSeparator = "\r\n"
+		bootstrap = strings.TrimSpace(bootstrap)
+		for _, tag := range closingTags() {
+			if tagIdx := strings.LastIndex(bootstrap, tag); tagIdx != -1 {
+				return strings.Join([]string{bootstrap[:tagIdx], custom, tag}, lineSeparator)
+			}
+		}
+	}
+
+	return strings.Join([]string{bootstrap, custom}, lineSeparator)
 }

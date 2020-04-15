@@ -65,8 +65,12 @@ type Project struct {
 type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
-	Name      string `yaml:"name,omitempty" bson:"name"`
-	IsGroup   bool   `yaml:"-" bson:"-"`
+	Name string `yaml:"name,omitempty" bson:"name"`
+	// IsGroup indicates that it is a task group or a task within a task group.
+	IsGroup bool `yaml:"-" bson:"-"`
+	// GroupName is the task group name if this is a task in a task group. If
+	// it is the task group itself, it is not populated (Name is the task group
+	// name).
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
@@ -190,8 +194,8 @@ type BuildVariant struct {
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
 	BatchTime *int `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	// if BatchTimeCron is not empty, then overriding the project settings with cron syntax,
-	// with BatchTime and BatchTimeCron being mutually exclusive.
+	// If CronBatchTime is not empty, then override the project settings with cron syntax,
+	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
@@ -1290,7 +1294,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // TasksThatCallCommand returns a map of tasks that call a given command to the
 // number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
-	// get all functions that call `generate.tasks`
+	// get all functions that call the command.
 	fs := map[string]int{}
 	for f, cmds := range p.Functions {
 		if cmds == nil {
@@ -1303,7 +1307,7 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 
-	// get all tasks that call `generate.tasks`
+	// get all tasks that call the command.
 	ts := map[string]int{}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {

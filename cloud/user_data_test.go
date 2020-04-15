@@ -122,7 +122,7 @@ func TestBootstrapUserData(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host){
 		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-			userData, err := bootstrapUserData(ctx, env, h, "")
+			userData, err := bootstrapUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 
 			cmd, err := h.StartAgentMonitorRequest(env.Settings())
@@ -134,12 +134,12 @@ func TestBootstrapUserData(t *testing.T) {
 			assert.Contains(t, userData, cmd)
 		},
 		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-			userData, err := bootstrapUserData(ctx, env, h, "")
+			userData, err := bootstrapUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
 		},
 		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-			_, err := bootstrapUserData(ctx, env, h, "")
+			_, err := bootstrapUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
 
@@ -155,10 +155,16 @@ func TestBootstrapUserData(t *testing.T) {
 		},
 		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho 'foobar'"
-			userData, err := bootstrapUserData(ctx, env, h, customUserData)
+			userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
-			assert.NotEmpty(t, userData)
-			assert.True(t, len(userData) > len(customUserData))
+
+			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
 
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
 
@@ -173,9 +179,32 @@ func TestBootstrapUserData(t *testing.T) {
 		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "foo bar"
-			userData, err := bootstrapUserData(ctx, env, h, customUserData)
+			userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
 			assert.Equal(t, customUserData, userData)
+		},
+		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			customUserData := "foo bar"
+			userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
+			require.NoError(t, err)
+
+			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			assert.Contains(t, userData, customUserData)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -185,7 +214,7 @@ func TestBootstrapUserData(t *testing.T) {
 			}()
 
 			h := &host.Host{
-				Id: "ud-host",
+				Id: "host_id",
 				Distro: distro.Distro{
 					Arch: distro.ArchLinuxAmd64,
 					BootstrapSettings: distro.BootstrapSettings{
@@ -204,6 +233,39 @@ func TestBootstrapUserData(t *testing.T) {
 			env := testutil.NewEnvironment(ctx, t)
 
 			testCase(ctx, t, env, h)
+		})
+	}
+}
+
+func TestMergeUserData(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		host            host.Host
+		bootstrapScript string
+		customScript    string
+		expectedScript  string
+	}{
+		"AppendsCustomUserData": {
+			host:            host.Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}},
+			bootstrapScript: "#!/bin/bash\necho foo",
+			customScript:    "echo bar",
+			expectedScript:  "#!/bin/bash\necho foo\necho bar",
+		},
+		"AddsCustomScriptBeforeClosingTagForWindowsHostsRunningShellScripts": {
+			host:            host.Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}},
+			bootstrapScript: "<powershell>\r\necho foo</powershell>",
+			customScript:    "echo bar",
+			expectedScript:  "<powershell>\r\necho foo\r\necho bar\r\n</powershell>",
+		},
+		"AppendsForWindowsHostsNotRunningShellScripts": {
+			host:            host.Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}},
+			bootstrapScript: "#cloud-config\r\nruncmd:\r\n  - echo foo",
+			customScript:    "runcmd:\r\n  - echo bar",
+			expectedScript:  "#cloud-config\r\nruncmd:\r\n  - echo foo\r\nruncmd:\r\n  - echo bar",
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			combinedScript := mergeUserDataParts(&testCase.host, testCase.bootstrapScript, testCase.customScript)
+			assert.Equal(t, testCase.expectedScript, combinedScript)
 		})
 	}
 }

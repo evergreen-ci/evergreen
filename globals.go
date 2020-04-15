@@ -284,6 +284,17 @@ var (
 		ProviderNameDocker,
 	}
 
+	// Providers that are spawnable by users
+	ProviderUserSpawnable = []string{
+		ProviderNameEc2OnDemand,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Auto,
+		ProviderNameEc2Fleet,
+		ProviderNameGce,
+		ProviderNameOpenstack,
+		ProviderNameVsphere,
+	}
+
 	ProviderContainer = []string{
 		ProviderNameDocker,
 	}

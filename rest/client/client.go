@@ -312,7 +312,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				FlushInterval: opt.BufferDuration,
 				ClientConn:    c.cedarGRPCClient,
 			}
-			sender, err = timber.NewLogger(opt.BuilderID, levelInfo, timberOpts)
+			sender, err = timber.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating buildlogger logger")
 			}

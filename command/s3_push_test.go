@@ -22,13 +22,11 @@ func TestS3PushParseParams(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *s3Push){
 		"SetsValues": func(t *testing.T, c *s3Push) {
 			params := map[string]interface{}{
-				"exclude":        "exclude_pattern",
-				"build_variants": []string{"some_build_variant"},
-				"max_retries":    uint(5),
+				"exclude":     "exclude_pattern",
+				"max_retries": uint(5),
 			}
 			require.NoError(t, c.ParseParams(params))
 			assert.Equal(t, params["exclude"], c.ExcludeFilter)
-			assert.Equal(t, params["build_variants"], c.BuildVariants)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
 		},
 		"SucceedsWithNoParameters": func(t *testing.T, c *s3Push) {
@@ -99,28 +97,6 @@ func TestS3PushExecute(t *testing.T) {
 			conf.WorkDir = tmpDir
 
 			c.ExcludeFilter = ".*"
-			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
-			require.NoError(t, err)
-			assert.False(t, iter.Next(ctx))
-		},
-		"NoopsIfIgnoringBuildVariant": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3-push")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
-			tmpFile, err := ioutil.TempFile(tmpDir, "s3-push-file")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-			}()
-			_, err = tmpFile.Write([]byte("foobar"))
-			assert.NoError(t, tmpFile.Close())
-			require.NoError(t, err)
-			conf.WorkDir = tmpDir
-
-			c.BuildVariants = []string{"other_build_variant"}
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
 			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)

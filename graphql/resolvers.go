@@ -970,13 +970,7 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 	if host == nil {
 		return nil, nil
 	}
-	hasSpawnableProvider := false
-	for _, spawnableProvider := range evergreen.ProviderSpawnable {
-		if host.Distro.Provider == spawnableProvider {
-			hasSpawnableProvider = true
-		}
-	}
-	if hasSpawnableProvider && host.Distro.SpawnAllowed {
+	if host.Distro.SpawnAllowed && utility.StringSliceContains(evergreen.ProviderUserSpawnable, host.Distro.Provider) {
 		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
 		return &link, nil
 	}
