@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const testLogsCleanupJobName = "data-cleanup-testlogs"
@@ -84,6 +85,7 @@ func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 
 	totalDocs, _ := j.env.DB().Collection(model.TestLogCollection).EstimatedDocumentCount(ctx)
 
+	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
 LOOP:
 	for {
 		select {
@@ -94,19 +96,24 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
+			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
 			j.AddError(err)
 
 			batches++
 			numDocs += num
 			timeSpent += time.Since(opStart)
+			if num < cleanupBatchSize {
+				break
+			}
 		}
 	}
 
 	grip.Info(message.Fields{
 		"job_id":             j.ID(),
+		"batch_size":         cleanupBatchSize,
 		"collection":         model.TestLogCollection,
 		"job_type":           j.Type().Name,
+		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
 		"total_docs":         totalDocs,
 		"message":            "timing-info",
 		"run_start_at":       startAt,

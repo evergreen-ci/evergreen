@@ -14,9 +14,13 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const testResultsCleanupJobName = "data-cleanup-testresults"
+const (
+	testResultsCleanupJobName = "data-cleanup-testresults"
+	cleanupBatchSize          = 100 * 1000
+)
 
 func init() {
 	registry.AddJobType(testResultsCleanupJobName, func() amboy.Job {
@@ -82,6 +86,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 	)
 
 	totalDocs, _ := j.env.DB().Collection(testresult.Collection).EstimatedDocumentCount(ctx)
+	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
 
 LOOP:
 	for {
@@ -93,22 +98,27 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := testresult.DeleteWithLimit(ctx, j.env, time.Now().Add(time.Duration(-365*24)*time.Hour), 100*1000)
+			num, err := testresult.DeleteWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
 			j.AddError(err)
 
 			batches++
 			numDocs += num
 			timeSpent += time.Since(opStart)
+			if num < cleanupBatchSize {
+				break
+			}
 		}
 	}
 
 	grip.Info(message.Fields{
 		"job_id":             j.ID(),
 		"job_type":           j.Type().Name,
+		"batch_size":         cleanupBatchSize,
 		"total_docs":         totalDocs,
 		"collection":         testresult.Collection,
 		"message":            "timing-info",
 		"run_start_at":       startAt,
+		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
 		"has_errors":         j.HasErrors(),
 		"aborted":            ctx.Err() != nil,
 		"total":              time.Since(startAt).Seconds(),

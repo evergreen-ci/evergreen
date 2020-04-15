@@ -80,7 +80,7 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
 	}
 
 	res, err := env.DB().Collection(TestLogCollection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
