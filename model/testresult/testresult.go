@@ -200,7 +200,13 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}
-	pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
+
+	sort := bson.D{}
+	if sortBy != "" {
+		sort = append(sort, primitive.E{Key: sortBy, Value: sortDir})
+	}
+	sort = append(sort, primitive.E{Key: "_id", Value: 1})
+	pipeline = append(pipeline, bson.M{"$sort": sort})
 
 	if page > 0 {
 		pipeline = append(pipeline, bson.M{"$skip": page * limit})
