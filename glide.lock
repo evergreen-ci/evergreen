@@ -125,7 +125,7 @@ imports:
   - name: github.com/mongodb/grip
     version: d95fa8b035aec46d608d34e1118a74ae749586b7
   - name: github.com/mongodb/amboy
-    version: 8d2a3f3d246cd96f24fefae520dd48f4c6c4b79c
+    version: 470a628e97f6430aa0433c8a2bff938451dd828a
   - name: github.com/evergreen-ci/gimlet
     version: 370160a3e2c0fd6c95eabf0997f81f707552cb24
   - name: github.com/evergreen-ci/shrub
