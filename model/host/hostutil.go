@@ -510,7 +510,11 @@ func (h *Host) CheckUserDataStartedCommand() (string, error) {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
 	if h.Distro.IsWindows() {
-		return fmt.Sprintf(" if (Test-Path -Path %s) { exit }\r\nNew-Item -Force -Path '%s' -ItemType File", h.Distro.AbsPathNotCygwinCompatible(path), h.Distro.AbsPathCygwinCompatible(path)), nil
+		return fmt.Sprintf(strings.Join([]string{
+			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
+			fmt.Sprintf("New-Item -Force -ItemType Directory -Path %s", filepath.Dir(h.Distro.AbsPathNotCygwinCompatible(path))),
+			fmt.Sprintf("New-Item -ItemType File -Path %s", h.Distro.AbsPathNotCygwinCompatible(path)),
+		}, "\r\n")), nil
 	}
 
 	return fmt.Sprintf("[ -a %s ] && exit || touch %s", path, path), nil
