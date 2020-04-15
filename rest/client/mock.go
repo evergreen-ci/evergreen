@@ -404,7 +404,7 @@ func (*Mock) DeleteVolume(context.Context, string) error {
 	return errors.New("(*Mock) DeleteVolume is not implemented")
 }
 
-func (*Mock) ModifyVolume(context.Context, string, *host.VolumeModifyOptions) error {
+func (*Mock) ModifyVolume(context.Context, string, *model.VolumeModifyOptions) error {
 	return errors.New("(*Mock) ModifyVolume is not implemented")
 }
 

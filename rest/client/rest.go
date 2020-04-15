@@ -212,7 +212,7 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 	return nil
 }
 
-func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *host.VolumeModifyOptions) error {
+func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *model.VolumeModifyOptions) error {
 	info := requestInfo{
 		method:  patch,
 		path:    fmt.Sprintf("volumes/%s", volumeID),

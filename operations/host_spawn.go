@@ -538,7 +538,7 @@ func hostModifyVolume() cli.Command {
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			return client.ModifyVolume(ctx, volumeID, &host.VolumeModifyOptions{NewName: name})
+			return client.ModifyVolume(ctx, volumeID, &restModel.VolumeModifyOptions{NewName: name})
 		},
 	}
 }

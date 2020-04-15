@@ -19,10 +19,6 @@ type Volume struct {
 	Host             string    `bson:"host" json:"host"`
 }
 
-type VolumeModifyOptions struct {
-	NewName string
-}
-
 // Insert a volume into the volumes collection.
 func (v *Volume) Insert() error {
 	v.CreationDate = time.Now()

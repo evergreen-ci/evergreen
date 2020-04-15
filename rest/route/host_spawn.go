@@ -798,7 +798,7 @@ type modifyVolumeHandler struct {
 	env evergreen.Environment
 
 	volumeID string
-	opts     *host.VolumeModifyOptions
+	opts     *model.VolumeModifyOptions
 }
 
 func makeModifyVolume(sc data.Connector) gimlet.RouteHandler {
@@ -815,7 +815,7 @@ func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
-	h.opts = &host.VolumeModifyOptions{}
+	h.opts = &model.VolumeModifyOptions{}
 	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
 		return err
 	}
@@ -1324,10 +1324,6 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 
 func validateID(id string) (string, error) {
 	if strings.TrimSpace(id) == "" {
-		grip.Debug(message.Fields{
-			"ticket":  "volume modify",
-			"message": "missing/empty Id",
-		})
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "missing/empty id",

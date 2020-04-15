@@ -153,6 +153,10 @@ type VolumePostRequest struct {
 	AvailabilityZone string `json:"zone"`
 }
 
+type VolumeModifyOptions struct {
+	NewName string `json:"new_name"`
+}
+
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
 	switch volume.(type) {
 	case host.Volume, *host.Volume:
