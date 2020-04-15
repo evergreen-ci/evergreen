@@ -26,6 +26,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "counts.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "totalTestCount": 20,
+            "filteredTestCount": 2,
+            "testResults": [{ "status": "skip" }]
+          }
+        }
+      }
     }
   ]
 }
