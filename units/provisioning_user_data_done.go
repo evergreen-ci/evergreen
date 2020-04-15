@@ -57,7 +57,6 @@ func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) 
 	j.HostID = hostID
 	j.env = env
 	j.SetPriority(1)
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", userDataDoneJobName, j.HostID)})
 	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, ts.Format(TSFormat)))
 
 	return j

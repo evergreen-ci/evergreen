@@ -508,6 +508,21 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		// If the host just ran a task in the group, then it's eligible for running
 		// more tasks in the group, regardless of how many hosts are running. We only check
 		// the number of hosts running this task group if the task group is new to the host.
+		grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+			"message":                 "task group lock debugging",
+			"task_distro_id":          nextTask.DistroId,
+			"task_id":                 nextTask.Id,
+			"host_id":                 currentHost.Id,
+			"host_last_group":         currentHost.LastGroup,
+			"host_last_build_variant": currentHost.LastBuildVariant,
+			"host_last_version":       currentHost.LastVersion,
+			"host_last_project":       currentHost.LastProject,
+			"task_group":              nextTask.TaskGroup,
+			"task_build_variant":      nextTask.BuildVariant,
+			"task_version":            nextTask.Version,
+			"task_project":            nextTask.Project,
+			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
+		})
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
 			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
 			if err != nil {
