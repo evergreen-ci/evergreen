@@ -293,7 +293,6 @@ var (
 		ProviderNameGce,
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
-		ProviderNameMock,
 	}
 
 	ProviderContainer = []string{
