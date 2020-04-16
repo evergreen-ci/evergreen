@@ -166,6 +166,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	putParams := struct {
 		Task                 string     `json:"task_id"`
+		TaskSync             bool       `json:"task_sync"`
 		Distro               string     `json:"distro"`
 		KeyName              string     `json:"key_name"`
 		PublicKey            string     `json:"public_key"`
@@ -206,6 +207,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		Region:               putParams.Region,
 		KeyName:              putParams.PublicKey,
 		TaskID:               putParams.Task,
+		TaskSync:             putParams.TaskSync,
 		UserData:             putParams.UserData,
 		InstanceTags:         putParams.InstanceTags,
 		InstanceType:         putParams.InstanceType,
@@ -217,6 +219,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := uis.env.Context()
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
+	// kim: TODO: Handle spawning with task sync checked.
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

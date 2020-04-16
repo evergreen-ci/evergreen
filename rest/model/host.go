@@ -30,6 +30,7 @@ type APIHost struct {
 type HostRequestOptions struct {
 	DistroID             string     `json:"distro"`
 	TaskID               string     `json:"task"`
+	TaskSync             bool       `json:"task_sync"`
 	Region               string     `json:"region"`
 	KeyName              string     `json:"keyname"`
 	UserData             string     `json:"userdata"`
