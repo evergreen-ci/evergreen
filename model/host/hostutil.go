@@ -380,6 +380,9 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
+// If, for some reason, this script gets interrupted, there's no guarantee that
+// it will succeed if run again, since we cannot enforce idempotency on the
+// setup script.
 func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
@@ -389,8 +392,13 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 	// permissions that allow it to be modified after user data is finished.
 	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
-	var postFetchClient string
 	var err error
+	checkUserDataRan, err := h.CheckUserDataStartedCommand()
+	if err != nil {
+		return "", errors.Wrap(err, "error creating command to check if user data is already done")
+	}
+
+	var postFetchClient string
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
@@ -446,7 +454,9 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			h.ForceReinstallJasperCommand(settings),
 		)
 
-		bashCmds := append(writeSetupScriptCmds, setupJasperCmds...)
+		var bashCmds []string
+		bashCmds = append(bashCmds, writeSetupScriptCmds...)
+		bashCmds = append(bashCmds, setupJasperCmds...)
 		bashCmds = append(bashCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range bashCmds {
@@ -455,6 +465,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 
 		powershellCmds := append(append([]string{
 			"<powershell>",
+			checkUserDataRan,
 			setupUserCmds},
 			bashCmds...),
 			"</powershell>",
@@ -473,7 +484,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
 	}
 
-	bashCmds := append(bashPrefix, setupScriptCmds)
+	bashCmds := append(bashPrefix, checkUserDataRan, setupScriptCmds)
 	bashCmds = append(bashCmds, writeCredentialsCmds, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
@@ -488,6 +499,25 @@ func (h *Host) changeOwnerCommand(path string) string {
 		return cmd
 	}
 	return "sudo " + cmd
+}
+
+// CheckUserDataStartedCommand checks whether user data has already run on this
+// host. If it has, it exits. Otherwise, it creates the file marking it as
+// started.
+func (h *Host) CheckUserDataStartedCommand() (string, error) {
+	path, err := h.UserDataStartedFile()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get path to user data done file")
+	}
+	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
+	if h.Distro.IsWindows() {
+		return fmt.Sprintf(strings.Join([]string{
+			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
+			fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd)),
+		}, "\r\n")), nil
+	}
+
+	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd), nil
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
@@ -1107,7 +1137,18 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 	}
 }
 
-const userDataDoneFileName = "user_data_done"
+const (
+	userDataStarteFileName = "user_data_started"
+	userDataDoneFileName   = "user_data_done"
+)
+
+func (h *Host) UserDataStartedFile() (string, error) {
+	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
+		return "", errors.New("distro jasper binary directory must be specified")
+	}
+
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataStarteFileName), nil
+}
 
 // UserDataDoneFile returns the path to the user data done marker file.
 func (h *Host) UserDataDoneFile() (string, error) {

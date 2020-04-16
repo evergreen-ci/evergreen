@@ -125,7 +125,11 @@ func TestBootstrapUserData(t *testing.T) {
 			userData, err := bootstrapUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 
-			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			cmd, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.StartAgentMonitorRequest(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
@@ -137,6 +141,14 @@ func TestBootstrapUserData(t *testing.T) {
 			userData, err := bootstrapUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
+		},
+		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			userData, err := bootstrapUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
+			assert.NotEmpty(t, userData)
+			assert.Contains(t, userData, persistTag)
 		},
 		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			_, err := bootstrapUserData(ctx, env, h, "", false)
@@ -183,6 +195,16 @@ func TestBootstrapUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, customUserData, userData)
 		},
+		"ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			customUserData := "<powershell>echo foo</powershell>"
+			userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
+			require.NoError(t, err)
+			assert.Contains(t, userData, customUserData)
+			assert.Contains(t, userData, persistTag)
+		},
 		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			customUserData := "foo bar"
 			userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
@@ -205,6 +227,23 @@ func TestBootstrapUserData(t *testing.T) {
 			creds, err := h.JasperCredentials(ctx, env)
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
+		},
+		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			customUserData := "echo foo"
+			userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
+			require.NoError(t, err)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
+
+			assert.Contains(t, userData, persistTag)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -268,4 +307,43 @@ func TestMergeUserData(t *testing.T) {
 			assert.Equal(t, testCase.expectedScript, combinedScript)
 		})
 	}
+}
+
+func TestEnsureWindowsUserDataScriptPersists(t *testing.T) {
+	t.Run("NoopsForNonWindowsHosts", func(t *testing.T) {
+		h := &host.Host{
+			Distro: distro.Distro{Arch: distro.ArchLinuxAmd64},
+		}
+		assert.Empty(t, ensureWindowsUserDataScriptPersists(h, ""))
+		content := "foo bar"
+		assert.Equal(t, content, ensureWindowsUserDataScriptPersists(h, content))
+	})
+	t.Run("WithWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *host.Host){
+			"AddsPersistTags": func(t *testing.T, h *host.Host) {
+				script := "<powershell>echo foo bar</powershell>"
+				persistedScript := ensureWindowsUserDataScriptPersists(h, script)
+				assert.Contains(t, persistedScript, script)
+				assert.Contains(t, persistedScript, persistTag)
+			},
+			"NoopsIfPersistTagsAlreadyPresent": func(t *testing.T, h *host.Host) {
+				script := "<powershell>echo foo bar</powershell>\r\n" + persistTag
+				assert.Equal(t, script, ensureWindowsUserDataScriptPersists(h, script))
+			},
+			"NoopsForEmptyScript": func(t *testing.T, h *host.Host) {
+				assert.Empty(t, ensureWindowsUserDataScriptPersists(h, ""))
+			},
+			"NoopsForNonShellScript": func(t *testing.T, h *host.Host) {
+				userData := "#cloud-config\nruncmd:\n  - echo foo"
+				assert.Equal(t, userData, ensureWindowsUserDataScriptPersists(h, userData))
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &host.Host{
+					Distro: distro.Distro{Arch: distro.ArchWindowsAmd64},
+				}
+				testCase(t, h)
+			})
+		}
+	})
 }
