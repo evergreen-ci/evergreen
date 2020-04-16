@@ -58,11 +58,11 @@ func TestPaginationMetadataGetLinks(t *testing.T) {
 	rp.Next = &Page{
 		url: &url.URL{},
 	}
-	assert.Len(strings.Split(rp.GetLinks("/bar"), "\n"), 1)
+	assert.Len(strings.Split(rp.GetLinks("/bar"), ","), 1)
 
 	rp.Prev = &Page{
 		url: &url.URL{},
 	}
-	assert.Len(strings.Split(rp.GetLinks("/baz"), "\n"), 2)
+	assert.Len(strings.Split(rp.GetLinks("/baz"), ","), 2)
 
 }
