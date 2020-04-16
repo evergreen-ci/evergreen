@@ -151,12 +151,22 @@ func TestGenerateTasks(t *testing.T) {
 		BuildIds:   []string{"sample_build_id"},
 	}
 	require.NoError(randomVersion.Insert())
+	// randomPatch := patch.Patch{
+	//     Id:      mgobson.NewObjectId(),
+	//     Version: randomVersion.Id,
+	// }
+	// require.NoError(randomPatch.Insert())
 	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
 		Config:     sampleBaseProject,
 		BuildIds:   []string{"sample_build_id"},
 	}
+	// samplePatch := patch.Patch{
+	//     Id:      mgobson.NewObjectId(),
+	//     Version: sampleVersion.Id,
+	// }
+	// require.NoError(samplePatch.Insert())
 	require.NoError(sampleVersion.Insert())
 	sampleBuild := build.Build{
 		Id:           "sample_build_id",

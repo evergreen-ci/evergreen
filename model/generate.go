@@ -7,9 +7,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/k0kubun/pretty"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -138,6 +138,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 		return nil, nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
+	pretty.Println("version:", v)
 	p, pp, err := LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
 		return nil, nil, nil, nil, nil,
@@ -147,6 +148,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *ta
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
+	pretty.Println("cached project:", cachedProject)
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
@@ -252,20 +254,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
-	if err != nil {
-		return errors.Wrapf(err, "error getting patch associated with version '%s'", v.Id)
-	}
-	if patchDoc == nil {
-		return errors.Errorf("patch for version '%s' not found", v.Id)
-	}
+	// patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
+	// if err != nil {
+	//     return errors.Wrapf(err, "error getting patch associated with version '%s'", v.Id)
+	// }
+	// if patchDoc == nil {
+	//     return errors.Errorf("patch for version '%s' not found", v.Id)
+	// }
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, patchDoc.SyncVariantsTasks, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants /*patchDoc.SyncVariantsTasks*/, nil, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, patchDoc.SyncVariantsTasks, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants /*patchDoc.SyncVariantsTasks*/, nil, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
@@ -362,6 +364,7 @@ func (g *GeneratedProject) validateMaxTasksAndVariants(catcher grip.Catcher) {
 // validateNoRedefine validates that buildvariants, tasks, or functions, are not redefined
 // except to add a task to a buildvariant.
 func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher grip.Catcher) {
+	pretty.Println("generated project:", g)
 	for _, bv := range g.BuildVariants {
 		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
 			{
@@ -373,6 +376,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher
 	}
 	for _, t := range g.Tasks {
 		if _, ok := cachedProject.tasks[t.Name]; ok {
+			pretty.Println("dup task:", t.Name)
 			catcher.Add(errors.Errorf("cannot redefine tasks in 'generate.tasks' (%s)", t.Name))
 		}
 	}
