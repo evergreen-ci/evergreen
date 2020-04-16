@@ -1699,8 +1699,9 @@ func TestHostUpsert(t *testing.T) {
 		Zone:           "zone",
 		Project:        "project",
 		ProvisionOptions: &ProvisionOptions{
-			LoadCLI: true,
-			TaskId:  "task_id",
+			LoadCLI:  true,
+			TaskId:   "task_id",
+			TaskSync: true,
 		},
 		ContainerImages: map[string]bool{},
 	}
@@ -1730,6 +1731,8 @@ func TestHostUpsert(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(hostFromDB)
 	assert.NotEqual(testHost.Secret, hostFromDB.Secret)
+
+	assert.Equal(testHost.ProvisionOptions, hostFromDB.ProvisionOptions)
 }
 
 func TestHostStats(t *testing.T) {

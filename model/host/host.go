@@ -239,7 +239,7 @@ func (opts *DockerOptions) Validate() error {
 	return nil
 }
 
-// ProvisionOptions is struct containing options about how a new host should be set up.
+// ProvisionOptions is struct containing options about how a new spawn host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
 	// be placed onto the host after startup.

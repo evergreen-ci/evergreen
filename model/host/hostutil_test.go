@@ -226,7 +226,7 @@ func TestJasperCommands(t *testing.T) {
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"BootstrapScriptForSpawnHostWithTask": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
@@ -236,7 +236,11 @@ func TestJasperCommands(t *testing.T) {
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID, TaskId: "task_id"}
+			h.ProvisionOptions = &ProvisionOptions{
+				LoadCLI: true,
+				OwnerId: userID,
+				TaskId:  "task_id",
+			}
 			require.NoError(t, h.Insert())
 
 			setupScript, err := h.setupScriptCommands(settings)
@@ -245,10 +249,10 @@ func TestJasperCommands(t *testing.T) {
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
-			bashSetupSpawnHost := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
-			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+			bashFetchTaskData := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			fetchTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
 				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{bashSetupSpawnHost}})
+				&options.Command{Commands: [][]string{bashFetchTaskData}})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -261,7 +265,70 @@ func TestJasperCommands(t *testing.T) {
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
-				getTaskData,
+				fetchTaskData,
+				markDone,
+			}
+
+			creds, err := newMockCredentials()
+			require.NoError(t, err)
+
+			script, err := h.BootstrapScript(settings, creds)
+			require.NoError(t, err)
+
+			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+
+			currPos := 0
+			offset := strings.Index(script[currPos:], setupScript)
+			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
+			currPos += offset + len(setupScript)
+
+			for _, expectedCmd := range expectedCmds {
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
+				currPos += offset + len(expectedCmd)
+			}
+		},
+		"BootstrapScriptForSpawnHostWithTaskSync": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.StartedBy = "started_by_user"
+			require.NoError(t, db.Clear(user.Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(user.Collection))
+			}()
+			userID := "user"
+			user := &user.DBUser{Id: userID}
+			require.NoError(t, user.Insert())
+
+			h.ProvisionOptions = &ProvisionOptions{
+				LoadCLI:  true,
+				OwnerId:  userID,
+				TaskId:   "task_id",
+				TaskSync: true,
+			}
+			require.NoError(t, h.Insert())
+
+			setupScript, err := h.setupScriptCommands(settings)
+			require.NoError(t, err)
+
+			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			require.NoError(t, err)
+
+			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+			pullTaskSync, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				&options.Command{Commands: [][]string{bashPullTaskSync}})
+			require.NoError(t, err)
+
+			markDone, err := h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+
+			expectedCmds := []string{
+				setupScript,
+				h.FetchJasperCommand(settings.HostJasper),
+				h.ForceReinstallJasperCommand(settings),
+				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
+				setupSpawnHost,
+				pullTaskSync,
 				markDone,
 			}
 
@@ -446,7 +513,10 @@ func TestJasperCommandsWindows(t *testing.T) {
 			userID := "user"
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID}
+			h.ProvisionOptions = &ProvisionOptions{
+				LoadCLI: true,
+				OwnerId: userID,
+			}
 			require.NoError(t, h.Insert())
 
 			setupUser, err := h.SetupServiceUserCommands()

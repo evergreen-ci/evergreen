@@ -405,7 +405,12 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			// time to download all the task data, user data may time out this
 			// operation, which would prevent user data from completing and the
 			// host would be stuck in provisioning.
-			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			var fetchCmd []string
+			if h.ProvisionOptions.TaskSync {
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+			} else {
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
@@ -1101,6 +1106,16 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 		// We can't use a Cygwin path for the working directory because it's
 		// symlinked with a Cygwin symlink, which is not a real directory or
 		// Windows shortcut.
+		"--dir", h.Distro.WorkDir,
+	}
+}
+
+func (h *Host) SpawnHostPullTaskSyncCommand() []string {
+	return []string{
+		h.AgentBinary(),
+		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
+		"pull",
+		"--task", h.ProvisionOptions.TaskId,
 		"--dir", h.Distro.WorkDir,
 	}
 }
