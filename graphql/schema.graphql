@@ -353,7 +353,7 @@ type CommitQueueItem {
   Issue: String
   Version: String
   EnqueueTime: Time
-  Patch: Patch!
+  Patch: Patch
   Modules: [Module!]
 }
 

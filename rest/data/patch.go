@@ -83,7 +83,7 @@ func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.API
 	mgobsonIds := []mgobson.ObjectId{}
 	for _, patchID := range patchIds {
 		if err := validatePatchID(patchID); err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrap(err, "problem validating patchId")
 		}
 		mgobsonIds = append(mgobsonIds, mgobson.ObjectIdHex(patchID))
 	}
@@ -93,10 +93,7 @@ func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.API
 		return nil, err
 	}
 	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "patches not found",
-		}
+		return nil, errors.Wrap(err, "patches not found")
 	}
 
 	apiPatches := []restModel.APIPatch{}
@@ -104,7 +101,7 @@ func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.API
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(patch)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem fetching converting patch")
+			return nil, errors.Wrap(err, "problem converting patch")
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}

@@ -2119,7 +2119,7 @@ type CommitQueueItem {
   Issue: String
   Version: String
   EnqueueTime: Time
-  Patch: Patch!
+  Patch: Patch
   Modules: [Module!]
 }
 
@@ -2852,14 +2852,11 @@ func (ec *executionContext) _CommitQueueItem_Patch(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.APIPatch)
 	fc.Result = res
-	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+	return ec.marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueueItem_Modules(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueItem) (ret graphql.Marshaler) {
@@ -9879,9 +9876,6 @@ func (ec *executionContext) _CommitQueueItem(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._CommitQueueItem_EnqueueTime(ctx, field, obj)
 		case "Patch":
 			out.Values[i] = ec._CommitQueueItem_Patch(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "Modules":
 			out.Values[i] = ec._CommitQueueItem_Modules(ctx, field, obj)
 		default:
@@ -13071,6 +13065,17 @@ func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋev
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalOPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
+	return ec._Patch(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v *model.APIPatch) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Patch(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPatchBuildVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchBuildVariantTask(ctx context.Context, sel ast.SelectionSet, v PatchBuildVariantTask) graphql.Marshaler {
