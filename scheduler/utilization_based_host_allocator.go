@@ -44,15 +44,19 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	// only want to meet minimum hosts
 	if distro.Disabled {
 		numNewHostsToRequest := minimumHostsThreshold - numExistingHosts
-		grip.InfoWhen(numNewHostsToRequest > 0, message.Fields{
-			"runner":                     RunnerName,
-			"message":                    "requesting new hosts for disabled distro",
-			"distro":                     distro.Id,
-			"minimum_hosts_for_distro":   minimumHostsThreshold,
-			"num_existing_hosts":         numExistingHosts,
-			"total_new_hosts_to_request": numNewHostsToRequest,
-		})
-		return numNewHostsToRequest, nil
+
+		if numNewHostsToRequest > 0 {
+			grip.Info(message.Fields{
+				"runner":                     RunnerName,
+				"message":                    "requesting new hosts for disabled distro",
+				"distro":                     distro.Id,
+				"minimum_hosts_for_distro":   minimumHostsThreshold,
+				"num_existing_hosts":         numExistingHosts,
+				"total_new_hosts_to_request": numNewHostsToRequest,
+			})
+			return numNewHostsToRequest, nil
+		}
+		return 0, nil
 	}
 
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
