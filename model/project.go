@@ -1238,62 +1238,10 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	// kim: TODO: remove
-	//expand tasks and build variants and include dependencies
-	// if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-	//     patchDoc.BuildVariants = []string{}
-	//     for _, buildVariant := range p.BuildVariants {
-	//         if buildVariant.Disabled {
-	//             continue
-	//         }
-	//         patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
-	//     }
-	// }
-	//
-	// if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-	//     patchDoc.Tasks = []string{}s
-	//     for _, t := range p.Tasks {
-	//         if t.Patchable != nil && !(*t.Patchable) {
-	//             continue
-	//         }
-	//         patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
-	//     }
-	// }
-	//
-	// var pairs []TVPair
-	// for _, v := range patchDoc.BuildVariants {
-	//     for _, t := range patchDoc.Tasks {
-	//         if p.FindTaskForVariant(t, v) != nil {
-	//             pairs = append(pairs, TVPair{v, t})
-	//         }
-	//     }
-	// }
-	//
-	// if alias != "" {
-	//     aliasPairs, displayTaskPairs, err := p.BuildProjectTVPairsWithAlias(alias)
-	//     if err != nil {
-	//         grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
-	//     } else {
-	//         pairs = append(pairs, aliasPairs...)
-	//         for _, pair := range displayTaskPairs {
-	//             if !utility.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
-	//                 patchDoc.BuildVariants = append(patchDoc.BuildVariants, pair.Variant)
-	//             }
-	//             if !utility.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
-	//                 patchDoc.Tasks = append(patchDoc.Tasks, pair.TaskName)
-	//             }
-	//         }
-	//     }
-	// }
-	//
-	// tasks := p.extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants)
-	//
-	// // update variant and tasks to include dependencies
-	// tvs.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
-	// patchDoc.UpdateVariantsTasks(tvs.TVPairsToVariantTasks())
-
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
-	// kim: TODO: test proper resolution of these fields
+
+	// TODO (EVG-7816): handle generate.tasks, which creates additional build
+	// variants and tasks after patch finalization.
 	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
 }
 

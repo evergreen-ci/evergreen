@@ -8,12 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -591,6 +593,15 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
+	patchDoc := &patch.Patch{
+		Id:                mgobson.NewObjectId(),
+		Version:           v.Id,
+		SyncBuildVariants: []string{"a_variant"},
+		SyncTasks:         []string{"new_task", "another_task"},
+		SyncVariantsTasks: []patch.VariantTasks{},
+	}
+	s.Require().NoError(patchDoc.Insert())
+
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, v, t, pm, err := g.NewVersion()
@@ -667,6 +678,12 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
+	s.Require().NoError(patchDoc.Insert())
+
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, v, t, pm, err := g.NewVersion()
@@ -728,6 +745,12 @@ buildvariants:
 	}
 	s.NoError(existingBuild.Insert())
 	s.NoError(v.Insert())
+
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
+	s.Require().NoError(patchDoc.Insert())
 
 	g := GeneratedProject{
 		TaskID: t1.Id,
@@ -795,10 +818,15 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		BuildIds: []string{"sample_build"},
 		Config:   smallYml,
 	}
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
 	s.NoError(taskThatExists.Insert())
 	s.NoError(taskDisplayGen.Insert())
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
+	s.Require().NoError(patchDoc.Insert())
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"

@@ -252,8 +252,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	// kim: TODO: verify that this is correct
-	// kim: TODO: test
 	patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
 	if err != nil {
 		return errors.Wrapf(err, "error getting patch associated with version '%s'", v.Id)

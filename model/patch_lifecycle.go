@@ -91,7 +91,6 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-// kim: TODO: test
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
 	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, p.SyncVariantsTasks, "")
 	return errors.Wrap(err, "can't add new builds")
@@ -99,7 +98,6 @@ func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Ver
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-// kim: TODO: test
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
 	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, p.SyncVariantsTasks, "")
 	return errors.Wrap(err, "can't add new tasks")
@@ -289,7 +287,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
-// kim: TODO: test
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}

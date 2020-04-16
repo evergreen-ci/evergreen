@@ -13,17 +13,17 @@ import (
 type CliIntentSuite struct {
 	suite.Suite
 
-	patchContent      string
-	description       string
-	variants          []string
-	tasks             []string
-	syncBVs []string
-	syncTasks         []string
-	module            string
-	user              string
-	projectID         string
-	hash              string
-	alias             string
+	patchContent string
+	description  string
+	variants     []string
+	tasks        []string
+	syncBVs      []string
+	syncTasks    []string
+	module       string
+	user         string
+	projectID    string
+	hash         string
+	alias        string
 }
 
 func TestCliIntentSuite(t *testing.T) {
@@ -37,7 +37,7 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.module = "module"
 	s.tasks = []string{"task1", "Task2"}
 	s.syncTasks = []string{"task1"}
-	s.syncVariants = {"variant1"}
+	s.syncBVs = []string{"variant1"}
 	s.variants = []string{"variant1", "variant2"}
 	s.projectID = "project"
 	s.description = "desc"
@@ -50,7 +50,7 @@ func (s *CliIntentSuite) SetupTest() {
 }
 
 func (s *CliIntentSuite) TestNewCliIntent() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.syncTasks, s.syncBVs, s.alias)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NotNil(intent)
 	s.NoError(err)
 	s.Implements((*Intent)(nil), intent)
@@ -72,13 +72,12 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(s.tasks, cIntent.Tasks)
 	s.Equal(s.syncBVs, cIntent.SyncBuildVariants)
 	s.Equal(s.syncTasks, cIntent.SyncTasks)
-	s.Equal(s.syncBVs, cIntent.SyncBuildVariants)
 	s.Zero(cIntent.ProcessedAt)
 	s.Zero(cIntent.CreatedAt)
 	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, []string{}, "")
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, "", []string{}, []string{})
 	s.NotNil(intent)
 	s.NoError(err)
 
@@ -92,7 +91,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Empty(cIntent.Module)
 	s.Empty(cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias,s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NotNil(intent)
 	s.NoError(err)
 }
@@ -120,7 +119,7 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 }
 
 func (s *CliIntentSuite) TestFindIntentSpecifically() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.syncTasks, s.alias)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -137,7 +136,7 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 }
 
 func (s *CliIntentSuite) TestInsert() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.syncTasks, s.alias)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NoError(err)
 	s.NotNil(intent)
 
@@ -151,7 +150,7 @@ func (s *CliIntentSuite) TestInsert() {
 }
 
 func (s *CliIntentSuite) TestSetProcessed() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.syncTasks, s.alias)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -177,7 +176,7 @@ func findCliIntents(processed bool) ([]*cliIntent, error) {
 }
 
 func (s *CliIntentSuite) TestNewPatch() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.syncTasks, s.syncBuildVariants, s.alias)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
 	s.NoError(err)
 	s.NotNil(intent)
 

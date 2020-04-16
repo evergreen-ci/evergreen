@@ -509,7 +509,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
+		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
@@ -523,9 +523,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 	// If task sync was requested for the end of this task, run it now.
 	start = time.Now()
-	// kim: TODO: should this have a more generous timeout since someone asked
-	// for it? What would be a sane timeout on a command which could run for a
-	// very long time?
+	// TODO (kim): this should probably have a more generous timeout, but don't
+	// know what would be a sane value.
 	syncCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {

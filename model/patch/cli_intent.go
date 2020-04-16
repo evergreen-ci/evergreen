@@ -190,7 +190,6 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 			}
 		}
 	}
-	// kim: TODO: test
 	if len(syncBVs) != 0 && len(syncTasks) == 0 {
 		return nil, errors.New("task names provided for sync but build variants missing")
 	}

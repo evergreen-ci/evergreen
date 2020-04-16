@@ -170,6 +170,7 @@ type Task struct {
 
 	// ShouldSync indicates whether the task should sync its task directory to
 	// S3 when it is complete.
+	// TODO (EVG-7817): allow different statuses
 	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
 }
 
@@ -1680,7 +1681,6 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 func (t *Task) IsPartOfDisplay() bool {
 	dt, err := t.GetDisplayTask()
 	if err != nil {
-		grip.Error(err)
 		return false
 	}
 	return dt != nil

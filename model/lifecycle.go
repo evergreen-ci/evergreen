@@ -499,7 +499,6 @@ func RefreshTasksCache(buildId string) error {
 }
 
 // AddTasksToBuild creates the tasks for the given build of a project
-// kim: TODO: test
 func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, generatedBy string, tasksInBuild []task.Task, syncVariantsTasks []patch.VariantTasks, distroAliases map[string][]string) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
@@ -555,7 +554,6 @@ type BuildCreateArgs struct {
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks. Note that the caller
 // is responsible for inserting the created build and task documents
-// kim: TODO: test
 func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
@@ -664,11 +662,15 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	return tasks
 }
 
+type displayTaskInfo struct {
+	task          *task.Task
+	dependencyIds map[string]bool
+}
+
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
-// kim: TODO: test
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
 	aliases ProjectAliases, tasksInBuild []task.Task, syncVariantsTasks []patch.VariantTasks, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
@@ -743,10 +745,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// create and insert all of the actual tasks
 	tasks := task.Tasks{}
-	type displayTaskInfo struct {
-		task          *task.Task
-		dependencyIds map[string]bool
-	}
 	displayTasks := make(map[string]displayTaskInfo)
 
 	// Create display tasks
@@ -786,8 +784,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
-		// kim: TODO: move to own function.
-		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, shouldSyncTask(syncVariantsTasks, b.BuildVariant, t.Name), createTime)
+		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime)
 		if err != nil {
 			return tasks, errors.Wrapf(err, "Failed to create task %s", id)
 		}
@@ -874,6 +871,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 
 		newTask.GeneratedBy = generatedBy
+
+		newTask.ShouldSync = shouldSyncTask(syncVariantsTasks, displayTasks, b.BuildVariant, t.Name)
+
 		// append the task to the list of the created tasks
 		tasks = append(tasks, newTask)
 	}
@@ -890,7 +890,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 // shouldSyncTask returns whether or not this task in this build variant should
 // sync its task directory.
-func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) bool {
+func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, displayTasks map[string]displayTaskInfo, bv, task string) bool {
 	for _, vt := range syncVariantsTasks {
 		if vt.Variant != bv {
 			continue
@@ -903,6 +903,9 @@ func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) boo
 				return true
 			}
 			if utility.StringSliceContains(dt.ExecTasks, task) {
+				return true
+			}
+			if dtInfo, ok := displayTasks[task]; ok && dtInfo.task.DisplayName == task {
 				return true
 			}
 		}
@@ -1000,9 +1003,8 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 }
 
 // createOneTask is a helper to create a single task.
-// kim: TODO: test
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *Version, dat distro.AliasLookupTable, shouldSyncTask bool, createTime time.Time) (*task.Task, error) {
+	buildVariant *BuildVariant, b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time) (*task.Task, error) {
 
 	buildVarTask.Distros = dat.Expand(buildVarTask.Distros)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
@@ -1070,7 +1072,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
-		ShouldSync:          shouldSyncTask,
 	}
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
@@ -1255,7 +1256,6 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-// kim: TODO: test
 func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, syncVariantsTasks []patch.VariantTasks, generatedBy string) ([]string, []string, error) {
 	taskIds := NewTaskIdTable(p, v, "", "")
 
@@ -1352,7 +1352,6 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-// kim: TODO: test
 func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pairs TaskVariantPairs, syncVariantsTasks []patch.VariantTasks, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
