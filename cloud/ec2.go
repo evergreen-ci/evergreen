@@ -171,9 +171,8 @@ const (
 )
 
 const (
-	checkSuccessDelay      = 5 * time.Second
 	checkSuccessRetries    = 10
-	checkSuccessInitPeriod = time.Second
+	checkSuccessInitPeriod = 2 * time.Second
 )
 
 // EC2ManagerOptions are used to construct a new ec2Manager.
@@ -948,19 +947,39 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 	defer m.client.Close()
 
+	var instance *ec2.Instance
+	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+	if err != nil {
+		return errors.Wrap(err, "error getting instance info before stopping")
+	}
+
+	// if instance is already stopped, return early
+	if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+		grip.Info(message.Fields{
+			"message":       "instance already stopped",
+			"user":          user,
+			"host_provider": h.Distro.Provider,
+			"host_id":       h.Id,
+			"distro":        h.Distro.Id,
+		})
+
+		return errors.Wrap(h.SetStopped(user), "failed to mark instance as stopped in db")
+	}
+
+	prevStatus := h.Status
 	if err := h.SetStopping(user); err != nil {
 		return errors.Wrap(err, "failed to mark instance as stopping in db")
 	}
 
-	_, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+	_, err = m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
+		if err2 := h.SetStatus(prevStatus, user, ""); err2 != nil {
+			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", prevStatus)
+		}
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
 	}
-
-	// Delay exponential backoff
-	time.Sleep(checkSuccessDelay)
 
 	// Check whether instance stopped
 	err = util.Retry(
@@ -978,6 +997,9 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {
+		if err2 := h.SetStatus(prevStatus, user, ""); err2 != nil {
+			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", prevStatus)
+		}
 		return errors.Wrap(err, "error checking if spawnhost stopped")
 	}
 
