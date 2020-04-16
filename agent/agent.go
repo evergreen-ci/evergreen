@@ -500,7 +500,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
-	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
@@ -509,7 +509,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
+		err := a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
@@ -519,11 +519,17 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		})
 	}
 
+	a.killProcs(postCtx, tc, false)
+
 	// If task sync was requested for the end of this task, run it now.
-	a.killProcs(ctx, tc, false)
 	start = time.Now()
-	if taskSyncCmds := getTaskEndSyncCommands(tc); taskSyncCmds != nil {
-		err = a.runCommands(ctx, tc, taskSyncCmds.List(), runCommandsOptions{})
+	// kim: TODO: should this have a more generous timeout since someone asked
+	// for it? What would be a sane timeout on a command which could run for a
+	// very long time?
+	syncCtx, cancel := a.withCallbackTimeout(ctx, tc)
+	defer cancel()
+	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
+		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running task sync.",
 		}))
@@ -531,21 +537,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 			"message":    "Finished running task sync.",
 			"total_time": time.Since(start).String(),
 		})
-	}
-}
-
-// getTaskEndSyncCommands returns the commands to sync the task to S3 if it was
-// requested for this task.
-func getTaskEndSyncCommands(tc *taskContext) *model.YAMLCommandSet {
-	if !tc.taskModel.ShouldSync {
-		return nil
-	}
-	// kim: TODO: check if task end sync enabled for this task
-	return &model.YAMLCommandSet{
-		SingleCommand: &model.PluginCommandConf{
-			Type:    evergreen.CommandTypeSetup,
-			Command: evergreen.S3PushCommandName,
-		},
 	}
 }
 
