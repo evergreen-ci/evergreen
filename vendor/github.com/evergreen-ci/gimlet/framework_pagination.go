@@ -34,7 +34,7 @@ func (r *ResponsePages) GetLinks(route string) string {
 		links = append(links, r.Prev.GetLink(route))
 	}
 
-	return strings.Join(links, "\n")
+	return strings.Join(links, ",")
 }
 
 // Validate checks each page, if present, and ensures that the
