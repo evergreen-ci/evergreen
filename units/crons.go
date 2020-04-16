@@ -493,7 +493,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
+		distros, err := distro.Find(distro.ByNeedsHostsPlanning(env.Settings().ContainerPools.Pools))
 		if err != nil {
 			return errors.WithStack(err)
 		}

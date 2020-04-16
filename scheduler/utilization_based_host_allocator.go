@@ -36,7 +36,26 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	})
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
+	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
+		return 0, nil
+	}
+
+	// only want to meet minimum hosts
+	if distro.Disabled {
+		numNewHostsToRequest := minimumHostsThreshold - numExistingHosts
+
+		if numNewHostsToRequest > 0 {
+			grip.Info(message.Fields{
+				"runner":                     RunnerName,
+				"message":                    "requesting new hosts for disabled distro",
+				"distro":                     distro.Id,
+				"minimum_hosts_for_distro":   minimumHostsThreshold,
+				"num_existing_hosts":         numExistingHosts,
+				"total_new_hosts_to_request": numNewHostsToRequest,
+			})
+			return numNewHostsToRequest, nil
+		}
 		return 0, nil
 	}
 
@@ -76,7 +95,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	}
 
 	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?
-	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
 	numExistingAndRequiredHosts := numExistingHosts + numNewHostsRequired
 	numAdditionalHostsToMeetMinimum := 0
 	if numExistingAndRequiredHosts < minimumHostsThreshold {
