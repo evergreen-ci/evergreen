@@ -494,19 +494,20 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
-	allTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, "", []string{}, "", 1, 0, 0, task.Execution)
+
+	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, task.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all tests: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
 	}
-	allFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, "", 1, 0, 0, task.Execution)
+	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, task.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all filtered tests: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 	}
 
 	taskTestResult := TaskTestResult{
 		TestResults:       testPointers,
-		TotalTestCount:    len(allTests),
-		FilteredTestCount: len(allFilteredTests),
+		TotalTestCount:    totalTestCount,
+		FilteredTestCount: filteredTestCount,
 	}
 
 	return &taskTestResult, nil
@@ -938,11 +939,11 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(*obj.Id, "", []string{evergreen.TestFailedStatus}, "", 1, 0, 0, obj.Execution)
+	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
 	}
-	return len(tests), nil
+	return failedTestCount, nil
 }
 
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
