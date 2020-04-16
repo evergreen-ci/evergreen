@@ -693,7 +693,7 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 		misses int64
 	)
 
-	opts := options.Find().SetBatchSize(100)
+	opts := options.Find()
 	if d.opts.Priority {
 		opts.SetSort(bson.M{"priority": -1})
 	}
@@ -775,18 +775,21 @@ RETRY:
 				}
 
 				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
-					grip.Debug(message.WrapError(err, message.Fields{
-						"id":        d.instanceID,
-						"service":   "amboy.queue.mongo",
-						"operation": "dispatch job",
-						"job_id":    job.ID(),
-						"job_type":  job.Type,
-						"scopes":    job.Scopes,
-						"stat":      job.Status,
-						"is_group":  d.opts.UseGroups,
-						"group":     d.opts.GroupName,
-						"dup_key":   isMongoDupKey(err),
-					}))
+					grip.DebugWhen(
+						isDispatchable(job.Status()),
+						message.WrapError(err, message.Fields{
+							"id":        d.instanceID,
+							"service":   "amboy.queue.mongo",
+							"operation": "dispatch job",
+							"job_id":    job.ID(),
+							"job_type":  job.Type().Name,
+							"scopes":    job.Scopes(),
+							"stat":      job.Status(),
+							"is_group":  d.opts.UseGroups,
+							"group":     d.opts.GroupName,
+							"dup_key":   isMongoDupKey(err),
+						}),
+					)
 
 					job = nil
 					continue CURSOR
