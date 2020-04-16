@@ -18,6 +18,7 @@ type APICommitQueueItem struct {
 	Version     *string     `json:"version"`
 	EnqueueTime *time.Time  `json:"enqueueTime"`
 	Modules     []APIModule `json:"modules"`
+	Patch       *APIPatch   `json:"patch"`
 }
 
 type APIModule struct {

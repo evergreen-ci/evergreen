@@ -61,6 +61,7 @@ type ComplexityRoot struct {
 		EnqueueTime func(childComplexity int) int
 		Issue       func(childComplexity int) int
 		Modules     func(childComplexity int) int
+		Patch       func(childComplexity int) int
 		Version     func(childComplexity int) int
 	}
 
@@ -425,6 +426,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueItem.Modules(childComplexity), true
+
+	case "CommitQueueItem.Patch":
+		if e.complexity.CommitQueueItem.Patch == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueItem.Patch(childComplexity), true
 
 	case "CommitQueueItem.Version":
 		if e.complexity.CommitQueueItem.Version == nil {
@@ -2111,6 +2119,7 @@ type CommitQueueItem {
   Issue: String
   Version: String
   EnqueueTime: Time
+  Patch: Patch!
   Modules: [Module!]
 }
 
@@ -2817,6 +2826,40 @@ func (ec *executionContext) _CommitQueueItem_EnqueueTime(ctx context.Context, fi
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueueItem_Patch(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueItem) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueueItem",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Patch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueueItem_Modules(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueItem) (ret graphql.Marshaler) {
@@ -9834,6 +9877,11 @@ func (ec *executionContext) _CommitQueueItem(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._CommitQueueItem_Version(ctx, field, obj)
 		case "EnqueueTime":
 			out.Values[i] = ec._CommitQueueItem_EnqueueTime(ctx, field, obj)
+		case "Patch":
+			out.Values[i] = ec._CommitQueueItem_Patch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "Modules":
 			out.Values[i] = ec._CommitQueueItem_Modules(ctx, field, obj)
 		default:
