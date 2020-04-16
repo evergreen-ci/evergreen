@@ -82,6 +82,11 @@ var (
 func (t *TestResult) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
 func (t *TestResult) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
 
+// Count returns the number of testresults that satisfy the given query.
+func Count(query db.Q) (int, error) {
+	return db.CountQ(Collection, query)
+}
+
 // FindByTaskIDAndExecution returns test results from the testresults collection for a given task.
 func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
 	q := db.Query(bson.M{
@@ -166,6 +171,21 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 	return q
 }
 
+func TestResultCount(taskIds []string, testName string, statuses []string, execution int) (int, error) {
+	filter := bson.M{
+		TaskIDKey:    bson.M{"$in": taskIds},
+		ExecutionKey: execution,
+	}
+	if len(statuses) > 0 {
+		filter[StatusKey] = bson.M{"$in": statuses}
+	}
+	if testName != "" {
+		filter[TestFileKey] = bson.M{"$regex": testName, "$options": "i"}
+	}
+	q := db.Query(filter)
+	return Count(q)
+}
+
 // TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
 func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
 	tests := []TestResult{}
@@ -200,7 +220,13 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}
-	pipeline = append(pipeline, bson.M{"$sort": bson.D{{Key: sortBy, Value: sortDir}, {Key: "_id", Value: 1}}})
+
+	sort := bson.D{}
+	if sortBy != "" {
+		sort = append(sort, primitive.E{Key: sortBy, Value: sortDir})
+	}
+	sort = append(sort, primitive.E{Key: "_id", Value: 1})
+	pipeline = append(pipeline, bson.M{"$sort": sort})
 
 	if page > 0 {
 		pipeline = append(pipeline, bson.M{"$skip": page * limit})

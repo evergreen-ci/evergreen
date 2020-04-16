@@ -29,7 +29,7 @@ type Query {
     limit: Int = 0
     testName: String = ""
     statuses: [String!]! = []
-  ): [TestResult!]
+  ): TaskTestResult!
   taskFiles(taskId: String!): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
@@ -209,6 +209,12 @@ type TaskEndDetail {
   timedOut: Boolean
 }
 
+type TaskTestResult {
+  totalTestCount: Int!
+  filteredTestCount: Int!
+  testResults: [TestResult!]!
+}
+
 type TestResult {
   id: String!
   status: String!
@@ -243,6 +249,7 @@ type BaseTaskMetadata {
 }
 
 type Task {
+  failedTestCount: Int!
   spawnHostLink: String
   patchMetadata: PatchMetadata!
   id: String!

@@ -1,9 +1,11 @@
 {
   taskTests(taskId: "wuzzup", page: 0, limit: 1) {
-    logs {
-      htmlDisplayURL
-      rawDisplayURL
+    testResults {
+      logs {
+        htmlDisplayURL
+        rawDisplayURL
+      }
+      id
     }
-    id
   }
 }

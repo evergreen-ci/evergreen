@@ -6,6 +6,8 @@
     page: 0
     limit: 0
   ) {
-    status
+    testResults {
+      status
+    }
   }
 }

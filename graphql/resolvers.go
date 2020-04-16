@@ -423,8 +423,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return taskResults, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*restModel.APITest, error) {
-
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -473,17 +472,17 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	testPointers := []*restModel.APITest{}
-	for _, t := range tests {
+	for _, t := range paginatedFilteredTests {
 		apiTest := restModel.APITest{}
-		err := apiTest.BuildFromService(&t)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		buildErr := apiTest.BuildFromService(&t)
+		if buildErr != nil {
+			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
 		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
@@ -495,7 +494,23 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
-	return testPointers, nil
+
+	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
+	}
+	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
+	}
+
+	taskTestResult := TaskTestResult{
+		TestResults:       testPointers,
+		TotalTestCount:    totalTestCount,
+		FilteredTestCount: filteredTestCount,
+	}
+
+	return &taskTestResult, nil
 }
 
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error) {
@@ -932,6 +947,14 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	return &patch.PatchNumber, nil
+}
+
+func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
+	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+	}
+	return failedTestCount, nil
 }
 
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
