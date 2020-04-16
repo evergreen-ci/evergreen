@@ -1199,10 +1199,10 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 	for _, bv := range p.BuildVariants {
 		var preAndPostCmds []model.PluginCommandConf
 		if p.Pre != nil {
-			preAndPostCmds = append(preAndPostCmds, commandsRunOnBV(p.Pre.List(), cmd, bv.Name, p.Functions)...)
+			preAndPostCmds = append(preAndPostCmds, p.CommandsRunOnBV(p.Pre.List(), cmd, bv.Name)...)
 		}
 		if p.Post != nil {
-			preAndPostCmds = append(preAndPostCmds, commandsRunOnBV(p.Post.List(), cmd, bv.Name, p.Functions)...)
+			preAndPostCmds = append(preAndPostCmds, p.CommandsRunOnBV(p.Post.List(), cmd, bv.Name)...)
 		}
 
 		for _, bvtu := range bv.Tasks {
@@ -1216,21 +1216,21 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 				// will run for this task.
 				var setupAndTeardownCmds []model.PluginCommandConf
 				if tg.SetupGroup != nil {
-					setupAndTeardownCmds = append(setupAndTeardownCmds, commandsRunOnBV(tg.SetupGroup.List(), cmd, bv.Name, p.Functions)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, p.CommandsRunOnBV(tg.SetupGroup.List(), cmd, bv.Name)...)
 				}
 				if tg.SetupTask != nil {
-					setupAndTeardownCmds = append(setupAndTeardownCmds, commandsRunOnBV(tg.SetupTask.List(), cmd, bv.Name, p.Functions)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, p.CommandsRunOnBV(tg.SetupTask.List(), cmd, bv.Name)...)
 				}
 				if tg.TeardownGroup != nil {
-					setupAndTeardownCmds = append(setupAndTeardownCmds, commandsRunOnBV(tg.TeardownGroup.List(), cmd, bv.Name, p.Functions)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, p.CommandsRunOnBV(tg.TeardownGroup.List(), cmd, bv.Name)...)
 				}
 				if tg.TeardownTask != nil {
-					setupAndTeardownCmds = append(setupAndTeardownCmds, commandsRunOnBV(tg.TeardownTask.List(), cmd, bv.Name, p.Functions)...)
+					setupAndTeardownCmds = append(setupAndTeardownCmds, p.CommandsRunOnBV(tg.TeardownTask.List(), cmd, bv.Name)...)
 				}
 				for _, tgTask := range model.CreateTasksFromGroup(bvtu, p) {
 					addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, tgTask.Name, setupAndTeardownCmds)
 					if projTask := p.FindProjectTask(tgTask.Name); projTask != nil {
-						cmds := commandsRunOnBV(projTask.Commands, cmd, bv.Name, p.Functions)
+						cmds := p.CommandsRunOnBV(projTask.Commands, cmd, bv.Name)
 						addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, tgTask.Name, cmds)
 					} else {
 						catcher.Errorf("cannot find definition of task '%s' used in task group '%s'", tgTask.Name, tg.Name)
@@ -1246,34 +1246,12 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 					catcher.Errorf("cannot find definition of task '%s'", bvtu.Name)
 					continue
 				}
-				cmds := commandsRunOnBV(projTask.Commands, cmd, bv.Name, p.Functions)
+				cmds := p.CommandsRunOnBV(projTask.Commands, cmd, bv.Name)
 				addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, bvtu.Name, cmds)
 			}
 		}
 	}
 	return bvToTasksWithCmds, catcher.Resolve()
-}
-
-// commandsRunOnBV returns all commands in cmds that match the command name cmd
-// and run on a given build variant.
-func commandsRunOnBV(cmds []model.PluginCommandConf, cmd, bv string, funcs map[string]*model.YAMLCommandSet) []model.PluginCommandConf {
-	var matchingCmds []model.PluginCommandConf
-	for _, c := range cmds {
-		if c.Function != "" {
-			f, ok := funcs[c.Function]
-			if !ok {
-				continue
-			}
-			for _, funcCmd := range f.List() {
-				if funcCmd.Command == cmd && funcCmd.RunOnVariant(bv) {
-					matchingCmds = append(matchingCmds, funcCmd)
-				}
-			}
-		} else if c.Command == cmd && c.RunOnVariant(bv) {
-			matchingCmds = append(matchingCmds, c)
-		}
-	}
-	return matchingCmds
 }
 
 // validateTaskSyncCommands validates project's task sync commands.  In
@@ -1331,11 +1309,18 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 				}
 				// Find the task referenced by s3.pull and ensure that it exists
 				// and calls s3.push.
-				if err := validateTVRunsCommand(s3PushTaskNode, evergreen.S3PushCommandName, p); err != nil {
+				cmds, err := p.CommandsRunOnTV(s3PushTaskNode, evergreen.S3PushCommandName)
+				if err != nil {
 					errs = append(errs, ValidationError{
 						Level: Error,
 						Message: fmt.Sprintf("problem validating that task '%s' runs command '%s': %s",
-							s3PushBVName, evergreen.S3PushCommandName, err.Error()),
+							s3PushTaskName, evergreen.S3PushCommandName, err.Error()),
+					})
+				} else if len(cmds) == 0 {
+					errs = append(errs, ValidationError{
+						Level: Error,
+						Message: fmt.Sprintf("task '%s' in build variant '%s' does not run command '%s'",
+							s3PushTaskName, s3PushBVName, evergreen.S3PushCommandName),
 					})
 				}
 			}
@@ -1343,19 +1328,6 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 	}
 
 	return errs
-}
-
-func validateTVRunsCommand(tv model.TVPair, cmd string, p *model.Project) error {
-	task := p.FindProjectTask(tv.TaskName)
-	if task == nil {
-		return errors.Errorf("definition of task '%s' not found", tv.TaskName)
-	}
-	cmds := commandsRunOnBV(task.Commands, cmd, tv.Variant, p.Functions)
-	if len(cmds) == 0 {
-		return errors.Errorf("task '%s' does not run command '%s'", tv.TaskName, cmd)
-	}
-	return nil
-
 }
 
 // validateTVdependsOnTV checks that the task in the given build variant has a
