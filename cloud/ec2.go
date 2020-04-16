@@ -967,7 +967,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 
 	prevStatus := h.Status
-	if err := h.SetStopping(user); err != nil {
+	if err = h.SetStopping(user); err != nil {
 		return errors.Wrap(err, "failed to mark instance as stopping in db")
 	}
 
