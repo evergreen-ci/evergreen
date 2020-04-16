@@ -480,9 +480,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	testPointers := []*restModel.APITest{}
 	for _, t := range paginatedFilteredTests {
 		apiTest := restModel.APITest{}
-		err := apiTest.BuildFromService(&t)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		buildErr := apiTest.BuildFromService(&t)
+		if buildErr != nil {
+			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
 		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
