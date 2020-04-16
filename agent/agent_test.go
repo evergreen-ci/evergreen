@@ -60,6 +60,7 @@ func (s *AgentSuite) SetupTest() {
 			Project: &model.Project{},
 			Task:    &task.Task{},
 		},
+		taskModel:     &task.Task{},
 		runGroupSetup: true,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
