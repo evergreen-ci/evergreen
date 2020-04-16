@@ -45,11 +45,14 @@ func UnsetVolumeHost(id string) error {
 }
 
 func (v *Volume) SetDisplayName(displayName string) error {
-	v.DisplayName = displayName
-	return db.Update(VolumesCollection,
+	err := db.Update(VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeDisplayNameKey: displayName}})
-
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	v.DisplayName = displayName
+	return nil
 }
 
 // Remove a volume from the volumes collection.

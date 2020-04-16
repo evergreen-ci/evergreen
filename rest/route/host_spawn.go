@@ -809,13 +809,13 @@ func makeModifyVolume(sc data.Connector) gimlet.RouteHandler {
 
 func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 	return &modifyVolumeHandler{
-		sc: h.sc,
+		sc:   h.sc,
+		opts: &model.VolumeModifyOptions{},
 	}
 }
 
 func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
-	h.opts = &model.VolumeModifyOptions{}
 	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
 		return err
 	}
