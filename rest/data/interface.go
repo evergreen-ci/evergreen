@@ -193,7 +193,8 @@ type Connector interface {
 	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
-
+	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
+	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
 	// AbortVersion aborts all tasks of a version given its ID.
 	AbortVersion(string, string) error
 
