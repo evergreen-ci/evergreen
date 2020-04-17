@@ -168,12 +168,12 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	// RunsSync indicates whether this task syncs its task directory to S3.
-	RunsSync bool `bson:"runs_sync,omitempty" json:"runs_sync,omitempty"`
 	// ShouldSync indicates whether the task should sync its task directory to
 	// S3 when it is complete.
 	// TODO (EVG-7817): allow different statuses
 	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
+	// RunsSync indicates whether this task syncs its task directory to S3.
+	RunsSync bool `bson:"runs_sync,omitempty" json:"runs_sync,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }

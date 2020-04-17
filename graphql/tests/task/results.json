@@ -196,6 +196,14 @@
     {
       "query_file": "spawnHostLink-spawn-not-allowed.graphql",
       "result": { "data": { "task": { "spawnHostLink": null } } }
+    },
+    {
+      "query_file": "failedTestCount.graphql",
+      "result": { "data": { "task": { "failedTestCount": 2 } } }
+    },
+    {
+      "query_file": "failedTestCount-no-tests.graphql",
+      "result": { "data": { "task": { "failedTestCount": 0 } } }
     }
   ]
 }

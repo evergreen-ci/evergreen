@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 // DBTestConnector is a struct that implements the Test related methods
@@ -56,6 +57,26 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status st
 	}
 
 	return res, nil
+}
+func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return 0, errors.Wrapf(err, fmt.Sprintf("error finding task %s", taskId))
+	}
+	if t == nil {
+		return 0, errors.New(fmt.Sprintf("task not found %s", taskId))
+	}
+	var taskIds []string
+	if t.DisplayOnly {
+		taskIds = t.ExecutionTasks
+	} else {
+		taskIds = []string{taskId}
+	}
+	count, err := testresult.TestResultCount(taskIds, testName, statuses, execution)
+	if err != nil {
+		return 0, errors.Wrapf(err, fmt.Sprintf("Error counting test results for task %s", taskId))
+	}
+	return count, nil
 }
 
 func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, testName string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
@@ -113,7 +134,9 @@ func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, testName, status
 	}
 	return nil, nil
 }
-
+func (tc *MockTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
+	return 0, nil
+}
 func (tc *MockTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, filter string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
 	//todo
 	return nil, nil

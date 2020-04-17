@@ -456,13 +456,16 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
+			checkRerun, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
+
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
 
 			writeSetupScript, err := h.writeSetupScriptCommands(settings)
 			require.NoError(t, err)
 
-			expectedPreCmds := append([]string{setupUser}, writeSetupScript...)
+			expectedPreCmds := append([]string{checkRerun, setupUser}, writeSetupScript...)
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
@@ -527,13 +530,16 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
+			checkRerun, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
+
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
 
 			writeSetupScript, err := h.writeSetupScriptCommands(settings)
 			require.NoError(t, err)
 
-			expectedPreCmds := append([]string{setupUser}, writeSetupScript...)
+			expectedPreCmds := append([]string{checkRerun, setupUser}, writeSetupScript...)
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
@@ -1167,6 +1173,70 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		" && cp /home/user/evergreen /home/user/cli_bin" +
 		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)"
 	assert.Equal(t, expected, cmd)
+}
+
+func TestCheckUserDataStartedCommand(t *testing.T) {
+	t.Run("WithWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *Host){
+			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
+				expectedCmd := "if (Test-Path -Path /root_dir/jasper_binary_dir/user_data_started) { exit }" +
+					"\r\n/root_dir/bin/bash -l -c @'" +
+					"\nmkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started" +
+					"\n'@"
+				cmd, err := h.CheckUserDataStartedCommand()
+				require.NoError(t, err)
+				assert.Equal(t, expectedCmd, cmd)
+			},
+			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
+				h.Distro.BootstrapSettings.JasperBinaryDir = ""
+				cmd, err := h.CheckUserDataStartedCommand()
+				assert.Error(t, err)
+				assert.Empty(t, cmd)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &Host{
+					Distro: distro.Distro{
+						Arch: distro.ArchWindowsAmd64,
+						BootstrapSettings: distro.BootstrapSettings{
+							JasperBinaryDir: "/jasper_binary_dir",
+							RootDir:         "/root_dir",
+							ShellPath:       "/bin/bash",
+						},
+					},
+				}
+				testCase(t, h)
+			})
+		}
+	})
+	t.Run("WithNonWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *Host){
+			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
+				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
+				cmd, err := h.CheckUserDataStartedCommand()
+				require.NoError(t, err)
+				assert.Equal(t, expectedCmd, cmd)
+			},
+			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
+				h.Distro.BootstrapSettings.JasperBinaryDir = ""
+				cmd, err := h.CheckUserDataStartedCommand()
+				assert.Error(t, err)
+				assert.Empty(t, cmd)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &Host{
+					Distro: distro.Distro{
+						Arch: distro.ArchLinuxAmd64,
+						BootstrapSettings: distro.BootstrapSettings{
+							JasperBinaryDir: "/jasper_binary_dir",
+						},
+					},
+				}
+				testCase(t, h)
+			})
+		}
+	})
 }
 
 func TestMarkUserDataDoneCommands(t *testing.T) {

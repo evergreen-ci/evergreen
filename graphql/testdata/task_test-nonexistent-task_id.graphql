@@ -1,9 +1,11 @@
 {
   taskTests(taskId: "THIS-TASK-DOES-NOT-EXIST-!!!!", page: 1, limit: 1) {
-    logs {
-      htmlDisplayURL
-      rawDisplayURL
+    testResults {
+      logs {
+        htmlDisplayURL
+        rawDisplayURL
+      }
+      id
     }
-    id
   }
 }

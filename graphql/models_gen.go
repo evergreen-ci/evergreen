@@ -97,6 +97,12 @@ type TaskResult struct {
 	BuildVariant string `json:"buildVariant"`
 }
 
+type TaskTestResult struct {
+	TotalTestCount    int              `json:"totalTestCount"`
+	FilteredTestCount int              `json:"filteredTestCount"`
+	TestResults       []*model.APITest `json:"testResults"`
+}
+
 type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
