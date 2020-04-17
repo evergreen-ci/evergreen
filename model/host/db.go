@@ -332,7 +332,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByTaskSpec returns a query that finds all running hosts that are running a
+// NumHostsByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
