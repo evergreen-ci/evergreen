@@ -342,7 +342,7 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 	}
 	q := db.Query(
 		bson.M{
-			StatusKey: evergreen.HostRunning,
+			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
 			"$or": []bson.M{
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},

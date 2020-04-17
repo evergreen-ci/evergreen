@@ -413,6 +413,12 @@ var (
 		HostStopped,
 	}
 
+	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
+	CanRunTaskStatus = []string{
+		HostRunning,
+		HostProvisioning,
+	}
+
 	// DownHostStatus is a list of all host statuses that are considered down.
 	DownHostStatus = []string{
 		HostTerminated,
