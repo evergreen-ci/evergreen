@@ -554,13 +554,13 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.addWorkstationCommand = function() {
       if (!$scope.settingsFormData.workstation_config) {
-          $scope.settingsFormData.workstation_config = {};
+        $scope.settingsFormData.workstation_config = {};
       }
       if (!$scope.settingsFormData.workstation_config.setup_commands) {
-        scope.settingsFormData.workstation_config.setup_commands = []
+        $scope.settingsFormData.workstation_config.setup_commands = [];
       }
       $scope.settingsFormData.workstation_config.setup_commands =
-          $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
+        $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
       $scope.cur_command = {};
   }
 
