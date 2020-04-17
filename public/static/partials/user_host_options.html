@@ -79,12 +79,12 @@
         <textarea id="input-key-val" name="pubkey" placeholder="Enter public key here..." required key-base-valid ng-model="selectedKey.key"></textarea>
       </p>
       <p class="checkbox">
-        <input type="checkbox" id="input-key-chk" ng-click="toggleSaveKey()">&nbsp;&nbsp;Save public key&nbsp;&nbsp;
-        <input type="text" id="input-key-name" name="keyname" ng-model="selectedKey.name" ng-disabled="!saveKey"; placeholder="mykey.pub" key-name-unique>
+        <input type="checkbox" id="input-key-chk" ng-click="toggleSaveKey()" />&nbsp;&nbsp;Save public key&nbsp;&nbsp;
+        <input type="text" id="input-key-name" name="keyname" ng-model="selectedKey.name" ng-disabled="!saveKey"; placeholder="mykey.pub" key-name-unique />
       </p>
     </div>
     <div style="padding-bottom:5px;" ng-show="selectedDistro.virtual_workstation_allowed">
-      <input type="checkbox" ng-disabled="$parent.spawnTaskChecked" ng-model="$parent.isVirtualWorkstation"> Virtual Workstation
+      <input type="checkbox" ng-disabled="$parent.spawnTaskChecked" ng-model="$parent.isVirtualWorkstation" /> Virtual Workstation
       <div ng-show="$parent.isVirtualWorkstation">
         <div class="dropdown">
           <button class="btn btn-link btn-dropdown" data-toggle="dropdown">
@@ -110,7 +110,7 @@
             </li>
           </ul>
           <div>
-            <input type="checkbox" style="padding-left:15px;" ng-disabled="availableUnexpirableHosts() <= 0" ng-model="$parent.noExpiration"> Set Never Expire
+            <input type="checkbox" style="padding-left:15px;" ng-disabled="availableUnexpirableHosts() <= 0" ng-model="$parent.noExpiration" /> Set Never Expire
             <span class="warning-text" ng-show="availableUnexpirableHosts() <= 0"><i class="fa fa-warning"></i>
           Can have at most [[ maxUnexpirableHostsPerUser ]] unexpirable hosts
             </span>
@@ -118,24 +118,24 @@
         </div>
         <div ng-show="!$parent.homeVolumeID">
           <label> Volume size (GB) </label>
-          <input type="number" ng-model="$parent.homeVolumeSize" min="1" max="10000">
+          <input type="number" ng-model="$parent.homeVolumeSize" min="1" max="10000" />
         </div>
       </div>
     </div>
     <div id="userData" style="padding-bottom:5px;">
-      <input type="checkbox" ng-model="$parent.use_userdata"> Run Userdata script on start
+      <input type="checkbox" ng-model="$parent.use_userdata" /> Run Userdata script on start
       <p class="textarea" ng-show="$parent.use_userdata">
         <textarea placeholder="Enter Userdata script" ng-model="$parent.userdata"></textarea>
       </p>
     </div>
     <div class="spawn-task-options" ng-show="!!spawnTask">
-      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.spawnTaskChecked">
+      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.spawnTaskChecked" />
         Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
       <br/>
-      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation || !spawnTask.runs_sync || !$parent.spawnTaskChecked" ng-model="$parent.spawnTaskSyncChecked">
+      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation || !spawnTask.runs_sync || !$parent.spawnTaskChecked" ng-model="$parent.spawnTaskSyncChecked" />
         Load from task sync
       <br/>
-      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.useTaskConfig">
+      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.useTaskConfig" />
         Also start any hosts this task started (if applicable)
     </div>
     <div>
