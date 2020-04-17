@@ -164,7 +164,6 @@ func TestJasperCommands(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p /foo",
 				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
@@ -199,8 +198,10 @@ func TestJasperCommands(t *testing.T) {
 
 			expectedCmds := []string{
 				setupScript,
+				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				startAgentMonitor,
@@ -260,8 +261,10 @@ func TestJasperCommands(t *testing.T) {
 
 			expectedCmds := []string{
 				setupScript,
+				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
@@ -323,8 +326,10 @@ func TestJasperCommands(t *testing.T) {
 
 			expectedCmds := []string{
 				setupScript,
+				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
@@ -429,7 +434,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p /foo",
 				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
@@ -471,9 +475,13 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 
-			expectedCmds := append(writeCredentialsCmd,
+			var expectedCmds []string
+			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
+			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
@@ -538,9 +546,13 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 
-			expectedCmds := append(writeCredentialsCmd,
+			var expectedCmds []string
+			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
+			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
@@ -599,7 +611,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
 				},
 				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					settings.Splunk.Token = "token"
@@ -609,7 +621,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
 				},
 				"SpawnHostWithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.StartedBy = "started_by_user"
@@ -620,7 +632,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -907,10 +919,9 @@ func TestBufferedWriteFileCommands(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, path, content string){
 		"BufferedWriteFileCommandsUsesSingleCommandForShortFile": func(t *testing.T, path, content string) {
 			cmds := bufferedWriteFileCommands(path, content)
-			require.Len(t, cmds, 3)
-			assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path)), cmds[0])
-			assert.Equal(t, writeToFileCommand(path, content, true), cmds[1])
-			assert.Equal(t, fmt.Sprintf("chmod 666 %s", path), cmds[2])
+			require.Len(t, cmds, 2)
+			assert.Equal(t, writeToFileCommand(path, content, true), cmds[0])
+			assert.Equal(t, fmt.Sprintf("chmod 666 %s", path), cmds[1])
 		},
 		"BufferedWriteFileCommandsUsesMultipleCommandsForLongFile": func(t *testing.T, path, content string) {
 			content = strings.Repeat(content, 1000)
@@ -1175,7 +1186,7 @@ func TestMarkUserDataDoneCommands(t *testing.T) {
 			}
 			cmd, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
-			assert.Equal(t, "mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_done", cmd)
+			assert.Equal(t, "touch /jasper_binary_dir/user_data_done", cmd)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

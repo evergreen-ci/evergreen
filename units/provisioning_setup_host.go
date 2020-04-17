@@ -329,6 +329,10 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 		return errors.Wrap(err, "error setting up service user")
 	}
 
+	if logs, err := h.RunSSHCommand(ctx, h.MakeJasperDirsCommand()); err != nil {
+		return errors.Wrapf(err, "error creating Jasper directories: command returned: %s", logs)
+	}
+
 	if err := putJasperCredentials(ctx, env, settings, h); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
@@ -360,7 +364,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 	})
 
 	if logs, err := h.RunSSHCommand(ctx, writeCmds); err != nil {
-		return errors.Wrapf(err, "error copying credentials to remote machine: command returned %s", logs)
+		return errors.Wrapf(err, "error copying credentials to remote machine: command returned: %s", logs)
 	}
 
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
@@ -388,7 +392,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path))); err != nil {
-		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
+		return errors.Wrapf(err, "error while setting up service user: command returned: %s", logs)
 	}
 
 	return nil
@@ -399,7 +403,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	cmd := h.FetchAndReinstallJasperCommands(env.Settings())
 	if logs, err := h.RunSSHCommand(ctx, cmd); err != nil {
-		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned '%s'", logs)
+		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned: %s", logs)
 	}
 	return nil
 }
