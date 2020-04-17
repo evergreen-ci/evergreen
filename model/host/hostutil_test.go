@@ -34,6 +34,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// kim: TODO: fix user data tests for content
+
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, User: "user"}}

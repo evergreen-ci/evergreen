@@ -15,6 +15,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -380,7 +381,7 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // If, for some reason, this script gets interrupted, there's no guarantee that
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	fetchClient := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
@@ -392,19 +393,19 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 	var err error
 	checkUserDataRan, err := h.CheckUserDataStartedCommand()
 	if err != nil {
-		return "", errors.Wrap(err, "error creating command to check if user data is already done")
+		return nil, errors.Wrap(err, "error creating command to check if user data is already done")
 	}
 
 	var postFetchClient string
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
-			return "", errors.Wrap(err, "error creating command to start agent monitor")
+			return nil, errors.Wrap(err, "error creating command to start agent monitor")
 		}
 	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
-			return "", errors.Wrap(err, "error creating commands to load task data")
+			return nil, errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
 			// We have to run this in the Cygwin shell in order for git clone to
@@ -421,7 +422,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
-				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
 			postFetchClient += " && " + getTaskDataCmd
 		}
@@ -429,7 +430,7 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 
 	markDone, err := h.MarkUserDataDoneCommands()
 	if err != nil {
-		return "", errors.Wrap(err, "error creating command to mark when user data is done")
+		return nil, errors.Wrap(err, "error creating command to mark when user data is done")
 	}
 
 	makeJasperDirs := h.MakeJasperDirsCommand()
@@ -439,19 +440,19 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		var writeSetupScriptCmds []string
 		writeSetupScriptCmds, err = h.writeSetupScriptCommands(settings)
 		if err != nil {
-			return "", errors.Wrap(err, "could not get commands to run setup script")
+			return nil, errors.Wrap(err, "could not get commands to run setup script")
 		}
 
 		var writeCredentialsCmds []string
 		writeCredentialsCmds, err = h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 		if err != nil {
-			return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
+			return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
 		}
 
 		var setupUserCmds string
 		setupUserCmds, err = h.SetupServiceUserCommands()
 		if err != nil {
-			return "", errors.Wrap(err, "could not get commands to set up service user")
+			return nil, errors.Wrap(err, "could not get commands to set up service user")
 		}
 
 		var setupJasperCmds []string
@@ -472,25 +473,28 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
 		}
 
-		powershellCmds := append(append([]string{
-			"<powershell>",
+		powershellCmds := append([]string{
 			checkUserDataRan,
 			setupUserCmds},
-			bashCmds...),
-			"</powershell>",
+			bashCmds...,
 		)
 
-		return strings.Join(powershellCmds, "\n"), nil
+		return &userdata.Options{
+			Directive:  userdata.PowerShellScript,
+			Content:    strings.Join(powershellCmds, "\n"),
+			ClosingTag: userdata.PowerShellScriptClosingTag,
+			Persist:    true,
+		}, nil
 	}
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)
 	if err != nil {
-		return "", errors.Wrap(err, "could not get commands to run setup script")
+		return nil, errors.Wrap(err, "could not get commands to run setup script")
 	}
 
 	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
-		return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
+		return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
 	}
 
 	var setupJasperCmds []string
@@ -506,7 +510,10 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 	bashCmds = append(bashCmds, setupJasperCmds...)
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
-	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+	return &userdata.Options{
+		Directive: userdata.ShellScript + "/bin/bash",
+		Content:   strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"),
+	}, nil
 }
 
 // changeJasperDirsOwnerCommand returns the command to ensure that the Jasper

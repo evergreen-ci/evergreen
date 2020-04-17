@@ -7,40 +7,173 @@ import (
 	"io"
 	"mime/multipart"
 	"net/textproto"
+	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // This file contains utilities to support cloud-init user data passed to
 // providers to configure launch.
 
-// directiveToContentType maps a cloud-init directive to its MIME content type.
-func directiveToContentType() map[string]string {
-	return map[string]string{
-		"#!":              "text/x-shellscript",
-		"#include":        "text/x-include-url",
-		"#cloud-config":   "text/cloud-config",
-		"#upstart-job":    "text/upstart-job",
-		"#cloud-boothook": "text/cloud-boothook",
-		"#part-handler":   "text/part-handler",
-		"<powershell>":    "text/x-shellscript",
-		"<script>":        "text/x-shellscript",
-	}
+// kim: TODO: see if recursive scripts will just magic work, i.e.
+// <powershell>...<powershell>...</powershell></powershell>
+
+// userData represents a single user data part for cloud-init.
+type userData struct {
+	userdata.Options
 }
 
-// closingTags returns all cloud-init closing tags for directives.
-func closingTags() []string {
-	return []string{"</powershell>", "</script>"}
+func NewUserData(opts userdata.Options) (*userData, error) {
+	u := userData{
+		Options: opts,
+	}
+	if err := u.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid user data")
+	}
+	return &u, nil
+}
+
+// Merge combines one user data part with another.
+// kim: TODO: test
+func (u *userData) merge(other *userData) (*userData, error) {
+	if u.Directive != other.Directive {
+		return nil, errors.Errorf(
+			"cannot combine user data parts of incompatible types: '%s' is incompatible with '%s'",
+			u.Directive, other.Directive)
+	}
+	if u.ClosingTag != "" && other.ClosingTag != "" && u.ClosingTag != other.ClosingTag {
+		return nil, errors.Errorf(
+			"cannot combine user data with differing closing tags: '%s' is incompatible with '%s'",
+			u.ClosingTag, other.ClosingTag)
+	}
+	return NewUserData(userdata.Options{
+		Directive:  u.Directive,
+		Content:    strings.Join([]string{u.Content, other.Content}, "\n"),
+		ClosingTag: u.ClosingTag,
+		Persist:    u.Persist || other.Persist,
+	})
+}
+
+// String returns the entire user data part constructed from its components.
+func (u *userData) String() string {
+	s := strings.Join([]string{
+		string(u.Directive),
+		u.Content,
+		string(u.ClosingTag),
+	}, "\n")
+	if u.Persist {
+		s = strings.Join([]string{s, persistTag}, "\n")
+	}
+	return s
+}
+
+// ParseUserData returns the user data string as a structured user data.
+// kim: TODO: test
+func ParseUserData(userData string) (*userData, error) {
+	var err error
+	var persist bool
+	persist, userData, err = splitPersistTags(userData)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem splitting persist tags")
+	}
+
+	var directive userdata.Directive
+	directive, userData, err = splitDirective(userData)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem splitting directive")
+	}
+
+	var closingTag userdata.ClosingTag
+	if userdata.NeedsClosingTag(directive) {
+		closingTag = userdata.ClosingTagFor(directive)
+		userData, err = splitClosingTagFor(userData, closingTag)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem splitting closing tag '%s'", closingTag)
+		}
+	}
+
+	return NewUserData(userdata.Options{
+		Directive:  directive,
+		Content:    userData,
+		ClosingTag: closingTag,
+		Persist:    persist,
+	})
+}
+
+// splitDirective finds the directive on the first line of user data. This
+// should be called after splitPersistTags in order to ensure that there is no
+// persist tag before the directive line.
+func splitDirective(userData string) (directive userdata.Directive, userDataWithoutDirective string, err error) {
+	userData = strings.TrimSpace(userData)
+	var firstLine string
+	index := strings.IndexByte(userData, '\n')
+	if index == -1 {
+		firstLine = userData
+	} else {
+		firstLine = userData[:index]
+	}
+	firstLine = strings.TrimSpace(firstLine)
+
+	for _, directive := range userdata.Directives() {
+		if strings.HasPrefix(firstLine, string(directive)) {
+			userDataWithoutDirective = strings.Replace(userData, firstLine, "", 1)
+			return userdata.Directive(firstLine), userDataWithoutDirective, nil
+		}
+	}
+	return "", "", errors.Errorf("user data directive is not recognizable from first line: '%s'", firstLine)
+}
+
+// splitClosingTag finds the closing tag to match the end of the user data.
+func splitClosingTag(userData string) (closingTag userdata.ClosingTag, userDataWithoutClosingTag string, err error) {
+	for _, closingTag := range userdata.ClosingTags() {
+		if count := strings.Count(userData, string(closingTag)); count != 0 {
+			if count > 1 {
+				return "", "", errors.Errorf("closing tag '%s' cannot occur more than once", closingTag)
+			}
+			userDataWithoutClosingTag = strings.Replace(userData, string(closingTag), "", 1)
+			return closingTag, userDataWithoutClosingTag, nil
+		}
+	}
+	return "", "", errors.New("user data does not have closing tags")
+}
+
+// splitClosingTagFor finds the closing tag to match
+func splitClosingTagFor(userData string, closingTag userdata.ClosingTag) (userDataWithoutClosingTag string, err error) {
+	count := strings.Count(userData, string(closingTag))
+	if count == 0 {
+		return "", errors.Errorf("user data does not have closing tag '%s'", closingTag)
+	}
+	if count > 1 {
+		return "", errors.Errorf("cannot have multiple occurrences of closing tag '%s'", closingTag)
+	}
+	userDataWithoutClosingTag = strings.Replace(userData, string(closingTag), "", 1)
+	return userDataWithoutClosingTag, nil
+}
+
+const (
+	persistTag        = "<persist>true</persist>"
+	persistTagPattern = "<persist>[[:space:]]true[[:space:]]</persist>"
+)
+
+// splitPersistTags returns whether the user data contains persist tags and
+// the user data without those tags if any are present.
+func splitPersistTags(userData string) (found bool, userDataWithoutPersist string, err error) {
+	persistRegexp, err := regexp.Compile(persistTagPattern)
+	if err != nil {
+		return false, "", errors.Wrap(err, "could not compile persist tag pattern")
+	}
+	userDataWithoutPersist = persistRegexp.ReplaceAllString(userData, "")
+	return len(userDataWithoutPersist) != len(userData), userDataWithoutPersist, nil
 }
 
 // makeMultipartUserData returns user data in a multipart MIME format with the
 // given files and their content.
-func makeMultipartUserData(files map[string]string) (string, error) {
+func makeMultipartUserData(files map[string]*userData) (string, error) {
 	buf := &bytes.Buffer{}
 	parts := multipart.NewWriter(buf)
 
@@ -48,8 +181,8 @@ func makeMultipartUserData(files map[string]string) (string, error) {
 		return "", errors.Wrap(err, "error writing MIME headers")
 	}
 
-	for fileName, content := range files {
-		if err := writeUserDataPart(parts, content, fileName); err != nil {
+	for fileName, userData := range files {
+		if err := writeUserDataPart(parts, userData, fileName); err != nil {
 			return "", errors.Wrapf(err, "error writing user data '%s'", fileName)
 		}
 	}
@@ -84,18 +217,14 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 
 // writeUserDataPart creates a part in the user data multipart with the given
 // contents and name.
-func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) error {
-	if userDataPart == "" {
-		return nil
-	}
+func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) error {
 	if fileName == "" {
 		return errors.New("user data file name cannot be empty")
 	}
 
-	contentType, err := parseUserDataContentType(userDataPart)
-	if err != nil {
-		grip.Warning(errors.Wrap(err, "error determining user data content type"))
-		contentType = directiveToContentType()["#!"]
+	contentType, ok := userdata.DirectiveToContentType()[u.Directive]
+	if !ok {
+		return errors.Errorf("could not detect MIME content type of user data from directive '%s'", u.Directive)
 	}
 
 	header := textproto.MIMEHeader{}
@@ -108,31 +237,11 @@ func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) 
 		return errors.Wrap(err, "error making custom user data part")
 	}
 
-	if _, err := part.Write([]byte(userDataPart)); err != nil {
+	if _, err := part.Write([]byte(u.String())); err != nil {
 		return errors.Wrap(err, "error writing custom user data")
 	}
 
 	return nil
-}
-
-// parseUserDataContentType detects the content type based on the directive on
-// the first line of the user data.
-func parseUserDataContentType(userData string) (string, error) {
-	var firstLine string
-	index := strings.IndexByte(userData, '\n')
-	if index == -1 {
-		firstLine = userData
-	} else {
-		firstLine = userData[:index]
-	}
-	firstLine = strings.TrimSpace(firstLine)
-
-	for directive, contentType := range directiveToContentType() {
-		if strings.HasPrefix(firstLine, directive) {
-			return contentType, nil
-		}
-	}
-	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
 }
 
 // bootstrapUserData returns the user data with logic to bootstrap and set up
@@ -145,8 +254,13 @@ func parseUserDataContentType(userData string) (string, error) {
 // (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
 // We could possibly increase the length by gzip compressing it.
 func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
+	customUserData, err := ParseUserData(custom)
+	if err != nil {
+		return "", errors.Wrap(err, "could not parse custom user data")
+	}
+
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
-		return ensureWindowsUserDataScriptPersists(h, custom), nil
+		return ensureWindowsUserDataScriptPersists(h, customUserData).String(), nil
 	}
 	settings := env.Settings()
 
@@ -155,18 +269,26 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		return "", errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
-	bootstrap, err := h.BootstrapScript(settings, creds)
+	bootstrapOpts, err := h.BootstrapScript(settings, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate user data for provisioning host")
 	}
-
-	if mergeParts {
-		return ensureWindowsUserDataScriptPersists(h, mergeUserDataParts(h, bootstrap, custom)), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+	bootstrap, err := NewUserData(*bootstrapOpts)
+	if err != nil {
+		return "", errors.Wrap(err, "could not create user data for provisioning from options")
 	}
 
-	multipartUserData, err := makeMultipartUserData(map[string]string{
+	if mergeParts {
+		mergedUserData, err := bootstrap.merge(customUserData)
+		if err != nil {
+			return "", errors.Wrap(err, "could not merge user data parts into single part")
+		}
+		return ensureWindowsUserDataScriptPersists(h, mergedUserData).String(), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+	}
+
+	multipartUserData, err := makeMultipartUserData(map[string]*userData{
 		"bootstrap.txt": ensureWindowsUserDataScriptPersists(h, bootstrap),
-		"custom.txt":    ensureWindowsUserDataScriptPersists(h, custom),
+		"custom.txt":    ensureWindowsUserDataScriptPersists(h, customUserData),
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "error creating user data with multiple parts")
@@ -175,42 +297,19 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 }
 
-// mergeUserDataParts combines two user data parts into a single one. The two
-// user data parts must be the same type.
-func mergeUserDataParts(h *host.Host, bootstrap, custom string) string {
-	lineSeparator := "\n"
-	if h.Distro.IsWindows() {
-		lineSeparator = "\r\n"
-		bootstrap = strings.TrimSpace(bootstrap)
-		for _, tag := range closingTags() {
-			if tagIdx := strings.LastIndex(bootstrap, tag); tagIdx != -1 {
-				return strings.Join([]string{bootstrap[:tagIdx], custom, bootstrap[tagIdx:]}, lineSeparator)
-			}
-		}
-	}
-
-	return strings.Join([]string{bootstrap, custom}, lineSeparator)
-}
-
-const persistTag = "<persist>true</persist>"
-
 // ensureWindowsUserDataScriptPersists adds tags to user data scripts on Windows
 // to ensure that they run on every boot.
-func ensureWindowsUserDataScriptPersists(h *host.Host, script string) string {
+func ensureWindowsUserDataScriptPersists(h *host.Host, u *userData) *userData {
 	if !h.Distro.IsWindows() {
-		return script
+		return u
+	}
+	if u.Persist {
+		return u
 	}
 
-	contentType, err := parseUserDataContentType(script)
-	if err != nil {
-		return script
+	switch u.Directive {
+	case userdata.PowerShellScript, userdata.BatchScript:
+		u.Persist = true
 	}
-	if contentType != "text/x-shellscript" {
-		return script
-	}
-
-	if strings.Contains(script, persistTag) {
-		return script
-	}
-	return strings.Join([]string{script, persistTag}, "\r\n")
+	return u
 }
