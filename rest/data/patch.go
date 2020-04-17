@@ -80,20 +80,20 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 }
 
 func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
-	mgobsonIds := []mgobson.ObjectId{}
+	patchObjectIDs := []mgobson.ObjectId{}
 	for _, patchID := range patchIds {
 		if err := validatePatchID(patchID); err != nil {
 			return nil, errors.Wrap(err, "problem validating patchId")
 		}
-		mgobsonIds = append(mgobsonIds, mgobson.ObjectIdHex(patchID))
+		patchObjectIDs = append(patchObjectIDs, mgobson.ObjectIdHex(patchID))
 	}
 
-	p, err := patch.Find(patch.ByIds(mgobsonIds))
+	p, err := patch.Find(patch.ByIds(patchObjectIDs))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error finding patches")
 	}
 	if p == nil {
-		return nil, errors.Wrap(err, "patches not found")
+		return nil, errors.New("patches not found")
 	}
 
 	apiPatches := []restModel.APIPatch{}

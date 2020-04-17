@@ -1,7 +1,7 @@
 {
   "patches": [
     {
-      "_id": "5e94c2dfe3c3312519b59480",
+      "_id": { "$oid": "5e94c2dfe3c3312519b59480" },
       "desc": "SERVER-46893 Allow streamable isMaster to wait on removed/uninitialized nodes",
       "branch": "mongodb-mongo-master",
       "githash": "0170e0a872373b388a48694d24f22da63983e5d0",
