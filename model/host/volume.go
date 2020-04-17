@@ -10,6 +10,7 @@ import (
 
 type Volume struct {
 	ID               string    `bson:"_id" json:"id"`
+	DisplayName      string    `bson:"display_name" json:"display_name"`
 	CreatedBy        string    `bson:"created_by" json:"created_by"`
 	Type             string    `bson:"type" json:"type"`
 	Size             int       `bson:"size" json:"size"`
@@ -41,6 +42,17 @@ func UnsetVolumeHost(id string) error {
 	return errors.WithStack(db.Update(VolumesCollection,
 		bson.M{VolumeIDKey: id},
 		bson.M{"$unset": bson.M{VolumeHostKey: true}}))
+}
+
+func (v *Volume) SetDisplayName(displayName string) error {
+	err := db.Update(VolumesCollection,
+		bson.M{VolumeIDKey: v.ID},
+		bson.M{"$set": bson.M{VolumeDisplayNameKey: displayName}})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	v.DisplayName = displayName
+	return nil
 }
 
 // Remove a volume from the volumes collection.

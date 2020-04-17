@@ -692,6 +692,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
 		}
 	}
+	if opts.NewName != "" {
+		catcher.Add(h.SetDisplayName(opts.NewName))
+	}
 
 	return catcher.Resolve()
 }
