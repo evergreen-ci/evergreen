@@ -697,7 +697,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":   "successfully fetched task data",
+		"message":   "problem fetching task data",
 		"task_id":   j.host.ProvisionOptions.TaskId,
 		"task_sync": j.host.ProvisionOptions.TaskSync,
 		"host_id":   j.host.Id,
