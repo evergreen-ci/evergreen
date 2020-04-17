@@ -302,9 +302,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
-      if ($scope.spawnTaskSyncChecked && $scope.spawnTask) {
+      if ($scope.spawnTask && $scope.spawnTaskSyncChecked) {
         $scope.spawnInfo.task_sync = true;
-      }
+      } 
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {

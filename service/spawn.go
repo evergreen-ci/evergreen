@@ -219,7 +219,6 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := uis.env.Context()
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
-	// kim: TODO: Handle spawning with task sync checked.
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
