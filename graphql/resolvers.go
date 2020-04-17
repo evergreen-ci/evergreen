@@ -731,9 +731,9 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	commitQueue, err := r.sc.FindCommitQueueByID(id)
 	if err != nil {
 		if errors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, error.Error(err)))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, error.Error(err)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 	}
 	return commitQueue, nil
 }
