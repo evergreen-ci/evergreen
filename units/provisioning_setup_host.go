@@ -576,7 +576,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
 		}
 
-		grip.Infof("Running setup script for spawn host %s", j.host.Id)
+		grip.Info(message.Fields{
+			"message": "running setup script for spawn host",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		})
 		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
@@ -600,10 +605,11 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings),
 				message.Fields{
-					"message": "failed to fetch data onto host",
-					"task":    j.host.ProvisionOptions.TaskId,
-					"host_id": j.host.Id,
-					"job":     j.ID(),
+					"message":   "failed to fetch data onto host",
+					"task":      j.host.ProvisionOptions.TaskId,
+					"task_sync": j.host.ProvisionOptions.TaskSync,
+					"host_id":   j.host.Id,
+					"job":       j.ID(),
 				}))
 		}
 	}

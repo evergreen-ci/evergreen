@@ -210,7 +210,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 
 		writeCredentialsOpts := &options.Create{
 			Args: []string{
-				j.host.Distro.ShellBinary(), "-c", writeCredentialsCmd,
+				j.host.Distro.ShellBinary(), "-l", "-c", writeCredentialsCmd,
 			},
 		}
 		var output []string
