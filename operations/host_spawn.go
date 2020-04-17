@@ -293,7 +293,8 @@ func hostConfigure() cli.Command {
 			}
 
 			if distroName != "" {
-				distro, err := client.GetDistroByName(ctx, distroName)
+				var distro *restModel.APIDistro
+				distro, err = client.GetDistroByName(ctx, distroName)
 				if err != nil {
 					return errors.Wrap(err, "problem getting distro")
 				}
