@@ -57,16 +57,15 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	}
 	logger.Task().Infof(pushMsg)
 
-	path := conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName)
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  path,
+		Remote:  conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName),
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")
 	}
 
-	logger.Task().Infof("Successfully pushed task directory files to '%s'", path)
+	logger.Task().Infof("Successfully pushed task directory files")
 
 	return nil
 }
