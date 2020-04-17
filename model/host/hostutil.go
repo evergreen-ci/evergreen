@@ -201,8 +201,6 @@ func (h *Host) RunSSHShellScript(ctx context.Context, script string, sudo bool, 
 func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, sudo bool, sudoUser string, timeout time.Duration) (string, error) {
 	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
 	// instead of "bash -c") to avoid shell parsing errors.
-	// We read the shell script verbatim from stdin  (i.e. with "bash -s"
-	// instead of "bash -c") to avoid shell parsing errors.
 	return h.runSSHCommandWithOutput(ctx, func(c *jasper.Command) *jasper.Command {
 		var cmd []string
 		if sudo {

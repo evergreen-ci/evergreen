@@ -705,14 +705,8 @@ func TestValidateBVNames(t *testing.T) {
 			}
 
 			validationResults := validateBVNames(project)
-			numErrors, numWarnings := 0, 0
-			for _, val := range validationResults {
-				if val.Level == Error {
-					numErrors++
-				} else if val.Level == Warning {
-					numWarnings++
-				}
-			}
+			numErrors := len(validationResults.AtLevel(Error))
+			numWarnings := len(validationResults.AtLevel(Warning))
 
 			So(numWarnings, ShouldEqual, 1)
 			So(numErrors, ShouldEqual, 0)
@@ -2202,12 +2196,30 @@ buildvariants:
 `
 	proj := model.Project{}
 	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NoError(err)
+	require.NoError(err)
+	assert.NotEmpty(proj)
 	assert.NotNil(pp)
 	errs := CheckProjectSyntax(&proj)
 	assert.Len(errs, 1, "one warning was found")
-	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+
+	exampleYml = `
+tasks:
+  - name: taskA
+    commands:
+    - command: s3.push
+    - command: s3.push
+buildvariants:
+  - name: bvA
+    run_on: example_distro
+    tasks:
+      - name: taskA
+`
+	pp, err = model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	require.NoError(err)
+	assert.NotNil(pp)
+	assert.NotEmpty(proj)
+	assert.Error(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
@@ -4153,4 +4165,48 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidationErrorsAtLevel(t *testing.T) {
+	t.Run("FindsWarningLevelErrors", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			}, {
+				Level:   Error,
+				Message: "error",
+			},
+		})
+		foundErrs := errs.AtLevel(Warning)
+		require.Len(t, foundErrs, 1)
+		assert.Equal(t, errs[0], foundErrs[0])
+	})
+	t.Run("FindsErrorLevelErrors", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			}, {
+				Level:   Error,
+				Message: "error",
+			},
+		})
+		foundErrs := errs.AtLevel(Error)
+		require.Len(t, foundErrs, 1)
+		assert.Equal(t, errs[1], foundErrs[0])
+	})
+	t.Run("ReturnsEmptyForNonexistent", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{})
+		assert.Empty(t, errs.AtLevel(Error))
+	})
+	t.Run("ReturnsEmptyForNoMatch", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			},
+		})
+		assert.Empty(t, errs.AtLevel(Error))
+	})
 }

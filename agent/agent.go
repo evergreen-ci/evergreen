@@ -500,7 +500,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
-	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
@@ -509,12 +509,31 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
+		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
+	}
+
+	a.killProcs(postCtx, tc, false)
+
+	// If task sync was requested for the end of this task, run it now.
+	start = time.Now()
+	// TODO (kim): this should probably have a more generous timeout, but don't
+	// know what would be a sane value.
+	syncCtx, cancel := a.withCallbackTimeout(ctx, tc)
+	defer cancel()
+	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
+		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running task sync.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running task sync.",
 			"total_time": time.Since(start).String(),
 		})
 	}

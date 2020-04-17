@@ -1110,7 +1110,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
-func (bv *BuildVariant) GetDisplayTaskNamek(execTask string) string {
+func (bv *BuildVariant) GetDisplayTaskName(execTask string) string {
 	for _, dt := range bv.DisplayTasks {
 		for _, et := range dt.ExecutionTasks {
 			if et == execTask {
@@ -1235,33 +1235,45 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 	return true
 }
 
+// BuildProjectTVPairs resolves the build variants and tasks into which build
+// variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	//expand tasks and build variants and include dependencies
-	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		patchDoc.BuildVariants = []string{}
-		for _, buildVariant := range p.BuildVariants {
-			if buildVariant.Disabled {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
+
+	// TODO (EVG-7816): handle generate.tasks, which creates additional build
+	// variants and tasks after patch finalization.
+	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
+}
+
+// resolvePatchVTs resolves a list of build variants and tasks into a list of
+// all build variants that will run, a list of all tasks that will run, and a
+// mapping of the build variant to the tasks that will run on that build
+// variant. If includeDeps is set, it will also resolve task dependencies.
+func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+	if len(bvs) == 1 && bvs[0] == "all" {
+		bvs = []string{}
+		for _, bv := range p.BuildVariants {
+			if bv.Disabled {
 				continue
 			}
-			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+			bvs = append(bvs, bv.Name)
 		}
 	}
-
-	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		patchDoc.Tasks = []string{}
+	if len(tasks) == 1 && tasks[0] == "all" {
+		tasks = []string{}
 		for _, t := range p.Tasks {
 			if t.Patchable != nil && !(*t.Patchable) {
 				continue
 			}
-			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+			tasks = append(tasks, t.Name)
 		}
 	}
 
 	var pairs []TVPair
-	for _, v := range patchDoc.BuildVariants {
-		for _, t := range patchDoc.Tasks {
+	for _, v := range bvs {
+		for _, t := range tasks {
 			if p.FindTaskForVariant(t, v) != nil {
-				pairs = append(pairs, TVPair{v, t})
+				pairs = append(pairs, TVPair{Variant: v, TaskName: t})
 			}
 		}
 	}
@@ -1273,22 +1285,25 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 		} else {
 			pairs = append(pairs, aliasPairs...)
 			for _, pair := range displayTaskPairs {
-				if !utility.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
-					patchDoc.BuildVariants = append(patchDoc.BuildVariants, pair.Variant)
+				if !utility.StringSliceContains(bvs, pair.Variant) {
+					bvs = append(bvs, pair.Variant)
 				}
-				if !utility.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
-					patchDoc.Tasks = append(patchDoc.Tasks, pair.TaskName)
+				if !utility.StringSliceContains(tasks, pair.TaskName) {
+					tasks = append(tasks, pair.TaskName)
 				}
 			}
 		}
 	}
 
-	tasks := extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants, p)
+	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
 
-	// update variant and tasks to include dependencies
-	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
+	if includeDeps {
+		tvPairs.ExecTasks = IncludePatchDependencies(p, tvPairs.ExecTasks)
+	}
 
-	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+	vts = tvPairs.TVPairsToVariantTasks()
+	bvs, tasks = patch.ResolveVariantTasks(vts)
+	return bvs, tasks, vts
 }
 
 // TasksThatCallCommand returns a map of tasks that call a given command to the
@@ -1331,7 +1346,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
+func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants []string) TaskVariantPairs {
 	displayTasks := []TVPair{}
 	alreadyAdded := map[string]bool{}
 	for _, bv := range p.BuildVariants {
@@ -1339,7 +1354,7 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 			continue
 		}
 		for _, taskName := range tasks {
-			dt := bv.GetDisplayTaskNamek(taskName)
+			dt := bv.GetDisplayTaskName(taskName)
 			if dt != "" && !alreadyAdded[dt] {
 				alreadyAdded[dt] = true
 				tasks = append(tasks, dt)

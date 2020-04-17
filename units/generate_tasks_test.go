@@ -9,9 +9,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var sampleBaseProject = `
@@ -142,8 +144,8 @@ var sampleGeneratedProject = []string{`
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
-	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection))
+	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection))
 	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -151,12 +153,22 @@ func TestGenerateTasks(t *testing.T) {
 		BuildIds:   []string{"sample_build_id"},
 	}
 	require.NoError(randomVersion.Insert())
+	randomPatch := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: randomVersion.Id,
+	}
+	require.NoError(randomPatch.Insert())
 	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
 		Config:     sampleBaseProject,
 		BuildIds:   []string{"sample_build_id"},
 	}
+	samplePatch := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: sampleVersion.Id,
+	}
+	require.NoError(samplePatch.Insert())
 	require.NoError(sampleVersion.Insert())
 	sampleBuild := build.Build{
 		Id:           "sample_build_id",
