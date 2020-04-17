@@ -256,7 +256,7 @@ func hostConfigure() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  distroNameFlagName,
-				Usage: "specify the name of the current distro",
+				Usage: "specify the name of the current distro for spawn hosts (optional)",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(dryRunFlagName, "n"),
@@ -293,18 +293,19 @@ func hostConfigure() cli.Command {
 			}
 
 			if distroName != "" {
-				var distro *restModel.APIDistro
-				distro, err = client.GetDistroByName(ctx, distroName)
+				var currentDistro *restModel.APIDistro
+				currentDistro, err = client.GetDistroByName(ctx, distroName)
 				if err != nil {
 					return errors.Wrap(err, "problem getting distro")
 				}
 
-				if distro.IsVirtualWorkstation {
+				if currentDistro.IsVirtualWorkstation {
 					if directory == cwd {
 						grip.Warning("overriding directory flag for workstation setup")
 						directory = ""
 					}
-					userHome, err := homedir.Dir()
+					var userHome string
+					userHome, err = homedir.Dir()
 					if err != nil {
 						return errors.Wrap(err, "problem finding home directory")
 					}
@@ -328,7 +329,7 @@ func hostConfigure() cli.Command {
 
 			for idx, cmd := range cmds {
 				if err := cmd.Run(ctx); err != nil {
-					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx, len(cmds), projectRef.Identifier)
+					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Identifier)
 				}
 			}
 			return nil
@@ -354,14 +355,14 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet, dr
 			return nil, errors.Wrapf(err, "error making directory '%s'", dir)
 		}
 
-		commandNubmer := idx // to avoid logging a stale number
+		commandNumber := idx + 1 // to avoid logging a stale number
 		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
 			SetErrorSender(level.Error, grip.GetSender()).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory": dir,
 					"command":   obj.Command,
-					"index":     commandNubmer,
+					"index":     commandNumber,
 				})
 				return !dryRun
 			})

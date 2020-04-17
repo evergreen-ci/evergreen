@@ -751,11 +751,11 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 	}
 	defer resp.Body.Close()
 
-	distro := &restmodel.APIDistro{}
-	if err = utility.ReadJSON(resp.Body, &distro); err != nil {
-		return nil, errors.Wrapf(err, "readding distro from response body for '%s'", id)
+	d := &restmodel.APIDistro{}
+	if err = utility.ReadJSON(resp.Body, &d); err != nil {
+		return nil, errors.Wrapf(err, "reading distro from response body for '%s'", id)
 	}
 
-	return distro, nil
+	return d, nil
 
 }
