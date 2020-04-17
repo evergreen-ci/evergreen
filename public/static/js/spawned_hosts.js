@@ -280,11 +280,21 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           }
         }
       );
-    }
+    };
 
     $scope.resetDisplayName = function (host) {
-      host.display_name = host.originalDisplayName
-    }
+      host.display_name = host.originalDisplayName;
+    };
+
+    $scope.getHomeVolumeDisplayName = function () {
+        if ($scope.homeVolumeDisplay) {
+            return $scope.homeVolumeDisplay;
+        }
+        if ($scope.homeVolumeID) {
+            return $scope.homeVolumeID;
+        }
+        return "New Volume";
+    };
 
     $scope.spawnHost = function () {
       $scope.spawnReqSent = true;
@@ -495,7 +505,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setVolume = function (volume) {
       if (volume) {
         $scope.homeVolumeID = volume.volume_id;
-        $scope.homeVolumeDisplay = volume.display_name ? volume.display_name : volume.volume_id;
+        $scope.homeVolumeDisplay = volume.display_name;
       } else {
         $scope.homeVolumeID = "";
       }
