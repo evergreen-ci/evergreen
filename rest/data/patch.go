@@ -79,6 +79,36 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	return &apiPatch, nil
 }
 
+func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
+	patchObjectIDs := []mgobson.ObjectId{}
+	for _, patchID := range patchIds {
+		if err := validatePatchID(patchID); err != nil {
+			return nil, errors.Wrap(err, "problem validating patchId")
+		}
+		patchObjectIDs = append(patchObjectIDs, mgobson.ObjectIdHex(patchID))
+	}
+
+	p, err := patch.Find(patch.ByIds(patchObjectIDs))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding patches")
+	}
+	if p == nil {
+		return nil, errors.New("patches not found")
+	}
+
+	apiPatches := []restModel.APIPatch{}
+	for _, patch := range p {
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(patch)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem converting patch")
+		}
+		apiPatches = append(apiPatches, apiPatch)
+	}
+	return apiPatches, nil
+
+}
+
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
@@ -240,6 +270,10 @@ func (pc *MockPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("patch with id %s not found", patchId),
 	}
+}
+
+func (pc *MockPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
+	return nil, nil
 }
 
 // AbortPatch sets the value of patchId in CachedAborted to user.

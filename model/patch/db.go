@@ -83,6 +83,10 @@ func ById(id mgobson.ObjectId) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
+func ByIds(ids []mgobson.ObjectId) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+}
+
 var commitQueueFilter = bson.M{"$ne": evergreen.CommitQueueAlias}
 
 // ByProject produces a query that returns projects with the given identifier.

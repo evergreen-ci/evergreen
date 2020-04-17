@@ -735,6 +735,23 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 	}
+	patchIds := []string{}
+	for _, item := range commitQueue.Queue {
+		issue := *item.Issue
+		patchIds = append(patchIds, issue)
+	}
+	patches, err := r.sc.FindPatchesByIds(patchIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", error.Error(err)))
+	}
+	for i := range commitQueue.Queue {
+		for j := range patches {
+			if *commitQueue.Queue[i].Issue == *patches[j].Id {
+				commitQueue.Queue[i].Patch = &patches[j]
+			}
+		}
+	}
+
 	return commitQueue, nil
 }
 

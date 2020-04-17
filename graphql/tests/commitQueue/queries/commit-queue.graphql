@@ -4,6 +4,12 @@
     Queue {
       Issue
       Version
+      EnqueueTime
+      Patch {
+        id
+        author
+        githash
+      }
       Modules {
         Module
         Issue
