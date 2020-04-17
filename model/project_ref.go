@@ -888,7 +888,7 @@ func (p *ProjectRef) AddGitCloneToWorkstationCommands() {
 		return
 	}
 	newCmd := WorkstationSetupCommand{}
-	newCmd.Command = fmt.Sprintf("git clone -b %s https://github.com/%s/%s.git", p.Branch, p.Owner, p.Repo)
+	newCmd.Command = fmt.Sprintf("git clone -b %s git@github.com:%s/%s.git", p.Branch, p.Owner, p.Repo)
 	newCmdsList := []WorkstationSetupCommand{newCmd}
 	p.WorkstationConfig.SetupCommands = append(newCmdsList, p.WorkstationConfig.SetupCommands...)
 	return

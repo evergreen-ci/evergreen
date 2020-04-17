@@ -174,6 +174,7 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
+	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
 	// GetClientConfig fetches the ClientConfig for the evergreen server
 	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
