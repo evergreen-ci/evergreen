@@ -1382,6 +1382,51 @@ func TestSetupServiceUserCommands(t *testing.T) {
 	}
 }
 
+func TestMakeJasperDirsCommand(t *testing.T) {
+	h := &Host{
+		Distro: distro.Distro{
+			BootstrapSettings: distro.BootstrapSettings{
+				JasperBinaryDir:       "/jasper_binary_dir",
+				JasperCredentialsPath: "/jasper_credentials_path/file",
+				ClientDir:             "/jasper_client_dir",
+			},
+		},
+	}
+	assert.Equal(t, "mkdir -m 777 -p /jasper_binary_dir /jasper_credentials_path /jasper_client_dir", h.MakeJasperDirsCommand())
+}
+
+func TestChangeJasperDirsOwnerCommand(t *testing.T) {
+	t.Run("NonWindowsHost", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: distro.ArchLinuxAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					JasperBinaryDir:       "/jasper_binary_dir",
+					JasperCredentialsPath: "/jasper_credentials_path/file",
+					ClientDir:             "/jasper_client_dir",
+				},
+				User: "user",
+			},
+		}
+		assert.Equal(t, "sudo chown -R user /jasper_binary_dir && sudo chown -R user /jasper_credentials_path && sudo chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
+	})
+
+	t.Run("WindowsHost", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					JasperBinaryDir:       "/jasper_binary_dir",
+					JasperCredentialsPath: "/jasper_credentials_path/file",
+					ClientDir:             "/jasper_client_dir",
+				},
+				User: "user",
+			},
+		}
+		assert.Equal(t, "chown -R user /jasper_binary_dir && chown -R user /jasper_credentials_path && chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
+	})
+}
+
 func newMockCredentials() (*certdepot.Credentials, error) {
 	return certdepot.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
 }

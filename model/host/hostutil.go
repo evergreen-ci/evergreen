@@ -514,17 +514,17 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 func (h *Host) ChangeJasperDirsOwnerCommand() string {
 	return strings.Join([]string{
 		h.changeOwnerCommand(h.Distro.BootstrapSettings.JasperBinaryDir),
-		h.changeOwnerCommand(h.Distro.BootstrapSettings.JasperCredentialsPath),
+		h.changeOwnerCommand(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		h.changeOwnerCommand(h.Distro.BootstrapSettings.ClientDir),
 	}, " && ")
 }
 
 func (h *Host) MakeJasperDirsCommand() string {
-	return strings.Join([]string{
-		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
-		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-	}, " && ")
+	return fmt.Sprintf("mkdir -m 777 -p %s %s %s",
+		h.Distro.BootstrapSettings.JasperBinaryDir,
+		filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath),
+		h.Distro.BootstrapSettings.ClientDir,
+	)
 }
 
 // changeOwnerCommand returns the command to modify the given file on the host
