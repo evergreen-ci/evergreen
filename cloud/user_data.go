@@ -146,7 +146,7 @@ func parseUserDataContentType(userData string) (string, error) {
 // We could possibly increase the length by gzip compressing it.
 func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
-		return custom, nil
+		return ensureWindowsUserDataScriptPersists(h, custom), nil
 	}
 	settings := env.Settings()
 
@@ -161,12 +161,12 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 
 	if mergeParts {
-		return mergeUserDataParts(h, bootstrap, custom), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+		return ensureWindowsUserDataScriptPersists(h, mergeUserDataParts(h, bootstrap, custom)), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 	}
 
 	multipartUserData, err := makeMultipartUserData(map[string]string{
-		"bootstrap.txt": bootstrap,
-		"custom.txt":    custom,
+		"bootstrap.txt": ensureWindowsUserDataScriptPersists(h, bootstrap),
+		"custom.txt":    ensureWindowsUserDataScriptPersists(h, custom),
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "error creating user data with multiple parts")
@@ -184,10 +184,33 @@ func mergeUserDataParts(h *host.Host, bootstrap, custom string) string {
 		bootstrap = strings.TrimSpace(bootstrap)
 		for _, tag := range closingTags() {
 			if tagIdx := strings.LastIndex(bootstrap, tag); tagIdx != -1 {
-				return strings.Join([]string{bootstrap[:tagIdx], custom, tag}, lineSeparator)
+				return strings.Join([]string{bootstrap[:tagIdx], custom, bootstrap[tagIdx:]}, lineSeparator)
 			}
 		}
 	}
 
 	return strings.Join([]string{bootstrap, custom}, lineSeparator)
+}
+
+const persistTag = "<persist>true</persist>"
+
+// ensureWindowsUserDataScriptPersists adds tags to user data scripts on Windows
+// to ensure that they run on every boot.
+func ensureWindowsUserDataScriptPersists(h *host.Host, script string) string {
+	if !h.Distro.IsWindows() {
+		return script
+	}
+
+	contentType, err := parseUserDataContentType(script)
+	if err != nil {
+		return script
+	}
+	if contentType != "text/x-shellscript" {
+		return script
+	}
+
+	if strings.Contains(script, persistTag) {
+		return script
+	}
+	return strings.Join([]string{script, persistTag}, "\r\n")
 }

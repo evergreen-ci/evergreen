@@ -1767,12 +1767,14 @@
       "query_file": "taskTestStatusAsc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "status": "a" },
-            { "status": "b" },
-            { "status": "c" },
-            { "status": "dog" }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "status": "a" },
+              { "status": "b" },
+              { "status": "c" },
+              { "status": "dog" }
+            ]
+          }
         }
       }
     },
@@ -1780,12 +1782,14 @@
       "query_file": "taskTestStatusDesc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "status": "dog" },
-            { "status": "c" },
-            { "status": "b" },
-            { "status": "a" }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "status": "dog" },
+              { "status": "c" },
+              { "status": "b" },
+              { "status": "a" }
+            ]
+          }
         }
       }
     },
@@ -1793,12 +1797,14 @@
       "query_file": "taskTestNameAsc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "testFile": "apple" },
-            { "testFile": "b" },
-            { "testFile": "c" },
-            { "testFile": "d" }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "testFile": "apple" },
+              { "testFile": "b" },
+              { "testFile": "c" },
+              { "testFile": "d" }
+            ]
+          }
         }
       }
     },
@@ -1806,12 +1812,14 @@
       "query_file": "taskTestNameDesc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "testFile": "d" },
-            { "testFile": "c" },
-            { "testFile": "b" },
-            { "testFile": "apple" }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "testFile": "d" },
+              { "testFile": "c" },
+              { "testFile": "b" },
+              { "testFile": "apple" }
+            ]
+          }
         }
       }
     },
@@ -1819,12 +1827,14 @@
       "query_file": "taskTestDurationDesc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "duration": 40 },
-            { "duration": 30 },
-            { "duration": 20 },
-            { "duration": 10 }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "duration": 40 },
+              { "duration": 30 },
+              { "duration": 20 },
+              { "duration": 10 }
+            ]
+          }
         }
       }
     },
@@ -1832,12 +1842,14 @@
       "query_file": "taskTestDurationAsc.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "duration": 10 },
-            { "duration": 20 },
-            { "duration": 30 },
-            { "duration": 40 }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "duration": 10 },
+              { "duration": 20 },
+              { "duration": 30 },
+              { "duration": 40 }
+            ]
+          }
         }
       }
     },
@@ -1845,7 +1857,7 @@
       "query_file": "taskTestFilterStatus.graphql",
       "result": {
         "data": {
-          "taskTests": [{ "status": "dog" }]
+          "taskTests": { "testResults": [{ "status": "dog" }] }
         }
       }
     },
@@ -1853,7 +1865,7 @@
       "query_file": "taskTestFilterTestFile.graphql",
       "result": {
         "data": {
-          "taskTests": [{ "testFile": "apple" }]
+          "taskTests": { "testResults": [{ "testFile": "apple" }] }
         }
       }
     },
@@ -1861,7 +1873,7 @@
       "query_file": "taskTestFilterNoResults.graphql",
       "result": {
         "data": {
-          "taskTests": []
+          "taskTests": { "testResults": [] }
         }
       }
     },
@@ -1869,7 +1881,7 @@
       "query_file": "taskTestFilterStatusSubstr1.graphql",
       "result": {
         "data": {
-          "taskTests": []
+          "taskTests": { "testResults": [] }
         }
       }
     },
@@ -1877,7 +1889,7 @@
       "query_file": "taskTestFilterStatusSubstr2.graphql",
       "result": {
         "data": {
-          "taskTests": []
+          "taskTests": { "testResults": [] }
         }
       }
     },
@@ -1885,7 +1897,9 @@
       "query_file": "taskTestPageLimit.graphql",
       "result": {
         "data": {
-          "taskTests": [{ "testFile": "c" }, { "testFile": "d" }]
+          "taskTests": {
+            "testResults": [{ "testFile": "c" }, { "testFile": "d" }]
+          }
         }
       }
     },
@@ -1893,12 +1907,14 @@
       "query_file": "taskTestDefaultParams.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            { "testFile": "apple" },
-            { "testFile": "b" },
-            { "testFile": "c" },
-            { "testFile": "d" }
-          ]
+          "taskTests": {
+            "testResults": [
+              { "testFile": "apple" },
+              { "testFile": "b" },
+              { "testFile": "c" },
+              { "testFile": "d" }
+            ]
+          }
         }
       }
     },
@@ -2399,12 +2415,14 @@
       "query_file": "task_test-logs-empty-str.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            {
-              "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
-              "id": "29ef7a20a7798219e191d00e"
-            }
-          ]
+          "taskTests": {
+            "testResults": [
+              {
+                "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
+                "id": "29ef7a20a7798219e191d00e"
+              }
+            ]
+          }
         }
       }
     },
@@ -2412,15 +2430,17 @@
       "query_file": "task_test-logs-use-original-url-when-provided.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            {
-              "logs": {
-                "htmlDisplayURL": "https://original-url.com",
-                "rawDisplayURL": "https://original-raw-url.com"
-              },
-              "id": "19ef7a20a7798219e191d00e"
-            }
-          ]
+          "taskTests": {
+            "testResults": [
+              {
+                "logs": {
+                  "htmlDisplayURL": "https://original-url.com",
+                  "rawDisplayURL": "https://original-raw-url.com"
+                },
+                "id": "19ef7a20a7798219e191d00e"
+              }
+            ]
+          }
         }
       }
     },
@@ -2428,15 +2448,17 @@
       "query_file": "task_test-logs-prepend-api_url-when-scheme-and-host-not-provided.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            {
-              "logs": {
-                "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
-                "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
-              },
-              "id": "49ef7a20a7798219e191d00e"
-            }
-          ]
+          "taskTests": {
+            "testResults": [
+              {
+                "logs": {
+                  "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
+                  "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
+                },
+                "id": "49ef7a20a7798219e191d00e"
+              }
+            ]
+          }
         }
       }
     },
@@ -2444,14 +2466,16 @@
       "query_file": "task_test-formats-html-url-with-line-num-and-log-id-when-url-empty.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            {
-              "logs": {
-                "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
-              },
-              "id": "39ef7a20a7798219e191d00e"
-            }
-          ]
+          "taskTests": {
+            "testResults": [
+              {
+                "logs": {
+                  "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
+                },
+                "id": "39ef7a20a7798219e191d00e"
+              }
+            ]
+          }
         }
       }
     },
@@ -2459,14 +2483,16 @@
       "query_file": "task_test-formats-raw-url-with-query-param-and-log-id-when-raw-url-empty.graphql",
       "result": {
         "data": {
-          "taskTests": [
-            {
-              "logs": {
-                "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=1"
-              },
-              "id": "39ef7a20a7798219e191d00e"
-            }
-          ]
+          "taskTests": {
+            "testResults": [
+              {
+                "logs": {
+                  "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=1"
+                },
+                "id": "39ef7a20a7798219e191d00e"
+              }
+            ]
+          }
         }
       }
     },
@@ -2480,7 +2506,7 @@
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
-        "data": { "taskTests": null }
+        "data": null
       }
     },
     {

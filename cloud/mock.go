@@ -208,6 +208,12 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 		}
 	}
 
+	if changes.NewName != "" {
+		if err = host.SetDisplayName(changes.NewName); err != nil {
+			return errors.Errorf("error setting display name in db")
+		}
+	}
+
 	return nil
 }
 
