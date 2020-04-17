@@ -72,17 +72,7 @@
       }
     },
     {
-      "query_file": "project-finalized-patch.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "project": null
-          }
-        }
-      }
-    },
-    {
-      "query_file": "project-not-finalized-patch.graphql",
+      "query_file": "projectVariantsAndTasks.graphql",
       "result": {
         "data": {
           "patch": {

@@ -243,10 +243,6 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 }
 
 func (r *patchResolver) Project(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	// Project data is only needed to configure non-activated patches
-	if apiPatch.Activated && *apiPatch.Version != "" {
-		return nil, nil
-	}
 	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
 	if err != nil {
 		return nil, err
