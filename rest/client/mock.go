@@ -683,3 +683,7 @@ func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credent
 func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
 	return "", nil
 }
+
+func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
+	return nil, nil
+}

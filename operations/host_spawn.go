@@ -15,10 +15,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/gimlet"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -231,6 +231,12 @@ func hostModify() cli.Command {
 }
 
 func hostConfigure() cli.Command {
+	const (
+		distroNameFlagName = "distro"
+		dryRunFlagName     = "dry-run"
+	)
+	cwd, _ := os.Getwd()
+
 	return cli.Command{
 		Name:  "configure",
 		Usage: "run setup commands for a virtual workstation",
@@ -242,10 +248,19 @@ func hostConfigure() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(dirFlagName, "d"),
 				Usage: "directory to run commands from (will override project configuration)",
+				Value: cwd,
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(quietFlagName, "q"),
 				Usage: "suppress output",
+			},
+			cli.BoolFlag{
+				Name:  distroNameFlagName,
+				Usage: "specify the name of the current distro for spawn hosts (optional)",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(dryRunFlagName, "n"),
+				Usage: "commands will print but not execute",
 			},
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireProjectFlag),
@@ -253,7 +268,9 @@ func hostConfigure() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			project := c.String(projectFlagName)
 			directory := c.String(dirFlagName)
+			distroName := c.String(distroNameFlagName)
 			quiet := c.Bool(quietFlagName)
+			dryRun := c.Bool(dryRunFlagName)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -261,6 +278,10 @@ func hostConfigure() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
+
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
@@ -270,13 +291,45 @@ func hostConfigure() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "can't find project for queue id '%s'", project)
 			}
-			cmds, err := getJasperCommands(projectRef, directory, quiet)
+
+			if distroName != "" {
+				var currentDistro *restModel.APIDistro
+				currentDistro, err = client.GetDistroByName(ctx, distroName)
+				if err != nil {
+					return errors.Wrap(err, "problem getting distro")
+				}
+
+				if currentDistro.IsVirtualWorkstation {
+					if directory == cwd {
+						grip.Warning("overriding directory flag for workstation setup")
+						directory = ""
+					}
+					var userHome string
+					userHome, err = homedir.Dir()
+					if err != nil {
+						return errors.Wrap(err, "problem finding home directory")
+					}
+
+					directory = filepath.Join(userHome, evergreen.HomeVolumeDir, directory)
+				}
+			}
+
+			cmds, err := getJasperCommands(projectRef, directory, quiet, dryRun)
 			if err != nil {
 				return errors.Wrapf(err, "error getting commands")
 			}
-			for _, cmd := range cmds {
+
+			grip.Info(message.Fields{
+				"operation": "setup project",
+				"directory": directory,
+				"commands":  len(cmds),
+				"project":   projectRef.Identifier,
+				"dry-run":   dryRun,
+			})
+
+			for idx, cmd := range cmds {
 				if err := cmd.Run(ctx); err != nil {
-					gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error running command"))
+					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Identifier)
 				}
 			}
 			return nil
@@ -284,35 +337,39 @@ func hostConfigure() cli.Command {
 	}
 }
 
-func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet bool) ([]*jasper.Command, error) {
+func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet, dryRun bool) ([]*jasper.Command, error) {
 	cmds := []*jasper.Command{}
-	userHome, err := homedir.Dir()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem finding home directory")
-	}
 	// add git clone to run first if enabled
 	projectRef.AddGitCloneToWorkstationCommands()
 
 	if len(projectRef.WorkstationConfig.SetupCommands) == 0 {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", projectRef.Identifier)
 	}
-	for _, obj := range projectRef.WorkstationConfig.SetupCommands {
-		dir := filepath.Join(userHome, projectRef.Identifier)
-		if directory != "" {
-			dir = filepath.Join(userHome, directory)
-		} else if obj.Directory != "" {
-			dir = filepath.Join(userHome, obj.Directory)
+	for idx, obj := range projectRef.WorkstationConfig.SetupCommands {
+		dir := filepath.Join(directory, projectRef.Identifier)
+		if obj.Directory != "" {
+			dir = filepath.Join(dir, obj.Directory)
 		}
-		if err = os.MkdirAll(dir, 0644); err != nil {
+
+		if err := os.MkdirAll(dir, 0644); err != nil {
 			return nil, errors.Wrapf(err, "error making directory '%s'", dir)
 		}
+
+		commandNumber := idx + 1 // to avoid logging a stale number
 		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
-			SetErrorSender(level.Error, grip.GetSender())
+			SetErrorSender(level.Error, grip.GetSender()).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory": dir,
+					"command":   obj.Command,
+					"number":    commandNumber,
+				})
+				return !dryRun
+			})
 		if !quiet {
 			cmd = cmd.SetOutputSender(level.Info, grip.GetSender())
 		}
 		cmds = append(cmds, cmd)
-		grip.Infof("Command: %s", obj.Command)
 	}
 	return cmds, nil
 }
