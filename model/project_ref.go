@@ -913,8 +913,8 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		}
 
 		commandNumber := idx + 1 // to avoid logging a stale number
-		cmd := jasper.NewCommand().Directory(dir).AddArgs("mkdir", "-p", dir).
-			Add([]string{obj.Command}).SetErrorSender(level.Error, opts.Output).
+		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
+			Append(obj.Command).SetErrorSender(level.Error, opts.Output).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory":      dir,
