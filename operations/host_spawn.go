@@ -362,7 +362,7 @@ func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet, dr
 				grip.Info(message.Fields{
 					"directory": dir,
 					"command":   obj.Command,
-					"index":     commandNumber,
+					"number":    commandNumber,
 				})
 				return !dryRun
 			})
