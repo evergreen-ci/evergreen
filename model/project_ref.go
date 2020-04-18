@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -914,15 +913,9 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		}
 
 		commandNumber := idx + 1 // to avoid logging a stale number
-		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
-			SetErrorSender(level.Error, opts.Output).
+		cmd := jasper.NewCommand().Directory(dir).AddArgs("mkdir", "-p", dir).
+			Add([]string{obj.Command}).SetErrorSender(level.Error, opts.Output).
 			Prerequisite(func() bool {
-				grip.Error(message.WrapError(os.MkdirAll(dir, 0644), message.Fields{
-					"message":        "problem making directory",
-					"directory":      dir,
-					"command_number": commandNumber,
-				}))
-
 				grip.Info(message.Fields{
 					"directory":      dir,
 					"command":        obj.Command,
