@@ -111,13 +111,6 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 			j.AddError(err)
-			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User,
-				"decommissioning host after failing to mount volume"))
-
-			terminateJob := NewHostTerminationJob(j.env, *j.host, true, "failed to mount volume")
-			terminateJob.SetPriority(100)
-			j.AddError(j.env.RemoteQueue().Put(ctx, terminateJob))
-
 			return
 		}
 		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {

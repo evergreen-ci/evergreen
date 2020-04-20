@@ -795,6 +795,20 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
+	// check if we've done this already
+	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
+	if err = cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil {
+		return errors.Wrap(err, "problem waiting for ls command")
+	}
+	// the directory exists
+	if exitCode == 0 {
+		return nil
+	}
+
 	output, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: []string{"lsblk"},
 	})
@@ -807,11 +821,11 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	// continue on umount mount error
-	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
+	cmd = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't run umount command")
 	}
-	exitCode, err := cmd.Wait(ctx)
+	exitCode, err = cmd.Wait(ctx)
 	if err != nil && exitCode != umountMountErrorCode {
 		return errors.Wrap(err, "problem waiting for umount command")
 	}

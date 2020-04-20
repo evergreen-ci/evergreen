@@ -1198,7 +1198,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+		return errors.Wrapf(err, "error detaching volume '%s' from host '%s' in client", volumeID, h.Id)
 	}
 
 	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
