@@ -1,0 +1,9 @@
+{
+  patch(id: "5dd2e89cd1fe07048e43bb9c") {
+    builds {
+      id
+      buildVariant
+      status
+    }
+  }
+}
