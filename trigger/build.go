@@ -285,6 +285,20 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
 		Text:      taskStatusToDesc(t.build),
+		Fields: []*message.SlackAttachmentField{
+			{
+				Title: "Version",
+				Value: fmt.Sprintf("<%s|%s>", t.build.Version, versionLink(t.uiConfig.Url, t.build.Version)),
+			},
+			{
+				Title: "Makespan",
+				Value: t.build.ActualMakespan.String(),
+			},
+			{
+				Title: "Time Taken",
+				Value: t.build.TimeTaken.String(),
+			},
+		},
 	})
 	if t.data.Status == evergreen.BuildSucceeded {
 		attachments[0].Color = evergreenSuccessColor
@@ -305,6 +319,12 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 			TitleLink: taskLink(t.uiConfig.Url, t.build.Tasks[i].Id, -1),
 			Color:     evergreenFailColor,
 			Text:      taskFormatFromCache(&t.build.Tasks[i]),
+			Fields: []*message.SlackAttachmentField{
+				{
+					Title: "Duration",
+					Value: t.build.Tasks[i].TimeTaken.String(),
+				},
+			},
 		})
 		attachmentsCount++
 	}
