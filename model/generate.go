@@ -252,10 +252,9 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	// This will only be true for patches and not mainline commits.
+	// This will only be populated for patches, not mainline commits.
 	var syncVariantsTasks []patch.VariantTasks
-	patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
-	if err == nil && patchDoc != nil {
+	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
 		syncVariantsTasks = patchDoc.SyncVariantsTasks
 	}
 
