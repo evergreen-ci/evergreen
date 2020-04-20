@@ -544,6 +544,13 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"attempts": j.host.ProvisionAttempts,
 				"job":      j.ID(),
 			}))
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned for mount failure",
+				"attempts":  j.host.ProvisionAttempts,
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"host_id":   j.host.Id,
+			}))
 			return nil
 		}
 		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
