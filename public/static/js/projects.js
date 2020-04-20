@@ -183,6 +183,31 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.refreshTrackedProjects($window.allTrackedProjects);
 
+  $(function  () {
+    $("#workstation-list").sortable({
+      group: 'workstation_list',
+      pullPlaceholder: false,
+      // set $item relative to cursor position
+      onDragStart: function ($item, container, _super) {
+        var offset = $item.offset(),
+          pointer = container.rootGroup.pointer;
+
+        adjustment = {
+          left: pointer.left - offset.left,
+          top: pointer.top - offset.top
+        };
+
+        _super($item, container);
+      },
+      onDrag: function ($item, position) {
+        $item.css({
+          left: position.left - adjustment.left,
+          top: position.top - adjustment.top
+        });
+      }
+    });
+  });
+
   $scope.showProject = function (project) {
     return !(project.length == 0);
   }
@@ -553,15 +578,15 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   };
 
   $scope.addWorkstationCommand = function() {
-      if (!$scope.settingsFormData.workstation_config) {
-          $scope.settingsFormData.workstation_config = {};
-      }
-      if (!$scope.settingsFormData.workstation_config.setup_commands) {
-        scope.settingsFormData.workstation_config.setup_commands = []
-      }
-      $scope.settingsFormData.workstation_config.setup_commands =
-          $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
-      $scope.cur_command = {};
+    if (!$scope.settingsFormData.workstation_config) {
+        $scope.settingsFormData.workstation_config = {};
+    }
+    if (!$scope.settingsFormData.workstation_config.setup_commands) {
+      $scope.settingsFormData.workstation_config.setup_commands = [];
+    }
+    $scope.settingsFormData.workstation_config.setup_commands =
+        $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
+    $scope.cur_command = {};
   }
 
   $scope.removeProjectVar = function (name) {

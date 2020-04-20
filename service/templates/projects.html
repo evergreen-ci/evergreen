@@ -14,6 +14,7 @@
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/js/services/time.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/thirdparty/jquery-sortable.js"></script>
 {{end}}
 {{define "title"}}
 Evergreen Projects
@@ -656,20 +657,25 @@ Evergreen Projects
             <div class="col-lg-2"> <label class="control-label"> Directory </label> </div>
             <div class="col-lg-2"></div>
           </div>
-
-          <div id="workstation-list" class="form-group" ng-repeat="obj in settingsFormData.workstation_config.setup_commands track by $index">
-            <div class="col-lg-4">
-              <textarea class="form-control" ng-model="obj.command" placeholder="command"></textarea>
-            </div>
-            <div class="col-lg-2">
-              <input class="form-control" ng-model="obj.directory" type="text" placeholder="directory">
-            </div>
-            <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" type="button" ng-click="removeWorkstationCommand($index)">
-                <i class="fa fa-trash"></i>
-              </button>
-            </div>
-          </div>
+          <ol id="workstation-list" class="sortable-list">
+            <li ng-repeat="obj in settingsFormData.workstation_config.setup_commands track by $index">
+              <md-card flex=70>
+                <md-card-content>
+                  <div class="col-lg-4">
+                    <textarea class="form-control" ng-model="obj.command" placeholder="command"></textarea>
+                  </div>
+                  <div class="col-lg-2">
+                    <input class="form-control" ng-model="obj.directory" type="text" placeholder="directory">
+                  </div>
+                  <div class="col-lg-2">
+                    <button class="btn btn-default btn-danger" type="button" ng-click="removeWorkstationCommand($index)">
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  </div>
+                </md-card-content>
+              </md-card>
+            </li>
+          </ol>
 
           <div class="form-group">
             <div class="col-lg-4">

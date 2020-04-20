@@ -234,6 +234,35 @@ ol.breadcrumb {
   }
 }
 
+body.dragging, body.dragging * {
+  cursor: move !important;
+}
+.dragged {
+  position: absolute;
+  opacity: 0.5;
+  z-index: 2000;
+}
+
+ol.sortable-list {
+  list-style-type: none;
+}
+ol.sortable-list li.placeholder {
+  position: relative;
+  list-style-type: none;
+}
+ol.sortable-list li.placeholder:before {
+  position: absolute;
+  content: "";
+  /** Define arrowhead **/
+
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 0.2em solid black;
+  border-top: 0.2em solid black;
+  transform: rotate(45deg);
+  margin-right: 0.5em;
+}
+
 .page-actions {
   margin-top: 15px;
 }
