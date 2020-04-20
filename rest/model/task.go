@@ -63,6 +63,7 @@ type APITask struct {
 	Requester          *string          `json:"requester"`
 	TestResults        []APITest        `json:"test_results"`
 	Aborted            bool             `json:"aborted"`
+	ShouldSync         bool             `json:"should_sync,omitempty"`
 }
 
 type LogLinks struct {
@@ -143,6 +144,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
+			ShouldSync:        v.ShouldSync,
 		}
 
 		if v.HostId != "" {
@@ -214,6 +216,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		GeneratedBy:      ad.GeneratedBy,
 		DisplayOnly:      ad.DisplayOnly,
 		Requester:        FromStringPtr(ad.Requester),
+		ShouldSync:       ad.ShouldSync,
 	}
 	catcher := grip.NewBasicCatcher()
 	createTime, err := FromTimePtr(ad.CreateTime)

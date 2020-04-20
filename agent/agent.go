@@ -523,11 +523,11 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 	// If task sync was requested for the end of this task, run it now.
 	start = time.Now()
-	// TODO (kim): this should probably have a more generous timeout, but don't
-	// know what would be a sane value.
-	syncCtx, cancel := a.withCallbackTimeout(ctx, tc)
-	defer cancel()
 	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
+		// TODO (kim): don't know what would be a sane value for this, so make
+		// it generous since the user explicitly asked for it.
+		syncCtx, cancel := context.WithTimeout(ctx, time.Hour)
+		defer cancel()
 		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running task sync.",

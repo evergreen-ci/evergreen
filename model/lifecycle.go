@@ -872,7 +872,18 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		newTask.GeneratedBy = generatedBy
 
-		newTask.ShouldSync = shouldSyncTask(syncVariantsTasks, displayTasks, b.BuildVariant, t.Name)
+		if shouldSyncTask(syncVariantsTasks, displayTasks, b.BuildVariant, t.Name) {
+			newTask.ShouldSync = true
+			newTask.RunsSync = true
+		} else {
+			cmds, err := project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error checking if task definition contains command '%s'", evergreen.S3PushCommandName)
+			}
+			if len(cmds) != 0 {
+				newTask.RunsSync = true
+			}
+		}
 
 		// append the task to the list of the created tasks
 		tasks = append(tasks, newTask)

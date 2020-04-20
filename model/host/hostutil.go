@@ -348,7 +348,6 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
-		fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
@@ -413,7 +412,12 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			// time to download all the task data, user data may time out this
 			// operation, which would prevent user data from completing and the
 			// host would be stuck in provisioning.
-			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			var fetchCmd []string
+			if h.ProvisionOptions.TaskSync {
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+			} else {
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
@@ -427,6 +431,9 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 	if err != nil {
 		return "", errors.Wrap(err, "error creating command to mark when user data is done")
 	}
+
+	makeJasperDirs := h.MakeJasperDirsCommand()
+	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	if h.Distro.IsWindows() {
 		var writeSetupScriptCmds []string
@@ -447,9 +454,13 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 			return "", errors.Wrap(err, "could not get commands to set up service user")
 		}
 
-		setupJasperCmds := append(writeCredentialsCmds,
+		var setupJasperCmds []string
+		setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
+		setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds...)
+		setupJasperCmds = append(setupJasperCmds,
 			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
+			fixJasperDirsOwner,
 		)
 
 		var bashCmds []string
@@ -482,11 +493,38 @@ func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Cr
 		return "", errors.Wrap(err, "could not get commands to write Jasper credentials file")
 	}
 
+	var setupJasperCmds []string
+	setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
+	setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds)
+	setupJasperCmds = append(setupJasperCmds,
+		h.FetchJasperCommand(settings.HostJasper),
+		h.ForceReinstallJasperCommand(settings),
+		fixJasperDirsOwner,
+	)
+
 	bashCmds := append(bashPrefix, checkUserDataRan, setupScriptCmds)
-	bashCmds = append(bashCmds, writeCredentialsCmds, h.FetchJasperCommand(settings.HostJasper), h.ForceReinstallJasperCommand(settings))
+	bashCmds = append(bashCmds, setupJasperCmds...)
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
+}
+
+// changeJasperDirsOwnerCommand returns the command to ensure that the Jasper
+// directories have proper permissions.
+func (h *Host) ChangeJasperDirsOwnerCommand() string {
+	return strings.Join([]string{
+		h.changeOwnerCommand(h.Distro.BootstrapSettings.JasperBinaryDir),
+		h.changeOwnerCommand(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
+		h.changeOwnerCommand(h.Distro.BootstrapSettings.ClientDir),
+	}, " && ")
+}
+
+func (h *Host) MakeJasperDirsCommand() string {
+	return fmt.Sprintf("mkdir -m 777 -p %s %s %s",
+		h.Distro.BootstrapSettings.JasperBinaryDir,
+		filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath),
+		h.Distro.BootstrapSettings.ClientDir,
+	)
 }
 
 // changeOwnerCommand returns the command to modify the given file on the host
@@ -655,7 +693,6 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	}
 
 	cmds := []string{
-		fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath)),
 		writeFileContentCmd(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds)),
 		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
@@ -669,7 +706,7 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 }
 
 func bufferedWriteFileCommands(path, content string) []string {
-	cmds := []string{fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path))}
+	var cmds []string
 	n := 2018
 	firstWrite := true
 	for start := 0; start < len(content); start += n {
@@ -1135,6 +1172,18 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 	}
 }
 
+// SpawnHostPullTaskSyncCommand returns the command that pulls the task sync
+// directory for a spawn host.
+func (h *Host) SpawnHostPullTaskSyncCommand() []string {
+	return []string{
+		h.AgentBinary(),
+		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
+		"pull",
+		"--task", h.ProvisionOptions.TaskId,
+		"--dir", h.Distro.WorkDir,
+	}
+}
+
 const (
 	userDataStarteFileName = "user_data_started"
 	userDataDoneFileName   = "user_data_done"
@@ -1165,7 +1214,7 @@ func (h *Host) MarkUserDataDoneCommands() (string, error) {
 		return "", errors.Wrap(err, "could not get path to user data done file")
 	}
 
-	return fmt.Sprintf("mkdir -m 777 -p %s && touch %s", h.Distro.BootstrapSettings.JasperBinaryDir, path), nil
+	return fmt.Sprintf("touch %s", path), nil
 }
 
 // SetUserDataHostProvisioned sets the host to running if it was bootstrapped
