@@ -20,9 +20,6 @@ import (
 // This file contains utilities to support cloud-init user data passed to
 // providers to configure launch.
 
-// kim: TODO: see if recursive scripts will just magic work, i.e.
-// <powershell>...<powershell>...</powershell></powershell>
-
 // userData represents a single user data part for cloud-init.
 type userData struct {
 	userdata.Options
@@ -32,15 +29,22 @@ func NewUserData(opts userdata.Options) (*userData, error) {
 	u := userData{
 		Options: opts,
 	}
-	if err := u.Validate(); err != nil {
+	if err := u.ValidateAndDefault(); err != nil {
 		return nil, errors.Wrap(err, "invalid user data")
+	}
+	if u.ClosingTag == "" && u.Directive.NeedsClosingTag() {
+		u.ClosingTag = u.Directive.ClosingTag()
 	}
 	return &u, nil
 }
 
-// Merge combines one user data part with another.
+// merge combines one user data part with another.
 // kim: TODO: test
 func (u *userData) merge(other *userData) (*userData, error) {
+	if other == nil {
+		return u, nil
+	}
+
 	if u.Directive != other.Directive {
 		return nil, errors.Errorf(
 			"cannot combine user data parts of incompatible types: '%s' is incompatible with '%s'",
@@ -48,7 +52,7 @@ func (u *userData) merge(other *userData) (*userData, error) {
 	}
 	if u.ClosingTag != "" && other.ClosingTag != "" && u.ClosingTag != other.ClosingTag {
 		return nil, errors.Errorf(
-			"cannot combine user data with differing closing tags: '%s' is incompatible with '%s'",
+			"cannot combine user data with different closing tags: '%s' is incompatible with '%s'",
 			u.ClosingTag, other.ClosingTag)
 	}
 	return NewUserData(userdata.Options{
@@ -74,6 +78,7 @@ func (u *userData) String() string {
 
 // ParseUserData returns the user data string as a structured user data.
 // kim: TODO: test
+// kim: TODO: parse user data at entry points where requests use user data.
 func ParseUserData(userData string) (*userData, error) {
 	var err error
 	var persist bool
@@ -89,9 +94,8 @@ func ParseUserData(userData string) (*userData, error) {
 	}
 
 	var closingTag userdata.ClosingTag
-	if userdata.NeedsClosingTag(directive) {
-		closingTag = userdata.ClosingTagFor(directive)
-		userData, err = splitClosingTagFor(userData, closingTag)
+	if directive.NeedsClosingTag() {
+		userData, err = splitClosingTagFor(userData, directive.ClosingTag())
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem splitting closing tag '%s'", closingTag)
 		}
@@ -253,15 +257,24 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 // data length is subject to a 16 kB hard limit
 // (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
 // We could possibly increase the length by gzip compressing it.
-func provisioningUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
-	customUserData, err := ParseUserData(custom)
-	if err != nil {
-		return "", errors.Wrap(err, "could not parse custom user data")
+func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
+	// kim: TODO: handle empty user data
+	var err error
+	var customUserData *userData
+	if custom != "" {
+		customUserData, err = ParseUserData(custom)
+		if err != nil {
+			return "", errors.Wrap(err, "could not parse custom user data")
+		}
 	}
 
 	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
-		return ensureWindowsUserDataScriptPersists(h, customUserData).String(), nil
+		if customUserData != nil {
+			return ensureWindowsUserDataScriptPersists(h, customUserData).String(), nil
+		}
+		return "", nil
 	}
+
 	settings := env.Settings()
 
 	creds, err := h.GenerateJasperCredentials(ctx, env)
@@ -279,17 +292,25 @@ func provisioningUserData(ctx context.Context, env evergreen.Environment, h *hos
 	}
 
 	if mergeParts {
-		mergedUserData, err := provision.merge(customUserData)
-		if err != nil {
-			return "", errors.Wrap(err, "could not merge user data parts into single part")
+		var mergedUserData *userData
+		if customUserData != nil {
+			mergedUserData, err = provision.merge(customUserData)
+			if err != nil {
+				return "", errors.Wrap(err, "could not merge user data parts into single part")
+			}
+		} else {
+			mergedUserData = provision
 		}
 		return ensureWindowsUserDataScriptPersists(h, mergedUserData).String(), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 	}
 
-	multipartUserData, err := makeMultipartUserData(map[string]*userData{
+	parts := map[string]*userData{
 		"provision.txt": ensureWindowsUserDataScriptPersists(h, provision),
-		"custom.txt":    ensureWindowsUserDataScriptPersists(h, customUserData),
-	})
+	}
+	if customUserData != nil {
+		parts["custom.txt"] = ensureWindowsUserDataScriptPersists(h, customUserData)
+	}
+	multipartUserData, err := makeMultipartUserData(parts)
 	if err != nil {
 		return "", errors.Wrap(err, "error creating user data with multiple parts")
 	}

@@ -264,9 +264,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -376,9 +376,9 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 

@@ -511,8 +511,8 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return &userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
-		Content:   strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"),
+		Directive: userdata.NewShellScriptDirective("/bin/bash"),
+		Content:   strings.Join(bashCmds, "\n"),
 	}, nil
 }
 

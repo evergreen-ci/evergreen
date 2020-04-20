@@ -1,7 +1,12 @@
 package userdata
 
-import "github.com/mongodb/grip"
+import (
+	"strings"
 
+	"github.com/mongodb/grip"
+)
+
+// Options represent parameters for generating user data.
 type Options struct {
 	// Directive is the marker at the start of user data that determines the
 	// type of user data.
@@ -9,14 +14,19 @@ type Options struct {
 	// Content is the content of the user data itself, excluding metadata such
 	// as the directive and tags.
 	Content string
-	// ClosingTag is the marker that ends user data. This is only used on
-	// Windows.
+
+	// Windows-only options
+
+	// ClosingTag is the marker that ends user data.
 	ClosingTag ClosingTag
-	// Persist indicates that the script should
+	// Persist indicates that the user data should run on every reboot rather
+	// than just once.
 	Persist bool
 }
 
-func (u *Options) Validate() error {
+// ValidateAndDefault verifies that the options are valid and sets defaults for
+// closing tag if none is specified.
+func (u *Options) ValidateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 	if u.Directive == "" {
 		catcher.New("user data is missing directive")
@@ -26,90 +36,30 @@ func (u *Options) Validate() error {
 			if u.Directive == directive {
 				validDirective = true
 				break
+			} else if directive == ShellScript && strings.HasPrefix(string(u.Directive), directive) {
+				// Shell scripts are a special case where we should allow any
+				// string following "#!" since it will invoke the program.
+				validDirective = true
+				break
 			}
 		}
 		catcher.ErrorfWhen(!validDirective, "directive '%s' is invalid", u.Directive)
 	}
-	catcher.ErrorfWhen(NeedsClosingTag(u.Directive) && u.ClosingTag != ClosingTagFor(u.Directive),
-		"directive '%s' needs closing tag '%s' but actual closing tag is '%s'",
-		u.Directive, ClosingTagFor(u.Directive), u.ClosingTag)
+
+	needsClosingTag := u.Directive.NeedsClosingTag()
+	requiredClosingTag := u.Directive.ClosingTag()
+
+	if u.ClosingTag != "" {
+		if !needsClosingTag {
+			catcher.Errorf("directive '%s' should not have closing tag '%s'",
+				u.Directive, u.ClosingTag)
+		} else if u.ClosingTag != requiredClosingTag {
+			catcher.Errorf("directive '%s' requires closing tag '%s' but actual closing tag is '%s'",
+				u.Directive, requiredClosingTag, u.ClosingTag)
+		}
+	} else if needsClosingTag {
+		u.ClosingTag = requiredClosingTag
+	}
+
 	return catcher.Resolve()
-}
-
-// Directive represents a marker that starts user data and indicates its
-// type.
-type Directive string
-
-const (
-	ShellScript   Directive = "#!"
-	Include       Directive = "#include"
-	CloudConfig   Directive = "#cloud-config"
-	UpstartJob    Directive = "#upstart-job"
-	CloudBoothook Directive = "#cloud-boothook"
-	PartHandler   Directive = "#part-handler"
-	// Windows-only types
-	PowerShellScript Directive = "<powershell>"
-	BatchScript      Directive = "<script>"
-)
-
-func Directives() []Directive {
-	return []Directive{
-		ShellScript,
-		Include,
-		CloudConfig,
-		UpstartJob,
-		CloudBoothook,
-		PartHandler,
-		// Windows-only types,
-		PowerShellScript,
-		BatchScript,
-	}
-}
-
-// DirectiveToContentType maps a cloud-init directive to its MIME content type.
-func DirectiveToContentType() map[Directive]string {
-	return map[Directive]string{
-		ShellScript:   "text/x-shellscript",
-		Include:       "text/x-include-url",
-		CloudConfig:   "text/cloud-config",
-		UpstartJob:    "text/upstart-job",
-		CloudBoothook: "text/cloud-boothook",
-		PartHandler:   "text/part-handler",
-		// Windows-only types
-		PowerShellScript: "text/x-shellscript",
-		BatchScript:      "text/x-shellscript",
-	}
-}
-
-// ClosingTag represents a marker that ends user data.
-type ClosingTag string
-
-const (
-	PowerShellScriptClosingTag ClosingTag = "</powershell>"
-	BatchScriptClosingTag      ClosingTag = "</script>"
-)
-
-// closingTags returns all cloud-init closing tags for directives.
-func ClosingTags() []ClosingTag {
-	return []ClosingTag{
-		PowerShellScriptClosingTag,
-		BatchScriptClosingTag,
-	}
-}
-
-// needsClosingTag returns whether the given user data directive needs to be
-// closed or not.
-func NeedsClosingTag(directive Directive) bool {
-	return ClosingTagFor(directive) != ""
-}
-
-// ClosingTagFor returns the required closing tag for the given directive.
-func ClosingTagFor(directive Directive) ClosingTag {
-	switch directive {
-	case PowerShellScript:
-		return PowerShellScriptClosingTag
-	case BatchScript:
-		return BatchScriptClosingTag
-	}
-	return ""
 }
