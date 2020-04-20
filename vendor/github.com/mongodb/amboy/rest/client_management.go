@@ -13,7 +13,7 @@ import (
 )
 
 // managementClient provides a wrapper for communicating with an amboy rest
-// service for queue management. It implements the management.Management
+// service for queue management. It implements the management.Manager
 // interface and allows you to remotely interact with running jobs on a system.
 // with running jobs on a system.
 type managementClient struct {
@@ -21,15 +21,15 @@ type managementClient struct {
 	url    string
 }
 
-// NewManagementClient constructs a management.Management instance,
+// NewManagementClient constructs a management.Manager instance,
 // with its own HTTP client. All calls
-func NewManagementClient(url string) management.Management {
+func NewManagementClient(url string) management.Manager {
 	return NewManagementClientFromExisting(&http.Client{}, url)
 }
 
 // NewManagementClientFromExisting constructs a new managementClient instance
 // from an existing HTTP Client.
-func NewManagementClientFromExisting(client *http.Client, url string) management.Management {
+func NewManagementClientFromExisting(client *http.Client, url string) management.Manager {
 	return &managementClient{
 		client: client,
 		url:    url,

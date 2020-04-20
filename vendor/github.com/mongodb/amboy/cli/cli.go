@@ -68,7 +68,7 @@ func (o *ServiceOptions) abortablePoolManagementFlags(base ...cli.Flag) []cli.Fl
 	)
 }
 
-func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client management.Management) error) error {
+func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client management.Manager) error) error {
 	if o.Client == nil {
 		o.Client = http.DefaultClient
 	}

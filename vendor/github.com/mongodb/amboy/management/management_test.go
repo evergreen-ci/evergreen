@@ -16,20 +16,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type ManagementSuite struct {
+type ManagerSuite struct {
 	queue   amboy.Queue
-	manager Management
+	manager Manager
 	ctx     context.Context
 	cancel  context.CancelFunc
 
-	factory func() Management
+	factory func() Manager
 	setup   func()
 	cleanup func() error
 	suite.Suite
 }
 
-func TestManagementSuiteBackedByMongoDB(t *testing.T) {
-	s := new(ManagementSuite)
+func TestManagerSuiteBackedByMongoDB(t *testing.T) {
+	s := new(ManagerSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -37,7 +37,7 @@ func TestManagementSuiteBackedByMongoDB(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Management {
+	s.factory = func() Manager {
 		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options: opts,
 			Name:    name,
@@ -69,8 +69,8 @@ func TestManagementSuiteBackedByMongoDB(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestManagementSuiteBackedByMongoDBSingleGroup(t *testing.T) {
-	s := new(ManagementSuite)
+func TestManagerSuiteBackedByMongoDBSingleGroup(t *testing.T) {
+	s := new(ManagerSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -78,7 +78,7 @@ func TestManagementSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Management {
+	s.factory = func() Manager {
 		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options:     opts,
 			Name:        name,
@@ -115,8 +115,8 @@ func TestManagementSuiteBackedByMongoDBSingleGroup(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
-	s := new(ManagementSuite)
+func TestManagerSuiteBackedByMongoDBMultiGroup(t *testing.T) {
+	s := new(ManagerSuite)
 	name := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -124,7 +124,7 @@ func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	opts.DB = "amboy_test"
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
-	s.factory = func() Management {
+	s.factory = func() Manager {
 		manager, err := MakeDBQueueManager(ctx, DBQueueManagerOptions{
 			Options:  opts,
 			Name:     name,
@@ -161,17 +161,17 @@ func TestManagementSuiteBackedByMongoDBMultiGroup(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestManagementSuiteBackedByQueueMethods(t *testing.T) {
+func TestManagerSuiteBackedByQueueMethods(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := new(ManagementSuite)
+	s := new(ManagerSuite)
 	s.setup = func() {
 		s.queue = queue.NewLocalLimitedSize(2, 128)
 		s.Require().NoError(s.queue.Start(ctx))
 	}
 
-	s.factory = func() Management {
+	s.factory = func() Manager {
 		return NewQueueManager(s.queue)
 	}
 
@@ -181,21 +181,21 @@ func TestManagementSuiteBackedByQueueMethods(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *ManagementSuite) SetupTest() {
+func (s *ManagerSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.setup()
 	s.manager = s.factory()
 }
 
-func (s *ManagementSuite) TearDownTest() {
+func (s *ManagerSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *ManagementSuite) TearDownSuite() {
+func (s *ManagerSuite) TearDownSuite() {
 	s.NoError(s.cleanup())
 }
 
-func (s *ManagementSuite) TestJobStatusInvalidFilter() {
+func (s *ManagerSuite) TestJobStatusInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
 		r, err := s.manager.JobStatus(s.ctx, StatusFilter(f))
 		s.Error(err)
@@ -207,7 +207,7 @@ func (s *ManagementSuite) TestJobStatusInvalidFilter() {
 	}
 }
 
-func (s *ManagementSuite) TestTimingWithInvalidFilter() {
+func (s *ManagerSuite) TestTimingWithInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
 		r, err := s.manager.RecentTiming(s.ctx, time.Hour, RuntimeFilter(f))
 		s.Error(err)
@@ -215,7 +215,7 @@ func (s *ManagementSuite) TestTimingWithInvalidFilter() {
 	}
 }
 
-func (s *ManagementSuite) TestErrorsWithInvalidFilter() {
+func (s *ManagerSuite) TestErrorsWithInvalidFilter() {
 	for _, f := range []string{"", "foo", "inprog"} {
 		r, err := s.manager.RecentJobErrors(s.ctx, "foo", time.Hour, ErrorFilter(f))
 		s.Error(err)
@@ -227,7 +227,7 @@ func (s *ManagementSuite) TestErrorsWithInvalidFilter() {
 	}
 }
 
-func (s *ManagementSuite) TestJobCounterHighLevel() {
+func (s *ManagerSuite) TestJobCounterHighLevel() {
 	for _, f := range []StatusFilter{InProgress, Pending, Stale} {
 		r, err := s.manager.JobStatus(s.ctx, f)
 		s.NoError(err)
@@ -236,7 +236,7 @@ func (s *ManagementSuite) TestJobCounterHighLevel() {
 
 }
 
-func (s *ManagementSuite) TestJobCountingIDHighLevel() {
+func (s *ManagerSuite) TestJobCountingIDHighLevel() {
 	for _, f := range []StatusFilter{InProgress, Pending, Stale, Completed} {
 		r, err := s.manager.JobIDsByState(s.ctx, "foo", f)
 		s.NoError(err, "%s", f)
@@ -244,7 +244,7 @@ func (s *ManagementSuite) TestJobCountingIDHighLevel() {
 	}
 }
 
-func (s *ManagementSuite) TestJobTimingMustBeLongerThanASecond() {
+func (s *ManagerSuite) TestJobTimingMustBeLongerThanASecond() {
 	for _, dur := range []time.Duration{-1, 0, time.Millisecond, -time.Hour} {
 		r, err := s.manager.RecentTiming(s.ctx, dur, Duration)
 		s.Error(err)
@@ -260,7 +260,7 @@ func (s *ManagementSuite) TestJobTimingMustBeLongerThanASecond() {
 	}
 }
 
-func (s *ManagementSuite) TestJobTiming() {
+func (s *ManagerSuite) TestJobTiming() {
 	for _, f := range []RuntimeFilter{Duration, Latency, Running} {
 		r, err := s.manager.RecentTiming(s.ctx, time.Minute, f)
 		s.NoError(err)
@@ -268,7 +268,7 @@ func (s *ManagementSuite) TestJobTiming() {
 	}
 }
 
-func (s *ManagementSuite) TestRecentErrors() {
+func (s *ManagerSuite) TestRecentErrors() {
 	for _, f := range []ErrorFilter{UniqueErrors, AllErrors, StatsOnly} {
 		r, err := s.manager.RecentErrors(s.ctx, time.Minute, f)
 		s.NoError(err)
@@ -276,7 +276,7 @@ func (s *ManagementSuite) TestRecentErrors() {
 	}
 }
 
-func (s *ManagementSuite) TestRecentJobErrors() {
+func (s *ManagerSuite) TestRecentJobErrors() {
 	for _, f := range []ErrorFilter{UniqueErrors, AllErrors, StatsOnly} {
 		r, err := s.manager.RecentJobErrors(s.ctx, "shell", time.Minute, f)
 		s.NoError(err)
@@ -284,7 +284,7 @@ func (s *ManagementSuite) TestRecentJobErrors() {
 	}
 }
 
-func (s *ManagementSuite) TestCompleteJob() {
+func (s *ManagerSuite) TestCompleteJob() {
 	j1 := job.NewShellJob("ls", "")
 	s.Require().NoError(s.queue.Put(s.ctx, j1))
 	j2 := newTestJob("complete")
@@ -310,7 +310,7 @@ func (s *ManagementSuite) TestCompleteJob() {
 	s.Equal(3, jobCount)
 }
 
-func (s *ManagementSuite) TestCompleteJobsByType() {
+func (s *ManagerSuite) TestCompleteJobsByType() {
 	j1 := job.NewShellJob("ls", "")
 	s.Require().NoError(s.queue.Put(s.ctx, j1))
 	j2 := newTestJob("0")

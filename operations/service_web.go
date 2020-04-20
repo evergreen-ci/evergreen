@@ -229,8 +229,8 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	}
 	if !serviceFlags.AmboyRemoteManagementDisabled {
 		var (
-			remoteManager management.Management
-			groupManager  management.Management
+			remoteManager management.Manager
+			groupManager  management.Manager
 		)
 
 		remoteManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{

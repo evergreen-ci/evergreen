@@ -150,7 +150,7 @@ func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Contex
 	j.logger.InfoWhen(len(r) > 1, r)
 }
 
-func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.Management) (message.Fields, error) {
+func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.Manager) (message.Fields, error) {
 	catcher := grip.NewBasicCatcher()
 	r := message.Fields{
 		"message": msg,
