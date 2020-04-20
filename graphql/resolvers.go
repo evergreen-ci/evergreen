@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -170,6 +171,20 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
+
+func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
+	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding build by version %s: %s", *obj.Version, err.Error()))
+	}
+	var apiBuilds []*restModel.APIBuild
+	for _, build := range builds {
+		apiBuild := restModel.APIBuild{}
+		apiBuild.BuildFromService(build)
+		apiBuilds = append(apiBuilds, &apiBuild)
+	}
+	return apiBuilds, nil
+}
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	// excludes display tasks

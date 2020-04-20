@@ -167,6 +167,13 @@ type Patch {
   taskCount: Int
   baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
+  builds: [Build!]!
+}
+
+type Build {
+  id: String!
+  buildVariant: String!
+  status: String!
 }
 
 type TaskResult {
