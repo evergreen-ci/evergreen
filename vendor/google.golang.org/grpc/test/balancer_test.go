@@ -29,8 +29,11 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/internal/balancerload"
+	"google.golang.org/grpc/internal/testutils"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
 	testpb "google.golang.org/grpc/test/grpc_testing"
 	"google.golang.org/grpc/testdata"
 )
@@ -46,7 +49,7 @@ type testBalancer struct {
 	sc balancer.SubConn
 
 	newSubConnOptions balancer.NewSubConnOptions
-	pickOptions       []balancer.PickOptions
+	pickInfos         []balancer.PickInfo
 	doneInfo          []balancer.DoneInfo
 }
 
@@ -67,7 +70,7 @@ func (b *testBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) 
 			grpclog.Errorf("testBalancer: failed to NewSubConn: %v", err)
 			return
 		}
-		b.cc.UpdateBalancerState(connectivity.Connecting, &picker{sc: b.sc, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: connectivity.Connecting, Picker: &picker{sc: b.sc, bal: b}})
 		b.sc.Connect()
 	}
 }
@@ -85,11 +88,11 @@ func (b *testBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connectiv
 
 	switch s {
 	case connectivity.Ready, connectivity.Idle:
-		b.cc.UpdateBalancerState(s, &picker{sc: sc, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{sc: sc, bal: b}})
 	case connectivity.Connecting:
-		b.cc.UpdateBalancerState(s, &picker{err: balancer.ErrNoSubConnAvailable, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{err: balancer.ErrNoSubConnAvailable, bal: b}})
 	case connectivity.TransientFailure:
-		b.cc.UpdateBalancerState(s, &picker{err: balancer.ErrTransientFailure, bal: b})
+		b.cc.UpdateState(balancer.State{ConnectivityState: s, Picker: &picker{err: balancer.ErrTransientFailure, bal: b}})
 	}
 }
 
@@ -102,12 +105,13 @@ type picker struct {
 	bal *testBalancer
 }
 
-func (p *picker) Pick(ctx context.Context, opts balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
-	p.bal.pickOptions = append(p.bal.pickOptions, opts)
+func (p *picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	if p.err != nil {
-		return nil, nil, p.err
+		return balancer.PickResult{}, p.err
 	}
-	return p.sc, func(d balancer.DoneInfo) { p.bal.doneInfo = append(p.bal.doneInfo, d) }, nil
+	info.Ctx = nil // Do not validate context.
+	p.bal.pickInfos = append(p.bal.pickInfos, info)
+	return balancer.PickResult{SubConn: p.sc, Done: func(d balancer.DoneInfo) { p.bal.doneInfo = append(p.bal.doneInfo, d) }}, nil
 }
 
 func (s) TestCredsBundleFromBalancer(t *testing.T) {
@@ -138,13 +142,13 @@ func (s) TestCredsBundleFromBalancer(t *testing.T) {
 	}
 }
 
-func (s) TestPickAndDone(t *testing.T) {
+func (s) TestDoneInfo(t *testing.T) {
 	for _, e := range listTestEnv() {
-		testPickAndDone(t, e)
+		testDoneInfo(t, e)
 	}
 }
 
-func testPickAndDone(t *testing.T, e env) {
+func testDoneInfo(t *testing.T, e env) {
 	te := newTest(t, e)
 	b := &testBalancer{}
 	balancer.Register(b)
@@ -161,27 +165,184 @@ func testPickAndDone(t *testing.T, e env) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	wantErr := detailedError
-	if _, err := tc.EmptyCall(ctx, &testpb.Empty{}); !reflect.DeepEqual(err, wantErr) {
+	if _, err := tc.EmptyCall(ctx, &testpb.Empty{}); !testutils.StatusErrEqual(err, wantErr) {
 		t.Fatalf("TestService/EmptyCall(_, _) = _, %v, want _, %v", err, wantErr)
 	}
-	md := metadata.Pairs("testMDKey", "testMDVal")
-	ctx = metadata.NewOutgoingContext(ctx, md)
 	if _, err := tc.UnaryCall(ctx, &testpb.SimpleRequest{}); err != nil {
 		t.Fatalf("TestService.UnaryCall(%v, _, _, _) = _, %v; want _, <nil>", ctx, err)
 	}
 
-	poWant := []balancer.PickOptions{
-		{FullMethodName: "/grpc.testing.TestService/EmptyCall"},
-		{FullMethodName: "/grpc.testing.TestService/UnaryCall", Header: md},
-	}
-	if !reflect.DeepEqual(b.pickOptions, poWant) {
-		t.Fatalf("b.pickOptions = %v; want %v", b.pickOptions, poWant)
-	}
-
-	if len(b.doneInfo) < 1 || !reflect.DeepEqual(b.doneInfo[0].Err, wantErr) {
+	if len(b.doneInfo) < 1 || !testutils.StatusErrEqual(b.doneInfo[0].Err, wantErr) {
 		t.Fatalf("b.doneInfo = %v; want b.doneInfo[0].Err = %v", b.doneInfo, wantErr)
 	}
 	if len(b.doneInfo) < 2 || !reflect.DeepEqual(b.doneInfo[1].Trailer, testTrailerMetadata) {
 		t.Fatalf("b.doneInfo = %v; want b.doneInfo[1].Trailer = %v", b.doneInfo, testTrailerMetadata)
+	}
+	if len(b.pickInfos) != len(b.doneInfo) {
+		t.Fatalf("Got %d picks, but %d doneInfo, want equal amount", len(b.pickInfos), len(b.doneInfo))
+	}
+	// To test done() is always called, even if it's returned with a non-Ready
+	// SubConn.
+	//
+	// Stop server and at the same time send RPCs. There are chances that picker
+	// is not updated in time, causing a non-Ready SubConn to be returned.
+	finished := make(chan struct{})
+	go func() {
+		for i := 0; i < 20; i++ {
+			tc.UnaryCall(ctx, &testpb.SimpleRequest{})
+		}
+		close(finished)
+	}()
+	te.srv.Stop()
+	<-finished
+	if len(b.pickInfos) != len(b.doneInfo) {
+		t.Fatalf("Got %d picks, %d doneInfo, want equal amount", len(b.pickInfos), len(b.doneInfo))
+	}
+}
+
+const loadMDKey = "X-Endpoint-Load-Metrics-Bin"
+
+type testLoadParser struct{}
+
+func (*testLoadParser) Parse(md metadata.MD) interface{} {
+	vs := md.Get(loadMDKey)
+	if len(vs) == 0 {
+		return nil
+	}
+	return vs[0]
+}
+
+func init() {
+	balancerload.SetParser(&testLoadParser{})
+}
+
+func (s) TestDoneLoads(t *testing.T) {
+	for _, e := range listTestEnv() {
+		testDoneLoads(t, e)
+	}
+}
+
+func testDoneLoads(t *testing.T, e env) {
+	b := &testBalancer{}
+	balancer.Register(b)
+
+	const testLoad = "test-load-,-should-be-orca"
+
+	ss := &stubServer{
+		emptyCall: func(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error) {
+			grpc.SetTrailer(ctx, metadata.Pairs(loadMDKey, testLoad))
+			return &testpb.Empty{}, nil
+		},
+	}
+	if err := ss.Start(nil, grpc.WithBalancerName(testBalancerName)); err != nil {
+		t.Fatalf("error starting testing server: %v", err)
+	}
+	defer ss.Stop()
+
+	tc := testpb.NewTestServiceClient(ss.cc)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := tc.EmptyCall(ctx, &testpb.Empty{}); err != nil {
+		t.Fatalf("TestService/EmptyCall(_, _) = _, %v, want _, %v", err, nil)
+	}
+
+	piWant := []balancer.PickInfo{
+		{FullMethodName: "/grpc.testing.TestService/EmptyCall"},
+	}
+	if !reflect.DeepEqual(b.pickInfos, piWant) {
+		t.Fatalf("b.pickInfos = %v; want %v", b.pickInfos, piWant)
+	}
+
+	if len(b.doneInfo) < 1 {
+		t.Fatalf("b.doneInfo = %v, want length 1", b.doneInfo)
+	}
+	gotLoad, _ := b.doneInfo[0].ServerLoad.(string)
+	if gotLoad != testLoad {
+		t.Fatalf("b.doneInfo[0].ServerLoad = %v; want = %v", b.doneInfo[0].ServerLoad, testLoad)
+	}
+}
+
+const testBalancerKeepAddressesName = "testbalancer-keepingaddresses"
+
+// testBalancerKeepAddresses keeps the addresses in the builder instead of
+// creating SubConns.
+//
+// It's used to test the addresses balancer gets are correct.
+type testBalancerKeepAddresses struct {
+	addrsChan chan []resolver.Address
+}
+
+func newTestBalancerKeepAddresses() *testBalancerKeepAddresses {
+	return &testBalancerKeepAddresses{
+		addrsChan: make(chan []resolver.Address, 10),
+	}
+}
+
+func (b *testBalancerKeepAddresses) Build(cc balancer.ClientConn, opt balancer.BuildOptions) balancer.Balancer {
+	return b
+}
+
+func (*testBalancerKeepAddresses) Name() string {
+	return testBalancerKeepAddressesName
+}
+
+func (b *testBalancerKeepAddresses) HandleResolvedAddrs(addrs []resolver.Address, err error) {
+	b.addrsChan <- addrs
+}
+
+func (testBalancerKeepAddresses) HandleSubConnStateChange(sc balancer.SubConn, s connectivity.State) {
+	panic("not used")
+}
+
+func (testBalancerKeepAddresses) Close() {
+}
+
+// Make sure that non-grpclb balancers don't get grpclb addresses even if name
+// resolver sends them
+func (s) TestNonGRPCLBBalancerGetsNoGRPCLBAddress(t *testing.T) {
+	r, rcleanup := manual.GenerateAndRegisterManualResolver()
+	defer rcleanup()
+
+	b := newTestBalancerKeepAddresses()
+	balancer.Register(b)
+
+	cc, err := grpc.Dial(r.Scheme()+":///test.server", grpc.WithInsecure(),
+		grpc.WithBalancerName(b.Name()))
+	if err != nil {
+		t.Fatalf("failed to dial: %v", err)
+	}
+	defer cc.Close()
+
+	grpclbAddresses := []resolver.Address{{
+		Addr:       "grpc.lb.com",
+		Type:       resolver.GRPCLB,
+		ServerName: "grpc.lb.com",
+	}}
+
+	nonGRPCLBAddresses := []resolver.Address{{
+		Addr: "localhost",
+		Type: resolver.Backend,
+	}}
+
+	r.UpdateState(resolver.State{
+		Addresses: nonGRPCLBAddresses,
+	})
+	if got := <-b.addrsChan; !reflect.DeepEqual(got, nonGRPCLBAddresses) {
+		t.Fatalf("With only backend addresses, balancer got addresses %v, want %v", got, nonGRPCLBAddresses)
+	}
+
+	r.UpdateState(resolver.State{
+		Addresses: grpclbAddresses,
+	})
+	if got := <-b.addrsChan; len(got) != 0 {
+		t.Fatalf("With only grpclb addresses, balancer got addresses %v, want empty", got)
+	}
+
+	r.UpdateState(resolver.State{
+		Addresses: append(grpclbAddresses, nonGRPCLBAddresses...),
+	})
+	if got := <-b.addrsChan; !reflect.DeepEqual(got, nonGRPCLBAddresses) {
+		t.Fatalf("With both backend and grpclb addresses, balancer got addresses %v, want %v", got, nonGRPCLBAddresses)
 	}
 }
