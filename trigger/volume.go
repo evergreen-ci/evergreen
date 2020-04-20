@@ -1,8 +1,10 @@
 package trigger
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -23,6 +25,7 @@ type volumeTriggers struct {
 	event        *event.EventLogEntry
 	volume       *host.Volume
 	templateData hostTemplateData
+	uiConfig     evergreen.UIConfig
 
 	base
 }
@@ -37,9 +40,14 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Errorf("volume '%s' doesn't exist", e.ResourceId)
 	}
 
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
+		return errors.Wrap(err, "Failed to fetch ui config")
+	}
+
 	t.templateData = hostTemplateData{
 		ID:             t.volume.ID,
 		ExpirationTime: t.volume.Expiration,
+		URL:            fmt.Sprintf("%s/spawn", t.uiConfig.Url),
 	}
 
 	t.event = e

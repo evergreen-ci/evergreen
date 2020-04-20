@@ -46,7 +46,7 @@ func makeVolumeExpirationWarningsJob() *volumeExpirationWarningsJob {
 }
 
 func NewVolumeExpirationWarningsJob(id string) amboy.Job {
-	j := makeSpawnhostExpirationWarningsJob()
+	j := makeVolumeExpirationWarningsJob()
 	j.SetID(fmt.Sprintf("%s.%s", volumeExpirationWarningsName, id))
 	return j
 }
@@ -97,12 +97,12 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 
 func runVolumeWarningTriggers(v host.Volume) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(tryVolumeNotifcation(v, 2))
-	catcher.Add(tryVolumeNotifcation(v, 12))
+	catcher.Add(tryVolumeNotification(v, 2))
+	catcher.Add(tryVolumeNotification(v, 12))
 	return catcher.Resolve()
 }
 
-func tryVolumeNotifcation(v host.Volume, numHours int) error {
+func tryVolumeNotification(v host.Volume, numHours int) error {
 	shouldExec, err := shouldNotifyForVolumeExpiration(v, numHours)
 	if err != nil {
 		return err

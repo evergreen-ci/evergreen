@@ -41,7 +41,7 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 	return db.UpdateId(
 		VolumesCollection,
 		v.ID,
-		bson.M{VolumeExpirationKey: v.Expiration})
+		bson.M{"$set": bson.M{VolumeExpirationKey: v.Expiration}})
 }
 
 func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {

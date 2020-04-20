@@ -25,8 +25,8 @@ func init() {
 
 type volumeDeletionJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	volumeID string `bson:"volume_id" yaml:"volume_id"`
-	provider string `bson:"provider" yaml:"provider"`
+	VolumeID string `bson:"volume_id" yaml:"volume_id"`
+	Provider string `bson:"provider" yaml:"provider"`
 
 	volume *host.Volume
 	env    evergreen.Environment
@@ -48,9 +48,8 @@ func makeVolumeDeletionJob() *volumeDeletionJob {
 func NewVolumeDeletionJob(ts string, v *host.Volume) amboy.Job {
 	j := makeVolumeDeletionJob()
 	j.SetID(fmt.Sprintf("%s.%s", volumeDeletionName, ts))
-	j.volumeID = v.ID
-
-	j.provider = evergreen.ProviderNameEc2OnDemand
+	j.VolumeID = v.ID
+	j.Provider = evergreen.ProviderNameEc2OnDemand
 	return j
 }
 
@@ -63,29 +62,29 @@ func (j *volumeDeletionJob) Run(ctx context.Context) {
 	}
 
 	if j.volume == nil {
-		j.volume, err = host.FindVolumeByID(j.volumeID)
+		j.volume, err = host.FindVolumeByID(j.VolumeID)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error getting volume '%s'", j.volumeID))
+			j.AddError(errors.Wrapf(err, "error getting volume '%s'", j.VolumeID))
 			return
 		}
 		if j.volume == nil {
-			j.AddError(errors.Errorf("no volume '%s' exists", j.volumeID))
+			j.AddError(errors.Errorf("no volume '%s' exists", j.VolumeID))
 			return
 		}
 	}
 
 	mgrOpts := cloud.ManagerOpts{
-		Provider: j.provider,
+		Provider: j.Provider,
 		Region:   cloud.AztoRegion(j.volume.AvailabilityZone),
 	}
 	mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get manager for volume '%s'", j.volumeID))
+		j.AddError(errors.Wrapf(err, "can't get manager for volume '%s'", j.VolumeID))
 		return
 	}
 
 	if err := mgr.DeleteVolume(ctx, j.volume); err != nil {
-		j.AddError(errors.Wrapf(err, "can't delete volume '%s'", j.volumeID))
+		j.AddError(errors.Wrapf(err, "can't delete volume '%s'", j.VolumeID))
 		return
 	}
 
