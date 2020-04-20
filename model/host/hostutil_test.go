@@ -16,6 +16,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -185,7 +186,7 @@ func TestJasperCommands(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert())
 
@@ -213,87 +214,23 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
 			currPos := 0
-			offset := strings.Index(script[currPos:], setupScript)
+			offset := strings.Index(userData.Content[currPos:], setupScript)
 			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
 			currPos += offset + len(setupScript)
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"BootstrapScriptForSpawnHostWithTask": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.StartedBy = "started_by_user"
-			require.NoError(t, db.Clear(user.Collection))
-			defer func() {
-				assert.NoError(t, db.Clear(user.Collection))
-			}()
-			userID := "user"
-			user := &user.DBUser{Id: userID}
-			require.NoError(t, user.Insert())
-
-			h.ProvisionOptions = &ProvisionOptions{
-				LoadCLI: true,
-				OwnerId: userID,
-				TaskId:  "task_id",
-			}
-			require.NoError(t, h.Insert())
-
-			setupScript, err := h.setupScriptCommands(settings)
-			require.NoError(t, err)
-
-			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
-			require.NoError(t, err)
-
-			bashFetchTaskData := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
-			fetchTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
-				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{bashFetchTaskData}})
-			require.NoError(t, err)
-
-			markDone, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
-
-			expectedCmds := []string{
-				setupScript,
-				h.MakeJasperDirsCommand(),
-				h.FetchJasperCommand(settings.HostJasper),
-				h.ForceReinstallJasperCommand(settings),
-				h.ChangeJasperDirsOwnerCommand(),
-				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
-				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
-				setupSpawnHost,
-				fetchTaskData,
-				markDone,
-			}
-
-			creds, err := newMockCredentials()
-			require.NoError(t, err)
-
-			script, err := h.BootstrapScript(settings, creds)
-			require.NoError(t, err)
-
-			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
-
-			currPos := 0
-			offset := strings.Index(script[currPos:], setupScript)
-			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
-			currPos += offset + len(setupScript)
-
-			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
-				currPos += offset + len(expectedCmd)
-			}
-		},
-		"BootstrapScriptForSpawnHostWithTaskSync": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
@@ -342,18 +279,18 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
 			currPos := 0
-			offset := strings.Index(script[currPos:], setupScript)
+			offset := strings.Index(userData.Content[currPos:], setupScript)
 			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
 			currPos += offset + len(setupScript)
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
@@ -455,7 +392,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
 			checkRerun, err := h.CheckUserDataStartedCommand()
@@ -498,26 +435,27 @@ func TestJasperCommandsWindows(t *testing.T) {
 				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "<powershell>"))
-			assert.True(t, strings.HasSuffix(script, "</powershell>"))
+			assert.Equal(t, userdata.PowerShellScript, userData.Directive)
+			assert.Equal(t, userdata.PowerShellScriptClosingTag, userData.ClosingTag)
+			assert.True(t, userData.Persist)
 
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
@@ -572,21 +510,22 @@ func TestJasperCommandsWindows(t *testing.T) {
 				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "<powershell>"))
-			assert.True(t, strings.HasSuffix(script, "</powershell>"))
+			assert.Equal(t, userdata.PowerShellScript, userData.Directive)
+			assert.Equal(t, userdata.PowerShellScriptClosingTag, userData.ClosingTag)
+			assert.True(t, userData.Persist)
 
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}

@@ -377,11 +377,11 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
-// BootstrapScript creates the user data script to bootstrap the host.
+// ProvisioningUserData creates the user data parameters to provision the host.
 // If, for some reason, this script gets interrupted, there's no guarantee that
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
-func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
+func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	fetchClient := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)

@@ -244,16 +244,16 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 	return nil
 }
 
-// bootstrapUserData returns the user data with logic to bootstrap and set up
-// the host and the custom user data.
-// If mergeParts is true, the bootstrap part and the custom part will
+// provisioningUserData returns the user data with logic to provision and set up
+// the host as well as run custom user data.
+// If mergeParts is true, the provisioning part and the custom part will
 // be combined into a single user datapart, so they must be the same type (e.g.
 // if shell scripts, both must be the same shell scripting language).
 // Care should be taken when adding more content to user data, since the user
 // data length is subject to a 16 kB hard limit
 // (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
 // We could possibly increase the length by gzip compressing it.
-func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
+func provisioningUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
 	customUserData, err := ParseUserData(custom)
 	if err != nil {
 		return "", errors.Wrap(err, "could not parse custom user data")
@@ -269,17 +269,17 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		return "", errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
 	}
 
-	bootstrapOpts, err := h.BootstrapScript(settings, creds)
+	provisionOpts, err := h.ProvisioningUserData(settings, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate user data for provisioning host")
 	}
-	bootstrap, err := NewUserData(*bootstrapOpts)
+	provision, err := NewUserData(*provisionOpts)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create user data for provisioning from options")
 	}
 
 	if mergeParts {
-		mergedUserData, err := bootstrap.merge(customUserData)
+		mergedUserData, err := provision.merge(customUserData)
 		if err != nil {
 			return "", errors.Wrap(err, "could not merge user data parts into single part")
 		}
@@ -287,7 +287,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 	}
 
 	multipartUserData, err := makeMultipartUserData(map[string]*userData{
-		"bootstrap.txt": ensureWindowsUserDataScriptPersists(h, bootstrap),
+		"provision.txt": ensureWindowsUserDataScriptPersists(h, provision),
 		"custom.txt":    ensureWindowsUserDataScriptPersists(h, customUserData),
 	})
 	if err != nil {
