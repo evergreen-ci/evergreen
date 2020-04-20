@@ -269,7 +269,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testPublicKeyName = "testPubKey"
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
-	const testUserdata = "this is a dummy sentence"
+	const testUserdata = "#!/bin/bash\necho this is a dummy sentence"
 	const testInstanceType = "testInstanceType"
 
 	config, err := evergreen.GetConfig()

@@ -85,8 +85,11 @@ type EC2ProviderSettings struct {
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" {
-		return errors.New("AMI, instance type, and key name must not be empty")
+	if s.AMI == "" {
+		return errors.New("AMI must not be empty")
+	}
+	if s.InstanceType == "" {
+		return errors.New("instance type must not be empty")
 	}
 	if len(s.SecurityGroupIDs) == 0 {
 		return errors.New("Security groups must not be empty")
