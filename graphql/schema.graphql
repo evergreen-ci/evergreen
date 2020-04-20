@@ -175,6 +175,8 @@ type Build {
   id: String!
   buildVariant: String!
   status: String!
+  timeTaken: Duration
+  predictedMakespan: Duration
 }
 
 type PatchProject {

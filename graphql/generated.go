@@ -53,9 +53,11 @@ type ComplexityRoot struct {
 	}
 
 	Build struct {
-		BuildVariant func(childComplexity int) int
-		Id           func(childComplexity int) int
-		Status       func(childComplexity int) int
+		BuildVariant      func(childComplexity int) int
+		Id                func(childComplexity int) int
+		PredictedMakespan func(childComplexity int) int
+		Status            func(childComplexity int) int
+		TimeTaken         func(childComplexity int) int
 	}
 
 	CommitQueue struct {
@@ -436,12 +438,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Build.Id(childComplexity), true
 
+	case "Build.predictedMakespan":
+		if e.complexity.Build.PredictedMakespan == nil {
+			break
+		}
+
+		return e.complexity.Build.PredictedMakespan(childComplexity), true
+
 	case "Build.status":
 		if e.complexity.Build.Status == nil {
 			break
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
+
+	case "Build.timeTaken":
+		if e.complexity.Build.TimeTaken == nil {
+			break
+		}
+
+		return e.complexity.Build.TimeTaken(childComplexity), true
 
 	case "CommitQueue.ProjectID":
 		if e.complexity.CommitQueue.ProjectID == nil {
@@ -2069,6 +2085,8 @@ type Build {
   id: String!
   buildVariant: String!
   status: String!
+  timeTaken: Duration!
+  predictedMakespan: Duration!
 }
 
 type PatchProject {
@@ -2926,6 +2944,74 @@ func (ec *executionContext) _Build_status(ctx context.Context, field graphql.Col
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Build_timeTaken(ctx context.Context, field graphql.CollectedField, obj *model.APIBuild) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Build",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeTaken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Build_predictedMakespan(ctx context.Context, field graphql.CollectedField, obj *model.APIBuild) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Build",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PredictedMakespan, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueue_ProjectID(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
@@ -10486,6 +10572,16 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "timeTaken":
+			out.Values[i] = ec._Build_timeTaken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "predictedMakespan":
+			out.Values[i] = ec._Build_predictedMakespan(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12603,6 +12699,20 @@ func (ec *executionContext) unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑ
 	}
 	res, err := ec.unmarshalNDisplayTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, v)
 	return &res, err
+}
+
+func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
+	return model.UnmarshalAPIDuration(v)
+}
+
+func (ec *executionContext) marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	res := model.MarshalAPIDuration(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNFile2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v model.APIFile) graphql.Marshaler {
