@@ -803,8 +803,6 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	// check if we've done this already
-
 	output, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: []string{"lsblk"},
 	})
@@ -840,15 +838,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
-
-	mountExists, err := mountExists(ctx, env, h)
-	if err != nil {
-		return errors.Wrapf(err, "can't verify if mount exists for host '%s'", h.Id)
-	}
-	if !mountExists {
-		cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
-	}
-
+	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
 
 	symlinkExists, err := symlinkExists(ctx, client, h)
@@ -872,17 +862,6 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	return nil
 }
 
-func mountExists(ctx context.Context, env evergreen.Environment, h *host.Host) (bool, error) {
-	output, err := h.RunJasperProcess(ctx, env, &options.Create{
-		Args: []string{"mount"},
-	})
-	if err != nil {
-		return false, errors.Wrap(err, "problem runnning mount")
-	}
-
-	return utility.StringSliceContains(output, fmt.Sprintf("/%s", evergreen.HomeVolumeDir)), nil
-}
-
 func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
 	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
 	if err := cmd.Run(ctx); err != nil {
@@ -890,10 +869,13 @@ func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bo
 	}
 	exitCode, err := cmd.Wait(ctx)
 	if err != nil {
+		if exitCode != 0 {
+			return false, nil
+		}
 		return false, errors.Wrap(err, "problem waiting for ls command")
 	}
 
-	return exitCode == 0, nil
+	return true, nil
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
