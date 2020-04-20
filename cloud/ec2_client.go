@@ -607,8 +607,10 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					if strings.Contains(ec2err.Message(), "InvalidParameterValue") {
-						return false, err
+					for _, noRetryError := range []string{"InvalidVolume.NotFound", "InvalidParameterValue"} {
+						if strings.Contains(ec2err.Message(), noRetryError) {
+							return false, err
+						}
 					}
 				}
 				return true, err
