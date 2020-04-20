@@ -895,7 +895,7 @@ func (p *ProjectRef) GitCloneCommand(opts apimodels.WorkstationSetupCommandOptio
 
 	return jasper.NewCommand().Add(args).
 		SetErrorSender(level.Error, opts.Output).
-		SetErrorSender(level.Info, opts.Output).
+		SetOutputSender(level.Info, opts.Output).
 		Prerequisite(func() bool {
 			grip.Info(message.Fields{
 				"directory": opts.Directory,
@@ -930,7 +930,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		commandNumber := idx + 1 // to avoid logging a stale number
 		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
 			SetErrorSender(level.Error, opts.Output).
-			SetErrorSender(level.Info, opts.Output).
+			SetOutputSender(level.Info, opts.Output).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
