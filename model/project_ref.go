@@ -888,27 +888,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) GitCloneCommand(opts apimodels.WorkstationSetupCommandOptions) *jasper.Command {
-	args := []string{
-		"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory,
-	}
-
-	return jasper.NewCommand().Add(args).
-		SetErrorSender(level.Error, opts.Output).
-		SetOutputSender(level.Info, opts.Output).
-		Prerequisite(func() bool {
-			grip.Info(message.Fields{
-				"directory": opts.Directory,
-				"command":   strings.Join(args, " "),
-				"op":        "repo clone",
-				"project":   p.Identifier,
-			})
-
-			return !opts.DryRun
-		})
-
-}
-
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Identifier)
@@ -918,7 +897,27 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	cmds := []*jasper.Command{}
 
 	if p.WorkstationConfig.GitClone {
-		cmds = append(cmds, p.GitCloneCommand(baseDir))
+		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
+
+		cmd := jasper.NewCommand().Add(args).
+			SetErrorSender(level.Error, opts.Output).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory": opts.Directory,
+					"command":   strings.Join(args, " "),
+					"op":        "repo clone",
+					"project":   p.Identifier,
+				})
+
+				return !opts.DryRun
+			})
+
+		if !opts.Quiet {
+			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+		}
+
+		cmds = append(cmds, cmd)
+
 	}
 
 	for idx, obj := range p.WorkstationConfig.SetupCommands {
@@ -930,7 +929,6 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		commandNumber := idx + 1 // to avoid logging a stale number
 		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
 			SetErrorSender(level.Error, opts.Output).
-			SetOutputSender(level.Info, opts.Output).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
