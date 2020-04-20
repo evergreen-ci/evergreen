@@ -43,38 +43,15 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
-	project := &model.Project{}
-	if _, err := model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
-	}
-
-	// retrieve tasks and variant mappings' names
-	variantMappings := make(map[string]model.BuildVariant)
-	for _, variant := range project.BuildVariants {
-		tasksForVariant := []model.BuildVariantTaskUnit{}
-		for _, TaskFromVariant := range variant.Tasks {
-			if TaskFromVariant.IsGroup {
-				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
-			} else {
-				tasksForVariant = append(tasksForVariant, TaskFromVariant)
-			}
-		}
-		variant.Tasks = tasksForVariant
-		variantMappings[variant.Name] = variant
-	}
-
-	tasksList := []interface{}{}
-	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable
-		if !(task.Patchable != nil && !*task.Patchable) {
-			tasksList = append(tasksList, struct{ Name string }{task.Name})
-		}
+	// Unmarshall project and get project variants and tasks
+	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(projCtx.Patch.PatchedConfig, projCtx.Patch.Project)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
 
 	commitQueuePosition := 0
 	if projCtx.Patch.Alias == evergreen.CommitQueueAlias {
-		cq, err := commitqueue.FindOneId(project.Identifier)
+		cq, err := commitqueue.FindOneId(variantsAndTasksFromProject.Project.Identifier)
 		// still display patch page if problem finding commit queue
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
@@ -87,11 +64,11 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version             *uiVersion
 		Variants            map[string]model.BuildVariant
-		Tasks               []interface{}
+		Tasks               []struct{ Name string }
 		CanEdit             bool
 		CommitQueuePosition int
 		ViewData
-	}{versionAsUI, variantMappings, tasksList, currentUser != nil,
+	}{versionAsUI, variantsAndTasksFromProject.Variants, variantsAndTasksFromProject.Tasks, currentUser != nil,
 		commitQueuePosition, uis.GetCommonViewData(w, r, true, true)},
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }

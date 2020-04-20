@@ -242,6 +242,14 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 	return &baseVersion.Id, nil
 }
 
+func (r *patchResolver) Project(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
+	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
+	if err != nil {
+		return nil, err
+	}
+	return patchProject, nil
+}
+
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }

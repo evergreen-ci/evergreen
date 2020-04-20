@@ -70,6 +70,25 @@
           }
         }
       }
+    },
+    {
+      "query_file": "projectVariantsAndTasks.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "project": {
+              "tasks": ["compile", "test", "lint", "coverage", "e2e_test"],
+              "variants": [
+                {
+                  "name": "ubuntu1604",
+                  "displayName": "Ubuntu 16.04",
+                  "tasks": ["compile", "coverage", "e2e_test", "lint", "test"]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
