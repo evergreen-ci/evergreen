@@ -101,7 +101,7 @@ imports:
     subpackages:
     - compute
   - name: google.golang.org/grpc
-    version: 77ce7bc228475a8f28dc50a9d74ac4994fc019e7
+    version: ac54eec90516cee50fc6b9b113b34628a85f976f
   - name: google.golang.org/genproto
     version: 082222b4a5c572e33e82ee9162d1352c7cf38682
   - name: github.com/golang/protobuf
@@ -137,7 +137,7 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber
-    version: 546978a061cc59365c32bae07f43ea48eca68585
+    version: f7afe303e8ef9293c4c48a08691df5b4d7533510
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5

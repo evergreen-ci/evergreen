@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,7 +62,7 @@ func (s) TestRetryUnary(t *testing.T) {
 		t.Fatalf("Error starting endpoint server: %v", err)
 	}
 	defer ss.Stop()
-	ss.r.NewServiceConfig(`{
+	ss.newServiceConfig(`{
     "methodConfig": [{
       "name": [{"service": "grpc.testing.TestService"}],
       "waitForReady": true,
@@ -131,7 +130,7 @@ func (s) TestRetryDisabledByDefault(t *testing.T) {
 		t.Fatalf("Error starting endpoint server: %v", err)
 	}
 	defer ss.Stop()
-	ss.r.NewServiceConfig(`{
+	ss.newServiceConfig(`{
     "methodConfig": [{
       "name": [{"service": "grpc.testing.TestService"}],
       "waitForReady": true,
@@ -191,7 +190,7 @@ func (s) TestRetryThrottling(t *testing.T) {
 		t.Fatalf("Error starting endpoint server: %v", err)
 	}
 	defer ss.Stop()
-	ss.r.NewServiceConfig(`{
+	ss.newServiceConfig(`{
     "methodConfig": [{
       "name": [{"service": "grpc.testing.TestService"}],
       "waitForReady": true,
@@ -362,7 +361,7 @@ func (s) TestRetryStreaming(t *testing.T) {
 			res, err := stream.Recv()
 			if res != nil ||
 				((err == nil) != (want == nil)) ||
-				(want != nil && !reflect.DeepEqual(err, want)) {
+				(want != nil && err.Error() != want.Error()) {
 				return fmt.Errorf("client: Recv() = %v, %v; want <nil>, %v", res, err, want)
 			}
 			return nil
@@ -502,7 +501,7 @@ func (s) TestRetryStreaming(t *testing.T) {
 		t.Fatalf("Error starting endpoint server: %v", err)
 	}
 	defer ss.Stop()
-	ss.r.NewServiceConfig(`{
+	ss.newServiceConfig(`{
     "methodConfig": [{
       "name": [{"service": "grpc.testing.TestService"}],
       "waitForReady": true,
