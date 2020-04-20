@@ -39,7 +39,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestHandlerTransport_NewServerHandlerTransport(t *testing.T) {
+func (s) TestHandlerTransport_NewServerHandlerTransport(t *testing.T) {
 	type testCase struct {
 		name    string
 		req     *http.Request
@@ -97,26 +97,6 @@ func TestHandlerTransport_NewServerHandlerTransport(t *testing.T) {
 				return struct{ onlyCloseNotifier }{w.(onlyCloseNotifier)}
 			},
 			wantErr: "gRPC requires a ResponseWriter supporting http.Flusher",
-		},
-		{
-			name: "not closenotifier",
-			req: &http.Request{
-				ProtoMajor: 2,
-				Method:     "POST",
-				Header: http.Header{
-					"Content-Type": {"application/grpc"},
-				},
-				RequestURI: "/service/foo.bar",
-			},
-			modrw: func(w http.ResponseWriter) http.ResponseWriter {
-				// Return w without its CloseNotify method
-				type onlyFlusher interface {
-					http.ResponseWriter
-					http.Flusher
-				}
-				return struct{ onlyFlusher }{w.(onlyFlusher)}
-			},
-			wantErr: "gRPC requires a ResponseWriter supporting http.CloseNotifier",
 		},
 		{
 			name: "valid",
@@ -283,7 +263,7 @@ func newHandleStreamTest(t *testing.T) *handleStreamTest {
 	}
 }
 
-func TestHandlerTransport_HandleStreams(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams(t *testing.T) {
 	st := newHandleStreamTest(t)
 	handleStream := func(s *Stream) {
 		if want := "/service/foo.bar"; s.method != want {
@@ -308,12 +288,12 @@ func TestHandlerTransport_HandleStreams(t *testing.T) {
 }
 
 // Tests that codes.Unimplemented will close the body, per comment in handler_server.go.
-func TestHandlerTransport_HandleStreams_Unimplemented(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_Unimplemented(t *testing.T) {
 	handleStreamCloseBodyTest(t, codes.Unimplemented, "thingy is unimplemented")
 }
 
 // Tests that codes.InvalidArgument will close the body, per comment in handler_server.go.
-func TestHandlerTransport_HandleStreams_InvalidArgument(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_InvalidArgument(t *testing.T) {
 	handleStreamCloseBodyTest(t, codes.InvalidArgument, "bad arg")
 }
 
@@ -340,7 +320,7 @@ func handleStreamCloseBodyTest(t *testing.T, statusCode codes.Code, msg string) 
 	}
 }
 
-func TestHandlerTransport_HandleStreams_Timeout(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_Timeout(t *testing.T) {
 	bodyr, bodyw := io.Pipe()
 	req := &http.Request{
 		ProtoMajor: 2,
@@ -393,7 +373,7 @@ func TestHandlerTransport_HandleStreams_Timeout(t *testing.T) {
 
 // TestHandlerTransport_HandleStreams_MultiWriteStatus ensures that
 // concurrent "WriteStatus"s do not panic writing to closed "writes" channel.
-func TestHandlerTransport_HandleStreams_MultiWriteStatus(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_MultiWriteStatus(t *testing.T) {
 	testHandlerTransportHandleStreams(t, func(st *handleStreamTest, s *Stream) {
 		if want := "/service/foo.bar"; s.method != want {
 			t.Errorf("stream method = %q; want %q", s.method, want)
@@ -414,7 +394,7 @@ func TestHandlerTransport_HandleStreams_MultiWriteStatus(t *testing.T) {
 
 // TestHandlerTransport_HandleStreams_WriteStatusWrite ensures that "Write"
 // following "WriteStatus" does not panic writing to closed "writes" channel.
-func TestHandlerTransport_HandleStreams_WriteStatusWrite(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_WriteStatusWrite(t *testing.T) {
 	testHandlerTransportHandleStreams(t, func(st *handleStreamTest, s *Stream) {
 		if want := "/service/foo.bar"; s.method != want {
 			t.Errorf("stream method = %q; want %q", s.method, want)
@@ -434,7 +414,7 @@ func testHandlerTransportHandleStreams(t *testing.T, handleStream func(st *handl
 	)
 }
 
-func TestHandlerTransport_HandleStreams_ErrDetails(t *testing.T) {
+func (s) TestHandlerTransport_HandleStreams_ErrDetails(t *testing.T) {
 	errDetails := []proto.Message{
 		&epb.RetryInfo{
 			RetryDelay: &dpb.Duration{Seconds: 60},

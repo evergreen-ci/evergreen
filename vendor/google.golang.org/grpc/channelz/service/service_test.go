@@ -33,10 +33,25 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/internal/channelz"
+	"google.golang.org/grpc/internal/grpctest"
 )
 
 func init() {
 	channelz.TurnOn()
+}
+
+type s struct {
+	grpctest.Tester
+}
+
+func Test(t *testing.T) {
+	grpctest.RunSubTests(t, s{})
+}
+
+func cleanupWrapper(cleanup func() error, t *testing.T) {
+	if err := cleanup(); err != nil {
+		t.Error(err)
+	}
 }
 
 type protoToSocketOptFunc func([]*channelzpb.SocketOption) *channelz.SocketOptionData
@@ -278,7 +293,7 @@ func init() {
 	proto.RegisterType((*OtherSecurityValue)(nil), "grpc.credentials.OtherChannelzSecurityValue")
 }
 
-func TestGetTopChannels(t *testing.T) {
+func (s) TestGetTopChannels(t *testing.T) {
 	tcs := []*dummyChannel{
 		{
 			state:                    connectivity.Connecting,
@@ -305,9 +320,11 @@ func TestGetTopChannels(t *testing.T) {
 		},
 		{},
 	}
-	channelz.NewChannelzStorage()
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	for _, c := range tcs {
-		channelz.RegisterChannel(c, 0, "")
+		id := channelz.RegisterChannel(c, 0, "")
+		defer channelz.RemoveEntry(id)
 	}
 	s := newCZServer()
 	resp, _ := s.GetTopChannels(context.Background(), &channelzpb.GetTopChannelsRequest{StartChannelId: 0})
@@ -320,7 +337,8 @@ func TestGetTopChannels(t *testing.T) {
 		}
 	}
 	for i := 0; i < 50; i++ {
-		channelz.RegisterChannel(tcs[0], 0, "")
+		id := channelz.RegisterChannel(tcs[0], 0, "")
+		defer channelz.RemoveEntry(id)
 	}
 	resp, _ = s.GetTopChannels(context.Background(), &channelzpb.GetTopChannelsRequest{StartChannelId: 0})
 	if resp.GetEnd() {
@@ -328,7 +346,7 @@ func TestGetTopChannels(t *testing.T) {
 	}
 }
 
-func TestGetServers(t *testing.T) {
+func (s) TestGetServers(t *testing.T) {
 	ss := []*dummyServer{
 		{
 			callsStarted:             6,
@@ -349,9 +367,11 @@ func TestGetServers(t *testing.T) {
 			lastCallStartedTimestamp: time.Now().UTC(),
 		},
 	}
-	channelz.NewChannelzStorage()
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	for _, s := range ss {
-		channelz.RegisterServer(s, "")
+		id := channelz.RegisterServer(s, "")
+		defer channelz.RemoveEntry(id)
 	}
 	svr := newCZServer()
 	resp, _ := svr.GetServers(context.Background(), &channelzpb.GetServersRequest{StartServerId: 0})
@@ -364,7 +384,8 @@ func TestGetServers(t *testing.T) {
 		}
 	}
 	for i := 0; i < 50; i++ {
-		channelz.RegisterServer(ss[0], "")
+		id := channelz.RegisterServer(ss[0], "")
+		defer channelz.RemoveEntry(id)
 	}
 	resp, _ = svr.GetServers(context.Background(), &channelzpb.GetServersRequest{StartServerId: 0})
 	if resp.GetEnd() {
@@ -372,14 +393,19 @@ func TestGetServers(t *testing.T) {
 	}
 }
 
-func TestGetServerSockets(t *testing.T) {
-	channelz.NewChannelzStorage()
+func (s) TestGetServerSockets(t *testing.T) {
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	svrID := channelz.RegisterServer(&dummyServer{}, "")
+	defer channelz.RemoveEntry(svrID)
 	refNames := []string{"listen socket 1", "normal socket 1", "normal socket 2"}
 	ids := make([]int64, 3)
 	ids[0] = channelz.RegisterListenSocket(&dummySocket{}, svrID, refNames[0])
 	ids[1] = channelz.RegisterNormalSocket(&dummySocket{}, svrID, refNames[1])
 	ids[2] = channelz.RegisterNormalSocket(&dummySocket{}, svrID, refNames[2])
+	for _, id := range ids {
+		defer channelz.RemoveEntry(id)
+	}
 	svr := newCZServer()
 	resp, _ := svr.GetServerSockets(context.Background(), &channelzpb.GetServerSocketsRequest{ServerId: svrID, StartSocketId: 0})
 	if !resp.GetEnd() {
@@ -395,7 +421,8 @@ func TestGetServerSockets(t *testing.T) {
 	}
 
 	for i := 0; i < 50; i++ {
-		channelz.RegisterNormalSocket(&dummySocket{}, svrID, "")
+		id := channelz.RegisterNormalSocket(&dummySocket{}, svrID, "")
+		defer channelz.RemoveEntry(id)
 	}
 	resp, _ = svr.GetServerSockets(context.Background(), &channelzpb.GetServerSocketsRequest{ServerId: svrID, StartSocketId: 0})
 	if resp.GetEnd() {
@@ -405,14 +432,19 @@ func TestGetServerSockets(t *testing.T) {
 
 // This test makes a GetServerSockets with a non-zero start ID, and expect only
 // sockets with ID >= the given start ID.
-func TestGetServerSocketsNonZeroStartID(t *testing.T) {
-	channelz.NewChannelzStorage()
+func (s) TestGetServerSocketsNonZeroStartID(t *testing.T) {
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	svrID := channelz.RegisterServer(&dummyServer{}, "")
+	defer channelz.RemoveEntry(svrID)
 	refNames := []string{"listen socket 1", "normal socket 1", "normal socket 2"}
 	ids := make([]int64, 3)
 	ids[0] = channelz.RegisterListenSocket(&dummySocket{}, svrID, refNames[0])
 	ids[1] = channelz.RegisterNormalSocket(&dummySocket{}, svrID, refNames[1])
 	ids[2] = channelz.RegisterNormalSocket(&dummySocket{}, svrID, refNames[2])
+	for _, id := range ids {
+		defer channelz.RemoveEntry(id)
+	}
 	svr := newCZServer()
 	// Make GetServerSockets with startID = ids[1]+1, so socket-1 won't be
 	// included in the response.
@@ -430,17 +462,18 @@ func TestGetServerSocketsNonZeroStartID(t *testing.T) {
 	}
 }
 
-func TestGetChannel(t *testing.T) {
-	channelz.NewChannelzStorage()
+func (s) TestGetChannel(t *testing.T) {
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	refNames := []string{"top channel 1", "nested channel 1", "sub channel 2", "nested channel 3"}
 	ids := make([]int64, 4)
 	ids[0] = channelz.RegisterChannel(&dummyChannel{}, 0, refNames[0])
-	channelz.AddTraceEvent(ids[0], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[0], 0, &channelz.TraceEventDesc{
 		Desc:     "Channel Created",
 		Severity: channelz.CtINFO,
 	})
 	ids[1] = channelz.RegisterChannel(&dummyChannel{}, ids[0], refNames[1])
-	channelz.AddTraceEvent(ids[1], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[1], 0, &channelz.TraceEventDesc{
 		Desc:     "Channel Created",
 		Severity: channelz.CtINFO,
 		Parent: &channelz.TraceEventDesc{
@@ -450,7 +483,7 @@ func TestGetChannel(t *testing.T) {
 	})
 
 	ids[2] = channelz.RegisterSubChannel(&dummyChannel{}, ids[0], refNames[2])
-	channelz.AddTraceEvent(ids[2], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[2], 0, &channelz.TraceEventDesc{
 		Desc:     "SubChannel Created",
 		Severity: channelz.CtINFO,
 		Parent: &channelz.TraceEventDesc{
@@ -459,7 +492,7 @@ func TestGetChannel(t *testing.T) {
 		},
 	})
 	ids[3] = channelz.RegisterChannel(&dummyChannel{}, ids[1], refNames[3])
-	channelz.AddTraceEvent(ids[3], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[3], 0, &channelz.TraceEventDesc{
 		Desc:     "Channel Created",
 		Severity: channelz.CtINFO,
 		Parent: &channelz.TraceEventDesc{
@@ -467,14 +500,17 @@ func TestGetChannel(t *testing.T) {
 			Severity: channelz.CtINFO,
 		},
 	})
-	channelz.AddTraceEvent(ids[0], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[0], 0, &channelz.TraceEventDesc{
 		Desc:     fmt.Sprintf("Channel Connectivity change to %v", connectivity.Ready),
 		Severity: channelz.CtINFO,
 	})
-	channelz.AddTraceEvent(ids[0], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[0], 0, &channelz.TraceEventDesc{
 		Desc:     "Resolver returns an empty address list",
 		Severity: channelz.CtWarning,
 	})
+	for _, id := range ids {
+		defer channelz.RemoveEntry(id)
+	}
 	svr := newCZServer()
 	resp, _ := svr.GetChannel(context.Background(), &channelzpb.GetChannelRequest{ChannelId: ids[0]})
 	metrics := resp.GetChannel()
@@ -524,22 +560,23 @@ func TestGetChannel(t *testing.T) {
 	}
 }
 
-func TestGetSubChannel(t *testing.T) {
+func (s) TestGetSubChannel(t *testing.T) {
 	var (
 		subchanCreated            = "SubChannel Created"
 		subchanConnectivityChange = fmt.Sprintf("Subchannel Connectivity change to %v", connectivity.Ready)
 		subChanPickNewAddress     = fmt.Sprintf("Subchannel picks a new address %q to connect", "0.0.0.0")
 	)
-	channelz.NewChannelzStorage()
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	refNames := []string{"top channel 1", "sub channel 1", "socket 1", "socket 2"}
 	ids := make([]int64, 4)
 	ids[0] = channelz.RegisterChannel(&dummyChannel{}, 0, refNames[0])
-	channelz.AddTraceEvent(ids[0], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[0], 0, &channelz.TraceEventDesc{
 		Desc:     "Channel Created",
 		Severity: channelz.CtINFO,
 	})
 	ids[1] = channelz.RegisterSubChannel(&dummyChannel{}, ids[0], refNames[1])
-	channelz.AddTraceEvent(ids[1], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[1], 0, &channelz.TraceEventDesc{
 		Desc:     subchanCreated,
 		Severity: channelz.CtINFO,
 		Parent: &channelz.TraceEventDesc{
@@ -549,14 +586,17 @@ func TestGetSubChannel(t *testing.T) {
 	})
 	ids[2] = channelz.RegisterNormalSocket(&dummySocket{}, ids[1], refNames[2])
 	ids[3] = channelz.RegisterNormalSocket(&dummySocket{}, ids[1], refNames[3])
-	channelz.AddTraceEvent(ids[1], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[1], 0, &channelz.TraceEventDesc{
 		Desc:     subchanConnectivityChange,
 		Severity: channelz.CtINFO,
 	})
-	channelz.AddTraceEvent(ids[1], &channelz.TraceEventDesc{
+	channelz.AddTraceEvent(ids[1], 0, &channelz.TraceEventDesc{
 		Desc:     subChanPickNewAddress,
 		Severity: channelz.CtINFO,
 	})
+	for _, id := range ids {
+		defer channelz.RemoveEntry(id)
+	}
 	svr := newCZServer()
 	resp, _ := svr.GetSubchannel(context.Background(), &channelzpb.GetSubchannelRequest{SubchannelId: ids[1]})
 	metrics := resp.GetSubchannel()
@@ -597,8 +637,9 @@ func TestGetSubChannel(t *testing.T) {
 	}
 }
 
-func TestGetSocket(t *testing.T) {
-	channelz.NewChannelzStorage()
+func (s) TestGetSocket(t *testing.T) {
+	czCleanup := channelz.NewChannelzStorage()
+	defer cleanupWrapper(czCleanup, t)
 	ss := []*dummySocket{
 		{
 			streamsStarted:                   10,
@@ -673,8 +714,10 @@ func TestGetSocket(t *testing.T) {
 	svr := newCZServer()
 	ids := make([]int64, len(ss))
 	svrID := channelz.RegisterServer(&dummyServer{}, "")
+	defer channelz.RemoveEntry(svrID)
 	for i, s := range ss {
 		ids[i] = channelz.RegisterNormalSocket(s, svrID, strconv.Itoa(i))
+		defer channelz.RemoveEntry(ids[i])
 	}
 	for i, s := range ss {
 		resp, _ := svr.GetSocket(context.Background(), &channelzpb.GetSocketRequest{SocketId: ids[i]})

@@ -329,6 +329,10 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 		return errors.Wrap(err, "error setting up service user")
 	}
 
+	if logs, err := h.RunSSHCommand(ctx, h.MakeJasperDirsCommand()); err != nil {
+		return errors.Wrapf(err, "error creating Jasper directories: command returned: %s", logs)
+	}
+
 	if err := putJasperCredentials(ctx, env, settings, h); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
@@ -360,7 +364,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 	})
 
 	if logs, err := h.RunSSHCommand(ctx, writeCmds); err != nil {
-		return errors.Wrapf(err, "error copying credentials to remote machine: command returned %s", logs)
+		return errors.Wrapf(err, "error copying credentials to remote machine: command returned: %s", logs)
 	}
 
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
@@ -388,7 +392,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path))); err != nil {
-		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
+		return errors.Wrapf(err, "error while setting up service user: command returned: %s", logs)
 	}
 
 	return nil
@@ -399,7 +403,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	cmd := h.FetchAndReinstallJasperCommands(env.Settings())
 	if logs, err := h.RunSSHCommand(ctx, cmd); err != nil {
-		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned '%s'", logs)
+		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned: %s", logs)
 	}
 	return nil
 }
@@ -576,7 +580,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
 		}
 
-		grip.Infof("Running setup script for spawn host %s", j.host.Id)
+		grip.Info(message.Fields{
+			"message": "running setup script for spawn host",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		})
 		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
@@ -600,10 +609,11 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings),
 				message.Fields{
-					"message": "failed to fetch data onto host",
-					"task":    j.host.ProvisionOptions.TaskId,
-					"host_id": j.host.Id,
-					"job":     j.ID(),
+					"message":   "failed to fetch data onto host",
+					"task":      j.host.ProvisionOptions.TaskId,
+					"task_sync": j.host.ProvisionOptions.TaskSync,
+					"host_id":   j.host.Id,
+					"job":       j.ID(),
 				}))
 		}
 	}
@@ -643,10 +653,6 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 		return errors.Wrap(err, "could not create script to setup spawn host")
 	}
 
-	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
-	}
-
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
 	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
@@ -667,13 +673,14 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 }
 
 func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergreen.Settings) error {
-	sshInfo, err := j.host.GetSSHInfo()
-	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
+	var cmd string
+	if j.host.ProvisionOptions.TaskSync {
+		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
+	} else {
+		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	}
-
-	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	var output string
+	var err error
 	fetchTimeout := 15 * time.Minute
 	getTaskDataCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
@@ -682,7 +689,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	} else {
 		var logs []string
 		// We have to run this in the Cygwin shell in order for git clone to
-		// use the correct SSH key.
+		// use the correct SSH key when using fetch instead of pull.
 		logs, err = j.host.RunJasperProcess(getTaskDataCtx, j.env, &options.Create{
 			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 		})
@@ -690,11 +697,13 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),
-		"host_id": sshInfo.Hostname,
-		"cmd":     cmd,
-		"job":     j.ID(),
-		"logs":    output,
+		"message":   "problem fetching task data",
+		"task_id":   j.host.ProvisionOptions.TaskId,
+		"task_sync": j.host.ProvisionOptions.TaskSync,
+		"host_id":   j.host.Id,
+		"cmd":       cmd,
+		"job":       j.ID(),
+		"logs":      output,
 	}))
 
 	return errors.Wrap(err, "could not fetch remote task data")

@@ -25,7 +25,17 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc/internal/grpctest"
 )
+
+type s struct {
+	grpctest.Tester
+}
+
+func Test(t *testing.T) {
+	grpctest.RunSubTests(t, s{})
+}
 
 func testRW(r io.Reader, w io.Writer) error {
 	for i := 0; i < 20; i++ {
@@ -64,14 +74,14 @@ func testRW(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-func TestPipe(t *testing.T) {
+func (s) TestPipe(t *testing.T) {
 	p := newPipe(10)
 	if err := testRW(p, p); err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
-func TestPipeClose(t *testing.T) {
+func (s) TestPipeClose(t *testing.T) {
 	p := newPipe(10)
 	p.Close()
 	if _, err := p.Write(nil); err != io.ErrClosedPipe {
@@ -82,7 +92,7 @@ func TestPipeClose(t *testing.T) {
 	}
 }
 
-func TestConn(t *testing.T) {
+func (s) TestConn(t *testing.T) {
 	p1, p2 := newPipe(10), newPipe(10)
 	c1, c2 := &conn{p1, p2}, &conn{p2, p1}
 
@@ -94,9 +104,9 @@ func TestConn(t *testing.T) {
 	}
 }
 
-func TestConnCloseWithData(t *testing.T) {
+func (s) TestConnCloseWithData(t *testing.T) {
 	lis := Listen(7)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 	var lisConn net.Conn
 	go func() {
 		var err error
@@ -144,7 +154,7 @@ func TestConnCloseWithData(t *testing.T) {
 	}
 }
 
-func TestListener(t *testing.T) {
+func (s) TestListener(t *testing.T) {
 	l := Listen(7)
 	var s net.Conn
 	var serr error
@@ -166,7 +176,7 @@ func TestListener(t *testing.T) {
 	}
 }
 
-func TestCloseWhileDialing(t *testing.T) {
+func (s) TestCloseWhileDialing(t *testing.T) {
 	l := Listen(7)
 	var c net.Conn
 	var err error
@@ -182,7 +192,7 @@ func TestCloseWhileDialing(t *testing.T) {
 	}
 }
 
-func TestCloseWhileAccepting(t *testing.T) {
+func (s) TestCloseWhileAccepting(t *testing.T) {
 	l := Listen(7)
 	var c net.Conn
 	var err error
@@ -195,5 +205,124 @@ func TestCloseWhileAccepting(t *testing.T) {
 	<-done
 	if c != nil || err != errClosed {
 		t.Fatalf("c, err = %v, %v; want nil, %v", c, err, errClosed)
+	}
+}
+
+func (s) TestDeadline(t *testing.T) {
+	sig := make(chan error, 2)
+	blockingWrite := func(conn net.Conn) {
+		_, err := conn.Write([]byte("0123456789"))
+		sig <- err
+	}
+
+	blockingRead := func(conn net.Conn) {
+		_, err := conn.Read(make([]byte, 10))
+		sig <- err
+	}
+
+	p1, p2 := newPipe(5), newPipe(5)
+	c1, c2 := &conn{p1, p1}, &conn{p2, p2}
+	defer c1.Close()
+	defer c2.Close()
+
+	// Test with deadline
+	c1.SetWriteDeadline(time.Now())
+
+	go blockingWrite(c1)
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Write timeout timed out, c = %v", c1)
+	case err := <-sig:
+		if netErr, ok := err.(net.Error); ok {
+			if !netErr.Timeout() {
+				t.Fatalf("Write returned unexpected error, c = %v, err = %v", c1, netErr)
+			}
+		} else {
+			t.Fatalf("Write returned unexpected error, c = %v, err = %v", c1, err)
+		}
+	}
+
+	c2.SetReadDeadline(time.Now())
+
+	go blockingRead(c2)
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Read timeout timed out, c = %v", c2)
+	case err := <-sig:
+		if netErr, ok := err.(net.Error); ok {
+			if !netErr.Timeout() {
+				t.Fatalf("Read returned unexpected error, c = %v, err = %v", c2, netErr)
+			}
+		} else {
+			t.Fatalf("Read returned unexpected error, c = %v, err = %v", c2, err)
+		}
+	}
+
+	// Test timing out pending reads/writes
+	c1.SetWriteDeadline(time.Time{})
+	c2.SetReadDeadline(time.Time{})
+
+	go blockingWrite(c1)
+	select {
+	case <-time.After(100 * time.Millisecond):
+	case err := <-sig:
+		t.Fatalf("Write returned before timeout, err = %v", err)
+	}
+
+	c1.SetWriteDeadline(time.Now())
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Write timeout timed out, c = %v", c1)
+	case err := <-sig:
+		if netErr, ok := err.(net.Error); ok {
+			if !netErr.Timeout() {
+				t.Fatalf("Write returned unexpected error, c = %v, err = %v", c1, netErr)
+			}
+		} else {
+			t.Fatalf("Write returned unexpected error, c = %v, err = %v", c1, err)
+		}
+	}
+
+	go blockingRead(c2)
+	select {
+	case <-time.After(100 * time.Millisecond):
+	case err := <-sig:
+		t.Fatalf("Read returned before timeout, err = %v", err)
+	}
+
+	c2.SetReadDeadline(time.Now())
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Read timeout timed out, c = %v", c2)
+	case err := <-sig:
+		if netErr, ok := err.(net.Error); ok {
+			if !netErr.Timeout() {
+				t.Fatalf("Read returned unexpected error, c = %v, err = %v", c2, netErr)
+			}
+		} else {
+			t.Fatalf("Read returned unexpected error, c = %v, err = %v", c2, err)
+		}
+	}
+
+	// Test non-blocking read/write
+	c1, c2 = &conn{p1, p2}, &conn{p2, p1}
+
+	c1.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	c2.SetReadDeadline(time.Now().Add(10 * time.Second))
+
+	// Not blocking here
+	go blockingWrite(c1)
+	go blockingRead(c2)
+
+	// Read response from both routines
+	for i := 0; i < 2; i++ {
+		select {
+		case <-time.After(100 * time.Millisecond):
+			t.Fatalf("Read/Write timed out, c1 = %v, c2 = %v", c1, c2)
+		case err := <-sig:
+			if err != nil {
+				t.Fatalf("Read/Write failed to complete, c1 = %v, c2 = %v, err = %v", c1, c2, err)
+			}
+		}
 	}
 }

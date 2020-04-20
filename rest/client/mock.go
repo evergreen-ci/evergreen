@@ -404,6 +404,10 @@ func (*Mock) DeleteVolume(context.Context, string) error {
 	return errors.New("(*Mock) DeleteVolume is not implemented")
 }
 
+func (*Mock) ModifyVolume(context.Context, string, *model.VolumeModifyOptions) error {
+	return errors.New("(*Mock) ModifyVolume is not implemented")
+}
+
 func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
 	return nil, errors.New("(*Mock) GetVolumesByUser is not implemented")
 }
@@ -678,4 +682,8 @@ func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credent
 
 func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
 	return "", nil
+}
+
+func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
+	return nil, nil
 }

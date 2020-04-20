@@ -189,7 +189,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	body, err := ioutil.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, true, nil, nil, "doesntexist")
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, true, nil, nil, "doesntexist", nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
@@ -216,7 +216,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	body, err := ioutil.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, false, nil, nil, evergreen.CommitQueueAlias)
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, false, nil, nil, evergreen.CommitQueueAlias, nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
@@ -256,7 +256,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Equal(1, summaries[1].Additions)
 	s.Equal(3, summaries[1].Deletions)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "", nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())

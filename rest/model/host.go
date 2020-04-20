@@ -30,6 +30,7 @@ type APIHost struct {
 type HostRequestOptions struct {
 	DistroID             string     `json:"distro"`
 	TaskID               string     `json:"task"`
+	TaskSync             bool       `json:"task_sync"`
 	Region               string     `json:"region"`
 	KeyName              string     `json:"keyname"`
 	UserData             string     `json:"userdata"`
@@ -137,6 +138,7 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 
 type APIVolume struct {
 	ID               *string `json:"volume_id"`
+	DisplayName      *string `json:"display_name"`
 	CreatedBy        *string `json:"created_by"`
 	Type             *string `json:"type"`
 	AvailabilityZone *string `json:"zone"`
@@ -150,6 +152,10 @@ type VolumePostRequest struct {
 	Type             string `json:"type"`
 	Size             int    `json:"size"`
 	AvailabilityZone string `json:"zone"`
+}
+
+type VolumeModifyOptions struct {
+	NewName string `json:"new_name"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
@@ -173,6 +179,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 		return errors.New("incorrect type when converting volume type")
 	}
 	apiVolume.ID = ToStringPtr(v.ID)
+	apiVolume.DisplayName = ToStringPtr(v.DisplayName)
 	apiVolume.CreatedBy = ToStringPtr(v.CreatedBy)
 	apiVolume.Type = ToStringPtr(v.Type)
 	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
@@ -183,6 +190,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 func (apiVolume *APIVolume) ToService() (interface{}, error) {
 	return host.Volume{
 		ID:               FromStringPtr(apiVolume.ID),
+		DisplayName:      FromStringPtr(apiVolume.DisplayName),
 		CreatedBy:        FromStringPtr(apiVolume.CreatedBy),
 		Type:             FromStringPtr(apiVolume.Type),
 		AvailabilityZone: FromStringPtr(apiVolume.AvailabilityZone),

@@ -430,7 +430,7 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 		require.NoError(t.Insert())
 	}
 	latencies, err := AverageTaskLatency(time.Minute)
-	assert.NoError(err)
+	require.NoError(err)
 	expected := []AverageTimeByDistroAndRequester{
 		AverageTimeByDistroAndRequester{
 			Distro:      "sampleDistro",
@@ -448,5 +448,7 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			AverageTime: 20 * time.Second,
 		},
 	}
-	assert.Equal(expected, latencies.Times)
+	for _, time := range expected {
+		assert.Contains(latencies.Times, time)
+	}
 }

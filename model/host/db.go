@@ -94,6 +94,7 @@ var (
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
 	VolumeIDKey                  = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeDisplayNameKey         = bsonutil.MustHaveTag(Volume{}, "DisplayName")
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
@@ -331,7 +332,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByTaskSpec returns a query that finds all running hosts that are running a
+// NumHostsByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
@@ -341,7 +342,7 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 	}
 	q := db.Query(
 		bson.M{
-			StatusKey: evergreen.HostRunning,
+			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
 			"$or": []bson.M{
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},

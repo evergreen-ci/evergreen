@@ -50,11 +50,13 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	if err != nil {
 		return errors.Wrap(err, "could not get working directory")
 	}
+
 	pushMsg := "Pushing task directory files into S3"
 	if c.ExcludeFilter != "" {
 		pushMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
 	logger.Task().Infof(pushMsg)
+
 	if err := c.bucket.Push(ctx, pail.SyncOptions{
 		Local:   wd,
 		Remote:  conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName),
@@ -62,6 +64,8 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	}); err != nil {
 		return errors.Wrap(err, "error pushing task data to S3")
 	}
+
+	logger.Task().Infof("Successfully pushed task directory files")
 
 	return nil
 }

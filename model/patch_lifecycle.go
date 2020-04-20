@@ -54,7 +54,7 @@ func VariantTasksToTVPairs(in []patch.VariantTasks) TaskVariantPairs {
 }
 
 // TVPairsToVariantTasks takes a list of TVPairs (task/variant pairs), groups the tasks
-// for the same variant together under a single list, and return all the variant groups
+// for the same variant together under a single list, and returns all the variant groups
 // as a set of patch.VariantTasks.
 func (tvp *TaskVariantPairs) TVPairsToVariantTasks() []patch.VariantTasks {
 	vtMap := map[string]patch.VariantTasks{}
@@ -92,14 +92,14 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, "")
+	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, p.SyncVariantsTasks, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, "")
+	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, p.SyncVariantsTasks, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
@@ -378,15 +378,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:        *project,
-			Version:        *patchVersion,
-			TaskIDs:        taskIds,
-			BuildName:      vt.Variant,
-			Activated:      true,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			DistroAliases:  distroAliases,
-			TaskCreateTime: createTime,
+			Project:           *project,
+			Version:           *patchVersion,
+			TaskIDs:           taskIds,
+			BuildName:         vt.Variant,
+			Activated:         true,
+			TaskNames:         taskNames,
+			DisplayNames:      displayNames,
+			DistroAliases:     distroAliases,
+			TaskCreateTime:    createTime,
+			SyncVariantsTasks: p.SyncVariantsTasks,
 		}
 		var build *build.Build
 		var tasks task.Tasks

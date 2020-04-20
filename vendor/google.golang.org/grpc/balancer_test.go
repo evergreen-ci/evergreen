@@ -28,14 +28,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	_ "google.golang.org/grpc/grpclog/glogger"
 	"google.golang.org/grpc/naming"
 	"google.golang.org/grpc/status"
-
-	// V1 balancer tests use passthrough resolver instead of dns.
-	// TODO(bar) remove this when removing v1 balaner entirely.
-
-	_ "google.golang.org/grpc/resolver/passthrough"
 )
 
 func pickFirstBalancerV1(r naming.Resolver) Balancer {
@@ -331,7 +325,7 @@ func (s) TestOneServerDown(t *testing.T) {
 	numServers := 2
 	servers, r, cleanup := startServers(t, numServers, math.MaxUint32)
 	defer cleanup()
-	cc, err := Dial("passthrough:///foo.bar.com", WithBalancer(RoundRobin(r)), WithBlock(), WithInsecure(), WithCodec(testCodec{}), WithWaitForHandshake())
+	cc, err := Dial("passthrough:///foo.bar.com", WithBalancer(RoundRobin(r)), WithBlock(), WithInsecure(), WithCodec(testCodec{}))
 	if err != nil {
 		t.Fatalf("Failed to create ClientConn: %v", err)
 	}
@@ -654,7 +648,7 @@ func (s) TestPickFirstOrderOneServerDown(t *testing.T) {
 	numServers := 3
 	servers, r, cleanup := startServers(t, numServers, math.MaxUint32)
 	defer cleanup()
-	cc, err := Dial("passthrough:///foo.bar.com", WithBalancer(pickFirstBalancerV1(r)), WithBlock(), WithInsecure(), WithCodec(testCodec{}), WithWaitForHandshake())
+	cc, err := Dial("passthrough:///foo.bar.com", WithBalancer(pickFirstBalancerV1(r)), WithBlock(), WithInsecure(), WithCodec(testCodec{}))
 	if err != nil {
 		t.Fatalf("Failed to create ClientConn: %v", err)
 	}
