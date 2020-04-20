@@ -252,20 +252,19 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
+	// This will only be true for patches and not mainline commits.
+	var syncVariantsTasks []patch.VariantTasks
 	patchDoc, err := patch.FindOne(patch.ByVersion(v.Id))
-	if err != nil {
-		return errors.Wrapf(err, "error getting patch associated with version '%s'", v.Id)
-	}
-	if patchDoc == nil {
-		return errors.Errorf("patch for version '%s' not found", v.Id)
+	if err == nil && patchDoc != nil {
+		syncVariantsTasks = patchDoc.SyncVariantsTasks
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, patchDoc.SyncVariantsTasks, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, patchDoc.SyncVariantsTasks, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
