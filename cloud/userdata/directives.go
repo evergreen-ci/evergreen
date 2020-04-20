@@ -1,5 +1,11 @@
 package userdata
 
+import (
+	"strings"
+
+	"github.com/pkg/errors"
+)
+
 // Directive represents a marker that starts user data and indicates its
 // type.
 type Directive string
@@ -30,8 +36,8 @@ func Directives() []Directive {
 }
 
 // DirectiveToContentType maps a cloud-init directive to its MIME content type.
-func DirectiveToContentType() map[Directive]string {
-	return map[Directive]string{
+func DirectiveToContentType(d Directive) (string, error) {
+	for directive, contentType := range map[Directive]string{
 		ShellScript:      "text/x-shellscript",
 		Include:          "text/x-include-url",
 		CloudConfig:      "text/cloud-config",
@@ -40,13 +46,27 @@ func DirectiveToContentType() map[Directive]string {
 		PartHandler:      "text/part-handler",
 		PowerShellScript: "text/x-shellscript",
 		BatchScript:      "text/x-shellscript",
+	} {
+		if strings.HasPrefix(string(d), string(directive)) {
+			return contentType, nil
+		}
 	}
+	return "", errors.Errorf("unrecognized directive '%s'", d)
 }
 
+// NeedsClosingTag returns whether or not this directive must be closed.
 func (d Directive) NeedsClosingTag() bool {
 	return d.ClosingTag() != ""
 }
 
+// CanPersist returns whether or not this directive is compatible with
+// persisting user data (i.e. running it on every boot). This is relevant to
+// Windows only.
+func (d Directive) CanPersist() bool {
+	return d.ClosingTag() == PowerShellScriptClosingTag || d.ClosingTag() == BatchScriptClosingTag
+}
+
+// ClosingTag returns the closing tag that marks the end of thie directive.
 func (d Directive) ClosingTag() ClosingTag {
 	switch d {
 	case PowerShellScript:
@@ -55,8 +75,4 @@ func (d Directive) ClosingTag() ClosingTag {
 		return BatchScriptClosingTag
 	}
 	return ""
-}
-
-func NewShellScriptDirective(program string) Directive {
-	return Directive(string(ShellScript) + program)
 }

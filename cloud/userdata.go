@@ -29,57 +29,44 @@ func NewUserData(opts userdata.Options) (*userData, error) {
 	u := userData{
 		Options: opts,
 	}
-	if err := u.ValidateAndDefault(); err != nil {
+	if err := u.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid user data")
-	}
-	if u.ClosingTag == "" && u.Directive.NeedsClosingTag() {
-		u.ClosingTag = u.Directive.ClosingTag()
 	}
 	return &u, nil
 }
 
-// merge combines one user data part with another.
-// kim: TODO: test
+// merge combines one user data part with another to make a single part.
 func (u *userData) merge(other *userData) (*userData, error) {
-	if other == nil {
-		return u, nil
-	}
-
 	if u.Directive != other.Directive {
 		return nil, errors.Errorf(
 			"cannot combine user data parts of incompatible types: '%s' is incompatible with '%s'",
 			u.Directive, other.Directive)
 	}
-	if u.ClosingTag != "" && other.ClosingTag != "" && u.ClosingTag != other.ClosingTag {
-		return nil, errors.Errorf(
-			"cannot combine user data with different closing tags: '%s' is incompatible with '%s'",
-			u.ClosingTag, other.ClosingTag)
-	}
+
 	return NewUserData(userdata.Options{
-		Directive:  u.Directive,
-		Content:    strings.Join([]string{u.Content, other.Content}, "\n"),
-		ClosingTag: u.ClosingTag,
-		Persist:    u.Persist || other.Persist,
+		Directive: u.Directive,
+		Content:   strings.Join([]string{u.Content, other.Content}, "\n"),
+		Persist:   u.Persist || other.Persist,
 	})
 }
 
 // String returns the entire user data part constructed from its components.
 func (u *userData) String() string {
-	s := strings.Join([]string{
+	components := []string{
 		string(u.Directive),
 		u.Content,
-		string(u.ClosingTag),
-	}, "\n")
-	if u.Persist {
-		s = strings.Join([]string{s, persistTag}, "\n")
 	}
-	return s
+	if u.Directive.NeedsClosingTag() {
+		components = append(components, string(u.Directive.ClosingTag()), "\n")
+	}
+	if u.Persist {
+		components = append(components, persistTag)
+	}
+	return strings.Join(components, "\n")
 }
 
-// ParseUserData returns the user data string as a structured user data.
-// kim: TODO: test
-// kim: TODO: parse user data at entry points where requests use user data.
-func ParseUserData(userData string) (*userData, error) {
+// parseUserData returns the user data string as a structured user data.
+func parseUserData(userData string) (*userData, error) {
 	var err error
 	var persist bool
 	persist, userData, err = splitPersistTags(userData)
@@ -95,17 +82,16 @@ func ParseUserData(userData string) (*userData, error) {
 
 	var closingTag userdata.ClosingTag
 	if directive.NeedsClosingTag() {
-		userData, err = splitClosingTagFor(userData, directive.ClosingTag())
+		userData, err = splitClosingTag(userData, directive.ClosingTag())
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem splitting closing tag '%s'", closingTag)
 		}
 	}
 
 	return NewUserData(userdata.Options{
-		Directive:  directive,
-		Content:    userData,
-		ClosingTag: closingTag,
-		Persist:    persist,
+		Directive: directive,
+		Content:   userData,
+		Persist:   persist,
 	})
 }
 
@@ -125,29 +111,15 @@ func splitDirective(userData string) (directive userdata.Directive, userDataWith
 
 	for _, directive := range userdata.Directives() {
 		if strings.HasPrefix(firstLine, string(directive)) {
-			userDataWithoutDirective = strings.Replace(userData, firstLine, "", 1)
+			userDataWithoutDirective = strings.TrimSpace(strings.TrimPrefix(userData, firstLine))
 			return userdata.Directive(firstLine), userDataWithoutDirective, nil
 		}
 	}
-	return "", "", errors.Errorf("user data directive is not recognizable from first line: '%s'", firstLine)
+	return "", "", errors.Errorf("user data directive is missing from first line: '%s'", firstLine)
 }
 
 // splitClosingTag finds the closing tag to match the end of the user data.
-func splitClosingTag(userData string) (closingTag userdata.ClosingTag, userDataWithoutClosingTag string, err error) {
-	for _, closingTag := range userdata.ClosingTags() {
-		if count := strings.Count(userData, string(closingTag)); count != 0 {
-			if count > 1 {
-				return "", "", errors.Errorf("closing tag '%s' cannot occur more than once", closingTag)
-			}
-			userDataWithoutClosingTag = strings.Replace(userData, string(closingTag), "", 1)
-			return closingTag, userDataWithoutClosingTag, nil
-		}
-	}
-	return "", "", errors.New("user data does not have closing tags")
-}
-
-// splitClosingTagFor finds the closing tag to match
-func splitClosingTagFor(userData string, closingTag userdata.ClosingTag) (userDataWithoutClosingTag string, err error) {
+func splitClosingTag(userData string, closingTag userdata.ClosingTag) (userDataWithoutClosingTag string, err error) {
 	count := strings.Count(userData, string(closingTag))
 	if count == 0 {
 		return "", errors.Errorf("user data does not have closing tag '%s'", closingTag)
@@ -155,13 +127,13 @@ func splitClosingTagFor(userData string, closingTag userdata.ClosingTag) (userDa
 	if count > 1 {
 		return "", errors.Errorf("cannot have multiple occurrences of closing tag '%s'", closingTag)
 	}
-	userDataWithoutClosingTag = strings.Replace(userData, string(closingTag), "", 1)
+	userDataWithoutClosingTag = strings.TrimSpace(strings.Replace(userData, string(closingTag), "", 1))
 	return userDataWithoutClosingTag, nil
 }
 
 const (
 	persistTag        = "<persist>true</persist>"
-	persistTagPattern = "<persist>[[:space:]]true[[:space:]]</persist>"
+	persistTagPattern = `[[:space:]]*<persist>[[:space:]]*true[[:space:]]*</persist>[[:space:]]*`
 )
 
 // splitPersistTags returns whether the user data contains persist tags and
@@ -226,9 +198,9 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 		return errors.New("user data file name cannot be empty")
 	}
 
-	contentType, ok := userdata.DirectiveToContentType()[u.Directive]
-	if !ok {
-		return errors.Errorf("could not detect MIME content type of user data from directive '%s'", u.Directive)
+	contentType, err := userdata.DirectiveToContentType(u.Directive)
+	if err != nil {
+		return errors.Wrap(err, "could not detect MIME content type of user data")
 	}
 
 	header := textproto.MIMEHeader{}
@@ -258,11 +230,10 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 // (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
 // We could possibly increase the length by gzip compressing it.
 func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
-	// kim: TODO: handle empty user data
 	var err error
 	var customUserData *userData
 	if custom != "" {
-		customUserData, err = ParseUserData(custom)
+		customUserData, err = parseUserData(custom)
 		if err != nil {
 			return "", errors.Wrap(err, "could not parse custom user data")
 		}
@@ -324,13 +295,8 @@ func ensureWindowsUserDataScriptPersists(h *host.Host, u *userData) *userData {
 	if !h.Distro.IsWindows() {
 		return u
 	}
-	if u.Persist {
-		return u
-	}
 
-	switch u.Directive {
-	case userdata.PowerShellScript, userdata.BatchScript:
-		u.Persist = true
-	}
+	u.Persist = u.Directive.CanPersist()
+
 	return u
 }

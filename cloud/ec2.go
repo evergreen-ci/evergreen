@@ -100,6 +100,11 @@ func (s *EC2ProviderSettings) Validate() error {
 	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
 	}
+	if s.UserData != "" {
+		if _, err := parseUserData(s.UserData); err != nil {
+			return errors.Wrap(err, "user data is malformed")
+		}
+	}
 	return nil
 }
 

@@ -2,103 +2,183 @@ package cloud
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"mime/multipart"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// kim: TODO: refactor tests
+func TestMakeUserData(t *testing.T) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host){
+		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			userData, err := makeUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
 
-func TestWriteUserDataHeaders(t *testing.T) {
-	buf := &bytes.Buffer{}
-	boundary := "some_boundary"
-	require.NoError(t, writeUserDataHeaders(buf, boundary))
-	res := strings.ToLower(buf.String())
-	assert.Contains(t, res, "mime-version: 1.0")
-	assert.Contains(t, res, "content-type: multipart/mixed")
-	assert.Contains(t, res, fmt.Sprintf("boundary=\"%s\"", boundary))
-	assert.Equal(t, 1, strings.Count(res, boundary))
+			cmd, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.StartAgentMonitorRequest(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+		},
+		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			userData, err := makeUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
+			assert.NotEmpty(t, userData)
+		},
+		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			userData, err := makeUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
+			assert.NotEmpty(t, userData)
+			assert.Contains(t, userData, persistTag)
+		},
+		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			_, err := makeUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, h.Id)
+
+			assert.Equal(t, h.JasperCredentialsID, h.Id)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
+		},
+		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			customUserData := "#!/bin/bash\necho foo"
+			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			require.NoError(t, err)
+
+			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			assert.Equal(t, h.JasperCredentialsID, h.Id)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
+		},
+		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			customUserData := "#!/bin/bash\necho foo"
+			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			require.NoError(t, err)
+			assert.Equal(t, customUserData, userData)
+		},
+		"ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			customUserData := "<powershell>\necho foo\n</powershell>"
+			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			require.NoError(t, err)
+			assert.Contains(t, userData, customUserData)
+			assert.Contains(t, userData, persistTag)
+		},
+		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			customUserData := "#!/bin/bash\necho foo"
+			userData, err := makeUserData(ctx, env, h, customUserData, true)
+			require.NoError(t, err)
+
+			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommands()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			custom, err := parseUserData(customUserData)
+			require.NoError(t, err)
+			assert.Contains(t, userData, custom.Content)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
+		},
+		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.BootstrapSettings.ServiceUser = "user"
+			customUserData := "<powershell>\necho foo\n</powershell>\n<persist>true</persist>"
+			userData, err := makeUserData(ctx, env, h, customUserData, true)
+			require.NoError(t, err)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
+
+			creds, err := h.JasperCredentials(ctx, env)
+			require.NoError(t, err)
+			assert.NotNil(t, creds)
+
+			assert.Contains(t, userData, persistTag)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(host.Collection, user.Collection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(host.Collection, user.Collection))
+			}()
+
+			h := &host.Host{
+				Id: "host_id",
+				Distro: distro.Distro{
+					Arch: distro.ArchLinuxAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						JasperCredentialsPath: "/bar",
+						JasperBinaryDir:       "/jasper_binary_dir",
+						ClientDir:             "/client_dir",
+						ShellPath:             "/bin/bash",
+					},
+				},
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, h.Insert())
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			env := testutil.NewEnvironment(ctx, t)
+
+			testCase(ctx, t, env, h)
+		})
+	}
 }
 
-func TestWriteUserDataPart(t *testing.T) {
-	buf := &bytes.Buffer{}
-	mimeWriter := multipart.NewWriter(buf)
-	boundary := "some_boundary"
-	require.NoError(t, mimeWriter.SetBoundary(boundary))
-
-	userData, err := NewUserData(userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
-		Content:   "echo foo",
-	})
-	require.NoError(t, err)
-	require.NoError(t, writeUserDataPart(mimeWriter, userData, "foobar.txt"))
-
-	res := strings.ToLower(buf.String())
-	assert.Contains(t, res, "mime-version: 1.0")
-	assert.Contains(t, res, "content-type: text/x-shellscript")
-	assert.Contains(t, res, "content-disposition: attachment; filename=\"foobar.txt\"")
-	assert.Contains(t, res, userData.Directive)
-	assert.Contains(t, res, userData.Content)
-	assert.Equal(t, 1, strings.Count(res, boundary))
-}
-
-//
-// func TestWriteUserDataPartDefaultForUnrecognizedFormat(t *testing.T) {
-//     buf := &bytes.Buffer{}
-//     mimeWriter := multipart.NewWriter(buf)
-//     userData := "this user data has no cloud-init directive"
-//     require.NoError(t, writeUserDataPart(mimeWriter, userData, "foo.txt"))
-//     assert.Contains(t, buf.String(), "Content-Type: text/x-shellscript")
-// }
-//
-// func TestWriteUserDataPartEmptyFileName(t *testing.T) {
-//     buf := &bytes.Buffer{}
-//     mimeWriter := multipart.NewWriter(buf)
-//     userData := "#!/bin/bash\necho 'foobar'"
-//     assert.Error(t, writeUserDataPart(mimeWriter, userData, ""))
-// }
-//
-// func TestMakeMultipartUserData(t *testing.T) {
-//     userData := "#!/bin/bash\necho 'foobar'"
-//     noUserData := ""
-//     fileOne := "1.txt"
-//     fileTwo := "2.txt"
-//
-//     res, err := makeMultipartUserData(map[string]string{})
-//     require.NoError(t, err)
-//     assert.NotEmpty(t, res)
-//
-//     res, err = makeMultipartUserData(map[string]string{
-//         fileOne: noUserData,
-//     })
-//     require.NoError(t, err)
-//     assert.NotEmpty(t, res)
-//     assert.False(t, strings.Contains(res, fileOne))
-//
-//     res, err = makeMultipartUserData(map[string]string{
-//         fileOne: userData,
-//         fileTwo: userData,
-//     })
-//     require.NoError(t, err)
-//     assert.Contains(t, res, fileOne)
-//     assert.Contains(t, res, fileTwo)
-//     assert.Equal(t, 2, strings.Count(res, userData))
-//
-//     res, err = makeMultipartUserData(map[string]string{
-//         fileOne: noUserData,
-//         fileTwo: userData,
-//     })
-//     require.NoError(t, err)
-//     assert.NotEmpty(t, res)
-//     assert.False(t, strings.Contains(res, fileOne))
-//     assert.Contains(t, res, fileTwo)
-//     assert.Contains(t, res, userData)
-// }
 //
 // func TestBootstrapUserData(t *testing.T) {
 //     tctx, cancel := context.WithCancel(context.Background())
@@ -260,74 +340,493 @@ func TestWriteUserDataPart(t *testing.T) {
 //     }
 // }
 //
-// func TestMergeUserData(t *testing.T) {
-//     for testName, testCase := range map[string]struct {
-//         host            host.Host
-//         bootstrapScript string
-//         customScript    string
-//         expectedScript  string
-//     }{
-//         "AppendsCustomUserData": {
-//             host:            host.Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}},
-//             bootstrapScript: "#!/bin/bash\necho foo",
-//             customScript:    "echo bar",
-//             expectedScript:  "#!/bin/bash\necho foo\necho bar",
-//         },
-//         "AddsCustomScriptBeforeClosingTagForWindowsHostsRunningShellScripts": {
-//             host:            host.Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}},
-//             bootstrapScript: "<powershell>\r\necho foo</powershell>",
-//             customScript:    "echo bar",
-//             expectedScript:  "<powershell>\r\necho foo\r\necho bar\r\n</powershell>",
-//         },
-//         "AppendsForWindowsHostsNotRunningShellScripts": {
-//             host:            host.Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}},
-//             bootstrapScript: "#cloud-config\r\nruncmd:\r\n  - echo foo",
-//             customScript:    "runcmd:\r\n  - echo bar",
-//             expectedScript:  "#cloud-config\r\nruncmd:\r\n  - echo foo\r\nruncmd:\r\n  - echo bar",
-//         },
-//     } {
-//         t.Run(testName, func(t *testing.T) {
-//             combinedScript := mergeUserDataParts(&testCase.host, testCase.bootstrapScript, testCase.customScript)
-//             assert.Equal(t, testCase.expectedScript, combinedScript)
-//         })
-//     }
-// }
-//
-// func TestEnsureWindowsUserDataScriptPersists(t *testing.T) {
-//     t.Run("NoopsForNonWindowsHosts", func(t *testing.T) {
-//         h := &host.Host{
-//             Distro: distro.Distro{Arch: distro.ArchLinuxAmd64},
-//         }
-//         assert.Empty(t, ensureWindowsUserDataScriptPersists(h, ""))
-//         content := "foo bar"
-//         assert.Equal(t, content, ensureWindowsUserDataScriptPersists(h, content))
-//     })
-//     t.Run("WithWindowsHost", func(t *testing.T) {
-//         for testName, testCase := range map[string]func(t *testing.T, h *host.Host){
-//             "AddsPersistTags": func(t *testing.T, h *host.Host) {
-//                 script := "<powershell>echo foo bar</powershell>"
-//                 persistedScript := ensureWindowsUserDataScriptPersists(h, script)
-//                 assert.Contains(t, persistedScript, script)
-//                 assert.Contains(t, persistedScript, persistTag)
-//             },
-//             "NoopsIfPersistTagsAlreadyPresent": func(t *testing.T, h *host.Host) {
-//                 script := "<powershell>echo foo bar</powershell>\r\n" + persistTag
-//                 assert.Equal(t, script, ensureWindowsUserDataScriptPersists(h, script))
-//             },
-//             "NoopsForEmptyScript": func(t *testing.T, h *host.Host) {
-//                 assert.Empty(t, ensureWindowsUserDataScriptPersists(h, ""))
-//             },
-//             "NoopsForNonShellScript": func(t *testing.T, h *host.Host) {
-//                 userData := "#cloud-config\nruncmd:\n  - echo foo"
-//                 assert.Equal(t, userData, ensureWindowsUserDataScriptPersists(h, userData))
-//             },
-//         } {
-//             t.Run(testName, func(t *testing.T) {
-//                 h := &host.Host{
-//                     Distro: distro.Distro{Arch: distro.ArchWindowsAmd64},
-//                 }
-//                 testCase(t, h)
-//             })
-//         }
-//     })
-// }
+func TestUserDataMerge(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		provision   userData
+		custom      userData
+		expected    userData
+		expectError bool
+	}{
+		"Succeeds": {
+			provision: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo foo",
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo bar",
+				},
+			},
+			expected: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo foo\necho bar",
+				},
+			},
+		},
+		"FailsForIncompatibleUserDataDirectives": {
+			provision: userData{
+				Options: userdata.Options{
+					Directive: userdata.CloudConfig,
+					Content:   "runcmd:\n - echo foo",
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo bar",
+				},
+			},
+			expectError: true,
+		},
+		"FailsForUnspecifiedDirective": {
+			provision: userData{
+				Options: userdata.Options{
+					Content: "echo foo",
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Content: "echo bar",
+				},
+			},
+			expectError: true,
+		},
+		"PersistsIfBaseUserDataPersists": {
+			provision: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo",
+					Persist:   true,
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo bar",
+				},
+			},
+			expected: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo\necho bar",
+					Persist:   true,
+				},
+			},
+		},
+		"PersistsIfOtherUserDataPersists": {
+			provision: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo",
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo bar",
+					Persist:   true,
+				},
+			},
+			expected: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo\necho bar",
+					Persist:   true,
+				},
+			},
+		},
+		"FailsIfPersistingForInvalidDirective": {
+			provision: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo foo",
+					Persist:   true,
+				},
+			},
+			custom: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo bar",
+					Persist:   true,
+				},
+			},
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			merged, err := testCase.provision.merge(&testCase.custom)
+			if !testCase.expectError {
+				require.NoError(t, err)
+				assert.Equal(t, testCase.expected.Directive, merged.Directive)
+				assert.Equal(t, testCase.expected.Content, merged.Content)
+				assert.Equal(t, testCase.expected.Persist, merged.Persist)
+			} else {
+				assert.Error(t, err)
+				assert.Nil(t, merged)
+			}
+		})
+	}
+}
+
+func TestEnsureWindowsUserDataScriptPersists(t *testing.T) {
+	t.Run("NoopsForNonWindowsHosts", func(t *testing.T) {
+		h := &host.Host{
+			Distro: distro.Distro{Arch: distro.ArchLinuxAmd64},
+		}
+		in := &userData{
+			Options: userdata.Options{
+				Directive: userdata.ShellScript + "/bin/bash",
+				Content:   "echo foo",
+			},
+		}
+		out := ensureWindowsUserDataScriptPersists(h, in)
+		assert.Equal(t, in.Directive, out.Directive)
+		assert.Equal(t, in.Content, out.Content)
+		assert.Equal(t, in.Persist, out.Persist)
+	})
+	t.Run("WithWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *host.Host){
+			"SetsPersistForScripts": func(t *testing.T, h *host.Host) {
+				in := &userData{
+					Options: userdata.Options{
+						Directive: userdata.PowerShellScript,
+						Content:   "echo foo",
+					},
+				}
+				out := ensureWindowsUserDataScriptPersists(h, in)
+				assert.Equal(t, in.Directive, out.Directive)
+				assert.Equal(t, in.Content, out.Content)
+				assert.True(t, out.Persist)
+			},
+			"NoopsIfAlreadyPersisted": func(t *testing.T, h *host.Host) {
+				in := &userData{
+					Options: userdata.Options{
+						Directive: userdata.PowerShellScript,
+						Content:   "echo foo",
+						Persist:   true,
+					},
+				}
+				out := ensureWindowsUserDataScriptPersists(h, in)
+				assert.Equal(t, in.Directive, out.Directive)
+				assert.Equal(t, in.Content, out.Content)
+				assert.Equal(t, in.Persist, out.Persist)
+			},
+			"NoopsForUnpersistable": func(t *testing.T, h *host.Host) {
+				in := &userData{
+					Options: userdata.Options{
+						Directive: userdata.CloudConfig,
+						Content:   "echo foo",
+					},
+				}
+				out := ensureWindowsUserDataScriptPersists(h, in)
+				assert.Equal(t, in.Directive, out.Directive)
+				assert.Equal(t, in.Content, out.Content)
+				assert.False(t, out.Persist)
+			},
+			"RemovesPersistForUnpersistable": func(t *testing.T, h *host.Host) {
+				in := &userData{
+					Options: userdata.Options{
+						Directive: userdata.CloudConfig,
+						Content:   "echo foo",
+						Persist:   true,
+					},
+				}
+				out := ensureWindowsUserDataScriptPersists(h, in)
+				assert.Equal(t, in.Directive, out.Directive)
+				assert.Equal(t, in.Content, out.Content)
+				assert.False(t, out.Persist)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &host.Host{
+					Distro: distro.Distro{Arch: distro.ArchWindowsAmd64},
+				}
+				testCase(t, h)
+			})
+		}
+	})
+}
+
+func TestParseUserData(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		userData         string
+		expectError      bool
+		expectedUserData userData
+	}{
+		"Succeeds": {
+			userData: "#!/bin/bash\necho foo",
+			expectedUserData: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo foo",
+				},
+			},
+		},
+		"IgnoresLeadingWhitespace": {
+			userData: "\n\n\n#!/bin/bash\necho foo",
+			expectedUserData: userData{
+				Options: userdata.Options{
+					Directive: userdata.ShellScript + "/bin/bash",
+					Content:   "echo foo",
+				},
+			},
+		},
+		"SucceedsWithDirectiveAndClosingTag": {
+			userData: "<powershell>\necho foo\n</powershell>",
+			expectedUserData: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo",
+				},
+			},
+		},
+		"SucceedsWithDirectiveAndClosingTagAndPersist": {
+			userData: "<powershell>\necho foo\n</powershell>\n<persist>true</persist>",
+			expectedUserData: userData{
+				Options: userdata.Options{
+					Directive: userdata.PowerShellScript,
+					Content:   "echo foo",
+					Persist:   true,
+				},
+			},
+		},
+		"FailsWithoutMatchingClosingTag": {
+			userData:    "<powershell>\necho foo",
+			expectError: true,
+		},
+		"FailsForNoDirective": {
+			userData:    "echo foo",
+			expectError: true,
+		},
+		"FailsForPersistedUserDataIfUnpersistable": {
+			userData:    "<persist>true</persist>\n#!/bin/bash\necho foo",
+			expectError: true,
+		},
+		"FailsForEmpty": {
+			userData:    "",
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			userData, err := parseUserData(testCase.userData)
+			if !testCase.expectError {
+				require.NoError(t, err)
+				assert.Equal(t, testCase.expectedUserData.Directive, userData.Directive)
+				assert.Equal(t, testCase.expectedUserData.Content, userData.Content)
+				assert.Equal(t, testCase.expectedUserData.Persist, userData.Persist)
+			} else {
+				assert.Error(t, err)
+				assert.Empty(t, userData)
+			}
+		})
+	}
+}
+
+func TestSplitDirective(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		userData          string
+		expectError       bool
+		expectedDirective userdata.Directive
+		expectedUserData  string
+	}{
+		"Succeeds": {
+			userData:          "#!/bin/bash\necho foo",
+			expectedDirective: "#!/bin/bash",
+			expectedUserData:  "echo foo",
+		},
+		"IgnoresLeadingWhitespace": {
+			userData:          "\n\n\n#!/bin/bash\necho foo",
+			expectedDirective: "#!/bin/bash",
+			expectedUserData:  "echo foo",
+		},
+		"FailsForNoDirective": {
+			userData:    "echo foo",
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			directive, userData, err := splitDirective(testCase.userData)
+			if !testCase.expectError {
+				require.NoError(t, err)
+				assert.Equal(t, testCase.expectedDirective, directive)
+				assert.Equal(t, testCase.expectedUserData, userData)
+			} else {
+				assert.Error(t, err)
+				assert.Empty(t, directive)
+				assert.Empty(t, userData)
+			}
+		})
+	}
+}
+
+func TestSplitClosingTag(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		userData         string
+		closingTag       userdata.ClosingTag
+		expectError      bool
+		expectedUserData string
+	}{
+		"Succeeds": {
+			userData:         "<powershell>\necho foo\n</powershell>",
+			closingTag:       userdata.PowerShellScriptClosingTag,
+			expectedUserData: "<powershell>\necho foo",
+		},
+		"FailsForNonexistentClosingTag": {
+			userData:    "#!/bin/bash\necho foo",
+			closingTag:  userdata.PowerShellScriptClosingTag,
+			expectError: true,
+		},
+		"FailsForNoDirective": {
+			userData:    "echo foo",
+			closingTag:  userdata.PowerShellScriptClosingTag,
+			expectError: true,
+		},
+		"FailsForMultipleDirectives": {
+			userData:    "<powershell>\necho foo\n</powershell>\n</powershell>",
+			closingTag:  userdata.PowerShellScriptClosingTag,
+			expectError: true,
+		},
+		"FailsForUnmatchedClosingTag": {
+			userData:    "<powershell>\necho foo\n</powershell>",
+			closingTag:  userdata.BatchScriptClosingTag,
+			expectError: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			userData, err := splitClosingTag(testCase.userData, testCase.closingTag)
+			if !testCase.expectError {
+				require.NoError(t, err)
+				assert.Equal(t, testCase.expectedUserData, userData)
+			} else {
+				assert.Error(t, err)
+				assert.Empty(t, userData)
+			}
+		})
+	}
+}
+
+func TestSplitPersistTags(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		userData         string
+		expectFound      bool
+		expectedUserData string
+	}{
+		"FindsAndRemovesAllInstancesOfPersist": {
+			userData:         "<persist>true</persist>\n<powershell>echo foo</powershell>\n<persist>true</persist>",
+			expectFound:      true,
+			expectedUserData: "<powershell>echo foo</powershell>",
+		},
+		"FindsWithWhitespace": {
+			userData:         "<persist>   true\n</persist>\n<powershell>echo foo</powershell>",
+			expectFound:      true,
+			expectedUserData: "<powershell>echo foo</powershell>",
+		},
+		"NoopsForNoPersistTags": {
+			userData:         "<powershell>echo foo</powershell>",
+			expectFound:      false,
+			expectedUserData: "<powershell>echo foo</powershell>",
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			found, userData, err := splitPersistTags(testCase.userData)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expectFound, found)
+			assert.Equal(t, testCase.expectedUserData, userData)
+		})
+	}
+}
+
+func TestMakeMultipartUserData(t *testing.T) {
+	populatedUserData, err := NewUserData(userdata.Options{
+		Directive: userdata.ShellScript + "/bin/bash",
+		Content:   "echo foo",
+	})
+	require.NoError(t, err)
+
+	fileOne := "1.txt"
+	fileTwo := "2.txt"
+
+	multipart, err := makeMultipartUserData(map[string]*userData{})
+	require.NoError(t, err)
+	assert.NotEmpty(t, multipart)
+
+	multipart, err = makeMultipartUserData(map[string]*userData{
+		fileOne: populatedUserData,
+		fileTwo: populatedUserData,
+	})
+	require.NoError(t, err)
+	assert.Contains(t, multipart, fileOne)
+	assert.Contains(t, multipart, fileTwo)
+	assert.Equal(t, 2, strings.Count(multipart, string(populatedUserData.Directive)))
+	assert.Equal(t, 2, strings.Count(multipart, populatedUserData.Content))
+}
+
+func TestWriteUserDataHeaders(t *testing.T) {
+	buf := &bytes.Buffer{}
+	boundary := "some_boundary"
+	require.NoError(t, writeUserDataHeaders(buf, boundary))
+	res := strings.ToLower(buf.String())
+	assert.Contains(t, res, "mime-version: 1.0")
+	assert.Contains(t, res, "content-type: multipart/mixed")
+	assert.Contains(t, res, fmt.Sprintf("boundary=\"%s\"", boundary))
+	assert.Equal(t, 1, strings.Count(res, boundary))
+}
+
+func TestWriteUserDataPart(t *testing.T) {
+	t.Run("SucceedsWIthValidUserData", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		mimeWriter := multipart.NewWriter(buf)
+		boundary := "some_boundary"
+		require.NoError(t, mimeWriter.SetBoundary(boundary))
+
+		userData, err := NewUserData(userdata.Options{
+			Directive: userdata.ShellScript + "/bin/bash",
+			Content:   "echo foo",
+		})
+		require.NoError(t, err)
+		require.NoError(t, writeUserDataPart(mimeWriter, userData, "foobar.txt"))
+
+		part := strings.ToLower(buf.String())
+		assert.Contains(t, part, "mime-version: 1.0")
+		assert.Contains(t, part, "content-type: text/x-shellscript")
+		assert.Contains(t, part, "content-disposition: attachment; filename=\"foobar.txt\"")
+		assert.Contains(t, part, userData.Directive)
+		assert.Contains(t, part, userData.Content)
+		assert.Equal(t, 1, strings.Count(part, boundary))
+	})
+	t.Run("FailsForUnspecifiedUserDataDirective", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		mimeWriter := multipart.NewWriter(buf)
+		userData := &userData{
+			Options: userdata.Options{
+				Content: "this user data has no cloud-init directive",
+			},
+		}
+		assert.Error(t, writeUserDataPart(mimeWriter, userData, "foo.txt"))
+	})
+	t.Run("FailsForNonexistentUserDataDirective", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		mimeWriter := multipart.NewWriter(buf)
+		userData := &userData{
+			Options: userdata.Options{
+				Directive: userdata.Directive("foo"),
+				Content:   "this user data has no cloud-init directive",
+			},
+		}
+		assert.Error(t, writeUserDataPart(mimeWriter, userData, "foo.txt"))
+	})
+	t.Run("FailsForEmptyFileName", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		mimeWriter := multipart.NewWriter(buf)
+		userData, err := NewUserData(userdata.Options{
+			Directive: userdata.ShellScript + "/bin/bash",
+			Content:   "echo foo",
+		})
+		require.NoError(t, err)
+		assert.Error(t, writeUserDataPart(mimeWriter, userData, ""))
+	})
+}

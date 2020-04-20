@@ -18,37 +18,31 @@ func TestOptionsValidate(t *testing.T) {
 			},
 			expectError: false,
 		},
-		"PassesWithValidDirectiveAndClosingTagForWindows": {
+		"PassesWithValidDirectivePrefixAndContent": {
 			opts: Options{
-				Directive:  PowerShellScript,
-				Content:    "echo foo",
-				ClosingTag: PowerShellScriptClosingTag,
+				Directive: ShellScript + "/bin/bash",
+			},
+		},
+		"PassesWithValidDirectiveForWindows": {
+			opts: Options{
+				Directive: PowerShellScript,
+				Content:   "echo foo",
 			},
 			expectError: false,
 		},
-		"PassesWithValidDirectiveAndClosingTagWhenPersistedForWindows": {
+		"PassesWithValidDirectiveWhenPersistedForWindows": {
 			opts: Options{
-				Directive:  PowerShellScript,
-				Content:    "echo foo",
-				ClosingTag: PowerShellScriptClosingTag,
-				Persist:    true,
+				Directive: PowerShellScript,
+				Content:   "echo foo",
+				Persist:   true,
 			},
 			expectError: false,
 		},
-		"FailsForMismatchedClosingTagForWindows": {
+		"FailsForDirectiveNotPersistableForWindows": {
 			opts: Options{
-				Directive:  PowerShellScript,
-				Content:    "echo foo",
-				ClosingTag: BatchScriptClosingTag,
-				Persist:    true,
-			},
-			expectError: true,
-		},
-		"FailsForUnnecessaryClosingTag": {
-			opts: Options{
-				Directive:  ShellScript,
-				Content:    "echo foo",
-				ClosingTag: PowerShellScriptClosingTag,
+				Directive: CloudBoothook,
+				Content:   "echo foo",
+				Persist:   true,
 			},
 			expectError: true,
 		},
@@ -64,51 +58,18 @@ func TestOptionsValidate(t *testing.T) {
 			},
 			expectError: false,
 		},
-		"PassesForEmptyContentWithDirectiveAndClosingTag": {
-			opts: Options{
-				Directive:  PowerShellScript,
-				ClosingTag: PowerShellScriptClosingTag,
-			},
-			expectError: false,
-		},
 		"FailsForEmpty": {
 			opts:        Options{},
 			expectError: true,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			err := testCase.opts.ValidateAndDefault()
-			if testCase.expectError {
-				assert.Error(t, err)
-			} else {
+			err := testCase.opts.Validate()
+			if !testCase.expectError {
 				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
 			}
 		})
 	}
-
-	for testName, testCase := range map[string]struct {
-		opts         Options
-		expectedOpts Options
-	}{
-		"DefaultsClosingTagForValidDirectiveAndUnspecifiedClosingTagForWindows": {
-			opts: Options{
-				Directive: PowerShellScript,
-				Content:   "echo foo",
-				Persist:   true,
-			},
-			expectedOpts: Options{
-				Directive:  PowerShellScript,
-				Content:    "echo foo",
-				ClosingTag: PowerShellScriptClosingTag,
-				Persist:    true,
-			},
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			err := testCase.opts.ValidateAndDefault()
-			assert.NoError(t, err)
-			assert.Equal(t, testCase.expectedOpts, testCase.opts)
-		})
-	}
-
 }
