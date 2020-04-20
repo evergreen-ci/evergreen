@@ -25,6 +25,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 )
 
@@ -796,18 +797,6 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}()
 
 	// check if we've done this already
-	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
-	if err = cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "can't run umount command")
-	}
-	exitCode, err := cmd.Wait(ctx)
-	if err != nil {
-		return errors.Wrap(err, "problem waiting for ls command")
-	}
-	// the directory exists
-	if exitCode == 0 {
-		return nil
-	}
 
 	output, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: []string{"lsblk"},
@@ -821,11 +810,11 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	// continue on umount mount error
-	cmd = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
+	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't run umount command")
 	}
-	exitCode, err = cmd.Wait(ctx)
+	exitCode, err := cmd.Wait(ctx)
 	if err != nil && exitCode != umountMountErrorCode {
 		return errors.Wrap(err, "problem waiting for umount command")
 	}
@@ -844,9 +833,25 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
+
+	mountExists, err := mountExists(ctx, env, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't verify if mount exists for host '%s'", h.Id)
+	}
+	if !mountExists {
+		cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
+	}
+
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+
+	symlinkExists, err := symlinkExists(ctx, client, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't verify if symlink exists for host '%s'", h.Id)
+	}
+	if !symlinkExists {
+		cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+	}
+
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
@@ -858,6 +863,30 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	return nil
+}
+
+func mountExists(ctx context.Context, env evergreen.Environment, h *host.Host) (bool, error) {
+	output, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args: []string{"mount"},
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "problem runnning mount")
+	}
+
+	return utility.StringSliceContains(output, fmt.Sprintf("/%s", evergreen.HomeVolumeDir)), nil
+}
+
+func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
+	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
+	if err := cmd.Run(ctx); err != nil {
+		return false, errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "problem waiting for ls command")
+	}
+
+	return exitCode == 0, nil
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
