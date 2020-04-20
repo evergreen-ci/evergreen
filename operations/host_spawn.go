@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	homedir "github.com/mitchellh/go-homedir"
@@ -314,7 +314,12 @@ func hostConfigure() cli.Command {
 				}
 			}
 
-			cmds, err := getJasperCommands(projectRef, directory, quiet, dryRun)
+			cmds, err := projectRef.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{
+				Directory: directory,
+				Quiet:     quiet,
+				DryRun:    dryRun,
+				Output:    grip.GetSender(),
+			})
 			if err != nil {
 				return errors.Wrapf(err, "error getting commands")
 			}
@@ -335,43 +340,6 @@ func hostConfigure() cli.Command {
 			return nil
 		},
 	}
-}
-
-func getJasperCommands(projectRef *model.ProjectRef, directory string, quiet, dryRun bool) ([]*jasper.Command, error) {
-	cmds := []*jasper.Command{}
-	// add git clone to run first if enabled
-	projectRef.AddGitCloneToWorkstationCommands()
-
-	if len(projectRef.WorkstationConfig.SetupCommands) == 0 {
-		return nil, errors.Errorf("no setup commands configured for project '%s'", projectRef.Identifier)
-	}
-	for idx, obj := range projectRef.WorkstationConfig.SetupCommands {
-		dir := filepath.Join(directory, projectRef.Identifier)
-		if obj.Directory != "" {
-			dir = filepath.Join(dir, obj.Directory)
-		}
-
-		if err := os.MkdirAll(dir, 0644); err != nil {
-			return nil, errors.Wrapf(err, "error making directory '%s'", dir)
-		}
-
-		commandNumber := idx + 1 // to avoid logging a stale number
-		cmd := jasper.NewCommand().Directory(dir).Add([]string{obj.Command}).
-			SetErrorSender(level.Error, grip.GetSender()).
-			Prerequisite(func() bool {
-				grip.Info(message.Fields{
-					"directory": dir,
-					"command":   obj.Command,
-					"number":    commandNumber,
-				})
-				return !dryRun
-			})
-		if !quiet {
-			cmd = cmd.SetOutputSender(level.Info, grip.GetSender())
-		}
-		cmds = append(cmds, cmd)
-	}
-	return cmds, nil
 }
 
 func hostStop() cli.Command {
