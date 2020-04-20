@@ -23,7 +23,7 @@ imports:
 
 # grpc and dependencies
 - name: google.golang.org/grpc
-  version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb
+  version: ac54eec90516cee50fc6b9b113b34628a85f976f
 - name: golang.org/x/net
   version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
 - name: golang.org/x/sys
