@@ -102,6 +102,7 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		UserName:             user.Username(),
 		PublicKey:            keyVal,
 		TaskId:               options.TaskID,
+		TaskSync:             options.TaskSync,
 		Owner:                user,
 		InstanceTags:         options.InstanceTags,
 		InstanceType:         options.InstanceType,

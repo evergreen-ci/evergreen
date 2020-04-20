@@ -167,6 +167,13 @@ type Task struct {
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
+
+	// ShouldSync indicates whether the task should sync its task directory to
+	// S3 when it is complete.
+	// TODO (EVG-7817): allow different statuses
+	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
+	// RunsSync indicates whether this task syncs its task directory to S3.
+	RunsSync bool `bson:"runs_sync,omitempty" json:"runs_sync,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -671,7 +678,7 @@ func MarkGeneratedTasks(taskID string, errorToSet error) error {
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
-	return errors.Wrap(err, "problem marketing generate.tasks complete")
+	return errors.Wrap(err, "problem marking generate.tasks complete")
 }
 
 func GenerateNotRun() ([]Task, error) {
@@ -1676,7 +1683,6 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 func (t *Task) IsPartOfDisplay() bool {
 	dt, err := t.GetDisplayTask()
 	if err != nil {
-		grip.Error(err)
 		return false
 	}
 	return dt != nil

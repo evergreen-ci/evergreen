@@ -20,17 +20,18 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/channelz/service"
-	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
+
+	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 )
 
 const (
@@ -59,7 +60,7 @@ func main() {
 	}
 	defer conn.Close()
 	// Manually provide resolved addresses for the target.
-	r.NewAddress([]resolver.Address{{Addr: ":10001"}, {Addr: ":10002"}, {Addr: ":10003"}})
+	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: ":10001"}, {Addr: ":10002"}, {Addr: ":10003"}}})
 
 	c := pb.NewGreeterClient(conn)
 

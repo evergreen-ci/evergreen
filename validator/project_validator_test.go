@@ -705,14 +705,8 @@ func TestValidateBVNames(t *testing.T) {
 			}
 
 			validationResults := validateBVNames(project)
-			numErrors, numWarnings := 0, 0
-			for _, val := range validationResults {
-				if val.Level == Error {
-					numErrors++
-				} else if val.Level == Warning {
-					numWarnings++
-				}
-			}
+			numErrors := len(validationResults.AtLevel(Error))
+			numWarnings := len(validationResults.AtLevel(Warning))
 
 			So(numWarnings, ShouldEqual, 1)
 			So(numErrors, ShouldEqual, 0)
@@ -2202,12 +2196,30 @@ buildvariants:
 `
 	proj := model.Project{}
 	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NoError(err)
+	require.NoError(err)
+	assert.NotEmpty(proj)
 	assert.NotNil(pp)
 	errs := CheckProjectSyntax(&proj)
 	assert.Len(errs, 1, "one warning was found")
-	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+
+	exampleYml = `
+tasks:
+  - name: taskA
+    commands:
+    - command: s3.push
+    - command: s3.push
+buildvariants:
+  - name: bvA
+    run_on: example_distro
+    tasks:
+      - name: taskA
+`
+	pp, err = model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	require.NoError(err)
+	assert.NotNil(pp)
+	assert.NotEmpty(proj)
+	assert.Error(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
@@ -3957,143 +3969,6 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 	})
 }
 
-func TestCommandsRunOnBV(t *testing.T) {
-	cmd := evergreen.S3PullCommandName
-	variant := "variant"
-	for testName, testCase := range map[string]struct {
-		expectedCmdNames []string
-		cmds             []model.PluginCommandConf
-		variant          string
-		funcs            map[string]*model.YAMLCommandSet
-	}{
-		"FindsMatchingCommands": {
-			cmds: []model.PluginCommandConf{
-				{
-					Command:     cmd,
-					DisplayName: "display",
-				}, {
-					Command: "foo",
-				},
-			},
-			variant:          variant,
-			expectedCmdNames: []string{"display"},
-		},
-		"FindsMatchingCommandsInFunction": {
-			cmds: []model.PluginCommandConf{
-				{
-					Function: "function",
-				},
-			},
-			funcs: map[string]*model.YAMLCommandSet{
-				"function": &model.YAMLCommandSet{
-					SingleCommand: &model.PluginCommandConf{
-						Command:     cmd,
-						DisplayName: "display",
-					},
-				},
-			},
-			expectedCmdNames: []string{"display"},
-			variant:          variant,
-		},
-		"FindsMatchingCommandsFilteredByVariant": {
-			cmds: []model.PluginCommandConf{
-				{
-					Command:     cmd,
-					DisplayName: "display1",
-				}, {
-					Command:  cmd,
-					Variants: []string{"other_variant"},
-				}, {
-					Command:     cmd,
-					DisplayName: "display2",
-					Variants:    []string{variant},
-				}, {
-					Command:     cmd,
-					DisplayName: "display3",
-					Variants:    []string{"other_variant", variant},
-				},
-			},
-			expectedCmdNames: []string{"display1", "display2", "display3"},
-			variant:          variant,
-		},
-		"FindsMatchingCommandsInFunctionFilteredByVariant": {},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			cmds := commandsRunOnBV(testCase.cmds, cmd, variant, testCase.funcs)
-			assert.Len(t, cmds, len(testCase.expectedCmdNames))
-			for _, cmd := range cmds {
-				assert.True(t, utility.StringSliceContains(testCase.expectedCmdNames, cmd.DisplayName))
-			}
-		})
-	}
-}
-
-func TestValidateTVRunsCommand(t *testing.T) {
-	cmd := evergreen.S3PushCommandName
-	for testName, testCase := range map[string]struct {
-		project     model.Project
-		tv          model.TVPair
-		expectError bool
-	}{
-		"FindsTaskWithCommand": {
-			project: model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name: "task",
-						Commands: []model.PluginCommandConf{
-							{
-								Command: cmd,
-							},
-						},
-					},
-				},
-			},
-			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
-			expectError: false,
-		},
-		"FailsForCommandsInTaskButFiltered": {
-			project: model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name: "task",
-						Commands: []model.PluginCommandConf{
-							{
-								Command:  cmd,
-								Variants: []string{"other_variant"},
-							},
-						},
-					},
-				},
-			},
-			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
-			expectError: true,
-		},
-		"FailsForNonexistentTaskDefinition": {
-			project:     model.Project{},
-			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
-			expectError: true,
-		},
-		"FailsForCommandNotInTask": {
-			project: model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "task"},
-				},
-			},
-			tv:          model.TVPair{TaskName: "task", Variant: "variant"},
-			expectError: true,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			err := validateTVRunsCommand(testCase.tv, cmd, &testCase.project)
-			if testCase.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestValidateTVDependsOnTV(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		source       model.TVPair
@@ -4153,4 +4028,48 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidationErrorsAtLevel(t *testing.T) {
+	t.Run("FindsWarningLevelErrors", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			}, {
+				Level:   Error,
+				Message: "error",
+			},
+		})
+		foundErrs := errs.AtLevel(Warning)
+		require.Len(t, foundErrs, 1)
+		assert.Equal(t, errs[0], foundErrs[0])
+	})
+	t.Run("FindsErrorLevelErrors", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			}, {
+				Level:   Error,
+				Message: "error",
+			},
+		})
+		foundErrs := errs.AtLevel(Error)
+		require.Len(t, foundErrs, 1)
+		assert.Equal(t, errs[1], foundErrs[0])
+	})
+	t.Run("ReturnsEmptyForNonexistent", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{})
+		assert.Empty(t, errs.AtLevel(Error))
+	})
+	t.Run("ReturnsEmptyForNoMatch", func(t *testing.T) {
+		errs := ValidationErrors([]ValidationError{
+			{
+				Level:   Warning,
+				Message: "warning",
+			},
+		})
+		assert.Empty(t, errs.AtLevel(Error))
+	})
 }

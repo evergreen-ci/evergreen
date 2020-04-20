@@ -167,6 +167,17 @@ type Patch {
   taskCount: Int
   baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
+  project: PatchProject
+}
+
+type PatchProject {
+  variants: [ProjectBuildVariant!]!
+  tasks: [String!]!
+}
+type ProjectBuildVariant {
+  name: String!
+  displayName: String!
+  tasks: [String!]!
 }
 
 type TaskResult {
@@ -359,6 +370,8 @@ type CommitQueue {
 type CommitQueueItem {
   Issue: String
   Version: String
+  EnqueueTime: Time
+  Patch: Patch
   Modules: [Module!]
 }
 

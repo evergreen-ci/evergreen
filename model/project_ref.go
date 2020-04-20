@@ -3,11 +3,13 @@ package model
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,6 +19,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
@@ -883,15 +888,66 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) AddGitCloneToWorkstationCommands() {
-	if !p.WorkstationConfig.GitClone {
-		return
+func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
+	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
+		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Identifier)
 	}
-	newCmd := WorkstationSetupCommand{}
-	newCmd.Command = fmt.Sprintf("git clone -b %s https://github.com/%s/%s.git", p.Branch, p.Owner, p.Repo)
-	newCmdsList := []WorkstationSetupCommand{newCmd}
-	p.WorkstationConfig.SetupCommands = append(newCmdsList, p.WorkstationConfig.SetupCommands...)
-	return
+
+	baseDir := filepath.Join(opts.Directory, p.Identifier)
+	cmds := []*jasper.Command{}
+
+	if p.WorkstationConfig.GitClone {
+		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
+
+		cmd := jasper.NewCommand().Add(args).
+			SetErrorSender(level.Error, opts.Output).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory": opts.Directory,
+					"command":   strings.Join(args, " "),
+					"op":        "repo clone",
+					"project":   p.Identifier,
+				})
+
+				return !opts.DryRun
+			})
+
+		if !opts.Quiet {
+			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+		}
+
+		cmds = append(cmds, cmd)
+
+	}
+
+	for idx, obj := range p.WorkstationConfig.SetupCommands {
+		dir := baseDir
+		if obj.Directory != "" {
+			dir = filepath.Join(dir, obj.Directory)
+		}
+
+		commandNumber := idx + 1 // to avoid logging a stale number
+		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
+			SetErrorSender(level.Error, opts.Output).
+			Append(obj.Command).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory":      dir,
+					"command":        obj.Command,
+					"command_number": commandNumber,
+					"op":             "setup command",
+					"project":        p.Identifier,
+				})
+
+				return !opts.DryRun
+			})
+		if !opts.Quiet {
+			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+		}
+		cmds = append(cmds, cmd)
+	}
+
+	return cmds, nil
 }
 
 func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {

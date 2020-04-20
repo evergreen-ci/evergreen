@@ -10,7 +10,13 @@
               {
                 "Issue": "5e94c2dfe3c3312519b59480",
                 "Version": "",
-                "Modules": null
+                "Modules": null,
+                "EnqueueTime": "2020-04-13T15:52:00-04:00",
+                "Patch": {
+                  "id": "5e94c2dfe3c3312519b59480",
+                  "author": "mohamed.khelif",
+                  "githash": "0170e0a872373b388a48694d24f22da63983e5d0"
+                }
               }
             ]
           }

@@ -648,7 +648,7 @@ Evergreen Projects
               <input type="checkbox" id="workstation_git_clone" ng-model="settingsFormData.workstation_config.git_clone"/>
               <label for="workstation_git_clone">Git Clone</label>
               <div class="muted small">
-                If git clone is checked, will run "git clone -b [[settingsFormData.branch_name]] https://github.com/[[settingsFormData.owner_name]]/[[settingsFormData.repo_name]].git" as defined in this project.</div>
+                If git clone is checked, will run "git clone -b [[settingsFormData.branch_name]] git@github.com:[[settingsFormData.owner_name]]/[[settingsFormData.repo_name]].git" as defined in this project. Users must have SSH keys configured in github before running this command.</div>
             </div>
             <div class="form-group">
           </div>

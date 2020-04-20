@@ -30,31 +30,36 @@ import (
 // NewBuilderWithScheme creates a new test resolver builder with the given scheme.
 func NewBuilderWithScheme(scheme string) *Resolver {
 	return &Resolver{
-		scheme: scheme,
+		ResolveNowCallback: func(resolver.ResolveNowOptions) {},
+		scheme:             scheme,
 	}
 }
 
 // Resolver is also a resolver builder.
 // It's build() function always returns itself.
 type Resolver struct {
-	scheme string
+	// ResolveNowCallback is called when the ResolveNow method is called on the
+	// resolver.  Must not be nil.  Must not be changed after the resolver may
+	// be built.
+	ResolveNowCallback func(resolver.ResolveNowOptions)
+	scheme             string
 
 	// Fields actually belong to the resolver.
-	cc             resolver.ClientConn
-	bootstrapAddrs []resolver.Address
+	CC             resolver.ClientConn
+	bootstrapState *resolver.State
 }
 
-// InitialAddrs adds resolved addresses to the resolver so that
-// NewAddress doesn't need to be explicitly called after Dial.
-func (r *Resolver) InitialAddrs(addrs []resolver.Address) {
-	r.bootstrapAddrs = addrs
+// InitialState adds initial state to the resolver so that UpdateState doesn't
+// need to be explicitly called after Dial.
+func (r *Resolver) InitialState(s resolver.State) {
+	r.bootstrapState = &s
 }
 
 // Build returns itself for Resolver, because it's both a builder and a resolver.
-func (r *Resolver) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOption) (resolver.Resolver, error) {
-	r.cc = cc
-	if r.bootstrapAddrs != nil {
-		r.NewAddress(r.bootstrapAddrs)
+func (r *Resolver) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+	r.CC = cc
+	if r.bootstrapState != nil {
+		r.UpdateState(*r.bootstrapState)
 	}
 	return r, nil
 }
@@ -65,19 +70,16 @@ func (r *Resolver) Scheme() string {
 }
 
 // ResolveNow is a noop for Resolver.
-func (*Resolver) ResolveNow(o resolver.ResolveNowOption) {}
+func (r *Resolver) ResolveNow(o resolver.ResolveNowOptions) {
+	r.ResolveNowCallback(o)
+}
 
 // Close is a noop for Resolver.
 func (*Resolver) Close() {}
 
-// NewAddress calls cc.NewAddress.
-func (r *Resolver) NewAddress(addrs []resolver.Address) {
-	r.cc.NewAddress(addrs)
-}
-
-// NewServiceConfig calls cc.NewServiceConfig.
-func (r *Resolver) NewServiceConfig(sc string) {
-	r.cc.NewServiceConfig(sc)
+// UpdateState calls CC.UpdateState.
+func (r *Resolver) UpdateState(s resolver.State) {
+	r.CC.UpdateState(s)
 }
 
 // GenerateAndRegisterManualResolver generates a random scheme and a Resolver

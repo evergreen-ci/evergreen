@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -147,4 +149,31 @@ func (s *CommandSuite) TestS3Copy() {
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
 	s.Equal(taskSecret, taskData.Secret)
+}
+
+func TestEndTaskSyncCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, tc *taskContext){
+		"ReturnsNoCommandsForNoSync": func(t *testing.T, tc *taskContext) {
+			tc.taskModel.ShouldSync = false
+			assert.Nil(t, endTaskSyncCommands(tc))
+		},
+		"ReturnsTaskSyncCommands": func(t *testing.T, tc *taskContext) {
+			cmds := endTaskSyncCommands(tc)
+			require.NotNil(t, cmds)
+			var s3PushFound bool
+			for _, cmd := range cmds.List() {
+				if cmd.Command == evergreen.S3PushCommandName {
+					s3PushFound = true
+				}
+			}
+			assert.True(t, s3PushFound)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tc := &taskContext{
+				taskModel: &task.Task{ShouldSync: true},
+			}
+			testCase(t, tc)
+		})
+	}
 }

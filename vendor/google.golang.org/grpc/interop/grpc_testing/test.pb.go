@@ -3,13 +3,14 @@
 
 package grpc_testing
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-
 import (
-	context "golang.org/x/net/context"
+	context "context"
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // The type of payload that should be returned.
 type PayloadType int32
@@ -40,6 +41,7 @@ var PayloadType_name = map[int32]string{
 	1: "UNCOMPRESSABLE",
 	2: "RANDOM",
 }
+
 var PayloadType_value = map[string]int32{
 	"COMPRESSABLE":   0,
 	"UNCOMPRESSABLE": 1,
@@ -49,8 +51,46 @@ var PayloadType_value = map[string]int32{
 func (x PayloadType) String() string {
 	return proto.EnumName(PayloadType_name, int32(x))
 }
+
 func (PayloadType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{0}
+	return fileDescriptor_e1cda82041fed8bf, []int{0}
+}
+
+// The type of route that a client took to reach a server w.r.t. gRPCLB.
+// The server must fill in "fallback" if it detects that the RPC reached
+// the server via the "gRPCLB fallback" path, and "backend" if it detects
+// that the RPC reached the server via "gRPCLB backend" path (i.e. if it got
+// the address of this server from the gRPCLB server BalanceLoad RPC). Exactly
+// how this detection is done is context and server dependant.
+type GrpclbRouteType int32
+
+const (
+	// Server didn't detect the route that a client took to reach it.
+	GrpclbRouteType_GRPCLB_ROUTE_TYPE_UNKNOWN GrpclbRouteType = 0
+	// Indicates that a client reached a server via gRPCLB fallback.
+	GrpclbRouteType_GRPCLB_ROUTE_TYPE_FALLBACK GrpclbRouteType = 1
+	// Indicates that a client reached a server as a gRPCLB-given backend.
+	GrpclbRouteType_GRPCLB_ROUTE_TYPE_BACKEND GrpclbRouteType = 2
+)
+
+var GrpclbRouteType_name = map[int32]string{
+	0: "GRPCLB_ROUTE_TYPE_UNKNOWN",
+	1: "GRPCLB_ROUTE_TYPE_FALLBACK",
+	2: "GRPCLB_ROUTE_TYPE_BACKEND",
+}
+
+var GrpclbRouteType_value = map[string]int32{
+	"GRPCLB_ROUTE_TYPE_UNKNOWN":  0,
+	"GRPCLB_ROUTE_TYPE_FALLBACK": 1,
+	"GRPCLB_ROUTE_TYPE_BACKEND":  2,
+}
+
+func (x GrpclbRouteType) String() string {
+	return proto.EnumName(GrpclbRouteType_name, int32(x))
+}
+
+func (GrpclbRouteType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_e1cda82041fed8bf, []int{1}
 }
 
 type Empty struct {
@@ -63,16 +103,17 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{0}
+	return fileDescriptor_e1cda82041fed8bf, []int{0}
 }
+
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
 }
 func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
 }
-func (dst *Empty) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Empty.Merge(dst, src)
+func (m *Empty) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Empty.Merge(m, src)
 }
 func (m *Empty) XXX_Size() int {
 	return xxx_messageInfo_Empty.Size(m)
@@ -98,16 +139,17 @@ func (m *Payload) Reset()         { *m = Payload{} }
 func (m *Payload) String() string { return proto.CompactTextString(m) }
 func (*Payload) ProtoMessage()    {}
 func (*Payload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{1}
+	return fileDescriptor_e1cda82041fed8bf, []int{1}
 }
+
 func (m *Payload) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Payload.Unmarshal(m, b)
 }
 func (m *Payload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Payload.Marshal(b, m, deterministic)
 }
-func (dst *Payload) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Payload.Merge(dst, src)
+func (m *Payload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Payload.Merge(m, src)
 }
 func (m *Payload) XXX_Size() int {
 	return xxx_messageInfo_Payload.Size(m)
@@ -146,16 +188,17 @@ func (m *EchoStatus) Reset()         { *m = EchoStatus{} }
 func (m *EchoStatus) String() string { return proto.CompactTextString(m) }
 func (*EchoStatus) ProtoMessage()    {}
 func (*EchoStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{2}
+	return fileDescriptor_e1cda82041fed8bf, []int{2}
 }
+
 func (m *EchoStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EchoStatus.Unmarshal(m, b)
 }
 func (m *EchoStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_EchoStatus.Marshal(b, m, deterministic)
 }
-func (dst *EchoStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EchoStatus.Merge(dst, src)
+func (m *EchoStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EchoStatus.Merge(m, src)
 }
 func (m *EchoStatus) XXX_Size() int {
 	return xxx_messageInfo_EchoStatus.Size(m)
@@ -195,26 +238,31 @@ type SimpleRequest struct {
 	// Whether SimpleResponse should include OAuth scope.
 	FillOauthScope bool `protobuf:"varint,5,opt,name=fill_oauth_scope,json=fillOauthScope,proto3" json:"fill_oauth_scope,omitempty"`
 	// Whether server should return a given status
-	ResponseStatus       *EchoStatus `protobuf:"bytes,7,opt,name=response_status,json=responseStatus,proto3" json:"response_status,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
-	XXX_unrecognized     []byte      `json:"-"`
-	XXX_sizecache        int32       `json:"-"`
+	ResponseStatus *EchoStatus `protobuf:"bytes,7,opt,name=response_status,json=responseStatus,proto3" json:"response_status,omitempty"`
+	// Whether SimpleResponse should include server_id.
+	FillServerId bool `protobuf:"varint,9,opt,name=fill_server_id,json=fillServerId,proto3" json:"fill_server_id,omitempty"`
+	// Whether SimpleResponse should include grpclb_route_type.
+	FillGrpclbRouteType  bool     `protobuf:"varint,10,opt,name=fill_grpclb_route_type,json=fillGrpclbRouteType,proto3" json:"fill_grpclb_route_type,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *SimpleRequest) Reset()         { *m = SimpleRequest{} }
 func (m *SimpleRequest) String() string { return proto.CompactTextString(m) }
 func (*SimpleRequest) ProtoMessage()    {}
 func (*SimpleRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{3}
+	return fileDescriptor_e1cda82041fed8bf, []int{3}
 }
+
 func (m *SimpleRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleRequest.Unmarshal(m, b)
 }
 func (m *SimpleRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SimpleRequest.Marshal(b, m, deterministic)
 }
-func (dst *SimpleRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SimpleRequest.Merge(dst, src)
+func (m *SimpleRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleRequest.Merge(m, src)
 }
 func (m *SimpleRequest) XXX_Size() int {
 	return xxx_messageInfo_SimpleRequest.Size(m)
@@ -267,6 +315,20 @@ func (m *SimpleRequest) GetResponseStatus() *EchoStatus {
 	return nil
 }
 
+func (m *SimpleRequest) GetFillServerId() bool {
+	if m != nil {
+		return m.FillServerId
+	}
+	return false
+}
+
+func (m *SimpleRequest) GetFillGrpclbRouteType() bool {
+	if m != nil {
+		return m.FillGrpclbRouteType
+	}
+	return false
+}
+
 // Unary response, as configured by the request.
 type SimpleResponse struct {
 	// Payload to increase message size.
@@ -275,7 +337,14 @@ type SimpleResponse struct {
 	// successful when the client expected it.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// OAuth scope.
-	OauthScope           string   `protobuf:"bytes,3,opt,name=oauth_scope,json=oauthScope,proto3" json:"oauth_scope,omitempty"`
+	OauthScope string `protobuf:"bytes,3,opt,name=oauth_scope,json=oauthScope,proto3" json:"oauth_scope,omitempty"`
+	// Server ID. This must be unique among different server instances,
+	// but the same across all RPC's made to a particular server instance.
+	ServerId string `protobuf:"bytes,4,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
+	// gRPCLB Path.
+	GrpclbRouteType GrpclbRouteType `protobuf:"varint,5,opt,name=grpclb_route_type,json=grpclbRouteType,proto3,enum=grpc.testing.GrpclbRouteType" json:"grpclb_route_type,omitempty"`
+	// Server hostname.
+	Hostname             string   `protobuf:"bytes,6,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -285,16 +354,17 @@ func (m *SimpleResponse) Reset()         { *m = SimpleResponse{} }
 func (m *SimpleResponse) String() string { return proto.CompactTextString(m) }
 func (*SimpleResponse) ProtoMessage()    {}
 func (*SimpleResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{4}
+	return fileDescriptor_e1cda82041fed8bf, []int{4}
 }
+
 func (m *SimpleResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SimpleResponse.Unmarshal(m, b)
 }
 func (m *SimpleResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SimpleResponse.Marshal(b, m, deterministic)
 }
-func (dst *SimpleResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SimpleResponse.Merge(dst, src)
+func (m *SimpleResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SimpleResponse.Merge(m, src)
 }
 func (m *SimpleResponse) XXX_Size() int {
 	return xxx_messageInfo_SimpleResponse.Size(m)
@@ -326,6 +396,27 @@ func (m *SimpleResponse) GetOauthScope() string {
 	return ""
 }
 
+func (m *SimpleResponse) GetServerId() string {
+	if m != nil {
+		return m.ServerId
+	}
+	return ""
+}
+
+func (m *SimpleResponse) GetGrpclbRouteType() GrpclbRouteType {
+	if m != nil {
+		return m.GrpclbRouteType
+	}
+	return GrpclbRouteType_GRPCLB_ROUTE_TYPE_UNKNOWN
+}
+
+func (m *SimpleResponse) GetHostname() string {
+	if m != nil {
+		return m.Hostname
+	}
+	return ""
+}
+
 // Client-streaming request.
 type StreamingInputCallRequest struct {
 	// Optional input payload sent along with the request.
@@ -339,16 +430,17 @@ func (m *StreamingInputCallRequest) Reset()         { *m = StreamingInputCallReq
 func (m *StreamingInputCallRequest) String() string { return proto.CompactTextString(m) }
 func (*StreamingInputCallRequest) ProtoMessage()    {}
 func (*StreamingInputCallRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{5}
+	return fileDescriptor_e1cda82041fed8bf, []int{5}
 }
+
 func (m *StreamingInputCallRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingInputCallRequest.Unmarshal(m, b)
 }
 func (m *StreamingInputCallRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingInputCallRequest.Marshal(b, m, deterministic)
 }
-func (dst *StreamingInputCallRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingInputCallRequest.Merge(dst, src)
+func (m *StreamingInputCallRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingInputCallRequest.Merge(m, src)
 }
 func (m *StreamingInputCallRequest) XXX_Size() int {
 	return xxx_messageInfo_StreamingInputCallRequest.Size(m)
@@ -379,16 +471,17 @@ func (m *StreamingInputCallResponse) Reset()         { *m = StreamingInputCallRe
 func (m *StreamingInputCallResponse) String() string { return proto.CompactTextString(m) }
 func (*StreamingInputCallResponse) ProtoMessage()    {}
 func (*StreamingInputCallResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{6}
+	return fileDescriptor_e1cda82041fed8bf, []int{6}
 }
+
 func (m *StreamingInputCallResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingInputCallResponse.Unmarshal(m, b)
 }
 func (m *StreamingInputCallResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingInputCallResponse.Marshal(b, m, deterministic)
 }
-func (dst *StreamingInputCallResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingInputCallResponse.Merge(dst, src)
+func (m *StreamingInputCallResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingInputCallResponse.Merge(m, src)
 }
 func (m *StreamingInputCallResponse) XXX_Size() int {
 	return xxx_messageInfo_StreamingInputCallResponse.Size(m)
@@ -423,16 +516,17 @@ func (m *ResponseParameters) Reset()         { *m = ResponseParameters{} }
 func (m *ResponseParameters) String() string { return proto.CompactTextString(m) }
 func (*ResponseParameters) ProtoMessage()    {}
 func (*ResponseParameters) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{7}
+	return fileDescriptor_e1cda82041fed8bf, []int{7}
 }
+
 func (m *ResponseParameters) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResponseParameters.Unmarshal(m, b)
 }
 func (m *ResponseParameters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ResponseParameters.Marshal(b, m, deterministic)
 }
-func (dst *ResponseParameters) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ResponseParameters.Merge(dst, src)
+func (m *ResponseParameters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseParameters.Merge(m, src)
 }
 func (m *ResponseParameters) XXX_Size() int {
 	return xxx_messageInfo_ResponseParameters.Size(m)
@@ -479,16 +573,17 @@ func (m *StreamingOutputCallRequest) Reset()         { *m = StreamingOutputCallR
 func (m *StreamingOutputCallRequest) String() string { return proto.CompactTextString(m) }
 func (*StreamingOutputCallRequest) ProtoMessage()    {}
 func (*StreamingOutputCallRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{8}
+	return fileDescriptor_e1cda82041fed8bf, []int{8}
 }
+
 func (m *StreamingOutputCallRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingOutputCallRequest.Unmarshal(m, b)
 }
 func (m *StreamingOutputCallRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingOutputCallRequest.Marshal(b, m, deterministic)
 }
-func (dst *StreamingOutputCallRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingOutputCallRequest.Merge(dst, src)
+func (m *StreamingOutputCallRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingOutputCallRequest.Merge(m, src)
 }
 func (m *StreamingOutputCallRequest) XXX_Size() int {
 	return xxx_messageInfo_StreamingOutputCallRequest.Size(m)
@@ -540,16 +635,17 @@ func (m *StreamingOutputCallResponse) Reset()         { *m = StreamingOutputCall
 func (m *StreamingOutputCallResponse) String() string { return proto.CompactTextString(m) }
 func (*StreamingOutputCallResponse) ProtoMessage()    {}
 func (*StreamingOutputCallResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_4001f755b984bb27, []int{9}
+	return fileDescriptor_e1cda82041fed8bf, []int{9}
 }
+
 func (m *StreamingOutputCallResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamingOutputCallResponse.Unmarshal(m, b)
 }
 func (m *StreamingOutputCallResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StreamingOutputCallResponse.Marshal(b, m, deterministic)
 }
-func (dst *StreamingOutputCallResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamingOutputCallResponse.Merge(dst, src)
+func (m *StreamingOutputCallResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamingOutputCallResponse.Merge(m, src)
 }
 func (m *StreamingOutputCallResponse) XXX_Size() int {
 	return xxx_messageInfo_StreamingOutputCallResponse.Size(m)
@@ -567,7 +663,107 @@ func (m *StreamingOutputCallResponse) GetPayload() *Payload {
 	return nil
 }
 
+type LoadBalancerStatsRequest struct {
+	// Request stats for the next num_rpcs sent by client.
+	NumRpcs int32 `protobuf:"varint,1,opt,name=num_rpcs,json=numRpcs,proto3" json:"num_rpcs,omitempty"`
+	// If num_rpcs have not completed within timeout_sec, return partial results.
+	TimeoutSec           int32    `protobuf:"varint,2,opt,name=timeout_sec,json=timeoutSec,proto3" json:"timeout_sec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LoadBalancerStatsRequest) Reset()         { *m = LoadBalancerStatsRequest{} }
+func (m *LoadBalancerStatsRequest) String() string { return proto.CompactTextString(m) }
+func (*LoadBalancerStatsRequest) ProtoMessage()    {}
+func (*LoadBalancerStatsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_e1cda82041fed8bf, []int{10}
+}
+
+func (m *LoadBalancerStatsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LoadBalancerStatsRequest.Unmarshal(m, b)
+}
+func (m *LoadBalancerStatsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LoadBalancerStatsRequest.Marshal(b, m, deterministic)
+}
+func (m *LoadBalancerStatsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LoadBalancerStatsRequest.Merge(m, src)
+}
+func (m *LoadBalancerStatsRequest) XXX_Size() int {
+	return xxx_messageInfo_LoadBalancerStatsRequest.Size(m)
+}
+func (m *LoadBalancerStatsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LoadBalancerStatsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LoadBalancerStatsRequest proto.InternalMessageInfo
+
+func (m *LoadBalancerStatsRequest) GetNumRpcs() int32 {
+	if m != nil {
+		return m.NumRpcs
+	}
+	return 0
+}
+
+func (m *LoadBalancerStatsRequest) GetTimeoutSec() int32 {
+	if m != nil {
+		return m.TimeoutSec
+	}
+	return 0
+}
+
+type LoadBalancerStatsResponse struct {
+	// The number of completed RPCs for each peer.
+	RpcsByPeer map[string]int32 `protobuf:"bytes,1,rep,name=rpcs_by_peer,json=rpcsByPeer,proto3" json:"rpcs_by_peer,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	// The number of RPCs that failed to record a remote peer.
+	NumFailures          int32    `protobuf:"varint,2,opt,name=num_failures,json=numFailures,proto3" json:"num_failures,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LoadBalancerStatsResponse) Reset()         { *m = LoadBalancerStatsResponse{} }
+func (m *LoadBalancerStatsResponse) String() string { return proto.CompactTextString(m) }
+func (*LoadBalancerStatsResponse) ProtoMessage()    {}
+func (*LoadBalancerStatsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_e1cda82041fed8bf, []int{11}
+}
+
+func (m *LoadBalancerStatsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LoadBalancerStatsResponse.Unmarshal(m, b)
+}
+func (m *LoadBalancerStatsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LoadBalancerStatsResponse.Marshal(b, m, deterministic)
+}
+func (m *LoadBalancerStatsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LoadBalancerStatsResponse.Merge(m, src)
+}
+func (m *LoadBalancerStatsResponse) XXX_Size() int {
+	return xxx_messageInfo_LoadBalancerStatsResponse.Size(m)
+}
+func (m *LoadBalancerStatsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LoadBalancerStatsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LoadBalancerStatsResponse proto.InternalMessageInfo
+
+func (m *LoadBalancerStatsResponse) GetRpcsByPeer() map[string]int32 {
+	if m != nil {
+		return m.RpcsByPeer
+	}
+	return nil
+}
+
+func (m *LoadBalancerStatsResponse) GetNumFailures() int32 {
+	if m != nil {
+		return m.NumFailures
+	}
+	return 0
+}
+
 func init() {
+	proto.RegisterEnum("grpc.testing.PayloadType", PayloadType_name, PayloadType_value)
+	proto.RegisterEnum("grpc.testing.GrpclbRouteType", GrpclbRouteType_name, GrpclbRouteType_value)
 	proto.RegisterType((*Empty)(nil), "grpc.testing.Empty")
 	proto.RegisterType((*Payload)(nil), "grpc.testing.Payload")
 	proto.RegisterType((*EchoStatus)(nil), "grpc.testing.EchoStatus")
@@ -578,16 +774,86 @@ func init() {
 	proto.RegisterType((*ResponseParameters)(nil), "grpc.testing.ResponseParameters")
 	proto.RegisterType((*StreamingOutputCallRequest)(nil), "grpc.testing.StreamingOutputCallRequest")
 	proto.RegisterType((*StreamingOutputCallResponse)(nil), "grpc.testing.StreamingOutputCallResponse")
-	proto.RegisterEnum("grpc.testing.PayloadType", PayloadType_name, PayloadType_value)
+	proto.RegisterType((*LoadBalancerStatsRequest)(nil), "grpc.testing.LoadBalancerStatsRequest")
+	proto.RegisterType((*LoadBalancerStatsResponse)(nil), "grpc.testing.LoadBalancerStatsResponse")
+	proto.RegisterMapType((map[string]int32)(nil), "grpc.testing.LoadBalancerStatsResponse.RpcsByPeerEntry")
+}
+
+func init() { proto.RegisterFile("grpc_testing/test.proto", fileDescriptor_e1cda82041fed8bf) }
+
+var fileDescriptor_e1cda82041fed8bf = []byte{
+	// 989 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0xfd, 0x6e, 0x1b, 0x45,
+	0x10, 0xef, 0x39, 0x71, 0x1c, 0x8f, 0x5d, 0xc7, 0xdd, 0xb4, 0xf4, 0xec, 0x50, 0x30, 0x07, 0xa2,
+	0x47, 0x25, 0x5c, 0xe4, 0x8a, 0x0f, 0x55, 0x2a, 0xc8, 0x76, 0x9c, 0x10, 0xd5, 0xb5, 0xcd, 0xd9,
+	0x06, 0xf5, 0xaf, 0xd3, 0xe6, 0x3c, 0x71, 0x4e, 0xdc, 0x17, 0x7b, 0x7b, 0x11, 0xee, 0x3f, 0x48,
+	0x3c, 0x02, 0xaf, 0xc0, 0x63, 0xf0, 0x22, 0x3c, 0x0e, 0xda, 0xbd, 0x3b, 0x7f, 0x47, 0x4d, 0xa8,
+	0xe0, 0x2f, 0xef, 0xce, 0xc7, 0x6f, 0x66, 0x7e, 0x33, 0x3b, 0x67, 0x78, 0x38, 0x65, 0x81, 0x65,
+	0x72, 0x0c, 0xb9, 0xed, 0x4d, 0x9f, 0x8a, 0xdf, 0x7a, 0xc0, 0x7c, 0xee, 0x93, 0xa2, 0x50, 0xd4,
+	0x13, 0x85, 0x96, 0x83, 0x6c, 0xc7, 0x0d, 0xf8, 0x4c, 0xeb, 0x42, 0x6e, 0x40, 0x67, 0x8e, 0x4f,
+	0x27, 0xe4, 0x73, 0xd8, 0xe5, 0xb3, 0x00, 0x55, 0xa5, 0xa6, 0xe8, 0xa5, 0x46, 0xa5, 0xbe, 0xec,
+	0x50, 0x4f, 0x8c, 0x46, 0xb3, 0x00, 0x0d, 0x69, 0x46, 0x08, 0xec, 0x9e, 0xfb, 0x93, 0x99, 0x9a,
+	0xa9, 0x29, 0x7a, 0xd1, 0x90, 0x67, 0xed, 0x39, 0x40, 0xc7, 0xba, 0xf4, 0x87, 0x9c, 0xf2, 0x28,
+	0x14, 0x16, 0x96, 0x3f, 0x89, 0x01, 0xb3, 0x86, 0x3c, 0x13, 0x15, 0x72, 0x2e, 0x86, 0x21, 0x9d,
+	0xa2, 0x74, 0xcc, 0x1b, 0xe9, 0x55, 0xfb, 0x63, 0x07, 0xee, 0x0e, 0x6d, 0x37, 0x70, 0xd0, 0xc0,
+	0x5f, 0x22, 0x0c, 0x39, 0xf9, 0x16, 0xee, 0x32, 0x0c, 0x03, 0xdf, 0x0b, 0xd1, 0xbc, 0x59, 0x66,
+	0xc5, 0xd4, 0x5e, 0xdc, 0xc8, 0xc7, 0x4b, 0xfe, 0xa1, 0xfd, 0x26, 0x8e, 0x98, 0x5d, 0x18, 0x0d,
+	0xed, 0x37, 0x48, 0x9e, 0x42, 0x2e, 0x88, 0x11, 0xd4, 0x9d, 0x9a, 0xa2, 0x17, 0x1a, 0x0f, 0xb6,
+	0xc2, 0x1b, 0xa9, 0x95, 0x40, 0xbd, 0xb0, 0x1d, 0xc7, 0x8c, 0x42, 0x64, 0x1e, 0x75, 0x51, 0xdd,
+	0xad, 0x29, 0xfa, 0xbe, 0x51, 0x14, 0xc2, 0x71, 0x22, 0x23, 0x3a, 0x94, 0xa5, 0x91, 0x4f, 0x23,
+	0x7e, 0x69, 0x86, 0x96, 0x1f, 0xa0, 0x9a, 0x95, 0x76, 0x25, 0x21, 0xef, 0x0b, 0xf1, 0x50, 0x48,
+	0x49, 0x13, 0x0e, 0x16, 0x49, 0x4a, 0xde, 0xd4, 0x9c, 0xcc, 0x43, 0x5d, 0xcd, 0x63, 0xc1, 0xab,
+	0x51, 0x9a, 0x17, 0x10, 0xf3, 0xfc, 0x09, 0x48, 0x50, 0x33, 0x44, 0x76, 0x85, 0xcc, 0xb4, 0x27,
+	0x6a, 0x7e, 0x91, 0xd2, 0x50, 0x0a, 0xcf, 0x26, 0xe4, 0x19, 0xbc, 0x27, 0xad, 0x04, 0xaa, 0x73,
+	0x6e, 0x32, 0x3f, 0xe2, 0x09, 0xad, 0x20, 0xad, 0x0f, 0x85, 0xf6, 0x54, 0x2a, 0x0d, 0xa1, 0x13,
+	0x14, 0x6a, 0xbf, 0x67, 0xa0, 0x94, 0x36, 0x25, 0x8e, 0xb9, 0x4c, 0x98, 0x72, 0x23, 0xc2, 0xaa,
+	0xb0, 0x3f, 0xe7, 0x2a, 0xee, 0xf9, 0xfc, 0x4e, 0x3e, 0x84, 0xc2, 0x32, 0x45, 0x3b, 0x52, 0x0d,
+	0xfe, 0x82, 0x9e, 0x23, 0xc8, 0x2f, 0xca, 0xda, 0x8d, 0xbd, 0xc3, 0xb4, 0xa4, 0x33, 0xb8, 0xb7,
+	0x59, 0x4d, 0x56, 0x0e, 0xc9, 0xa3, 0xd5, 0xa4, 0xd6, 0xea, 0x32, 0x0e, 0xa6, 0xab, 0x02, 0x91,
+	0xe4, 0xa5, 0x1f, 0x72, 0x99, 0xe4, 0x5e, 0x1c, 0x26, 0xbd, 0x6b, 0x5d, 0xa8, 0x0c, 0x39, 0x43,
+	0xea, 0xda, 0xde, 0xf4, 0xcc, 0x0b, 0x22, 0xde, 0xa6, 0x8e, 0x93, 0x0e, 0xe9, 0x6d, 0xe9, 0xd0,
+	0x46, 0x50, 0xdd, 0x86, 0x96, 0xb0, 0xfb, 0x15, 0x3c, 0xa4, 0xd3, 0x29, 0xc3, 0x29, 0xe5, 0x38,
+	0x31, 0x13, 0x9f, 0x78, 0x7a, 0xe3, 0x67, 0xf4, 0x60, 0xa1, 0x4e, 0xa0, 0xc5, 0x18, 0x6b, 0x67,
+	0x40, 0x52, 0x8c, 0x01, 0x65, 0xd4, 0x45, 0x8e, 0x4c, 0xbe, 0xc0, 0x25, 0x57, 0x79, 0x16, 0x94,
+	0xdb, 0x1e, 0x47, 0x76, 0x45, 0xc5, 0x0c, 0x27, 0x6f, 0x02, 0x52, 0xd1, 0x38, 0xd4, 0xfe, 0xcc,
+	0x2c, 0x65, 0xd8, 0x8f, 0xf8, 0x5a, 0xc1, 0xef, 0xfa, 0x2a, 0x7f, 0x80, 0xc3, 0xb9, 0x7f, 0x30,
+	0x4f, 0x55, 0xcd, 0xd4, 0x76, 0xf4, 0x42, 0xa3, 0xb6, 0x8a, 0xb2, 0x59, 0x92, 0x41, 0xd8, 0x66,
+	0x99, 0xb7, 0x7e, 0xc3, 0xef, 0xfe, 0xe8, 0xb4, 0x1e, 0x1c, 0x6d, 0x25, 0xe9, 0x5f, 0xbe, 0x12,
+	0xed, 0x47, 0x50, 0xbb, 0x3e, 0x9d, 0xb4, 0xa8, 0x43, 0x3d, 0x0b, 0x99, 0x88, 0x12, 0xa6, 0x94,
+	0x57, 0x60, 0xdf, 0x8b, 0x5c, 0x93, 0x05, 0x56, 0x98, 0xb4, 0x32, 0xe7, 0x45, 0xae, 0x11, 0x58,
+	0xa1, 0xe8, 0x26, 0xb7, 0x5d, 0xf4, 0x23, 0x6e, 0x86, 0x68, 0xa5, 0xdd, 0x4c, 0x44, 0x43, 0xb4,
+	0xb4, 0xbf, 0x15, 0xa8, 0x6c, 0x01, 0x4e, 0xd2, 0x7c, 0x0d, 0x45, 0x81, 0x6a, 0x9e, 0xcf, 0xcc,
+	0x00, 0x91, 0xa9, 0x8a, 0xec, 0xc2, 0xd7, 0xab, 0xb9, 0x5e, 0xeb, 0x5e, 0x17, 0x29, 0xb4, 0x66,
+	0x03, 0x44, 0xd6, 0xf1, 0x38, 0x9b, 0x19, 0xc0, 0xe6, 0x02, 0xf2, 0x11, 0x14, 0x45, 0xd2, 0x17,
+	0xd4, 0x76, 0x22, 0x86, 0xe9, 0xa0, 0x15, 0xbc, 0xc8, 0x3d, 0x49, 0x44, 0xd5, 0x17, 0x70, 0xb0,
+	0x86, 0x40, 0xca, 0xb0, 0xf3, 0x33, 0xce, 0x64, 0x95, 0x79, 0x43, 0x1c, 0xc9, 0x7d, 0xc8, 0x5e,
+	0x51, 0x27, 0x4a, 0xb7, 0x77, 0x7c, 0x79, 0x9e, 0xf9, 0x46, 0x79, 0xf2, 0x1d, 0x14, 0x96, 0xc6,
+	0x8c, 0x94, 0xa1, 0xd8, 0xee, 0xbf, 0x1a, 0x18, 0x9d, 0xe1, 0xb0, 0xd9, 0xea, 0x76, 0xca, 0x77,
+	0x08, 0x81, 0xd2, 0xb8, 0xb7, 0x22, 0x53, 0x08, 0xc0, 0x9e, 0xd1, 0xec, 0x1d, 0xf7, 0x5f, 0x95,
+	0x33, 0x4f, 0x7c, 0x38, 0x58, 0x5b, 0x0c, 0xe4, 0x11, 0x54, 0x4e, 0x8d, 0x41, 0xbb, 0xdb, 0x32,
+	0x8d, 0xfe, 0x78, 0xd4, 0x31, 0x47, 0xaf, 0x07, 0x1d, 0x73, 0xdc, 0x7b, 0xd9, 0xeb, 0xff, 0xd4,
+	0x2b, 0xdf, 0x21, 0x1f, 0x40, 0x75, 0x53, 0x7d, 0xd2, 0xec, 0x76, 0x5b, 0xcd, 0xf6, 0xcb, 0xb2,
+	0xb2, 0xdd, 0x5d, 0xe8, 0x3a, 0xbd, 0xe3, 0x72, 0xa6, 0xf1, 0xd7, 0x2e, 0x14, 0x46, 0x18, 0x72,
+	0xb1, 0x94, 0x6d, 0x0b, 0xc9, 0x97, 0x90, 0x97, 0x9f, 0x61, 0x31, 0x3a, 0xe4, 0x70, 0x6d, 0xf6,
+	0x84, 0xa2, 0xba, 0x4d, 0x48, 0x4e, 0x20, 0x3f, 0xf6, 0x28, 0x8b, 0xdd, 0x8e, 0x56, 0x2d, 0x56,
+	0x3e, 0xa1, 0xd5, 0xf7, 0xb7, 0x2b, 0x93, 0xee, 0x3b, 0x70, 0xb8, 0x65, 0x86, 0x89, 0xbe, 0xe6,
+	0x74, 0xed, 0x2e, 0xa8, 0x7e, 0x76, 0x03, 0xcb, 0x38, 0xd6, 0x17, 0x0a, 0xb1, 0x81, 0x6c, 0x2e,
+	0x3e, 0xf2, 0xf8, 0x1a, 0x88, 0xf5, 0x45, 0x5b, 0xd5, 0xdf, 0x6e, 0x18, 0x87, 0xd2, 0x45, 0xa8,
+	0xd2, 0x49, 0xe4, 0x38, 0xc7, 0x51, 0xe0, 0xe0, 0xaf, 0xff, 0x59, 0x4d, 0xba, 0x22, 0xab, 0x2a,
+	0x7d, 0x4f, 0x9d, 0x8b, 0xff, 0x21, 0x54, 0x63, 0x0c, 0xf7, 0xc7, 0x9e, 0xec, 0xa0, 0x8b, 0x1e,
+	0xc7, 0x49, 0x3a, 0x45, 0x2f, 0xe0, 0xde, 0x8a, 0xfc, 0x76, 0xd3, 0xd4, 0xf8, 0x6d, 0xcb, 0xe6,
+	0x49, 0xa1, 0x2d, 0x28, 0x9d, 0x22, 0x6f, 0x3b, 0x36, 0x7a, 0x5c, 0x2a, 0xc8, 0xa7, 0x6f, 0xdd,
+	0x0d, 0x71, 0x6d, 0x8f, 0x6f, 0xb8, 0x43, 0xb4, 0x3b, 0xe7, 0x7b, 0xf2, 0x1f, 0xea, 0xb3, 0x7f,
+	0x02, 0x00, 0x00, 0xff, 0xff, 0x13, 0xfb, 0x86, 0xc3, 0xbc, 0x0a, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc.ClientConnInterface
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
+const _ = grpc.SupportPackageIsVersion6
 
 // TestServiceClient is the client API for TestService service.
 //
@@ -616,10 +882,10 @@ type TestServiceClient interface {
 }
 
 type testServiceClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewTestServiceClient(cc *grpc.ClientConn) TestServiceClient {
+func NewTestServiceClient(cc grpc.ClientConnInterface) TestServiceClient {
 	return &testServiceClient{cc}
 }
 
@@ -791,6 +1057,29 @@ type TestServiceServer interface {
 	// stream of responses are returned to the client when the server starts with
 	// first request.
 	HalfDuplexCall(TestService_HalfDuplexCallServer) error
+}
+
+// UnimplementedTestServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedTestServiceServer struct {
+}
+
+func (*UnimplementedTestServiceServer) EmptyCall(ctx context.Context, req *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EmptyCall not implemented")
+}
+func (*UnimplementedTestServiceServer) UnaryCall(ctx context.Context, req *SimpleRequest) (*SimpleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnaryCall not implemented")
+}
+func (*UnimplementedTestServiceServer) StreamingOutputCall(req *StreamingOutputCallRequest, srv TestService_StreamingOutputCallServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamingOutputCall not implemented")
+}
+func (*UnimplementedTestServiceServer) StreamingInputCall(srv TestService_StreamingInputCallServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamingInputCall not implemented")
+}
+func (*UnimplementedTestServiceServer) FullDuplexCall(srv TestService_FullDuplexCallServer) error {
+	return status.Errorf(codes.Unimplemented, "method FullDuplexCall not implemented")
+}
+func (*UnimplementedTestServiceServer) HalfDuplexCall(srv TestService_HalfDuplexCallServer) error {
+	return status.Errorf(codes.Unimplemented, "method HalfDuplexCall not implemented")
 }
 
 func RegisterTestServiceServer(s *grpc.Server, srv TestServiceServer) {
@@ -981,10 +1270,10 @@ type UnimplementedServiceClient interface {
 }
 
 type unimplementedServiceClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewUnimplementedServiceClient(cc *grpc.ClientConn) UnimplementedServiceClient {
+func NewUnimplementedServiceClient(cc grpc.ClientConnInterface) UnimplementedServiceClient {
 	return &unimplementedServiceClient{cc}
 }
 
@@ -1001,6 +1290,14 @@ func (c *unimplementedServiceClient) UnimplementedCall(ctx context.Context, in *
 type UnimplementedServiceServer interface {
 	// A call that no server should implement
 	UnimplementedCall(context.Context, *Empty) (*Empty, error)
+}
+
+// UnimplementedUnimplementedServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedUnimplementedServiceServer struct {
+}
+
+func (*UnimplementedUnimplementedServiceServer) UnimplementedCall(ctx context.Context, req *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnimplementedCall not implemented")
 }
 
 func RegisterUnimplementedServiceServer(s *grpc.Server, srv UnimplementedServiceServer) {
@@ -1038,50 +1335,76 @@ var _UnimplementedService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "grpc_testing/test.proto",
 }
 
-func init() { proto.RegisterFile("grpc_testing/test.proto", fileDescriptor_test_4001f755b984bb27) }
+// LoadBalancerStatsServiceClient is the client API for LoadBalancerStatsService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type LoadBalancerStatsServiceClient interface {
+	// Gets the backend distribution for RPCs sent by a test client.
+	GetClientStats(ctx context.Context, in *LoadBalancerStatsRequest, opts ...grpc.CallOption) (*LoadBalancerStatsResponse, error)
+}
 
-var fileDescriptor_test_4001f755b984bb27 = []byte{
-	// 664 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0xdd, 0x6e, 0xd3, 0x4c,
-	0x10, 0xfd, 0x9c, 0x26, 0x4d, 0x3b, 0x49, 0xfd, 0x85, 0x2d, 0x55, 0xdd, 0x14, 0x89, 0xc8, 0x5c,
-	0x60, 0x90, 0x48, 0x51, 0x10, 0x5c, 0x20, 0x01, 0x2a, 0x6d, 0x2a, 0x2a, 0xb5, 0x4d, 0xb1, 0x9b,
-	0xeb, 0x68, 0x9b, 0x4c, 0x5d, 0x4b, 0xfe, 0xc3, 0xbb, 0xae, 0x48, 0x2f, 0x78, 0x19, 0x1e, 0x82,
-	0x0b, 0x5e, 0x0e, 0xed, 0xda, 0x4e, 0x9c, 0xd4, 0x15, 0x0d, 0x7f, 0x57, 0xf1, 0x9e, 0x39, 0x33,
-	0x3b, 0x67, 0xe6, 0xd8, 0x81, 0x4d, 0x3b, 0x0a, 0x87, 0x03, 0x8e, 0x8c, 0x3b, 0xbe, 0xbd, 0x23,
-	0x7e, 0xdb, 0x61, 0x14, 0xf0, 0x80, 0xd4, 0x45, 0xa0, 0x9d, 0x06, 0xf4, 0x2a, 0x54, 0xba, 0x5e,
-	0xc8, 0xc7, 0xfa, 0x11, 0x54, 0x4f, 0xe9, 0xd8, 0x0d, 0xe8, 0x88, 0x3c, 0x83, 0x32, 0x1f, 0x87,
-	0xa8, 0x29, 0x2d, 0xc5, 0x50, 0x3b, 0x5b, 0xed, 0x7c, 0x42, 0x3b, 0x25, 0x9d, 0x8d, 0x43, 0x34,
-	0x25, 0x8d, 0x10, 0x28, 0x9f, 0x07, 0xa3, 0xb1, 0x56, 0x6a, 0x29, 0x46, 0xdd, 0x94, 0xcf, 0xfa,
-	0x6b, 0x80, 0xee, 0xf0, 0x32, 0xb0, 0x38, 0xe5, 0x31, 0x13, 0x8c, 0x61, 0x30, 0x4a, 0x0a, 0x56,
-	0x4c, 0xf9, 0x4c, 0x34, 0xa8, 0x7a, 0xc8, 0x18, 0xb5, 0x51, 0x26, 0xae, 0x9a, 0xd9, 0x51, 0xff,
-	0x56, 0x82, 0x35, 0xcb, 0xf1, 0x42, 0x17, 0x4d, 0xfc, 0x14, 0x23, 0xe3, 0xe4, 0x2d, 0xac, 0x45,
-	0xc8, 0xc2, 0xc0, 0x67, 0x38, 0xb8, 0x5b, 0x67, 0xf5, 0x8c, 0x2f, 0x4e, 0xe4, 0x51, 0x2e, 0x9f,
-	0x39, 0xd7, 0xc9, 0x8d, 0x95, 0x29, 0xc9, 0x72, 0xae, 0x91, 0xec, 0x40, 0x35, 0x4c, 0x2a, 0x68,
-	0x4b, 0x2d, 0xc5, 0xa8, 0x75, 0x36, 0x0a, 0xcb, 0x9b, 0x19, 0x4b, 0x54, 0xbd, 0x70, 0x5c, 0x77,
-	0x10, 0x33, 0x8c, 0x7c, 0xea, 0xa1, 0x56, 0x6e, 0x29, 0xc6, 0x8a, 0x59, 0x17, 0x60, 0x3f, 0xc5,
-	0x88, 0x01, 0x0d, 0x49, 0x0a, 0x68, 0xcc, 0x2f, 0x07, 0x6c, 0x18, 0x84, 0xa8, 0x55, 0x24, 0x4f,
-	0x15, 0x78, 0x4f, 0xc0, 0x96, 0x40, 0xc9, 0x2e, 0xfc, 0x3f, 0x6d, 0x52, 0xce, 0x4d, 0xab, 0xca,
-	0x3e, 0xb4, 0xd9, 0x3e, 0xa6, 0x73, 0x35, 0xd5, 0x89, 0x00, 0x79, 0xd6, 0xbf, 0x80, 0x9a, 0x0d,
-	0x2e, 0xc1, 0xf3, 0xa2, 0x94, 0x3b, 0x89, 0x6a, 0xc2, 0xca, 0x44, 0x4f, 0xb2, 0x97, 0xc9, 0x99,
-	0x3c, 0x84, 0x5a, 0x5e, 0xc6, 0x92, 0x0c, 0x43, 0x30, 0x91, 0xa0, 0x1f, 0xc1, 0x96, 0xc5, 0x23,
-	0xa4, 0x9e, 0xe3, 0xdb, 0x87, 0x7e, 0x18, 0xf3, 0x3d, 0xea, 0xba, 0xd9, 0x12, 0x17, 0x6d, 0x45,
-	0x3f, 0x83, 0x66, 0x51, 0xb5, 0x54, 0xd9, 0x2b, 0xd8, 0xa4, 0xb6, 0x1d, 0xa1, 0x4d, 0x39, 0x8e,
-	0x06, 0x69, 0x4e, 0xb2, 0xdd, 0xc4, 0x66, 0x1b, 0xd3, 0x70, 0x5a, 0x5a, 0xac, 0x59, 0x3f, 0x04,
-	0x92, 0xd5, 0x38, 0xa5, 0x11, 0xf5, 0x90, 0x63, 0x24, 0x1d, 0x9a, 0x4b, 0x95, 0xcf, 0x42, 0xae,
-	0xe3, 0x73, 0x8c, 0xae, 0xa8, 0xd8, 0x71, 0xea, 0x19, 0xc8, 0xa0, 0x3e, 0xd3, 0xbf, 0x96, 0x72,
-	0x1d, 0xf6, 0x62, 0x3e, 0x27, 0xf8, 0x77, 0x5d, 0xfb, 0x11, 0xd6, 0x27, 0xf9, 0xe1, 0xa4, 0x55,
-	0xad, 0xd4, 0x5a, 0x32, 0x6a, 0x9d, 0xd6, 0x6c, 0x95, 0x9b, 0x92, 0x4c, 0x12, 0xdd, 0x94, 0xb9,
-	0xb0, 0xc7, 0xff, 0x80, 0x29, 0x4f, 0x60, 0xbb, 0x70, 0x48, 0xbf, 0xe8, 0xd0, 0xa7, 0xef, 0xa0,
-	0x96, 0x9b, 0x19, 0x69, 0x40, 0x7d, 0xaf, 0x77, 0x7c, 0x6a, 0x76, 0x2d, 0x6b, 0xf7, 0xfd, 0x51,
-	0xb7, 0xf1, 0x1f, 0x21, 0xa0, 0xf6, 0x4f, 0x66, 0x30, 0x85, 0x00, 0x2c, 0x9b, 0xbb, 0x27, 0xfb,
-	0xbd, 0xe3, 0x46, 0xa9, 0xf3, 0xbd, 0x0c, 0xb5, 0x33, 0x64, 0xdc, 0xc2, 0xe8, 0xca, 0x19, 0x22,
-	0x79, 0x09, 0xab, 0xf2, 0x13, 0x28, 0xda, 0x22, 0xeb, 0x73, 0xba, 0x44, 0xa0, 0x59, 0x04, 0x92,
-	0x03, 0x58, 0xed, 0xfb, 0x34, 0x4a, 0xd2, 0xb6, 0x67, 0x19, 0x33, 0x9f, 0xaf, 0xe6, 0x83, 0xe2,
-	0x60, 0x3a, 0x00, 0x17, 0xd6, 0x0b, 0xe6, 0x43, 0x8c, 0xb9, 0xa4, 0x5b, 0x7d, 0xd6, 0x7c, 0x72,
-	0x07, 0x66, 0x72, 0xd7, 0x73, 0x85, 0x38, 0x40, 0x6e, 0xbe, 0x54, 0xe4, 0xf1, 0x2d, 0x25, 0xe6,
-	0x5f, 0xe2, 0xa6, 0xf1, 0x73, 0x62, 0x72, 0x95, 0x21, 0xae, 0x52, 0x0f, 0x62, 0xd7, 0xdd, 0x8f,
-	0x43, 0x17, 0x3f, 0xff, 0x35, 0x4d, 0x86, 0x22, 0x55, 0xa9, 0x1f, 0xa8, 0x7b, 0xf1, 0x0f, 0xae,
-	0xea, 0xf4, 0xe1, 0x7e, 0xdf, 0x97, 0x1b, 0xf4, 0xd0, 0xe7, 0x38, 0xca, 0x5c, 0xf4, 0x06, 0xee,
-	0xcd, 0xe0, 0x8b, 0xb9, 0xe9, 0x7c, 0x59, 0xfe, 0x39, 0xbf, 0xf8, 0x11, 0x00, 0x00, 0xff, 0xff,
-	0x87, 0xd4, 0xf3, 0x98, 0xb7, 0x07, 0x00, 0x00,
+type loadBalancerStatsServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewLoadBalancerStatsServiceClient(cc grpc.ClientConnInterface) LoadBalancerStatsServiceClient {
+	return &loadBalancerStatsServiceClient{cc}
+}
+
+func (c *loadBalancerStatsServiceClient) GetClientStats(ctx context.Context, in *LoadBalancerStatsRequest, opts ...grpc.CallOption) (*LoadBalancerStatsResponse, error) {
+	out := new(LoadBalancerStatsResponse)
+	err := c.cc.Invoke(ctx, "/grpc.testing.LoadBalancerStatsService/GetClientStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// LoadBalancerStatsServiceServer is the server API for LoadBalancerStatsService service.
+type LoadBalancerStatsServiceServer interface {
+	// Gets the backend distribution for RPCs sent by a test client.
+	GetClientStats(context.Context, *LoadBalancerStatsRequest) (*LoadBalancerStatsResponse, error)
+}
+
+// UnimplementedLoadBalancerStatsServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedLoadBalancerStatsServiceServer struct {
+}
+
+func (*UnimplementedLoadBalancerStatsServiceServer) GetClientStats(ctx context.Context, req *LoadBalancerStatsRequest) (*LoadBalancerStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClientStats not implemented")
+}
+
+func RegisterLoadBalancerStatsServiceServer(s *grpc.Server, srv LoadBalancerStatsServiceServer) {
+	s.RegisterService(&_LoadBalancerStatsService_serviceDesc, srv)
+}
+
+func _LoadBalancerStatsService_GetClientStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoadBalancerStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadBalancerStatsServiceServer).GetClientStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.testing.LoadBalancerStatsService/GetClientStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadBalancerStatsServiceServer).GetClientStats(ctx, req.(*LoadBalancerStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _LoadBalancerStatsService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "grpc.testing.LoadBalancerStatsService",
+	HandlerType: (*LoadBalancerStatsServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetClientStats",
+			Handler:    _LoadBalancerStatsService_GetClientStats_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "grpc_testing/test.proto",
 }

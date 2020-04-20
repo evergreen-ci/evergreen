@@ -36,6 +36,7 @@ type SpawnOptions struct {
 	UserName             string
 	PublicKey            string
 	TaskId               string
+	TaskSync             bool
 	Owner                *user.DBUser
 	InstanceTags         []host.Tag
 	InstanceType         string
@@ -172,9 +173,10 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 	// spawn the host
 	provisionOptions := &host.ProvisionOptions{
-		LoadCLI: true,
-		TaskId:  so.TaskId,
-		OwnerId: so.Owner.Id,
+		LoadCLI:  true,
+		TaskId:   so.TaskId,
+		TaskSync: so.TaskSync,
+		OwnerId:  so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
 	if so.NoExpiration {

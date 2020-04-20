@@ -428,25 +428,29 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
 	// and non utf-8 characters will be preserved.
 	data := struct {
-		Description string   `json:"desc"`
-		Project     string   `json:"project"`
-		PatchBytes  []byte   `json:"patch_bytes"`
-		PatchString string   `json:"patch"`
-		Githash     string   `json:"githash"`
-		Variants    []string `json:"buildvariants_new"`
-		Tasks       []string `json:"tasks"`
-		Finalize    bool     `json:"finalize"`
-		Alias       string   `json:"alias"`
+		Description       string   `json:"desc"`
+		Project           string   `json:"project"`
+		PatchBytes        []byte   `json:"patch_bytes"`
+		PatchString       string   `json:"patch"`
+		Githash           string   `json:"githash"`
+		Alias             string   `json:"alias"`
+		Variants          []string `json:"buildvariants_new"`
+		Tasks             []string `json:"tasks"`
+		SyncTasks         []string `json:"sync_tasks"`
+		SyncBuildVariants []string `json:"sync_build_variants"`
+		Finalize          bool     `json:"finalize"`
 	}{
-		incomingPatch.description,
-		incomingPatch.projectId,
-		[]byte(incomingPatch.patchData),
-		incomingPatch.patchData,
-		incomingPatch.base,
-		incomingPatch.variants,
-		incomingPatch.tasks,
-		incomingPatch.finalize,
-		incomingPatch.alias,
+		Description:       incomingPatch.description,
+		Project:           incomingPatch.projectId,
+		PatchBytes:        []byte(incomingPatch.patchData),
+		PatchString:       incomingPatch.patchData,
+		Githash:           incomingPatch.base,
+		Alias:             incomingPatch.alias,
+		Variants:          incomingPatch.variants,
+		Tasks:             incomingPatch.tasks,
+		SyncBuildVariants: incomingPatch.syncBuildVariants,
+		SyncTasks:         incomingPatch.syncTasks,
+		Finalize:          incomingPatch.finalize,
 	}
 
 	rPipe, wPipe := io.Pipe()

@@ -737,3 +737,25 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 	}
 	return hosts, nil
 }
+
+func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("distro/%s", id),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem requesting distro named '%s", id)
+	}
+	defer resp.Body.Close()
+
+	d := &restmodel.APIDistro{}
+	if err = utility.ReadJSON(resp.Body, &d); err != nil {
+		return nil, errors.Wrapf(err, "reading distro from response body for '%s'", id)
+	}
+
+	return d, nil
+
+}

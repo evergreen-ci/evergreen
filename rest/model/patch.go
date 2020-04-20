@@ -33,6 +33,8 @@ type APIPatch struct {
 	Alias             *string          `json:"alias,omitempty"`
 	GithubPatchData   githubPatch      `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges []APIModulePatch `json:"module_code_changes"`
+	PatchedConfig     *string          `json:"patched_config"`
+	Project           *string          `json:"project"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -127,6 +129,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		codeChanges = append(codeChanges, apiModPatch)
 	}
 	apiPatch.ModuleCodeChanges = codeChanges
+	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
+	apiPatch.Project = ToStringPtr(v.Project)
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }

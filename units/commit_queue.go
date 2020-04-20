@@ -260,10 +260,8 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	errs := validator.CheckProjectSyntax(projectConfig)
 	errs = append(errs, validator.CheckProjectSettings(projectConfig, projectRef)...)
 	catcher := grip.NewBasicCatcher()
-	for _, validationError := range errs {
-		if validationError.Level == validator.Error {
-			catcher.Add(validationError)
-		}
+	for _, validationErr := range errs.AtLevel(validator.Error) {
+		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
@@ -660,10 +658,8 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	validationErrors := validator.CheckProjectSyntax(project)
 	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
-	for _, validationError := range validationErrors {
-		if validationError.Level == validator.Error {
-			catcher.Add(validationError)
-		}
+	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
+		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
 		return errors.Errorf("project validation failed: %s", catcher.Resolve())
