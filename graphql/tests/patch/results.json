@@ -98,7 +98,7 @@
       }
     },
     {
-      "query_file": "builds-no-build.graphql",
+      "query_file": "builds-no-builds.graphql",
       "result": { "data": { "patch": { "builds": [] } } }
     }
   ]

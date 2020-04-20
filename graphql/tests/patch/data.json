@@ -278,7 +278,7 @@
   ],
   "patches": [
     {
-      "_id": { "$oid": "5dd2e89cd1fe07048e43bb9c" },
+      "_id": { "$oid": "9e4ff3abe3c3317e352062e4" },
       "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
       "branch": "spruce",
       "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
