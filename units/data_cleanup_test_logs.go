@@ -114,6 +114,7 @@ LOOP:
 		"collection":         model.TestLogCollection,
 		"job_type":           j.Type().Name,
 		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
+		"oid_ts":             timestamp.Format(TSFormat),
 		"total_docs":         totalDocs,
 		"message":            "timing-info",
 		"run_start_at":       startAt,

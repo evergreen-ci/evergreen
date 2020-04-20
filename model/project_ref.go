@@ -888,10 +888,25 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) GitCloneCommand(directory string) *jasper.Command {
-	repoPath := fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo)
+func (p *ProjectRef) GitCloneCommand(opts apimodels.WorkstationSetupCommandOptions) *jasper.Command {
+	args := []string{
+		"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory,
+	}
 
-	return jasper.NewCommand().AppendArgs("git", "clone", "-b", p.Branch, repoPath, directory)
+	return jasper.NewCommand().Add(args).
+		SetErrorSender(level.Error, opts.Output).
+		SetErrorSender(level.Info, opts.Output).
+		Prerequisite(func() bool {
+			grip.Info(message.Fields{
+				"directory": opts.Directory,
+				"command":   strings.Join(args, " "),
+				"op":        "repo clone",
+				"project":   p.Identifier,
+			})
+
+			return !opts.DryRun
+		})
+
 }
 
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
@@ -914,12 +929,16 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 
 		commandNumber := idx + 1 // to avoid logging a stale number
 		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
-			Append(obj.Command).SetErrorSender(level.Error, opts.Output).
+			SetErrorSender(level.Error, opts.Output).
+			SetErrorSender(level.Info, opts.Output).
+			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory":      dir,
 					"command":        obj.Command,
 					"command_number": commandNumber,
+					"op":             "setup command",
+					"project":        p.Identifier,
 				})
 
 				return !opts.DryRun
