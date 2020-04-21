@@ -690,7 +690,6 @@ func GenerateNotRun() ([]Task, error) {
 		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
 		"$or": []bson.M{
 			bson.M{GeneratedJSONAsStringKey: bson.M{"$exists": true}}, // config has been posted by generate.tasks command
-			bson.M{GeneratedJSONKey: bson.M{"$exists": true}},         // TODO Remove after EVG-6759 is deployed
 		},
 	}))
 }
@@ -710,16 +709,12 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 			IdKey: t.Id,
 			"$or": []bson.M{
 				{
-					GeneratedJSONKey: bson.M{"$exists": false},
-				},
-				{
 					GeneratedJSONAsStringKey: bson.M{"$exists": false},
 				},
 			},
 		},
 		bson.M{
 			"$set": bson.M{
-				GeneratedJSONKey:         json,
 				GeneratedJSONAsStringKey: s,
 			},
 		},
