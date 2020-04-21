@@ -69,22 +69,22 @@ func (u *userData) String() string {
 func parseUserData(userData string) (*userData, error) {
 	var err error
 	var persist bool
-	persist, userData, err = splitPersistTags(userData)
+	persist, userData, err = extractPersistTags(userData)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem splitting persist tags")
+		return nil, errors.Wrap(err, "problem extracting persist tags")
 	}
 
 	var directive userdata.Directive
-	directive, userData, err = splitDirective(userData)
+	directive, userData, err = extractDirective(userData)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem splitting directive")
+		return nil, errors.Wrap(err, "problem extracting directive")
 	}
 
 	var closingTag userdata.ClosingTag
 	if directive.NeedsClosingTag() {
-		userData, err = splitClosingTag(userData, directive.ClosingTag())
+		userData, err = extractClosingTag(userData, directive.ClosingTag())
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem splitting closing tag '%s'", closingTag)
+			return nil, errors.Wrapf(err, "problem extracting closing tag '%s'", closingTag)
 		}
 	}
 
@@ -95,10 +95,10 @@ func parseUserData(userData string) (*userData, error) {
 	})
 }
 
-// splitDirective finds the directive on the first line of user data. This
-// should be called after splitPersistTags in order to ensure that there is no
+// extractDirective finds the directive on the first line of user data. This
+// should be called after extractPersistTags in order to ensure that there is no
 // persist tag before the directive line.
-func splitDirective(userData string) (directive userdata.Directive, userDataWithoutDirective string, err error) {
+func extractDirective(userData string) (directive userdata.Directive, userDataWithoutDirective string, err error) {
 	userData = strings.TrimSpace(userData)
 	var firstLine string
 	index := strings.IndexByte(userData, '\n')
@@ -118,8 +118,8 @@ func splitDirective(userData string) (directive userdata.Directive, userDataWith
 	return "", "", errors.Errorf("user data directive is missing from first line: '%s'", firstLine)
 }
 
-// splitClosingTag finds the closing tag to match the end of the user data.
-func splitClosingTag(userData string, closingTag userdata.ClosingTag) (userDataWithoutClosingTag string, err error) {
+// extractClosingTag finds the closing tag to match the end of the user data.
+func extractClosingTag(userData string, closingTag userdata.ClosingTag) (userDataWithoutClosingTag string, err error) {
 	count := strings.Count(userData, string(closingTag))
 	if count == 0 {
 		return "", errors.Errorf("user data does not have closing tag '%s'", closingTag)
@@ -136,9 +136,9 @@ const (
 	persistTagPattern = `[[:space:]]*<persist>[[:space:]]*true[[:space:]]*</persist>[[:space:]]*`
 )
 
-// splitPersistTags returns whether the user data contains persist tags and
+// extractPersistTags returns whether the user data contains persist tags and
 // the user data without those tags if any are present.
-func splitPersistTags(userData string) (found bool, userDataWithoutPersist string, err error) {
+func extractPersistTags(userData string) (found bool, userDataWithoutPersist string, err error) {
 	persistRegexp, err := regexp.Compile(persistTagPattern)
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not compile persist tag pattern")

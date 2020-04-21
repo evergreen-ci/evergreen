@@ -626,7 +626,7 @@ func TestParseUserData(t *testing.T) {
 	}
 }
 
-func TestSplitDirective(t *testing.T) {
+func TestExtractDirective(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		userData          string
 		expectError       bool
@@ -649,7 +649,7 @@ func TestSplitDirective(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			directive, userData, err := splitDirective(testCase.userData)
+			directive, userData, err := extractDirective(testCase.userData)
 			if !testCase.expectError {
 				require.NoError(t, err)
 				assert.Equal(t, testCase.expectedDirective, directive)
@@ -663,7 +663,7 @@ func TestSplitDirective(t *testing.T) {
 	}
 }
 
-func TestSplitClosingTag(t *testing.T) {
+func TestExtractClosingTag(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		userData         string
 		closingTag       userdata.ClosingTag
@@ -697,7 +697,7 @@ func TestSplitClosingTag(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			userData, err := splitClosingTag(testCase.userData, testCase.closingTag)
+			userData, err := extractClosingTag(testCase.userData, testCase.closingTag)
 			if !testCase.expectError {
 				require.NoError(t, err)
 				assert.Equal(t, testCase.expectedUserData, userData)
@@ -709,7 +709,7 @@ func TestSplitClosingTag(t *testing.T) {
 	}
 }
 
-func TestSplitPersistTags(t *testing.T) {
+func TestExtractPersistTags(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		userData         string
 		expectFound      bool
@@ -732,7 +732,7 @@ func TestSplitPersistTags(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			found, userData, err := splitPersistTags(testCase.userData)
+			found, userData, err := extractPersistTags(testCase.userData)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.expectFound, found)
 			assert.Equal(t, testCase.expectedUserData, userData)
