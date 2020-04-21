@@ -13,6 +13,8 @@ resolver:
   filename: graphql/resolvers.go
   type: Resolver
 models:
+  Build:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   SubscriptionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   SelectorInput:

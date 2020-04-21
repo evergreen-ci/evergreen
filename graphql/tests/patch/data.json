@@ -15,7 +15,358 @@
     { "_id": "5", "version": "5e4ff3abe3c3317e352062e4" },
     { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" }
   ],
+  "builds": [
+    {
+      "_id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+      "create_time": { "$date": "2016-10-20T21:58:58.947Z" },
+      "start_time": { "$date": "2016-10-20T22:01:00.194Z" },
+      "finish_time": { "$date": "2017-12-04T21:06:48.822Z" },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "logkeeper",
+      "gitspec": "edd78c1d581bf757a880777b00685321685a8e67",
+      "build_variant": "ubuntu",
+      "build_number": "1",
+      "status": "created",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": { "$date": "2016-10-20T21:59:00.367Z" },
+      "order": 10,
+      "tasks": [
+        {
+          "id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+          "d": "test",
+          "s": "undispatched",
+          "st": { "$date": "1970-01-01T00:00:00.000Z" },
+          "tt": { "$numberLong": "16102029964" },
+          "a": true
+        }
+      ],
+      "display_name": "Ubuntu",
+      "actual_makespan": 0,
+      "r": "gitter_request",
+      "time_taken": 30000000000000,
+      "predicted_makespan": 70000000000000
+    },
+    {
+      "_id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+      "create_time": { "$date": "2017-12-05T17:20:27.852Z" },
+      "start_time": { "$date": "2017-12-05T18:58:30.519Z" },
+      "finish_time": { "$date": "2017-12-05T20:56:08.348Z" },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "sys-perf",
+      "gitspec": "40dc86136f85f88e1782a1c65b49bfba02757009",
+      "build_variant": "linux-3-node-replSet-initialsync",
+      "build_number": "7135",
+      "status": "success",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": { "$date": "2017-12-05T17:26:36.283Z" },
+      "order": 1,
+      "tasks": [
+        {
+          "id": "sys_perf_linux_3_node_replSet_initialsync_initialsync_MMAPv1_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+          "d": "initialsync_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-05T18:58:30.519Z" },
+          "tt": { "$numberLong": "4662818323805" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_initialsync_initialsync_WT_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+          "d": "initialsync_WT",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-05T19:45:20.209Z" },
+          "tt": { "$numberLong": "4247975481572" },
+          "a": true
+        }
+      ],
+      "time_taken": { "$numberLong": "7057829923014" },
+      "display_name": "Linux 3-Node ReplSet Initial Sync",
+      "predicted_makespan": 0,
+      "actual_makespan": { "$numberLong": "7057665000000" },
+      "r": "gitter_request"
+    },
+    {
+      "_id": "sys_perf_linux_3_node_replSet_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+      "create_time": { "$date": "2017-11-30T16:44:10.534Z" },
+      "start_time": { "$date": "2017-11-30T19:51:18.605Z" },
+      "finish_time": { "$date": "2017-12-01T03:07:26.230Z" },
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "sys-perf",
+      "gitspec": "852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175",
+      "build_variant": "linux-3-node-replSet",
+      "build_number": "13313",
+      "status": "failed",
+      "activated": true,
+      "activated_by": "",
+      "activated_time": { "$date": "2017-11-30T17:20:05.979Z" },
+      "order": 9203,
+      "tasks": [
+        {
+          "id": "sys_perf_linux_3_node_replSet_agg_query_comparison_bestbuy_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "agg_query_comparison_bestbuy_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T20:44:09.218Z" },
+          "tt": { "$numberLong": "6040821975352" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_agg_query_comparison_bestbuy_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "agg_query_comparison_bestbuy_WT",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T20:37:15.195Z" },
+          "tt": { "$numberLong": "6157336064521" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_core_workloads_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "core_workloads_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T20:30:48.666Z" },
+          "tt": { "$numberLong": "17447297866729" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_core_workloads_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "core_workloads_WT",
+          "s": "failed",
+          "ed": {
+            "status": "failed",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T19:51:18.605Z" },
+          "tt": { "$numberLong": "26167579385657" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_industry_benchmarks_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "industry_benchmarks_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T23:37:52.333Z" },
+          "tt": { "$numberLong": "4014396893854" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_industry_benchmarks_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "industry_benchmarks_WT",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T23:40:02.745Z" },
+          "tt": { "$numberLong": "3111345025391" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_industry_benchmarks_wmajority_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "industry_benchmarks_wmajority_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T22:24:51.372Z" },
+          "tt": { "$numberLong": "4510038913175" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_industry_benchmarks_wmajority_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "industry_benchmarks_wmajority_WT",
+          "s": "failed",
+          "ed": {
+            "status": "failed",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-11-30T21:00:23.479Z" },
+          "tt": { "$numberLong": "4830635134557" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_non_sharded_workloads_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "non_sharded_workloads_MMAPv1",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-01T00:31:55.386Z" },
+          "tt": { "$numberLong": "2274602460445" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_non_sharded_workloads_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "non_sharded_workloads_WT",
+          "s": "success",
+          "ed": {
+            "status": "success",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-01T00:01:08.755Z" },
+          "tt": { "$numberLong": "2503939409465" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_secondary_performance_MMAPv1_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "secondary_performance_MMAPv1",
+          "s": "failed",
+          "ed": {
+            "status": "failed",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-01T00:05:39.363Z" },
+          "tt": { "$numberLong": "2305553624077" },
+          "a": true
+        },
+        {
+          "id": "sys_perf_linux_3_node_replSet_secondary_performance_WT_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+          "d": "secondary_performance_WT",
+          "s": "failed",
+          "ed": {
+            "status": "failed",
+            "type": "test",
+            "desc": "'shell.exec' in \"analyze\""
+          },
+          "st": { "$date": "2017-12-01T00:42:54.026Z" },
+          "tt": { "$numberLong": "1880947237750" },
+          "a": true
+        }
+      ],
+      "display_name": "Linux 3-Node ReplSet",
+      "predicted_makespan": 0,
+      "actual_makespan": { "$numberLong": "26167579000000" },
+      "r": "gitter_request"
+    }
+  ],
   "patches": [
+    {
+      "_id": { "$oid": "9e4ff3abe3c3317e352062e4" },
+      "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "failed",
+      "create_time": { "$date": "2019-11-18T18:53:15Z" },
+      "start_time": { "$date": "2019-11-18T18:54:15.734Z" },
+      "finish_time": { "$date": "2019-11-18T18:57:15.053Z" },
+      "build_variants": ["ubuntu1804"],
+      "tasks": ["compile", "test", "lint", "coverage"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1804",
+          "tasks": ["lint", "coverage", "compile", "test"],
+          "displaytasks": []
+        }
+      ],
+      "patches": [
+        {
+          "name": "",
+          "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+          "patch_set": {
+            "patch_file_id": "5dd2e89cd1fe07048e43bb9e_3b53f9b61226491cd31113c773d66e351957ed29",
+            "summary": [
+              { "filename": "package.json", "additions": 2, "deletions": 0 },
+              {
+                "filename": "src/components/Navbar.tsx",
+                "additions": 70,
+                "deletions": 0
+              },
+              {
+                "filename": "src/components/app/App.tsx",
+                "additions": 78,
+                "deletions": 289
+              },
+              {
+                "filename": "src/components/navbar/DevMenu.tsx",
+                "additions": 62,
+                "deletions": 0
+              },
+              {
+                "filename": "src/components/navbar/PluginsMenu.tsx",
+                "additions": 42,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/ContextProvider.tsx",
+                "additions": 11,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/apiClient.tsx",
+                "additions": 70,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/user.tsx",
+                "additions": 33,
+                "deletions": 0
+              },
+              {
+                "filename": "src/utils/isDevelopment.ts",
+                "additions": 1,
+                "deletions": 0
+              },
+              { "filename": "tslint.json", "additions": 1, "deletions": 0 }
+            ]
+          },
+          "message": ""
+        }
+      ],
+      "activated": true,
+      "patched_config": "stepback: true\ncommand_type: test\nignore:\n - \"*.md\"\n - \".github/*\"\n\nfunctions:\n get-project:\n command: git.get_project\n type: setup\n params:\n directory: spruce\n\n npm-install:\n command: subprocess.exec\n type: setup\n params:\n working_dir: spruce\n binary: npm\n args: [install]\n\n npm-test:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [test, --, -u, --reporters=default, --reporters=jest-junit]\n env:\n CI: \"true\"\n\n npm-lint:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, lint]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-coverage:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, coverage]\n\n attach-results:\n command: attach.xunit_results\n params:\n files:\n - \"./spruce/junit.xml\"\n\ntasks:\n - name: compile\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-build\n - func: npm-build\n - name: test\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-test\n - func: attach-results\n - name: lint\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-lint\n - name: coverage\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-coverage\n\nbuildvariants:\n - name: ubuntu1804\n display_name: Ubuntu 18.04\n run_on:\n - ubuntu1804-test\n tasks:\n - name: compile\n - name: test\n - name: lint\n - name: coverage\n",
+      "alias": "__github",
+      "github_patch_data": {
+        "pr_number": 27,
+        "base_owner": "evergreen-ci",
+        "base_repo": "spruce",
+        "base_branch": "master",
+        "head_owner": "evergreen-ci",
+        "head_repo": "spruce",
+        "head_hash": "2b37dacf86f9d4d1545faaba37c7c5693202e645",
+        "author": "tgrander",
+        "author_uid": 15262143,
+        "merge_commit_sha": ""
+      }
+    },
     {
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
       "branch": "evergreen",
@@ -72,7 +423,7 @@
       "githash": "6cf2ca4c009f93285cf986b6de0100c1cbe54092",
       "patch_number": 561,
       "author": "trey.granderson",
-      "version": "",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "status": "unscheduled",
       "create_time": { "$date": "2020-04-13T20:12:39Z" },
       "start_time": null,
