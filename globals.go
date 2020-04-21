@@ -181,7 +181,7 @@ const (
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 
-	// ec2 resource tag names
+	// host resource tag names
 	TagName             = "name"
 	TagDistro           = "distro"
 	TagEvergreenService = "evergreen-service"
