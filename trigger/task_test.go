@@ -337,6 +337,33 @@ func (s *taskSuite) TestTriggerEvent() {
 	s.Len(n, 1)
 }
 
+func (s *taskSuite) TestGithubPREvent() {
+	s.NoError(db.ClearCollections(task.Collection, event.SubscriptionsCollection))
+
+	sub := event.NewFirstTaskFailureInVersionSubscriptionByOwner("me", event.Subscriber{
+		Type:   event.SlackSubscriberType,
+		Target: "@annie",
+	})
+	s.NoError(sub.Upsert())
+	t := task.Task{
+		Id:           "test",
+		Version:      "test_version_id",
+		BuildId:      "test_build_id",
+		BuildVariant: "test_build_variant",
+		DistroId:     "test_distro_id",
+		Project:      "test_project",
+		Requester:    evergreen.GithubPRRequester,
+		Status:       evergreen.TaskFailed,
+	}
+	s.NoError(t.Insert())
+
+	s.data.Status = evergreen.TaskFailed
+	s.event.Data = s.data
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 1)
+}
+
 func (s *taskSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
