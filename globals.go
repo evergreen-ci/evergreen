@@ -303,6 +303,12 @@ var (
 		RepotrackerVersionRequester,
 		TriggerRequester,
 	}
+
+	ProviderEc2Type = []string{
+		ProviderNameEc2Auto,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Fleet,
+	}
 )
 
 const (

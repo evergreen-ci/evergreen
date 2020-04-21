@@ -1076,6 +1076,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
+		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 	)
 
 	return &options.Create{
