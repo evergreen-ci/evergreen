@@ -421,9 +421,6 @@ tasks:
     name: test-service
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-monitor
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
