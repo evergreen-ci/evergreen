@@ -14,6 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -409,7 +410,7 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
-			if util.StringSliceContains(evergreen.ProviderEc2Type, m.provider) {
+			if utility.StringSliceContains(evergreen.ProviderEc2Type, m.provider) {
 				if util.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
 				}
