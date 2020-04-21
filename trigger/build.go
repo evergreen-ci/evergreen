@@ -295,7 +295,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 				Value: t.build.ActualMakespan.String(),
 			},
 			{
-				Title: "Time Taken",
+				Title: "Duration",
 				Value: t.build.TimeTaken.String(),
 			},
 		},
