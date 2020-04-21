@@ -158,7 +158,7 @@ LOOP:
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
-				AgentRevision: evergreen.BuildRevision,
+				AgentRevision: evergreen.AgentVersion,
 			})
 			if err != nil {
 				// task secret doesn't match, get another task

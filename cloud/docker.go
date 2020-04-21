@@ -92,7 +92,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, err
 	}
 
-	if err = h.SetAgentRevision(evergreen.BuildRevision); err != nil {
+	if err = h.SetAgentRevision(evergreen.AgentVersion); err != nil {
 		return nil, errors.Wrapf(err, "error setting agent revision on host %s", h.Id)
 	}
 

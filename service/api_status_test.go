@@ -167,7 +167,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			out := map[string]string{}
 
 			So(utility.ReadJSON(resp.Body, &out), ShouldBeNil)
-			So(len(out), ShouldEqual, 1)
+			So(len(out), ShouldEqual, 2)
 			_, ok := out["build_revision"]
 			So(ok, ShouldBeTrue)
 		})

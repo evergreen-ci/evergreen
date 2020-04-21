@@ -172,9 +172,11 @@ func (as *APIServer) getStuckHosts(w http.ResponseWriter, r *http.Request) {
 
 func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {
 	out := struct {
-		BuildId string `json:"build_revision"`
+		BuildID      string `json:"build_revision"`
+		AgentVersion string `json:"agent_version"`
 	}{
-		BuildId: evergreen.BuildRevision,
+		BuildID:      evergreen.BuildRevision,
+		AgentVersion: evergreen.AgentVersion,
 	}
 
 	gimlet.WriteJSON(w, &out)
