@@ -161,8 +161,9 @@ func (j *createHostJob) Run(ctx context.Context) {
 			// building should continue to provision)
 		} else {
 			var (
-				numProv      int
-				runningHosts int
+				numProv            int
+				runningHosts       int
+				distroRunningHosts int
 			)
 
 			numProv, err = host.CountProvisioning()
@@ -170,13 +171,19 @@ func (j *createHostJob) Run(ctx context.Context) {
 				j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
 				return
 			}
-			runningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+			distroRunningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 			if err != nil {
 				j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
 				return
 			}
 
-			if runningHosts < 5 || runningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
+			runningHosts, err = host.CountRunningHosts("")
+			if err != nil {
+				j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+				return
+			}
+
+			if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 				// pass
 			} else if numProv >= env.Settings().HostInit.HostThrottle {
 				j.AddError(errors.Wrapf(j.host.Remove(), "problem removing host intent for %s", j.host.Id))
