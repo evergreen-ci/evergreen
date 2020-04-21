@@ -205,16 +205,33 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 func runningHostsQuery(distroID string) bson.M {
 	query := IsLive()
 	if distroID != "" {
-		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-		query[key] = distroID
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
+	return query
+}
+
+func provisioningHostsQuery(distroID string) bson.M {
+	query := bson.M{StatusKey: bson.M{"$in": []string{evergreen.HostBuilding, evergreen.HostStarting}}}
+	if distroID != "" {
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distro
+	}
 	return query
 }
 
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
 	return num, errors.Wrap(err, "problem finding running hosts")
+}
+
+func CountProvisioning() (int, error) {
+	num, err := Count(db.Query(provisioningHostsQuery("")))
+	return num, errors.Wrap(err, "problem finding provisioning hosts")
+}
+
+func CountProvisioningForDistro(distroID string) (int, error) {
+	num, err := Count(db.Query(provisioningHostsQuery(distroID)))
+	return num, errors.Wrapf(err, "problem finding provisioning hosts for '%s'", distroID)
 }
 
 // AllActiveHosts produces a HostGroup for all hosts with UpHost

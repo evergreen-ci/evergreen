@@ -36,6 +36,7 @@ func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyJobName, id))
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{cloudHostReadyJobName})
 	// Jobs never appear to exceed 1 minute, but add a bunch of padding.
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 10 * time.Minute})
 	return j

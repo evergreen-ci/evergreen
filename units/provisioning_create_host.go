@@ -97,6 +97,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(env), "problem refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -144,7 +145,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.CurrentAttempt,
-				"distro":   j.host.Distro,
+				"distro":   j.host.Distro.Id,
 				"job":      j.ID(),
 				"provider": j.host.Provider,
 				"message":  "could not remove intent document",
@@ -152,6 +153,35 @@ func (j *createHostJob) Run(ctx context.Context) {
 			}))
 
 			return
+		} else if !h.IsSubjectToHostThrottle() {
+			// pass (spawn hosts and friends should always
+			// try and start)
+		} else if j.host.Status == evergreen.HostBuilding {
+			// pass (containers or similar that are
+			// building should continue to provision)
+		} else {
+			var (
+				numProv      int
+				runningHosts int
+			)
+
+			numProv, err = host.CountProvisioning()
+			if err != nil {
+				j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+				return
+			}
+			runningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+			if err != nil {
+				j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+				return
+			}
+
+			if runningHosts < 5 || runningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
+				// pass
+			} else if numProv >= env.Settings().HostInit.HostThrottle {
+				j.AddError(errors.Wrapf(j.host.Remove(), "problem removing host intent for %s", j.host.Id))
+				return
+			}
 		}
 	}
 
