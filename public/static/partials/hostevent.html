@@ -7,7 +7,7 @@
     <span ng-switch-when="HOST_MODIFIED">Host modify attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
     <span ng-switch-when="HOST_PROVISION_ERROR">Host encountered error during provisioning</span>
     <span ng-switch-when="HOST_AGENT_DEPLOY_FAILED">New agent deploy failed</span>
-    <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
+    <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent deployed with revision <b>[[eventLogObj.data.agent_revision]]</b> from <b>[[eventLogObj.data.agent_build]]</b></span>
     <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOYED">Agent monitor deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
     <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOY_FAILED">New agent monitor deploy failed</span>
     <span ng-switch-when="HOST_JASPER_RESTARTING">Jasper service marked as restarting by <b>[[eventLogObj.data.user]]</b></span>

@@ -74,9 +74,6 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
 		},
 	}
 
-	r["BuildRevision"] = func() string {
-		return evergreen.BuildRevision
-	}
 	return r
 
 }

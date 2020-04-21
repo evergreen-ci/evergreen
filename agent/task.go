@@ -64,7 +64,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		grip.Info("task canceled")
 		return
 	}
-	tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
+	tc.logger.Task().Infof("Task logger initialized (agent version %s from %s).", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
