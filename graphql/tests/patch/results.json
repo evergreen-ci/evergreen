@@ -82,6 +82,7 @@
                 "buildVariant": "ubuntu",
                 "status": "created",
                 "predictedMakespan": 70000000,
+                "actualMakespan": 0,
                 "timeTaken": 30000000
               },
               {
@@ -89,6 +90,7 @@
                 "buildVariant": "linux-3-node-replSet-initialsync",
                 "status": "success",
                 "predictedMakespan": 0,
+                "actualMakespan": 7057665,
                 "timeTaken": 7057829
               },
               {
@@ -96,6 +98,7 @@
                 "buildVariant": "linux-3-node-replSet",
                 "status": "failed",
                 "predictedMakespan": 0,
+                "actualMakespan": 26167579,
                 "timeTaken": 0
               }
             ]
