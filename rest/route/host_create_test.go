@@ -37,6 +37,8 @@ func TestMakeIntentHost(t *testing.T) {
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-123456"),
 			birch.EC.String("region", "us-east-1"),
+			birch.EC.String("instance_type", "t1.micro"),
+			birch.EC.String("subnet_id", "subnet-12345678"),
 		)},
 	}
 	require.NoError(d.Insert())
@@ -226,12 +228,13 @@ func TestMakeIntentHost(t *testing.T) {
 		Spot:                true,
 		AWSKeyID:            "my_aws_key",
 		AWSSecret:           "my_secret_key",
+		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	assert.NoError(err)
-	assert.NotNil(h)
+	require.NoError(err)
+	require.NotNil(h)
 	assert.Equal("", h.Distro.Id)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
