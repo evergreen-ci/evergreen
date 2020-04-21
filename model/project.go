@@ -1239,16 +1239,97 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
-
-	// TODO (EVG-7816): handle generate.tasks, which creates additional build
-	// variants and tasks after patch finalization.
-	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
 }
+
+// BuildSyncVTs resolves the build variants and tasks which can run task sync.
+// kim: TODO: call this at all places with BuildProjectTVPairs and fix handling
+// of display tasks - just iterate through all display tasks and find matching
+// names.
+// kim: TODO: test
+func (p *Project) BuildSyncVTs(patchDoc *patch.Patch) {
+	_, _, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
+}
+
+// AddSyncVTs takes the existing sync variants and tasks and adds new sync
+// variants and tasks.
+// kim: TODO: save to patch doc
+// kim: TODO: test
+// func MakeSyncVTs(patchDoc *patch.Patch, tvs TaskVariantPairs) []patch.VariantTasks {
+//     return resolveTaskSyncVTsFromTVs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks)
+// }
+
+// kim: TODO: remove
+// resolveTaskSyncVTsFromTVs returns the tasks on build variants from tvs that
+// match the build variant and task filter for task sync.
+// func resolveTaskSyncVTsFromTVs(bvs, tasks []string, tvs TaskVariantPairs) []patch.VariantTasks {
+//     if len(bvs) == 1 && bvs[0] == "all" {
+//         bvs = []string{}
+//         for _, tv := range tvs.ExecTasks {
+//             if !utility.StringSliceContains(bvs, tv.Variant) {
+//                 bvs = append(bvs, tv.Variant)
+//             }
+//         }
+//         for _, tv := range tvs.DisplayTasks {
+//             if !utility.StringSliceContains(bvs, tv.Variant) {
+//                 bvs = append(bvs, tv.Variant)
+//             }
+//         }
+//     }
+//
+//     if len(tasks) == 1 && tasks[0] == "all" {
+//         tasks = []string{}
+//         for _, tv := range tvs.ExecTasks {
+//             if !utility.StringSliceContains(tasks, tv.TaskName) {
+//                 tasks = append(tasks, tv.TaskName)
+//             }
+//         }
+//         for _, tv := range tvs.DisplayTasks {
+//             if !utility.StringSliceContains(bvs, tv.TaskName) {
+//                 tasks = append(tasks, tv.TaskName)
+//             }
+//         }
+//     }
+//
+//     execTasks := map[TVPair]bool{}
+//     displayTasks := map[TVPair]bool{}
+//     for _, bv := range bvs {
+//         execBVPairs := tvs.ExecTasks.ByVariant(bv)
+//         displayBVPairs := tvs.DisplayTasks.ByVariant(bv)
+//         for _, t := range tasks {
+//             for _, pair := range execBVPairs {
+//                 if pair.TaskName == t {
+//                     execTasks[pair] = true
+//                 }
+//             }
+//             for _, pair := range displayBVPairs {
+//                 if pair.TaskName == t {
+//                     displayTasks[pair] = true
+//                 }
+//             }
+//         }
+//     }
+//
+//     var uniqueExecTasks []TVPair
+//     for task := range execTasks {
+//         uniqueExecTasks = append(uniqueExecTasks, task)
+//     }
+//     var uniqueDisplayTasks []TVPair
+//     for task := range displayTasks {
+//         uniqueDisplayTasks = append(uniqueDisplayTasks, task)
+//     }
+//     pairs := TaskVariantPairs{ExecTasks: uniqueExecTasks, DisplayTasks: uniqueDisplayTasks}
+//
+//     vts := pairs.TVPairsToVariantTasks()
+//
+//     return vts
+// }
 
 // resolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
+// kim: TODO: have to do an in-memory equivalent without having the updated
+// project after generate.tasks.
 func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
@@ -1295,6 +1376,9 @@ func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps
 		}
 	}
 
+	// kim: TODO: we can't do this for SyncVariantsTasks because it will match
+	// any task in a display task that runs (i.e. matched exec task -> display
+	// task -> unmatched exec task).
 	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
 
 	if includeDeps {

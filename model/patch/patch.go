@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -38,28 +39,32 @@ type DisplayTask struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id                mgobson.ObjectId `bson:"_id,omitempty"`
-	Description       string           `bson:"desc"`
-	Project           string           `bson:"branch"`
-	Githash           string           `bson:"githash"`
-	PatchNumber       int              `bson:"patch_number"`
-	Author            string           `bson:"author"`
-	Version           string           `bson:"version"`
-	Status            string           `bson:"status"`
-	CreateTime        time.Time        `bson:"create_time"`
-	StartTime         time.Time        `bson:"start_time"`
-	FinishTime        time.Time        `bson:"finish_time"`
-	BuildVariants     []string         `bson:"build_variants"`
-	Tasks             []string         `bson:"tasks"`
-	VariantsTasks     []VariantTasks   `bson:"variants_tasks"`
-	SyncBuildVariants []string         `bson:"sync_build_variants"`
-	SyncTasks         []string         `bson:"sync_tasks"`
-	SyncVariantsTasks []VariantTasks   `bson:"sync_variants_tasks"`
-	Patches           []ModulePatch    `bson:"patches"`
-	Activated         bool             `bson:"activated"`
-	PatchedConfig     string           `bson:"patched_config"`
-	Alias             string           `bson:"alias"`
-	GithubPatchData   GithubPatch      `bson:"github_patch_data,omitempty"`
+	Id            mgobson.ObjectId `bson:"_id,omitempty"`
+	Description   string           `bson:"desc"`
+	Project       string           `bson:"branch"`
+	Githash       string           `bson:"githash"`
+	PatchNumber   int              `bson:"patch_number"`
+	Author        string           `bson:"author"`
+	Version       string           `bson:"version"`
+	Status        string           `bson:"status"`
+	CreateTime    time.Time        `bson:"create_time"`
+	StartTime     time.Time        `bson:"start_time"`
+	FinishTime    time.Time        `bson:"finish_time"`
+	BuildVariants []string         `bson:"build_variants"`
+	Tasks         []string         `bson:"tasks"`
+	VariantsTasks []VariantTasks   `bson:"variants_tasks"`
+	// SyncBuildVariants and SyncTasks refer to the build variants and tasks
+	// that were originally requested for this patch.
+	SyncBuildVariants []string `bson:"sync_build_variants"`
+	SyncTasks         []string `bson:"sync_tasks"`
+	// SyncVariantsTasks are the resolved pairs of build variants and tasks that
+	// this patch can actually run task sync for.
+	SyncVariantsTasks []VariantTasks `bson:"sync_variants_tasks"`
+	Patches           []ModulePatch  `bson:"patches"`
+	Activated         bool           `bson:"activated"`
+	PatchedConfig     string         `bson:"patched_config"`
+	Alias             string         `bson:"alias"`
+	GithubPatchData   GithubPatch    `bson:"github_patch_data,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -238,6 +243,80 @@ func (p *Patch) AddTasks(tasks []string) error {
 	}
 	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
 	return err
+}
+
+func (p *Patch) resolveTaskSyncVTs(vts []VariantTasks) []VariantTasks {
+	bvs := p.SyncBuildVariants
+	tasks := p.SyncTasks
+	if len(bvs) == 1 && bvs[0] == "all" {
+		bvs = []string{}
+		for _, vt := range vts {
+			if !utility.StringSliceContains(bvs, vt.Variant) {
+				bvs = append(bvs, vt.Variant)
+			}
+		}
+	}
+	if len(tasks) == 1 && tasks[0] == "all" {
+		tasks = []string{}
+		for _, vt := range vts {
+			for _, t := range vt.Tasks {
+				if !utility.StringSliceContains(tasks, t) {
+					tasks = append(tasks, t)
+				}
+			}
+			for _, dt := range vt.DisplayTasks {
+				if !utility.StringSliceContains(tasks, dt.Name) {
+					tasks = append(tasks, dt.Name)
+				}
+			}
+		}
+	}
+
+	bvsToVTs := map[string]VariantTasks{}
+	for _, vt := range vts {
+		if !utility.StringSliceContains(bvs, vt.Variant) {
+			continue
+		}
+		for _, t := range vt.Tasks {
+			if utility.StringSliceContains(tasks, t) {
+				resolvedVT := bvsToVTs[vt.Variant]
+				resolvedVT.Variant = vt.Variant
+				resolvedVT.Tasks = append(resolvedVT.Tasks, t)
+				bvsToVTs[vt.Variant] = resolvedVT
+			}
+		}
+		for _, dt := range vt.DisplayTasks {
+			if utility.StringSliceContains(tasks, dt.Name) {
+				resolvedVT := bvsToVTs[vt.Variant]
+				resolvedVT.Variant = vt.Variant
+				resolvedVT.DisplayTasks = append(resolvedVT.DisplayTasks, dt)
+				bvsToVTs[vt.Variant] = resolvedVT
+			}
+		}
+	}
+
+	var resolvedVTs []VariantTasks
+	for _, vt := range bvsToVTs {
+		resolvedVTs = append(resolvedVTs, vt)
+	}
+
+	return resolvedVTs
+}
+
+func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
+	resolvedVTs := p.resolveTaskSyncVTs(vts)
+	if err := UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{
+				SyncVariantsTasksKey: bson.M{"$each": resolvedVTs},
+			},
+		},
+	); err != nil {
+		return errors.WithStack(err)
+	}
+	p.SyncVariantsTasks = append(p.SyncVariantsTasks, resolvedVTs...)
+	return nil
 }
 
 func (p *Patch) FindModule(moduleName string) *ModulePatch {

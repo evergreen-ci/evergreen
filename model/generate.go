@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -255,6 +256,11 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	// This will only be populated for patches, not mainline commits.
 	var syncVariantsTasks []patch.VariantTasks
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
+		if err := patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not update variants and tasks for task sync",
+			}))
+		}
 		syncVariantsTasks = patchDoc.SyncVariantsTasks
 	}
 
