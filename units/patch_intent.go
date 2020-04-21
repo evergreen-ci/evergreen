@@ -271,20 +271,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0
-
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
-	// If the user requested task sync in their patch, it should resolve into
-	// task sync running on at least one task in a build variant.
-	if shouldTaskSync && (len(patchDoc.SyncBuildVariants) == 0 || len(patchDoc.SyncTasks) == 0) {
+	// kim: TODO: test what variant tasks it receives from the project. Should
+	// be all of them.
+	patchDoc.SyncVariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetVariantTasks())
+	// If the user requested task sync in their patch, it should match at least
+	// one valid task in a build variant.
+	shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0
+	if shouldTaskSync && len(patchDoc.SyncVariantsTasks) == 0 {
 		j.gitHubError = NoSyncTasksOrVariants
-		if len(patchDoc.SyncBuildVariants) == 0 && len(patchDoc.SyncTasks) == 0 {
-			return errors.New("patch requests task sync but tasks and build variants specified did not resolve into any valid tasks or build variants")
-		} else if len(patchDoc.SyncBuildVariants) == 0 {
-			return errors.New("patch requests task sync but build variants could not be resolved to actual build variants")
-		}
-		return errors.New("patch requests task sync but task names could not be resolved to tasks within any of the specified build variants")
+		return errors.Errorf("patch requests task sync for tasks '%s' in build variants '%s'"+
+			" but did not match any tasks within any of the specified build variants",
+			patchDoc.SyncTasks, patchDoc.SyncBuildVariants)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&

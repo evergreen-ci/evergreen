@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -276,4 +277,49 @@ func TestUpdateModulePatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "newer message", pDb.Description)
 	assert.Len(t, pDb.Patches, 1)
+}
+
+func TestResolveSyncVariantsTasks(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		bvs      []string
+		tasks    []string
+		vts      []VariantTasks
+		expected []VariantTasks
+	}{
+		"EmptyForEmptyInputs": {},
+		"ReturnsEmptyForNoVTs": {
+			bvs:   []string{"bvA", "bvB"},
+			tasks: []string{"task1", "task2"},
+		},
+		"ReturnsMatchingVTs":  {},
+		"AllBVsMatched":       {},
+		"AllTasksMatch":       {},
+		"AllBVsAndTasksMatch": {},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			p := &Patch{
+				SyncBuildVariants: testCase.bvs,
+				SyncTasks:         testCase.tasks,
+			}
+			resolved := p.ResolveSyncVariantTasks(testCase.vts)
+			assert.Len(t, resolved, len(testCase.expected))
+			for _, expected := range testCase.expected {
+				var found bool
+				for _, vt := range resolved {
+					if vt.Variant == expected.Variant {
+						found = true
+						missingExpected, missingActual := utility.StringSliceSymmetricDifference(expected.Tasks, vt.Tasks)
+						assert.Empty(t, missingExpected, "unexpected tasks '%s' for '%s'", missingExpected, expected.Variant)
+						assert.Empty(t, missingActual, "missing expected tasks '%s' for '%s'", missingActual, expected.Variant)
+						break
+					}
+				}
+				assert.True(t, found, "%s not found", expected.Variant)
+			}
+		})
+	}
+}
+
+func TestAddSyncVariantsTasks(t *testing.T) {
+
 }

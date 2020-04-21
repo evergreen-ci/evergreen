@@ -245,9 +245,13 @@ func (p *Patch) AddTasks(tasks []string) error {
 	return err
 }
 
-func (p *Patch) resolveTaskSyncVTs(vts []VariantTasks) []VariantTasks {
+// ResolveSyncVariantTasks filters the given tasks by variant to find only those that
+// match the build variant and task filters.
+// kim: TODO: test
+func (p *Patch) ResolveSyncVariantTasks(vts []VariantTasks) []VariantTasks {
 	bvs := p.SyncBuildVariants
 	tasks := p.SyncTasks
+
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, vt := range vts {
@@ -303,13 +307,16 @@ func (p *Patch) resolveTaskSyncVTs(vts []VariantTasks) []VariantTasks {
 	return resolvedVTs
 }
 
+// AddSyncVariantsTasks adds new tasks for variants filtered from the given
+// sequence of VariantsTasks to the existing SyncVariantsTasks.
+// kim: TODO: test
 func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
-	resolvedVTs := p.resolveTaskSyncVTs(vts)
+	resolvedVTs := append(p.SyncVariantsTasks, p.ResolveSyncVariantTasks(vts)...)
 	if err := UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
-			"$addToSet": bson.M{
-				SyncVariantsTasksKey: bson.M{"$each": resolvedVTs},
+			"$set": bson.M{
+				SyncVariantsTasksKey: resolvedVTs,
 			},
 		},
 	); err != nil {
