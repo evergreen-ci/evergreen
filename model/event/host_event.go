@@ -131,7 +131,7 @@ func LogHostAgentDeployFailed(hostId string, err error) {
 
 func LogHostAgentMonitorDeployed(hostId string) {
 	LogHostEvent(hostId, EventHostAgentMonitorDeployed, HostEventData{
-		AgentRevision: evergreen.BuildRevision,
+		AgentBuild:    evergreen.BuildRevision,
 		AgentRevision: evergreen.AgentVersion,
 	})
 }
