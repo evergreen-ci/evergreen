@@ -26,17 +26,32 @@ Evergreen - My Hosts
   <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
   <div class="col-lg-6">
-    <div ng-show="hosts && hosts.length == 0">
-      <h2>No hosts for user</h2>
+    <div class="panel-heading">
+      <h2>
+        <i class="fa fa-list-alt" style="margin-right:10px"></i>
+        <span class="dropdown">
+          <button class="btn btn-dropdown" data-toggle="dropdown" href="#" id="resourceLabel">
+            <strong>
+              [[currentResourceType]]&nbsp;
+              <span class="fa fa-caret-down"></span>
+            </strong>
+          </button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="resourceLabel">
+            <li role="presentation" class="dropdown-header">Resource</li>
+            <li role="presentation" class="pointer" ng-repeat="t in resourceTypes">
+              <a role="menuitem" ng-click="setResourceType(t)">
+                [[t]]
+              </a>
+            </li>
+          </ul>
+        </span>
+      </h2>
     </div>
-    <div id="hosts-info" class="panel" ng-show="!!hosts && hosts.length > 0">
-      <div class="panel-heading">
-        <h2>
-          <i class="fa fa-list-alt" style="margin-right:10px"></i>
-          Hosts
-        </h2>
+    <div id="hosts-info" class="panel" ng-show="currentResourceType == 'Hosts'">
+      <div class="panel-body" ng-show="!!hosts && hosts.length == 0">
+        <h2>No hosts for user</h2>
       </div>
-      <div class="panel-body" id="host-info-elements">
+      <div class="panel-body" id="host-info-elements" ng-show="!!hosts && hosts.length > 0">
         <table class="table">
           <div class="dropdown" style="float: left">
             <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="dLabel">
@@ -109,16 +124,16 @@ Evergreen - My Hosts
             </tr>
           </tbody>
         </table>
+        <md-button type="button" class="btn-info md-raised" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
+          Spawn Host
+        </md-button>
+        <em ng-class="{'text-muted': availableHosts(), 'text-error': !availableHosts()}" style="margin-left: 5px;" ng-cloak>
+          Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
+        </em>
       </div>
     </div>
-    <md-button type="button" class="btn-info md-raised" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
-      Spawn Host
-    </md-button>
-    <em ng-class="{'text-muted': availableHosts(), 'text-error': !availableHosts()}" style="margin-left: 5px;" ng-cloak>
-      Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
-    </em>
   </div>
-  <div>
+  <div ng-show="currentResourceType == 'Hosts'">
     <user-host-details class="col-lg-6" ng-show="curHostData"></user-host-details>
     <user-spawn-modal>
       <user-host-options ng-show="modalOption=='spawnHost'"></user-host-options>

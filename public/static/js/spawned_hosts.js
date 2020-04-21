@@ -6,6 +6,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.spawnTask = $window.spawnTask;
     $scope.spawnDistro = $window.spawnDistro;
 
+    $scope.resourceTypes = ["Hosts", "Volumes"];
+    $scope.currentResourceType = "Hosts"
+
     // variables for spawning a new host
     $scope.spawnableDistros = [];
     $scope.selectedDistro = {};
@@ -59,6 +62,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setSortBy = function (order) {
       $scope.sortBy = order;
     };
+
+    $scope.setResourceType = function (rtype) {
+      $scope.currentResourceType = rtype;
+    }
 
     // Spawn REST API calls
     $scope.fetchSpawnedHosts = function () {
