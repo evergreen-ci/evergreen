@@ -229,8 +229,11 @@ $http.get(templateUrl).success(function(template) {
     }
     scope.locked = false;
     // Extract params
-    let trendSamples = getSamples(scope),
-      tests = scope.perfSample.testNames(),
+    let trendSamples = getSamples(scope);
+    if (!trendSamples) {
+      return;
+    }
+    let tests = scope.perfSample.testNames(),
       taskId = scope.task.id,
       compareSamples = scope.comparePerfSamples;
     if (!trendSamples) {

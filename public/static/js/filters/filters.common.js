@@ -58,7 +58,7 @@ var convertSingleTest = function (test, execution) {
   }
   var result = {};
   var threads
-  if (test.info && test.info.args) {
+  if (test.info && test.info.args && test.info.args.thread_level) {
     threads = test.info.args.thread_level;
   } else {
     _.each(test.rollups.stats, function (stat) {
@@ -68,7 +68,7 @@ var convertSingleTest = function (test, execution) {
     });
   }
   if (!threads) {
-    return output;
+    threads = 1;
   }
   result[threads] = {};
 
