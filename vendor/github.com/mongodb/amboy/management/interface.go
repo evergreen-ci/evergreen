@@ -7,11 +7,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Management is an interface that describes queue introspection tools and
+// Manager is an interface that describes queue introspection tools and
 // utility for queue management that make it possible to get more details about
 // the running jobs in an amboy queue and gives users broader capabilities than
 // the Queue interface itself.
-type Management interface {
+type Manager interface {
 	JobStatus(context.Context, StatusFilter) (*JobStatusReport, error)
 	RecentTiming(context.Context, time.Duration, RuntimeFilter) (*JobRuntimeReport, error)
 	JobIDsByState(context.Context, string, StatusFilter) (*JobReportIDs, error)

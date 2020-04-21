@@ -50,7 +50,7 @@ func managementReportJobStatus(opts *ServiceOptions) cli.Command {
 				return errors.WithStack(err)
 			}
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				report, err := client.JobStatus(ctx, filter)
 				if err != nil {
 					return errors.WithStack(err)
@@ -94,7 +94,7 @@ func managementReportRecentTiming(opts *ServiceOptions) cli.Command {
 				return errors.WithStack(err)
 			}
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				report, err := client.RecentTiming(ctx, dur, filter)
 				if err != nil {
 					return errors.WithStack(err)
@@ -134,7 +134,7 @@ func managementReportJobIDs(opts *ServiceOptions) cli.Command {
 
 			jobTypes := c.StringSlice("type")
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 
 				t := tabby.New()
 				t.AddHeader("Job Type", "ID", "Group")
@@ -184,7 +184,7 @@ func managementReportRecentErrors(opts *ServiceOptions) cli.Command {
 
 			jobTypes := c.StringSlice("type")
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				reports := []*management.JobErrorsReport{}
 
 				if len(jobTypes) == 0 {
@@ -237,7 +237,7 @@ func managementCompleteJob(opts *ServiceOptions) cli.Command {
 
 			name := c.String(jobNameFlagName)
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				if err := client.CompleteJob(ctx, name); err != nil {
 					return errors.Wrap(err, "problem marking job complete")
 				}
@@ -264,7 +264,7 @@ func managementCompleteJobsByStatus(opts *ServiceOptions) cli.Command {
 
 			filter := management.StatusFilter(c.String(statusFilterFlagName))
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				if err := client.CompleteJobs(ctx, filter); err != nil {
 					return errors.Wrap(err, "problem marking job complete")
 				}
@@ -296,7 +296,7 @@ func managementCompleteJobByType(opts *ServiceOptions) cli.Command {
 			jobType := c.String(jobTypeFlagName)
 			filter := management.StatusFilter(c.String(statusFilterFlagName))
 
-			return opts.withManagementClient(ctx, c, func(client management.Management) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				if err := client.CompleteJobsByType(ctx, filter, jobType); err != nil {
 					return errors.Wrap(err, "problem marking job complete")
 				}

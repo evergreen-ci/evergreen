@@ -297,8 +297,25 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		{
 			Title:     displayName,
 			TitleLink: data.URL,
-			Text:      taskFormat(t.task),
 			Color:     slackColor,
+			Fields: []*message.SlackAttachmentField{
+				{
+					Title: "Build",
+					Value: fmt.Sprintf("<%s|%s>", t.task.BuildVariant, buildLink(t.uiConfig.Url, t.task.BuildId)),
+				},
+				{
+					Title: "Version",
+					Value: fmt.Sprintf("<%s|%s>", t.task.Version, versionLink(t.uiConfig.Url, t.task.Version)),
+				},
+				{
+					Title: "Duration",
+					Value: t.task.TimeTaken.String(),
+				},
+				{
+					Title: "Host",
+					Value: fmt.Sprintf("<%s|%s>", t.task.HostId, hostLink(t.uiConfig.Url, t.task.HostId)),
+				},
+			},
 		},
 	}
 
@@ -947,14 +964,6 @@ func mapTestResultsByTestFile(results []task.TestResult) map[string]*task.TestRe
 	}
 
 	return m
-}
-
-func taskFormat(t *task.Task) string {
-	if t.Status == evergreen.TaskSucceeded {
-		return fmt.Sprintf("took %s", t.TimeTaken)
-	}
-
-	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.Details.Status))
 }
 
 func detailStatusToHumanSpeak(status string) string {

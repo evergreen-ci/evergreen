@@ -85,8 +85,11 @@ type EC2ProviderSettings struct {
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" {
-		return errors.New("AMI, instance type, and key name must not be empty")
+	if s.AMI == "" {
+		return errors.New("AMI must not be empty")
+	}
+	if s.InstanceType == "" {
+		return errors.New("instance type must not be empty")
 	}
 	if len(s.SecurityGroupIDs) == 0 {
 		return errors.New("Security groups must not be empty")
@@ -99,6 +102,11 @@ func (s *EC2ProviderSettings) Validate() error {
 	}
 	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
+	}
+	if s.UserData != "" {
+		if _, err := parseUserData(s.UserData); err != nil {
+			return errors.Wrap(err, "user data is malformed")
+		}
 	}
 	return nil
 }
@@ -264,9 +272,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -376,9 +384,9 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -1198,7 +1206,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+		return errors.Wrapf(err, "error detaching volume '%s' from host '%s' in client", volumeID, h.Id)
 	}
 
 	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)

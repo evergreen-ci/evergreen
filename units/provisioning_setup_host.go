@@ -25,6 +25,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 )
 
@@ -547,6 +548,13 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"attempts": j.host.ProvisionAttempts,
 				"job":      j.ID(),
 			}))
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned for mount failure",
+				"attempts":  j.host.ProvisionAttempts,
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"host_id":   j.host.Id,
+			}))
 			return nil
 		}
 		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
@@ -841,7 +849,15 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+
+	symlinkExists, err := symlinkExists(ctx, client, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't verify if symlink exists for host '%s'", h.Id)
+	}
+	if !symlinkExists {
+		cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+	}
+
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
@@ -853,6 +869,22 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	return nil
+}
+
+func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
+	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
+	if err := cmd.Run(ctx); err != nil {
+		return false, errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil {
+		if exitCode != 0 {
+			return false, nil
+		}
+		return false, errors.Wrap(err, "problem waiting for ls command")
+	}
+
+	return true, nil
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {

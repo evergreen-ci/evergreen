@@ -21,7 +21,7 @@ type queueManager struct {
 // require some locking to their Jobs function. Additionally, the speed of
 // these operations will necessarily degrade with the number of jobs. Do pass
 // contexts with timeouts to in these cases.
-func NewQueueManager(q amboy.Queue) Management {
+func NewQueueManager(q amboy.Queue) Manager {
 	return &queueManager{
 		queue: q,
 	}

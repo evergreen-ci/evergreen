@@ -410,15 +410,15 @@ tasks:
   - <<: *run-go-test-suite-with-docker
     tags: ["db", "test"]
     name: test-cloud
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-cloud-userdata
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-scheduler
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-monitor
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
@@ -428,7 +428,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-trigger
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb

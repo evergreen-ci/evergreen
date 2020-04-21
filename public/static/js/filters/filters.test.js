@@ -234,6 +234,12 @@ describe('expandedHistoryConverter', function () {
     expect(expandedHistoryConverter(rawData)).toEqual([{
       "data": {
         "results": [{
+          "name": "out_of_cache_scanner",
+          "isExpandedMetric": true,
+          "results": {
+            "1": {}
+          }
+        }, {
           "name": "ColdScanner-Scan.2",
           "isExpandedMetric": true,
           "results": {
@@ -629,16 +635,14 @@ describe('expandedMetricConverter', function () {
     ]
 
     const expected = {
-      create_time: '2019-12-05T07:19:22.000Z',
-      order: 19613,
-      version_id: 'sys_perf_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2',
-      project_id: 'sys-perf',
-      task_name: 'insert_remove',
-      variant: 'wtdevelop-1-node-replSet',
-      task_id: 'sys_perf_wtdevelop_1_node_replSet_insert_remove_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2_19_12_05_04_28_59',
-      revision: '95eedd93ea7a5b8b35b9bb042d5ca165736c17c2',
       "data": {
         "results": [{
+          "name": "insert_remove",
+          "isExpandedMetric": true,
+          "results": {
+            "1": {}
+          }
+        }, {
           "name": "InsertRemoveTest-Insert",
           "isExpandedMetric": true,
           "results": {
@@ -684,7 +688,15 @@ describe('expandedMetricConverter', function () {
             }
           }
         }]
-      }
+      },
+      "create_time": "2019-12-05T07:19:22.000Z",
+      "order": 19613,
+      "version_id": "sys_perf_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2",
+      "project_id": "sys-perf",
+      "task_name": "insert_remove",
+      "variant": "wtdevelop-1-node-replSet",
+      "task_id": "sys_perf_wtdevelop_1_node_replSet_insert_remove_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2_19_12_05_04_28_59",
+      "revision": "95eedd93ea7a5b8b35b9bb042d5ca165736c17c2"
     }
 
     expect(expandedMetricConverter(dataSample, 0)).toEqual(expected);

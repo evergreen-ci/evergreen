@@ -1444,7 +1444,7 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 			{
 				// Non-user data hosts that are either taking too long to
-				// provision or a user hata host has started tasks before
+				// provision or a user data host has started tasks before
 				// provisioning finished but not checked in recently
 				"$and": []bson.M{
 					// Host is not yet done provisioning

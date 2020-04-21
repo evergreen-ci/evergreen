@@ -61,6 +61,7 @@ const (
 // implements EventData
 type HostEventData struct {
 	AgentRevision      string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
+	AgentBuild         string        `bson:"a_build,omitempty" json:"agent_build,omitempty"`
 	JasperRevision     string        `bson:"j_rev,omitempty" json:"jasper_revision,omitempty"`
 	OldStatus          string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
 	NewStatus          string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
@@ -118,7 +119,10 @@ func LogHostModifyFinished(hostId string, successful bool) {
 }
 
 func LogHostAgentDeployed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
+	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{
+		AgentRevision: evergreen.AgentVersion,
+		AgentBuild:    evergreen.BuildRevision,
+	})
 }
 
 func LogHostAgentDeployFailed(hostId string, err error) {
@@ -126,7 +130,10 @@ func LogHostAgentDeployFailed(hostId string, err error) {
 }
 
 func LogHostAgentMonitorDeployed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentMonitorDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
+	LogHostEvent(hostId, EventHostAgentMonitorDeployed, HostEventData{
+		AgentBuild:    evergreen.BuildRevision,
+		AgentRevision: evergreen.AgentVersion,
+	})
 }
 
 func LogHostAgentMonitorDeployFailed(hostId string, err error) {

@@ -54,7 +54,7 @@ func (o *DBQueueManagerOptions) Validate() error {
 // NewDBQueueManager produces a queue manager for (remote) queues that persist
 // jobs in MongoDB. This implementation does not interact with the queue
 // directly, and manages by interacting with the database directly.
-func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Management, error) {
+func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Manager, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Managem
 // MakeDBQueueManager make it possible to produce a queue manager with an
 // existing database Connection. This operations runs the "ping" command and
 // and will return an error if there is no session or no active server.
-func MakeDBQueueManager(ctx context.Context, opts DBQueueManagerOptions, client *mongo.Client) (Management, error) {
+func MakeDBQueueManager(ctx context.Context, opts DBQueueManagerOptions, client *mongo.Client) (Manager, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}

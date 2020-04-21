@@ -97,7 +97,9 @@ func TestCreateHostsFromTask(t *testing.T) {
 		birch.EC.String("ami", "ami-1234"),
 		birch.EC.String("vpc_name", "my_vpc"),
 		birch.EC.String("key_name", "myKey"),
+		birch.EC.String("instance_type", "t1.micro"),
 		birch.EC.SliceString("security_group_ids", []string{"sg-distro"}),
+		birch.EC.String("subnet_id", "subnet-123456"),
 	)}
 
 	d := distro.Distro{

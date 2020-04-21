@@ -63,7 +63,12 @@ func startWebService() cli.Command {
 			defer recovery.LogStackTraceAndExit("evergreen service")
 
 			grip.SetName("evergreen.service")
-			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
+			grip.Notice(message.Fields{
+				"agent":   evergreen.AgentVersion,
+				"cli":     evergreen.ClientVersion,
+				"build":   evergreen.BuildRevision,
+				"process": grip.Name(),
+			})
 
 			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
 
@@ -229,8 +234,8 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	}
 	if !serviceFlags.AmboyRemoteManagementDisabled {
 		var (
-			remoteManager management.Management
-			groupManager  management.Management
+			remoteManager management.Manager
+			groupManager  management.Manager
 		)
 
 		remoteManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{

@@ -443,9 +443,9 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not add bootstrap script to user data")
+		return nil, nil, errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 

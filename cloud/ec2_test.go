@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	someUserData         = "some user data"
+	someUserData         = "#!/bin/bash\necho foo"
 	base64OfSomeUserData = base64.StdEncoding.EncodeToString([]byte(someUserData))
 )
 
@@ -380,10 +380,11 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
+	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
@@ -432,10 +433,11 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
+	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
@@ -527,10 +529,11 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.NoError(err)
 
 	manager, ok := s.spotManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
+	s.Require().NotNil(mock.RequestSpotInstancesInput)
 	requestInput := *mock.RequestSpotInstancesInput
 	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
 	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
@@ -622,10 +625,11 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	s.Require().True(ok)
 	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
+	s.Require().True(ok)
 
+	s.Require().NotNil(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)

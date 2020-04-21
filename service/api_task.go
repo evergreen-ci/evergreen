@@ -134,11 +134,12 @@ func checkHostHealth(h *host.Host) bool {
 
 // agentRevisionIsOld checks that the agent revision is current.
 func agentRevisionIsOld(h *host.Host) bool {
-	if h.AgentRevision != evergreen.BuildRevision {
+	if h.AgentRevision != evergreen.AgentVersion {
 		grip.InfoWhen(h.Distro.LegacyBootstrap(), message.Fields{
-			"message":        "agent has wrong revision, so it should exit",
-			"host_revision":  h.AgentRevision,
-			"agent_revision": evergreen.BuildRevision,
+			"message":       "agent has wrong revision, so it should exit",
+			"host_revision": h.AgentRevision,
+			"build":         evergreen.BuildRevision,
+			"agent_version": evergreen.AgentVersion,
 		})
 		return true
 	}
@@ -176,7 +177,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"task_id":                 t.Id,
 			"task_status_from_db":     t.Status,
 			"task_details_from_db":    t.Details,
-			"current_agent":           currentHost.AgentRevision == evergreen.BuildRevision,
+			"current_agent":           currentHost.AgentRevision == evergreen.AgentVersion,
+			"agent_version":           currentHost.AgentRevision,
+			"build_revision":          evergreen.BuildRevision,
+			"build_agent":             evergreen.AgentVersion,
 			"task_details_from_agent": details,
 			"host_id":                 currentHost.Id,
 			"distro":                  currentHost.Distro.Id,
@@ -264,10 +268,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem stopping agent monitor",
-				"host_id":   currentHost.Id,
-				"operation": "next_task",
-				"revision":  evergreen.BuildRevision,
+				"message":       "problem stopping agent monitor",
+				"host_id":       currentHost.Id,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": currentHost.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
@@ -296,10 +302,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem stopping agent monitor",
-				"host_id":   currentHost.Id,
-				"operation": "next_task",
-				"revision":  evergreen.BuildRevision,
+				"message":       "problem stopping agent monitor",
+				"host_id":       currentHost.Id,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": currentHost.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
@@ -324,10 +332,12 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 
 	if err := h.StopAgentMonitor(ctx, env); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":   "problem stopping agent monitor",
-			"host_id":   h.Id,
-			"operation": "next_task",
-			"revision":  evergreen.BuildRevision,
+			"message":       "problem stopping agent monitor",
+			"host_id":       h.Id,
+			"operation":     "next_task",
+			"revision":      evergreen.BuildRevision,
+			"agent":         evergreen.AgentVersion,
+			"current_agent": h.AgentRevision,
 		}))
 		return err
 	}
@@ -635,10 +645,12 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem stopping agent monitor",
-				"host_id":   h.Id,
-				"operation": "next_task",
-				"revision":  evergreen.BuildRevision,
+				"message":       "problem stopping agent monitor",
+				"host_id":       h.Id,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
 			}))
 			gimlet.WriteJSON(w, response)
 			return
@@ -646,11 +658,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":   h.Id,
-				"operation": "next_task",
-				"message":   "problem indicating that host needs new agent or agent monitor deploy",
-				"source":    "database error",
-				"revision":  evergreen.BuildRevision,
+				"host_id":       h.Id,
+				"operation":     "next_task",
+				"message":       "problem indicating that host needs new agent or agent monitor deploy",
+				"source":        "database error",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
 			}))
 			gimlet.WriteJSON(w, response)
 			return
@@ -778,11 +792,13 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 		if isOldAgent {
 			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{
-					"host_id":   h.Id,
-					"operation": "next_task",
-					"message":   "problem indicating that host needs new agent",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
+					"host_id":       h.Id,
+					"operation":     "next_task",
+					"message":       "problem indicating that host needs new agent",
+					"source":        "database error",
+					"revision":      evergreen.BuildRevision,
+					"agent":         evergreen.AgentVersion,
+					"current_agent": h.AgentRevision,
 				}))
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(innerErr))
 				return nil, true
@@ -794,6 +810,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 			"message":       "unable to unmarshal next task details",
 			"host_revision": h.AgentRevision,
 			"revision":      evergreen.BuildRevision,
+			"agent":         evergreen.AgentVersion,
 		}))
 		if isOldAgent {
 			response.ShouldExit = true
@@ -833,23 +850,26 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 			return response, false
 		}
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "problem updating host agent revision",
-			"operation":     "next_task",
-			"host_id":       h.Id,
-			"source":        "database error",
-			"host_revision": details.AgentRevision,
-			"revsision":     evergreen.BuildRevision,
+			"message":        "problem updating host agent revision",
+			"operation":      "next_task",
+			"host_id":        h.Id,
+			"source":         "database error",
+			"host_revision":  details.AgentRevision,
+			"agent_version":  evergreen.AgentVersion,
+			"build_revision": evergreen.BuildRevision,
 		}))
 	}
 
 	if details.TaskGroup == "" {
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":   h.Id,
-				"operation": "next_task",
-				"message":   "problem indicating that host needs new agent",
-				"source":    "database error",
-				"revision":  evergreen.BuildRevision,
+				"host_id":        h.Id,
+				"operation":      "next_task",
+				"message":        "problem indicating that host needs new agent",
+				"source":         "database error",
+				"build_revision": evergreen.BuildRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"host_revision":  h.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return apimodels.NextTaskResponse{}, true
@@ -857,11 +877,13 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 		}
 		if err := h.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":   h.Id,
-				"operation": "next_task",
-				"message":   "problem unsetting running task",
-				"source":    "database error",
-				"revision":  evergreen.BuildRevision,
+				"host_id":        h.Id,
+				"operation":      "next_task",
+				"message":        "problem unsetting running task",
+				"source":         "database error",
+				"build_revision": evergreen.BuildRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"host_revision":  h.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return apimodels.NextTaskResponse{}, true

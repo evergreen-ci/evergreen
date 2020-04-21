@@ -212,7 +212,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		RunningTask:   taskOne.Id,
 		Secret:        "testHostSecret",
 		StartedBy:     evergreen.User,
-		AgentRevision: evergreen.BuildRevision,
+		AgentRevision: evergreen.AgentVersion,
 		Status:        evergreen.HostRunning,
 	}
 	if err = testHost.Insert(); err != nil {

@@ -141,7 +141,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
-
 	} else if t.data.Status == evergreen.PatchFailed {
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
@@ -159,6 +158,12 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		TitleLink: data.URL,
 		Text:      t.patch.Description,
 		Color:     slackColor,
+		Fields: []*message.SlackAttachmentField{
+			{
+				Title: "Makespan",
+				Value: t.patch.FinishTime.Sub(t.patch.StartTime).String(),
+			},
+		},
 	})
 
 	return &data, nil

@@ -13,12 +13,12 @@ import (
 // package and provides an HTTP interface for all of the methods provided by
 // methods provided by the manager.
 type ManagementService struct {
-	manager management.Management
+	manager management.Manager
 }
 
 // NewManagementService constructs a management service from the manager
 // provided.
-func NewManagementService(m management.Management) *ManagementService {
+func NewManagementService(m management.Manager) *ManagementService {
 	return &ManagementService{
 		manager: m,
 	}

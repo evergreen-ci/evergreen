@@ -468,3 +468,8 @@ func buildLink(uiBase string, buildID string) string {
 func versionLink(uiBase string, versionID string) string {
 	return fmt.Sprintf("%s/version/%s/", uiBase, url.PathEscape(versionID))
 }
+
+func hostLink(uiBase string, hostID string) string {
+	return fmt.Sprintf("%s/host/%s", uiBase, hostID)
+
+}

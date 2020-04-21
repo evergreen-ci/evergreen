@@ -133,11 +133,11 @@ func (s *createHostSuite) TestParamValidation() {
 
 func (s *createHostSuite) TestPopulateUserdata() {
 	defer os.RemoveAll(userdataFileName)
-	userdataFile := []byte("some commands")
+	userdataFile := []byte("#!/bin/bash\nsome commands")
 	s.NoError(ioutil.WriteFile(userdataFileName, userdataFile, 0644))
 	s.cmd.CreateHost = &apimodels.CreateHost{UserdataFile: userdataFileName}
 	s.NoError(s.cmd.populateUserdata())
-	s.Equal("some commands", s.cmd.CreateHost.UserdataCommand)
+	s.Equal("#!/bin/bash\nsome commands", s.cmd.CreateHost.UserdataCommand)
 }
 
 func (s *createHostSuite) TestExecuteCommand() {
