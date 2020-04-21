@@ -41,11 +41,11 @@
           "a": true
         }
       ],
-      "time_taken": { "$numberLong": "35420748628230280" },
       "display_name": "Ubuntu",
-      "predicted_makespan": { "$numberLong": "16102029964" },
       "actual_makespan": 0,
-      "r": "gitter_request"
+      "r": "gitter_request",
+      "time_taken": 30000000000000,
+      "predicted_makespan": 70000000000000
     },
     {
       "_id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
@@ -269,7 +269,6 @@
           "a": true
         }
       ],
-      "time_taken": { "$numberLong": "26167625361357" },
       "display_name": "Linux 3-Node ReplSet",
       "predicted_makespan": 0,
       "actual_makespan": { "$numberLong": "26167579000000" },

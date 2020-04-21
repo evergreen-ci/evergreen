@@ -4,6 +4,8 @@
       id
       buildVariant
       status
+      predictedMakespan
+      timeTaken
     }
   }
 }
