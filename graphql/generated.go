@@ -133,6 +133,7 @@ type ComplexityRoot struct {
 		Alias             func(childComplexity int) int
 		Author            func(childComplexity int) int
 		BaseVersionID     func(childComplexity int) int
+		CreateTime        func(childComplexity int) int
 		Description       func(childComplexity int) int
 		Duration          func(childComplexity int) int
 		Githash           func(childComplexity int) int
@@ -787,6 +788,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.BaseVersionID(childComplexity), true
+
+	case "Patch.createTime":
+		if e.complexity.Patch.CreateTime == nil {
+			break
+		}
+
+		return e.complexity.Patch.CreateTime(childComplexity), true
 
 	case "Patch.description":
 		if e.complexity.Patch.Description == nil {
@@ -2007,6 +2015,7 @@ type FileDiff {
 }
 
 type Patch {
+  createTime: Time
   id: ID!
   description: String!
   projectID: String!
@@ -4258,6 +4267,37 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreateTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -10705,6 +10745,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Patch")
+		case "createTime":
+			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
 		case "id":
 			out.Values[i] = ec._Patch_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
