@@ -177,6 +177,7 @@ type Build {
   status: String!
   timeTaken: Duration!
   predictedMakespan: Duration!
+  actualMakespan: Duration!
 }
 
 type PatchProject {

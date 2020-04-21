@@ -5,6 +5,7 @@
       buildVariant
       status
       predictedMakespan
+      actualMakespan
       timeTaken
     }
   }

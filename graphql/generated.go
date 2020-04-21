@@ -53,6 +53,7 @@ type ComplexityRoot struct {
 	}
 
 	Build struct {
+		ActualMakespan    func(childComplexity int) int
 		BuildVariant      func(childComplexity int) int
 		Id                func(childComplexity int) int
 		PredictedMakespan func(childComplexity int) int
@@ -423,6 +424,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BaseTaskMetadata.BaseTaskLink(childComplexity), true
+
+	case "Build.actualMakespan":
+		if e.complexity.Build.ActualMakespan == nil {
+			break
+		}
+
+		return e.complexity.Build.ActualMakespan(childComplexity), true
 
 	case "Build.buildVariant":
 		if e.complexity.Build.BuildVariant == nil {
@@ -2087,6 +2095,7 @@ type Build {
   status: String!
   timeTaken: Duration!
   predictedMakespan: Duration!
+  actualMakespan: Duration!
 }
 
 type PatchProject {
@@ -2998,6 +3007,40 @@ func (ec *executionContext) _Build_predictedMakespan(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.PredictedMakespan, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Build_actualMakespan(ctx context.Context, field graphql.CollectedField, obj *model.APIBuild) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Build",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ActualMakespan, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10579,6 +10622,11 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "predictedMakespan":
 			out.Values[i] = ec._Build_predictedMakespan(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "actualMakespan":
+			out.Values[i] = ec._Build_actualMakespan(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

@@ -238,7 +238,7 @@ func FindOneId(id string) (*Build, error) {
 
 func FindBuildsByVersions(versionIds []string) ([]Build, error) {
 	return Find(ByVersions(versionIds).
-		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey))
+		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey, ActualMakespanKey))
 }
 
 // Find returns all builds that satisfy the query.
