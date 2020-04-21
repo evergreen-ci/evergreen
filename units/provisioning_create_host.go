@@ -97,7 +97,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(env), "problem refreshing hostinit settings"))
+	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "problem refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -153,7 +153,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			}))
 
 			return
-		} else if !h.IsSubjectToHostThrottle() {
+		} else if !j.host.IsSubjectToHostCreationThrottle() {
 			// pass (spawn hosts and friends should always
 			// try and start)
 		} else if j.host.Status == evergreen.HostBuilding {
@@ -185,7 +185,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 			if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 				// pass
-			} else if numProv >= env.Settings().HostInit.HostThrottle {
+			} else if numProv >= j.env.Settings().HostInit.HostThrottle {
 				j.AddError(errors.Wrapf(j.host.Remove(), "problem removing host intent for %s", j.host.Id))
 				return
 			}
