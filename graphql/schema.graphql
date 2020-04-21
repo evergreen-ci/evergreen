@@ -363,21 +363,21 @@ type LogMessage {
 }
 
 type CommitQueue {
-  ProjectID: String
-  Queue: [CommitQueueItem!]
+  projectId: String
+  queue: [CommitQueueItem!]
 }
 
 type CommitQueueItem {
-  Issue: String
-  Version: String
-  EnqueueTime: Time
-  Patch: Patch
-  Modules: [Module!]
+  issue: String
+  version: String
+  enqueueTime: Time
+  patch: Patch
+  modules: [Module!]
 }
 
 type Module {
-  Module: String
-  Issue: String
+  module: String
+  issue: String
 }
 scalar Time
 scalar Duration
