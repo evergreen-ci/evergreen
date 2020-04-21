@@ -14,15 +14,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Resolver struct {
@@ -229,6 +231,25 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 	return &taskCount, nil
 }
 
+func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
+	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(*obj.ProjectId, *obj.Githash).Project(bson.M{model.VersionIdentifierKey: 1}))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
+	}
+	if baseVersion == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find base version ID for patch %s", *obj.Id))
+	}
+	return &baseVersion.Id, nil
+}
+
+func (r *patchResolver) Project(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
+	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
+	if err != nil {
+		return nil, err
+	}
+	return patchProject, nil
+}
+
 func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	return *obj.Id, nil
 }
@@ -241,17 +262,20 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, userID string) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+	usr := route.MustHaveUser(ctx)
+	userIdParam := usr.Username()
+	if userID != nil {
+		userIdParam = *userID
+	}
+	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	patchPointers := []*restModel.APIPatch{}
-	patches, err := r.sc.FindPatchesByUser(userID, time.Now(), 10)
 	if err != nil {
 		return patchPointers, InternalServerError.Send(ctx, err.Error())
 	}
-
-	for _, p := range patches {
-		patchPointers = append(patchPointers, &p)
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
 	}
-
 	return patchPointers, nil
 }
 
@@ -263,16 +287,8 @@ func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.API
 	if task == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(task)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return &apiTask, nil
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *task)
+	return apiTask, err
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
@@ -296,7 +312,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		}
 
 		// favorite projects are filtered out and appended to their own array
-		if util.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
+		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
 			favorites = append(favorites, &uiProj)
 			continue
 		}
@@ -406,7 +422,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if len(baseStatuses) > 0 {
 		tasksFilteredByBaseStatus := []*TaskResult{}
 		for _, taskResult := range taskResults {
-			if util.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+			if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
 				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
 			}
 		}
@@ -415,8 +431,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return taskResults, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) ([]*restModel.APITest, error) {
-
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
 	task, err := task.FindOneId(taskID)
 	if task == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -465,17 +480,17 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	tests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	testPointers := []*restModel.APITest{}
-	for _, t := range tests {
+	for _, t := range paginatedFilteredTests {
 		apiTest := restModel.APITest{}
-		err := apiTest.BuildFromService(&t)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		buildErr := apiTest.BuildFromService(&t)
+		if buildErr != nil {
+			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
 		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
@@ -487,47 +502,74 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		}
 		testPointers = append(testPointers, &apiTest)
 	}
-	return testPointers, nil
+
+	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
+	}
+	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, task.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
+	}
+
+	taskTestResult := TaskTestResult{
+		TestResults:       testPointers,
+		TotalTestCount:    totalTestCount,
+		FilteredTestCount: filteredTestCount,
+	}
+
+	return &taskTestResult, nil
 }
 
-func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) ([]*GroupedFiles, error) {
-	groupedFilesList := []*GroupedFiles{}
+func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error) {
+	emptyTaskFiles := TaskFiles{
+		FileCount:    0,
+		GroupedFiles: []*GroupedFiles{},
+	}
 	t, err := task.FindOneId(taskID)
 	if t == nil {
-		return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	if err != nil {
-		return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+		return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t.OldTaskId != "" {
 		t, err = task.FindOneId(t.OldTaskId)
 		if t == nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
 		}
 		if err != nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
 	}
+	groupedFilesList := []*GroupedFiles{}
+	fileCount := 0
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
-			return groupedFilesList, ResourceNotFound.Send(ctx, err.Error())
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
 		for _, execTask := range execTasks {
 			groupedFiles, err := GetGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
 			if err != nil {
-				return groupedFilesList, err
+				return &emptyTaskFiles, err
 			}
+			fileCount += len(groupedFiles.Files)
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
 		groupedFiles, err := GetGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
 		if err != nil {
-			return groupedFilesList, err
+			return &emptyTaskFiles, err
 		}
+		fileCount += len(groupedFiles.Files)
 		groupedFilesList = append(groupedFilesList, groupedFiles)
 	}
-	return groupedFilesList, nil
+	taskFiles := TaskFiles{
+		FileCount:    fileCount,
+		GroupedFiles: groupedFilesList,
+	}
+	return &taskFiles, nil
 }
 
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error) {
@@ -693,6 +735,34 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	return result, nil
 }
 
+func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
+	commitQueue, err := r.sc.FindCommitQueueByID(id)
+	if err != nil {
+		if errors.Cause(err) == err {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+	}
+	patchIds := []string{}
+	for _, item := range commitQueue.Queue {
+		issue := *item.Issue
+		patchIds = append(patchIds, issue)
+	}
+	patches, err := r.sc.FindPatchesByIds(patchIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", error.Error(err)))
+	}
+	for i := range commitQueue.Queue {
+		for j := range patches {
+			if *commitQueue.Queue[i].Issue == *patches[j].Id {
+				commitQueue.Queue[i].Patch = &patches[j]
+			}
+		}
+	}
+
+	return commitQueue, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
@@ -717,16 +787,8 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", taskID, err.Error()))
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", taskID, err.Error()))
-	}
-	return &apiTask, nil
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
@@ -799,17 +861,98 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
-	}
-	err = apiTask.BuildFromService(r.sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APITask from service %s: %s", t.Id, err.Error()))
-	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
+}
 
-	return &apiTask, nil
+func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	usr := route.MustHaveUser(ctx)
+	username := usr.Username()
+	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
+	}
+	t, err := r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	return apiTask, err
+}
+
+func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
+	usr := route.MustHaveUser(ctx)
+	username := usr.Username()
+
+	var id string
+	var idType string
+	for _, s := range subscription.Selectors {
+		if s.Type == nil {
+			return false, InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
+		}
+		switch *s.Type {
+		case "object":
+			idType = *s.Data
+			break
+		case "id":
+			id = *s.Data
+			break
+		case "project":
+			idType = "project"
+			id = *s.Data
+			break
+		}
+	}
+	if id == "" || idType == "" {
+		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	}
+	switch idType {
+	case "task":
+		t, err := r.sc.FindTaskById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, err.Error()))
+		}
+		if t == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
+		}
+		break
+	case "build":
+		b, err := r.sc.FindBuildById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, err.Error()))
+		}
+		if b == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
+		}
+		break
+	case "version":
+		v, err := r.sc.FindVersionById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, err.Error()))
+		}
+		if v == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
+		}
+		break
+	case "project":
+		p, err := r.sc.FindProjectById(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, err.Error()))
+		}
+		if p == nil {
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
+		}
+		break
+	default:
+		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	}
+	err := r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
+	}
+	return true, nil
 }
 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
@@ -829,6 +972,14 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
 	}
 	return &patch.PatchNumber, nil
+}
+
+func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
+	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+	}
+	return failedTestCount, nil
 }
 
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
@@ -868,6 +1019,21 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 		baseTaskMetadata.BaseTaskDuration = nil
 	}
 	return &baseTaskMetadata, nil
+}
+
+func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask) (*string, error) {
+	host, err := host.FindOne(host.ById(*at.HostId))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *at.Id))
+	}
+	if host == nil {
+		return nil, nil
+	}
+	if host.Distro.SpawnAllowed && utility.StringSliceContains(evergreen.ProviderUserSpawnable, host.Distro.Provider) {
+		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *at.Id)
+		return &link, nil
+	}
+	return nil, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

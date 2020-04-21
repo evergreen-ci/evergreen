@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -25,8 +27,8 @@ func TestCloudStatusJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameMock,
-				ProviderSettings: &map[string]interface{}{"region": "region-1"},
+				Provider:             evergreen.ProviderNameMock,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-1"))},
 			},
 		},
 		{
@@ -34,8 +36,8 @@ func TestCloudStatusJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameMock,
-				ProviderSettings: &map[string]interface{}{"region": "region-2"},
+				Provider:             evergreen.ProviderNameMock,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-2"))},
 			},
 		},
 		{

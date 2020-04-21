@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -69,7 +70,6 @@ type taskContext struct {
 	timedOut       bool
 	project        *model.Project
 	taskModel      *task.Task
-	version        *model.Version
 	sync.RWMutex
 }
 
@@ -232,7 +232,7 @@ LOOP:
 				tc = &taskContext{}
 			}
 
-			jitteredSleep = util.JitterInterval(agentSleepInterval)
+			jitteredSleep = utility.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
 			agentSleepInterval = agentSleepInterval * 2
@@ -272,15 +272,9 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 }
 
 func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
-	v, err := a.comm.GetVersion(ctx, tc.task)
+	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "error getting version")
-	}
-	project := &model.Project{}
-	// TODO: populated config from parser project
-	// later will want a separate communicator route
-	if _, err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project); err != nil {
-		return errors.Wrapf(err, "error reading project config")
+		return errors.Wrap(err, "error getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
@@ -296,7 +290,6 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error getting project vars")
 	}
 	exp.Update(expVars.Vars)
-	tc.version = v
 	tc.taskModel = taskModel
 	tc.project = project
 	tc.expansions = exp
@@ -355,7 +348,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
 	taskConfig.Redacted = tc.expVars.PrivateVars
-	taskConfig.S3Data = a.opts.SetupData.S3Task
+	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {
@@ -507,7 +500,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
-	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
@@ -516,12 +509,31 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
+		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
 			"message": "Error running post-task command.",
 		}))
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",
+			"total_time": time.Since(start).String(),
+		})
+	}
+
+	a.killProcs(postCtx, tc, false)
+
+	// If task sync was requested for the end of this task, run it now.
+	start = time.Now()
+	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
+		// TODO (kim): don't know what would be a sane value for this, so make
+		// it generous since the user explicitly asked for it.
+		syncCtx, cancel := context.WithTimeout(ctx, time.Hour)
+		defer cancel()
+		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message": "Error running task sync.",
+		}))
+		tc.logger.Task().InfoWhen(err == nil, message.Fields{
+			"message":    "Finished running task sync.",
 			"total_time": time.Since(start).String(),
 		})
 	}

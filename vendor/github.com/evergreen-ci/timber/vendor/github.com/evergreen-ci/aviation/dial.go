@@ -78,7 +78,7 @@ func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
 func Dial(ctx context.Context, opts DialOptions) (*grpc.ClientConn, error) {
 	dialOpts, err := opts.getOpts()
 	if err != nil {
-		errors.Wrap(err, "problem getting gRPC dial options")
+		return nil, errors.Wrap(err, "problem getting gRPC dial options")
 	}
 
 	conn, err := grpc.DialContext(ctx, opts.Address, dialOpts...)

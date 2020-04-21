@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -53,38 +52,32 @@ func (s *githubSuite) TearDownTest() {
 }
 
 func (s *githubSuite) TestGithubShouldRetry() {
-	attempt := rehttp.Attempt{
-		Request: &http.Request{
-			URL: &url.URL{
-				Scheme: "https",
-				Host:   "www.example.com",
-			},
-		},
-		Response: &http.Response{
-			StatusCode: 200,
-			Header: http.Header{
-				"X-Ratelimit-Limit":     []string{"10"},
-				"X-Ratelimit-Remaining": []string{"10"},
-			},
+	req := &http.Request{
+		URL: &url.URL{
+			Scheme: "https",
+			Host:   "www.example.com",
 		},
 	}
-	s.False(githubShouldRetry(attempt))
+	resp := &http.Response{
+		StatusCode: 200,
+		Header: http.Header{
+			"X-Ratelimit-Limit":     []string{"10"},
+			"X-Ratelimit-Remaining": []string{"10"},
+		},
+	}
 
-	attempt.Error = &net.DNSError{IsTimeout: true}
-	s.True(githubShouldRetry(attempt))
+	s.False(githubShouldRetry(0, req, resp, nil))
+	s.True(githubShouldRetry(0, req, resp, &net.DNSError{IsTimeout: true}))
+	s.False(githubShouldRetry(0, req, resp, net.InvalidAddrError("wrong address")))
 
-	attempt.Error = net.InvalidAddrError("wrong address")
-	s.False(githubShouldRetry(attempt))
+	resp.StatusCode = http.StatusBadGateway
+	s.True(githubShouldRetry(0, req, resp, nil))
 
-	attempt.Error = nil
-	attempt.Response.StatusCode = http.StatusBadGateway
-	s.True(githubShouldRetry(attempt))
-
-	attempt.Response.Header = http.Header{
+	resp.Header = http.Header{
 		"X-Ratelimit-Limit":     []string{"10"},
 		"X-Ratelimit-Remaining": []string{"0"},
 	}
-	s.False(githubShouldRetry(attempt))
+	s.False(githubShouldRetry(0, req, resp, nil))
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -44,6 +45,10 @@ type s3put struct {
 	// RemoteFile is the filepath to store the file to,
 	// within an s3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
+
+	// Region is the s3 region where the bucket is located. It defaults to
+	// "us-east-1".
+	Region string `mapstructure:"region" plugin:"region"`
 
 	// Bucket is the s3 bucket to use when storing the desired file
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
@@ -142,8 +147,12 @@ func (s3pc *s3put) validate() error {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
-	if !util.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
+	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Add(errors.Errorf("invalid visibility setting: %v", s3pc.Visibility))
+	}
+
+	if s3pc.Region == "" {
+		s3pc.Region = endpoints.UsEast1RegionID
 	}
 
 	// make sure the bucket is valid
@@ -197,7 +206,7 @@ func (s3pc *s3put) shouldRunForVariant(buildVariantName string) bool {
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.StringSliceContains(s3pc.BuildVariants, buildVariantName)
+	return utility.StringSliceContains(s3pc.BuildVariants, buildVariantName)
 }
 
 // Implementation of Execute.  Expands the parameters, and then puts the
@@ -215,9 +224,9 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	}
 
 	// create pail bucket
-	httpClient := util.GetHTTPClient()
+	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	if err := s3pc.createPailBucket(httpClient); err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}
@@ -422,7 +431,7 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	}
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,

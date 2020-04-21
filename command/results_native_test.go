@@ -13,7 +13,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +65,7 @@ func TestAttachResults(t *testing.T) {
 					reportFile, err := os.Open(resultsLoc)
 					require.NoError(t, err, "Couldn't open report file: '%v'", err)
 					results := &task.LocalTestResults{}
-					err = util.ReadJSONInto(reportFile, results)
+					err = utility.ReadJSON(reportFile, results)
 					require.NoError(t, err, "Couldn't read report file: '%v'", err)
 					testResults := *results
 					So(testTask.LocalTestResults, ShouldResemble, testResults.Results)
@@ -120,7 +120,7 @@ func TestAttachRawResults(t *testing.T) {
 							reportFile, err := os.Open(resultsLoc)
 							require.NoError(t, err, "Couldn't open report file: '%v'", err)
 							results := &task.LocalTestResults{}
-							err = util.ReadJSONInto(reportFile, results)
+							err = utility.ReadJSON(reportFile, results)
 							require.NoError(t, err, "Couldn't read report file: '%v'", err)
 
 							testResults := *results

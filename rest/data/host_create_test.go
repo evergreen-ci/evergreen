@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -91,15 +92,19 @@ func TestListHostsForTask(t *testing.T) {
 func TestCreateHostsFromTask(t *testing.T) {
 	// Setup tests
 	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
-	providerSettings := map[string]interface{}{
-		"ami":                "ami-1234",
-		"vpc_name":           "my_vpc",
-		"key_name":           "myKey",
-		"security_group_ids": []string{"sg-distro"},
-	}
+	settingsList := []*birch.Document{birch.NewDocument(
+		birch.EC.String("region", "us-east-1"),
+		birch.EC.String("ami", "ami-1234"),
+		birch.EC.String("vpc_name", "my_vpc"),
+		birch.EC.String("key_name", "myKey"),
+		birch.EC.String("instance_type", "t1.micro"),
+		birch.EC.SliceString("security_group_ids", []string{"sg-distro"}),
+		birch.EC.String("subnet_id", "subnet-123456"),
+	)}
+
 	d := distro.Distro{
-		Id:               "distro",
-		ProviderSettings: &providerSettings,
+		Id:                   "distro",
+		ProviderSettingsList: settingsList,
 	}
 	assert.NoError(t, d.Insert())
 	p := model.ProjectRef{
@@ -169,7 +174,6 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t1.Id, h.ProvisionOptions.TaskId)
-			assert.Nil(t, h.Distro.ProviderSettings)
 			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
@@ -245,7 +249,6 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t2.Id, h.ProvisionOptions.TaskId)
-			assert.Nil(t, h.Distro.ProviderSettings)
 			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
@@ -314,7 +317,6 @@ buildvariants:
 			assert.Equal(t, "me", h.StartedBy)
 			assert.True(t, h.UserHost)
 			assert.Equal(t, t3.Id, h.ProvisionOptions.TaskId)
-			assert.Nil(t, h.Distro.ProviderSettings)
 			assert.Len(t, h.Distro.ProviderSettingsList, 1)
 			ec2Settings := &cloud.EC2ProviderSettings{}
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))

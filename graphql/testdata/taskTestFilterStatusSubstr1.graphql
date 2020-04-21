@@ -7,6 +7,8 @@
     limit: 0
     testName: "do"
   ) {
-    status
+    testResults {
+      status
+    }
   }
 }

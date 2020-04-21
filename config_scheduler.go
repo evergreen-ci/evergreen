@@ -1,7 +1,7 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -80,7 +80,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.TaskFinder = FinderVersionLegacy
 	}
 
-	if !util.StringSliceContains(ValidTaskFinderVersions, c.TaskFinder) {
+	if !utility.StringSliceContains(ValidTaskFinderVersions, c.TaskFinder) {
 		return errors.Errorf("supported task finders are %s; %s is not supported",
 			ValidTaskFinderVersions, c.TaskFinder)
 	}
@@ -90,7 +90,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.HostAllocator = HostAllocatorUtilization
 	}
 
-	if !util.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
+	if !utility.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
 		return errors.Errorf("supported host allocators are %s; %s is not supported",
 			ValidHostAllocators, c.HostAllocator)
 	}
@@ -112,7 +112,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		c.Planner = PlannerVersionLegacy
 	}
 
-	if !util.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {
+	if !utility.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {
 		return errors.Errorf("supported planners are %s; %s is not supported",
 			ValidTaskPlannerVersions, c.Planner)
 	}

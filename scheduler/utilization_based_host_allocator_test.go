@@ -140,6 +140,13 @@ func TestUtilizationAllocatorSuite(t *testing.T) {
 
 func (s *UtilizationAllocatorSuite) SetupSuite() {
 	s.distroName = "testDistro"
+	s.projectName = "testProject"
+	s.freeHostFraction = 0.5
+}
+
+func (s *UtilizationAllocatorSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
 	s.distro = distro.Distro{
 		Id:       s.distroName,
 		Provider: evergreen.ProviderNameEc2Auto,
@@ -148,14 +155,6 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 			MaximumHosts: 50,
 		},
 	}
-	s.projectName = "testProject"
-	s.freeHostFraction = 0.5
-}
-
-func (s *UtilizationAllocatorSuite) SetupTest() {
-	s.ctx = context.Background()
-	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
-	s.distro.HostAllocatorSettings.MinimumHosts = 0
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
@@ -424,6 +423,31 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 		ExistingHosts:    []host.Host{h1, h2},
 		FreeHostFraction: s.freeHostFraction,
 		DistroQueueInfo:  distroQueueInfo,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.NoError(err)
+	s.Equal(8, hosts)
+	s.Equal(minimumHostsThreshold, len(hostAllocatorData.ExistingHosts)+hosts)
+}
+
+func (s *UtilizationAllocatorSuite) TestMinimumHostsThresholdForDisabled() {
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: "t1",
+	}
+	h2 := host.Host{
+		Id:          "h2",
+		RunningTask: "t2",
+	}
+
+	minimumHostsThreshold := 10
+	s.distro.HostAllocatorSettings.MinimumHosts = minimumHostsThreshold
+	s.distro.Disabled = true
+	hostAllocatorData := HostAllocatorData{
+		Distro:           s.distro,
+		ExistingHosts:    []host.Host{h1, h2},
+		FreeHostFraction: s.freeHostFraction,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)

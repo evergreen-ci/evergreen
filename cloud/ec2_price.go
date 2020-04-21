@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -193,31 +194,31 @@ func (cpf *cachingPriceFetcher) makeGetProductsInput(info odInfo) *pricing.GetPr
 
 // Parse a JSON document like this one
 // {
-// 	"version": "20181031070014",
-// 	"terms": {
-// 		"OnDemand": {
-// 			"XCH2WN4F4MYH63N8.JRTCKXETXF": {
-// 				"termAttributes": {
-// 				},
-// 				"sku": "XCH2WN4F4MYH63N8",
-// 				"priceDimensions": {
-// 					"XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7": {
-// 						"unit": "Hrs",
-// 						"rateCode": "XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7",
-// 						"pricePerUnit": {
-// 							"USD": "0.8400000000"
-// 						},
-// 						"endRange": "Inf",
-// 						"description": "$0.840 per Unused Reservation Linux c3.4xlarge Instance Hour",
-// 						"beginRange": "0",
-// 						"appliesTo": []
-// 					}
-// 				},
-// 				"offerTermCode": "JRTCKXETXF",
-// 				"effectiveDate": "2018-10-01T00:00:00Z"
-// 			}
-// 		}
-// 	},
+//	"version": "20181031070014",
+//	"terms": {
+//		"OnDemand": {
+//			"XCH2WN4F4MYH63N8.JRTCKXETXF": {
+//				"termAttributes": {
+//				},
+//				"sku": "XCH2WN4F4MYH63N8",
+//				"priceDimensions": {
+//					"XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7": {
+//						"unit": "Hrs",
+//						"rateCode": "XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7",
+//						"pricePerUnit": {
+//							"USD": "0.8400000000"
+//						},
+//						"endRange": "Inf",
+//						"description": "$0.840 per Unused Reservation Linux c3.4xlarge Instance Hour",
+//						"beginRange": "0",
+//						"appliesTo": []
+//					}
+//				},
+//				"offerTermCode": "JRTCKXETXF",
+//				"effectiveDate": "2018-10-01T00:00:00Z"
+//			}
+//		}
+//	},
 // [...]
 func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) (float64, error) {
 	if len(out.PriceList) != 1 {
@@ -485,8 +486,8 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
 	grip.Debugln("Loading EBS pricing from", endpoint)
 
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	var data []byte
 

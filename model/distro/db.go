@@ -15,7 +15,6 @@ var (
 	AliasesKey               = bsonutil.MustHaveTag(Distro{}, "Aliases")
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
-	ProviderSettingsKey      = bsonutil.MustHaveTag(Distro{}, "ProviderSettings")
 	ProviderSettingsListKey  = bsonutil.MustHaveTag(Distro{}, "ProviderSettingsList")
 	SetupAsSudoKey           = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")
@@ -148,6 +147,18 @@ func ByNeedsPlanning(containerPools []evergreen.ContainerPool) db.Q {
 		"$or": []bson.M{
 			bson.M{DisabledKey: bson.M{"$exists": false}},
 			bson.M{ProviderKey: evergreen.HostTypeStatic},
+		}})
+}
+
+// ByNeedsPlanning returns a query that selects distros that don't run containers
+func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) db.Q {
+	poolDistros := []string{}
+	for _, pool := range containerPools {
+		poolDistros = append(poolDistros, pool.Distro)
+	}
+	return db.Query(bson.M{
+		"_id": bson.M{
+			"$nin": poolDistros,
 		}})
 }
 

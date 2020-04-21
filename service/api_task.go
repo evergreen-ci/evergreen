@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,7 +44,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	})
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), taskStartInfo); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %s", t.Id))
 		return
 	}
@@ -80,7 +81,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idleTimeStartAt := h.LastTaskCompletedTime
-	if idleTimeStartAt.IsZero() || idleTimeStartAt == util.ZeroTime {
+	if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
 		idleTimeStartAt = h.StartTime
 	}
 
@@ -113,7 +114,7 @@ func checkHostHealth(h *host.Host) bool {
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData &&
-		util.StringSliceContains([]string{
+		utility.StringSliceContains([]string{
 			evergreen.HostStarting,
 			evergreen.HostProvisioning,
 		}, h.Status) {
@@ -157,7 +158,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -285,19 +286,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err = currentHost.DisablePoisonedHost(msg)
-
-			job := units.NewDecoHostNotifyJob(as.env, currentHost, err, msg)
-			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
-				message.Fields{
-					"host_id": currentHost.Id,
-					"task_id": t.Id,
-				}))
-
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
+			grip.Error(message.WrapError(units.HandlePoisonedHost(r.Context(), as.env, currentHost, msg), message.Fields{
+				"message": "unable to disable poisoned host",
+				"host":    currentHost.Id,
+			}))
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
@@ -347,7 +339,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
 	}
 
-	ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
 		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
@@ -362,7 +354,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		if err != nil {
 			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
 		}
-		ts := util.RoundPartOfMinute(0).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
 		}
@@ -447,16 +439,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":                  "database error while retrieving the db.tasks document for the next task to be assigned to this host",
-				"distro_id":                d.Id,
-				"host_id":                  currentHost.Id,
-				"next_task_id":             queueItem.Id,
-				"last_task_id":             currentHost.LastTask,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":      "database error while retrieving the db.tasks document for the next task to be assigned to this host",
+				"distro_id":    d.Id,
+				"host_id":      currentHost.Id,
+				"next_task_id": queueItem.Id,
+				"last_task_id": currentHost.LastTask,
 			}))
 			return nil, false, err
 		}
@@ -470,15 +457,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if !nextTask.IsDispatchable() {
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
-				"distro_id":                d.Id,
-				"task_id":                  nextTask.Id,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":   "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro_id": d.Id,
+				"task_id":   nextTask.Id,
+				"host_id":   currentHost.Id,
 			}))
 
 			continue
@@ -497,15 +479,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		if !projectRef.Enabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
-				"distro_id":                nextTask.DistroId,
-				"task_id":                  nextTask.Id,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+				"message":   "projectRef.Enabled is false, but there was an issue dequeuing the task",
+				"distro_id": nextTask.DistroId,
+				"task_id":   nextTask.Id,
+				"host_id":   currentHost.Id,
 			}))
 
 			continue
@@ -521,17 +498,69 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if err != nil {
 			return nil, false, errors.WithStack(err)
 		}
+
+		// It's possible for dispatchers on different app servers to race, assigning
+		// different tasks in a task group to more hosts than the task group's max hosts. We
+		// must therefore check that the number of hosts running this task group does not
+		// exceed the max after updating the running task on the host. If it does, we back
+		// out.
+		//
+		// If the host just ran a task in the group, then it's eligible for running
+		// more tasks in the group, regardless of how many hosts are running. We only check
+		// the number of hosts running this task group if the task group is new to the host.
+		grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+			"message":                 "task group lock debugging",
+			"task_distro_id":          nextTask.DistroId,
+			"task_id":                 nextTask.Id,
+			"host_id":                 currentHost.Id,
+			"host_last_group":         currentHost.LastGroup,
+			"host_last_build_variant": currentHost.LastBuildVariant,
+			"host_last_version":       currentHost.LastVersion,
+			"host_last_project":       currentHost.LastProject,
+			"task_group":              nextTask.TaskGroup,
+			"task_build_variant":      nextTask.BuildVariant,
+			"task_version":            nextTask.Version,
+			"task_project":            nextTask.Project,
+			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
+		})
+		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
+			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+			if err != nil {
+				return nil, false, errors.WithStack(err)
+			}
+			if numHosts > nextTask.TaskGroupMaxHosts {
+				grip.Debug(message.Fields{
+					"message":              "task group race, not dispatching",
+					"distro_id":            nextTask.DistroId,
+					"task_id":              nextTask.Id,
+					"host_id":              currentHost.Id,
+					"task_group":           nextTask.TaskGroup,
+					"task_build_variant":   nextTask.BuildVariant,
+					"task_version":         nextTask.Version,
+					"task_project":         nextTask.Project,
+					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+				})
+				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
+					"message":              "problem clearing task group task from host after dispatch race",
+					"distro_id":            nextTask.DistroId,
+					"task_id":              nextTask.Id,
+					"host_id":              currentHost.Id,
+					"task_group":           nextTask.TaskGroup,
+					"task_build_variant":   nextTask.BuildVariant,
+					"task_version":         nextTask.Version,
+					"task_project":         nextTask.Project,
+					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+				}))
+				ok = false // continue loop after dequeueing task
+			}
+		}
+
 		// Dequeue the task so we don't get it on another iteration of the loop.
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
-			"distro_id":                nextTask.DistroId,
-			"task_id":                  nextTask.Id,
-			"host_id":                  currentHost.Id,
-			"taskspec_group":           spec.Group,
-			"taskspec_build_variant":   spec.BuildVariant,
-			"taskspec_version":         spec.Version,
-			"taskspec_project":         spec.Project,
-			"taskspec_group_max_hosts": spec.GroupMaxHosts,
+			"message":   "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"distro_id": nextTask.DistroId,
+			"task_id":   nextTask.Id,
+			"host_id":   currentHost.Id,
 		}))
 
 		if !ok {
@@ -541,6 +570,14 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		return nextTask, false, nil
 	}
 	return nil, false, nil
+}
+
+func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
+	return t.TaskGroup != "" &&
+		(h.LastGroup != t.TaskGroup ||
+			h.LastBuildVariant != t.BuildVariant ||
+			h.LastProject != t.Project ||
+			h.LastVersion != t.Version)
 }
 
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
@@ -737,7 +774,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	isOldAgent := agentRevisionIsOld(h)
 	// if agent revision is old, we should indicate an exit if there are errors
 	details := &apimodels.GetNextTaskDetails{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), details); err != nil {
 		if isOldAgent {
 			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
 				grip.Error(message.WrapError(innerErr, message.Fields{

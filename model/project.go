@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -64,8 +65,12 @@ type Project struct {
 type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
-	Name      string `yaml:"name,omitempty" bson:"name"`
-	IsGroup   bool   `yaml:"-" bson:"-"`
+	Name string `yaml:"name,omitempty" bson:"name"`
+	// IsGroup indicates that it is a task group or a task within a task group.
+	IsGroup bool `yaml:"-" bson:"-"`
+	// GroupName is the task group name if this is a task in a task group. If
+	// it is the task group itself, it is not populated (Name is the task group
+	// name).
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
@@ -189,8 +194,8 @@ type BuildVariant struct {
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
 	BatchTime *int `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	// if BatchTimeCron is not empty, then overriding the project settings with cron syntax,
-	// with BatchTime and BatchTimeCron being mutually exclusive.
+	// If CronBatchTime is not empty, then override the project settings with cron syntax,
+	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
@@ -505,7 +510,7 @@ func (c *LoggerConfig) IsValid() error {
 
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(ValidLogSenders, o.Type) {
+	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
 		catcher.Errorf("%s is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
@@ -741,7 +746,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
 	for _, t := range projBV.Tasks { // create Ids for each task that can run on the variant and is requested by the patch.
-		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
 		} else if tg, ok := tgMap[t.Name]; ok {
 			for _, name := range tg.Tasks {
@@ -751,7 +756,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	}
 	for _, t := range projBV.DisplayTasks {
 		// create Ids for each task that can run on the variant and is requested by the patch.
-		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), proj, projBV, rev, v))
 		}
 	}
@@ -919,7 +924,7 @@ func (p *Project) GetVariantMappings() map[string]string {
 
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
-	return len(p.Variants) == 0 || util.StringSliceContains(p.Variants, variant)
+	return len(p.Variants) == 0 || utility.StringSliceContains(p.Variants, variant)
 }
 
 // GetDisplayName returns the  display name of the plugin command. If none is
@@ -979,25 +984,20 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Task.Version == "" {
 		return nil, errors.New("task has no version")
 	}
-	if tc.Version == nil {
-		return nil, errors.New("version is nil")
-	}
-
-	var p Project
-	if _, err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	if tc.Project == nil {
+		return nil, errors.New("project is nil")
 	}
 
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
 		return &TaskGroup{
-			SetupTask:          p.Pre,
-			TeardownTask:       p.Post,
-			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || p.PreErrorFailsTask,
+			SetupTask:          tc.Project.Pre,
+			TeardownTask:       tc.Project.Post,
+			Timeout:            tc.Project.Timeout,
+			SetupGroupFailTask: tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
 		}, nil
 	}
-	tg := p.FindTaskGroup(taskGroup)
+	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
 	}
@@ -1110,7 +1110,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
-func (bv *BuildVariant) GetDisplayTaskNamek(execTask string) string {
+func (bv *BuildVariant) GetDisplayTaskName(execTask string) string {
 	for _, dt := range bv.DisplayTasks {
 		for _, et := range dt.ExecutionTasks {
 			if et == execTask {
@@ -1235,33 +1235,45 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 	return true
 }
 
+// BuildProjectTVPairs resolves the build variants and tasks into which build
+// variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	//expand tasks and build variants and include dependencies
-	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		patchDoc.BuildVariants = []string{}
-		for _, buildVariant := range p.BuildVariants {
-			if buildVariant.Disabled {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
+
+	// TODO (EVG-7816): handle generate.tasks, which creates additional build
+	// variants and tasks after patch finalization.
+	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
+}
+
+// resolvePatchVTs resolves a list of build variants and tasks into a list of
+// all build variants that will run, a list of all tasks that will run, and a
+// mapping of the build variant to the tasks that will run on that build
+// variant. If includeDeps is set, it will also resolve task dependencies.
+func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+	if len(bvs) == 1 && bvs[0] == "all" {
+		bvs = []string{}
+		for _, bv := range p.BuildVariants {
+			if bv.Disabled {
 				continue
 			}
-			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+			bvs = append(bvs, bv.Name)
 		}
 	}
-
-	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		patchDoc.Tasks = []string{}
+	if len(tasks) == 1 && tasks[0] == "all" {
+		tasks = []string{}
 		for _, t := range p.Tasks {
 			if t.Patchable != nil && !(*t.Patchable) {
 				continue
 			}
-			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+			tasks = append(tasks, t.Name)
 		}
 	}
 
 	var pairs []TVPair
-	for _, v := range patchDoc.BuildVariants {
-		for _, t := range patchDoc.Tasks {
+	for _, v := range bvs {
+		for _, t := range tasks {
 			if p.FindTaskForVariant(t, v) != nil {
-				pairs = append(pairs, TVPair{v, t})
+				pairs = append(pairs, TVPair{Variant: v, TaskName: t})
 			}
 		}
 	}
@@ -1273,27 +1285,31 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 		} else {
 			pairs = append(pairs, aliasPairs...)
 			for _, pair := range displayTaskPairs {
-				if !util.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
-					patchDoc.BuildVariants = append(patchDoc.BuildVariants, pair.Variant)
+				if !utility.StringSliceContains(bvs, pair.Variant) {
+					bvs = append(bvs, pair.Variant)
 				}
-				if !util.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
-					patchDoc.Tasks = append(patchDoc.Tasks, pair.TaskName)
+				if !utility.StringSliceContains(tasks, pair.TaskName) {
+					tasks = append(tasks, pair.TaskName)
 				}
 			}
 		}
 	}
 
-	tasks := extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants, p)
+	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
 
-	// update variant and tasks to include dependencies
-	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
+	if includeDeps {
+		tvPairs.ExecTasks = IncludePatchDependencies(p, tvPairs.ExecTasks)
+	}
 
-	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+	vts = tvPairs.TVPairsToVariantTasks()
+	bvs, tasks = patch.ResolveVariantTasks(vts)
+	return bvs, tasks, vts
 }
 
-// TasksThatCallCommand returns a map of tasks that call a given command.
+// TasksThatCallCommand returns a map of tasks that call a given command to the
+// number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
-	// get all functions that call `generate.tasks`
+	// get all functions that call the command.
 	fs := map[string]int{}
 	for f, cmds := range p.Functions {
 		if cmds == nil {
@@ -1306,7 +1322,7 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 
-	// get all tasks that call `generate.tasks`
+	// get all tasks that call the command.
 	ts := map[string]int{}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {
@@ -1321,7 +1337,6 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 		}
 	}
 	return ts
-
 }
 
 // IsGenerateTask indicates that the task generates other tasks, which the
@@ -1331,22 +1346,22 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
+func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants []string) TaskVariantPairs {
 	displayTasks := []TVPair{}
 	alreadyAdded := map[string]bool{}
 	for _, bv := range p.BuildVariants {
-		if !util.StringSliceContains(variants, bv.Name) {
+		if !utility.StringSliceContains(variants, bv.Name) {
 			continue
 		}
 		for _, taskName := range tasks {
-			dt := bv.GetDisplayTaskNamek(taskName)
+			dt := bv.GetDisplayTaskName(taskName)
 			if dt != "" && !alreadyAdded[dt] {
 				alreadyAdded[dt] = true
 				tasks = append(tasks, dt)
 			}
 		}
 		for _, dt := range bv.DisplayTasks {
-			if util.StringSliceContains(tasks, dt.Name) {
+			if utility.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
 				for _, et := range dt.ExecutionTasks {
 					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
@@ -1409,6 +1424,38 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 	}
 
 	return pairs, displayTaskPairs, err
+}
+
+// CommandsRunOnTV returns the list of matching commands that match the given
+// command name on the given task in a build variant.
+func (p *Project) CommandsRunOnTV(tv TVPair, cmd string) ([]PluginCommandConf, error) {
+	task := p.FindProjectTask(tv.TaskName)
+	if task == nil {
+		return nil, errors.Errorf("definition of task '%s' not found", tv.TaskName)
+	}
+	return p.CommandsRunOnBV(task.Commands, cmd, tv.Variant), nil
+}
+
+// CommandsRunOnBV returns the list of matching commands from cmds that will run
+// the named command on the build variant.
+func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []PluginCommandConf {
+	var matchingCmds []PluginCommandConf
+	for _, c := range cmds {
+		if c.Function != "" {
+			f, ok := p.Functions[c.Function]
+			if !ok {
+				continue
+			}
+			for _, funcCmd := range f.List() {
+				if funcCmd.Command == cmd && funcCmd.RunOnVariant(bv) {
+					matchingCmds = append(matchingCmds, funcCmd)
+				}
+			}
+		} else if c.Command == cmd && c.RunOnVariant(bv) {
+			matchingCmds = append(matchingCmds, c)
+		}
+	}
+	return matchingCmds
 }
 
 // FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -51,7 +51,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		Tag:                   instanceName,
 		CreationTime:          creationTime,
 		Status:                evergreen.HostUninitialized,
-		TerminationTime:       util.ZeroTime,
+		TerminationTime:       utility.ZeroTime,
 		Provider:              provider,
 		StartedBy:             options.UserName,
 		UserHost:              options.UserHost,
@@ -65,6 +65,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		IsVirtualWorkstation:  options.IsVirtualWorkstation,
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
+		NoExpiration:          options.NoExpiration,
 	}
 
 	if options.ExpirationDuration != nil {

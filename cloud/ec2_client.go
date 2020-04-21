@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -162,7 +163,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
-		c.httpClient = util.GetHTTPClient()
+		c.httpClient = utility.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
 			Region:      aws.String(region),
@@ -180,7 +181,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 
 func (c *awsClientImpl) Close() {
 	if c.httpClient != nil {
-		util.PutHTTPClient(c.httpClient)
+		utility.PutHTTPClient(c.httpClient)
 		c.httpClient = nil
 	}
 }
@@ -196,6 +197,9 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+						return false, err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
@@ -603,8 +607,10 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					if strings.Contains(ec2err.Message(), "not a valid EBS device name") {
-						return false, err
+					for _, noRetryError := range []string{"InvalidVolume.NotFound", "InvalidParameterValue"} {
+						if strings.Contains(ec2err.Message(), noRetryError) {
+							return false, err
+						}
 					}
 				}
 				return true, err
@@ -745,7 +751,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	if strings.HasPrefix(id, "sir") {
 		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
 	}
-	if strings.HasPrefix(id, "evg-") {
+	if host.IsIntentHostId(id) {
 		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
 	}
 	resp, err := c.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
@@ -927,6 +933,9 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			output, err = c.EC2.CreateFleetWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
+						return false, err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err

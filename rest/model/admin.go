@@ -327,6 +327,7 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int     `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int     `json:"group_ttl"`
+	RequireRemotePriority                 bool    `json:"require_remote_priority"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -342,6 +343,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
+		a.RequireRemotePriority = v.RequireRemotePriority
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -360,6 +362,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
+		RequireRemotePriority:                 a.RequireRemotePriority,
 	}, nil
 }
 
@@ -895,19 +898,21 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIJiraConfig struct {
-	Host           *string `json:"host"`
-	Username       *string `json:"username"`
-	Password       *string `json:"password"`
-	DefaultProject *string `json:"default_project"`
+	Host            *string           `json:"host"`
+	DefaultProject  *string           `json:"default_project"`
+	BasicAuthConfig *APIJiraBasicAuth `json:"basic_auth"`
+	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
 }
 
 func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
 		a.Host = ToStringPtr(v.Host)
-		a.Username = ToStringPtr(v.Username)
-		a.Password = ToStringPtr(v.Password)
 		a.DefaultProject = ToStringPtr(v.DefaultProject)
+		a.BasicAuthConfig = &APIJiraBasicAuth{}
+		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
+		a.OAuth1Config = &APIJiraOAuth1{}
+		a.OAuth1Config.BuildFromService(v.OAuth1Config)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -915,12 +920,57 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
-	return evergreen.JiraConfig{
+	c := evergreen.JiraConfig{
 		Host:           FromStringPtr(a.Host),
-		Username:       FromStringPtr(a.Username),
-		Password:       FromStringPtr(a.Password),
 		DefaultProject: FromStringPtr(a.DefaultProject),
-	}, nil
+	}
+	if a.BasicAuthConfig != nil {
+		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
+	}
+	if a.OAuth1Config != nil {
+		c.OAuth1Config = a.OAuth1Config.ToService()
+	}
+	return c, nil
+}
+
+type APIJiraBasicAuth struct {
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+}
+
+func (a *APIJiraBasicAuth) BuildFromService(c evergreen.JiraBasicAuthConfig) {
+	a.Username = ToStringPtr(c.Username)
+	a.Password = ToStringPtr(c.Password)
+}
+
+func (a *APIJiraBasicAuth) ToService() evergreen.JiraBasicAuthConfig {
+	return evergreen.JiraBasicAuthConfig{
+		Username: FromStringPtr(a.Username),
+		Password: FromStringPtr(a.Password),
+	}
+}
+
+type APIJiraOAuth1 struct {
+	PrivateKey  *string `json:"private_key"`
+	AccessToken *string `json:"access_token"`
+	TokenSecret *string `json:"token_secret"`
+	ConsumerKey *string `json:"consumer_key"`
+}
+
+func (a *APIJiraOAuth1) BuildFromService(c evergreen.JiraOAuth1Config) {
+	a.PrivateKey = ToStringPtr(c.PrivateKey)
+	a.AccessToken = ToStringPtr(c.AccessToken)
+	a.TokenSecret = ToStringPtr(c.TokenSecret)
+	a.ConsumerKey = ToStringPtr(c.ConsumerKey)
+}
+
+func (a *APIJiraOAuth1) ToService() evergreen.JiraOAuth1Config {
+	return evergreen.JiraOAuth1Config{
+		PrivateKey:  FromStringPtr(a.PrivateKey),
+		AccessToken: FromStringPtr(a.AccessToken),
+		TokenSecret: FromStringPtr(a.TokenSecret),
+		ConsumerKey: FromStringPtr(a.ConsumerKey),
+	}
 }
 
 type APILDAPRoleMapping struct {
@@ -1299,18 +1349,44 @@ func (a *APISubnet) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys              []APIEC2Key `json:"ec2_keys"`
-	Subnets              []APISubnet `json:"subnets"`
-	S3Key                *string     `json:"s3_key"`
-	S3Secret             *string     `json:"s3_secret"`
-	Bucket               *string     `json:"bucket"`
-	S3BaseURL            *string     `json:"s3_base_url"`
-	S3TaskKey            *string     `json:"s3_task_key"`
-	S3TaskSecret         *string     `json:"s3_task_secret"`
-	S3TaskBucket         *string     `json:"s3_task_bucket"`
-	DefaultSecurityGroup *string     `json:"default_security_group"`
-	AllowedInstanceTypes []*string   `json:"allowed_instance_types"`
-	MaxVolumeSizePerUser *int        `json:"max_volume_size"`
+	EC2Keys              []APIEC2Key       `json:"ec2_keys"`
+	Subnets              []APISubnet       `json:"subnets"`
+	S3                   *APIS3Credentials `json:"s3_credentials"`
+	TaskSync             *APIS3Credentials `json:"task_sync"`
+	TaskSyncRead         *APIS3Credentials `json:"task_sync_read"`
+	S3BaseURL            *string           `json:"s3_base_url"`
+	DefaultSecurityGroup *string           `json:"default_security_group"`
+	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
+	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
+}
+
+type APIS3Credentials struct {
+	Key    *string `json:"key"`
+	Secret *string `json:"secret"`
+	Bucket *string `json:"bucket"`
+}
+
+func (a *APIS3Credentials) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.S3Credentials:
+		a.Key = ToStringPtr(v.Key)
+		a.Secret = ToStringPtr(v.Secret)
+		a.Bucket = ToStringPtr(v.Bucket)
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIS3Credentials) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.S3Credentials{
+		Key:    FromStringPtr(a.Key),
+		Secret: FromStringPtr(a.Secret),
+		Bucket: FromStringPtr(a.Bucket),
+	}, nil
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1332,12 +1408,24 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
 
-		a.S3Key = ToStringPtr(v.S3Key)
-		a.S3Secret = ToStringPtr(v.S3Secret)
-		a.Bucket = ToStringPtr(v.Bucket)
-		a.S3TaskKey = ToStringPtr(v.S3TaskKey)
-		a.S3TaskSecret = ToStringPtr(v.S3TaskSecret)
-		a.S3TaskBucket = ToStringPtr(v.S3TaskBucket)
+		s3Creds := &APIS3Credentials{}
+		if err := s3Creds.BuildFromService(v.S3); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.S3 = s3Creds
+
+		taskSync := &APIS3Credentials{}
+		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.TaskSync = taskSync
+
+		taskSyncRead := &APIS3Credentials{}
+		if err := taskSyncRead.BuildFromService(v.TaskSyncRead); err != nil {
+			return errors.Wrap(err, "could not convert API S3 credentials to service")
+		}
+		a.TaskSyncRead = taskSyncRead
+
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1356,16 +1444,54 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3Key:                FromStringPtr(a.S3Key),
-		S3Secret:             FromStringPtr(a.S3Secret),
-		Bucket:               FromStringPtr(a.Bucket),
 		S3BaseURL:            FromStringPtr(a.S3BaseURL),
-		S3TaskKey:            FromStringPtr(a.S3TaskKey),
-		S3TaskSecret:         FromStringPtr(a.S3TaskSecret),
-		S3TaskBucket:         FromStringPtr(a.S3TaskBucket),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
 	}
+
+	var i interface{}
+	var err error
+	var ok bool
+
+	i, err = a.S3.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var s3 evergreen.S3Credentials
+	if i != nil {
+		s3, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.S3 = s3
+
+	i, err = a.TaskSync.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var taskSync evergreen.S3Credentials
+	if i != nil {
+		taskSync, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.TaskSync = taskSync
+
+	i, err = a.TaskSyncRead.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+	}
+	var taskSyncRead evergreen.S3Credentials
+	if i != nil {
+		taskSyncRead, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+		}
+	}
+	config.TaskSyncRead = taskSyncRead
+
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
 	}
@@ -1601,26 +1727,28 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled       bool `json:"task_dispatch_disabled"`
-	HostInitDisabled           bool `json:"host_init_disabled"`
-	MonitorDisabled            bool `json:"monitor_disabled"`
-	AlertsDisabled             bool `json:"alerts_disabled"`
-	AgentStartDisabled         bool `json:"agent_start_disabled"`
-	RepotrackerDisabled        bool `json:"repotracker_disabled"`
-	SchedulerDisabled          bool `json:"scheduler_disabled"`
-	GithubPRTestingDisabled    bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled         bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled    bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
-	CacheStatsOldTasksDisabled bool `json:"cache_stats_old_tasks_disabled"`
-	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
-	PlannerDisabled            bool `json:"planner_disabled"`
-	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
-	DRBackupDisabled           bool `json:"dr_backup_disabled"`
-	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
+	TaskDispatchDisabled          bool `json:"task_dispatch_disabled"`
+	HostInitDisabled              bool `json:"host_init_disabled"`
+	MonitorDisabled               bool `json:"monitor_disabled"`
+	AlertsDisabled                bool `json:"alerts_disabled"`
+	AgentStartDisabled            bool `json:"agent_start_disabled"`
+	RepotrackerDisabled           bool `json:"repotracker_disabled"`
+	SchedulerDisabled             bool `json:"scheduler_disabled"`
+	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled       bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled           bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled         bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled    bool `json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled    bool `json:"cache_stats_old_tasks_disabled"`
+	TaskReliabilityDisabled       bool `json:"task_reliability_disabled"`
+	CommitQueueDisabled           bool `json:"commit_queue_disabled"`
+	PlannerDisabled               bool `json:"planner_disabled"`
+	HostAllocatorDisabled         bool `json:"host_allocator_disabled"`
+	DRBackupDisabled              bool `json:"dr_backup_disabled"`
+	BackgroundReauthDisabled      bool `json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled     bool `json:"background_cleanup_disabled"`
+	AmboyRemoteManagementDisabled bool `json:"amboy_remote_management_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1882,7 +2010,9 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.DRBackupDisabled = v.DRBackupDisabled
+		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
+		as.AmboyRemoteManagementDisabled = v.AmboyRemoteManagementDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1892,32 +2022,34 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:         as.TaskDispatchDisabled,
-		HostInitDisabled:             as.HostInitDisabled,
-		MonitorDisabled:              as.MonitorDisabled,
-		AlertsDisabled:               as.AlertsDisabled,
-		AgentStartDisabled:           as.AgentStartDisabled,
-		RepotrackerDisabled:          as.RepotrackerDisabled,
-		SchedulerDisabled:            as.SchedulerDisabled,
-		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
-		EventProcessingDisabled:      as.EventProcessingDisabled,
-		JIRANotificationsDisabled:    as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:   as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:   as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled: as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:          as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
-		CacheStatsOldTasksDisabled:   as.CacheStatsOldTasksDisabled,
-		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
-		CommitQueueDisabled:          as.CommitQueueDisabled,
-		PlannerDisabled:              as.PlannerDisabled,
-		HostAllocatorDisabled:        as.HostAllocatorDisabled,
-		DRBackupDisabled:             as.DRBackupDisabled,
-		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
+		TaskDispatchDisabled:          as.TaskDispatchDisabled,
+		HostInitDisabled:              as.HostInitDisabled,
+		MonitorDisabled:               as.MonitorDisabled,
+		AlertsDisabled:                as.AlertsDisabled,
+		AgentStartDisabled:            as.AgentStartDisabled,
+		RepotrackerDisabled:           as.RepotrackerDisabled,
+		SchedulerDisabled:             as.SchedulerDisabled,
+		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,
+		EventProcessingDisabled:       as.EventProcessingDisabled,
+		JIRANotificationsDisabled:     as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:    as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:    as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:  as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:       as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:       as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:           as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:         as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:    as.CacheStatsEndpointDisabled,
+		CacheStatsOldTasksDisabled:    as.CacheStatsOldTasksDisabled,
+		TaskReliabilityDisabled:       as.TaskReliabilityDisabled,
+		CommitQueueDisabled:           as.CommitQueueDisabled,
+		PlannerDisabled:               as.PlannerDisabled,
+		HostAllocatorDisabled:         as.HostAllocatorDisabled,
+		DRBackupDisabled:              as.DRBackupDisabled,
+		BackgroundCleanupDisabled:     as.BackgroundCleanupDisabled,
+		BackgroundReauthDisabled:      as.BackgroundReauthDisabled,
+		AmboyRemoteManagementDisabled: as.AmboyRemoteManagementDisabled,
 	}, nil
 }
 

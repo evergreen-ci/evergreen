@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -53,7 +53,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		})
 		return errors.New("repotracker is disabled")
 	}
-	if len(settings.GithubOrgs) > 0 && !util.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
+	if len(settings.GithubOrgs) > 0 && !utility.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
 		grip.Error(message.Fields{
 			"source":  "github hook",
 			"msg_id":  msgID,

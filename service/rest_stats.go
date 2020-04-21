@@ -101,7 +101,7 @@ func (restapi *restAPI) getHostUtilizationStats(w http.ResponseWriter, r *http.R
 	}
 
 	if isCSV {
-		util.WriteCSVResponse(w, http.StatusOK, restBuckets)
+		gimlet.WriteCSVResponse(w, http.StatusOK, restBuckets)
 		return
 	}
 	gimlet.WriteJSON(w, buckets)
@@ -162,7 +162,7 @@ func (restapi *restAPI) getAverageSchedulerStats(w http.ResponseWriter, r *http.
 	}
 
 	if isCSV {
-		util.WriteCSVResponse(w, http.StatusOK, restBuckets)
+		gimlet.WriteCSVResponse(w, http.StatusOK, restBuckets)
 		return
 	}
 	gimlet.WriteJSON(w, buckets)
@@ -194,7 +194,7 @@ func (restapi *restAPI) getOptimalAndActualMakespans(w http.ResponseWriter, r *h
 	}
 
 	if isCSV {
-		util.WriteCSVResponse(w, http.StatusOK, makespanData)
+		gimlet.WriteCSVResponse(w, http.StatusOK, makespanData)
 		return
 	}
 	gimlet.WriteJSON(w, makespanData)

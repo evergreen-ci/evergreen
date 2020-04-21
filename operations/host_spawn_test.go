@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -163,8 +164,7 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
-			oldRemoteFileExists, err := util.FileExists(remoteFile)
-			assert.NoError(t, err)
+			oldRemoteFileExists := utility.FileExists(remoteFile)
 			assert.False(t, oldRemoteFileExists)
 
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localFile))
@@ -202,8 +202,7 @@ func TestHostRsync(t *testing.T) {
 
 			require.NoError(t, cmd.Run(ctx))
 
-			oldLocalFileExists, err := util.FileExists(localFile)
-			assert.NoError(t, err)
+			oldLocalFileExists := utility.FileExists(localFile)
 			assert.False(t, oldLocalFileExists)
 
 			newLocalFile := filepath.Join(localDir, filepath.Base(remoteFile))

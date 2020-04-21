@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +64,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				Modules []string `json:"modules"`
 			}{}
 
-			err = util.ReadJSONInto(resp.Body, &data)
+			err = utility.ReadJSON(resp.Body, &data)
 			So(err, ShouldBeNil)
 			So(len(data.Modules), ShouldEqual, 1)
 			So(data.Project, ShouldEqual, testData.Build.Id)
@@ -91,7 +91,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`
 			}{}
-			err = util.ReadJSONInto(resp.Body, &data)
+			err = utility.ReadJSON(resp.Body, &data)
 			So(err, ShouldBeNil)
 			So(len(data.Modules), ShouldEqual, 2)
 			So(data.Project, ShouldEqual, testData.Build.Id)

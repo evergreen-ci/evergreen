@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -312,10 +312,10 @@ func TestSetTasksScheduledTime(t *testing.T) {
 		So(db.Clear(Collection), ShouldBeNil)
 
 		tasks := []Task{
-			{Id: "t0", ScheduledTime: util.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
-			{Id: "t1", ScheduledTime: util.ZeroTime},
-			{Id: "t2", ScheduledTime: util.ZeroTime},
-			{Id: "t3", ScheduledTime: util.ZeroTime},
+			{Id: "t0", ScheduledTime: utility.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
+			{Id: "t1", ScheduledTime: utility.ZeroTime},
+			{Id: "t2", ScheduledTime: utility.ZeroTime},
+			{Id: "t3", ScheduledTime: utility.ZeroTime},
 		}
 		for _, task := range tasks {
 			So(task.Insert(), ShouldBeNil)
@@ -325,7 +325,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 			So(SetTasksScheduledTime(tasks[2:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
-				So(tasks[1].ScheduledTime, ShouldResemble, util.ZeroTime)
+				So(tasks[1].ScheduledTime, ShouldResemble, utility.ZeroTime)
 				So(tasks[2].ScheduledTime, ShouldResemble, testTime)
 				So(tasks[3].ScheduledTime, ShouldResemble, testTime)
 
@@ -339,7 +339,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 					t1, err := FindOne(ById("t1"))
 					So(err, ShouldBeNil)
-					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, util.ZeroTime)
+					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 					t2, err := FindOne(ById("t2"))
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
@@ -854,8 +854,8 @@ func TestTaskSetResultsFields(t *testing.T) {
 	StartTime := 1569431862.508
 	EndTime := 1569431887.2
 
-	TestStartTime := util.FromPythonTime(StartTime).In(time.UTC)
-	TestEndTime := util.FromPythonTime(EndTime).In(time.UTC)
+	TestStartTime := utility.FromPythonTime(StartTime).In(time.UTC)
+	TestEndTime := utility.FromPythonTime(EndTime).In(time.UTC)
 
 	testresults := []TestResult{
 		{
@@ -1610,12 +1610,12 @@ func TestGetTimeSpent(t *testing.T) {
 		},
 		{
 			StartTime:  referenceTime,
-			FinishTime: util.ZeroTime,
+			FinishTime: utility.ZeroTime,
 			TimeTaken:  0,
 		},
 		{
-			StartTime:  util.ZeroTime,
-			FinishTime: util.ZeroTime,
+			StartTime:  utility.ZeroTime,
+			FinishTime: utility.ZeroTime,
 			TimeTaken:  0,
 		},
 	}

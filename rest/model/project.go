@@ -132,6 +132,70 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	return serviceParams, nil
 }
 
+type APITaskSyncOptions struct {
+	ConfigEnabled bool `json:"config_enabled"`
+	PatchEnabled  bool `json:"patch_enabled"`
+}
+
+func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case model.TaskSyncOptions:
+		opts.ConfigEnabled = v.ConfigEnabled
+		opts.PatchEnabled = v.PatchEnabled
+		return nil
+	default:
+		return errors.Errorf("invalid type '%T' for API S3 task sync options", v)
+	}
+}
+
+func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
+	return model.TaskSyncOptions{
+		ConfigEnabled: opts.ConfigEnabled,
+		PatchEnabled:  opts.PatchEnabled,
+	}, nil
+}
+
+type APIWorkstationConfig struct {
+	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	GitClone      bool                         `bson:"git_clone" json:"git_clone"`
+}
+
+type APIWorkstationSetupCommand struct {
+	Command   *string `bson:"command" json:"command"`
+	Directory *string `bson:"directory" json:"directory"`
+}
+
+func (c *APIWorkstationConfig) ToService() (interface{}, error) {
+	res := model.WorkstationConfig{}
+	res.GitClone = c.GitClone
+	for _, apiCmd := range c.SetupCommands {
+		cmd := model.WorkstationSetupCommand{}
+		cmd.Command = FromStringPtr(apiCmd.Command)
+		cmd.Directory = FromStringPtr(apiCmd.Directory)
+		res.SetupCommands = append(res.SetupCommands, cmd)
+	}
+	return res, nil
+}
+
+func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
+	var config model.WorkstationConfig
+	switch h.(type) {
+	case model.WorkstationConfig:
+		config = h.(model.WorkstationConfig)
+	case *model.WorkstationConfig:
+		config = *h.(*model.WorkstationConfig)
+	}
+
+	c.GitClone = config.GitClone
+	for _, cmd := range config.SetupCommands {
+		apiCmd := APIWorkstationSetupCommand{}
+		apiCmd.Command = ToStringPtr(cmd.Command)
+		apiCmd.Directory = ToStringPtr(cmd.Directory)
+		c.SetupCommands = append(c.SetupCommands, apiCmd)
+	}
+	return nil
+}
+
 type APIProjectRef struct {
 	Owner                *string              `json:"owner_name"`
 	Repo                 *string              `json:"repo_name"`
@@ -148,6 +212,7 @@ type APIProjectRef struct {
 	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
 	DefaultLogger        *string              `json:"default_logger"`
 	CommitQueue          APICommitQueueParams `json:"commit_queue"`
+	TaskSync             APITaskSyncOptions   `json:"task_sync"`
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
 	RepotrackerDisabled  bool                 `json:"repotracker_disabled"`
@@ -160,6 +225,7 @@ type APIProjectRef struct {
 	Triggers            []APITriggerDefinition `json:"triggers"`
 	Aliases             []APIProjectAlias      `json:"aliases"`
 	Variables           APIProjectVars         `json:"variables"`
+	WorkstationConfig   APIWorkstationConfig   `json:"workstation_config"`
 	Subscriptions       []APISubscription      `json:"subscriptions"`
 	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
 }
@@ -170,6 +236,15 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	commitQueue, err := p.CommitQueue.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "can't convert commit queue params")
+	}
+
+	i, err := p.TaskSync.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert API task sync options to service representation")
+	}
+	taskSync, ok := i.(model.TaskSyncOptions)
+	if !ok {
+		return nil, errors.Errorf("expected task sync options but was actually '%T'", i)
 	}
 
 	projectRef := model.ProjectRef{
@@ -188,6 +263,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DefaultLogger:        FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:     p.PRTestingEnabled,
 		CommitQueue:          commitQueue.(model.CommitQueueParams),
+		TaskSync:             taskSync,
 		Tracked:              p.Tracked,
 		PatchingDisabled:     p.PatchingDisabled,
 		RepotrackerDisabled:  p.RepotrackerDisabled,
@@ -247,6 +323,11 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.Wrap(err, "can't convert commit queue parameters")
 	}
 
+	var taskSync APITaskSyncOptions
+	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
+		return errors.Wrap(err, "cannot convert task sync options to API representation")
+	}
+
 	p.Owner = ToStringPtr(projectRef.Owner)
 	p.Repo = ToStringPtr(projectRef.Repo)
 	p.Branch = ToStringPtr(projectRef.Branch)
@@ -262,6 +343,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.CommitQueue = cq
+	p.TaskSync = taskSync
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled

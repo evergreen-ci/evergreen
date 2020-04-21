@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -376,14 +376,6 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		}
 
 		if unit.runningHosts < unit.maxHosts {
-			// TODO: For a multi-host task group, it's not possible to correctly
-			// dispatch tasks based on number of hosts running tasks in the task group
-			// without a transaction. When we use a driver that supports transactions,
-			// we likely want to rewrite this code to use transactions. Currently it's
-			// possible to dispatch a multi-host task group to more hosts than max
-			// hosts. Before transactions are available, it might be possible to do this
-			// better by performing this query again, just before returning from this
-			// function.
 			numHosts, err = host.NumHostsByTaskSpec(unit.group, unit.variant, unit.project, unit.version)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
@@ -467,7 +459,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 
-		if nextTaskFromDB.StartTime != util.ZeroTime {
+		if nextTaskFromDB.StartTime != utility.ZeroTime {
 			continue
 		}
 
@@ -503,5 +495,5 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
 // and did not succeed. But rely on EndTask to block later tasks.
 func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
-	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
+	return unit.maxHosts == 1 && !utility.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
 }

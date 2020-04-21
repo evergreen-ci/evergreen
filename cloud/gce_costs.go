@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -74,7 +74,7 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	tilEndBufferTime := endBufferTime.Sub(now)
 
 	// check that last task completed time is not zero
-	if util.IsZeroTime(h.LastTaskCompletedTime) {
+	if utility.IsZeroTime(h.LastTaskCompletedTime) {
 		return tilEndMinUptime
 	}
 
@@ -96,7 +96,7 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 // Source: https://cloud.google.com/compute/pricing
 func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// Sanity check.
-	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
 
@@ -193,8 +193,8 @@ func parseMachineType(m string) (*machineType, error) {
 // If this function errors, that means Google may have changed the way
 // it structures its pricing data in the JSON file.
 func getComputePrices() (*computePrices, error) {
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	// Read the data from the endpoint.
 	res, err := client.Get(pricesJSON)

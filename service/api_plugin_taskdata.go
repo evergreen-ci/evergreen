@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 )
 
@@ -42,7 +43,7 @@ func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 	rawData := map[string]interface{}{}
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &rawData); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &rawData); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}

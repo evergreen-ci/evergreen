@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -80,19 +80,19 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 		DebugLogging:    false,
 	}
 
-	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, util.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, utility.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenSecondJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, time.Minute, util.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, time.Minute, utility.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, util.RoundPartOfHour(5), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, utility.RoundPartOfHour(5), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFiveMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Minute, util.RoundPartOfHour(15), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Minute, utility.RoundPartOfHour(15), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, time.Hour, util.RoundPartOfDay(1), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, time.Hour, utility.RoundPartOfDay(1), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteHourJob()))
 	})
 
@@ -100,10 +100,10 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	//
 	// Local Queue Jobs
 	local := env.LocalQueue()
-	amboy.IntervalQueueOperation(ctx, local, 30*time.Second, util.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
+	amboy.IntervalQueueOperation(ctx, local, 30*time.Second, utility.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
 
 	// Enqueue jobs to ensure each app server has the correct SSH key files.
-	ts := util.RoundPartOfHour(30).Format(units.TSFormat)
+	ts := utility.RoundPartOfHour(30).Format(units.TSFormat)
 	grip.Error(message.WrapError(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)), message.Fields{
 		"message": "could not enqueue jobs to update app server's local SSH keys",
 	}))

@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -188,7 +189,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	body, err := ioutil.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, true, nil, nil, "doesntexist")
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, true, nil, nil, "doesntexist", nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
@@ -215,7 +216,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	body, err := ioutil.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, false, nil, nil, evergreen.CommitQueueAlias)
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, false, nil, nil, evergreen.CommitQueueAlias, nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
@@ -255,7 +256,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Equal(1, summaries[1].Additions)
 	s.Equal(3, summaries[1].Deletions)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "", nil, nil)
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
@@ -589,4 +590,20 @@ index ce0542e91..718dd8099 100644
 
 	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
 	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
+}
+
+func TestGetPatchSummariesByCountLong(t *testing.T) {
+	str := strings.Repeat("this is a long string", 100)
+	msg := fmt.Sprintf(`From foo@bar.com
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 10:41:34 -0500
+Subject: EVG-6799 remove one commit validation
+
+---\n%s\n`, str)
+	assert.True(t, len([]byte(str)) > 1000)
+	reader := ioutil.NopCloser(strings.NewReader(msg))
+	defer assert.NoError(t, reader.Close())
+	summaries, err := GetPatchSummariesByCommit(reader)
+	assert.NoError(t, err)
+	assert.NotNil(t, summaries)
 }

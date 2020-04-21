@@ -60,6 +60,11 @@ type PatchMetadata struct {
 	Author string `json:"author"`
 }
 
+type PatchProject struct {
+	Variants []*ProjectBuildVariant `json:"variants"`
+	Tasks    []string               `json:"tasks"`
+}
+
 type PatchReconfigure struct {
 	Description   string          `json:"description"`
 	VariantsTasks []*VariantTasks `json:"variantsTasks"`
@@ -69,6 +74,12 @@ type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
 	SubmittedAt string  `json:"submittedAt"`
+}
+
+type ProjectBuildVariant struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Tasks       []string `json:"tasks"`
 }
 
 type Projects struct {
@@ -83,6 +94,11 @@ type RecentTaskLogs struct {
 	AgentLogs  []*apimodels.LogMessage   `json:"agentLogs"`
 }
 
+type TaskFiles struct {
+	FileCount    int             `json:"fileCount"`
+	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
+}
+
 type TaskResult struct {
 	ID           string `json:"id"`
 	DisplayName  string `json:"displayName"`
@@ -90,6 +106,12 @@ type TaskResult struct {
 	Status       string `json:"status"`
 	BaseStatus   string `json:"baseStatus"`
 	BuildVariant string `json:"buildVariant"`
+}
+
+type TaskTestResult struct {
+	TotalTestCount    int              `json:"totalTestCount"`
+	FilteredTestCount int              `json:"filteredTestCount"`
+	TestResults       []*model.APITest `json:"testResults"`
 }
 
 type VariantTasks struct {

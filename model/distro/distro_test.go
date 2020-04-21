@@ -260,11 +260,11 @@ func TestGetImageID(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			providerSettings := make(map[string]interface{})
+			providerSettings := birch.NewDocument()
 			if !test.noKey {
-				providerSettings[test.key] = test.value
+				providerSettings.Set(birch.EC.String(test.key, test.value))
 			}
-			d := Distro{Provider: test.provider, ProviderSettings: &providerSettings}
+			d := Distro{Provider: test.provider, ProviderSettingsList: []*birch.Document{providerSettings}}
 			output1, err1 := d.GetImageID()
 
 			doc := birch.NewDocument(birch.EC.String(test.key, test.value))

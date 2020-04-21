@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -30,10 +30,10 @@ func (ps byPoolSize) Less(i, j int) bool {
 
 	if first.Provider != second.Provider {
 		// always prefer docker hosts
-		if util.StringSliceContains(evergreen.ProviderContainer, first.Provider) {
+		if utility.StringSliceContains(evergreen.ProviderContainer, first.Provider) {
 			return true
 		}
-		if util.StringSliceContains(evergreen.ProviderContainer, second.Provider) {
+		if utility.StringSliceContains(evergreen.ProviderContainer, second.Provider) {
 			return false
 		}
 

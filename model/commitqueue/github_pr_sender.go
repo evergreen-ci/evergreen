@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -39,14 +39,9 @@ type githubPRLogger struct {
 func NewGithubPRLogger(ctx context.Context, name string, token string, statusSender send.Sender) (send.Sender, error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
-	tc, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		defer cancel()
-		return nil, errors.Wrap(err, "can't get oauth session")
-	}
-
+	tc := utility.GetOAuth2HTTPClient(token)
 	base := send.MakeBase(name, func() {}, func() error {
-		util.PutHTTPClient(tc)
+		utility.PutHTTPClient(tc)
 		cancel()
 		return nil
 	})

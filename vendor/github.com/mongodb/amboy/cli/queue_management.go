@@ -6,19 +6,27 @@ import (
 
 	"github.com/cheynewallace/tabby"
 	"github.com/mongodb/amboy/management"
-	"github.com/mongodb/amboy/rest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
-func managementReports(opts *ServiceOptions) cli.Command {
+const (
+	jobNameFlagName      = "name"
+	jobTypeFlagName      = "type"
+	statusFilterFlagName = "filter"
+)
+
+func queueManagement(opts *ServiceOptions) cli.Command {
 	return cli.Command{
-		Name: "management_report",
+		Name: "management",
 		Subcommands: []cli.Command{
 			managementReportJobStatus(opts),
 			managementReportRecentTiming(opts),
 			managementReportJobIDs(opts),
 			managementReportRecentErrors(opts),
+			managementCompleteJob(opts),
+			managementCompleteJobByType(opts),
+			managementCompleteJobsByStatus(opts),
 		},
 	}
 }
@@ -28,21 +36,21 @@ func managementReportJobStatus(opts *ServiceOptions) cli.Command {
 		Name: "status",
 		Flags: opts.managementReportFlags(
 			cli.StringFlag{
-				Name:  "filter",
+				Name:  statusFilterFlagName,
 				Value: "in-progress",
-				Usage: "specify the process filter, can be 'in-progress', 'pending', or 'stale'",
+				Usage: "specify the process filter, can be 'all', 'completed', 'in-progress', 'pending', or 'stale'",
 			},
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			filter := management.CounterFilter(c.String("filter"))
+			filter := management.StatusFilter(c.String(statusFilterFlagName))
 			if err := filter.Validate(); err != nil {
 				return errors.WithStack(err)
 			}
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				report, err := client.JobStatus(ctx, filter)
 				if err != nil {
 					return errors.WithStack(err)
@@ -86,7 +94,7 @@ func managementReportRecentTiming(opts *ServiceOptions) cli.Command {
 				return errors.WithStack(err)
 			}
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				report, err := client.RecentTiming(ctx, dur, filter)
 				if err != nil {
 					return errors.WithStack(err)
@@ -112,21 +120,21 @@ func managementReportJobIDs(opts *ServiceOptions) cli.Command {
 			cli.StringFlag{
 				Name:  "filter",
 				Value: "in-progress",
-				Usage: "specify the process filter, can be 'in-progress', 'pending', or 'stale'",
+				Usage: "specify the process filter, can be 'all', 'in-progress', 'completed', 'pending', or 'stale'",
 			},
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			filter := management.CounterFilter(c.String("filter"))
+			filter := management.StatusFilter(c.String("filter"))
 			if err := filter.Validate(); err != nil {
 				return errors.WithStack(err)
 			}
 
 			jobTypes := c.StringSlice("type")
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 
 				t := tabby.New()
 				t.AddHeader("Job Type", "ID", "Group")
@@ -176,7 +184,7 @@ func managementReportRecentErrors(opts *ServiceOptions) cli.Command {
 
 			jobTypes := c.StringSlice("type")
 
-			return opts.withManagementClient(ctx, c, func(client *rest.ManagementClient) error {
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				reports := []*management.JobErrorsReport{}
 
 				if len(jobTypes) == 0 {
@@ -208,6 +216,90 @@ func managementReportRecentErrors(opts *ServiceOptions) cli.Command {
 				}
 				t.Print()
 
+				return nil
+			})
+		},
+	}
+}
+
+func managementCompleteJob(opts *ServiceOptions) cli.Command {
+	return cli.Command{
+		Name: "complete-job",
+		Flags: opts.managementReportFlags(
+			cli.StringFlag{
+				Name:  jobNameFlagName,
+				Usage: "name of job to complete",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			name := c.String(jobNameFlagName)
+
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
+				if err := client.CompleteJob(ctx, name); err != nil {
+					return errors.Wrap(err, "problem marking job complete")
+				}
+				return nil
+			})
+		},
+	}
+
+}
+
+func managementCompleteJobsByStatus(opts *ServiceOptions) cli.Command {
+	return cli.Command{
+		Name: "complete-jobs",
+		Flags: opts.managementReportFlags(
+			cli.StringFlag{
+				Name:  statusFilterFlagName,
+				Value: "in-progress",
+				Usage: "specify the process filter, can be 'all', 'completed', 'in-progress', 'pending', or 'stale'",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			filter := management.StatusFilter(c.String(statusFilterFlagName))
+
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
+				if err := client.CompleteJobs(ctx, filter); err != nil {
+					return errors.Wrap(err, "problem marking job complete")
+				}
+				return nil
+			})
+		},
+	}
+
+}
+
+func managementCompleteJobByType(opts *ServiceOptions) cli.Command {
+	return cli.Command{
+		Name: "complete-jobs-by-type",
+		Flags: opts.managementReportFlags(
+			cli.StringFlag{
+				Name:  jobTypeFlagName,
+				Usage: "job type to filter by",
+			},
+			cli.StringFlag{
+				Name:  statusFilterFlagName,
+				Value: "in-progress",
+				Usage: "specify the process filter, can be 'all', 'completed', 'in-progress', 'pending', or 'stale'",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			jobType := c.String(jobTypeFlagName)
+			filter := management.StatusFilter(c.String(statusFilterFlagName))
+
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
+				if err := client.CompleteJobsByType(ctx, filter, jobType); err != nil {
+					return errors.Wrap(err, "problem marking job complete")
+				}
 				return nil
 			})
 		},

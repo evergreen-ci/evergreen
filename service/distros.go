@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -117,7 +116,6 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newDistro := oldDistro
-	newDistro.ProviderSettings = nil                     // new distro only handles ProviderSettingsList
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
@@ -127,20 +125,6 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ensure docker password wasn't auto-filled from form
-	if newDistro.Provider != evergreen.ProviderNameDocker && newDistro.Provider != evergreen.ProviderNameDockerMock {
-		for i := range newDistro.ProviderSettingsList {
-			newDistro.ProviderSettingsList[i].Delete("docker_registry_pw")
-		}
-	}
-
-	// populate settings list with the modified settings (temporary)
-	if err = cloud.UpdateProviderSettings(&newDistro); err != nil {
-		message := fmt.Sprintf("error updating provider settings: %v", err)
-		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-		http.Error(w, message, http.StatusInternalServerError)
-		return
-	}
 	if newDistro.PlannerSettings.Version == "" {
 		newDistro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	}
@@ -278,14 +262,6 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-	if len(d.ProviderSettingsList) == 0 {
-		if err = cloud.CreateSettingsListFromLegacy(&d); err != nil {
-			message := fmt.Sprintf("error converting from legacy settings for distro '%v'", id)
-			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-			http.Error(w, message, http.StatusInternalServerError)
-			return
-		}
-	}
 
 	regions := []string{}
 	for _, key := range uis.Settings.Providers.AWS.EC2Keys {
@@ -335,12 +311,6 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 
 	if hasId {
 		d.Id = id
-	}
-	if err = cloud.UpdateProviderSettings(&d); err != nil {
-		message := fmt.Sprintf("error creating provider settings: %v", err)
-		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-		http.Error(w, message, http.StatusInternalServerError)
-		return
 	}
 	vErrs, err := validator.CheckDistro(r.Context(), &d, &uis.Settings, true)
 	if err != nil {

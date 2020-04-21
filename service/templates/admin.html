@@ -298,6 +298,25 @@ Admin Settings
 				      </md-radio-group>
 				    </td>
 				  </tr>
+				  <tr>
+				    <td>Background Data Cleanup</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.background_cleanup_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+				  <tr>
+				    <td>Amboy Remote Management</td>
+				    <td colspan="2">
+				      <md-radio-group data-ng-model="Settings.service_flags.amboy_remote_management_disabled" layout="row">
+					<md-radio-button data-ng-value="false"></md-radio-button>
+					<md-radio-button data-ng-value="true"></md-radio-button>
+				      </md-radio-group>
+				    </td>
+				  </tr>
+
 											<tr>
 												<td>&nbsp;</td>
 											</tr>
@@ -965,16 +984,50 @@ Admin Settings
 										<label>Default project</label>
 										<input type="text" ng-model="Settings.jira.default_project">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.jira.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.jira.password">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
+										<md-card>
+											<md-card-title>
+												<md-card-title-text>
+													<span>Basic Auth</span>
+												</md-card-title-text>
+											</md-card-title>
+											<md-card-content>
+												<md-input-container class="control" style="width:45%;">
+													<label>Username</label>
+													<input type="text" ng-model="Settings.jira.basic_auth.username">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%; margin-left:50px;">
+													<label>Password</label>
+													<input type="text" ng-model="Settings.jira.basic_auth.password">
+												</md-input-container>
+											</md-card-content>
+										</md-card>
+										<md-card>
+											<md-card-title>
+												<md-card-title-text>
+													<span>OAuth 1.0</span>
+												</md-card-title-text>
+											</md-card-title>
+											<md-card-content>
+												<md-input-container class="control" style="width:45%;">
+													<label>Access Token</label>
+													<input type="text" ng-model="Settings.jira.oauth1.access_token">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%; margin-left:50px;">
+													<label>Token Secret</label>
+													<input type="text" ng-model="Settings.jira.oauth1.token_secret">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;">
+													<label>Consumer Key</label>
+													<input type="text" ng-model="Settings.jira.oauth1.consumer_key">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%; margin-left:50px;">
+													<label>Private Key (PEM format)</label>
+													<textarea ng-model="Settings.jira.oauth1.private_key" ng-trim="false" rows="3" md-select-on-focus></textarea>
+												</md-input-container>
+											</md-card-content>
+										</md-card>
+									</md-card-content>
+								</md-card>
 
 							<md-card flex=50 id="bugsnag" style="height:280px">
 								<md-card-title>
@@ -1154,6 +1207,10 @@ Admin Settings
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
+
+						    <md-input-container class="control" style="width:45%; margin-left:50px;">
+						      <md-checkbox ng-model="Settings.amboy.remote_require_priority">Remote Require Priority</md-checkbox>
+						    </md-input-container>
 
 				          <md-input-container class="control" style="width:45%;">
 									<label>Group default workers</label>
@@ -1392,41 +1449,53 @@ Admin Settings
 
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_key">
+										<input type="text" ng-model="Settings.providers.aws.s3_credentials.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_secret">
+										<input type="text" ng-model="Settings.providers.aws.s3_credentials.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.bucket">
+										<input type="text" ng-model="Settings.providers.aws.s3_credentials.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_key">
+										<input type="text" ng-model="Settings.providers.aws.task_sync.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Task S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_secret">
+										<input type="text" ng-model="Settings.providers.aws.task_sync.secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Task S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.s3_task_bucket">
+										<input type="text" ng-model="Settings.providers.aws.task_sync.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Task Read-Only S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.task_sync_read.key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task Read-Only S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.task_sync_read.secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Task Read-Only S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>S3 Base URL</label>
 										<input type="text" ng-model="Settings.providers.aws.s3_base_url">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>

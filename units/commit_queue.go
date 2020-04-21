@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -91,7 +91,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	}
 
 	// patch is done
-	if !util.IsZeroTime(patchDoc.FinishTime) {
+	if !utility.IsZeroTime(patchDoc.FinishTime) {
 		j.dequeue(cq, nextItem)
 		status := evergreen.MergeTestSucceeded
 		if patchDoc.Status == evergreen.PatchFailed {
@@ -258,11 +258,10 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	errs := validator.CheckProjectSyntax(projectConfig)
+	errs = append(errs, validator.CheckProjectSettings(projectConfig, projectRef)...)
 	catcher := grip.NewBasicCatcher()
-	for _, validationError := range errs {
-		if validationError.Level == validator.Error {
-			catcher.Add(validationError)
-		}
+	for _, validationErr := range errs.AtLevel(validator.Error) {
+		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
@@ -354,7 +353,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	if err = addMergeTaskAndVariant(patchDoc, project); err != nil {
+	if err = addMergeTaskAndVariant(patchDoc, project, projectRef); err != nil {
 		j.logError(err, "can't set patch project config", nextItem)
 		j.dequeue(cq, nextItem)
 		return
@@ -581,7 +580,7 @@ func validateBranch(branch *github.Branch) error {
 	return nil
 }
 
-func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
+func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving Evergreen config")
@@ -601,6 +600,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		Tasks: []model.BuildVariantTaskUnit{
 			{
 				Name:             evergreen.MergeTaskGroup,
+				IsGroup:          true,
 				CommitQueueMerge: true,
 			},
 		},
@@ -656,11 +656,10 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
+	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
-	for _, validationError := range validationErrors {
-		if validationError.Level == validator.Error {
-			catcher.Add(validationError)
-		}
+	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
+		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
 		return errors.Errorf("project validation failed: %s", catcher.Resolve())

@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -35,7 +35,7 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 	case "updateStatus":
 		currentStatus := h.Status
 		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
+		if !utility.StringSliceContains(validUpdateToStatuses, newStatus) {
 			return "", gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf(InvalidStatusError, newStatus),

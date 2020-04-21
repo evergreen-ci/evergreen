@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -47,16 +47,17 @@ func getDistantEVGRevision() (string, error) {
 	}
 
 	buf := &bufCloser{&bytes.Buffer{}}
+	bufErr := &bufCloser{&bytes.Buffer{}}
 
-	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "HEAD~100", "--max-count=1"}).Directory(cwd).
-		SuppressStandardError(true).SetOutputWriter(buf)
+	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "--max-count=1", "HEAD~100"}).Directory(cwd).
+		SetOutputWriter(buf).SetErrorWriter(bufErr)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	err = cmd.Run(ctx)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, bufErr.String())
 	}
 
 	return strings.TrimSpace(buf.String()), nil
@@ -163,7 +164,7 @@ func TestGetRevisionsSince(t *testing.T) {
 
 				Convey("date for author commit should never be prior to 2008", func() {
 					for _, revision := range revisions {
-						So(util.IsZeroTime(revision.CreateTime), ShouldBeFalse)
+						So(utility.IsZeroTime(revision.CreateTime), ShouldBeFalse)
 						So(revision.CreateTime.After(minTime), ShouldBeTrue)
 					}
 				})

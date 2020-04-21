@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -51,29 +51,33 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project     string
-	Variants    []string
-	Tasks       []string
-	Description string
-	Alias       string
-	SkipConfirm bool
-	Finalize    bool
-	Browse      bool
-	Large       bool
-	ShowSummary bool
-	Uncommitted bool
-	Ref         string
+	Project           string
+	Alias             string
+	Variants          []string
+	Tasks             []string
+	SyncBuildVariants []string
+	SyncTasks         []string
+	Description       string
+	SkipConfirm       bool
+	Finalize          bool
+	Browse            bool
+	Large             bool
+	ShowSummary       bool
+	Uncommitted       bool
+	Ref               string
 }
 
 type patchSubmission struct {
-	projectId   string
-	patchData   string
-	description string
-	base        string
-	alias       string
-	variants    []string
-	tasks       []string
-	finalize    bool
+	projectId         string
+	patchData         string
+	description       string
+	base              string
+	alias             string
+	variants          []string
+	tasks             []string
+	syncBuildVariants []string
+	syncTasks         []string
+	finalize          bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
@@ -81,7 +85,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		return nil, err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
 			return nil, errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
@@ -96,14 +100,16 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 	}
 
 	patchSub := patchSubmission{
-		projectId:   p.Project,
-		patchData:   diffData.fullPatch,
-		description: p.Description,
-		base:        diffData.base,
-		variants:    p.Variants,
-		tasks:       p.Tasks,
-		finalize:    p.Finalize,
-		alias:       p.Alias,
+		projectId:         p.Project,
+		patchData:         diffData.fullPatch,
+		description:       p.Description,
+		base:              diffData.base,
+		variants:          p.Variants,
+		tasks:             p.Tasks,
+		alias:             p.Alias,
+		syncBuildVariants: p.SyncBuildVariants,
+		syncTasks:         p.SyncTasks,
+		finalize:          p.Finalize,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -427,7 +433,7 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 			return nil, errors.Wrap(err, "Error getting formatted patch")
 		}
 	} else {
-		if !util.StringSliceContains(extraArgs, "--binary") {
+		if !utility.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")
 		}
 		fullPatch, err = gitDiff(mergeBase, ref, commits, extraArgs...)

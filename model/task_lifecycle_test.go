@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -895,6 +895,10 @@ func TestMarkEnd(t *testing.T) {
 }
 
 func TestTryResetTask(t *testing.T) {
+	Convey("With a task that does not exist", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection), "Error clearing task collection")
+		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
+	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
@@ -959,7 +963,7 @@ func TestTryResetTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
+				So(testTask.FinishTime, ShouldResemble, utility.ZeroTime)
 				So(testTask.Activated, ShouldBeTrue)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
@@ -967,7 +971,7 @@ func TestTryResetTask(t *testing.T) {
 				So(oldTask, ShouldNotBeNil)
 				So(oldTask.Execution, ShouldEqual, 1)
 				So(oldTask.Details, ShouldResemble, *detail)
-				So(oldTask.FinishTime, ShouldNotResemble, util.ZeroTime)
+				So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 
 				// should also reset the build status to "started"
 				buildFromDb, err := build.FindOne(build.ById(b.Id))
@@ -1030,13 +1034,18 @@ func TestTryResetTask(t *testing.T) {
 
 			var err error
 
+			Convey("should reset if ui package tries to reset", func() {
+				So(TryResetTask(testTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+			})
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, *detail)
 				So(testTask.Status, ShouldEqual, detail.Status)
-				So(testTask.FinishTime, ShouldNotResemble, util.ZeroTime)
+				So(testTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
 				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
@@ -1044,7 +1053,7 @@ func TestTryResetTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(a.FinishTime, ShouldResemble, util.ZeroTime)
+				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
 			})
 		})
 	})
@@ -2295,7 +2304,7 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 		Id:            "t",
 		Status:        evergreen.TaskStarted,
 		Activated:     true,
-		ActivatedTime: util.ZeroTime,
+		ActivatedTime: utility.ZeroTime,
 		BuildId:       "b",
 	}
 	assert.NoError(runningTask.Insert())
@@ -2642,7 +2651,7 @@ tasks:
 		Project:             "proj",
 		Activated:           false,
 		RevisionOrderNumber: 2,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2727,7 +2736,7 @@ tasks:
 		Project:             "proj",
 		Activated:           false,
 		RevisionOrderNumber: 4,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2747,7 +2756,7 @@ tasks:
 		Project:             "proj",
 		Activated:           true,
 		RevisionOrderNumber: 5,
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}
@@ -2762,7 +2771,7 @@ tasks:
 		Activated:           true,
 		RevisionOrderNumber: 5,
 		GeneratedBy:         "g5",
-		DispatchTime:        util.ZeroTime,
+		DispatchTime:        utility.ZeroTime,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             v.Id,
 	}

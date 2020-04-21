@@ -4,12 +4,14 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -60,10 +62,14 @@ type s3CopyFile struct {
 // Amazon's S3. It contains an entry for the bucket name and another
 // describing the path name of the file within the bucket
 type s3Loc struct {
-	// the s3 bucket for the file
+	// Region is the s3 region where the bucket is located. It defaults to
+	// "us-east-1".
+	Region string `mapstructure:"region" plugin:"region"`
+
+	// Bucket is the s3 bucket for the file.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
-	// the file path within the bucket
+	// Path is the file path within the bucket.
 	Path string `mapstructure:"path" plugin:"expand"`
 }
 
@@ -93,6 +99,12 @@ func (c *s3copy) validateParams() error {
 		return errors.New("s3 AWS secret cannot be blank")
 	}
 	for _, s3CopyFile := range c.S3CopyFiles {
+		if s3CopyFile.Source.Region == "" {
+			s3CopyFile.Source.Region = endpoints.UsEast1RegionID
+		}
+		if s3CopyFile.Destination.Region == "" {
+			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
+		}
 		if s3CopyFile.Source.Bucket == "" {
 			return errors.New("s3 source bucket cannot be blank")
 		}
@@ -158,7 +170,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for _, s3CopyFile := range c.S3CopyFiles {
-		if len(s3CopyFile.BuildVariants) > 0 && !util.StringSliceContains(
+		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
 			continue
 		}
@@ -175,8 +187,10 @@ func (c *s3copy) s3Copy(ctx context.Context,
 		s3CopyReq := apimodels.S3CopyRequest{
 			AwsKey:              c.AwsKey,
 			AwsSecret:           c.AwsSecret,
+			S3SourceRegion:      s3CopyFile.Source.Region,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
 			S3SourcePath:        s3CopyFile.Source.Path,
+			S3DestinationRegion: s3CopyFile.Destination.Region,
 			S3DestinationBucket: s3CopyFile.Destination.Bucket,
 			S3DestinationPath:   s3CopyFile.Destination.Path,
 			S3DisplayName:       s3CopyFile.DisplayName,

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -34,17 +35,19 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description string   `json:"desc"`
-		Project     string   `json:"project"`
-		PatchBytes  []byte   `json:"patch_bytes"`
-		PatchString string   `json:"patch"`
-		Githash     string   `json:"githash"`
-		Variants    []string `json:"buildvariants_new"`
-		Tasks       []string `json:"tasks"`
-		Finalize    bool     `json:"finalize"`
-		Alias       string   `json:"alias"`
+		Description       string   `json:"desc"`
+		Project           string   `json:"project"`
+		PatchBytes        []byte   `json:"patch_bytes"`
+		PatchString       string   `json:"patch"`
+		Githash           string   `json:"githash"`
+		Variants          []string `json:"buildvariants_new"`
+		Tasks             []string `json:"tasks"`
+		SyncBuildVariants []string `json:"sync_build_variants"`
+		SyncTasks         []string `json:"sync_tasks"`
+		Finalize          bool     `json:"finalize"`
+		Alias             string   `json:"alias"`
 	}{}
-	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -82,7 +85,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias)
+	if !pref.TaskSync.PatchEnabled && len(data.SyncTasks) != 0 {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("task sync at the end of a patched task is disabled by project settings"))
+		return
+	}
+
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias, data.SyncBuildVariants, data.SyncTasks)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -161,7 +169,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Githash     string `json:"githash"`
 		Message     string `json:"message"`
 	}{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -299,7 +307,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			Action      string `json:"action"`
 			Description string `json:"description"`
 		}{}
-		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}

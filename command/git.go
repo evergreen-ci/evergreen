@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -239,13 +240,13 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 			// and: https://docs.travis-ci.com/user/pull-requests/#my-pull-request-isnt-being-built
 			ref = "merge"
 			commitToTest = conf.GithubPatchData.MergeCommitSHA
-			branchName = fmt.Sprintf("evg-merge-test-%s", util.RandomString())
+			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
 			commitToTest = conf.GithubPatchData.HeadHash
-			branchName = fmt.Sprintf("evg-pr-test-%s", util.RandomString())
+			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
 		gitCommands = append(gitCommands, []string{
 			fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
@@ -287,7 +288,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
-		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
+		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
 			fmt.Sprintf("git checkout '%s'", branchName),
@@ -659,7 +660,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
+			if !utility.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
 				logger.Execution().Infof(
 					"Skipping patch for module %v: the current build variant does not use it",
 					module.Name)

@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -109,8 +109,8 @@ func TestBucketResource(t *testing.T) {
 		Convey("when the resourceEnd is zero, there is no error", func() {
 			buckets := make([]Bucket, 10)
 			resourceStart := frameStart.Add(time.Duration(10))
-			resourceEnd := util.ZeroTime
-			So(util.IsZeroTime(resourceEnd), ShouldBeTrue)
+			resourceEnd := utility.ZeroTime
+			So(utility.IsZeroTime(resourceEnd), ShouldBeTrue)
 			resource := ResourceInfo{
 				Start: resourceStart,
 				End:   resourceEnd,
@@ -149,7 +149,7 @@ func TestCreateHostBuckets(t *testing.T) {
 		So(h2.Insert(), ShouldBeNil)
 
 		// 20 ->
-		h3 := host.Host{Id: "h3", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: util.ZeroTime, Provider: evergreen.ProviderNameEc2Auto, Status: evergreen.HostRunning}
+		h3 := host.Host{Id: "h3", CreationTime: now.Add(time.Duration(20) * time.Second), TerminationTime: utility.ZeroTime, Provider: evergreen.ProviderNameEc2Auto, Status: evergreen.HostRunning}
 		So(h3.Insert(), ShouldBeNil)
 
 		// 5 -> 7
@@ -430,7 +430,7 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 		require.NoError(t.Insert())
 	}
 	latencies, err := AverageTaskLatency(time.Minute)
-	assert.NoError(err)
+	require.NoError(err)
 	expected := []AverageTimeByDistroAndRequester{
 		AverageTimeByDistroAndRequester{
 			Distro:      "sampleDistro",
@@ -448,5 +448,7 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			AverageTime: 20 * time.Second,
 		},
 	}
-	assert.Equal(expected, latencies.Times)
+	for _, time := range expected {
+		assert.Contains(latencies.Times, time)
+	}
 }

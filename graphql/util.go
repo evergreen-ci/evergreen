@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -235,6 +236,89 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 }
 
+type VariantsAndTasksFromProject struct {
+	Variants map[string]model.BuildVariant
+	Tasks    []struct{ Name string }
+	Project  model.Project
+}
+
+func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+	project := &model.Project{}
+	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
+		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
+	}
+
+	// retrieve tasks and variant mappings' names
+	variantMappings := make(map[string]model.BuildVariant)
+	for _, variant := range project.BuildVariants {
+		tasksForVariant := []model.BuildVariantTaskUnit{}
+		for _, TaskFromVariant := range variant.Tasks {
+			if TaskFromVariant.IsGroup {
+				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
+			} else {
+				tasksForVariant = append(tasksForVariant, TaskFromVariant)
+			}
+		}
+		variant.Tasks = tasksForVariant
+		variantMappings[variant.Name] = variant
+	}
+
+	tasksList := []struct{ Name string }{}
+	for _, task := range project.Tasks {
+		// add a task name to the list if it's patchable
+		if !(task.Patchable != nil && !*task.Patchable) {
+			tasksList = append(tasksList, struct{ Name string }{task.Name})
+		}
+	}
+
+	variantsAndTasksFromProject := VariantsAndTasksFromProject{
+		Variants: variantMappings,
+		Tasks:    tasksList,
+		Project:  *project,
+	}
+	return &variantsAndTasksFromProject, nil
+}
+
+// GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
+func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
+	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(*apiPatch.PatchedConfig, *apiPatch.Project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
+	}
+
+	// convert variants to UI data structure
+	variants := []*ProjectBuildVariant{}
+	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		projBuildVariant := ProjectBuildVariant{
+			Name:        buildVariant.Name,
+			DisplayName: buildVariant.DisplayName,
+		}
+		projTasks := []string{}
+		for _, taskUnit := range buildVariant.Tasks {
+			projTasks = append(projTasks, taskUnit.Name)
+		}
+		sort.SliceStable(projTasks, func(i, j int) bool {
+			return projTasks[i] < projTasks[j]
+		})
+		projBuildVariant.Tasks = projTasks
+		variants = append(variants, &projBuildVariant)
+	}
+	sort.SliceStable(variants, func(i, j int) bool {
+		return variants[i].DisplayName < variants[j].DisplayName
+	})
+	// convert tasks to UI data structure
+	tasks := []string{}
+	for _, task := range patchProjectVariantsAndTasks.Tasks {
+		tasks = append(tasks, task.Name)
+	}
+
+	patchProject := PatchProject{
+		Variants: variants,
+		Tasks:    tasks,
+	}
+	return &patchProject, nil
+}
+
 type PatchVariantsTasksRequest struct {
 	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
 	Variants      []string             `json:"variants"`                 // old format
@@ -258,4 +342,18 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) {
 		}
 		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
 	}
+}
+
+// GetAPITaskFromTask builds an APITask from the given task
+func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) (*restModel.APITask, error) {
+	apiTask := restModel.APITask{}
+	err := apiTask.BuildFromService(&task)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
+	}
+	err = apiTask.BuildFromService(sc.GetURL())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
+	}
+	return &apiTask, nil
 }

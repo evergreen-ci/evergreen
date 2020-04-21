@@ -5,9 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -19,20 +20,17 @@ import (
 
 func TestS3PushParseParams(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *s3Push){
-		"SetsDefaults": func(t *testing.T, c *s3Push) {
-			require.NoError(t, c.ParseParams(map[string]interface{}{}))
-			assert.Equal(t, (defaultS3MaxRetries), c.MaxRetries)
-		},
 		"SetsValues": func(t *testing.T, c *s3Push) {
 			params := map[string]interface{}{
-				"exclude_filter": "exclude_pattern",
-				"build_variants": []string{"some_build_variant"},
-				"max_retries":    uint(5),
+				"exclude":     "exclude_pattern",
+				"max_retries": uint(5),
 			}
 			require.NoError(t, c.ParseParams(params))
-			assert.Equal(t, params["exclude_filter"], c.ExcludeFilter)
-			assert.Equal(t, params["build_variants"], c.BuildVariants)
+			assert.Equal(t, params["exclude"], c.ExcludeFilter)
 			assert.Equal(t, params["max_retries"], c.MaxRetries)
+		},
+		"SucceedsWithNoParameters": func(t *testing.T, c *s3Push) {
+			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -62,13 +60,15 @@ func TestS3PushExecute(t *testing.T) {
 			conf.WorkDir = tmpDir
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
+			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)
 			require.True(t, iter.Next(ctx))
 			item := iter.Item()
 			require.NotNil(t, item)
 			assert.Equal(t, filepath.Base(tmpFile.Name()), filepath.Base(item.Name()))
-			assert.Equal(t, conf.S3Path(), filepath.Dir(item.Name()))
+			// Fix Windows file path separators
+			localPath := strings.Replace(filepath.Dir(item.Name()), "\\", "/", -1)
+			assert.Equal(t, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName), localPath)
 			r, err := item.Get(ctx)
 			require.NoError(t, err)
 			defer func() {
@@ -98,29 +98,7 @@ func TestS3PushExecute(t *testing.T) {
 
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
-			require.NoError(t, err)
-			assert.False(t, iter.Next(ctx))
-		},
-		"NoopsIfIgnoringBuildVariant": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3-push")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
-			tmpFile, err := ioutil.TempFile(tmpDir, "s3-push-file")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-			}()
-			_, err = tmpFile.Write([]byte("foobar"))
-			assert.NoError(t, tmpFile.Close())
-			require.NoError(t, err)
-			conf.WorkDir = tmpDir
-
-			c.BuildVariants = []string{"other_build_variant"}
-			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.S3Path())
+			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
 			require.NoError(t, err)
 			assert.False(t, iter.Next(ctx))
 		},
@@ -142,17 +120,17 @@ func TestS3PushExecute(t *testing.T) {
 		},
 		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
 			c.bucket = nil
-			conf.S3Data.Key = ""
+			conf.TaskSync.Key = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
 			c.bucket = nil
-			conf.S3Data.Secret = ""
+			conf.TaskSync.Secret = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
 			c.bucket = nil
-			conf.S3Data.Bucket = ""
+			conf.TaskSync.Bucket = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 	} {
@@ -172,11 +150,14 @@ func TestS3PushExecute(t *testing.T) {
 				},
 				ProjectRef: &model.ProjectRef{
 					Identifier: "project_identifier",
+					TaskSync: model.TaskSyncOptions{
+						ConfigEnabled: true,
+					},
 				},
-				S3Data: apimodels.S3TaskSetupData{
-					Key:    "s3_key",
-					Secret: "s3_secret",
-					Bucket: "s3_bucket",
+				TaskSync: evergreen.S3Credentials{
+					Key:    "task_sync_key",
+					Secret: "task_sync_secret",
+					Bucket: "task_sync_bucket",
 				},
 			}
 			comm := client.NewMock("localhost")

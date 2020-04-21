@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/pkg/errors"
 )
@@ -380,7 +379,6 @@ type APIDistro struct {
 	Aliases               []string                 `json:"aliases"`
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
-	ProviderSettings      map[string]interface{}   `json:"settings"`
 	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
@@ -425,11 +423,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToStringPtr(d.Provider)
-	if len(d.ProviderSettingsList) == 0 && d.ProviderSettings != nil {
-		if err := cloud.CreateSettingsListFromLegacy(&d); err != nil {
-			return errors.Wrapf(err, "error creating settings list from legacy settings")
-		}
-	}
 	apiDistro.ProviderSettingsList = d.ProviderSettingsList
 	apiDistro.Arch = ToStringPtr(d.Arch)
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
@@ -602,6 +595,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
+
 	i, err = apiDistro.IcecreamSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIIcecreamSettings to distro.IcecreamSettings")

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -37,7 +37,7 @@ func NewCronRemoteFifteenSecondJob() amboy.Job {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenSecondJobName, util.RoundPartOfMinute(15).Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenSecondJobName, utility.RoundPartOfMinute(15).Format(TSFormat)))
 	return j
 }
 

@@ -177,22 +177,18 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 	}, nil
 }
 
-// GetVersion return a mock Version.
-func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
+func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
 	var err error
 	var data []byte
-
 	_, file, _, _ := runtime.Caller(0)
 
 	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
 		grip.Error(err)
 	}
-	config := string(data)
-	return &serviceModel.Version{
-		Id:     "mock_version_id",
-		Config: config,
-	}, nil
+	proj := &serviceModel.Project{}
+	_, err = serviceModel.LoadProjectInto(data, "", proj)
+	return proj, err
 }
 
 func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
@@ -406,6 +402,10 @@ func (*Mock) CreateVolume(context.Context, *host.Volume) (*model.APIVolume, erro
 
 func (*Mock) DeleteVolume(context.Context, string) error {
 	return errors.New("(*Mock) DeleteVolume is not implemented")
+}
+
+func (*Mock) ModifyVolume(context.Context, string, *model.VolumeModifyOptions) error {
+	return errors.New("(*Mock) ModifyVolume is not implemented")
 }
 
 func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
@@ -673,5 +673,17 @@ func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int
 }
 
 func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, bool) ([]string, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credentials, error) {
+	return &evergreen.S3Credentials{}, nil
+}
+
+func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
 	return nil, nil
 }

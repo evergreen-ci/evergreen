@@ -13,8 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -39,6 +38,7 @@ type Host struct {
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+	DisplayName        string `bson:"display_name" json:"display_name"`
 
 	// physical location of host
 	Project string `bson:"project" json:"project"`
@@ -218,11 +218,7 @@ type DockerOptions struct {
 }
 
 func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
@@ -243,15 +239,21 @@ func (opts *DockerOptions) Validate() error {
 	return nil
 }
 
-// ProvisionOptions is struct containing options about how a new host should be set up.
+// ProvisionOptions is struct containing options about how a new spawn host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
 	// be placed onto the host after startup.
 	LoadCLI bool `bson:"load_cli" json:"load_cli"`
 
-	// TaskId if non-empty will trigger the CLI tool to fetch source and artifacts for the given task.
+	// TaskId if non-empty will trigger the CLI tool to fetch source and
+	// artifacts for the given task.
 	// Ignored if LoadCLI is false.
 	TaskId string `bson:"task_id" json:"task_id"`
+
+	// TaskSync, if set along with TaskId, will fetch the task's sync data on
+	// the spawn host instead of fetching the source and artifacts. This is
+	// ignored if LoadCLI is false.
+	TaskSync bool `bson:"task_sync" json:"task_sync"`
 
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
@@ -300,6 +302,7 @@ type HostModifyOptions struct {
 	AttachVolume       string
 	DetachVolume       string
 	SubscriptionType   string
+	NewName            string
 }
 
 type SpawnHostUsage struct {
@@ -349,7 +352,7 @@ func (h *Host) IdleTime() time.Duration {
 	}
 
 	// if the host has been provisioned, the idle time is how long it has been provisioned
-	if !util.IsZeroTime(h.ProvisionTime) {
+	if !utility.IsZeroTime(h.ProvisionTime) {
 		return time.Since(h.ProvisionTime)
 	}
 
@@ -359,7 +362,11 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 func (h *Host) IsEphemeral() bool {
-	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+}
+
+func IsIntentHostId(id string) bool {
+	return strings.HasPrefix(id, "evg-")
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
@@ -477,7 +484,7 @@ func (h *Host) SetStopped(user string) error {
 		bson.M{"$set": bson.M{
 			StatusKey:    evergreen.HostStopped,
 			DNSKey:       "",
-			StartTimeKey: util.ZeroTime,
+			StartTimeKey: utility.ZeroTime,
 		}},
 	)
 	if err != nil {
@@ -488,7 +495,7 @@ func (h *Host) SetStopped(user string) error {
 
 	h.Status = evergreen.HostStopped
 	h.Host = ""
-	h.StartTime = util.ZeroTime
+	h.StartTime = utility.ZeroTime
 
 	return nil
 }
@@ -514,7 +521,7 @@ func (h *Host) SetQuarantined(user string, logs string) error {
 // CreateSecret generates a host secret and updates the host both locally
 // and in the database.
 func (h *Host) CreateSecret() error {
-	secret := util.RandomString()
+	secret := utility.RandomString()
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{SecretKey: secret}},
@@ -869,7 +876,7 @@ func (h *Host) MarkAsReprovisioning() error {
 	err := UpdateOne(bson.M{IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision},
 		bson.M{
 			"$set": bson.M{
-				AgentStartTimeKey:       util.ZeroTime,
+				AgentStartTimeKey:       utility.ZeroTime,
 				ProvisionedKey:          false,
 				StatusKey:               evergreen.HostProvisioning,
 				NeedsNewAgentKey:        needsAgent,
@@ -879,7 +886,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
 	}
 
-	h.AgentStartTime = util.ZeroTime
+	h.AgentStartTime = utility.ZeroTime
 	h.Provisioned = false
 	h.Status = evergreen.HostProvisioning
 	h.NeedsNewAgent = needsAgent
@@ -1072,7 +1079,7 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
-	if util.IsZeroTime(h.LastCommunicationTime) {
+	if utility.IsZeroTime(h.LastCommunicationTime) {
 		return true
 	}
 
@@ -1381,6 +1388,14 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+func (h *Host) SetDisplayName(newName string) error {
+	h.DisplayName = newName
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{DisplayNameKey: h.DisplayName}},
+	)
+}
+
 // AddSSHKeyName adds the SSH key name for the host if it doesn't already have
 // it.
 func (h *Host) AddSSHKeyName(name string) error {
@@ -1394,7 +1409,7 @@ func (h *Host) AddSSHKeyName(name string) error {
 		return errors.WithStack(err)
 	}
 
-	if !util.StringSliceContains(h.SSHKeyNames, name) {
+	if !utility.StringSliceContains(h.SSHKeyNames, name) {
 		h.SSHKeyNames = append(h.SSHKeyNames, name)
 	}
 
@@ -1429,7 +1444,7 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 			{
 				// Non-user data hosts that are either taking too long to
-				// provision or a user hata host has started tasks before
+				// provision or a user data host has started tasks before
 				// provisioning finished but not checked in recently
 				"$and": []bson.M{
 					// Host is not yet done provisioning
@@ -1839,7 +1854,7 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.UpHostStatus, h.Status) {
 			out = append(out, h)
 		}
 	}
@@ -2278,6 +2293,18 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 				ExpirationTimeKey: h.ExpirationTime,
 				InstanceTagsKey:   h.InstanceTags,
 			},
+		},
+	)
+}
+
+func (h *Host) SetHomeVolumeID(volumeID string) error {
+	h.HomeVolumeID = volumeID
+	return UpdateOne(bson.M{
+		IdKey:           h.Id,
+		HomeVolumeIDKey: "",
+	},
+		bson.M{
+			"$set": bson.M{HomeVolumeIDKey: volumeID},
 		},
 	)
 }

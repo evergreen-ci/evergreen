@@ -12,12 +12,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/rest/model"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -102,7 +104,7 @@ func hostCreate() cli.Command {
 				return errors.Wrap(err, "problem generating tags")
 			}
 
-			spawnRequest := &model.HostRequestOptions{
+			spawnRequest := &restModel.HostRequestOptions{
 				DistroID:     distro,
 				KeyName:      key,
 				UserData:     script,
@@ -120,7 +122,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", model.FromStringPtr(host.Id))
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", restModel.FromStringPtr(host.Id))
 			return nil
 		},
 	}
@@ -131,6 +133,7 @@ func hostModify() cli.Command {
 		addTagFlagName       = "tag"
 		deleteTagFlagName    = "delete-tag"
 		instanceTypeFlagName = "type"
+		displayNameFlagName  = "name"
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
@@ -151,6 +154,10 @@ func hostModify() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
 				Usage: "change instance type to `TYPE`",
+			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "set a user-friendly name for host",
 			},
 			cli.IntFlag{
 				Name:  extendFlagName,
@@ -174,6 +181,7 @@ func hostModify() cli.Command {
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
 			noExpire := c.Bool(noExpireFlagName)
+			displayName := c.String(displayNameFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
@@ -199,6 +207,7 @@ func hostModify() cli.Command {
 				InstanceType:       instanceType,
 				AddHours:           time.Duration(extension) * time.Hour,
 				SubscriptionType:   subscriptionType,
+				NewName:            displayName,
 			}
 
 			if noExpire {
@@ -217,6 +226,118 @@ func hostModify() cli.Command {
 			}
 
 			grip.Infof("Successfully queued changes to spawn host with ID '%s'.", hostID)
+			return nil
+		},
+	}
+}
+
+func hostConfigure() cli.Command {
+	const (
+		distroNameFlagName = "distro"
+		dryRunFlagName     = "dry-run"
+	)
+	cwd, _ := os.Getwd()
+
+	return cli.Command{
+		Name:  "configure",
+		Usage: "run setup commands for a virtual workstation",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(projectFlagName, "p"),
+				Usage: "name of an evergreen project to run commands from",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(dirFlagName, "d"),
+				Usage: "directory to run commands from (will override project configuration)",
+				Value: cwd,
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(quietFlagName, "q"),
+				Usage: "suppress output",
+			},
+			cli.BoolFlag{
+				Name:  distroNameFlagName,
+				Usage: "specify the name of the current distro for spawn hosts (optional)",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(dryRunFlagName, "n"),
+				Usage: "commands will print but not execute",
+			},
+		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireProjectFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			project := c.String(projectFlagName)
+			directory := c.String(dirFlagName)
+			distroName := c.String(distroNameFlagName)
+			quiet := c.Bool(quietFlagName)
+			dryRun := c.Bool(dryRunFlagName)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			projectRef, err := ac.GetProjectRef(project)
+			if err != nil {
+				return errors.Wrapf(err, "can't find project for queue id '%s'", project)
+			}
+
+			if distroName != "" {
+				var currentDistro *restModel.APIDistro
+				currentDistro, err = client.GetDistroByName(ctx, distroName)
+				if err != nil {
+					return errors.Wrap(err, "problem getting distro")
+				}
+
+				if currentDistro.IsVirtualWorkstation {
+					if directory == cwd {
+						grip.Warning("overriding directory flag for workstation setup")
+						directory = ""
+					}
+					var userHome string
+					userHome, err = homedir.Dir()
+					if err != nil {
+						return errors.Wrap(err, "problem finding home directory")
+					}
+
+					directory = filepath.Join(userHome, evergreen.HomeVolumeDir, directory)
+				}
+			}
+
+			cmds, err := projectRef.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{
+				Directory: directory,
+				Quiet:     quiet,
+				DryRun:    dryRun,
+				Output:    grip.GetSender(),
+			})
+			if err != nil {
+				return errors.Wrapf(err, "error getting commands")
+			}
+
+			grip.Info(message.Fields{
+				"operation": "setup project",
+				"directory": directory,
+				"commands":  len(cmds),
+				"project":   projectRef.Identifier,
+				"dry-run":   dryRun,
+			})
+
+			for idx, cmd := range cmds {
+				if err := cmd.Run(ctx); err != nil {
+					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Identifier)
+				}
+			}
 			return nil
 		},
 	}
@@ -411,6 +532,43 @@ func hostDetach() cli.Command {
 	}
 }
 
+func hostModifyVolume() cli.Command {
+	const (
+		idFlagName = "id"
+	)
+	return cli.Command{
+		Name:  "modify",
+		Usage: "modify a volume",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlagName,
+				Usage: "`ID` of volume to modify",
+			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "new user-friendly name for volume",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			volumeID := c.String(idFlagName)
+			name := c.String(displayNameFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			return client.ModifyVolume(ctx, volumeID, &restModel.VolumeModifyOptions{NewName: name})
+		},
+	}
+}
+
 func hostListVolume() cli.Command {
 	return cli.Command{
 		Name:   "list",
@@ -438,7 +596,7 @@ func hostListVolume() cli.Command {
 	}
 }
 
-func printVolumes(volumes []model.APIVolume, userID string) {
+func printVolumes(volumes []restModel.APIVolume, userID string) {
 	if len(volumes) == 0 {
 		grip.Infof("no volumes started by user '%s'", userID)
 		return
@@ -449,16 +607,19 @@ func printVolumes(volumes []model.APIVolume, userID string) {
 	}
 	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
-		grip.Infof("\n%-18s: %s\n", "ID", model.FromStringPtr(v.ID))
+		grip.Infof("\n%-18s: %s\n", "ID", restModel.FromStringPtr(v.ID))
+		if restModel.FromStringPtr(v.DisplayName) != "" {
+			grip.Infof("%-18s: %s\n", "Name", restModel.FromStringPtr(v.DisplayName))
+		}
 		grip.Infof("%-18s: %d\n", "Size", v.Size)
-		grip.Infof("%-18s: %s\n", "Type", model.FromStringPtr(v.Type))
-		grip.Infof("%-18s: %s\n", "Availability Zone", model.FromStringPtr(v.AvailabilityZone))
-		if model.FromStringPtr(v.HostID) != "" {
-			grip.Infof("%-18s: %s\n", "Device Name", model.FromStringPtr(v.DeviceName))
-			grip.Infof("%-18s: %s\n", "Attached to Host", model.FromStringPtr(v.HostID))
+		grip.Infof("%-18s: %s\n", "Type", restModel.FromStringPtr(v.Type))
+		grip.Infof("%-18s: %s\n", "Availability Zone", restModel.FromStringPtr(v.AvailabilityZone))
+		if restModel.FromStringPtr(v.HostID) != "" {
+			grip.Infof("%-18s: %s\n", "Device Name", restModel.FromStringPtr(v.DeviceName))
+			grip.Infof("%-18s: %s\n", "Attached to Host", restModel.FromStringPtr(v.HostID))
 		} else {
-			t, err := model.FromTimePtr(v.Expiration)
-			if err == nil && !util.IsZeroTime(t) {
+			t, err := restModel.FromTimePtr(v.Expiration)
+			if err == nil && !utility.IsZeroTime(t) {
 				grip.Infof("%-18s: %s\n", "Expiration", t.Format(time.RFC3339))
 			}
 		}
@@ -488,12 +649,17 @@ func hostCreateVolume() cli.Command {
 				Name:  joinFlagNames(zoneFlag, "z"),
 				Usage: "set volume `AVAILABILITY ZONE` (default us-east-1a)",
 			},
+			cli.StringFlag{
+				Name:  displayNameFlagName,
+				Usage: "set a user-friendly name for volume",
+			},
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeType := c.String(typeFlag)
 			volumeZone := c.String(zoneFlag)
+			volumeName := c.String(displayNameFlagName)
 			volumeSize := c.Int(sizeFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -510,6 +676,7 @@ func hostCreateVolume() cli.Command {
 				Type:             volumeType,
 				Size:             volumeSize,
 				AvailabilityZone: volumeZone,
+				DisplayName:      volumeName,
 			}
 
 			volume, err := client.CreateVolume(ctx, volumeRequest)
@@ -517,7 +684,7 @@ func hostCreateVolume() cli.Command {
 				return err
 			}
 
-			grip.Infof("Created volume '%s'.", model.FromStringPtr(volume.ID))
+			grip.Infof("Created volume '%s'.", restModel.FromStringPtr(volume.ID))
 
 			return nil
 		},
@@ -598,7 +765,7 @@ func hostList() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			params := model.APIHostParams{
+			params := restModel.APIHostParams{
 				UserSpawned: true,
 				Mine:        showMine,
 				Region:      region,
@@ -614,15 +781,16 @@ func hostList() cli.Command {
 	}
 }
 
-func printHosts(hosts []*model.APIHost) {
+func printHosts(hosts []*restModel.APIHost) {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
-			model.FromStringPtr(h.Id),
-			model.FromStringPtr(h.Distro.Id),
-			model.FromStringPtr(h.Status),
-			model.FromStringPtr(h.HostURL),
-			model.FromStringPtr(h.User),
-			model.FromStringPtr(h.AvailabilityZone))
+		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
+			restModel.FromStringPtr(h.Id),
+			restModel.FromStringPtr(h.DisplayName),
+			restModel.FromStringPtr(h.Distro.Id),
+			restModel.FromStringPtr(h.Status),
+			restModel.FromStringPtr(h.HostURL),
+			restModel.FromStringPtr(h.User),
+			restModel.FromStringPtr(h.AvailabilityZone))
 	}
 }
 
@@ -750,8 +918,8 @@ func hostRunCommand() cli.Command {
 					}
 				}
 
-				var hosts []*restmodel.APIHost
-				hosts, err = client.GetHosts(ctx, model.APIHostParams{
+				var hosts []*restModel.APIHost
+				hosts, err = client.GetHosts(ctx, restModel.APIHostParams{
 					CreatedBefore: createdBeforeTime,
 					CreatedAfter:  createdAfterTime,
 					Distro:        distro,
@@ -767,7 +935,7 @@ func hostRunCommand() cli.Command {
 					return nil
 				}
 				for _, host := range hosts {
-					hostIDs = append(hostIDs, model.FromStringPtr(host.Id))
+					hostIDs = append(hostIDs, restModel.FromStringPtr(host.Id))
 				}
 
 				if !skipConfirm {
@@ -1044,7 +1212,7 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	client := conf.setupRestCommunicator(ctx)
 	defer client.Close()
 
-	params := model.APIHostParams{
+	params := restModel.APIHostParams{
 		UserSpawned: true,
 		Mine:        true,
 		Status:      evergreen.HostRunning,
@@ -1055,11 +1223,11 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	}
 
 	for _, h := range hosts {
-		if model.FromStringPtr(h.Id) == hostID {
+		if restModel.FromStringPtr(h.Id) == hostID {
 			catcher := grip.NewBasicCatcher()
-			user = model.FromStringPtr(h.User)
+			user = restModel.FromStringPtr(h.User)
 			catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
-			hostname = model.FromStringPtr(h.HostURL)
+			hostname = restModel.FromStringPtr(h.HostURL)
 			catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
 			return user, hostname, catcher.Resolve()
 		}

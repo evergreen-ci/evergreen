@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -76,7 +76,7 @@ func (msc *MockStatsConnector) GetTaskStats(filter stats.StatsFilter) ([]model.A
 // SetTestStats sets the cached test stats by generating 'numStats' stats.
 func (msc *MockStatsConnector) SetTestStats(baseTestName string, numStats int) {
 	msc.CachedTestStats = make([]model.APITestStats, numStats)
-	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
+	day := utility.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTestStats[i] = model.APITestStats{
 			TestFile:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTestName, i)),
@@ -91,7 +91,7 @@ func (msc *MockStatsConnector) SetTestStats(baseTestName string, numStats int) {
 // SetTaskStats sets the cached task stats by generating 'numStats' stats.
 func (msc *MockStatsConnector) SetTaskStats(baseTaskName string, numStats int) {
 	msc.CachedTaskStats = make([]model.APITaskStats, numStats)
-	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
+	day := utility.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTaskStats[i] = model.APITaskStats{
 			TaskName:     model.ToStringPtr(fmt.Sprintf("%v%v", baseTaskName, i)),

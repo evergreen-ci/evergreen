@@ -11,9 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,7 +43,7 @@ func (h *userSettingsPostHandler) Factory() gimlet.RouteHandler {
 
 func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.settings = model.APIUserSettings{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, &h.settings))
+	return errors.WithStack(utility.ReadJSON(r.Body, &h.settings))
 }
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -162,10 +162,10 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 		return errors.New("no user found")
 	}
 	permissions := RequestedPermissions{}
-	if err := util.ReadJSONInto(r.Body, &permissions); err != nil {
+	if err := utility.ReadJSON(r.Body, &permissions); err != nil {
 		return errors.Wrap(err, "request body is not a valid Permissions request")
 	}
-	if !util.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, permissions.ResourceType) {
 		return errors.Errorf("'%s' is not a valid resource_type", permissions.ResourceType)
 	}
 	if len(permissions.Resources) == 0 {
@@ -217,7 +217,7 @@ type userPermissionsDeleteHandler struct {
 }
 
 func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
-	return &userPermissionsPostHandler{
+	return &userPermissionsDeleteHandler{
 		sc: sc,
 		rm: rm,
 	}
@@ -237,11 +237,11 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 		return errors.New("no user found")
 	}
 	request := deletePermissionsRequest{}
-	if err := util.ReadJSONInto(r.Body, &request); err != nil {
+	if err := utility.ReadJSON(r.Body, &request); err != nil {
 		return errors.Wrap(err, "request body is an invalid format")
 	}
 	h.resourceType = request.ResourceType
-	if !util.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
 		return errors.New("resource_type is not a valid value")
 	}
 
@@ -299,7 +299,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		scopesToRemove = append(scopesToRemove, scope.ID)
 	}
 	for _, role := range roles {
-		if util.StringSliceContains(scopesToRemove, role.Scope) {
+		if utility.StringSliceContains(scopesToRemove, role.Scope) {
 			rolesToRemove = append(rolesToRemove, role.ID)
 		}
 	}
@@ -363,4 +363,88 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.New("unable to get permissions for user"))
 	}
 	return gimlet.NewJSONResponse(permissions)
+}
+
+type userRolesPostHandler struct {
+	sc     data.Connector
+	rm     gimlet.RoleManager
+	userID string
+	roles  []string
+}
+
+func makeModifyUserRoles(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &userRolesPostHandler{
+		sc: sc,
+		rm: rm,
+	}
+}
+
+func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
+	return &userRolesPostHandler{
+		sc: h.sc,
+		rm: h.rm,
+	}
+}
+
+func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	var roles []string
+	if err := utility.ReadJSON(r.Body, &roles); err != nil {
+		return errors.Wrap(err, "request body is not an array of strings")
+	}
+	h.roles = roles
+
+	return nil
+}
+
+func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := h.sc.FindUserById(h.userID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
+	}
+	if u == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	dbUser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "unexpected structure for user",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+	dbRoles, err := h.rm.GetRoles(h.roles)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error finding roles",
+		}))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "no roles found",
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	foundRoles := []string{}
+	for _, found := range dbRoles {
+		foundRoles = append(foundRoles, found.ID)
+	}
+	nonexistent, _ := utility.StringSliceSymmetricDifference(h.roles, foundRoles)
+	if len(nonexistent) > 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("roles not found: %v", nonexistent),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	for _, toAdd := range h.roles {
+		if err = dbUser.AddRole(toAdd); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    "error adding role",
+				StatusCode: http.StatusInternalServerError,
+			})
+		}
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -66,7 +66,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBu
 	j.TerminateIfBusy = terminateIfBusy
 	j.Reason = reason
 	j.SetPriority(2)
-	ts := util.RoundPartOfHour(2).Format(TSFormat)
+	ts := utility.RoundPartOfHour(2).Format(TSFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
@@ -104,7 +104,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.HasContainers {
+	if j.host.HasContainers && !j.TerminateIfBusy {
 		var idle bool
 		idle, err = j.host.IsIdleParent()
 		if err != nil {
@@ -115,6 +115,15 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		if !idle {
+			grip.Info(message.Fields{
+				"job":      j.ID(),
+				"host_id":  j.HostID,
+				"job_type": j.Type().Name,
+				"status":   j.host.Status,
+				"provider": j.host.Distro.Provider,
+				"reason":   j.Reason,
+				"message":  "attempted to terminate a non-idle parent",
+			})
 			return
 		}
 	}
@@ -264,7 +273,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	settings := j.env.Settings()
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
+	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
 		idleTimeStartsAt = j.host.StartTime
 	}
 
@@ -295,7 +304,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "problem getting cloud host instance status",
 		}))
 
-		if !util.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
+		if !utility.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
 			if err := j.host.Terminate(evergreen.User, "unable to get cloud status for host"); err != nil {
 				j.AddError(err)
 			}

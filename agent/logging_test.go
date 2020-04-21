@@ -168,7 +168,6 @@ func TestStartLogging(t *testing.T) {
 	config, err := agt.makeTaskConfig(ctx, tc)
 	assert.NoError(err)
 	assert.NotNil(config.Project)
-	assert.NotNil(config.Version)
 
 	// check that expansions are correctly populated
 	logConfig := agt.prepLogger(tc, tc.project.Loggers, "")

@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -73,7 +73,7 @@ func (c *attachResults) Execute(ctx context.Context,
 	defer reportFile.Close()
 
 	results := &task.LocalTestResults{}
-	if err = util.ReadJSONInto(reportFile, results); err != nil {
+	if err = utility.ReadJSON(reportFile, results); err != nil {
 		return errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
 	}
 

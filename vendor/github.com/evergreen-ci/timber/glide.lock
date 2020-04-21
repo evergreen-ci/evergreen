@@ -4,7 +4,7 @@ imports:
 - name: github.com/mongodb/grip
   version: 7b77abce30e2f707b37c8321f192e5a83c597e7f
 - name: github.com/evergreen-ci/aviation
-  version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
+  version: 0d9addebe820f37b79433a37d0d53f06bfbb7f01
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 - name: github.com/evergreen-ci/utility
@@ -23,7 +23,7 @@ imports:
 
 # grpc and dependencies
 - name: google.golang.org/grpc
-  version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb
+  version: ac54eec90516cee50fc6b9b113b34628a85f976f
 - name: golang.org/x/net
   version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
 - name: golang.org/x/sys

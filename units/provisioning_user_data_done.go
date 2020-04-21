@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -51,14 +52,12 @@ func makeUserDataDoneJob() *userDataDoneJob {
 
 // NewUserDataDoneJob creates a job that checks if the host is done running its
 // user data if bootstrapped with user data.
-func NewUserDataDoneJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) amboy.Job {
 	j := makeUserDataDoneJob()
-	j.host = &h
-	j.HostID = h.Id
+	j.HostID = hostID
 	j.env = env
 	j.SetPriority(1)
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", userDataDoneJobName, j.HostID)})
-	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, ts.Format(TSFormat)))
 
 	return j
 }
@@ -112,6 +111,13 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 			j.AddError(err)
+			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User,
+				"decommissioning host after failing to mount volume"))
+
+			terminateJob := NewHostTerminationJob(j.env, *j.host, true, "failed to mount volume")
+			terminateJob.SetPriority(100)
+			j.AddError(j.env.RemoteQueue().Put(ctx, terminateJob))
+
 			return
 		}
 		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
@@ -124,6 +130,10 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		}
 	}
 
+	j.finishJob()
+}
+
+func (j *userDataDoneJob) finishJob() {
 	if err := j.host.SetUserDataHostProvisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",

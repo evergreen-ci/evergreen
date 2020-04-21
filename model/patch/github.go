@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -129,7 +129,7 @@ func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, erro
 	if pr.GetTitle() == "" {
 		return nil, errors.New("PR title must not be empty")
 	}
-	if util.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
+	if utility.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
 		return nil, errors.New("pushed at time not set")
 	}
 

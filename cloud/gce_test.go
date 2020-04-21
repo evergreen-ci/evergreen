@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -38,13 +40,13 @@ func (s *GCESuite) SetupTest() {
 	s.distro = distro.Distro{
 		Id:       "host",
 		Provider: "gce",
-		ProviderSettings: &map[string]interface{}{
-			"instance_type": "machine",
-			"image_name":    "image",
-			"disk_type":     "pd-standard",
-			"disk_size_gb":  10,
-			"network_tags":  []string{"abc", "def", "ghi"},
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("instance_type", "machine"),
+			birch.EC.String("image_name", "image"),
+			birch.EC.String("disk_type", "pd-standard"),
+			birch.EC.Int("disk_size_gb", 10),
+			birch.EC.SliceString("network_tags", []string{"abc", "def", "ghi"}),
+		)},
 	}
 	s.hostOpts = host.CreateOptions{}
 }
@@ -319,8 +321,8 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 
 	dSettingsInvalid := distro.Distro{
-		Provider:         "gce",
-		ProviderSettings: &map[string]interface{}{"instance_type": ""},
+		Provider:             "gce",
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("instance_type", ""))},
 	}
 	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(h)
@@ -350,12 +352,12 @@ func (s *GCESuite) TestSpawnAPICall() {
 	dist := distro.Distro{
 		Id:       "id",
 		Provider: "gce",
-		ProviderSettings: &map[string]interface{}{
-			"instance_type": "machine",
-			"image_name":    "image",
-			"disk_type":     "pd-standard",
-			"disk_size_gb":  10,
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("instance_type", "machine"),
+			birch.EC.String("image_name", "image"),
+			birch.EC.String("disk_type", "pd-standard"),
+			birch.EC.Int("disk_size_gb", 10),
+		)},
 	}
 	opts := host.CreateOptions{}
 

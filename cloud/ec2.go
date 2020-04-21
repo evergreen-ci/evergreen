@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -72,14 +72,24 @@ type EC2ProviderSettings struct {
 	// BidPrice is the price we are willing to pay for a spot instance.
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 
-	// UserData are commands to run after the instance starts.
-	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
+	// UserData specifies configuration that runs after the instance starts.
+	UserData string `mapstructure:"user_data" json:"user_data,omitempty" bson:"user_data,omitempty"`
+
+	// MergeUserDataParts specifies whether multiple user data parts should be
+	// merged into a single user data part.
+	// EVG-7760: This is primarily a workaround for a problem with Windows not
+	// allowing multiple scripts of the same type as part of a multipart user
+	// data upload.
+	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" {
-		return errors.New("AMI, instance type, and key name must not be empty")
+	if s.AMI == "" {
+		return errors.New("AMI must not be empty")
+	}
+	if s.InstanceType == "" {
+		return errors.New("instance type must not be empty")
 	}
 	if len(s.SecurityGroupIDs) == 0 {
 		return errors.New("Security groups must not be empty")
@@ -92,6 +102,11 @@ func (s *EC2ProviderSettings) Validate() error {
 	}
 	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
+	}
+	if s.UserData != "" {
+		if _, err := parseUserData(s.UserData); err != nil {
+			return errors.Wrap(err, "user data is malformed")
+		}
 	}
 	return nil
 }
@@ -110,20 +125,6 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err := bson.Unmarshal(bytes, s); err != nil {
 			return errors.Wrap(err, "error unmarshalling bson into provider settings")
 		}
-	} else if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 { // legacy case, to be removed
-		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
-		}
-		grip.Debug(message.Fields{
-			"message": "mapstructure comparison",
-			"input":   *d.ProviderSettings,
-			"output":  *s,
-		})
-
-		if region != evergreen.DefaultEC2Region && region != "" {
-			return errors.Errorf("only default region should be saved in provider settings")
-		}
-		s.Region = s.getRegion()
 	}
 	return nil
 }
@@ -178,9 +179,8 @@ const (
 )
 
 const (
-	checkSuccessDelay      = 5 * time.Second
 	checkSuccessRetries    = 10
-	checkSuccessInitPeriod = time.Second
+	checkSuccessInitPeriod = 2 * time.Second
 )
 
 // EC2ManagerOptions are used to construct a new ec2Manager.
@@ -272,9 +272,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -384,9 +384,9 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		ec2Settings.UserData = expanded
 	}
 
-	userData, err := bootstrapUserData(ctx, m.env, h, ec2Settings.UserData)
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -636,22 +636,24 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 
 // setNoExpiration changes whether a host should expire
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
-	resources, err := m.getResources(ctx, h)
-	if err != nil {
-		return errors.Wrap(err, "error getting host resources")
-	}
 	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
-	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
-		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String("expire-on"),
-				Value: aws.String(expireOnValue),
+	if !host.IsIntentHostId(h.Id) {
+		resources, err := m.getResources(ctx, h)
+		if err != nil {
+			return errors.Wrap(err, "error getting host resources")
+		}
+		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: aws.StringSlice(resources),
+			Tags: []*ec2.Tag{
+				{
+					Key:   aws.String("expire-on"),
+					Value: aws.String(expireOnValue),
+				},
 			},
-		},
-	})
-	if err != nil {
-		return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+		}
 	}
 
 	if noExpiration {
@@ -697,6 +699,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		} else {
 			catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
 		}
+	}
+	if opts.NewName != "" {
+		catcher.Add(h.SetDisplayName(opts.NewName))
 	}
 
 	return catcher.Resolve()
@@ -974,19 +979,39 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 	defer m.client.Close()
 
-	if err := h.SetStopping(user); err != nil {
+	var instance *ec2.Instance
+	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+	if err != nil {
+		return errors.Wrap(err, "error getting instance info before stopping")
+	}
+
+	// if instance is already stopped, return early
+	if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+		grip.Info(message.Fields{
+			"message":       "instance already stopped",
+			"user":          user,
+			"host_provider": h.Distro.Provider,
+			"host_id":       h.Id,
+			"distro":        h.Distro.Id,
+		})
+
+		return errors.Wrap(h.SetStopped(user), "failed to mark instance as stopped in db")
+	}
+
+	prevStatus := h.Status
+	if err = h.SetStopping(user); err != nil {
 		return errors.Wrap(err, "failed to mark instance as stopping in db")
 	}
 
-	_, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+	_, err = m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
+		if err2 := h.SetStatus(prevStatus, user, ""); err2 != nil {
+			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", prevStatus)
+		}
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
 	}
-
-	// Delay exponential backoff
-	time.Sleep(checkSuccessDelay)
 
 	// Check whether instance stopped
 	err = util.Retry(
@@ -1004,6 +1029,9 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
 
 	if err != nil {
+		if err2 := h.SetStatus(prevStatus, user, ""); err2 != nil {
+			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", prevStatus)
+		}
 		return errors.Wrap(err, "error checking if spawnhost stopped")
 	}
 
@@ -1207,7 +1235,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s' in client", volumeID, h.Id)
+		return errors.Wrapf(err, "error detaching volume '%s' from host '%s' in client", volumeID, h.Id)
 	}
 
 	if err = m.extendVolumeExpiration(ctx, v); err != nil {
@@ -1321,7 +1349,7 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 }
 
 func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
 	if err := m.client.Create(m.credentials, m.region); err != nil {

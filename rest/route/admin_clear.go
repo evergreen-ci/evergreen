@@ -19,7 +19,9 @@ func makeClearTaskQueueHandler(sc data.Connector) gimlet.RouteHandler {
 	return &clearTaskQueueHandler{sc: sc}
 }
 
-func (h *clearTaskQueueHandler) Factory() gimlet.RouteHandler { return &clearTaskQueueHandler{sc: h.sc} }
+func (h *clearTaskQueueHandler) Factory() gimlet.RouteHandler {
+	return &clearTaskQueueHandler{sc: h.sc}
+}
 
 func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distro = r.FormValue("distro")

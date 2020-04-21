@@ -13,6 +13,14 @@ resolver:
   filename: graphql/resolvers.go
   type: Resolver
 models:
+  SubscriptionInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  SelectorInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SubscriberInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+  StringMap:
+    model: github.com/evergreen-ci/evergreen/graphql.StringMap
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
   File:
@@ -31,6 +39,8 @@ models:
       patchMetadata:
         resolver: true
       baseTaskMetadata:
+        resolver: true
+      spawnHostLink:
         resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
@@ -52,3 +62,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   LogMessage:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
+  CommitQueue:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueue
+  CommitQueueItem:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueItem
+  Module:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIModule

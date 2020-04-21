@@ -315,13 +315,16 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 
+	if err = ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrap(err, "EC2 settings are invalid")
+	}
+
 	// update local distro with modified settings
 	doc, err := ec2Settings.ToDocument()
 	if err != nil {
 		return nil, errors.Wrap(err, "error marshalling ec2 settings to document")
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
-	d.ProviderSettings = nil
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {

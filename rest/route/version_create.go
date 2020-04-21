@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 )
 
 func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
@@ -30,7 +30,7 @@ func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error {
-	err := util.ReadJSONInto(r.Body, h)
+	err := utility.ReadJSON(r.Body, h)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

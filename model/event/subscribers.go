@@ -3,7 +3,7 @@ package event
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -107,7 +107,7 @@ func (s *Subscriber) String() string {
 
 func (s *Subscriber) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(SubscriberTypes, s.Type) {
+	if !utility.StringSliceContains(SubscriberTypes, s.Type) {
 		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
 	}
 	if s.Target == nil {

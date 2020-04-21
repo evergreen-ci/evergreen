@@ -18,6 +18,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
+    $scope.noExpiration = false;
     $scope.homeVolumeSize = 500;
     $scope.homeVolumeID;
     $scope.allowedInstanceTypes = [];
@@ -73,6 +74,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
                 $scope.setSelected(host);
               }
+              if (host.display_name == "") {
+                host.display_name = host.id;
+              }
+              host.originalDisplayName = host.display_name;
             });
             $scope.hosts = hosts
           },
@@ -264,19 +269,52 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
+    $scope.setDisplayName = function (host) {
+      mciSpawnRestService.updateHostDisplayName(host.id, host.display_name,
+        {
+          success: function (resp) {
+            host.originalDisplayName = host.display_name;
+          },
+          error: function (resp) {
+            notificationService.pushNotification('Error setting display name: ' + resp.data.error, 'errorHeader');
+          }
+        }
+      );
+    };
+
+    $scope.resetDisplayName = function (host) {
+      host.display_name = host.originalDisplayName;
+    };
+
+    $scope.getHomeVolumeDisplayName = function () {
+        if ($scope.homeVolumeDisplay) {
+            return $scope.homeVolumeDisplay;
+        }
+        if ($scope.homeVolumeID) {
+            return $scope.homeVolumeID;
+        }
+        return "New Volume";
+    };
+
     $scope.spawnHost = function () {
       $scope.spawnReqSent = true;
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
       $scope.spawnInfo.is_virtual_workstation = $scope.isVirtualWorkstation;
-      $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
-      $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
+      if ($scope.isVirtualWorkstation) {
+          $scope.spawnInfo.no_expiration = $scope.noExpiration;
+          $scope.spawnInfo.home_volume_size = $scope.homeVolumeSize;
+          $scope.spawnInfo.home_volume_id = $scope.homeVolumeID;
+      }
       $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       $scope.spawnInfo.region = $scope.selectedRegion;
       if ($scope.spawnTaskChecked && !!$scope.spawnTask) {
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
+      if ($scope.spawnTask && $scope.spawnTaskSyncChecked) {
+        $scope.spawnInfo.task_sync = true;
+      } 
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {
@@ -439,7 +477,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setSpawnableDistro = function (spawnableDistro) {
       $scope.selectedDistro = spawnableDistro;
       $scope.spawnInfo.distroId = spawnableDistro.name;
-
+      $scope.selectedRegion = "us-east-1";
       // if multiple regions, preference the user region
       if ($scope.selectedDistro.regions.length > 1) {
         if ($scope.defaultRegion !== "") {
@@ -447,18 +485,20 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             // valid region
             if ($scope.defaultRegion === $scope.selectedDistro.regions[i]) {
               $scope.selectedRegion = $scope.defaultRegion;
+              break;
             }
           }
         }
-        // if preferred region not configured for this distro, default to the first region in this list
-        if ($scope.selectedRegion === undefined) {
-          $scope.selectedRegion = $scope.selectedDistro.regions[0];
-        }
+      }
+      // if preferred region not configured for this distro, default to the first region in this list
+      if ($scope.selectedRegion === "" && $scope.selectedDistro.regions.length === 1) {
+        $scope.selectedRegion = $scope.selectedDistro.regions[0];
       }
 
       // clear home volume settings when switching between distros
-      $scope.isVirtualWorkstation = false
-      $scope.homeVolumeSize = 500
+      $scope.isVirtualWorkstation = $scope.selectedDistro.virtual_workstation_allowed && !$scope.spawnTaskChecked && !$scope.spawnTaskSyncChecked;
+      $scope.noExpiration = $scope.selectedDistro.virtual_workstation_allowed && ($scope.availableUnexpirableHosts() > 0);
+      $scope.homeVolumeSize = 500;
     };
 
     $scope.setRegion = function(region) {
@@ -468,6 +508,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setVolume = function (volume) {
       if (volume) {
         $scope.homeVolumeID = volume.volume_id;
+        $scope.homeVolumeDisplay = volume.display_name;
       } else {
         $scope.homeVolumeID = "";
       }
@@ -476,7 +517,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.setAvailableVolumes = function(volumes) {
       $scope.availableVolumes = volumes;
       if (volumes.length > 0) {
-        $scope.homeVolumeID = volumes[0].volume_id;
+        $scope.setVolume(volumes[0]);
       }
     }
 
@@ -654,6 +695,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       // find the spawn distro in the spawnable distros list, if it's there,
       // pre-select it in the modal.
       $scope.spawnTaskChecked = true
+      $scope.spawnTaskSyncChecked = $scope.spawnTask.runs_sync;
       setTimeout(function () {
         $scope.fetchSpawnableDistros($scope.spawnDistro._id, function () {
           $scope.openSpawnModal('spawnHost')

@@ -20,7 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/backup"
 	amodel "github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
@@ -48,7 +48,7 @@ func AddBackupJobs(ctx context.Context, env evergreen.Environment, ts time.Time)
 		return nil
 	}
 
-	util.RoundPartOfDay(6)
+	utility.RoundPartOfDay(6)
 	queue, err := env.RemoteQueueGroup().Get(ctx, "backup_collector")
 	if err != nil {
 		return errors.WithStack(err)

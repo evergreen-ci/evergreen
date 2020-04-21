@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
@@ -112,8 +113,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(err, ShouldBeNil)
 				//So(numFound, ShouldEqual, 1)
 
-				exists, err := util.FileExists(target)
-				So(err, ShouldBeNil)
+				exists := utility.FileExists(target)
 				So(exists, ShouldBeTrue)
 
 				// untar the file
@@ -122,15 +122,10 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included
-				exists, err = util.FileExists(
-					filepath.Join(outputDir, "targz_me/dir1/dir2/testfile.txt"))
-				So(err, ShouldBeNil)
+				exists = utility.FileExists(filepath.Join(outputDir, "targz_me/dir1/dir2/testfile.txt"))
 				So(exists, ShouldBeTrue)
 
-				exists, err = util.FileExists(
-					filepath.Join(outputDir, "targz_me/dir1/dir2/test.pdb"),
-				)
-				So(err, ShouldBeNil)
+				exists = utility.FileExists(filepath.Join(outputDir, "targz_me/dir1/dir2/test.pdb"))
 				So(exists, ShouldBeFalse)
 			})
 		})

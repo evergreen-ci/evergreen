@@ -110,6 +110,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, settings.Amboy.GroupBackgroundCreateFrequencyMinutes)
 	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settings.Amboy.GroupPruneFrequencyMinutes)
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settings.Amboy.GroupTTLMinutes)
+	s.EqualValues(testSettings.Amboy.RequireRemotePriority, settings.Amboy.RequireRemotePriority)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settings.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
@@ -125,7 +126,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settings.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
-	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
+	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.
 	switch s.sc.(type) {

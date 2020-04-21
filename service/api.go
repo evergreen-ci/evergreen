@@ -17,10 +17,12 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -180,10 +182,8 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
+func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-
-	// Get the version for this task, so we can get its config data
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -194,21 +194,29 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-
 	pp, err := model.ParserProjectFindOneById(t.Version)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-		config, err := yaml.Marshal(pp)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
+	// handle legacy
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
+		pp = &model.ParserProject{}
+		if err = yaml.Unmarshal([]byte(v.Config), pp); err != nil {
+			http.Error(w, "invalid version config", http.StatusNotFound)
 			return
 		}
-		v.Config = string(config)
 	}
-	gimlet.WriteJSON(w, v)
+	if pp.Functions == nil {
+		pp.Functions = map[string]*model.YAMLCommandSet{}
+	}
+	projBytes, err := bson.Marshal(pp)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling to bson"})
+		return
+	}
+	gimlet.WriteBinary(w, projBytes)
 }
 
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +264,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), log)
+	err := utility.ReadJSON(util.NewRequestReader(r), log)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -280,7 +288,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	results := &task.LocalTestResults{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), results)
+	err := utility.ReadJSON(util.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -323,7 +331,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		CreateTime:      time.Now(),
 	}
 
-	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
+	err := utility.ReadJSON(util.NewRequestReader(r), &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
@@ -348,8 +356,7 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	_, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
-	if err != nil {
+	if err := gimlet.GetJSON(r.Body, taskLog); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "unable to read logs from request"))
 		return
 	}
@@ -557,7 +564,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
-	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
+	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
 

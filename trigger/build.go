@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -80,7 +80,7 @@ func taskStatusSubformat(n int, verb string) string {
 
 func appendTime(b *build.Build, txt string) string {
 	finish := b.FinishTime
-	if util.IsZeroTime(b.FinishTime) { // in case the build is actually blocked, but we are triggering the finish event
+	if utility.IsZeroTime(b.FinishTime) { // in case the build is actually blocked, but we are triggering the finish event
 		finish = time.Now()
 	}
 	return fmt.Sprintf("%s in %s", txt, finish.Sub(b.StartTime).String())
@@ -285,6 +285,20 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
 		Text:      taskStatusToDesc(t.build),
+		Fields: []*message.SlackAttachmentField{
+			{
+				Title: "Version",
+				Value: fmt.Sprintf("<%s|%s>", t.build.Version, versionLink(t.uiConfig.Url, t.build.Version)),
+			},
+			{
+				Title: "Makespan",
+				Value: t.build.ActualMakespan.String(),
+			},
+			{
+				Title: "Duration",
+				Value: t.build.TimeTaken.String(),
+			},
+		},
 	})
 	if t.data.Status == evergreen.BuildSucceeded {
 		attachments[0].Color = evergreenSuccessColor
@@ -305,6 +319,12 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 			TitleLink: taskLink(t.uiConfig.Url, t.build.Tasks[i].Id, -1),
 			Color:     evergreenFailColor,
 			Text:      taskFormatFromCache(&t.build.Tasks[i]),
+			Fields: []*message.SlackAttachmentField{
+				{
+					Title: "Duration",
+					Value: t.build.Tasks[i].TimeTaken.String(),
+				},
+			},
 		})
 		attachmentsCount++
 	}

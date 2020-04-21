@@ -83,6 +83,10 @@ func ById(id mgobson.ObjectId) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
+func ByIds(ids []mgobson.ObjectId) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+}
+
 var commitQueueFilter = bson.M{"$ne": evergreen.CommitQueueAlias}
 
 // ByProject produces a query that returns projects with the given identifier.
@@ -102,6 +106,29 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	}
 
 	return db.Query(q)
+}
+
+func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
+	queryInterface := bson.M{
+		AuthorKey: user,
+	}
+	if patchName != "" {
+		queryInterface[DescriptionKey] = bson.M{"$regex": patchName, "$options": "i"}
+	}
+	if len(statuses) > 0 {
+		queryInterface[StatusKey] = bson.M{"$in": statuses}
+	}
+	if includeCommitQueue == false {
+		queryInterface[AliasKey] = commitQueueFilter
+	}
+	q := db.Query(queryInterface).Sort([]string{"-" + CreateTimeKey, "-" + IdKey})
+	if page > 0 {
+		q = q.Skip(page * limit)
+	}
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	return q
 }
 
 // ByUserPaginated produces a query that returns patches by the given user

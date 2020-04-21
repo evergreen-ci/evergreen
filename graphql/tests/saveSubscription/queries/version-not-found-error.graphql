@@ -1,0 +1,16 @@
+mutation {
+  saveSubscription(
+    subscription: {
+      subscriber: { type: "slack", target: "@arjun.patel" }
+      resource_type: "TASK"
+      trigger: "outcome"
+      trigger_data: {}
+      regex_selectors: []
+      selectors: [
+        { type: "object", data: "version" }
+        { type: "id", data: "not-real" }
+      ]
+      owner_type: "person"
+    }
+  )
+}

@@ -122,6 +122,7 @@ type Connector interface {
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
+	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, string, []string, string, string, int, int, int) ([]task.Task, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
@@ -188,10 +189,13 @@ type Connector interface {
 	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
-
+	// FindPatchesByUser fetches a page of patches for the input user ordered by creation
+	// time and filters when given statuses, patch name, and commit queue parameters
+	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
-
+	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
+	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
 	// AbortVersion aborts all tasks of a version given its ID.
 	AbortVersion(string, string) error
 

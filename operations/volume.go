@@ -10,6 +10,7 @@ func Volume() cli.Command {
 			hostCreateVolume(),
 			hostDeleteVolume(),
 			hostListVolume(),
+			hostModifyVolume(),
 		},
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func fetchAllProjectConfigs() cli.Command {
@@ -79,12 +78,7 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
 	}
 
-	data, err := yaml.Marshal(config)
-	if err != nil {
-		return errors.Wrapf(err, "failed to marshal configuration for project %s", project)
-	}
-
-	err = ioutil.WriteFile(project+".yml", data, 0666)
+	err = ioutil.WriteFile(project+".yml", config, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write configuration for project %s", project)
 	}

@@ -288,7 +288,6 @@ const (
 var (
 	// Providers where hosts can be created and terminated automatically.
 	ProviderSpawnable = []string{
-		ProviderNameDocker,
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,
@@ -297,6 +296,18 @@ var (
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
 		ProviderNameMock,
+		ProviderNameDocker,
+	}
+
+	// Providers that are spawnable by users
+	ProviderUserSpawnable = []string{
+		ProviderNameEc2OnDemand,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Auto,
+		ProviderNameEc2Fleet,
+		ProviderNameGce,
+		ProviderNameOpenstack,
+		ProviderNameVsphere,
 	}
 
 	ProviderContainer = []string{
@@ -331,6 +342,8 @@ const (
 const (
 	GenerateTasksCommandName = "generate.tasks"
 	CreateHostCommandName    = "host.create"
+	S3PushCommandName        = "s3.push"
+	S3PullCommandName        = "s3.pull"
 )
 
 type SenderKey int
@@ -391,8 +404,6 @@ const (
 	defaultGroupPruneFrequencyMinutes            = 10
 	defaultGroupTTLMinutes                       = 1
 	maxNotificationsPerSecond                    = 100
-
-	EnableAmboyRemoteManagement = false
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
@@ -415,6 +426,12 @@ var (
 		HostProvisionFailed,
 		HostStopping,
 		HostStopped,
+	}
+
+	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
+	CanRunTaskStatus = []string{
+		HostRunning,
+		HostProvisioning,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.

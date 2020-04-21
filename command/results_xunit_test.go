@@ -10,7 +10,6 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -158,19 +157,12 @@ func TestParseAndUpload(t *testing.T) {
 	assert.NoError(logger.Close())
 	messages := comm.GetMockMessages()[conf.Task.Id]
 
-	// spot check messages logged from sending logs to the mock communicator
-	messagesToCheck := []string{
-		"Attaching test logs for pkg1.test.test_things.SomeTests.test_params_method_2",       // junit_1.xml
-		"Attaching test logs for tests.ATest.error",                                          // junit_2.xml
-		"Attaching test logs for test.test_bson.TestBSON.test_basic_encode",                  // junit_3.xml
-		"Attaching test logs for unittest.loader.ModuleImportFailure.tests.test_binder",      // results.xml
-		"Attaching test logs for com.xgen.svc.mms.svc.deployment.DeploymentDiffSvcUnitTests", // junit_5.xml
-	}
-	count := 0
+	successMessage := "Attach test logs succeeded for 201 of 201 files"
+	found := false
 	for _, message := range messages {
-		if util.StringSliceContains(messagesToCheck, message.Message) {
-			count++
+		if successMessage == message.Message {
+			found = true
 		}
 	}
-	assert.Equal(len(messagesToCheck), count)
+	assert.True(found)
 }

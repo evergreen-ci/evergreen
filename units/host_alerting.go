@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -106,7 +106,7 @@ func (j *hostAlertingJob) monitorLongRunningTasks() {
 		"elapsed":     elapsed.String(),
 		"elapsed_raw": elapsed,
 	}
-	if util.IsZeroTime(runningTask.StartTime) {
+	if utility.IsZeroTime(runningTask.StartTime) {
 		return
 	}
 	j.logger.NoticeWhen(elapsed > noticeThreshold && elapsed <= errorThreshold, msg)

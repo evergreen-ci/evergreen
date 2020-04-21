@@ -8,7 +8,6 @@ import (
 
 const (
 	ResourceTypeUser = "USER"
-	ResourceTypeRole = "ROLE"
 )
 
 // UserEventType represents types of changes possible to a DB user.
@@ -50,6 +49,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after interface{
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
 		EventType:    string(eventType),
+		ResourceId:   user,
 		Data:         data,
 		ResourceType: ResourceTypeUser,
 	}

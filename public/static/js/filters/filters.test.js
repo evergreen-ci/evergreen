@@ -232,116 +232,220 @@ describe('expandedHistoryConverter', function () {
 
   it('should convert data', function () {
     expect(expandedHistoryConverter(rawData)).toEqual([{
-        "data": {
-          "results": []
+      "data": {
+        "results": [{
+          "name": "out_of_cache_scanner",
+          "isExpandedMetric": true,
+          "results": {
+            "1": {}
+          }
+        }, {
+          "name": "ColdScanner-Scan.2",
+          "isExpandedMetric": true,
+          "results": {
+            "6": {
+              "AverageLatency": 7010.185110530556,
+              "AverageLatency_values": [7010.185110530556],
+              "AverageSize": 130,
+              "AverageSize_values": [130],
+              "OperationThroughput": 2059576.0991914733,
+              "OperationThroughput_values": [2059576.0991914733],
+              "SizeThroughput": 267744892.89489153,
+              "SizeThroughput_values": [267744892.89489153],
+              "ErrorRate": 0,
+              "ErrorRate_values": [0],
+              "Latency50thPercentile": 780947002426.5,
+              "Latency50thPercentile_values": [780947002426.5],
+              "Latency80thPercentile": 1104667169411,
+              "Latency80thPercentile_values": [1104667169411],
+              "Latency90thPercentile": 1104678496947.6333,
+              "Latency90thPercentile_values": [1104678496947.6333],
+              "Latency95thPercentile": 1104684900770,
+              "Latency95thPercentile_values": [1104684900770],
+              "Latency99thPercentile": 1104684900770,
+              "Latency99thPercentile_values": [1104684900770],
+              "WorkersMin": 6,
+              "WorkersMin_values": [6],
+              "WorkersMax": 6,
+              "WorkersMax_values": [6],
+              "LatencyMin": 697970870799,
+              "LatencyMin_values": [697970870799],
+              "LatencyMax": 1104684900770,
+              "LatencyMax_values": [1104684900770],
+              "DurationTotal": 699173000000,
+              "DurationTotal_values": [699173000000],
+              "ErrorsTotal": 0,
+              "ErrorsTotal_values": [0],
+              "OperationsTotal": 1440000000,
+              "OperationsTotal_values": [1440000000],
+              "SizeTotal": 187200000000,
+              "SizeTotal_values": [187200000000],
+              "OverheadTotal": 6057087203,
+              "OverheadTotal_values": [6057087203]
+            }
+          }
+        }]
+      },
+      "create_time": "2019-09-06T01:14:10.000Z",
+      "order": 18362,
+      "version_id": "sys_perf_4807c2165b552670c9fe66c79c6d5be34e845023",
+      "project_id": "sys-perf",
+      "task_name": "out_of_cache_scanner",
+      "variant": "linux-1-node-15gbwtcache",
+      "task_id": "sys_perf_linux_1_node_15gbwtcache_out_of_cache_scanner_4807c2165b552670c9fe66c79c6d5be34e845023_19_09_04_18_45_37",
+      "revision": "4807c2165b552670c9fe66c79c6d5be34e845023"
+    }])
+  })
+
+  it("should handle data with multiple thread levels as separate results", () => {
+    const input = [{
+        "name": "1",
+        "info": {
+          "project": "myproj",
+          "version": "v1",
+          "order": 1,
+          "variant": "linux-3-node-v1",
+          "task_name": "task1",
+          "task_id": "task1",
+          "execution": 0,
+          "test_name": "mytest",
+          "trial": 0,
+          "parent": "",
+          "tags": null,
+          "args": {
+            "thread_level": 64
+          }
         },
-        "create_time": "2019-09-06T01:14:10.000Z",
-        "order": 18362,
-        "version_id": "sys_perf_4807c2165b552670c9fe66c79c6d5be34e845023",
-        "project_id": "sys-perf",
-        "task_name": "out_of_cache_scanner",
-        "variant": "linux-1-node-15gbwtcache",
-        "task_id": "sys_perf_linux_1_node_15gbwtcache_out_of_cache_scanner_4807c2165b552670c9fe66c79c6d5be34e845023_19_09_04_18_45_37",
-        "revision": "4807c2165b552670c9fe66c79c6d5be34e845023"
+        "created_at": "2020-04-02T17:13:31.692Z",
+        "completed_at": "2020-04-02T17:30:56.512Z",
+        "artifacts": null,
+        "rollups": {
+          "stats": [{
+              "name": "ops_per_sec",
+              "val": 45042.20454565928,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "average_read_latency_us",
+              "val": 1111.5834836163208,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "95th_read_latency_us",
+              "val": 2950,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "99th_read_latency_us",
+              "val": 5230,
+              "version": 0,
+              "user": true
+            }
+          ],
+          "processed_at": "2020-04-02T18:12:21.868Z"
+        },
+        "analysis": {
+          "change_points": null,
+          "processed_at": "2020-04-14T15:46:50.247Z"
+        }
       },
       {
-        "data": {
-          "results": [{
-            "name": "ColdScanner-Scan.2",
-            "isExpandedMetric": true,
-            "results": {
-              "6": {
-                "AverageLatency": 7010.185110530556,
-                "AverageLatency_values": [
-                  7010.185110530556
-                ],
-                "AverageSize": 130,
-                "AverageSize_values": [
-                  130
-                ],
-                "OperationThroughput": 2059576.0991914733,
-                "OperationThroughput_values": [
-                  2059576.0991914733
-                ],
-                "SizeThroughput": 267744892.89489153,
-                "SizeThroughput_values": [
-                  267744892.89489153
-                ],
-                "ErrorRate": 0,
-                "ErrorRate_values": [
-                  0
-                ],
-                "Latency50thPercentile": 780947002426.5,
-                "Latency50thPercentile_values": [
-                  780947002426.5
-                ],
-                "Latency80thPercentile": 1104667169411,
-                "Latency80thPercentile_values": [
-                  1104667169411
-                ],
-                "Latency90thPercentile": 1104678496947.6333,
-                "Latency90thPercentile_values": [
-                  1104678496947.6333
-                ],
-                "Latency95thPercentile": 1104684900770,
-                "Latency95thPercentile_values": [
-                  1104684900770
-                ],
-                "Latency99thPercentile": 1104684900770,
-                "Latency99thPercentile_values": [
-                  1104684900770
-                ],
-                "WorkersMin": 6,
-                "WorkersMin_values": [
-                  6
-                ],
-                "WorkersMax": 6,
-                "WorkersMax_values": [
-                  6
-                ],
-                "LatencyMin": 697970870799,
-                "LatencyMin_values": [
-                  697970870799
-                ],
-                "LatencyMax": 1104684900770,
-                "LatencyMax_values": [
-                  1104684900770
-                ],
-                "DurationTotal": 699173000000,
-                "DurationTotal_values": [
-                  699173000000
-                ],
-                "ErrorsTotal": 0,
-                "ErrorsTotal_values": [
-                  0
-                ],
-                "OperationsTotal": 1440000000,
-                "OperationsTotal_values": [
-                  1440000000
-                ],
-                "SizeTotal": 187200000000,
-                "SizeTotal_values": [
-                  187200000000
-                ],
-                "OverheadTotal": 6057087203,
-                "OverheadTotal_values": [
-                  6057087203
-                ]
-              }
-            }
-          }]
+        "name": "2",
+        "info": {
+          "project": "myproj",
+          "version": "v1",
+          "order": 1,
+          "variant": "linux-3-node-v1",
+          "task_name": "task1",
+          "task_id": "task1",
+          "execution": 0,
+          "test_name": "mytest",
+          "trial": 0,
+          "parent": "",
+          "tags": null,
+          "args": {
+            "thread_level": 1
+          }
         },
-        "create_time": "2019-09-06T01:14:10.000Z",
-        "order": 18362,
-        "version_id": "sys_perf_4807c2165b552670c9fe66c79c6d5be34e845023",
-        "project_id": "sys-perf",
-        "task_name": "out_of_cache_scanner",
-        "variant": "linux-1-node-15gbwtcache",
-        "task_id": "sys_perf_linux_1_node_15gbwtcache_out_of_cache_scanner_4807c2165b552670c9fe66c79c6d5be34e845023_19_09_04_18_45_37",
-        "revision": "4807c2165b552670c9fe66c79c6d5be34e845023"
-      }
-    ])
-  })
+        "created_at": "2020-04-02T17:33:22.491Z",
+        "completed_at": "2020-04-02T17:53:23.624Z",
+        "artifacts": null,
+        "rollups": {
+          "stats": [{
+              "name": "ops_per_sec",
+              "val": 751.5374846251538,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "average_read_latency_us",
+              "val": 362.5341057854027,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "95th_read_latency_us",
+              "val": 420,
+              "version": 0,
+              "user": true
+            },
+            {
+              "name": "99th_read_latency_us",
+              "val": 490,
+              "version": 0,
+              "user": true
+            }
+          ],
+          "processed_at": "2020-04-02T18:12:21.877Z"
+        },
+        "analysis": {
+          "change_points": null,
+          "processed_at": "2020-04-14T15:46:52.948Z"
+        }
+      },
+    ];
+    const expected = [{
+      "data": {
+        "results": [{
+          "name": "mytest",
+          "isExpandedMetric": true,
+          "results": {
+            "1": {
+              "ops_per_sec": 751.5374846251538,
+              "ops_per_sec_values": [751.5374846251538],
+              "average_read_latency_us": 362.5341057854027,
+              "average_read_latency_us_values": [362.5341057854027],
+              "95th_read_latency_us": 420,
+              "95th_read_latency_us_values": [420],
+              "99th_read_latency_us": 490,
+              "99th_read_latency_us_values": [490]
+            },
+            "64": {
+              "ops_per_sec": 45042.20454565928,
+              "ops_per_sec_values": [45042.20454565928],
+              "average_read_latency_us": 1111.5834836163208,
+              "average_read_latency_us_values": [1111.5834836163208],
+              "95th_read_latency_us": 2950,
+              "95th_read_latency_us_values": [2950],
+              "99th_read_latency_us": 5230,
+              "99th_read_latency_us_values": [5230]
+            }
+          }
+        }]
+      },
+      "create_time": "2020-04-02T17:13:31.692Z",
+      "order": 1,
+      "version_id": "v1",
+      "project_id": "myproj",
+      "task_name": "task1",
+      "variant": "linux-3-node-v1",
+      "task_id": "task1"
+    }];
+    expect(expandedHistoryConverter(input)).toEqual(expected);
+  });
 });
 
 describe('expandedMetricConverter', function () {
@@ -531,16 +635,14 @@ describe('expandedMetricConverter', function () {
     ]
 
     const expected = {
-      create_time: '2019-12-05T07:19:22.000Z',
-      order: 19613,
-      version_id: 'sys_perf_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2',
-      project_id: 'sys-perf',
-      task_name: 'insert_remove',
-      variant: 'wtdevelop-1-node-replSet',
-      task_id: 'sys_perf_wtdevelop_1_node_replSet_insert_remove_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2_19_12_05_04_28_59',
-      revision: '95eedd93ea7a5b8b35b9bb042d5ca165736c17c2',
       "data": {
         "results": [{
+          "name": "insert_remove",
+          "isExpandedMetric": true,
+          "results": {
+            "1": {}
+          }
+        }, {
           "name": "InsertRemoveTest-Insert",
           "isExpandedMetric": true,
           "results": {
@@ -586,7 +688,15 @@ describe('expandedMetricConverter', function () {
             }
           }
         }]
-      }
+      },
+      "create_time": "2019-12-05T07:19:22.000Z",
+      "order": 19613,
+      "version_id": "sys_perf_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2",
+      "project_id": "sys-perf",
+      "task_name": "insert_remove",
+      "variant": "wtdevelop-1-node-replSet",
+      "task_id": "sys_perf_wtdevelop_1_node_replSet_insert_remove_95eedd93ea7a5b8b35b9bb042d5ca165736c17c2_19_12_05_04_28_59",
+      "revision": "95eedd93ea7a5b8b35b9bb042d5ca165736c17c2"
     }
 
     expect(expandedMetricConverter(dataSample, 0)).toEqual(expected);

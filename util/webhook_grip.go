@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -143,8 +144,8 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 
 	var client *http.Client = w.client
 	if client == nil {
-		client = GetHTTPClient()
-		defer PutHTTPClient(client)
+		client = utility.GetHTTPClient()
+		defer utility.PutHTTPClient(client)
 	}
 
 	resp, err := client.Do(req)

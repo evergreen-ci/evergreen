@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -389,7 +389,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
 			item.IsDispatched = true // *TaskQueueItem
 
-			if nextTaskFromDB.StartTime != util.ZeroTime {
+			if nextTaskFromDB.StartTime != utility.ZeroTime {
 				continue
 			}
 
@@ -520,7 +520,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			return nil
 		}
 
-		if nextTaskFromDB.StartTime != util.ZeroTime {
+		if nextTaskFromDB.StartTime != utility.ZeroTime {
 			continue
 		}
 

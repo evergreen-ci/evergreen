@@ -172,6 +172,15 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 						"retry_count": count,
 						"message":     "after 10 retries, aborting marking job complete",
 					}))
+				} else if isMongoDupKey(err) {
+					grip.Warning(message.WrapError(err, message.Fields{
+						"job_id":      id,
+						"driver_type": q.driverType,
+						"job_type":    j.Type().Name,
+						"driver_id":   q.driver.ID(),
+						"retry_count": count,
+						"message":     "attempting to complete job without lock",
+					}))
 				} else {
 					timer.Reset(retryInterval)
 					continue
@@ -332,6 +341,9 @@ func isDispatchable(stat amboy.JobStatusInfo) bool {
 		return false
 	}
 	if stat.InProgress {
+		if time.Since(stat.ModificationTime) > amboy.LockTimeout {
+			return true
+		}
 		return false
 	}
 

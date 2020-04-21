@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -37,7 +37,7 @@ func NewCronRemoteMinuteJob() amboy.Job {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteMinuteJobName, util.RoundPartOfMinute(0).Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteMinuteJobName, utility.RoundPartOfMinute(0).Format(TSFormat)))
 	return j
 }
 
@@ -60,6 +60,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateOldestImageRemovalJobs(),
 		PopulateCommitQueueJobs(j.env),
 		PopulateGenerateTasksJobs(j.env),
+		PopulateDataCleanupJobs(j.env),
 	}
 
 	catcher := grip.NewBasicCatcher()

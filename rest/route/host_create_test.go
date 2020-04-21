@@ -34,9 +34,12 @@ func TestMakeIntentHost(t *testing.T) {
 		Id:       "archlinux-test",
 		Aliases:  []string{"archlinux-alias"},
 		Provider: evergreen.ProviderNameEc2OnDemand,
-		ProviderSettings: &map[string]interface{}{
-			"ami": "ami-123456",
-		},
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-123456"),
+			birch.EC.String("region", "us-east-1"),
+			birch.EC.String("instance_type", "t1.micro"),
+			birch.EC.String("subnet_id", "subnet-12345678"),
+		)},
 	}
 	require.NoError(d.Insert())
 
@@ -63,7 +66,6 @@ func TestMakeIntentHost(t *testing.T) {
 
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
 	ec2Settings := &cloud.EC2ProviderSettings{}
-	assert.Nil(h.Distro.ProviderSettings)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
@@ -101,7 +103,6 @@ func TestMakeIntentHost(t *testing.T) {
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
-	assert.Nil(h.Distro.ProviderSettings)
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
@@ -132,7 +133,6 @@ func TestMakeIntentHost(t *testing.T) {
 
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
 	ec2Settings = &cloud.EC2ProviderSettings{}
-	assert.Nil(h.Distro.ProviderSettings)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
@@ -228,12 +228,13 @@ func TestMakeIntentHost(t *testing.T) {
 		Spot:                true,
 		AWSKeyID:            "my_aws_key",
 		AWSSecret:           "my_secret_key",
+		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	assert.NoError(err)
-	assert.NotNil(h)
+	require.NoError(err)
+	require.NotNil(h)
 	assert.Equal("", h.Distro.Id)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
@@ -249,7 +250,6 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// with multiple regions
-	assert.NoError(cloud.CreateSettingsListFromLegacy(&d))
 	require.Len(d.ProviderSettingsList, 1)
 	doc2 := d.ProviderSettingsList[0].Copy().Set(birch.EC.String("region", "us-west-1")).Set(birch.EC.String("ami", "ami-987654"))
 	d.ProviderSettingsList = append(d.ProviderSettingsList, doc2)
@@ -268,23 +268,20 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Nil(h.Distro.ProviderSettings)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
-	// TODO: uncomment this test when off of legacy
-	//handler.createHost.Region = "us-west-1"
-	//h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
-	//assert.NoError(err)
-	//assert.NotNil(h)
-	//assert.Equal("archlinux-test", h.Distro.Id)
-	//assert.Nil(h.Distro.ProviderSettings)
-	//require.Len(h.Distro.ProviderSettingsList, 1)
-	//ec2Settings2 = &cloud.EC2ProviderSettings{}
-	//assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
-	//assert.Equal(ec2Settings2.AMI, "ami-987654")
+	handler.createHost.Region = "us-west-1"
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	assert.NoError(err)
+	assert.NotNil(h)
+	assert.Equal("archlinux-test", h.Distro.Id)
+	require.Len(h.Distro.ProviderSettingsList, 1)
+	ec2Settings2 = &cloud.EC2ProviderSettings{}
+	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
+	assert.Equal(ec2Settings2.AMI, "ami-987654")
 }
 
 func TestHostCreateDocker(t *testing.T) {

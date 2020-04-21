@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -176,7 +177,7 @@ func (mdef matrixDefinition) contains(mv matrixValue) bool {
 		if !ok {
 			return false
 		}
-		if !util.StringSliceContains(axis, v) {
+		if !utility.StringSliceContains(axis, v) {
 			return false
 		}
 	}
@@ -424,7 +425,7 @@ func (pbv *parserBV) mergeAxisValue(av axisValue) error {
 		if err != nil {
 			return errors.Wrap(err, "expanding tags")
 		}
-		pbv.Tags = util.UniqueStrings(append(pbv.Tags, expanded...))
+		pbv.Tags = utility.UniqueStrings(append(pbv.Tags, expanded...))
 	}
 	// overwrite run_on
 	var err error

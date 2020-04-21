@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -21,37 +21,36 @@ import (
 )
 
 type Distro struct {
-	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	ProviderSettingsList  []*birch.Document       `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
-	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapSettings     BootstrapSettings       `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
-	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
-	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	AuthorizedKeysFile    string                  `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
-	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool         string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	FinderSettings        FinderSettings          `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
-	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
-	DispatcherSettings    DispatcherSettings      `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
-	HostAllocatorSettings HostAllocatorSettings   `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
-	DisableShallowClone   bool                    `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
-	UseLegacyAgent        bool                    `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
-	Note                  string                  `bson:"note" json:"note" mapstructure:"note"`
-	ValidProjects         []string                `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
-	IsVirtualWorkstation  bool                    `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
-	HomeVolumeSettings    HomeVolumeSettings      `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IcecreamSettings      IcecreamSettings        `bson:"icecream_settings" josn:"icecream_settings" yaml:"icecream_settings"`
+	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch                  string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir               string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider              string                `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettingsList  []*birch.Document     `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
+	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown              string                `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapSettings     BootstrapSettings     `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
+	CloneMethod           string                `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	SSHKey                string                `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions            []string              `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	AuthorizedKeysFile    string                `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
+	SpawnAllowed          bool                  `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled              bool                  `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool         string                `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	FinderSettings        FinderSettings        `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
+	PlannerSettings       PlannerSettings       `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
+	DispatcherSettings    DispatcherSettings    `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
+	HostAllocatorSettings HostAllocatorSettings `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
+	DisableShallowClone   bool                  `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
+	UseLegacyAgent        bool                  `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
+	Note                  string                `bson:"note" json:"note" mapstructure:"note"`
+	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
+	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
+	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
+	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings" json:"icecream_settings" yaml:"icecream_settings"`
 }
 
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
@@ -138,7 +137,7 @@ func (d *Distro) SetBSON(raw mgobson.Raw) error {
 // for legacy or non-legacy bootstrapping.
 func (d *Distro) ValidateBootstrapSettings() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
+	if !utility.StringSliceContains(validBootstrapMethods, d.BootstrapSettings.Method) {
 		catcher.Errorf("'%s' is not a valid bootstrap method", d.BootstrapSettings.Method)
 	}
 
@@ -146,7 +145,7 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		return catcher.Resolve()
 	}
 
-	if !util.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
+	if !utility.StringSliceContains(validCommunicationMethods, d.BootstrapSettings.Communication) {
 		catcher.Errorf("'%s' is not a valid communication method", d.BootstrapSettings.Communication)
 	}
 
@@ -415,7 +414,7 @@ func (d *Distro) Platform() (string, string) {
 }
 
 func (d *Distro) IsEphemeral() bool {
-	return util.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
+	return utility.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
 }
 
 func (d *Distro) BinaryName() string {
@@ -484,15 +483,6 @@ func (d *Distro) GetImageID() (string, error) {
 		return "", errors.New("unknown provider name")
 	}
 
-	if d.ProviderSettings != nil {
-		i := (*d.ProviderSettings)[key]
-		s, ok := i.(string)
-		if !ok {
-			return "", errors.New("cannot extract image ID from provider settings")
-		}
-		return s, nil
-	}
-
 	if len(d.ProviderSettingsList) == 1 {
 		res, ok := d.ProviderSettingsList[0].Lookup(key).StringValueOK()
 		if !ok {
@@ -506,9 +496,6 @@ func (d *Distro) GetImageID() (string, error) {
 func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
-		if len(d.ProviderSettingsList) == 0 && d.ProviderSettings == nil {
-			return 0
-		}
 		if len(d.ProviderSettingsList) > 0 {
 			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
 			if !ok {
@@ -516,13 +503,7 @@ func (d *Distro) GetPoolSize() int {
 			}
 			return len(hosts)
 		}
-
-		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
-		if !ok {
-			return 0
-		}
-
-		return len(hosts)
+		return 0
 	default:
 		return d.HostAllocatorSettings.MaximumHosts
 	}
@@ -552,7 +533,7 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
-	if !util.StringSliceContains(validArches, arch) {
+	if !utility.StringSliceContains(validArches, arch) {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
@@ -561,7 +542,7 @@ func ValidateArch(arch string) error {
 // ValidateCloneMethod checks that the clone mechanism is one of the supported
 // methods.
 func ValidateCloneMethod(method string) error {
-	if !util.StringSliceContains(validCloneMethods, method) {
+	if !utility.StringSliceContains(validCloneMethods, method) {
 		return errors.Errorf("'%s' is not a valid clone method", method)
 	}
 	return nil
@@ -577,21 +558,6 @@ func (distros DistroGroup) GetDistroIds() []string {
 }
 
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
-	// check legacy case
-	if (region == "" || region == evergreen.DefaultEC2Region) && len(d.ProviderSettingsList) == 0 {
-		bytes, err := bson.Marshal(d.ProviderSettings)
-		if err != nil {
-			return nil, errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		doc := &birch.Document{}
-		if err := doc.UnmarshalBSON(bytes); err != nil {
-			return nil, errors.Wrapf(err, "error unmarshalling settings bytes into document")
-		}
-		if region == evergreen.DefaultEC2Region {
-			doc.Set(birch.EC.String("region", evergreen.DefaultEC2Region))
-		}
-		return doc, nil
-	}
 	// if no region given but there's a provider settings list, we assume the list is accurate
 	if region == "" {
 		if len(d.ProviderSettingsList) > 1 {
@@ -611,9 +577,6 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 
 func (d *Distro) GetRegionsList() []string {
 	regions := []string{}
-	if len(d.ProviderSettingsList) <= 1 {
-		return regions
-	}
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
@@ -630,10 +593,7 @@ func (d *Distro) GetRegionsList() []string {
 }
 
 func (d *Distro) SetUserdata(userdata, region string) error {
-	if d.ProviderSettings != nil {
-		(*d.ProviderSettings)["user_data"] = userdata
-	}
-	if len(d.ProviderSettingsList) == 0 && evergreen.UseSpawnHostRegions {
+	if len(d.ProviderSettingsList) == 0 {
 		return errors.Errorf("distro '%s' has no provider settings", d.Id)
 	}
 	if region == "" {
@@ -666,7 +626,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.Version == "" {
 		resolved.Version = config.HostAllocator
 	}
-	if !util.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
+	if !utility.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid HostAllocationSettings.Version", resolved.Version)
 	}
 	if resolved.AcceptableHostIdleTime == 0 {
@@ -732,7 +692,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.Version == "" {
 		resolved.Version = config.Planner
 	}
-	if !util.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
+	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
 	}
 	if resolved.TargetTime == 0 {

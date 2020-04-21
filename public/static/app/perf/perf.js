@@ -229,8 +229,11 @@ $http.get(templateUrl).success(function(template) {
     }
     scope.locked = false;
     // Extract params
-    let trendSamples = getSamples(scope),
-      tests = scope.perfSample.testNames(),
+    let trendSamples = getSamples(scope);
+    if (!trendSamples) {
+      return;
+    }
+    let tests = scope.perfSample.testNames(),
       taskId = scope.task.id,
       compareSamples = scope.comparePerfSamples;
     if (!trendSamples) {
@@ -866,7 +869,7 @@ $http.get(templateUrl).success(function(template) {
 
     const cedar = ApiTaskdata.cedarAPI("/rest/v1/perf/task_name/" + task +
         "?variant=" + variant + "&project=" + project)
-      .then(resp => $filter("expandedHistoryConverter")(resp.data, scope.task.execution))
+      .then(resp => $filter("expandedHistoryConverter")(resp.data))
       .catch(err => $log.warn('error loading cedar data', err));
 
     return $q.all({

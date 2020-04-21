@@ -4,12 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/util"
-
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -127,7 +126,7 @@ func (p *copyVariablesHandler) Factory() gimlet.RouteHandler {
 
 func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.copyFrom = gimlet.GetVars(r)["project_id"]
-	if err := util.ReadJSONInto(r.Body, &p.opts); err != nil {
+	if err := utility.ReadJSON(r.Body, &p.opts); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),

@@ -58,7 +58,7 @@ func TestHostPostHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-	h.options.UserData = "my script"
+	h.options.UserData = "#!/bin/bash\necho my script"
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
@@ -95,7 +95,7 @@ func TestHostPostHandler(t *testing.T) {
 	d1 := h1.Distro
 	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
 	assert.True(ok)
-	assert.Equal("my script", userdata)
+	assert.Equal("#!/bin/bash\necho my script", userdata)
 	assert.Empty(h1.InstanceTags)
 	assert.Empty(h1.InstanceType)
 

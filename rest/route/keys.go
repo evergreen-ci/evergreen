@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -86,7 +87,7 @@ func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	defer body.Close()
 
 	key := model.APIPubKey{}
-	if err := util.ReadJSONInto(body, &key); err != nil {
+	if err := utility.ReadJSON(body, &key); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),

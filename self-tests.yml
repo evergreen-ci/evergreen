@@ -346,7 +346,12 @@ tasks:
   - name: coverage
     tags: ["report"]
     commands:
-      - func: get-project
+      - command: git.get_project
+        type: setup
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+          token: ${github_token}
+          shallow_clone: false
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -405,15 +410,15 @@ tasks:
   - <<: *run-go-test-suite-with-docker
     tags: ["db", "test"]
     name: test-cloud
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-cloud-userdata
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-scheduler
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-monitor
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
@@ -423,7 +428,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-trigger
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
@@ -620,8 +625,6 @@ buildvariants:
       - windows-64-vs2015-compile
       - windows-64-vs2013-test
       - windows-64-vs2013-compile
-      - windows-64-vs2010-test
-      - windows-64-vs2010-compile
       - windows-64-vs2017-test
       - windows-64-vs2017-compile
     expansions:
@@ -635,41 +638,6 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
-
-  - name: rhel71-power8
-    display_name: RHEL 7.1 POWER8
-    batchtime: 2880
-    run_on:
-      - rhel71-power8-test
-    expansions:
-      disable_coverage: yes
-      xc_build: yes
-      goarch: ppc64le
-      gobin: /opt/golang/go1.13/bin/go
-      legacyGobin: /opt/golang/go1.9/bin/go
-      goos: linux
-      goroot: /opt/golang/go1.13
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-4.0.3.tgz
-    tasks:
-      - name: ".agent .test"
-
-  - name: rhel72-s390x
-    display_name: RHEL 7.2 zLinux
-    batchtime: 2880
-    run_on:
-      - rhel72-zseries-test
-    expansions:
-      xc_build: yes
-      disable_coverage: yes
-      goarch: s390x
-      gobin: /opt/golang/go1.11/bin/go
-      goroot: /opt/golang/go1.11
-      legacyGobin: /opt/golang/go1.9/bin/go
-      goos: linux
-      # No official release of 4.0 for rhel72 zseries
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.6.4.tgz
-    tasks:
-      - name: ".agent .test"
 
   - name: ubuntu1604-arm64
     display_name: Ubuntu 16.04 ARM

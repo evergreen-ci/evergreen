@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -24,6 +25,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 )
 
@@ -72,7 +74,6 @@ func NewHostSetupJob(env evergreen.Environment, h host.Host, id string) amboy.Jo
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
 	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	return j
 }
@@ -248,7 +249,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 	case distro.BootstrapMethodUserData:
 		// Updating the host LCT prevents the agent monitor deploy job from
 		// running. The agent monitor should be started by the user data script.
-		grip.Error(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
+		grip.Warning(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
 			"message": "failed to update host's last communication time",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -275,7 +276,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 		return nil
 	case distro.BootstrapMethodSSH:
 		if err = setupJasper(ctx, j.env, settings, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not set up Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -329,6 +330,10 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 		return errors.Wrap(err, "error setting up service user")
 	}
 
+	if logs, err := h.RunSSHCommand(ctx, h.MakeJasperDirsCommand()); err != nil {
+		return errors.Wrapf(err, "error creating Jasper directories: command returned: %s", logs)
+	}
+
 	if err := putJasperCredentials(ctx, env, settings, h); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
@@ -360,7 +365,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 	})
 
 	if logs, err := h.RunSSHCommand(ctx, writeCmds); err != nil {
-		return errors.Wrapf(err, "error copying credentials to remote machine: command returned %s", logs)
+		return errors.Wrapf(err, "error copying credentials to remote machine: command returned: %s", logs)
 	}
 
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
@@ -388,7 +393,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path))); err != nil {
-		return errors.Wrapf(err, "error while setting up service user: command returned %s", logs)
+		return errors.Wrapf(err, "error while setting up service user: command returned: %s", logs)
 	}
 
 	return nil
@@ -399,7 +404,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	cmd := h.FetchAndReinstallJasperCommands(env.Settings())
 	if logs, err := h.RunSSHCommand(ctx, cmd); err != nil {
-		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned '%s'", logs)
+		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned: %s", logs)
 	}
 	return nil
 }
@@ -543,6 +548,13 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"attempts": j.host.ProvisionAttempts,
 				"job":      j.ID(),
 			}))
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned for mount failure",
+				"attempts":  j.host.ProvisionAttempts,
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"host_id":   j.host.Id,
+			}))
 			return nil
 		}
 		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
@@ -576,7 +588,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
 		}
 
-		grip.Infof("Running setup script for spawn host %s", j.host.Id)
+		grip.Info(message.Fields{
+			"message": "running setup script for spawn host",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		})
 		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
@@ -600,10 +617,11 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings),
 				message.Fields{
-					"message": "failed to fetch data onto host",
-					"task":    j.host.ProvisionOptions.TaskId,
-					"host_id": j.host.Id,
-					"job":     j.ID(),
+					"message":   "failed to fetch data onto host",
+					"task":      j.host.ProvisionOptions.TaskId,
+					"task_sync": j.host.ProvisionOptions.TaskSync,
+					"host_id":   j.host.Id,
+					"job":       j.ID(),
 				}))
 		}
 	}
@@ -643,10 +661,6 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 		return errors.Wrap(err, "could not create script to setup spawn host")
 	}
 
-	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
-	}
-
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
 	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
@@ -667,13 +681,14 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 }
 
 func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergreen.Settings) error {
-	sshInfo, err := j.host.GetSSHInfo()
-	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", j.host.Host)
+	var cmd string
+	if j.host.ProvisionOptions.TaskSync {
+		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
+	} else {
+		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	}
-
-	cmd := strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	var output string
+	var err error
 	fetchTimeout := 15 * time.Minute
 	getTaskDataCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
@@ -682,7 +697,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	} else {
 		var logs []string
 		// We have to run this in the Cygwin shell in order for git clone to
-		// use the correct SSH key.
+		// use the correct SSH key when using fetch instead of pull.
 		logs, err = j.host.RunJasperProcess(getTaskDataCtx, j.env, &options.Create{
 			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 		})
@@ -690,11 +705,13 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("fetch-artifacts-%s", j.host.ProvisionOptions.TaskId),
-		"host_id": sshInfo.Hostname,
-		"cmd":     cmd,
-		"job":     j.ID(),
-		"logs":    output,
+		"message":   "problem fetching task data",
+		"task_id":   j.host.ProvisionOptions.TaskId,
+		"task_sync": j.host.ProvisionOptions.TaskSync,
+		"host_id":   j.host.Id,
+		"cmd":       cmd,
+		"job":       j.ID(),
+		"logs":      output,
 	}))
 
 	return errors.Wrap(err, "could not fetch remote task data")
@@ -741,20 +758,12 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 
 		var volume *host.Volume
 		if h.HomeVolumeID != "" {
-			volume, err = host.FindVolumeByID(h.HomeVolumeID)
+			volume, err = host.ValidateVolumeCanBeAttached(h.HomeVolumeID)
 			if err != nil {
-				return errors.Wrapf(err, "can't get volume '%s'", h.HomeVolumeID)
+				return err
 			}
-			if volume == nil {
-				return errors.Errorf("volume '%s' does not exist", h.HomeVolumeID)
-			}
-			var sourceHost *host.Host
-			sourceHost, err = host.FindHostWithVolume(h.HomeVolumeID)
-			if err != nil {
-				return errors.Wrapf(err, "can't get source host for volume '%s'", h.HomeVolumeID)
-			}
-			if sourceHost != nil {
-				return errors.Errorf("volume '%s' is already attached to host '%s'", h.HomeVolumeID, sourceHost.Id)
+			if volume.AvailabilityZone != h.Zone {
+				return errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone)
 			}
 		} else {
 			// create the volume
@@ -766,6 +775,9 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 			})
 			if err != nil {
 				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+			}
+			if err = h.SetHomeVolumeID(volume.ID); err != nil {
+				return errors.Wrapf(err, "can't set home volume ID in host")
 			}
 		}
 
@@ -830,14 +842,22 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	if err != nil {
 		return errors.Wrap(err, "problem checking for formatted device")
 	}
-	if util.StringSliceContains(output, fmt.Sprintf("%s: data", deviceName)) {
+	if utility.StringSliceContains(output, fmt.Sprintf("%s: data", deviceName)) {
 		cmd.Append(fmt.Sprintf("%s %s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
 	}
 
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+
+	symlinkExists, err := symlinkExists(ctx, client, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't verify if symlink exists for host '%s'", h.Id)
+	}
+	if !symlinkExists {
+		cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+	}
+
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "problem running mount commands")
 	}
@@ -849,6 +869,22 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	return nil
+}
+
+func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
+	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
+	if err := cmd.Run(ctx); err != nil {
+		return false, errors.Wrap(err, "can't run umount command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil {
+		if exitCode != 0 {
+			return false, nil
+		}
+		return false, errors.Wrap(err, "problem waiting for ls command")
+	}
+
+	return true, nil
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {

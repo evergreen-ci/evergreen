@@ -1,5 +1,12 @@
 type Query {
-  userPatches(userId: String!): [Patch!]!
+  userPatches(
+    limit: Int = 0
+    page: Int = 0
+    patchName: String = ""
+    statuses: [String!] = []
+    userId: String
+    includeCommitQueue: Boolean = false
+  ): [Patch!]!
   patch(id: String!): Patch!
   task(taskId: String!): Task
   projects: Projects!
@@ -22,11 +29,12 @@ type Query {
     limit: Int = 0
     testName: String = ""
     statuses: [String!]! = []
-  ): [TestResult!]
-  taskFiles(taskId: String!): [GroupedFiles!]!
+  ): TaskTestResult!
+  taskFiles(taskId: String!): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
+  commitQueue(id: String!): CommitQueue!
 }
 
 type Mutation {
@@ -37,6 +45,8 @@ type Mutation {
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
+  restartTask(taskId: String!): Task!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -83,6 +93,27 @@ input DisplayTask {
   ExecTasks: [String!]!
 }
 
+input SubscriptionInput {
+  resource_type: String
+  trigger: String
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String
+  owner: String
+  trigger_data: StringMap!
+}
+
+input SelectorInput {
+  type: String!
+  data: String!
+}
+
+input SubscriberInput {
+  type: String!
+  target: String!
+}
+
 type PatchBuildVariant {
   variant: String!
   tasks: [PatchBuildVariantTask]
@@ -91,6 +122,11 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+}
+
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
 }
 
 type GroupedFiles {
@@ -129,7 +165,19 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
+  baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
+  project: PatchProject
+}
+
+type PatchProject {
+  variants: [ProjectBuildVariant!]!
+  tasks: [String!]!
+}
+type ProjectBuildVariant {
+  name: String!
+  displayName: String!
+  tasks: [String!]!
 }
 
 type TaskResult {
@@ -172,6 +220,12 @@ type TaskEndDetail {
   timedOut: Boolean
 }
 
+type TaskTestResult {
+  totalTestCount: Int!
+  filteredTestCount: Int!
+  testResults: [TestResult!]!
+}
+
 type TestResult {
   id: String!
   status: String!
@@ -206,6 +260,8 @@ type BaseTaskMetadata {
 }
 
 type Task {
+  failedTestCount: Int!
+  spawnHostLink: String
   patchMetadata: PatchMetadata!
   id: String!
   createTime: Time
@@ -306,5 +362,23 @@ type LogMessage {
   version: Int
 }
 
+type CommitQueue {
+  ProjectID: String
+  Queue: [CommitQueueItem!]
+}
+
+type CommitQueueItem {
+  Issue: String
+  Version: String
+  EnqueueTime: Time
+  Patch: Patch
+  Modules: [Module!]
+}
+
+type Module {
+  Module: String
+  Issue: String
+}
 scalar Time
 scalar Duration
+scalar StringMap

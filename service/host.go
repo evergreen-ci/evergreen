@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -160,7 +161,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	opts := &uiParams{}
 
-	if err = util.ReadJSONInto(util.NewRequestReader(r), opts); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), opts); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -202,7 +203,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 
 	opts := &uiParams{}
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), opts); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), opts); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

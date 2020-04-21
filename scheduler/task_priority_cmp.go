@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
@@ -105,8 +105,8 @@ func byRuntime(t1, t2 task.Task, comp *CmpBasedTaskComparator) (int, error) {
 
 func tasksAreFromOneProject(t1, t2 task.Task) bool { return t1.Project == t2.Project }
 func tasksAreCommitBuilds(t1, t2 task.Task) bool {
-	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
-		util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
+		utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
 		return true
 	}
 	return false

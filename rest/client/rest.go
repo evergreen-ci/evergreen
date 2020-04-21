@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -38,14 +38,14 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem spawning host and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem spawning host")
 	}
 
 	spawnHostResp := model.APIHost{}
-	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
+	if err = utility.ReadJSON(resp.Body, &spawnHostResp); err != nil {
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
 	}
 	return &spawnHostResp, nil
@@ -68,7 +68,7 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem modifying host and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem modifying host")
@@ -96,7 +96,7 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem stopping host and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem stopping host")
@@ -124,7 +124,7 @@ func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem attaching volume and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem attaching volume")
@@ -151,7 +151,7 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem detaching volume and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem detaching volume")
@@ -175,14 +175,14 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem creating volume and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem creating volume")
 	}
 
 	createVolumeResp := model.APIVolume{}
-	if err = util.ReadJSONInto(resp.Body, &createVolumeResp); err != nil {
+	if err = utility.ReadJSON(resp.Body, &createVolumeResp); err != nil {
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
 	}
 	return &createVolumeResp, nil
@@ -203,10 +203,33 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem deleting volume and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem deleting volume")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *model.VolumeModifyOptions) error {
+	info := requestInfo{
+		method:  patch,
+		path:    fmt.Sprintf("volumes/%s", volumeID),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to modify volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem modifying volume and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem modifying volume")
 	}
 
 	return nil
@@ -227,14 +250,14 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem getting volumes and parsing error message")
 		}
 		return nil, errors.Wrapf(errMsg, "problem getting volumes for user '%s'", c.apiUser)
 	}
 
 	getVolumesResp := []model.APIVolume{}
-	if err = util.ReadJSONInto(resp.Body, &getVolumesResp); err != nil {
+	if err = utility.ReadJSON(resp.Body, &getVolumesResp); err != nil {
 		return nil, fmt.Errorf("error forming response body response: %v", err)
 	}
 
@@ -260,7 +283,7 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, su
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem starting host and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem starting host")
@@ -299,13 +322,13 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			}
 			if resp.StatusCode != http.StatusOK {
 				errMsg := gimlet.ErrorResponse{}
-				if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+				if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 					return errors.Wrap(err, "problem getting host and parsing error message")
 				}
 				return errors.Wrap(errMsg, "problem getting host")
 			}
 			hostResp := model.APIHost{}
-			if err = util.ReadJSONInto(resp.Body, &hostResp); err != nil {
+			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
 				return fmt.Errorf("Error forming response body response: %v", err)
 			}
 			if model.FromStringPtr(hostResp.Status) == status {
@@ -330,7 +353,7 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem terminating host and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem terminating host")
@@ -356,7 +379,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem changing host RDP password and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem changing host RDP password")
@@ -381,7 +404,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem changing host expiration and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem changing host expiration")
@@ -405,14 +428,14 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrapf(err, "Got %d code. Problem reading hosts error", resp.StatusCode)
 		}
 		return nil, errors.Wrap(errMsg, "problem getting hosts")
 	}
 
 	hosts := []*model.APIHost{}
-	if err = util.ReadJSONInto(resp.Body, &hosts); err != nil {
+	if err = utility.ReadJSON(resp.Body, &hosts); err != nil {
 		return nil, errors.Wrap(err, "can't read response as APIHost slice")
 	}
 	return hosts, nil
@@ -449,7 +472,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	}
 
 	banner := model.APIBanner{}
-	if err = util.ReadJSONInto(resp.Body, &banner); err != nil {
+	if err = utility.ReadJSON(resp.Body, &banner); err != nil {
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
@@ -484,7 +507,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 	}
 
 	settings := model.APIAdminSettings{}
-	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
+	if err = utility.ReadJSON(resp.Body, &settings); err != nil {
 		return nil, errors.Wrap(err, "problem parsing service flag response")
 	}
 
@@ -535,7 +558,7 @@ func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings
 
 	settings := &evergreen.Settings{}
 
-	err := util.ReadJSONInto(resp.Body, settings)
+	err := utility.ReadJSON(resp.Body, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing evergreen settings")
 	}
@@ -555,7 +578,7 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	defer resp.Body.Close()
 
 	newSettings := &model.APIAdminSettings{}
-	err = util.ReadJSONInto(resp.Body, newSettings)
+	err = utility.ReadJSON(resp.Body, newSettings)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing evergreen settings")
 	}
@@ -576,7 +599,7 @@ func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit in
 	defer resp.Body.Close()
 
 	events := []interface{}{}
-	err = util.ReadJSONInto(resp.Body, &events)
+	err = utility.ReadJSON(resp.Body, &events)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing response")
 	}
@@ -609,7 +632,7 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	info := requestInfo{
 		method:  http.MethodPatch,
 		version: apiVersion2,
-		path:    fmt.Sprintf("distros/%s/execute", distro),
+		path:    fmt.Sprintf("/distros/%s/execute", distro),
 	}
 
 	var result struct {
@@ -622,13 +645,13 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Errorf("received status %s", resp.Status)
 		}
 		return nil, errors.Wrap(errMsg, "problem running script on hosts")
 	}
 
-	if err = util.ReadJSONInto(resp.Body, &result); err != nil {
+	if err = utility.ReadJSON(resp.Body, &result); err != nil {
 		return nil, errors.Wrap(err, "problem reading response")
 	}
 	return result.HostIDs, nil
@@ -649,7 +672,7 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 
 	distros := []model.APIDistro{}
 
-	err := util.ReadJSONInto(resp.Body, &distros)
+	err := utility.ReadJSON(resp.Body, &distros)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing distribution list")
 	}
@@ -672,7 +695,7 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching key list and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem fetching key list")
@@ -680,7 +703,7 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 
 	keys := []model.APIPubKey{}
 
-	err := util.ReadJSONInto(resp.Body, &keys)
+	err := utility.ReadJSON(resp.Body, &keys)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing keys list")
 	}
@@ -708,7 +731,7 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem adding key and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem adding key")
@@ -732,7 +755,7 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem deleting key and parsing error message")
 		}
 		return errors.Wrap(errMsg, "problem deleting key")
@@ -758,7 +781,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	}
 	patchAliases := []serviceModel.ProjectAlias{}
 
-	// use io.ReadAll and json.Unmarshal instead of util.ReadJSONInto since we may read the results twice
+	// use io.ReadAll and json.Unmarshal instead of utility.ReadJSON since we may read the results twice
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading JSON")
@@ -789,7 +812,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 		return nil, errors.Errorf("expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
 	}
 	update := &model.APICLIUpdate{}
-	if err = util.ReadJSONInto(resp.Body, update); err != nil {
+	if err = utility.ReadJSON(resp.Body, update); err != nil {
 		return nil, errors.Wrap(err, "failed to parse update manifest from server")
 	}
 
@@ -927,7 +950,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 
-		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching commit queue list and parsing error message")
 		}
 		return nil, errMsg
@@ -935,7 +958,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 
 	cq := model.APICommitQueue{}
 
-	if err = util.ReadJSONInto(resp.Body, &cq); err != nil {
+	if err = utility.ReadJSON(resp.Body, &cq); err != nil {
 		return nil, errors.Wrap(err, "error parsing commit queue")
 	}
 
@@ -956,7 +979,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrapf(err, "response code %d problem deleting item '%s' from commit queue '%s' and parsing error message", resp.StatusCode, item, projectID)
 		}
 		return errMsg
@@ -1015,7 +1038,7 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return errors.Wrapf(err, "response code %d problem sending '%s' notification and parsing errors message",
 				resp.StatusCode, notificationType)
 		}
@@ -1040,13 +1063,13 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err := utility.ReadJSON(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem getting container status and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem getting container status")
 	}
 	status := cloud.ContainerStatus{}
-	if err := util.ReadJSONInto(resp.Body, &status); err != nil {
+	if err := utility.ReadJSON(resp.Body, &status); err != nil {
 		return nil, errors.Wrap(err, "problem parsing container status")
 	}
 
@@ -1060,11 +1083,11 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	} else {
 		path = fmt.Sprintf("%s/output", path)
 	}
-	if !util.IsZeroTime(startTime) && !util.IsZeroTime(endTime) {
+	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if !util.IsZeroTime(startTime) {
+	} else if !utility.IsZeroTime(startTime) {
 		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if !util.IsZeroTime(endTime) {
+	} else if !utility.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
 	}
 
@@ -1110,14 +1133,14 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 
 	if resp.StatusCode != http.StatusOK {
 		restErr := gimlet.ErrorResponse{}
-		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+		if err = utility.ReadJSON(resp.Body, &restErr); err != nil {
 			return nil, errors.Wrap(err, "received an error but was unable to parse")
 		}
 		return nil, errors.Wrapf(restErr, "response code %d problem getting manifest for task '%s'",
 			resp.StatusCode, taskId)
 	}
 	mfest := manifest.Manifest{}
-	if err := util.ReadJSONInto(resp.Body, &mfest); err != nil {
+	if err := utility.ReadJSON(resp.Body, &mfest); err != nil {
 		return nil, errors.Wrap(err, "problem parsing manifest")
 	}
 
@@ -1147,14 +1170,14 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 
 			if resp.StatusCode != http.StatusOK {
 				restErr := gimlet.ErrorResponse{}
-				if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+				if err = utility.ReadJSON(resp.Body, &restErr); err != nil {
 					return nil, errors.Wrap(err, "received an error but was unable to parse")
 				}
 				return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
 			}
 
 			output := []model.APIHostProcess{}
-			if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+			if err := utility.ReadJSON(resp.Body, &output); err != nil {
 				return nil, errors.Wrap(err, "problem reading response")
 			}
 
@@ -1193,14 +1216,14 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 
 			if resp.StatusCode != http.StatusOK {
 				restErr := gimlet.ErrorResponse{}
-				if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+				if err = utility.ReadJSON(resp.Body, &restErr); err != nil {
 					return nil, errors.Wrap(err, "received an error but was unable to parse")
 				}
 				return nil, errors.Wrapf(restErr, "response code %d running script on host", resp.StatusCode)
 			}
 
 			output := []model.APIHostProcess{}
-			if err := util.ReadJSONInto(resp.Body, &output); err != nil {
+			if err := utility.ReadJSON(resp.Body, &output); err != nil {
 				return nil, errors.Wrap(err, "problem reading response")
 			}
 
@@ -1214,4 +1237,58 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	}
 
 	return result, nil
+}
+
+func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "/task/sync_read_credentials",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = utility.ReadJSON(resp.Body, &respErr); err != nil {
+			return nil, errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return nil, errors.Wrap(respErr, "problem getting task read-only credentials")
+	}
+	creds := &evergreen.S3Credentials{}
+	if err := utility.ReadJSON(resp.Body, creds); err != nil {
+		return nil, errors.Wrap(err, "problem reading credentials from response body")
+	}
+
+	return creds, nil
+}
+
+func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/tasks/%s/sync_path", taskID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't make request to get task read-only credentials")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		respErr := gimlet.ErrorResponse{}
+		if err = utility.ReadJSON(resp.Body, &respErr); err != nil {
+			return "", errors.Wrapf(err, "received unexpected http status: %s", resp.Status)
+		}
+		return "", errors.Wrap(respErr, "problem getting task sync path")
+	}
+	var path string
+	if err = utility.ReadJSON(resp.Body, &path); err != nil {
+		return "", errors.Wrap(err, "problem reading task sync path from response body")
+	}
+
+	return path, nil
 }

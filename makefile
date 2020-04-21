@@ -3,8 +3,8 @@ name := evergreen
 buildDir := bin
 tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
-packages := $(name) agent operations cloud command db util plugin units graphql
-packages += thirdparty auth scheduler model validator service monitor repotracker
+packages := $(name) agent operations cloud cloud-userdata command db util plugin units graphql
+packages += thirdparty auth scheduler model validator service repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
@@ -161,7 +161,7 @@ $(buildDir)/golangci-lint:
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags "-w" -o $@ $<
 
 # end lint setup targets
 
@@ -170,7 +170,7 @@ generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
 $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
-	$(gobin) build -o $@ $<
+	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
 
 # generated config for go tests
@@ -256,6 +256,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/evergreen-ci/aviation/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/golang/protobuf/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
@@ -350,7 +351,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
-	mkdir vendor/github.com/vektah/gqlparser/.v2 && pushd vendor/github.com/vektah/gqlparser && mv * .v2 && mv .v2 v2 && popd
+	mkdir -p vendor/github.com/vektah/gqlparser/v2 && find vendor/github.com/vektah/gqlparser -maxdepth 1 -mindepth 1 -not -name "v2" -exec mv {} vendor/github.com/vektah/gqlparser/v2 \;
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 $(buildDir)/run-glide:cmd/revendor/run-glide.go

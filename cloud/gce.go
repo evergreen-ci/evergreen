@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -70,12 +69,7 @@ func (opts *GCESettings) Validate() error {
 }
 
 func (opts *GCESettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if d.ProviderSettings != nil && len(*d.ProviderSettings) > 0 {
-		if err := mapstructure.Decode(d.ProviderSettings, opts); err != nil {
-			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, opts)
-		}
-
-	} else if len(d.ProviderSettingsList) != 0 {
+	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
 			return errors.Wrap(err, "error marshalling provider setting into bson")
@@ -144,10 +138,8 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 
 	s := &GCESettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := s.FromDistroSettings(h.Distro, ""); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
-		}
+	if err := s.FromDistroSettings(h.Distro, ""); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 	if err := s.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)

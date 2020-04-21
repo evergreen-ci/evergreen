@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -48,7 +49,7 @@ func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	if err := util.ReadJSONInto(body, p); err != nil {
+	if err := utility.ReadJSON(body, p); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 

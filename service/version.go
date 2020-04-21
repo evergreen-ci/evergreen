@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -234,7 +235,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		TaskIds  []string `json:"task_ids"`
 	}{}
 
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &jsonMap); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &jsonMap); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

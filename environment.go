@@ -336,7 +336,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
-	opts.Priority = true
+	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
@@ -370,7 +370,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
-	opts.Priority = false
+	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = true
@@ -551,25 +551,13 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		sender, err = send.NewJiraLogger(&send.JiraOptions{
-			Name:         "evergreen",
-			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
-			UseBasicAuth: true,
-		}, levelInfo)
+		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira issue logger")
 		}
 		e.senders[SenderJIRAIssue] = sender
 
-		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:         "evergreen",
-			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
-			UseBasicAuth: true,
-		}, levelInfo)
+		sender, err = send.NewJiraCommentLogger(ctx, "", jira.Export(), levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira comment logger")
 		}
@@ -601,9 +589,19 @@ func (e *envState) initSenders(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
-		catcher.Add(s.SetErrorHandler(util.MakeNotificationErrorHandler(name.String())))
-	}
+		catcher.Add(s.SetErrorHandler(func(err error, m message.Composer) {
+			if err == nil {
+				return
+			}
 
+			grip.Error(message.WrapError(err, message.Fields{
+				"notification":        m.String(),
+				"message_type":        fmt.Sprintf("%T", m),
+				"notification_target": name.String(),
+				"event":               m,
+			}))
+		}))
+	}
 	return catcher.Resolve()
 }
 

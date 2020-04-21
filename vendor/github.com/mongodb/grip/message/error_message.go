@@ -2,8 +2,10 @@ package message
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 )
 
 type errorComposerWrap struct {
@@ -62,6 +64,22 @@ func (m *errorComposerWrap) String() string {
 	}
 
 	return m.cached
+}
+
+func (m *errorComposerWrap) Error() string { return m.String() }
+func (m *errorComposerWrap) Cause() error  { return m.err }
+func (m *errorComposerWrap) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%+v\n", errors.Cause(m.err))
+			_, _ = io.WriteString(s, m.String())
+			return
+		}
+		fallthrough
+	case 's', 'q':
+		_, _ = io.WriteString(s, m.Error())
+	}
 }
 
 func (m *errorComposerWrap) Loggable() bool {

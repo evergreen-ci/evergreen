@@ -11,18 +11,6 @@ import (
 	ignore "github.com/sabhiram/go-git-ignore"
 )
 
-// FileExists returns true if 'path' exists.
-func FileExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
 // WriteToTempFile writes the given string to a temporary file and returns the
 // path to the file.
 func WriteToTempFile(data string) (string, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -26,6 +27,10 @@ type s3get struct {
 
 	// RemoteFile is the filepath of the file to get, within its bucket
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
+
+	// Region is the s3 region where the bucket is located. It defaults to
+	// "us-east-1".
+	Region string `mapstructure:"region" plugin:"region"`
 
 	// Bucket is the s3 bucket holding the desired file
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
@@ -76,6 +81,10 @@ func (c *s3get) validateParams() error {
 		return errors.New("remote_file cannot be blank")
 	}
 
+	if c.Region == "" {
+		c.Region = endpoints.UsEast1RegionID
+	}
+
 	// make sure the bucket is valid
 	if err := validateS3BucketName(c.Bucket); err != nil {
 		return errors.Wrapf(err, "%v is an invalid bucket name", c.Bucket)
@@ -101,7 +110,7 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.StringSliceContains(c.BuildVariants, buildVariantName)
+	return utility.StringSliceContains(c.BuildVariants, buildVariantName)
 }
 
 // Apply the expansions from the relevant task config to all appropriate
@@ -126,9 +135,9 @@ func (c *s3get) Execute(ctx context.Context,
 	}
 
 	// create pail bucket
-	httpClient := util.GetHTTPClient()
+	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
-	defer util.PutHTTPClient(httpClient)
+	defer utility.PutHTTPClient(httpClient)
 	err := c.createPailBucket(httpClient)
 	if err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
@@ -153,7 +162,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "unable to create local_file directory")
 		}
 	}
 
@@ -163,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "unable to create extract_to directory")
 		}
 	}
 
@@ -215,12 +224,7 @@ func (c *s3get) get(ctx context.Context) error {
 	// either untar the remote, or just write to a file
 	if c.LocalFile != "" {
 		// remove the file, if it exists
-		exists, err := util.FileExists(c.LocalFile)
-		if err != nil {
-			return errors.Wrapf(err, "error checking existence of local file %v",
-				c.LocalFile)
-		}
-		if exists {
+		if utility.FileExists(c.LocalFile) {
 			if err := os.RemoveAll(c.LocalFile); err != nil {
 				return errors.Wrapf(err, "error clearing local file %v", c.LocalFile)
 			}
@@ -246,7 +250,7 @@ func (c *s3get) get(ctx context.Context) error {
 func (c *s3get) createPailBucket(httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      c.Region,
 		Name:        c.Bucket,
 	}
 	bucket, err := pail.NewS3BucketWithHTTPClient(httpClient, opts)

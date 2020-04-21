@@ -6,14 +6,15 @@ import (
 	"strings"
 	"time"
 
-	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -33,7 +34,7 @@ const LoadProjectError = "load project error(s)"
 // when they use fields that aren't actually defined.
 //
 // Once the intermediary project is created, we crawl it to evaluate tag selectors
-// and  matrix definitions. This step recursively crawls variants, tasks, their
+// and matrix definitions. This step recursively crawls variants, tasks, their
 // dependencies, and so on, to replace selectors with the tasks they reference and return
 // a populated Project type.
 //
@@ -481,6 +482,14 @@ func LoadProjectForVersion(v *Version, identifier string, shouldSave bool) (*Pro
 	return p, pp, nil
 }
 
+func GetProjectFromBSON(data []byte) (*Project, error) {
+	pp := &ParserProject{}
+	if err := bson.Unmarshal(data, pp); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
+	}
+	return TranslateProject(pp)
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
@@ -691,7 +700,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					toRemove = append(toRemove, removed...)
 				}
 				for _, t := range bv.Tasks {
-					if !util.StringSliceContains(toRemove, t.Name) {
+					if !utility.StringSliceContains(toRemove, t.Name) {
 						prunedTasks = append(prunedTasks, t)
 					}
 				}

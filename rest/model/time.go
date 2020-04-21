@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -56,7 +56,7 @@ func UnmarshalAPIDuration(v interface{}) (APIDuration, error) {
 }
 
 func ToTimePtr(t time.Time) *time.Time {
-	if util.IsZeroTime(t) {
+	if utility.IsZeroTime(t) {
 		return nil
 	}
 	return &t

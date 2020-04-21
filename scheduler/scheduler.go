@@ -24,7 +24,7 @@ type TaskPlannerOptions struct {
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
 
 func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
-	opts.IncludesDependencies = d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies
+	opts.IncludesDependencies = d.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies
 
 	switch d.PlannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
@@ -142,7 +142,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
 	var isAliasQueue bool
-	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
+	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
 		depCache[t.Id] = t
@@ -157,45 +157,51 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 		duration := task.FetchExpectedDuration().Average
 
+		if task.DistroId != distroID {
+			isAliasQueue = true
+		}
+
+		var exists bool
+		var info *model.TaskGroupInfo
+		if info, exists = taskGroupInfosMap[name]; exists {
+			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+				info.Count++
+				info.ExpectedDuration += duration
+			}
+		} else {
+			info = &model.TaskGroupInfo{
+				Name:     name,
+				MaxHosts: task.TaskGroupMaxHosts,
+			}
+
+			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+				info.Count++
+				info.ExpectedDuration += duration
+			}
+		}
+
 		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
 		}
 
-		if task.DistroId != distroID {
-			isAliasQueue = true
-		}
-
-		var taskGroupInfo model.TaskGroupInfo
-		if info, exists := taskGroupInfosMap[name]; exists {
-			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
-				info.Count++
-				info.ExpectedDuration += duration
-			}
-			taskGroupInfo = info
-		} else {
-			taskGroupInfo = model.TaskGroupInfo{
-				Name:             name,
-				Count:            1,
-				MaxHosts:         task.TaskGroupMaxHosts,
-				ExpectedDuration: duration,
-			}
-		}
-
 		if duration >= maxDurationThreshold {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
-				taskGroupInfo.CountOverThreshold++
-				taskGroupInfo.DurationOverThreshold += duration
+				if info != nil {
+					info.CountOverThreshold++
+					info.DurationOverThreshold += duration
+				}
 				distroCountOverThreshold++
 			}
 		}
-		taskGroupInfosMap[name] = taskGroupInfo
+
+		taskGroupInfosMap[name] = info
 		tasks[i] = task
 	}
 
 	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))
-	for _, info := range taskGroupInfosMap {
-		taskGroupInfos = append(taskGroupInfos, info)
+	for tgName := range taskGroupInfosMap {
+		taskGroupInfos = append(taskGroupInfos, *taskGroupInfosMap[tgName])
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{

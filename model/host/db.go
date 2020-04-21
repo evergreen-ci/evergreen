@@ -10,10 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -38,6 +39,7 @@ var (
 	ProvisionedKey               = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey             = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                     = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
+	DisplayNameKey               = bsonutil.MustHaveTag(Host{}, "DisplayName")
 	RunningTaskKey               = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey          = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
@@ -86,15 +88,18 @@ var (
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	InstanceTagsKey              = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	SSHKeyNamesKey               = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
+	HomeVolumeIDKey              = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
 	VolumeIDKey                  = bsonutil.MustHaveTag(Volume{}, "ID")
+	VolumeDisplayNameKey         = bsonutil.MustHaveTag(Volume{}, "DisplayName")
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
 	VolumeExpirationKey          = bsonutil.MustHaveTag(Volume{}, "Expiration")
+	VolumeHostKey                = bsonutil.MustHaveTag(Volume{}, "Host")
 	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
 )
@@ -328,7 +333,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByTaskSpec returns a query that finds all running hosts that are running a
+// NumHostsByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
@@ -338,7 +343,7 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 	}
 	q := db.Query(
 		bson.M{
-			StatusKey: evergreen.HostRunning,
+			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
 			"$or": []bson.M{
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
@@ -486,7 +491,7 @@ func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
 		NeedsReprovisionKey:     bson.M{"$exists": true, "$ne": ""},
 		ReprovisioningLockedKey: true,
 		"$or": []bson.M{
-			{LastCommunicationTimeKey: util.ZeroTime},
+			{LastCommunicationTimeKey: utility.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
@@ -591,7 +596,7 @@ func ByDynamicWithinTime(startTime, endTime time.Time) db.Q {
 				},
 				bson.M{
 					CreateTimeKey:      bson.M{"$lt": endTime},
-					TerminationTimeKey: util.ZeroTime,
+					TerminationTimeKey: utility.ZeroTime,
 					StatusKey:          evergreen.HostRunning,
 					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
 				},
@@ -698,7 +703,7 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 				{
 					task.StatusKey:        evergreen.TaskUndispatched,
 					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
-					task.LastHeartbeatKey: bson.M{"$ne": util.ZeroTime},
+					task.LastHeartbeatKey: bson.M{"$ne": utility.ZeroTime},
 				},
 			},
 		},
@@ -738,7 +743,7 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 				}},
 			}},
 			{"$or": []bson.M{
-				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: utility.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
@@ -769,7 +774,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 				}},
 			}},
 			{"$or": []bson.M{
-				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: utility.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxUncommunicativeInterval)}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
@@ -996,7 +1001,7 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	}
 
 	createTimeFilter := bson.M{"$gt": params.CreatedAfter}
-	if !util.IsZeroTime(params.CreatedBefore) {
+	if !utility.IsZeroTime(params.CreatedBefore) {
 		createTimeFilter["$lt"] = params.CreatedBefore
 	}
 
@@ -1115,7 +1120,6 @@ func lastContainerFinishTimePipeline() []bson.M {
 
 // AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
 func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
-
 	var times []FinishTime
 	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
 	if err != nil {
@@ -1160,6 +1164,15 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
+
+	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
+		message.Fields{
+			"host_id":   h.Id,
+			"volume_id": newVolume.VolumeID,
+			"op":        "host volume acocunting",
+			"message":   "problem setting host info on volume records",
+		}))
+
 	return nil
 }
 
@@ -1181,6 +1194,15 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding and updating host")
 	}
+
+	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),
+		message.Fields{
+			"host_id":   h.Id,
+			"volume_id": volumeId,
+			"op":        "host volume accounting",
+			"message":   "problem un-setting host info on volume records",
+		}))
+
 	return nil
 }
 
@@ -1245,14 +1267,23 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 			"$match": bson.M{StatusKey: evergreen.HostStarting},
 		},
 		{
+			"$project": bson.M{
+				"host":          "$$ROOT",
+				"settings_list": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey),
+			},
+		},
+		{
+			"$unwind": "$settings_list",
+		},
+		{
 			"$group": bson.M{
 				"_id": bson.M{
-					"provider": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
-					"region":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsRegionKey),
-					"key":      "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsKeyKey),
-					"secret":   "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsKey, awsSecretKey),
+					"provider": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderKey),
+					"region":   bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
+					"key":      bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
+					"secret":   bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
 				},
-				"hosts": bson.M{"$push": "$$ROOT"},
+				"hosts": bson.M{"$push": "$host"},
 			},
 		},
 	}

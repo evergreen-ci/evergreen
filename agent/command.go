@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -14,9 +15,8 @@ import (
 )
 
 type runCommandsOptions struct {
-	isTaskCommands   bool
-	shouldSetupFail  bool
-	setupTimeoutSecs int
+	isTaskCommands  bool
+	shouldSetupFail bool
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
@@ -184,4 +184,18 @@ func getFunctionName(commandInfo model.PluginCommandConf) string {
 		return commandInfo.Command
 	}
 	return "unknown function"
+}
+
+// endTaskSyncCommands returns the commands to sync the task to S3 if it was
+// requested when the task completes.
+func endTaskSyncCommands(tc *taskContext) *model.YAMLCommandSet {
+	if !tc.taskModel.ShouldSync {
+		return nil
+	}
+	return &model.YAMLCommandSet{
+		SingleCommand: &model.PluginCommandConf{
+			Type:    evergreen.CommandTypeSetup,
+			Command: evergreen.S3PushCommandName,
+		},
+	}
 }

@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -52,7 +52,7 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func parseJson(r *http.Request) ([]json.RawMessage, error) {
 	var files []json.RawMessage
-	err := util.ReadJSONInto(r.Body, &files)
+	err := utility.ReadJSON(r.Body, &files)
 	return files, err
 }
 

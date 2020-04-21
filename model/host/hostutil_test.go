@@ -16,6 +16,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -164,7 +165,6 @@ func TestJasperCommands(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p /foo",
 				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
@@ -184,7 +184,7 @@ func TestJasperCommands(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert())
 
@@ -199,9 +199,12 @@ func TestJasperCommands(t *testing.T) {
 
 			expectedCmds := []string{
 				setupScript,
+				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				startAgentMonitor,
 				markDone,
 			}
@@ -209,23 +212,23 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
 			currPos := 0
-			offset := strings.Index(script[currPos:], setupScript)
+			offset := strings.Index(userData.Content[currPos:], setupScript)
 			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
 			currPos += offset + len(setupScript)
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
@@ -235,7 +238,12 @@ func TestJasperCommands(t *testing.T) {
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID, TaskId: "task_id"}
+			h.ProvisionOptions = &ProvisionOptions{
+				LoadCLI:  true,
+				OwnerId:  userID,
+				TaskId:   "task_id",
+				TaskSync: true,
+			}
 			require.NoError(t, h.Insert())
 
 			setupScript, err := h.setupScriptCommands(settings)
@@ -244,10 +252,10 @@ func TestJasperCommands(t *testing.T) {
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
-			bashSetupSpawnHost := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
-			getTaskData, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+			pullTaskSync, err := h.buildLocalJasperClientRequest(settings.HostJasper,
 				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{bashSetupSpawnHost}})
+				&options.Command{Commands: [][]string{bashPullTaskSync}})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -255,29 +263,32 @@ func TestJasperCommands(t *testing.T) {
 
 			expectedCmds := []string{
 				setupScript,
+				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
-				getTaskData,
+				pullTaskSync,
 				markDone,
 			}
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
 			currPos := 0
-			offset := strings.Index(script[currPos:], setupScript)
+			offset := strings.Index(userData.Content[currPos:], setupScript)
 			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
 			currPos += offset + len(setupScript)
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
@@ -360,7 +371,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 	for opName, opCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
-				"mkdir -m 777 -p /foo",
 				"cd /foo",
 				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
@@ -380,8 +390,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScriptForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
+
+			checkRerun, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
 
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
@@ -389,7 +402,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeSetupScript, err := h.writeSetupScriptCommands(settings)
 			require.NoError(t, err)
 
-			expectedPreCmds := append([]string{setupUser}, writeSetupScript...)
+			expectedPreCmds := append([]string{checkRerun, setupUser}, writeSetupScript...)
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
@@ -402,10 +415,15 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 
-			expectedCmds := append(writeCredentialsCmd,
+			var expectedCmds []string
+			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
+			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				startAgentMonitor,
 				markDone,
@@ -415,26 +433,26 @@ func TestJasperCommandsWindows(t *testing.T) {
 				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "<powershell>"))
-			assert.True(t, strings.HasSuffix(script, "</powershell>"))
+			assert.Equal(t, userdata.PowerShellScript, userData.Directive)
+			assert.True(t, userData.Persist)
 
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 		},
-		"BootstrapScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
@@ -443,8 +461,14 @@ func TestJasperCommandsWindows(t *testing.T) {
 			userID := "user"
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
-			h.ProvisionOptions = &ProvisionOptions{LoadCLI: true, OwnerId: userID}
+			h.ProvisionOptions = &ProvisionOptions{
+				LoadCLI: true,
+				OwnerId: userID,
+			}
 			require.NoError(t, h.Insert())
+
+			checkRerun, err := h.CheckUserDataStartedCommand()
+			require.NoError(t, err)
 
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
@@ -452,7 +476,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeSetupScript, err := h.writeSetupScriptCommands(settings)
 			require.NoError(t, err)
 
-			expectedPreCmds := append([]string{setupUser}, writeSetupScript...)
+			expectedPreCmds := append([]string{checkRerun, setupUser}, writeSetupScript...)
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
@@ -465,10 +489,15 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
 
-			expectedCmds := append(writeCredentialsCmd,
+			var expectedCmds []string
+			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
+			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
 				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				setupSpawnHost,
 				markDone,
@@ -478,21 +507,21 @@ func TestJasperCommandsWindows(t *testing.T) {
 				expectedCmds[i] = util.PowerShellQuotedString(expectedCmds[i])
 			}
 
-			script, err := h.BootstrapScript(settings, creds)
+			userData, err := h.ProvisioningUserData(settings, creds)
 			require.NoError(t, err)
 
-			assert.True(t, strings.HasPrefix(script, "<powershell>"))
-			assert.True(t, strings.HasSuffix(script, "</powershell>"))
+			assert.Equal(t, userdata.PowerShellScript, userData.Directive)
+			assert.True(t, userData.Persist)
 
 			currPos := 0
 			for _, expectedCmd := range expectedPreCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
 
 			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(script[currPos:], expectedCmd)
+				offset := strings.Index(userData.Content[currPos:], expectedCmd)
 				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
 				currPos += offset + len(expectedCmd)
 			}
@@ -525,7 +554,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
 				},
 				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					settings.Splunk.Token = "token"
@@ -535,7 +564,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
 				},
 				"SpawnHostWithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.StartedBy = "started_by_user"
@@ -546,7 +575,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p /bar && echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -833,10 +862,9 @@ func TestBufferedWriteFileCommands(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, path, content string){
 		"BufferedWriteFileCommandsUsesSingleCommandForShortFile": func(t *testing.T, path, content string) {
 			cmds := bufferedWriteFileCommands(path, content)
-			require.Len(t, cmds, 3)
-			assert.Equal(t, fmt.Sprintf("mkdir -m 777 -p %s", filepath.Dir(path)), cmds[0])
-			assert.Equal(t, writeToFileCommand(path, content, true), cmds[1])
-			assert.Equal(t, fmt.Sprintf("chmod 666 %s", path), cmds[2])
+			require.Len(t, cmds, 2)
+			assert.Equal(t, writeToFileCommand(path, content, true), cmds[0])
+			assert.Equal(t, fmt.Sprintf("chmod 666 %s", path), cmds[1])
 		},
 		"BufferedWriteFileCommandsUsesMultipleCommandsForLongFile": func(t *testing.T, path, content string) {
 			content = strings.Repeat(content, 1000)
@@ -916,13 +944,6 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 		},
 		Ui: evergreen.UIConfig{
 			Url: "www.example2.com",
-		},
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				S3Key:    "key",
-				S3Secret: "secret",
-				Bucket:   "bucket",
-			},
 		},
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "www.example3.com",
@@ -1083,12 +1104,76 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +
-		" && echo '{\"api_key\":\"key\",\"api_server_host\":\"www.example0.com/api\",\"ui_server_host\":\"www.example1.com\",\"user\":\"user\"}' > /home/user/.evergreen.yml" +
+		" && sudo chown -R user /home/user/.evergreen.yml" +
+		" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n\" > /home/user/.evergreen.yml" +
+		" && chmod +x /home/user/evergreen" +
 		" && cp /home/user/evergreen /home/user/cli_bin" +
-		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
-		" && chown -R user /home/user/cli_bin" +
-		" && chmod +x /home/user/cli_bin/evergreen"
+		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)"
 	assert.Equal(t, expected, cmd)
+}
+
+func TestCheckUserDataStartedCommand(t *testing.T) {
+	t.Run("WithWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *Host){
+			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
+				expectedCmd := "if (Test-Path -Path /root_dir/jasper_binary_dir/user_data_started) { exit }" +
+					"\r\n/root_dir/bin/bash -l -c @'" +
+					"\nmkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started" +
+					"\n'@"
+				cmd, err := h.CheckUserDataStartedCommand()
+				require.NoError(t, err)
+				assert.Equal(t, expectedCmd, cmd)
+			},
+			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
+				h.Distro.BootstrapSettings.JasperBinaryDir = ""
+				cmd, err := h.CheckUserDataStartedCommand()
+				assert.Error(t, err)
+				assert.Empty(t, cmd)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &Host{
+					Distro: distro.Distro{
+						Arch: distro.ArchWindowsAmd64,
+						BootstrapSettings: distro.BootstrapSettings{
+							JasperBinaryDir: "/jasper_binary_dir",
+							RootDir:         "/root_dir",
+							ShellPath:       "/bin/bash",
+						},
+					},
+				}
+				testCase(t, h)
+			})
+		}
+	})
+	t.Run("WithNonWindowsHost", func(t *testing.T) {
+		for testName, testCase := range map[string]func(t *testing.T, h *Host){
+			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
+				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
+				cmd, err := h.CheckUserDataStartedCommand()
+				require.NoError(t, err)
+				assert.Equal(t, expectedCmd, cmd)
+			},
+			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
+				h.Distro.BootstrapSettings.JasperBinaryDir = ""
+				cmd, err := h.CheckUserDataStartedCommand()
+				assert.Error(t, err)
+				assert.Empty(t, cmd)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				h := &Host{
+					Distro: distro.Distro{
+						Arch: distro.ArchLinuxAmd64,
+						BootstrapSettings: distro.BootstrapSettings{
+							JasperBinaryDir: "/jasper_binary_dir",
+						},
+					},
+				}
+				testCase(t, h)
+			})
+		}
+	})
 }
 
 func TestMarkUserDataDoneCommands(t *testing.T) {
@@ -1108,7 +1193,7 @@ func TestMarkUserDataDoneCommands(t *testing.T) {
 			}
 			cmd, err := h.MarkUserDataDoneCommands()
 			require.NoError(t, err)
-			assert.Equal(t, "mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_done", cmd)
+			assert.Equal(t, "touch /jasper_binary_dir/user_data_done", cmd)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -1232,6 +1317,51 @@ func TestSetupServiceUserCommands(t *testing.T) {
 			}})
 		})
 	}
+}
+
+func TestMakeJasperDirsCommand(t *testing.T) {
+	h := &Host{
+		Distro: distro.Distro{
+			BootstrapSettings: distro.BootstrapSettings{
+				JasperBinaryDir:       "/jasper_binary_dir",
+				JasperCredentialsPath: "/jasper_credentials_path/file",
+				ClientDir:             "/jasper_client_dir",
+			},
+		},
+	}
+	assert.Equal(t, "mkdir -m 777 -p /jasper_binary_dir /jasper_credentials_path /jasper_client_dir", h.MakeJasperDirsCommand())
+}
+
+func TestChangeJasperDirsOwnerCommand(t *testing.T) {
+	t.Run("NonWindowsHost", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: distro.ArchLinuxAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					JasperBinaryDir:       "/jasper_binary_dir",
+					JasperCredentialsPath: "/jasper_credentials_path/file",
+					ClientDir:             "/jasper_client_dir",
+				},
+				User: "user",
+			},
+		}
+		assert.Equal(t, "sudo chown -R user /jasper_binary_dir && sudo chown -R user /jasper_credentials_path && sudo chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
+	})
+
+	t.Run("WindowsHost", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					JasperBinaryDir:       "/jasper_binary_dir",
+					JasperCredentialsPath: "/jasper_credentials_path/file",
+					ClientDir:             "/jasper_client_dir",
+				},
+				User: "user",
+			},
+		}
+		assert.Equal(t, "chown -R user /jasper_binary_dir && chown -R user /jasper_credentials_path && chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
+	})
 }
 
 func newMockCredentials() (*certdepot.Credentials, error) {

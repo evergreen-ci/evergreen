@@ -9,26 +9,28 @@ import (
 
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
-	TaskDispatchDisabled       bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
-	HostInitDisabled           bool `bson:"host_init_disabled" json:"host_init_disabled"`
-	MonitorDisabled            bool `bson:"monitor_disabled" json:"monitor_disabled"`
-	AlertsDisabled             bool `bson:"alerts_disabled" json:"alerts_disabled"`
-	AgentStartDisabled         bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
-	RepotrackerDisabled        bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
-	SchedulerDisabled          bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
-	GithubPRTestingDisabled    bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled         bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
-	BackgroundStatsDisabled    bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
-	TaskLoggingDisabled        bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
-	CacheStatsJobDisabled      bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
-	CacheStatsOldTasksDisabled bool `bson:"cache_stats_old_tasks_disabled" json:"cache_stats_old_tasks_disabled"`
-	TaskReliabilityDisabled    bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
-	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
-	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
-	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
-	DRBackupDisabled           bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
-	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
+	TaskDispatchDisabled          bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
+	HostInitDisabled              bool `bson:"host_init_disabled" json:"host_init_disabled"`
+	MonitorDisabled               bool `bson:"monitor_disabled" json:"monitor_disabled"`
+	AlertsDisabled                bool `bson:"alerts_disabled" json:"alerts_disabled"`
+	AgentStartDisabled            bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
+	RepotrackerDisabled           bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
+	SchedulerDisabled             bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
+	GithubPRTestingDisabled       bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled            bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
+	BackgroundStatsDisabled       bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
+	TaskLoggingDisabled           bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
+	CacheStatsJobDisabled         bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled    bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
+	CacheStatsOldTasksDisabled    bool `bson:"cache_stats_old_tasks_disabled" json:"cache_stats_old_tasks_disabled"`
+	TaskReliabilityDisabled       bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
+	CommitQueueDisabled           bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
+	PlannerDisabled               bool `bson:"planner_disabled" json:"planner_disabled"`
+	HostAllocatorDisabled         bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
+	DRBackupDisabled              bool `bson:"dr_backup_disabled" json:"dr_backup_disabled"`
+	BackgroundReauthDisabled      bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled     bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
+	AmboyRemoteManagementDisabled bool `bson:"amboy_remote_management_disabled" json:"amboy_remote_management_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -68,32 +70,34 @@ func (c *ServiceFlags) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			taskDispatchKey:                 c.TaskDispatchDisabled,
-			hostInitKey:                     c.HostInitDisabled,
-			monitorKey:                      c.MonitorDisabled,
-			alertsKey:                       c.AlertsDisabled,
-			agentStartKey:                   c.AgentStartDisabled,
-			repotrackerKey:                  c.RepotrackerDisabled,
-			schedulerKey:                    c.SchedulerDisabled,
-			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
-			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
-			backgroundStatsDisabledKey:      c.BackgroundStatsDisabled,
-			eventProcessingDisabledKey:      c.EventProcessingDisabled,
-			jiraNotificationsDisabledKey:    c.JIRANotificationsDisabled,
-			slackNotificationsDisabledKey:   c.SlackNotificationsDisabled,
-			emailNotificationsDisabledKey:   c.EmailNotificationsDisabled,
-			webhookNotificationsDisabledKey: c.WebhookNotificationsDisabled,
-			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
-			taskLoggingDisabledKey:          c.TaskLoggingDisabled,
-			cacheStatsJobDisabledKey:        c.CacheStatsJobDisabled,
-			cacheStatsEndpointDisabledKey:   c.CacheStatsEndpointDisabled,
-			cacheStatsOldTasksDisabledKey:   c.CacheStatsOldTasksDisabled,
-			taskReliabilityDisabledKey:      c.TaskReliabilityDisabled,
-			commitQueueDisabledKey:          c.CommitQueueDisabled,
-			plannerDisabledKey:              c.PlannerDisabled,
-			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
-			drBackupDisabledKey:             c.DRBackupDisabled,
-			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
+			taskDispatchKey:                  c.TaskDispatchDisabled,
+			hostInitKey:                      c.HostInitDisabled,
+			monitorKey:                       c.MonitorDisabled,
+			alertsKey:                        c.AlertsDisabled,
+			agentStartKey:                    c.AgentStartDisabled,
+			repotrackerKey:                   c.RepotrackerDisabled,
+			schedulerKey:                     c.SchedulerDisabled,
+			githubPRTestingDisabledKey:       c.GithubPRTestingDisabled,
+			cliUpdatesDisabledKey:            c.CLIUpdatesDisabled,
+			backgroundStatsDisabledKey:       c.BackgroundStatsDisabled,
+			eventProcessingDisabledKey:       c.EventProcessingDisabled,
+			jiraNotificationsDisabledKey:     c.JIRANotificationsDisabled,
+			slackNotificationsDisabledKey:    c.SlackNotificationsDisabled,
+			emailNotificationsDisabledKey:    c.EmailNotificationsDisabled,
+			webhookNotificationsDisabledKey:  c.WebhookNotificationsDisabled,
+			githubStatusAPIDisabledKey:       c.GithubStatusAPIDisabled,
+			taskLoggingDisabledKey:           c.TaskLoggingDisabled,
+			cacheStatsJobDisabledKey:         c.CacheStatsJobDisabled,
+			cacheStatsEndpointDisabledKey:    c.CacheStatsEndpointDisabled,
+			cacheStatsOldTasksDisabledKey:    c.CacheStatsOldTasksDisabled,
+			taskReliabilityDisabledKey:       c.TaskReliabilityDisabled,
+			commitQueueDisabledKey:           c.CommitQueueDisabled,
+			plannerDisabledKey:               c.PlannerDisabled,
+			hostAllocatorDisabledKey:         c.HostAllocatorDisabled,
+			drBackupDisabledKey:              c.DRBackupDisabled,
+			backgroundCleanupDisabledKey:     c.BackgroundCleanupDisabled,
+			backgroundReauthDisabledKey:      c.BackgroundReauthDisabled,
+			amboyRemoteManagementDisabledKey: c.AmboyRemoteManagementDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

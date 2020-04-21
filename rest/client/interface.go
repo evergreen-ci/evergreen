@@ -58,12 +58,12 @@ type Communicator interface {
 	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
-	// GetProjectRef loads the task's project.
+	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
-	// GetVersion loads the task's Version
-	GetVersion(context.Context, TaskData) (*model.Version, error)
+	// GetProject loads the project using the task's version ID
+	GetProject(context.Context, TaskData) (*model.Project, error)
 	// GetExpansions returns all expansions for the task known by the app server
 	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
@@ -156,6 +156,7 @@ type Communicator interface {
 	DetachVolume(context.Context, string, string) error
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
+	ModifyVolume(context.Context, string, *restmodel.VolumeModifyOptions) error
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
 	StartHostProcesses(context.Context, []string, string, int) ([]restmodel.APIHostProcess, error)
 	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess, int) ([]restmodel.APIHostProcess, error)
@@ -173,6 +174,7 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
+	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
 	// GetClientConfig fetches the ClientConfig for the evergreen server
 	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
@@ -199,4 +201,10 @@ type Communicator interface {
 
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
+
+	// GetTaskSyncReadCredentials returns the credentials to fetch task
+	// directory from S3.
+	GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error)
+	// GetTaskSyncPath returns the path to the task directory in S3.
+	GetTaskSyncPath(ctx context.Context, taskID string) (string, error)
 }

@@ -624,8 +624,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 
 	// validate the project
 	verrs := validator.CheckProjectSyntax(projectInfo.Project)
+	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
 	if len(verrs) > 0 || versionErrs != nil {
-		// We have syntax errors in the project.
+		// We have errors in the project.
 		// Format them, as we need to store + display them to the user
 		var projectErrors, projectWarnings []string
 		for _, e := range verrs {

@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -189,24 +189,13 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 
 // hostDown checks if the host is down.
 func (j *agentMonitorDeployJob) hostDown() bool {
-	return util.StringSliceContains(evergreen.DownHostStatus, j.host.Status)
+	return utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status)
 }
 
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
-	if err := j.host.DisablePoisonedHost(reason); err != nil {
-		return errors.Wrapf(err, "error terminating host %s", j.host.Id)
-	}
-
-	job := NewDecoHostNotifyJob(j.env, j.host, nil, reason)
-	grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
-		"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-	}))
-
-	return nil
+	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "error terminating host %s", j.host.Id)
 }
 
 // checkNoRetries checks if the job has exhausted the maximum allowed attempts

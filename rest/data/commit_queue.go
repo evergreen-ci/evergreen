@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
@@ -160,7 +160,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 		return false, errors.Wrap(err, "call to Github API failed")
 	}
 	mergePermissions := []string{"admin", "write"}
-	hasPermission := util.StringSliceContains(mergePermissions, permission)
+	hasPermission := utility.StringSliceContains(mergePermissions, permission)
 
 	return inOrg && hasPermission, nil
 }

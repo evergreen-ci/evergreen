@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,14 +45,12 @@ func TestFileExists(t *testing.T) {
 	Convey("When testing that a file exists", t, func() {
 
 		Convey("an existing file should be reported as existing", func() {
-			exists, err := FileExists(tmpfile.Name())
-			So(err, ShouldBeNil)
+			exists := utility.FileExists(tmpfile.Name())
 			So(exists, ShouldBeTrue)
 		})
 
 		Convey("a nonexistent file should be reported as missing", func() {
-			exists, err := FileExists("testFileThatDoesNotExist1234567")
-			So(err, ShouldBeNil)
+			exists := utility.FileExists("testFileThatDoesNotExist1234567")
 			So(exists, ShouldBeFalse)
 		})
 	})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -77,10 +78,9 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
+		ContainerPool: "test-pool", ProviderSettingsList: []*birch.Document{providerSettings}}
 	parent := distro.Distro{
 		Id:       "parent-distro",
 		Provider: evergreen.ProviderNameMock,
@@ -137,10 +137,9 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
+		ContainerPool: "test-pool", ProviderSettingsList: []*birch.Document{providerSettings}}
 	parent := distro.Distro{
 		Id:       "parent-distro",
 		Provider: evergreen.ProviderNameMock,
@@ -189,10 +188,9 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
-		ProviderSettings: &providerSettings}
+		ProviderSettingsList: []*birch.Document{providerSettings}}
 	parent := distro.Distro{
 		Id:       "parent-distro",
 		Provider: evergreen.ProviderNameMock,
@@ -253,10 +251,9 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
-		ProviderSettings: &providerSettings}
+		ProviderSettingsList: []*birch.Document{providerSettings}}
 	parent := distro.Distro{
 		Id:       "parent-distro",
 		Provider: evergreen.ProviderNameMock,
@@ -300,13 +297,12 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	d := distro.Distro{
-		Id:               "distro",
-		Provider:         evergreen.ProviderNameMock,
-		ContainerPool:    "test-pool",
-		ProviderSettings: &providerSettings,
+		Id:                   "distro",
+		Provider:             evergreen.ProviderNameMock,
+		ContainerPool:        "test-pool",
+		ProviderSettingsList: []*birch.Document{providerSettings},
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 1,
 		},
@@ -342,13 +338,14 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	providerSettings := make(map[string]interface{})
-	providerSettings["image_url"] = "my-image"
-
+	providerSettings := birch.NewDocument(birch.EC.String("image_url", "my-image"))
 	hosts := []cloud.StaticHost{{Name: "host1"}, {Name: "host2"}, {Name: "host3"}}
+	hostSettings := birch.NewDocument(birch.EC.Interface("hosts", hosts))
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDocker,
-		ContainerPool: "test-pool", ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", Provider: evergreen.ProviderNameStatic, ProviderSettings: &providerSettings}
+		ContainerPool: "test-pool", ProviderSettingsList: []*birch.Document{providerSettings}}
+
+	parent := distro.Distro{Id: "parent-distro", Provider: evergreen.ProviderNameStatic,
+		ProviderSettingsList: []*birch.Document{providerSettings}}
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 1}
 
 	host1 := &host.Host{
@@ -356,8 +353,8 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 		Host: "host",
 		User: "user",
 		Distro: distro.Distro{
-			Id:               "parent-distro",
-			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+			Id:                   "parent-distro",
+			ProviderSettingsList: []*birch.Document{hostSettings},
 		},
 		Provider:              evergreen.ProviderNameStatic,
 		Status:                evergreen.HostRunning,
@@ -367,8 +364,8 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	host2 := &host.Host{
 		Id: "host2",
 		Distro: distro.Distro{
-			Id:               "parent-distro",
-			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+			Id:                   "parent-distro",
+			ProviderSettingsList: []*birch.Document{hostSettings},
 		},
 		Provider:              evergreen.ProviderNameStatic,
 		Status:                evergreen.HostRunning,
@@ -378,8 +375,8 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	host3 := &host.Host{
 		Id: "host3",
 		Distro: distro.Distro{
-			Id:               "parent-distro",
-			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+			Id:                   "parent-distro",
+			ProviderSettingsList: []*birch.Document{hostSettings},
 		},
 		Provider:              evergreen.ProviderNameStatic,
 		Status:                evergreen.HostRunning,

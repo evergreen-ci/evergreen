@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -102,6 +102,7 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		UserName:             user.Username(),
 		PublicKey:            keyVal,
 		TaskId:               options.TaskID,
+		TaskSync:             options.TaskSync,
 		Owner:                user,
 		InstanceTags:         options.InstanceTags,
 		InstanceType:         options.InstanceType,
@@ -223,7 +224,7 @@ func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, us
 				continue
 			}
 		} else {
-			if !util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+			if !utility.StringSliceContains(evergreen.UpHostStatus, h.Status) {
 				continue
 			}
 		}
@@ -250,7 +251,7 @@ func (hc *MockHostConnector) FindHostsInRange(params restmodel.APIHostParams, us
 			continue
 		}
 
-		if !util.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
+		if !utility.IsZeroTime(params.CreatedBefore) && h.CreationTime.After(params.CreatedBefore) {
 			continue
 		}
 
@@ -290,7 +291,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 func (hc *MockHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
 	hosts := []host.Host{}
 	for _, h := range hc.CachedHosts {
-		if h.Status == evergreen.HostRunning && (h.Distro.Id == distro || util.StringSliceContains(h.Distro.Aliases, distro)) {
+		if h.Status == evergreen.HostRunning && (h.Distro.Id == distro || utility.StringSliceContains(h.Distro.Aliases, distro)) {
 			hosts = append(hosts, h)
 		}
 	}

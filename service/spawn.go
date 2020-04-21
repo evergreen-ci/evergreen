@@ -17,12 +17,14 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 var (
+	HostRename                 = "changeDisplayName"
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostInstanceTypeUpdate     = "updateInstanceType"
 	HostTagUpdate              = "updateHostTags"
@@ -164,6 +166,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	putParams := struct {
 		Task                 string     `json:"task_id"`
+		TaskSync             bool       `json:"task_sync"`
 		Distro               string     `json:"distro"`
 		KeyName              string     `json:"key_name"`
 		PublicKey            string     `json:"public_key"`
@@ -171,6 +174,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData             string     `json:"userdata"`
 		UseTaskConfig        bool       `json:"use_task_config"`
 		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+		NoExpiration         bool       `json:"no_expiration"`
 		HomeVolumeSize       int        `json:"home_volume_size"`
 		HomeVolumeID         string     `json:"home_volume_id"`
 		InstanceTags         []host.Tag `json:"instance_tags"`
@@ -178,7 +182,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		Region               string     `json:"region"`
 	}{}
 
-	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
+	err := utility.ReadJSON(util.NewRequestReader(r), &putParams)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
@@ -203,10 +207,12 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		Region:               putParams.Region,
 		KeyName:              putParams.PublicKey,
 		TaskID:               putParams.Task,
+		TaskSync:             putParams.TaskSync,
 		UserData:             putParams.UserData,
 		InstanceTags:         putParams.InstanceTags,
 		InstanceType:         putParams.InstanceType,
 		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
+		NoExpiration:         putParams.NoExpiration,
 		HomeVolumeSize:       putParams.HomeVolumeSize,
 		HomeVolumeID:         putParams.HomeVolumeID,
 	}
@@ -214,7 +220,6 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
 	spawnHost, err := hc.NewIntentHost(ctx, options, authedUser, &uis.Settings)
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
 		return
@@ -249,7 +254,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	updateParams := restModel.APISpawnHostModify{}
 	ctx := r.Context()
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -310,7 +315,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Stop the host
-		ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 		stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
 		if err = uis.queue.Put(ctx, stopJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -327,7 +332,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Start the host
-		ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 		startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
 		if err = uis.queue.Put(ctx, startJob); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -433,7 +438,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 		deleteTags := restModel.FromStringPtrSlice(updateParams.DeleteTags)
 		addTagPairs := restModel.FromStringPtrSlice(updateParams.AddTags)
-		addTags, err := host.MakeHostTags(addTagPairs)
+		var addTags []host.Tag
+		addTags, err = host.MakeHostTags(addTagPairs)
 		if err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error creating tags to add: "+err.Error()))
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error creating tags to add"))
@@ -452,6 +458,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprint("Host tags successfully modified.")))
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
+	case HostRename:
+		if err = h.SetDisplayName(restModel.FromStringPtr(updateParams.NewName)); err != nil {
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating display name"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem renaming spawn host"))
+			return
+		}
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return

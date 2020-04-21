@@ -2,11 +2,13 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -52,7 +54,7 @@ func (o *DBQueueManagerOptions) Validate() error {
 // NewDBQueueManager produces a queue manager for (remote) queues that persist
 // jobs in MongoDB. This implementation does not interact with the queue
 // directly, and manages by interacting with the database directly.
-func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Management, error) {
+func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Manager, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ func NewDBQueueManager(ctx context.Context, opts DBQueueManagerOptions) (Managem
 // MakeDBQueueManager make it possible to produce a queue manager with an
 // existing database Connection. This operations runs the "ping" command and
 // and will return an error if there is no session or no active server.
-func MakeDBQueueManager(ctx context.Context, opts DBQueueManagerOptions, client *mongo.Client) (Management, error) {
+func MakeDBQueueManager(ctx context.Context, opts DBQueueManagerOptions, client *mongo.Client) (Manager, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -214,14 +216,12 @@ func (db *dbQueueManager) findJobs(ctx context.Context, match bson.M) ([]string,
 	}
 }
 
-func (db *dbQueueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobStatusReport, error) {
+func (db *dbQueueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobStatusReport, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	match := bson.M{
-		"status.completed": false,
-	}
+	match := bson.M{}
 
 	group := bson.M{
 		"_id":   "$type",
@@ -237,11 +237,19 @@ func (db *dbQueueManager) JobStatus(ctx context.Context, f CounterFilter) (*JobS
 	switch f {
 	case InProgress:
 		match["status.in_prog"] = true
+		match["status.completed"] = false
 	case Pending:
 		match["status.in_prog"] = false
+		match["status.completed"] = false
 	case Stale:
 		match["status.in_prog"] = true
 		match["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+		match["status.completed"] = false
+	case Completed:
+		match["status.in_prog"] = false
+		match["status.completed"] = true
+	case All:
+		// pass (all jobs, completed and in progress)
 	default:
 		return nil, errors.New("invalid job status filter")
 	}
@@ -359,7 +367,7 @@ func (db *dbQueueManager) RecentTiming(ctx context.Context, window time.Duration
 	}, nil
 }
 
-func (db *dbQueueManager) JobIDsByState(ctx context.Context, jobType string, f CounterFilter) (*JobReportIDs, error) {
+func (db *dbQueueManager) JobIDsByState(ctx context.Context, jobType string, f StatusFilter) (*JobReportIDs, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -377,6 +385,9 @@ func (db *dbQueueManager) JobIDsByState(ctx context.Context, jobType string, f C
 	case Stale:
 		query["status.in_prog"] = true
 		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+	case Completed:
+		query["status.in_prog"] = false
+		query["status.completed"] = true
 	default:
 		return nil, errors.New("invalid job status filter")
 	}
@@ -570,20 +581,63 @@ func (db *dbQueueManager) RecentJobErrors(ctx context.Context, jobType string, w
 	}, nil
 }
 
-func (db *dbQueueManager) CompleteJobsByType(ctx context.Context, jobType string) error {
-	query := bson.M{
-		"type":             jobType,
-		"status.completed": false,
+func (*dbQueueManager) getUpdateStatement() bson.M {
+	return bson.M{
+		"$set":   bson.M{"status.completed": true},
+		"$inc":   bson.M{"status.mod_count": 3},
+		"$unset": bson.M{"scopes": 1},
 	}
+}
+
+func (db *dbQueueManager) completeJobs(ctx context.Context, query bson.M, f StatusFilter) error {
 	if db.opts.Group != "" {
 		query["group"] = db.opts.Group
 	}
 
-	update := bson.M{
-		"$set": bson.M{"status.completed": true},
-		"$inc": bson.M{"status.mod_count": 3},
+	switch f {
+	case Completed:
+		return errors.New("cannot mark completed jobs complete")
+	case InProgress:
+		query["status.completed"] = false
+		query["status.in_prog"] = true
+	case Stale:
+		query["status.in_prog"] = true
+		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+	case Pending:
+		query["status.completed"] = false
+		query["status.in_prog"] = false
+	case All:
+		query["status.in_prog"] = false
 	}
 
-	_, err := db.collection.UpdateMany(ctx, query, update)
-	return errors.Wrap(err, "problem marking jobs complete by type")
+	res, err := db.collection.UpdateMany(ctx, query, db.getUpdateStatement())
+	grip.Info(message.Fields{
+		"op":         "mark-jobs-complete",
+		"collection": db.collection.Name(),
+		"filter":     f,
+		"modified":   res.ModifiedCount,
+	})
+	return errors.Wrap(err, "problem marking jobs complete")
+}
+
+func (db *dbQueueManager) CompleteJob(ctx context.Context, name string) error {
+	if db.opts.Group != "" {
+		name = fmt.Sprintf("%s.%s", db.opts.Group, name)
+	}
+	query := bson.M{
+		"_id":              name,
+		"status.completed": false,
+	}
+
+	_, err := db.collection.UpdateOne(ctx, query, db.getUpdateStatement())
+	return errors.Wrapf(err, "problem marking job with name '%s' complete", name)
+}
+
+func (db *dbQueueManager) CompleteJobsByType(ctx context.Context, f StatusFilter, jobType string) error {
+	return db.completeJobs(ctx, bson.M{"type": jobType}, f)
+}
+
+func (db *dbQueueManager) CompleteJobs(ctx context.Context, f StatusFilter) error {
+	return db.completeJobs(ctx, bson.M{}, f)
+
 }

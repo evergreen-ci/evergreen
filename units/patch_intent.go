@@ -16,8 +16,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -216,6 +216,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
+	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncTasks) != 0 || len(patchDoc.SyncBuildVariants) != 0) {
+		j.gitHubError = PatchTaskSyncDisabled
+		return errors.New("task sync at the end of a patched task is disabled by project settings")
+	}
+
+	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
 	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
@@ -227,14 +233,18 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		return errors.Wrap(err, "can't get patched config")
 	}
-	errs := validator.CheckProjectSyntax(project)
-	if len(errs) != 0 {
-		for _, validatorErr := range errs {
-			if validatorErr.Level == validator.Error {
-				j.gitHubError = InvalidConfig
-				return errors.New("invalid patched config")
-			}
+	if errs := validator.CheckProjectSyntax(project); len(errs) != 0 {
+		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
+			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 		}
+	}
+	if errs := validator.CheckProjectSettings(project, pref); len(errs) != 0 {
+		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
+			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
+		}
+	}
+	if validationCatcher.HasErrors() {
+		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
 	patchDoc.PatchedConfig = projectYaml
@@ -261,7 +271,21 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0
+
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+
+	// If the user requested task sync in their patch, it should resolve into
+	// task sync running on at least one task in a build variant.
+	if shouldTaskSync && (len(patchDoc.SyncBuildVariants) == 0 || len(patchDoc.SyncTasks) == 0) {
+		j.gitHubError = NoSyncTasksOrVariants
+		if len(patchDoc.SyncBuildVariants) == 0 && len(patchDoc.SyncTasks) == 0 {
+			return errors.New("patch requests task sync but tasks and build variants specified did not resolve into any valid tasks or build variants")
+		} else if len(patchDoc.SyncBuildVariants) == 0 {
+			return errors.New("patch requests task sync but build variants could not be resolved to actual build variants")
+		}
+		return errors.New("patch requests task sync but task names could not be resolved to tasks within any of the specified build variants")
+	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
@@ -332,7 +356,16 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
-	defer j.intent.SetProcessed() //nolint: errcheck
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -457,7 +490,16 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 		return false, errors.New("github pr testing is disabled, not processing pull request")
 	}
-	defer j.intent.SetProcessed() //nolint: errcheck
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
 
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
@@ -543,7 +585,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 		u = &user.DBUser{
 			Id:       evergreen.GithubPatchUser,
 			DispName: "Github Pull Requests",
-			APIKey:   util.RandomString(),
+			APIKey:   utility.RandomString(),
 		}
 		if err = u.Insert(); err != nil {
 			return nil, errors.Wrap(err, "failed to create github pull request user")

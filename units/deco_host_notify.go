@@ -8,7 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -57,7 +57,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 		j.HasError = true
 	}
 
-	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, util.RoundPartOfHour(10)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, utility.RoundPartOfHour(10)))
 	j.SetPriority(-1)
 	return j
 }
@@ -88,8 +88,8 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 	}
 
 	// otherwise, it was a static host and we should create jira tickets for this.
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

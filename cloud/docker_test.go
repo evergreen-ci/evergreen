@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -41,13 +42,12 @@ func (s *DockerSuite) SetupTest() {
 		client: s.client,
 		env:    s.env,
 	}
+	settingsList := []*birch.Document{birch.NewDocument(birch.EC.String("pool_id", "pool_id"))}
 	s.distro = distro.Distro{
-		Id:       "d",
-		Provider: evergreen.ProviderNameDocker,
-		ProviderSettings: &map[string]interface{}{
-			"pool_id": "pool_id",
-		},
-		User: "root",
+		Id:                   "d",
+		Provider:             evergreen.ProviderNameDocker,
+		ProviderSettingsList: settingsList,
+		User:                 "root",
 	}
 	s.parentHost = host.Host{
 		Id:            "parent",
@@ -271,8 +271,6 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	delete(*s.distro.ProviderSettings, "image_url")
 
 	intent := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 

@@ -599,6 +599,19 @@ func TestDistroPatchSuite(t *testing.T) {
 
 func (s *DistroPatchByIDSuite) SetupTest() {
 	sshKey := "SSH Key"
+	settingsList := []*birch.Document{birch.NewDocument(
+		birch.EC.Double("bid_price", 0.2),
+		birch.EC.String("instance_type", "m3.large"),
+		birch.EC.String("key_name", "mci"),
+		birch.EC.String("security_group", "mci"),
+		birch.EC.String("ami", "ami-2814683f"),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "/dev/xvdb"),
+				birch.EC.String("virtual_name", "ephemeral0"),
+			)),
+		)),
+	)}
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
@@ -608,22 +621,13 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					MaximumHosts: 30,
 				},
-				Provider: evergreen.ProviderNameMock,
-				ProviderSettings: &map[string]interface{}{
-					"bid_price":      0.2,
-					"instance_type":  "m3.large",
-					"key_name":       "mci",
-					"security_group": "mci",
-					"ami":            "ami-2814683f",
-					"mount_points": map[string]interface{}{
-						"device_name":  "/dev/xvdb",
-						"virtual_name": "ephemeral0"},
-				},
-				SetupAsSudo: true,
-				Setup:       "Set-up string",
-				Teardown:    "Tear-down string",
-				User:        "root",
-				SSHKey:      sshKey,
+				Provider:             evergreen.ProviderNameMock,
+				ProviderSettingsList: settingsList,
+				SetupAsSudo:          true,
+				Setup:                "Set-up string",
+				Teardown:             "Tear-down string",
+				User:                 "root",
+				SSHKey:               sshKey,
 				SSHOptions: []string{
 					"StrictHostKeyChecking=no",
 					"BatchMode=yes",
@@ -710,23 +714,9 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 	s.Equal(apiDistro.Provider, model.ToStringPtr("mock"))
 }
 
-func (s *DistroPatchByIDSuite) TestLegacySettingsInvalid() {
-	ctx := context.Background()
-	json := []byte(
-		`{"settings" :{"ami": "ami1"}}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
-}
-
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
 	distro1 := s.data.CachedDistros[0]
-	s.NoError(cloud.UpdateProviderSettings(distro1))
 	s.data.CachedDistros[0] = distro1
 	s.Len(s.data.CachedDistros[0].ProviderSettingsList, 1)
 	doc := distro1.ProviderSettingsList[0].Copy()
@@ -747,11 +737,11 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Empty(apiDistro.ProviderSettings)
 
 	s.Require().Len(apiDistro.ProviderSettingsList, 1)
 	doc = apiDistro.ProviderSettingsList[0]
-	mappedDoc := doc.Lookup("mount_points").MutableDocument()
+	mappedDoc, ok := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocumentOK()
+	s.True(ok)
 	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
 	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
 	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
@@ -1301,7 +1291,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 20)
 	s.Equal(apiDistro.Provider, model.ToStringPtr("mock"))
 
-	s.Empty(apiDistro.ProviderSettings)
 	s.Require().Len(apiDistro.ProviderSettingsList, 2)
 	doc := apiDistro.ProviderSettingsList[0]
 
@@ -1381,16 +1370,22 @@ func getMockDistrosConnector() *data.MockConnector {
 						MaximumHosts: 30,
 					},
 					Provider: "mock",
-					ProviderSettings: &map[string]interface{}{
-						"bid_price":      0.2,
-						"instance_type":  "m3.large",
-						"key_name":       "mci",
-						"security_group": "mci",
-						"ami":            "ami-2814683f",
-						"mount_points": map[string]interface{}{
+					ProviderSettingsList: []*birch.Document{birch.NewDocument(
+						birch.EC.Double("bid_price", 0.2),
+						birch.EC.String("instance_type", "m3.large"),
+						birch.EC.String("key_name", "mci"),
+						birch.EC.String("security_group", "mci"),
+						birch.EC.String("ami", "ami-2814683f"),
+						birch.EC.Array("mount_points", birch.NewArray(
+							birch.VC.Document(birch.NewDocument(
+								birch.EC.String("device_name", "/dev/xvdb"),
+								birch.EC.String("virtual_name", "ephemeral0"),
+							)),
+						)),
+						birch.EC.Interface("mount_points", map[string]interface{}{
 							"device_name":  "/dev/xvdb",
-							"virtual_name": "ephemeral0"},
-					},
+							"virtual_name": "ephemeral0"}),
+					)},
 					SetupAsSudo: true,
 					Setup:       "Set-up script",
 					Teardown:    "Tear-down script",

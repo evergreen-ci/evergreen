@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -251,12 +252,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		}
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID)
+	// This will only be populated for patches, not mainline commits.
+	var syncVariantsTasks []patch.VariantTasks
+	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
+		syncVariantsTasks = patchDoc.SyncVariantsTasks
+	}
+
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncVariantsTasks, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}

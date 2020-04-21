@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -14,12 +13,12 @@ import (
 // package and provides an HTTP interface for all of the methods provided by
 // methods provided by the manager.
 type ManagementService struct {
-	manager management.Management
+	manager management.Manager
 }
 
 // NewManagementService constructs a management service from the manager
 // provided.
-func NewManagementService(m management.Management) *ManagementService {
+func NewManagementService(m management.Manager) *ManagementService {
 	return &ManagementService{
 		manager: m,
 	}
@@ -35,7 +34,9 @@ func (s *ManagementService) App() *gimlet.APIApp {
 	app.AddRoute("/timing/{filter}/{seconds}").Version(1).Get().Handler(s.GetRecentTimings)
 	app.AddRoute("/errors/{filter}/{seconds}").Version(1).Get().Handler(s.GetRecentErrors)
 	app.AddRoute("/errors/{filter}/{type}/{seconds}").Version(1).Get().Handler(s.GetRecentErrorsByType)
-	app.AddRoute("/jobs/mark_complete_by_type/{type}").Version(1).Post().Handler(s.MarkCompleteByType)
+	app.AddRoute("/jobs/mark_complete/{name}").Version(1).Post().Handler(s.MarkComplete)
+	app.AddRoute("/jobs/mark_complete_by_type/{type}/{filter}").Version(1).Post().Handler(s.MarkCompleteByType)
+	app.AddRoute("/jobs/mark_many_complete/{filter}").Version(1).Post().Handler(s.MarkManyComplete)
 
 	return app
 }
@@ -43,7 +44,7 @@ func (s *ManagementService) App() *gimlet.APIApp {
 // GetJobStatus is an http.HandlerFunc that provides access to counts
 // of all jobs that match a defined filter.
 func (s *ManagementService) GetJobStatus(rw http.ResponseWriter, r *http.Request) {
-	filter := management.CounterFilter(gimlet.GetVars(r)["filter"])
+	filter := management.StatusFilter(gimlet.GetVars(r)["filter"])
 	ctx := r.Context()
 
 	err := filter.Validate()
@@ -65,7 +66,7 @@ func (s *ManagementService) GetJobStatus(rw http.ResponseWriter, r *http.Request
 // jobs that match a defined filter.
 func (s *ManagementService) GetJobStatusByType(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	filter := management.CounterFilter(vars["filter"])
+	filter := management.StatusFilter(vars["filter"])
 	jobType := vars["type"]
 
 	if err := filter.Validate(); err != nil {
@@ -169,17 +170,63 @@ func (s *ManagementService) GetRecentErrorsByType(rw http.ResponseWriter, r *htt
 	gimlet.WriteJSON(rw, data)
 }
 
+// MarkComplete is an http.Handlerfunc marks the given job complete.
+func (s *ManagementService) MarkComplete(rw http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+
+	ctx := r.Context()
+	if err := s.manager.CompleteJob(ctx, name); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
+			"problem complete job '%s'", name)))
+	}
+
+	gimlet.WriteJSON(rw, struct {
+		Message string `json:"message"`
+		JobName string `json:"job_name"`
+	}{
+		Message: "mark job complete successful",
+		JobName: name,
+	})
+}
+
 // MarkCompleteByType is an http.Handlerfunc marks all jobs of the given type
 // complete.
 func (s *ManagementService) MarkCompleteByType(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	jobType := vars["type"]
+	filter := vars["filter"]
 
 	ctx := r.Context()
-	if err := s.manager.CompleteJobsByType(ctx, jobType); err != nil {
+	if err := s.manager.CompleteJobsByType(ctx, management.StatusFilter(filter), jobType); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
 			"problem completing jobs by type '%s'", jobType)))
 	}
 
-	gimlet.WriteText(rw, fmt.Sprintf("jobs with type '%s' marked complete", jobType))
+	gimlet.WriteJSON(rw, struct {
+		Message string `json:"message"`
+		JobType string `json:"job_type"`
+	}{
+		Message: "mark jobs complete by type successful",
+		JobType: jobType,
+	})
+}
+
+// MarkManyComplete is an http.Handlerfunc marks all jobs of the
+// specified status complete.
+func (s *ManagementService) MarkManyComplete(rw http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	filter := vars["filter"]
+
+	ctx := r.Context()
+	if err := s.manager.CompleteJobs(ctx, management.StatusFilter(filter)); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
+			"problem completing jobs with filter '%s'", filter)))
+	}
+
+	gimlet.WriteJSON(rw, struct {
+		Message string `json:"message"`
+	}{
+		Message: "mark jobs complete by type successful",
+	})
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -33,7 +34,6 @@ const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
 	const (
-		dirFlagName       = "dir"
 		taskFlagName      = "task"
 		sourceFlagName    = "source"
 		artifactsFlagName = "artifacts"
@@ -79,18 +79,7 @@ func Fetch() cli.Command {
 			requireClientConfig,
 			setPlainLogger,
 			requireStringFlag(taskFlagName),
-			func(c *cli.Context) error {
-				wd := c.String(dirFlagName)
-				if wd == "" {
-					var err error
-					wd, err = os.Getwd()
-					if err != nil {
-						return errors.Wrap(err, "cannot find working directory")
-					}
-					return c.Set(dirFlagName, wd)
-				}
-				return nil
-			},
+			requireWorkingDirFlag(dirFlagName),
 			func(c *cli.Context) error {
 				if c.Bool(sourceFlagName) || c.Bool(artifactsFlagName) {
 					return nil
@@ -153,12 +142,12 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	if task == nil {
 		return errors.New("task not found.")
 	}
-	config, err := rc.GetConfig(task.Version)
+	project, err := rc.GetProject(task.Version)
 	if err != nil {
 		return err
 	}
 
-	project, err := ac.GetProjectRef(task.Project)
+	pRef, err := ac.GetProjectRef(task.Project)
 	if err != nil {
 		return err
 	}
@@ -187,12 +176,12 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, project, config, cloneDir, token, mfest)
+	err = cloneSource(task, pRef, project, cloneDir, token, mfest)
 	if err != nil {
 		return err
 	}
 	if patch != nil && !noPatch {
-		err = applyPatch(patch, cloneDir, config, config.FindBuildVariant(task.BuildVariant))
+		err = applyPatch(patch, cloneDir, project, project.FindBuildVariant(task.BuildVariant))
 		if err != nil {
 			return err
 		}
@@ -347,7 +336,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.StringSliceContains(variant.Modules, module.Name) {
+			if !utility.StringSliceContains(variant.Modules, module.Name) {
 				continue
 			}
 

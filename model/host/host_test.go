@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
@@ -277,13 +278,13 @@ func TestSetStopped(t *testing.T) {
 	assert.NoError(t, h.SetStopped(""))
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
-	assert.True(t, util.IsZeroTime(h.StartTime))
+	assert.True(t, utility.IsZeroTime(h.StartTime))
 
 	h, err := FindOneId("h1")
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.HostStopped, h.Status)
 	assert.Empty(t, h.Host)
-	assert.True(t, util.IsZeroTime(h.StartTime))
+	assert.True(t, utility.IsZeroTime(h.StartTime))
 }
 
 func TestSetHostTerminated(t *testing.T) {
@@ -437,7 +438,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgent)
 			assert.False(t, h.NeedsNewAgentMonitor)
@@ -448,7 +449,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
@@ -459,7 +460,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
@@ -471,7 +472,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 
 			require.NoError(t, h.MarkAsReprovisioning())
 			assert.Equal(t, evergreen.HostProvisioning, h.Status)
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.False(t, h.NeedsNewAgentMonitor)
 		},
@@ -481,7 +482,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			require.NoError(t, h.MarkAsReprovisioning())
-			assert.Equal(t, util.ZeroTime, h.AgentStartTime)
+			assert.Equal(t, utility.ZeroTime, h.AgentStartTime)
 			assert.False(t, h.Provisioned)
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
@@ -1698,8 +1699,9 @@ func TestHostUpsert(t *testing.T) {
 		Zone:           "zone",
 		Project:        "project",
 		ProvisionOptions: &ProvisionOptions{
-			LoadCLI: true,
-			TaskId:  "task_id",
+			LoadCLI:  true,
+			TaskId:   "task_id",
+			TaskSync: true,
 		},
 		ContainerImages: map[string]bool{},
 	}
@@ -1729,6 +1731,8 @@ func TestHostUpsert(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(hostFromDB)
 	assert.NotEqual(testHost.Secret, hostFromDB.Secret)
+
+	assert.Equal(testHost.ProvisionOptions, hostFromDB.ProvisionOptions)
 }
 
 func TestHostStats(t *testing.T) {
@@ -4506,52 +4510,64 @@ func TestFindHostWithVolume(t *testing.T) {
 
 func TestStartingHostsByClient(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
-
+	doc1 := birch.NewDocument(birch.EC.String(awsRegionKey, evergreen.DefaultEC2Region))
+	doc2 := birch.NewDocument(
+		birch.EC.String(awsRegionKey, "us-west-1"),
+		birch.EC.String(awsKeyKey, "key1"),
+		birch.EC.String(awsSecretKey, "secret1"),
+	)
+	doc3 := birch.NewDocument(
+		birch.EC.String(awsRegionKey, "us-west-1"),
+		birch.EC.String(awsKeyKey, "key2"),
+		birch.EC.String(awsSecretKey, "secret2"),
+	)
 	startingHosts := []Host{
 		{
 			Id:     "h0",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: []*birch.Document{doc1},
 			},
 		},
 		{
 			Id:     "h1",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2OnDemand,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: evergreen.DefaultEC2Region},
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: []*birch.Document{doc1},
 			},
 		},
 		{
 			Id:     "h2",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameDocker,
+				Provider:             evergreen.ProviderNameDocker,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
 		{
 			Id:     "h3",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameDocker,
+				Provider:             evergreen.ProviderNameDocker,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 			},
 		},
 		{
 			Id:     "h4",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key1", awsSecretKey: "secret1"},
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: []*birch.Document{doc2},
 			},
 		},
 		{
 			Id:     "h5",
 			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
-				Provider:         evergreen.ProviderNameEc2Spot,
-				ProviderSettings: &map[string]interface{}{awsRegionKey: "us-west1", awsKeyKey: "key2", awsSecretKey: "secret2"},
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: []*birch.Document{doc3},
 			},
 		},
 	}
@@ -4568,35 +4584,43 @@ func TestStartingHostsByClient(t *testing.T) {
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   evergreen.DefaultEC2Region,
 		}:
-			assert.Len(t, hosts, 2)
-			assert.Contains(t, hosts, startingHosts[0])
-			assert.Contains(t, hosts, startingHosts[1])
+			require.Len(t, hosts, 2)
+			compareHosts(t, hosts[0], startingHosts[0])
+			compareHosts(t, hosts[1], startingHosts[1])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameDocker,
 		}:
-			assert.Len(t, hosts, 2)
-			assert.Contains(t, hosts, startingHosts[2])
-			assert.Contains(t, hosts, startingHosts[3])
+			require.Len(t, hosts, 2)
+			compareHosts(t, hosts[0], startingHosts[2])
+			compareHosts(t, hosts[1], startingHosts[3])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west1",
+			Region:   "us-west-1",
 			Key:      "key1",
 			Secret:   "secret1",
 		}:
-			assert.Len(t, hosts, 1)
-			assert.Contains(t, hosts, startingHosts[4])
+			require.Len(t, hosts, 1)
+			compareHosts(t, hosts[0], startingHosts[4])
 		case ClientOptions{
 			Provider: evergreen.ProviderNameEc2Spot,
-			Region:   "us-west1",
+			Region:   "us-west-1",
 			Key:      "key2",
 			Secret:   "secret2",
 		}:
-			assert.Len(t, hosts, 1)
-			assert.Contains(t, hosts, startingHosts[5])
+			require.Len(t, hosts, 1)
+
+			compareHosts(t, hosts[0], startingHosts[5])
 		default:
 			assert.Fail(t, "unrecognized client options")
 		}
 	}
+}
+
+func compareHosts(t *testing.T, host1, host2 Host) {
+	assert.Equal(t, host1.Id, host2.Id)
+	assert.Equal(t, host1.Status, host2.Status)
+	assert.Equal(t, host1.Distro.Provider, host2.Distro.Provider)
+	assert.Equal(t, host1.Distro.ProviderSettingsList[0].ExportMap(), host2.Distro.ProviderSettingsList[0].ExportMap())
 }
 
 func TestFindHostsInRange(t *testing.T) {

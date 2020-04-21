@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/rest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -17,7 +18,7 @@ func Amboy(opts *ServiceOptions) cli.Command {
 		Name:  "amboy",
 		Usage: "access administrative rest interfaces for an amboy service",
 		Subcommands: []cli.Command{
-			managementReports(opts),
+			queueManagement(opts),
 			abortablePoolManagement(opts),
 		},
 	}
@@ -26,10 +27,10 @@ func Amboy(opts *ServiceOptions) cli.Command {
 // ServiceOptions makes it possible for users of Amboy to create a cli
 // tool with reasonable defaults and with client.
 type ServiceOptions struct {
-	BaseURL          string
-	ReportingPrefix  string
-	ManagementPrefix string
-	Client           *http.Client
+	BaseURL                       string
+	QueueManagementPrefix         string
+	AbortablePoolManagementPrefix string
+	Client                        *http.Client
 }
 
 const (
@@ -47,7 +48,7 @@ func (o *ServiceOptions) managementReportFlags(base ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  prefixFlagName,
 			Usage: "Specify the service prefix for the reporting service.",
-			Value: o.ReportingPrefix,
+			Value: o.QueueManagementPrefix,
 		},
 	)
 }
@@ -62,12 +63,12 @@ func (o *ServiceOptions) abortablePoolManagementFlags(base ...cli.Flag) []cli.Fl
 		cli.StringFlag{
 			Name:  prefixFlagName,
 			Usage: "Specify the service prefix for the management service.",
-			Value: o.ManagementPrefix,
+			Value: o.AbortablePoolManagementPrefix,
 		},
 	)
 }
 
-func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client *rest.ManagementClient) error) error {
+func (o *ServiceOptions) withManagementClient(ctx context.Context, c *cli.Context, op func(client management.Manager) error) error {
 	if o.Client == nil {
 		o.Client = http.DefaultClient
 	}

@@ -250,6 +250,16 @@ mciModule.controller('SignalProcessingCtrl', function(
     vm.loadData(state);
   };
 
+  $scope.sortRevision = (a, b, rowA, rowB) => {
+    // Sort revision by order instead of revision id.
+    const nulls = vm.gridApi.core.sortHandleNulls(a, b);
+    if (nulls !== null) {
+      return nulls;
+    }
+
+    return EvgUiGridUtil.sortByOrder(a, b, rowA, rowB);
+  };
+
   vm.gridOptions = {
     enableFiltering: true,
     enableGridMenu: true,
@@ -345,9 +355,11 @@ mciModule.controller('SignalProcessingCtrl', function(
         cellFilter: 'limitTo:7',
         width: 100,
         sort: {
+          direction: uiGridConstants.DESC,
           priority: 0,
         },
         cellTemplate: 'ui-grid-group-name',
+        sortingAlgorithm: $scope.sortRevision,
         grouping: {
           groupPriority: 0,
         },

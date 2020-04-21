@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -88,7 +88,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	defer func() {
 		baseTime := definition.NextRunTime
-		if util.IsZeroTime(baseTime) {
+		if utility.IsZeroTime(baseTime) {
 			baseTime = time.Now()
 		}
 		err = j.project.UpdateNextPeriodicBuild(definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
@@ -132,7 +132,7 @@ func (opts Options) shouldSkipMigration(id string) bool {
 		return false
 	}
 
-	if util.StringSliceContains(opts.IDs, id) {
+	if utility.StringSliceContains(opts.IDs, id) {
 		return false
 	}
 

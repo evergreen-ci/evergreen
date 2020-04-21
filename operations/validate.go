@@ -13,9 +13,7 @@ import (
 )
 
 func Validate() cli.Command {
-	const (
-		quietFlagName = "quiet"
-	)
+
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
@@ -79,25 +77,15 @@ func validateFile(path string, ac *legacyClient, quiet bool) error {
 	}
 
 	if quiet { // only return errors
-		allErrors := projErrors
-		projErrors = []validator.ValidationError{}
-		for _, e := range allErrors {
-			if e.Level == validator.Error {
-				projErrors = append(projErrors, e)
-			}
-		}
-	}
-	if len(projErrors) == 0 {
-		grip.Infof("%s is valid", path)
-	} else {
-		grip.Info(projErrors)
+		projErrors = projErrors.AtLevel(validator.Error)
 	}
 
-	for _, e := range projErrors {
-		if e.Level == validator.Error {
-			return errors.New("invalid configuration for %s")
-		}
+	if len(projErrors) != 0 {
+		grip.Info(projErrors)
+		return errors.Errorf("%s is an invalid configuration", path)
 	}
+
+	grip.Infof("%s is valid", path)
 
 	return nil
 }

@@ -3,20 +3,25 @@ package model
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
@@ -48,6 +53,9 @@ type ProjectRef struct {
 	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
+	// TaskSync holds settings for synchronizing task directories to S3.
+	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked             bool `bson:"tracked" json:"tracked"`
 	PatchingDisabled    bool `bson:"patching_disabled" json:"patching_disabled"`
@@ -68,12 +76,21 @@ type ProjectRef struct {
 
 	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
+	// List of commands
+	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 }
 
 type CommitQueueParams struct {
 	Enabled     bool   `bson:"enabled" json:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method"`
 	PatchType   string `bson:"patch_type" json:"patch_type"`
+}
+
+// TaskSyncOptions contains information about which features are allowed for
+// syncing task directories to S3.
+type TaskSyncOptions struct {
+	ConfigEnabled bool `bson:"config_enabled" json:"config_enabled"`
+	PatchEnabled  bool `bson:"patch_enabled" json:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -121,6 +138,16 @@ type PeriodicBuildDefinition struct {
 	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
+type WorkstationConfig struct {
+	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
+	GitClone      bool                      `bson:"git_clone" json:"git_clone"`
+}
+
+type WorkstationSetupCommand struct {
+	Command   string `bson:"command" json:"command"`
+	Directory string `bson:"directory" json:"directory"`
+}
+
 func (a AlertConfig) GetSettingsMap() map[string]string {
 	ret := make(map[string]string)
 	for k, v := range a.Settings {
@@ -157,11 +184,13 @@ var (
 	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey            = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey     = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPeriodicBuildsKey      = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefTagsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
+	projectRefWorkstationConfigKey   = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -649,11 +678,13 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefDefaultLogger:          projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
 				projectRefCommitQueueKey:         projectRef.CommitQueue,
+				projectRefTaskSyncKey:            projectRef.TaskSync,
 				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,
 				projectRefRepotrackerDisabledKey: projectRef.RepotrackerDisabled,
 				projectRefNotifyOnFailureKey:     projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:            projectRef.Triggers,
 				projectRefPeriodicBuildsKey:      projectRef.PeriodicBuilds,
+				projectRefWorkstationConfigKey:   projectRef.WorkstationConfig,
 			},
 		},
 	)
@@ -729,7 +760,7 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) > 0 && !util.StringSliceContains(validOrgs, p.Owner) {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil
@@ -834,7 +865,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		if adminUser == nil {
 			return errors.Errorf("no user '%s' found", addedUser)
 		}
-		if !util.StringSliceContains(adminUser.Roles(), role.ID) {
+		if !utility.StringSliceContains(adminUser.Roles(), role.ID) {
 			err = adminUser.AddRole(role.ID)
 			if err != nil {
 				return errors.Wrapf(err, "error adding role to user %s", addedUser)
@@ -855,6 +886,68 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
+	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
+		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Identifier)
+	}
+
+	baseDir := filepath.Join(opts.Directory, p.Identifier)
+	cmds := []*jasper.Command{}
+
+	if p.WorkstationConfig.GitClone {
+		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
+
+		cmd := jasper.NewCommand().Add(args).
+			SetErrorSender(level.Error, opts.Output).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory": opts.Directory,
+					"command":   strings.Join(args, " "),
+					"op":        "repo clone",
+					"project":   p.Identifier,
+				})
+
+				return !opts.DryRun
+			})
+
+		if !opts.Quiet {
+			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+		}
+
+		cmds = append(cmds, cmd)
+
+	}
+
+	for idx, obj := range p.WorkstationConfig.SetupCommands {
+		dir := baseDir
+		if obj.Directory != "" {
+			dir = filepath.Join(dir, obj.Directory)
+		}
+
+		commandNumber := idx + 1 // to avoid logging a stale number
+		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
+			SetErrorSender(level.Error, opts.Output).
+			Append(obj.Command).
+			Prerequisite(func() bool {
+				grip.Info(message.Fields{
+					"directory":      dir,
+					"command":        obj.Command,
+					"command_number": commandNumber,
+					"op":             "setup command",
+					"project":        p.Identifier,
+				})
+
+				return !opts.DryRun
+			})
+		if !opts.Quiet {
+			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+		}
+		cmds = append(cmds, cmd)
+	}
+
+	return cmds, nil
 }
 
 func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {
@@ -926,7 +1019,7 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 
 	if d.ID == "" {
-		d.ID = util.RandomString()
+		d.ID = utility.RandomString()
 	}
 
 	return catcher.Resolve()

@@ -8,12 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -591,6 +593,15 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
+	patchDoc := &patch.Patch{
+		Id:                mgobson.NewObjectId(),
+		Version:           v.Id,
+		SyncBuildVariants: []string{"a_variant"},
+		SyncTasks:         []string{"new_task", "another_task"},
+		SyncVariantsTasks: []patch.VariantTasks{},
+	}
+	s.Require().NoError(patchDoc.Insert())
+
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, v, t, pm, err := g.NewVersion()
@@ -667,6 +678,12 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
+	s.Require().NoError(patchDoc.Insert())
+
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, v, t, pm, err := g.NewVersion()
@@ -688,7 +705,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &tasks)
 	s.NoError(err)
-	s.Len(tasks[0].DependsOn, 3)
+	s.Require().Len(tasks, 1)
+	s.Require().Len(tasks[0].DependsOn, 3)
 	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
 	for _, dependency := range tasks[0].DependsOn {
 		expected[dependency.TaskId] = true
@@ -727,6 +745,12 @@ buildvariants:
 	}
 	s.NoError(existingBuild.Insert())
 	s.NoError(v.Insert())
+
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
+	s.Require().NoError(patchDoc.Insert())
 
 	g := GeneratedProject{
 		TaskID: t1.Id,
@@ -770,7 +794,7 @@ buildvariants:
 	taskWithDeps := task.Task{}
 	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &taskWithDeps)
 	s.NoError(err)
-	s.Len(taskWithDeps.DependsOn, 1)
+	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
 }
 
@@ -794,10 +818,15 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		BuildIds: []string{"sample_build"},
 		Config:   smallYml,
 	}
+	patchDoc := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Version: v.Id,
+	}
 	s.NoError(taskThatExists.Insert())
 	s.NoError(taskDisplayGen.Insert())
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
+	s.Require().NoError(patchDoc.Insert())
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"

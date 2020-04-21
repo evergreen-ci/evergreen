@@ -1,0 +1,6 @@
+{
+  userPatches(includeCommitQueue: true, statuses: ["failed"]) {
+    status
+    id
+  }
+}

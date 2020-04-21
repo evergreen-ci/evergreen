@@ -21,14 +21,51 @@ package alts
 import (
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
+	"google.golang.org/grpc/codes"
 	altspb "google.golang.org/grpc/credentials/alts/internal/proto/grpc_gcp"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
-func TestIsRunningOnGCP(t *testing.T) {
+const (
+	testServiceAccount1 = "service_account1"
+	testServiceAccount2 = "service_account2"
+	testServiceAccount3 = "service_account3"
+)
+
+func setupManufacturerReader(testOS string, reader func() (io.Reader, error)) func() {
+	tmpOS := runningOS
+	tmpReader := manufacturerReader
+
+	// Set test OS and reader function.
+	runningOS = testOS
+	manufacturerReader = reader
+	return func() {
+		runningOS = tmpOS
+		manufacturerReader = tmpReader
+	}
+
+}
+
+func setup(testOS string, testReader io.Reader) func() {
+	reader := func() (io.Reader, error) {
+		return testReader, nil
+	}
+	return setupManufacturerReader(testOS, reader)
+}
+
+func setupError(testOS string, err error) func() {
+	reader := func() (io.Reader, error) {
+		return nil, err
+	}
+	return setupManufacturerReader(testOS, reader)
+}
+
+func (s) TestIsRunningOnGCP(t *testing.T) {
 	for _, tc := range []struct {
 		description string
 		testOS      string
@@ -53,23 +90,15 @@ func TestIsRunningOnGCP(t *testing.T) {
 	}
 }
 
-func setup(testOS string, testReader io.Reader) func() {
-	tmpOS := runningOS
-	tmpReader := manufacturerReader
-
-	// Set test OS and reader function.
-	runningOS = testOS
-	manufacturerReader = func() (io.Reader, error) {
-		return testReader, nil
+func (s) TestIsRunningOnGCPNoProductNameFile(t *testing.T) {
+	reverseFunc := setupError("linux", os.ErrNotExist)
+	if isRunningOnGCP() {
+		t.Errorf("ErrNotExist: isRunningOnGCP()=true, want false")
 	}
-
-	return func() {
-		runningOS = tmpOS
-		manufacturerReader = tmpReader
-	}
+	reverseFunc()
 }
 
-func TestAuthInfoFromContext(t *testing.T) {
+func (s) TestAuthInfoFromContext(t *testing.T) {
 	ctx := context.Background()
 	altsAuthInfo := &fakeALTSAuthInfo{}
 	p := &peer.Peer{
@@ -98,7 +127,7 @@ func TestAuthInfoFromContext(t *testing.T) {
 	}
 }
 
-func TestAuthInfoFromPeer(t *testing.T) {
+func (s) TestAuthInfoFromPeer(t *testing.T) {
 	altsAuthInfo := &fakeALTSAuthInfo{}
 	p := &peer.Peer{
 		AuthInfo: altsAuthInfo,
@@ -126,7 +155,54 @@ func TestAuthInfoFromPeer(t *testing.T) {
 	}
 }
 
-type fakeALTSAuthInfo struct{}
+func (s) TestClientAuthorizationCheck(t *testing.T) {
+	ctx := context.Background()
+	altsAuthInfo := &fakeALTSAuthInfo{testServiceAccount1}
+	p := &peer.Peer{
+		AuthInfo: altsAuthInfo,
+	}
+	for _, tc := range []struct {
+		desc                    string
+		ctx                     context.Context
+		expectedServiceAccounts []string
+		success                 bool
+		code                    codes.Code
+	}{
+		{
+			"working case",
+			peer.NewContext(ctx, p),
+			[]string{testServiceAccount1, testServiceAccount2},
+			true,
+			codes.OK, // err is nil, code is OK.
+		},
+		{
+			"context does not have AuthInfo",
+			ctx,
+			[]string{testServiceAccount1, testServiceAccount2},
+			false,
+			codes.PermissionDenied,
+		},
+		{
+			"unauthorized client",
+			peer.NewContext(ctx, p),
+			[]string{testServiceAccount2, testServiceAccount3},
+			false,
+			codes.PermissionDenied,
+		},
+	} {
+		err := ClientAuthorizationCheck(tc.ctx, tc.expectedServiceAccounts)
+		if got, want := (err == nil), tc.success; got != want {
+			t.Errorf("%v: ClientAuthorizationCheck(_, %v)=(err=nil)=%v, want %v", tc.desc, tc.expectedServiceAccounts, got, want)
+		}
+		if got, want := status.Code(err), tc.code; got != want {
+			t.Errorf("%v: ClientAuthorizationCheck(_, %v).Code=%v, want %v", tc.desc, tc.expectedServiceAccounts, got, want)
+		}
+	}
+}
+
+type fakeALTSAuthInfo struct {
+	peerServiceAccount string
+}
 
 func (*fakeALTSAuthInfo) AuthType() string            { return "" }
 func (*fakeALTSAuthInfo) ApplicationProtocol() string { return "" }
@@ -134,6 +210,6 @@ func (*fakeALTSAuthInfo) RecordProtocol() string      { return "" }
 func (*fakeALTSAuthInfo) SecurityLevel() altspb.SecurityLevel {
 	return altspb.SecurityLevel_SECURITY_NONE
 }
-func (*fakeALTSAuthInfo) PeerServiceAccount() string                   { return "" }
+func (f *fakeALTSAuthInfo) PeerServiceAccount() string                 { return f.peerServiceAccount }
 func (*fakeALTSAuthInfo) LocalServiceAccount() string                  { return "" }
 func (*fakeALTSAuthInfo) PeerRPCVersions() *altspb.RpcProtocolVersions { return nil }

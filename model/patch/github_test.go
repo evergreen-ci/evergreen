@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -171,35 +171,35 @@ func (s *GithubSuite) TestSetProcessed() {
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
 		githubIntent{
-			DocumentID: util.RandomString(),
+			DocumentID: utility.RandomString(),
 			IntentType: GithubIntentType,
 		},
 	}

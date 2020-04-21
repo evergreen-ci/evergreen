@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
@@ -52,7 +53,7 @@ func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 
 func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	hph.options = &model.HostRequestOptions{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, hph.options))
+	return errors.WithStack(utility.ReadJSON(r.Body, hph.options))
 }
 
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -110,7 +111,7 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 	defer body.Close()
 
 	h.options = &host.HostModifyOptions{}
-	if err := util.ReadJSONInto(body, h.options); err != nil {
+	if err := utility.ReadJSON(body, h.options); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
 
@@ -143,7 +144,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
 	}
 
-	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, util.RoundPartOfMinute(1).Format(units.TSFormat))
+	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, utility.RoundPartOfMinute(1).Format(units.TSFormat))
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
 	}
@@ -255,7 +256,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
-	if err := util.ReadJSONInto(body, &options); err != nil {
+	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
@@ -286,7 +287,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Stop the host
-	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, stopJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
@@ -342,7 +343,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
 	}{}
-	if err := util.ReadJSONInto(body, &options); err != nil {
+	if err := utility.ReadJSON(body, &options); err != nil {
 		h.subscriptionType = ""
 	}
 	h.subscriptionType = options.SubscriptionType
@@ -368,7 +369,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Start the host
-	ts := util.RoundPartOfMinute(1).Format(units.TSFormat)
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
 	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
@@ -415,7 +416,7 @@ func (h *attachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(util.ReadJSONInto(r.Body, h.attachment)); err != nil {
+	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
 		return errors.Wrap(err, "error parsing input")
 	}
 
@@ -440,14 +441,14 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
 	}
 
-	if util.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
+	if utility.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
 		})
 	}
 	if h.attachment.DeviceName != "" {
-		if util.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
+		if utility.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Errorf("host '%s' already has a volume with device name '%s'", h.hostID, h.attachment.DeviceName).Error(),
@@ -545,7 +546,7 @@ func (h *detachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(util.ReadJSONInto(r.Body, h.attachment)); err != nil {
+	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
 		return err
 	}
 	if h.attachment == nil {
@@ -638,7 +639,7 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
-	if err := util.ReadJSONInto(r.Body, h.volume); err != nil {
+	if err := utility.ReadJSON(r.Body, h.volume); err != nil {
 		return err
 	}
 	if h.volume.Size == 0 {
@@ -785,6 +786,72 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/volumes/{volume_id}
+
+type modifyVolumeHandler struct {
+	sc  data.Connector
+	env evergreen.Environment
+
+	volumeID string
+	opts     *model.VolumeModifyOptions
+}
+
+func makeModifyVolume(sc data.Connector) gimlet.RouteHandler {
+	return &modifyVolumeHandler{
+		sc: sc,
+	}
+}
+
+func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
+	return &modifyVolumeHandler{
+		sc:   h.sc,
+		opts: &model.VolumeModifyOptions{},
+	}
+}
+
+func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
+		return err
+	}
+	h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
+	return err
+}
+
+func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+
+	volume, err := h.sc.FindVolumeById(h.volumeID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	// Volume does not exist
+	if volume == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("attachment '%s' does not exist", h.volumeID),
+		})
+	}
+
+	// Only allow users to modify their own volumes
+	if u.Id != volume.CreatedBy {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("not authorized to modify attachment '%s'", volume.ID),
+		})
+	}
+
+	if h.opts.NewName != "" {
+		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -942,7 +1009,7 @@ func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1018,7 +1085,7 @@ func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1115,7 +1182,7 @@ func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
 func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostScriptOpts := model.APIHostScript{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostScriptOpts); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
 	hs.script = hostScriptOpts.Script
@@ -1207,7 +1274,7 @@ func (h *hostGetProcesses) Factory() gimlet.RouteHandler {
 func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostProcesses := []model.APIHostProcess{}
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &hostProcesses); err != nil {
+	if err = utility.ReadJSON(util.NewRequestReader(r), &hostProcesses); err != nil {
 		return errors.Wrap(err, "can't read host processes from json")
 	}
 	h.hostProcesses = hostProcesses
@@ -1262,7 +1329,6 @@ func validateID(id string) (string, error) {
 			Message:    "missing/empty id",
 		}
 	}
-
 	return id, nil
 }
 

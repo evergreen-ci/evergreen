@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -164,7 +164,7 @@ projectLoop:
 			if trigger.DateCutoff != nil && time.Now().Add(-24*time.Duration(*trigger.DateCutoff)*time.Hour).After(t.IngestTime) {
 				continue
 			}
-			if util.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
+			if utility.StringSliceContains(sourceVersion.SatisfiedTriggers, trigger.DefinitionID) {
 				continue
 			}
 			if trigger.TaskRegex != "" {

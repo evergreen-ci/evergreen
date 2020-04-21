@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
@@ -28,6 +29,7 @@ type SpawnOptions struct {
 	UserName             string
 	PublicKey            string
 	TaskId               string
+	TaskSync             bool
 	Owner                *user.DBUser
 	InstanceTags         []host.Tag
 	InstanceType         string
@@ -63,10 +65,6 @@ func (so *SpawnOptions) validate() error {
 
 	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
 		return err
-	}
-
-	if !evergreen.UseSpawnHostRegions && so.Region != "" && so.Region != evergreen.DefaultEC2Region {
-		return errors.Wrap(err, "no configurable regions supported")
 	}
 
 	// validate public key
@@ -119,7 +117,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if err != nil {
 		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}
-
 	if so.Region == "" && IsEc2Provider(d.Provider) {
 		u := gimlet.GetUser(ctx)
 		dbUser, ok := u.(*user.DBUser)
@@ -132,9 +129,22 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		if !IsEc2Provider(d.Provider) {
 			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
 		}
+		if _, err = parseUserData(so.Userdata); err != nil {
+			return nil, errors.Wrap(err, "user data is malformed")
+		}
 		err = d.SetUserdata(so.Userdata, so.Region)
 		if err != nil {
 			return nil, errors.WithStack(err)
+		}
+	}
+	if so.HomeVolumeID != "" {
+		var volume *host.Volume
+		volume, err = host.ValidateVolumeCanBeAttached(so.HomeVolumeID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if AztoRegion(volume.AvailabilityZone) != so.Region {
+			return nil, errors.Errorf("cannot use volume in zone '%s' with host in region '%s'", volume.AvailabilityZone, so.Region)
 		}
 	}
 
@@ -142,7 +152,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get new provider settings")
 	}
-	d.ProviderSettings = nil
 
 	if so.InstanceType != "" {
 		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
@@ -160,9 +169,10 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 	// spawn the host
 	provisionOptions := &host.ProvisionOptions{
-		LoadCLI: true,
-		TaskId:  so.TaskId,
-		OwnerId: so.Owner.Id,
+		LoadCLI:  true,
+		TaskId:   so.TaskId,
+		TaskSync: so.TaskSync,
+		OwnerId:  so.Owner.Id,
 	}
 	expiration := evergreen.DefaultSpawnHostExpiration
 	if so.NoExpiration {
@@ -191,7 +201,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
-	if !util.StringSliceContains(allowedTypes, requestedType) {
+	if !utility.StringSliceContains(allowedTypes, requestedType) {
 		return errors.New("This instance type has not been allowed by admins")
 	}
 	env := evergreen.GetEnvironment()

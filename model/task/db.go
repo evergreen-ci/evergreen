@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -473,7 +473,7 @@ func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, sta
 			"$in": taskIds,
 		},
 		VersionKey:      versionId,
-		DispatchTimeKey: bson.M{"$ne": util.ZeroTime},
+		DispatchTimeKey: bson.M{"$ne": utility.ZeroTime},
 		StatusKey:       bson.M{"$in": statuses},
 	})
 }
@@ -838,7 +838,7 @@ func FindStuckDispatching() ([]Task, error) {
 	tasks, err := FindAll(db.Query(bson.M{
 		StatusKey:       evergreen.TaskDispatched,
 		DispatchTimeKey: bson.M{"$gt": time.Now().Add(30 * time.Minute)},
-		StartTimeKey:    util.ZeroTime,
+		StartTimeKey:    utility.ZeroTime,
 	}))
 	if adb.ResultsNotFound(err) {
 		return nil, nil

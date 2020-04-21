@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -134,7 +135,7 @@ func readArtifactsFile(wd, fn string) ([]*artifact.File, error) {
 
 	out := []*artifact.File{}
 
-	if err = util.ReadJSONInto(file, &out); err != nil {
+	if err = utility.ReadJSON(file, &out); err != nil {
 		return nil, errors.Wrapf(err, "problem reading JSON from file '%s'", fn)
 	}
 

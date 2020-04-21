@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -589,4 +590,141 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
+}
+
+type PatchConnectorFindByUserPatchNameStatusesCommitQueue struct {
+	ctx      Connector
+	time     time.Time
+	setup    func() error
+	teardown func() error
+	obj_ids  []string
+	suite.Suite
+}
+
+func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
+	s := new(PatchConnectorFindByUserPatchNameStatusesCommitQueue)
+	s.setup = func() error {
+		s.ctx = &DBConnector{}
+		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+		s.obj_ids = []string{
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+		}
+		patches := []*patch.Patch{
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Author: "user1", CreateTime: s.time, Description: "user 1 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchCreated},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Author: "user2", CreateTime: s.time.Add(time.Second * 2), Description: "user 2 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[2]), Author: "user1", CreateTime: s.time.Add(time.Second * 4), Description: "user 1 patch 2 llama", Alias: evergreen.GithubAlias, Status: evergreen.PatchSucceeded},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[3]), Author: "user1", CreateTime: s.time.Add(time.Second * 6), Description: "user 1 patch 3", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[4]), Author: "user2", CreateTime: s.time.Add(time.Second * 8), Description: "user 2 patch 2", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[5]), Author: "user1", CreateTime: s.time.Add(time.Second * 10), Description: "user 1 patch 4 llama", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},
+		}
+		assert.NoError(t, db.Clear(patch.Collection))
+		for _, p := range patches {
+			if err := p.Insert(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	s.teardown = func() error {
+		return db.Clear(patch.Collection)
+	}
+	suite.Run(t, s)
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) SetupSuite() {
+	s.Require().NoError(s.setup())
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchAllPatchesForUser() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user2", "", []string{}, true, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 2)
+	s.Equal(s.obj_ids[4], *patches[0].Id)
+	s.Equal(s.obj_ids[1], *patches[1].Id)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchPatchesForUserAndFilterByCommitQueue() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user2", "", []string{}, false, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 0)
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchPatchesForUserAndFilterByStatuses() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "", []string{evergreen.PatchCreated}, true, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 1)
+	s.Equal(evergreen.PatchCreated, *patches[0].Status)
+
+	patches, err = s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "", []string{evergreen.PatchFailed, evergreen.PatchCreated}, true, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 3)
+	s.Equal(s.obj_ids[5], *patches[0].Id)
+	s.Equal(s.obj_ids[3], *patches[1].Id)
+	s.Equal(s.obj_ids[0], *patches[2].Id)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
+	s.True(patches[1].CreateTime.After(*patches[2].CreateTime))
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchPatchesForUserAndFilterByPatchName() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "llama", []string{}, true, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 2)
+	s.Equal(s.obj_ids[5], *patches[0].Id)
+	s.Equal(s.obj_ids[2], *patches[1].Id)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchAllPatchesForUserAndCombineFilters() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "llama", []string{evergreen.PatchSucceeded}, true, 0, 0)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 1)
+	s.Equal(s.obj_ids[2], *patches[0].Id)
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchAllPatchesForUserAndPaginate() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "", []string{}, true, 0, 2)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 2)
+	s.Equal(s.obj_ids[5], *patches[0].Id)
+	s.Equal(s.obj_ids[3], *patches[1].Id)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
+
+	patches, err = s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "", []string{}, true, 1, 2)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 2)
+	s.Equal(s.obj_ids[2], *patches[0].Id)
+	s.Equal(s.obj_ids[0], *patches[1].Id)
+	s.True(patches[0].CreateTime.After(*patches[1].CreateTime))
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TestFetchPatchesForUserFilterAndPaginate() {
+	patches, err := s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "llama", []string{}, true, 0, 1)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 1)
+	s.Equal(s.obj_ids[5], *patches[0].Id)
+
+	patches, err = s.ctx.FindPatchesByUserPatchNameStatusesCommitQueue("user1", "llama", []string{}, true, 1, 1)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 1)
+	s.Equal(s.obj_ids[2], *patches[0].Id)
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TearDownSuite() {
+	s.Require().NoError(s.teardown())
 }

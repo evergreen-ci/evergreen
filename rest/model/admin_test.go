@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +40,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 
 	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
 	for k, v := range matched {
-		if !util.StringSliceContains(exclude, k) {
+		if !utility.StringSliceContains(exclude, k) {
 			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
 		}
 	}
@@ -104,6 +104,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, apiSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, apiSettings.Amboy.GroupPruneFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
+	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, apiSettings.Amboy.RequireRemotePriority)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, FromStringPtr(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, FromStringPtr(apiSettings.AuthConfig.LDAP.URL))
@@ -123,7 +124,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.HostJasper.URL, FromStringPtr(apiSettings.HostJasper.URL))
 	assert.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, apiSettings.HostInit.SSHTimeoutSeconds)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, apiSettings.HostInit.HostThrottle)
-	assert.EqualValues(testSettings.Jira.Username, FromStringPtr(apiSettings.Jira.Username))
+	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, FromStringPtr(apiSettings.Jira.BasicAuthConfig.Username))
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, FromStringPtr(apiSettings.LoggerConfig.DefaultLevel))
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, apiSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.Notify.SMTP.From, FromStringPtr(apiSettings.Notify.SMTP.From))
@@ -135,12 +136,15 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, FromStringPtr(apiSettings.Providers.AWS.DefaultSecurityGroup))
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
-	assert.EqualValues(testSettings.Providers.AWS.S3Key, FromStringPtr(apiSettings.Providers.AWS.S3Key))
-	assert.EqualValues(testSettings.Providers.AWS.S3Secret, FromStringPtr(apiSettings.Providers.AWS.S3Secret))
-	assert.EqualValues(testSettings.Providers.AWS.Bucket, FromStringPtr(apiSettings.Providers.AWS.Bucket))
-	assert.EqualValues(testSettings.Providers.AWS.S3TaskKey, FromStringPtr(apiSettings.Providers.AWS.S3TaskKey))
-	assert.EqualValues(testSettings.Providers.AWS.S3TaskSecret, FromStringPtr(apiSettings.Providers.AWS.S3TaskSecret))
-	assert.EqualValues(testSettings.Providers.AWS.S3TaskBucket, FromStringPtr(apiSettings.Providers.AWS.S3TaskBucket))
+	assert.EqualValues(testSettings.Providers.AWS.S3.Key, FromStringPtr(apiSettings.Providers.AWS.S3.Key))
+	assert.EqualValues(testSettings.Providers.AWS.S3.Secret, FromStringPtr(apiSettings.Providers.AWS.S3.Secret))
+	assert.EqualValues(testSettings.Providers.AWS.S3.Bucket, FromStringPtr(apiSettings.Providers.AWS.S3.Bucket))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, FromStringPtr(apiSettings.Providers.AWS.TaskSync.Key))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, FromStringPtr(apiSettings.Providers.AWS.TaskSync.Secret))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Key, FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Key))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Secret, FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Secret))
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Bucket, FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
 	assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, FromStringPtr(apiSettings.Providers.AWS.S3BaseURL))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromStringPtr(apiSettings.Providers.GCE.ClientEmail))
@@ -167,6 +171,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, dbSettings.Amboy.GroupDefaultWorkers)
 	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, dbSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, dbSettings.Amboy.GroupPruneFrequencyMinutes)
+	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, dbSettings.Amboy.RequireRemotePriority)
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, dbSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, dbSettings.AuthConfig.LDAP.URL)
@@ -174,7 +179,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.OnlyAPI.Users[0].Username, dbSettings.AuthConfig.OnlyAPI.Users[0].Username)
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, dbSettings.AuthConfig.Github.ClientId)
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
-	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
+	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], dbSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, dbSettings.CommitQueue.MergeTaskDistro)
 	assert.EqualValues(testSettings.CommitQueue.CommitterName, dbSettings.CommitQueue.CommitterName)
 	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, dbSettings.CommitQueue.CommitterEmail)
@@ -184,7 +189,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, dbSettings.ContainerPools.Pools[0].Port)
 	assert.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, dbSettings.HostInit.SSHTimeoutSeconds)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, dbSettings.HostInit.HostThrottle)
-	assert.EqualValues(testSettings.Jira.Username, dbSettings.Jira.Username)
+	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, dbSettings.Jira.BasicAuthConfig.Username)
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, dbSettings.LoggerConfig.DefaultLevel)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, dbSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.Notify.SMTP.From, dbSettings.Notify.SMTP.From)
@@ -195,6 +200,17 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Key, dbSettings.Providers.AWS.EC2Keys[0].Key)
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, dbSettings.Providers.AWS.DefaultSecurityGroup)
+	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, dbSettings.Providers.AWS.MaxVolumeSizePerUser)
+	assert.EqualValues(testSettings.Providers.AWS.S3.Key, dbSettings.Providers.AWS.S3.Key)
+	assert.EqualValues(testSettings.Providers.AWS.S3.Secret, dbSettings.Providers.AWS.S3.Secret)
+	assert.EqualValues(testSettings.Providers.AWS.S3.Bucket, dbSettings.Providers.AWS.S3.Bucket)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, dbSettings.Providers.AWS.TaskSync.Key)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, dbSettings.Providers.AWS.TaskSync.Secret)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, dbSettings.Providers.AWS.TaskSync.Bucket)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Key, dbSettings.Providers.AWS.TaskSyncRead.Key)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Secret, dbSettings.Providers.AWS.TaskSyncRead.Secret)
+	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Bucket, dbSettings.Providers.AWS.TaskSyncRead.Bucket)
+	assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, dbSettings.Providers.AWS.S3BaseURL)
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, dbSettings.Providers.Docker.APIVersion)
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, dbSettings.Providers.GCE.ClientEmail)
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, dbSettings.Providers.OpenStack.IdentityEndpoint)
