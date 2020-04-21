@@ -132,9 +132,8 @@ func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (conte
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (a *Agent) startSpotTerminationWatcher(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+func (a *Agent) startSpotTerminationWatcher(ctx context.Context, cancel context.CancelFunc) {
 	defer recovery.LogStackTraceAndContinue("spot termination watcher")
-	defer cancel()
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
