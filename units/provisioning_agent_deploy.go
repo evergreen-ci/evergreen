@@ -225,7 +225,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host_id": j.host.Id})
 
-	if err := j.host.SetAgentRevision(evergreen.BuildRevision); err != nil {
+	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", j.host.Id)
 	}
 	return nil

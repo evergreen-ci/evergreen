@@ -855,7 +855,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 			"host_id":        h.Id,
 			"source":         "database error",
 			"host_revision":  details.AgentRevision,
-			"revsision":      evergreen.AgentVersion,
+			"agent_version":  evergreen.AgentVersion,
 			"build_revision": evergreen.BuildRevision,
 		}))
 	}
@@ -863,13 +863,13 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	if details.TaskGroup == "" {
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":    h.Id,
-				"operation":  "next_task",
-				"message":    "problem indicating that host needs new agent",
-				"source":     "database error",
-				"revision":   evergreen.BuildRevision,
-				"revsision":  evergreen.AgentVersion,
-				"host_agent": h.AgentRevision,
+				"host_id":        h.Id,
+				"operation":      "next_task",
+				"message":        "problem indicating that host needs new agent",
+				"source":         "database error",
+				"build_revision": evergreen.BuildRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"host_revision":  h.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return apimodels.NextTaskResponse{}, true
@@ -877,13 +877,13 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 		}
 		if err := h.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":    h.Id,
-				"operation":  "next_task",
-				"message":    "problem unsetting running task",
-				"source":     "database error",
-				"revision":   evergreen.BuildRevision,
-				"revsision":  evergreen.AgentVersion,
-				"host_agent": h.AgentRevision,
+				"host_id":        h.Id,
+				"operation":      "next_task",
+				"message":        "problem unsetting running task",
+				"source":         "database error",
+				"build_revision": evergreen.BuildRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"host_revision":  h.AgentRevision,
 			}))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return apimodels.NextTaskResponse{}, true
