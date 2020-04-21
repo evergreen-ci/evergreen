@@ -1,18 +1,18 @@
 {
   commitQueue(id: "mongodb-mongo-master") {
-    ProjectID
-    Queue {
-      Issue
-      Version
-      EnqueueTime
-      Patch {
+    projectId
+    queue {
+      issue
+      version
+      enqueueTime
+      patch {
         id
         author
         githash
       }
-      Modules {
-        Module
-        Issue
+      modules {
+        module
+        issue
       }
     }
   }
