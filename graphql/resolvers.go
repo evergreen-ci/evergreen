@@ -180,7 +180,10 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
 		apiBuild := restModel.APIBuild{}
-		apiBuild.BuildFromService(build)
+		err = apiBuild.BuildFromService(build)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIBuild from service: %s", err.Error()))
+		}
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil
