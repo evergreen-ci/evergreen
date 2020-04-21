@@ -44,6 +44,9 @@
             <div class="entry" ng-show="curHostData.is_virtual_workstation && curHostData.status == 'running'">
               <strong>IDE</strong> <span> <a href="/host/[[curHostData.id]]/ide/" target="_blank">Open IDE</a> </span>
             </div>
+            <div class="entry"ng-show="curHostData.home_volume_id">
+              <strong>Home Volume</strong> <span>[[curHostData.home_volume_id]]</span>
+            </div>
             <div class ="entry" ng-show="curHostData.userdata">
               <strong>User Data:</strong><br/>
               <pre>[[curHostData.userdata]]</pre>
