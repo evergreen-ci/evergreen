@@ -58,7 +58,6 @@ type ComplexityRoot struct {
 		Id                func(childComplexity int) int
 		PredictedMakespan func(childComplexity int) int
 		Status            func(childComplexity int) int
-		TimeTaken         func(childComplexity int) int
 	}
 
 	CommitQueue struct {
@@ -459,13 +458,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
-
-	case "Build.timeTaken":
-		if e.complexity.Build.TimeTaken == nil {
-			break
-		}
-
-		return e.complexity.Build.TimeTaken(childComplexity), true
 
 	case "CommitQueue.projectId":
 		if e.complexity.CommitQueue.ProjectID == nil {
@@ -2093,7 +2085,6 @@ type Build {
   id: String!
   buildVariant: String!
   status: String!
-  timeTaken: Duration!
   predictedMakespan: Duration!
   actualMakespan: Duration!
 }
@@ -2953,40 +2944,6 @@ func (ec *executionContext) _Build_status(ctx context.Context, field graphql.Col
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Build_timeTaken(ctx context.Context, field graphql.CollectedField, obj *model.APIBuild) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Build",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TimeTaken, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model.APIDuration)
-	fc.Result = res
-	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Build_predictedMakespan(ctx context.Context, field graphql.CollectedField, obj *model.APIBuild) (ret graphql.Marshaler) {
@@ -10612,11 +10569,6 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "status":
 			out.Values[i] = ec._Build_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "timeTaken":
-			out.Values[i] = ec._Build_timeTaken(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

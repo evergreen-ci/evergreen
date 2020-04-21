@@ -175,7 +175,6 @@ type Build {
   id: String!
   buildVariant: String!
   status: String!
-  timeTaken: Duration!
   predictedMakespan: Duration!
   actualMakespan: Duration!
 }
