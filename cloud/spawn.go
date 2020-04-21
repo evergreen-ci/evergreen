@@ -136,6 +136,9 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		if !IsEc2Provider(d.Provider) {
 			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
 		}
+		if _, err = parseUserData(so.Userdata); err != nil {
+			return nil, errors.Wrap(err, "user data is malformed")
+		}
 		err = d.SetUserdata(so.Userdata, so.Region)
 		if err != nil {
 			return nil, errors.WithStack(err)
