@@ -176,17 +176,23 @@ func (pds *parserDependencies) UnmarshalYAML(unmarshal func(interface{}) error) 
 // UnmarshalYAML reads YAML into a parserDependency. A single selector string
 // will be also be accepted.
 func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(&pd.TaskSelector); err != nil {
-		return err
+	type copyType parserDependency
+	var copy copyType
+	if err := unmarshal(&copy); err != nil {
+		// try unmarshalling for a single-string selector instead
+		if err := unmarshal(&copy.TaskSelector); err != nil {
+			return err
+		}
+		otherFields := struct {
+			Status        string `yaml:"status"`
+			PatchOptional bool   `yaml:"patch_optional"`
+		}{}
+		// ignore error here: expected to fail considering the single-string selector
+		grip.Debug(unmarshal(&otherFields))
+		pd.Status = otherFields.Status
+		pd.PatchOptional = otherFields.PatchOptional
 	}
-	otherFields := struct {
-		Status        string `yaml:"status"`
-		PatchOptional bool   `yaml:"patch_optional"`
-	}{}
-	// ignore any errors here; if we're using a single-string selector, this is expected to fail
-	grip.Debug(unmarshal(&otherFields))
-	pd.Status = otherFields.Status
-	pd.PatchOptional = otherFields.PatchOptional
+	*pd = parserDependency(copy)
 	return nil
 }
 
@@ -212,12 +218,12 @@ type variantSelector struct {
 // into a string and then falling back to the matrix.
 func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal just a selector string
+	// ignore errors here, because there may be other fields that are valid with single-string selectors
 	var onlySelector string
-	if err := unmarshal(&onlySelector); err == nil {
-		if onlySelector != "" {
-			vs.StringSelector = onlySelector
-			return nil
-		}
+	grip.Debug(unmarshal(&onlySelector))
+	if onlySelector != "" {
+		vs.StringSelector = onlySelector
+		return nil
 	}
 
 	md := matrixDefinition{}
