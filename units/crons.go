@@ -634,31 +634,11 @@ func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
 	}
 }
 
-// PopulateHostAlertJobs adds alerting tasks infrequently for host
-// utilization monitoring.
-func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
+// PopulateHostStatJobs adds host stats jobs.
+func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
-
-		hosts, err := host.Find(host.IsRunningTask)
-		grip.Warning(message.WrapError(err, message.Fields{
-			"cron":      hostAlertingName,
-			"operation": "background task creation",
-			"impact":    "admin alerts not set",
-		}))
-
-		catcher.Add(err)
-		if err == nil {
-			for _, host := range hosts {
-				catcher.Add(queue.Put(ctx, NewHostAlertingJob(host, ts)))
-			}
-		}
-
-		catcher.Add(queue.Put(ctx, NewHostStatsJob(ts)))
-
-		return catcher.Resolve()
+		return (queue.Put(ctx, NewHostStatsJob(ts)))
 	}
 }
 
