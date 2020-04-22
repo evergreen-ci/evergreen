@@ -2369,5 +2369,9 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 		return false
 	}
 
+	if h.HasContainers || h.ParentID != "" {
+		return false
+	}
+
 	return true
 }
