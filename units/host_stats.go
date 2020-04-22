@@ -56,7 +56,7 @@ func makeHostStats() *hostStatsJob {
 
 func NewHostStatsJob(ts string) amboy.Job {
 	job := makeHostStats()
-	job.SetID(fmt.Sprintf("%s.%s", hostAlertingName, ts))
+	job.SetID(fmt.Sprintf("%s.%s", hostStatsName, ts))
 	return job
 }
 
