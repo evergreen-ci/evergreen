@@ -688,9 +688,11 @@ func (d *mongoDriver) getNextQuery() bson.M {
 
 func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 	var (
-		qd     bson.M
-		job    amboy.Job
-		misses int64
+		qd             bson.M
+		job            amboy.Job
+		misses         int64
+		dispatchMisses int64
+		dispatchSkips  int64
 	)
 
 	startAt := time.Now()
@@ -701,6 +703,8 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 				"duration_secs": time.Since(startAt).Seconds(),
 				"service":       "amboy.queue.mdb",
 				"operation":     "next job",
+				"attempts":      dispatchMisses,
+				"skips":         dispatchSkips,
 				"misses":        misses,
 				"dispatched":    job != nil,
 				"message":       "slow job dispatching operation",
@@ -795,12 +799,14 @@ RETRY:
 					continue CURSOR
 				}
 
-				if d.scopesInUse(ctx, job.Scopes()) {
+				if d.scopesInUse(ctx, job.Scopes()) || !isDispatchable(job.Status()) {
+					dispatchSkips++
 					job = nil
 					continue CURSOR
 				}
 
 				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
+					dispatchMisses++
 					grip.DebugWhen(
 						isDispatchable(job.Status()),
 						message.WrapError(err, message.Fields{
@@ -817,7 +823,6 @@ RETRY:
 							"duration_secs": time.Since(startAt).Seconds(),
 						}),
 					)
-
 					job = nil
 					continue CURSOR
 				}
