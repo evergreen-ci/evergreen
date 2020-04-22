@@ -255,7 +255,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	// This will only be populated for patches, not mainline commits.
 	var syncVariantsTasks []patch.VariantTasks
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
-		if err := patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
+		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
 			return errors.Wrap(err, "could not update sync variants and tasks")
 		}
 		syncVariantsTasks = patchDoc.SyncVariantsTasks
