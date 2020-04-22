@@ -1952,7 +1952,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, error) {
+func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, int, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}
@@ -1984,9 +1984,13 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return tasks, nil
+	count, err := Count(query)
+	if err != nil {
+		return tasks, 0, err
+	}
+	return tasks, count, nil
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task

@@ -363,7 +363,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -408,7 +408,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if taskName != nil {
 		taskNameParam = *taskName
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -416,7 +416,6 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
-
 	var taskResults []*TaskResult
 	for _, task := range tasks {
 		t := TaskResult{
@@ -446,7 +445,11 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		}
 		taskResults = tasksFilteredByBaseStatus
 	}
-	return taskResults, nil
+	patchTasks := PatchTasks{
+		Count: count,
+		Tasks: taskResults,
+	}
+	return &patchTasks, nil
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
@@ -725,7 +728,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
