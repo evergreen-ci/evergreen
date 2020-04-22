@@ -220,6 +220,12 @@ func (t *taskTriggers) Selectors() []event.Selector {
 			Data: evergreen.RepotrackerVersionRequester,
 		})
 	}
+	if t.task.Requester == evergreen.GithubPRRequester {
+		selectors = append(selectors, event.Selector{
+			Type: event.SelectorRequester,
+			Data: evergreen.PatchVersionRequester,
+		})
+	}
 	if t.version != nil && t.version.AuthorID != "" {
 		selectors = append(selectors, event.Selector{
 			Type: event.SelectorOwner,
