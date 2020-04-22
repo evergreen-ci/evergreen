@@ -416,18 +416,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
-	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.Status,
-			BuildVariant: task.BuildVariant,
-			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
-		}
-		taskResults = append(taskResults, &t)
-	}
+	taskResults := ConvertDBTasksToGqlTasks(tasks, baseTaskStatuses)
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
 			if sortDirParam == 1 {
@@ -437,13 +426,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		})
 	}
 	if len(baseStatuses) > 0 {
-		tasksFilteredByBaseStatus := []*TaskResult{}
-		for _, taskResult := range taskResults {
-			if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-			}
+		// tasks cannot be filtered by base status through a DB query. tasks are filtered by base status here.
+		allTasks, err := task.Find(task.ByVersion(patchID))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch %s: %s", patchID, err.Error()))
 		}
-		taskResults = tasksFilteredByBaseStatus
+		taskResults = FilterTasksByBaseStatuses(taskResults, baseStatuses, baseTaskStatuses)
+		if count > 0 {
+			// calculate filtered task count by base status
+			allTasksGql := ConvertDBTasksToGqlTasks(allTasks, baseTaskStatuses)
+			count = len(FilterTasksByBaseStatuses(allTasksGql, baseStatuses, baseTaskStatuses))
+		}
 	}
 	patchTasks := PatchTasks{
 		Count: count,
