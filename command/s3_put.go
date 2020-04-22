@@ -168,11 +168,11 @@ func (s3pc *s3put) validate() error {
 	return catcher.Resolve()
 }
 
-// Apply the expansions from the relevant task config to all appropriate
-// fields of the s3put.
+// Apply the expansions from the relevant task config (including restricted expansion)
+// to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
+	if err = util.ExpandValues(s3pc, conf.GetAllExpansions()); err != nil {
 		return errors.WithStack(err)
 	}
 

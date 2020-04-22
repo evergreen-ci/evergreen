@@ -275,6 +275,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
               if (v) {
                   delete item.project_vars[k];
                   delete item.private_vars[k];
+                  delete item.restricted_vars[k];
               }
           }
           $http.post('/project/' + $scope.newProject.identifier, item).then(
@@ -321,6 +322,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         }
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
+        $scope.restrictedVars = data.ProjectVars.restricted_vars || {};
         $scope.github_webhooks_enabled = data.github_webhooks_enabled;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
@@ -346,6 +348,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           identifier: $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
           private_vars: $scope.privateVars,
+          restricted_vars: $scope.restrictedVars,
           display_name: $scope.projectRef.display_name,
           default_logger: $scope.projectRef.default_logger,
           remote_path: $scope.projectRef.remote_path,
@@ -510,10 +513,14 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       if ($scope.proj_var.is_private) {
         $scope.settingsFormData.private_vars[$scope.proj_var.name] = true;
       }
+      if ($scope.proj_var.is_restricted) {
+        $scope.settingsFormData.restricted_vars[$scope.proj_var.name] = true;
+      }
 
       $scope.proj_var.name = "";
       $scope.proj_var.value = "";
       $scope.proj_var.is_private = false;
+      $scope.proj_var.is_restricted = false;
     }
   };
 
@@ -567,6 +574,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.removeProjectVar = function (name) {
     delete $scope.settingsFormData.project_vars[name];
     delete $scope.settingsFormData.private_vars[name];
+    delete $scope.settingsFormData.restricted_vars[name];
     $scope.isDirty = true;
   };
 
