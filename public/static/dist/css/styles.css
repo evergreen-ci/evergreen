@@ -1309,16 +1309,16 @@ textarea {
   padding: 5px;
   width: 500px;
 }
-#host-info-elements {
+.host-info-elements {
   cursor: pointer;
 }
-#host-info-elements i {
+.host-info-elements i {
   margin-right: 5px;
 }
-#host-info-elements td {
+.host-info-elements td {
   min-width: 51px;
 }
-#hosts-info {
+.hosts-info {
   margin-bottom: 20px;
   max-height: 600px;
   min-height: 300px;

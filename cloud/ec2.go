@@ -941,6 +941,22 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
+	for _, vol := range h.Volumes {
+		volDB, err := host.FindVolumeByID(vol.VolumeID)
+		if err != nil {
+			return errors.Wrap(err, "can't query for volumes")
+		}
+		if volDB != nil {
+			grip.Error(message.WrapError(host.UnsetVolumeHost(volDB.ID),
+				message.Fields{
+					"host_id":   h.Id,
+					"volume_id": volDB.ID,
+					"op":        "terminating host",
+					"message":   "problem un-setting host info on volume records",
+				}))
+		}
+	}
+
 	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
 

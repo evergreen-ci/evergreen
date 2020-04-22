@@ -187,6 +187,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.Type = ToStringPtr(v.Type)
 	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
 	apiVolume.Size = v.Size
+	apiVolume.HostID = ToStringPtr(v.Host)
 	return nil
 }
 

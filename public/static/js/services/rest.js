@@ -344,8 +344,8 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         return baseSvc.postResource(resource, [], config, callbacks);
     }
 
-    service.getAvailableVolumes = function (callbacks) {
-        baseSvc.getResource(resource, "available_volumes", {}, callbacks);
+    service.getVolumes = function (callbacks) {
+        baseSvc.getResource(resource, "volumes", {}, callbacks);
     }
 
     service.updateHostDisplayName = function(hostId, newName, callbacks) {
@@ -353,6 +353,16 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
             data: {}
         };
         config.data['host_id'] = hostId;
+        config.data['action'] = "changeDisplayName";
+        config.data['new_name'] = newName;
+        return baseSvc.postResource(resource, [], config, callbacks);
+    }
+
+    service.updateVolumeDisplayName = function(volumeId, newName, callbacks) {
+        var config = {
+            data: {}
+        };
+        config.data['volume_id'] = volumeId;
         config.data['action'] = "changeDisplayName";
         config.data['new_name'] = newName;
         return baseSvc.postResource(resource, [], config, callbacks);

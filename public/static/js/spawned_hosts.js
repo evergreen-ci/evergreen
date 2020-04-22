@@ -16,6 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.selectedKey = {};
     $scope.spawnInfo = {};
     $scope.curHostData;
+    $scope.curVolumeData;
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.spawnReqSent = false;
@@ -24,8 +25,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.noExpiration = false;
     $scope.homeVolumeSize = 500;
     $scope.homeVolumeID;
+    $scope.volumeAttachHostId;
     $scope.allowedInstanceTypes = [];
-    $scope.availableVolumes = [];
+    $scope.volumes = [];
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24 * 7;
@@ -38,7 +40,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     var epochTime = moment('Jan 1, 1970');
 
-    $scope.sortOrders = [{
+    $scope.hostSortOrders = [{
         name: 'Status',
         by: 'status'
       },
@@ -57,10 +59,27 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }
     ];
 
-    $scope.sortBy = $scope.sortOrders[0];
+    $scope.hostSortBy = $scope.hostSortOrders[0];
 
-    $scope.setSortBy = function (order) {
-      $scope.sortBy = order;
+    $scope.setHostSortBy = function (order) {
+      $scope.hostSortBy = order;
+    };
+
+    $scope.volumeSortOrders = [{
+      name: 'Status',
+      by: 'status'
+    },
+    {
+      name: 'Expires In',
+      by: 'expiration',
+      reverse: false
+    }
+    ];
+
+    $scope.volumeSortBy = $scope.volumeSortOrders[0];
+
+    $scope.setVolumeSortBy = function (order) {
+      $scope.volumeSortBy = order;
     };
 
     $scope.setResourceType = function (rtype) {
@@ -75,11 +94,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             var hosts = resp.data;
             _.each(hosts, function (host) {
               $scope.computeUptime(host);
-              $scope.computeExpirationTimes(host);
+              $scope.computeHostExpirationTimes(host);
 
               host.selectedInstanceType = host.instance_type;
-              if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
-                $scope.setSelected(host);
+              if ($scope.lastSelectedHost && $scope.lastSelectedHost.id == host.id) {
+                $scope.setSelectedHost(host);
               }
               if (host.display_name == "") {
                 host.display_name = host.id;
@@ -110,7 +129,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
                   continue;
                 }
                 $scope.computeUptime(host);
-                $scope.computeExpirationTimes(host);
+                $scope.computeHostExpirationTimes(host);
                 $scope.hosts[i].uptime = host.uptime;
                 $scope.hosts[i].expires_in = host.expires_in;
                 $scope.hosts[i].status = host.status;
@@ -130,7 +149,65 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       )
     }
 
-    $scope.computeExpirationTimes = function (host) {
+    $scope.fetchVolumes = function () {
+      mciSpawnRestService.getVolumes(
+        {
+          success: function (resp) {
+            var volumes = resp.data;
+            _.each(volumes, function (volume) {
+              $scope.computeVolumeExpirationTimes(volume);
+              if ($scope.lastSelectedVolume && $scope.lastSelectedVolume.volume_id == volume.volume_id) {
+                $scope.setSelectedVolume(volume);
+              }
+              if (volume.display_name == "") {
+                volume.display_name = volume.volume_id;
+              }
+              volume.originalDisplayName = volume.display_name;
+              if (volume.host_id) {
+                volume.status = "mounted";
+              } else {
+                volume.status = "free";
+              }
+            });
+            $scope.volumes = volumes;
+          },
+          error: function (resp) {
+            // Avoid errors when leaving the page because of a background refresh
+            if ($scope.volumes == null && !$scope.errorFetchingVolumes) {
+              notificationService.pushNotification('Error fetching volumes: ' + resp.data.error, 'errorHeader');
+              $scope.errorFetchingVolumes = true;
+            }
+          }
+        }
+      );
+    };
+
+    $scope.updateVolumes = function () {
+      mciSpawnRestService.getVolumes(
+        {
+          success: function (resp) {
+            var volumes = resp.data;
+            _.each(volumes, function (volume) {
+              for (var i = 0; i < $scope.volumes.length; i++) {
+                if ($scope.volumes.volume_id != volume.volume_id) {
+                  continue;
+                }
+                $scope.computeVolumeExpirationTimes(volume);
+                $scope.volumes[i].expires_in = volume.expires_in;
+                $scope.volumes[i].host_id = volume.host_id;
+                if ($scope.volumes[i].host_id.host_id) {
+                  $scope.volumes[i].host_id.status = "mounted";
+                } else {
+                  $scope.volumes[i].host_id.status = "free";
+                }
+              }
+            });
+          }
+        }
+      )
+    }
+
+    $scope.computeHostExpirationTimes = function (host) {
       if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
         if (host.no_expiration) {
           host.expires_in = "never";
@@ -145,6 +222,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           host.current_expiration = new Date(host.expiration_time);
           host.modified_expiration = new Date(host.expiration_time);
         }
+      }
+    }
+
+    $scope.computeVolumeExpirationTimes = function (volume) {
+      if (volume.no_expiration) {
+        volume.expires_in = "never";
+      } else {
+        var expiretime = moment().diff(volume.expiration, 'seconds');
+        volume.expires_in = moment.duration(expiretime, 'seconds').humanize();
       }
     }
 
@@ -182,6 +268,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $timeout($scope.updateSpawnedHosts, 5000);
     setInterval(function () {
       $scope.updateSpawnedHosts();
+    }, 60000);
+
+    $timeout($scope.fetchVolumes, 1);
+
+    $timeout($scope.updateVolumes, 5000);
+    setInterval(function () {
+      $scope.updateVolumes();
     }, 60000);
 
     // Returns true if the user can spawn another host. If hosts have not been initialized it
@@ -263,45 +356,59 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.fetchAvailableVolumes = function () {
-      mciSpawnRestService.getAvailableVolumes(
-        {
-          success: function (resp) {
-            $scope.setAvailableVolumes(resp.data);
-          },
-          error: function (resp) {
-            notificationService.pushNotification('Error fetching available volumes: ' + resp.data.error, 'errorHeader');
-          }
-        }
-      );
-    };
-
-    $scope.setDisplayName = function (host) {
+    $scope.setHostDisplayName = function (host) {
       mciSpawnRestService.updateHostDisplayName(host.id, host.display_name,
         {
           success: function (resp) {
             host.originalDisplayName = host.display_name;
           },
           error: function (resp) {
-            notificationService.pushNotification('Error setting display name: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error setting host display name: ' + resp.data.error, 'errorHeader');
           }
         }
       );
     };
 
-    $scope.resetDisplayName = function (host) {
+    $scope.resetHostDisplayName = function (host) {
       host.display_name = host.originalDisplayName;
     };
 
-    $scope.getHomeVolumeDisplayName = function () {
-        if ($scope.homeVolumeDisplay) {
-            return $scope.homeVolumeDisplay;
+    $scope.setVolumeDisplayName = function (volume) {
+      mciSpawnRestService.updateVolumeDisplayName(volume.id, volume.display_name,
+        {
+          success: function (resp) {
+            volume.originalDisplayName = volume.display_name;
+          },
+          error: function (resp) {
+            notificationService.pushNotification('Error setting volume display name: ' + resp.data.error, 'errorHeader');
+          }
         }
-        if ($scope.homeVolumeID) {
-            return $scope.homeVolumeID;
-        }
-        return "New Volume";
+      );
     };
+
+    $scope.resetVolumeDisplayName = function (volume) {
+      volume.display_name = volume.originalDisplayName;
+    };
+
+    $scope.getHomeVolumeDisplayName = function () {
+      if (!$scope.curVolumeData) {
+        return "New Volume"
+      }
+
+      var name = $scope.curVolumeData.volume_id
+      if ($scope.curVolumeData.display_name) {
+          name += " (" + $scope.curVolumeData.display_name + ")";
+      }
+      return name
+    };
+
+    $scope.setHomeVolume = function (volume) {
+      $scope.homeVolumeID = volume.volume_id;
+    }
+
+    $scope.setAttachToHostID = function (host_id) {
+      $scope.volumeAttachHostId = host_id;
+    }
 
     $scope.spawnHost = function () {
       $scope.spawnReqSent = true;
@@ -422,6 +529,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
+    $scope.updateVolumeStatus = function (action) {
+      //TODO
+    }
+
     // API helper methods
     $scope.setSpawnableDistros = function (distros, selectDistroId) {
       if (distros.length == 0) {
@@ -512,22 +623,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.selectedRegion = region;
     }
 
-    $scope.setVolume = function (volume) {
-      if (volume) {
-        $scope.homeVolumeID = volume.volume_id;
-        $scope.homeVolumeDisplay = volume.display_name;
-      } else {
-        $scope.homeVolumeID = "";
-      }
-    }
-
-    $scope.setAvailableVolumes = function(volumes) {
-      $scope.availableVolumes = volumes;
-      if (volumes.length > 0) {
-        $scope.setVolume(volumes[0]);
-      }
-    }
-
     // set the spawn host update instance type based on user selection
     $scope.setInstanceType = function (instanceType) {
       $scope.curHostData.selectedInstanceType = instanceType
@@ -574,14 +669,24 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }
     }
 
+    $scope.getVolumeStatusLabel = function (volume) {
+      if (volume && !volume.host_id) {
+        return 'label block-status-inactive'
+      }
+      if (volume && volume.host_id) {
+        return 'label success'
+      }
+      return ''
+    }
+
     // populate for selected host; highlight selected host
-    $scope.setSelected = function (host) {
-      if ($scope.lastSelected) {
-        $scope.lastSelected.selected = '';
+    $scope.setSelectedHost = function (host) {
+      if ($scope.lastSelectedHost) {
+        $scope.lastSelectedHost.selected = '';
       }
       host.selected = 'active-host';
       host.password = '';
-      $scope.lastSelected = host;
+      $scope.lastSelectedHost = host;
       $scope.curHostData = host;
       $scope.curHostData.isTerminated = host.isTerminated;
       // check if this is a windows host
@@ -593,6 +698,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }
       $scope.getTags();
       $scope.fetchAllowedInstanceTypes();
+    };
+
+    // populate for selected volume; highlight selected volume
+    $scope.setSelectedVolume = function (volume) {
+      if ($scope.lastSelectedVolume) {
+        $scope.lastSelectedVolume.selected = '';
+      }
+      volume.selected = 'active-host';
+      $scope.lastSelectedVolume = volume;
+
+      $scope.curVolumeData = volume;
     };
 
     $scope.getTags = function () {
@@ -657,7 +773,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     attachEnterHandler = function (action) {
       $(document).keyup(function (ev) {
         if ($scope.modalOpen && ev.keyCode === 13) {
-          $scope.updateHostStatus(action);
+          if ($scope.currentResourceType == "Hosts") {
+            $scope.updateHostStatus(action);
+          } else {
+            $scope.updateVolumeStatus(action);
+          }
+
           $('#spawn-modal').modal('hide');
         }
       });
@@ -668,10 +789,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.modalOpen = true;
 
       var modal = $('#spawn-modal').modal('show');
-      switch ($scope.modalOption) {
+      switch (opt) {
         case 'spawnHost':
           $scope.fetchUserKeys();
-          $scope.fetchAvailableVolumes();
           if ($scope.spawnableDistros.length == 0) {
             $scope.fetchSpawnableDistros();
           }
@@ -694,6 +814,29 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           modal.on('shown.bs.modal', function () {
             $('#password-input').focus();
           })
+          break;
+      }
+    };
+
+    $scope.openVolumeModal = function (opt) {
+      $scope.modalOption = opt;
+      $scope.modalOpen = true;
+      var modal = $('#spawn-modal').modal('show');
+      switch (opt) {
+        case 'deleteVolume':
+          initializeModal(modal, 'Delete Volume');
+          attachEnterHandler('delete');
+          break;
+        case 'attachVolume':
+          if ($scope.hosts.length > 0) {
+            $scope.setAttachToHostID($scope.hosts[0].id)
+          }
+          initializeModal(modal, 'Attach Volume');
+          attachEnterHandler('attach');
+          break;
+        case 'detachVolume':
+          initializeModal(modal, 'Detach Volume');
+          attachEnterHandler('detach');
           break;
       }
     };

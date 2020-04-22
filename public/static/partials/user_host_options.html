@@ -99,13 +99,13 @@
           <ul class="dropdown-menu" role="menu" aria-labelledby="volumes">
             <li role="presentation" class="dropdown-header">Home Volume</li>
             <li role="presentation">
-              <a role="menuitem" ng-click="setVolume()">
+              <a role="menuitem" ng-click="setHomeVolume()">
                 New Volume
               </a>
             </li>
-            <li role="presentation" ng-repeat="volume in $parent.availableVolumes">
-              <a role="menuitem" ng-click="setVolume(volume)">
-                [[ volume.display_name ? volume.display_name : volume.volume_id ]]
+            <li role="presentation" ng-repeat="volume in $parent.volumes | filter:{status:'free'}">
+              <a role="menuitem" ng-click="setHomeVolume(volume)">
+                [[ volume.volume_id + (volume.display_name ? " (" + volume.display_name + ")": "" ]]
               </a>
             </li>
           </ul>

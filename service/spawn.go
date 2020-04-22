@@ -132,7 +132,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	gimlet.WriteJSON(w, distroList)
 }
 
-func (uis *UIServer) availableVolumes(w http.ResponseWriter, r *http.Request) {
+func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 	volumes, err := host.FindVolumesByUser(user.Username())
 	if err != nil {
@@ -142,20 +142,13 @@ func (uis *UIServer) availableVolumes(w http.ResponseWriter, r *http.Request) {
 
 	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
 	for _, vol := range volumes {
-		// check if the volume is already attached
-		h, err := host.FindHostWithVolume(vol.ID)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting host for volume '%s'", vol.ID))
-			return
+		apiVolume := restModel.APIVolume{}
+		if err = apiVolume.BuildFromService(vol); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
+			continue
 		}
-		if h == nil {
-			apiVolume := restModel.APIVolume{}
-			if err = apiVolume.BuildFromService(vol); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
-				continue
-			}
-			apiVolumes = append(apiVolumes, apiVolume)
-		}
+
+		apiVolumes = append(apiVolumes, apiVolume)
 	}
 
 	gimlet.WriteJSON(w, apiVolumes)

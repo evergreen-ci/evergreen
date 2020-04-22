@@ -1,0 +1,10 @@
+<div class="panel">
+    <div class="panel-body row">
+      <span class="semi-muted">
+        Delete volume <strong>[[curVolumeData.volume_id]]</strong> [[curVolumeData.display_name ? " (" + curVolumeData.display_name + ")" : ""]]?
+      </span>
+      <br>
+      <button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>
+      <button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="updateVolumeStatus('detach')">Yes</button>
+    </div>
+</div>
