@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -31,6 +32,69 @@ type VariantTasks struct {
 	DisplayTasks []DisplayTask
 }
 
+// MergeVariantsTasks merges two slices of VariantsTasks into a single set.
+func MergeVariantsTasks(vts1, vts2 []VariantTasks) []VariantTasks {
+	bvToVT := map[string]VariantTasks{}
+	for _, vt := range vts1 {
+		if _, ok := bvToVT[vt.Variant]; !ok {
+			bvToVT[vt.Variant] = VariantTasks{Variant: vt.Variant}
+		}
+		bvToVT[vt.Variant] = mergeVariantTasks(bvToVT[vt.Variant], vt)
+	}
+	for _, vt := range vts2 {
+		if _, ok := bvToVT[vt.Variant]; !ok {
+			bvToVT[vt.Variant] = VariantTasks{Variant: vt.Variant}
+		}
+		bvToVT[vt.Variant] = mergeVariantTasks(bvToVT[vt.Variant], vt)
+	}
+
+	var merged []VariantTasks
+	for _, vt := range bvToVT {
+		merged = append(merged, vt)
+	}
+	return merged
+}
+
+// mergeVariantTasks merges the current VariantTask for a specific variant with
+// toMerge, whichs has the same variant.  The merged VariantTask contains all
+// unique task names from current and toMerge. All display tasks merged such
+// that, for each display task name, execution tasks are merged into a unique
+// set for that display task.
+func mergeVariantTasks(current VariantTasks, toMerge VariantTasks) VariantTasks {
+	for _, t := range toMerge.Tasks {
+		if !utility.StringSliceContains(current.Tasks, t) {
+			current.Tasks = append(current.Tasks, t)
+		}
+	}
+	for _, dt := range toMerge.DisplayTasks {
+		var found bool
+		for i := range current.DisplayTasks {
+			if current.DisplayTasks[i].Name != dt.Name {
+				continue
+			}
+			current.DisplayTasks[i] = mergeDisplayTasks(current.DisplayTasks[i], dt)
+			found = true
+			break
+		}
+		if !found {
+			current.DisplayTasks = append(current.DisplayTasks, dt)
+		}
+	}
+	return current
+}
+
+// mergeDisplayTasks merges two display tasks such that the resulting
+// DisplayTask's execution tasks are the unique set of execution tasks from
+// current and toMerge.
+func mergeDisplayTasks(current DisplayTask, toMerge DisplayTask) DisplayTask {
+	for _, et := range toMerge.ExecTasks {
+		if !utility.StringSliceContains(current.ExecTasks, et) {
+			current.ExecTasks = append(current.ExecTasks, et)
+		}
+	}
+	return current
+}
+
 type DisplayTask struct {
 	Name      string
 	ExecTasks []string
@@ -38,28 +102,32 @@ type DisplayTask struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id                mgobson.ObjectId `bson:"_id,omitempty"`
-	Description       string           `bson:"desc"`
-	Project           string           `bson:"branch"`
-	Githash           string           `bson:"githash"`
-	PatchNumber       int              `bson:"patch_number"`
-	Author            string           `bson:"author"`
-	Version           string           `bson:"version"`
-	Status            string           `bson:"status"`
-	CreateTime        time.Time        `bson:"create_time"`
-	StartTime         time.Time        `bson:"start_time"`
-	FinishTime        time.Time        `bson:"finish_time"`
-	BuildVariants     []string         `bson:"build_variants"`
-	Tasks             []string         `bson:"tasks"`
-	VariantsTasks     []VariantTasks   `bson:"variants_tasks"`
-	SyncBuildVariants []string         `bson:"sync_build_variants"`
-	SyncTasks         []string         `bson:"sync_tasks"`
-	SyncVariantsTasks []VariantTasks   `bson:"sync_variants_tasks"`
-	Patches           []ModulePatch    `bson:"patches"`
-	Activated         bool             `bson:"activated"`
-	PatchedConfig     string           `bson:"patched_config"`
-	Alias             string           `bson:"alias"`
-	GithubPatchData   GithubPatch      `bson:"github_patch_data,omitempty"`
+	Id            mgobson.ObjectId `bson:"_id,omitempty"`
+	Description   string           `bson:"desc"`
+	Project       string           `bson:"branch"`
+	Githash       string           `bson:"githash"`
+	PatchNumber   int              `bson:"patch_number"`
+	Author        string           `bson:"author"`
+	Version       string           `bson:"version"`
+	Status        string           `bson:"status"`
+	CreateTime    time.Time        `bson:"create_time"`
+	StartTime     time.Time        `bson:"start_time"`
+	FinishTime    time.Time        `bson:"finish_time"`
+	BuildVariants []string         `bson:"build_variants"`
+	Tasks         []string         `bson:"tasks"`
+	VariantsTasks []VariantTasks   `bson:"variants_tasks"`
+	// SyncBuildVariants and SyncTasks refer to the build variants and tasks
+	// that were originally requested for this patch.
+	SyncBuildVariants []string `bson:"sync_build_variants"`
+	SyncTasks         []string `bson:"sync_tasks"`
+	// SyncVariantsTasks are the resolved pairs of build variants and tasks that
+	// this patch can actually run task sync for.
+	SyncVariantsTasks []VariantTasks `bson:"sync_variants_tasks"`
+	Patches           []ModulePatch  `bson:"patches"`
+	Activated         bool           `bson:"activated"`
+	PatchedConfig     string         `bson:"patched_config"`
+	Alias             string         `bson:"alias"`
+	GithubPatchData   GithubPatch    `bson:"github_patch_data,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -238,6 +306,85 @@ func (p *Patch) AddTasks(tasks []string) error {
 	}
 	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
 	return err
+}
+
+// ResolveSyncVariantTasks filters the given tasks by variant to find only those that
+// match the build variant and task filters.
+func (p *Patch) ResolveSyncVariantTasks(vts []VariantTasks) []VariantTasks {
+	bvs := p.SyncBuildVariants
+	tasks := p.SyncTasks
+
+	if len(bvs) == 1 && bvs[0] == "all" {
+		bvs = []string{}
+		for _, vt := range vts {
+			if !utility.StringSliceContains(bvs, vt.Variant) {
+				bvs = append(bvs, vt.Variant)
+			}
+		}
+	}
+	if len(tasks) == 1 && tasks[0] == "all" {
+		tasks = []string{}
+		for _, vt := range vts {
+			for _, t := range vt.Tasks {
+				if !utility.StringSliceContains(tasks, t) {
+					tasks = append(tasks, t)
+				}
+			}
+			for _, dt := range vt.DisplayTasks {
+				if !utility.StringSliceContains(tasks, dt.Name) {
+					tasks = append(tasks, dt.Name)
+				}
+			}
+		}
+	}
+
+	bvsToVTs := map[string]VariantTasks{}
+	for _, vt := range vts {
+		if !utility.StringSliceContains(bvs, vt.Variant) {
+			continue
+		}
+		for _, t := range vt.Tasks {
+			if utility.StringSliceContains(tasks, t) {
+				resolvedVT := bvsToVTs[vt.Variant]
+				resolvedVT.Variant = vt.Variant
+				resolvedVT.Tasks = append(resolvedVT.Tasks, t)
+				bvsToVTs[vt.Variant] = resolvedVT
+			}
+		}
+		for _, dt := range vt.DisplayTasks {
+			if utility.StringSliceContains(tasks, dt.Name) {
+				resolvedVT := bvsToVTs[vt.Variant]
+				resolvedVT.Variant = vt.Variant
+				resolvedVT.DisplayTasks = append(resolvedVT.DisplayTasks, dt)
+				bvsToVTs[vt.Variant] = resolvedVT
+			}
+		}
+	}
+
+	var resolvedVTs []VariantTasks
+	for _, vt := range bvsToVTs {
+		resolvedVTs = append(resolvedVTs, vt)
+	}
+
+	return resolvedVTs
+}
+
+// AddSyncVariantsTasks adds new tasks for variants filtered from the given
+// sequence of VariantsTasks to the existing SyncVariantsTasks.
+func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
+	resolved := MergeVariantsTasks(p.SyncVariantsTasks, p.ResolveSyncVariantTasks(vts))
+	if err := UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				SyncVariantsTasksKey: resolved,
+			},
+		},
+	); err != nil {
+		return errors.WithStack(err)
+	}
+	p.SyncVariantsTasks = resolved
+	return nil
 }
 
 func (p *Patch) FindModule(moduleName string) *ModulePatch {

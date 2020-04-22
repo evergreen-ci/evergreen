@@ -1884,3 +1884,94 @@ func TestMarkAsDispatched(t *testing.T) {
 	})
 
 }
+
+func TestShouldSyncTask(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		syncVTs    []patch.VariantTasks
+		bv         string
+		task       string
+		shouldSync bool
+	}{
+		"MatchesTaskInBV": {
+			syncVTs: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			bv:         "bv1",
+			task:       "t1",
+			shouldSync: true,
+		},
+		"DoesNotMatchDisplayTaskName": {
+			syncVTs: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name: "dt1",
+						},
+					},
+				},
+			},
+			bv:         "bv1",
+			task:       "dt1",
+			shouldSync: false,
+		},
+		"MatchesExecutionTaskWithinDisplayTask": {
+			syncVTs: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"et1"},
+						},
+					},
+				},
+			},
+			bv:         "bv1",
+			task:       "et1",
+			shouldSync: true,
+		},
+		"NoMatchForTask": {
+			syncVTs: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1 ", "et1"},
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"et1"},
+						},
+					},
+				},
+			},
+			bv:         "bv1",
+			task:       "t2",
+			shouldSync: false,
+		},
+		"NoMatchForBuildVariant": {
+			syncVTs: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1 ", "et1"},
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"et1"},
+						},
+					},
+				},
+			},
+			bv:         "bv1",
+			task:       "t2",
+			shouldSync: false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			shouldSync := shouldSyncTask(testCase.syncVTs, testCase.bv, testCase.task)
+			assert.Equal(t, testCase.shouldSync, shouldSync)
+		})
+	}
+}

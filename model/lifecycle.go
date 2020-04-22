@@ -872,7 +872,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		newTask.GeneratedBy = generatedBy
 
-		if shouldSyncTask(syncVariantsTasks, displayTasks, b.BuildVariant, t.Name) {
+		if shouldSyncTask(syncVariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
 			newTask.ShouldSync = true
 			newTask.RunsSync = true
 		} else {
@@ -901,7 +901,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 // shouldSyncTask returns whether or not this task in this build variant should
 // sync its task directory.
-func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, displayTasks map[string]displayTaskInfo, bv, task string) bool {
+func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) bool {
 	for _, vt := range syncVariantsTasks {
 		if vt.Variant != bv {
 			continue
@@ -910,13 +910,7 @@ func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, displayTasks map[str
 			return true
 		}
 		for _, dt := range vt.DisplayTasks {
-			if dt.Name == task {
-				return true
-			}
 			if utility.StringSliceContains(dt.ExecTasks, task) {
-				return true
-			}
-			if dtInfo, ok := displayTasks[task]; ok && dtInfo.task.DisplayName == task {
 				return true
 			}
 		}

@@ -66,7 +66,7 @@ func (d Directive) CanPersist() bool {
 	return d.ClosingTag() == PowerShellScriptClosingTag || d.ClosingTag() == BatchScriptClosingTag
 }
 
-// ClosingTag returns the closing tag that marks the end of thie directive.
+// ClosingTag returns the closing tag that marks the end of the directive.
 func (d Directive) ClosingTag() ClosingTag {
 	switch d {
 	case PowerShellScript:
