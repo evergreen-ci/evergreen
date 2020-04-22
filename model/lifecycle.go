@@ -873,15 +873,17 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		newTask.GeneratedBy = generatedBy
 
 		if shouldSyncTask(syncVariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
-			newTask.ShouldSync = true
-			newTask.RunsSync = true
+			newTask.SyncAtEndOpts.ShouldSync = true
+			// newTask.SyncAtEndOpts.Statuses = kim: TODO: pass parameters in
+			// newTask.SyncAtEndOpts.Timeout = kim: TODO: pass parameters in
+			newTask.CanSync = true
 		} else {
 			cmds, err := project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error checking if task definition contains command '%s'", evergreen.S3PushCommandName)
 			}
 			if len(cmds) != 0 {
-				newTask.RunsSync = true
+				newTask.CanSync = true
 			}
 		}
 

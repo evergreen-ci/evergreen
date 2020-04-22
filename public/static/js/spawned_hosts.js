@@ -695,7 +695,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       // find the spawn distro in the spawnable distros list, if it's there,
       // pre-select it in the modal.
       $scope.spawnTaskChecked = true
-      $scope.spawnTaskSyncChecked = $scope.spawnTask.runs_sync;
+      $scope.spawnTaskSyncChecked = $scope.spawnTask.sync_opts.enabled;
       setTimeout(function () {
         $scope.fetchSpawnableDistros($scope.spawnDistro._id, function () {
           $scope.openSpawnModal('spawnHost')

@@ -168,12 +168,7 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	// ShouldSync indicates whether the task should sync its task directory to
-	// S3 when it is complete.
-	// TODO (EVG-7817): allow different statuses
-	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
-	// RunsSync indicates whether this task syncs its task directory to S3.
-	RunsSync bool `bson:"runs_sync,omitempty" json:"runs_sync,omitempty"`
+	SyncOpts SyncOptions `bson:"sync_opts,omitempty" json:"sync_opts,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -186,6 +181,19 @@ func (t *Task) GetTaskGroupString() string {
 // S3Path returns the path to a task's directory dump in S3.
 func (t *Task) S3Path(bv, name string) string {
 	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
+}
+
+// SyncOptions specifies configuration for syncing a task's working directory.
+type SyncOptions struct {
+	// Enabled indicates that this task can run task sync, either from a command
+	// or at the end of a task.
+	Enabled bool `bson:"enabled,omitempty" json:"enabled,omitempty"`
+	// RunAtEndOfTask indicates whether the task should sync its task directory
+	// when it is complete.
+	RunAtCompletion bool `bson:"run_at_completion,omitempty" json:"run_at_completion,omitempty"`
+	// CompletionStatus describes the task status when the task is allowed to sync its
+	// task directory at the end of a task.
+	CompletionStatus string `bson:"completion_status,omitempty" json:"completion_status,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

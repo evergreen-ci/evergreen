@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -188,10 +189,11 @@ func getFunctionName(commandInfo model.PluginCommandConf) string {
 
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
-func endTaskSyncCommands(tc *taskContext) *model.YAMLCommandSet {
-	if !tc.taskModel.ShouldSync {
+func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
+	if !tc.taskModel.SyncOpts.RunAtCompletion {
 		return nil
 	}
+	// kim: TODO: return nil if task end detail status != status filter
 	return &model.YAMLCommandSet{
 		SingleCommand: &model.PluginCommandConf{
 			Type:    evergreen.CommandTypeSetup,

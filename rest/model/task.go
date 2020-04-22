@@ -63,7 +63,32 @@ type APITask struct {
 	Requester          *string          `json:"requester"`
 	TestResults        []APITest        `json:"test_results"`
 	Aborted            bool             `json:"aborted"`
-	ShouldSync         bool             `json:"should_sync,omitempty"`
+	SyncOpts           APISyncOptions   `json:"sync_opts"`
+}
+
+type APISyncOptions struct {
+	Enabled          bool   `json:"enabled"`
+	RunAtCompletion  bool   `json:"run_at_completion"`
+	CompletionStatus string `json:"completion_status"`
+}
+
+func (as *APISyncOptions) BuildFromService(t interface{}) error {
+	switch v := t.(type) {
+	case task.SyncOptions:
+		as.Enabled = v.Enabled
+		as.RunAtCompletion = v.RunAtCompletion
+		as.CompletionStatus = v.CompletionStatus
+		return nil
+	}
+	return errors.Errorf("expected sync options but got %T", t)
+}
+
+func (as *APISyncOptions) ToService() (interface{}, error) {
+	return task.SyncOptions{
+		Enabled:          as.Enabled,
+		RunAtCompletion:  as.RunAtCompletion,
+		CompletionStatus: as.CompletionStatus,
+	}, nil
 }
 
 type LogLinks struct {
@@ -144,7 +169,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
-			ShouldSync:        v.ShouldSync,
 		}
 
 		if v.HostId != "" {
@@ -169,6 +193,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.DependsOn = dependsOn
 		}
+
+		apiSyncOpts := APISyncOptions{}
+		if err := apiSyncOpts.BuildFromService(v.SyncOpts); err != nil {
+			return errors.Wrap(err, "could not build API sync options")
+		}
+		at.SyncOpts = apiSyncOpts
 	case string:
 		ll := LogLinks{
 			AllLogLink:    ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
@@ -216,7 +246,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 		GeneratedBy:      ad.GeneratedBy,
 		DisplayOnly:      ad.DisplayOnly,
 		Requester:        FromStringPtr(ad.Requester),
-		ShouldSync:       ad.ShouldSync,
 	}
 	catcher := grip.NewBasicCatcher()
 	createTime, err := FromTimePtr(ad.CreateTime)
@@ -251,6 +280,16 @@ func (ad *APITask) ToService() (interface{}, error) {
 		}
 		st.ExecutionTasks = ets
 	}
+
+	i, err := ad.SyncOpts.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert API sync options to service")
+	}
+	syncOpts, ok := i.(task.SyncOptions)
+	if !ok {
+		return nil, errors.Errorf("expected sync options but got %T", i)
+	}
+	st.SyncOpts = syncOpts
 
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 

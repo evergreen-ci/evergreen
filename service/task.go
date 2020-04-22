@@ -95,8 +95,8 @@ type uiTaskData struct {
 	PartOfDisplay  bool         `json:"in_display"`
 	DisplayTaskID  string       `json:"display_task,omitempty"`
 
-	// RunsSync specifies if the task syncs to S3.
-	RunsSync bool `json:"runs_sync"`
+	// SyncEnabled indicates that the task can sync its working directory.
+	SyncEnabled bool `json:"sync_enabled"`
 }
 
 type uiDep struct {
@@ -250,7 +250,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
-		RunsSync:             projCtx.Task.RunsSync,
+		SyncEnabled:          projCtx.Task.SyncOpts.Enabled,
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)

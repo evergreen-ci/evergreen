@@ -460,13 +460,14 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status)
+	// kim: TODO: run task sync based on task end details
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
-		a.runPostTaskCommands(ctx, tc)
+		a.runPostTaskCommands(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
-		a.runPostTaskCommands(ctx, tc)
+		a.runPostTaskCommands(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case evergreen.TaskConflict:
@@ -515,7 +516,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 	}
 }
 
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
+func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	start := time.Now()
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)
@@ -544,7 +545,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 	// If task sync was requested for the end of this task, run it now.
 	start = time.Now()
-	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
+	if taskSyncCmds := endTaskSyncCommands(tc, detail); taskSyncCmds != nil {
+		// kim: TODO: use task end details to decide task sync or not.
 		// TODO (kim): don't know what would be a sane value for this, so make
 		// it generous since the user explicitly asked for it.
 		syncCtx, cancel := context.WithTimeout(ctx, time.Hour)
