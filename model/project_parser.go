@@ -194,6 +194,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 // in the context of dependencies and requirements fields. //TODO no export?
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
+	Status  string           `yaml:"status,omitempty"`
 	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant,omitempty"`
 }
 
