@@ -215,6 +215,13 @@ type APISpawnHostModify struct {
 	NewName      *string    `json:"new_name"`
 }
 
+type APIVolumeModify struct {
+	Action     *string    `json:"action"`
+	HostID     *string    `json:"host_id"`
+	Expiration *time.Time `json:"expiration"`
+	NewName    *string    `json:"new_name"`
+}
+
 type APIHostScript struct {
 	Hosts  []string `json:"hosts"`
 	Script string   `json:"script"`

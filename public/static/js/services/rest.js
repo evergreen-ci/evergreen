@@ -353,19 +353,18 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
             data: {}
         };
         config.data['host_id'] = hostId;
-        config.data['action'] = "changeDisplayName";
+        config.data['action'] = "changeHostDisplayName";
         config.data['new_name'] = newName;
         return baseSvc.postResource(resource, [], config, callbacks);
     }
 
-    service.updateVolumeDisplayName = function(volumeId, newName, callbacks) {
+    service.updateVolume = function(action, volumeId, data, callbacks) {
         var config = {
-            data: {}
+            data: data
         };
-        config.data['volume_id'] = volumeId;
-        config.data['action'] = "changeDisplayName";
-        config.data['new_name'] = newName;
-        return baseSvc.postResource(resource, [], config, callbacks);
+
+        config.data['action'] = action;
+        return baseSvc.postResource(resource, ["volume", volumeId], config, callbacks);
     }
 
     return service;

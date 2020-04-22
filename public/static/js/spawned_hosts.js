@@ -182,7 +182,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.updateVolumes = function () {
+    $scope.reloadVolumes = function () {
       mciSpawnRestService.getVolumes(
         {
           success: function (resp) {
@@ -272,9 +272,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $timeout($scope.fetchVolumes, 1);
 
-    $timeout($scope.updateVolumes, 5000);
+    $timeout($scope.reloadVolumes, 5000);
     setInterval(function () {
-      $scope.updateVolumes();
+      $scope.reloadVolumes();
     }, 60000);
 
     // Returns true if the user can spawn another host. If hosts have not been initialized it
@@ -374,7 +374,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.setVolumeDisplayName = function (volume) {
-      mciSpawnRestService.updateVolumeDisplayName(volume.id, volume.display_name,
+      mciSpawnRestService.updateVolume("changeVolumeDisplayName", volume.volume_id, {"new_name": volume.display_name},
         {
           success: function (resp) {
             volume.originalDisplayName = volume.display_name;
@@ -529,8 +529,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.updateVolumeStatus = function (action) {
-      //TODO
+    $scope.updateVolume = function (action) {
+      mciSpawnRestService.updateVolume(action, $scope.curVolumeData.volume_id, {"host_id": $scope.volumeAttachHostId},
+      {
+          success: function (resp) {
+            reloadVolumes()
+          },
+        error: function (resp) {
+          notificationService.pushNotification('Error editing volume: ' + resp.data.error, 'errorHeader');
+        }
+      }
+    );
     }
 
     // API helper methods
@@ -776,7 +785,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           if ($scope.currentResourceType == "Hosts") {
             $scope.updateHostStatus(action);
           } else {
-            $scope.updateVolumeStatus(action);
+            $scope.updateVolume(action);
           }
 
           $('#spawn-modal').modal('hide');
