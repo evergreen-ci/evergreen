@@ -8,10 +8,13 @@
     variant: "ubuntu1604"
     taskName: "party"
   ) {
-    id
-    status
-    baseStatus
-    displayName
-    buildVariant
+    tasks {
+      id
+      status
+      baseStatus
+      displayName
+      buildVariant
+    }
+    count
   }
 }

@@ -5,7 +5,8 @@
       "result": {
         "data": {
           "patchTasks": {
-            "tasks": []
+            "tasks": [],
+            "count": 0
           }
         }
       }
@@ -30,7 +31,8 @@
                 "displayName": "test-thirdparty-docker",
                 "buildVariant": "ubuntu1604"
               }
-            ]
+            ],
+            "count": 2
           }
         }
       }
@@ -55,7 +57,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 2
           }
         }
       }
@@ -80,7 +83,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 2
           }
         }
       }
@@ -90,7 +94,8 @@
       "result": {
         "data": {
           "patchTasks": {
-            "tasks": []
+            "tasks": [],
+            "count": 0
           }
         }
       }
@@ -129,7 +134,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -168,7 +174,8 @@
                 "displayName": "test-thirdparty-docker",
                 "buildVariant": "ubuntu1604"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -207,7 +214,8 @@
                 "displayName": "compile",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -246,7 +254,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -285,7 +294,8 @@
                 "displayName": "compile",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -324,7 +334,8 @@
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -363,7 +374,8 @@
                 "displayName": "compile",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -388,7 +400,8 @@
                 "displayName": "compile",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 2
           }
         }
       }
@@ -406,7 +419,8 @@
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
               }
-            ]
+            ],
+            "count": 1
           }
         }
       }
@@ -445,7 +459,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -470,7 +485,8 @@
                 "displayName": "compile",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -495,7 +511,8 @@
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
-            ]
+            ],
+            "count": 4
           }
         }
       }
@@ -513,7 +530,8 @@
                 "id": "1",
                 "status": "success"
               }
-            ]
+            ],
+            "count": 1
           }
         }
       }
@@ -523,7 +541,7 @@
       "result": {
         "data": {
           "patchTasks": {
-            "count": 44
+            "count": 4
           }
         }
       }
