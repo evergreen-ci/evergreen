@@ -99,6 +99,7 @@ tasks:
 				p, err := createIntermediateProject([]byte(nameless))
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
+				fmt.Println(err.Error())
 			})
 			Convey("but an unused depends_on field should not error", func() {
 				nameless := `

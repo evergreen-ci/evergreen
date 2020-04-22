@@ -180,7 +180,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 	var copy copyType
 	if err := unmarshal(&copy); err != nil {
 		// try unmarshalling for a single-string selector instead
-		if err := unmarshal(&copy.TaskSelector); err != nil {
+		if err := unmarshal(&pd.TaskSelector); err != nil {
 			return err
 		}
 		otherFields := struct {
@@ -191,8 +191,12 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 		grip.Debug(unmarshal(&otherFields))
 		pd.Status = otherFields.Status
 		pd.PatchOptional = otherFields.PatchOptional
+		return nil
 	}
 	*pd = parserDependency(copy)
+	if pd.TaskSelector.Name == "" {
+		return errors.WithStack(errors.New("task selector must have a name"))
+	}
 	return nil
 }
 
