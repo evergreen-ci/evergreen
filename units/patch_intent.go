@@ -273,17 +273,16 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
-	// kim: TODO: test what variant tasks it receives from the project. Should
-	// be all of them.
-	patchDoc.SyncVariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetVariantTasks())
-	// If the user requested task sync in their patch, it should match at least
-	// one valid task in a build variant.
-	shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0
-	if shouldTaskSync && len(patchDoc.SyncVariantsTasks) == 0 {
-		j.gitHubError = NoSyncTasksOrVariants
-		return errors.Errorf("patch requests task sync for tasks '%s' in build variants '%s'"+
-			" but did not match any tasks within any of the specified build variants",
-			patchDoc.SyncTasks, patchDoc.SyncBuildVariants)
+	if shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0; shouldTaskSync {
+		patchDoc.SyncVariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
+		// If the user requested task sync in their patch, it should match at least
+		// one valid task in a build variant.
+		if len(patchDoc.SyncVariantsTasks) == 0 {
+			j.gitHubError = NoSyncTasksOrVariants
+			return errors.Errorf("patch requests task sync for tasks '%s' in build variants '%s'"+
+				" but did not match any tasks within any of the specified build variants",
+				patchDoc.SyncTasks, patchDoc.SyncBuildVariants)
+		}
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&

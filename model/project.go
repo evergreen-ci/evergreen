@@ -1304,8 +1304,7 @@ func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps
 
 // GetVariantTasks returns all the build variants and all tasks specified for
 // each build variant.
-// kim: TODO: test
-func (p *Project) GetVariantTasks() []patch.VariantTasks {
+func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 	var vts []patch.VariantTasks
 	for _, bv := range p.BuildVariants {
 		vt := patch.VariantTasks{Variant: bv.Name}
