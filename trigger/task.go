@@ -301,11 +301,11 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 			Fields: []*message.SlackAttachmentField{
 				{
 					Title: "Build",
-					Value: fmt.Sprintf("<%s|%s>", t.task.BuildVariant, buildLink(t.uiConfig.Url, t.task.BuildId)),
+					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId), t.task.BuildVariant),
 				},
 				{
 					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", t.task.Version, versionLink(t.uiConfig.Url, t.task.Version)),
+					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version), t.task.Version),
 				},
 				{
 					Title: "Duration",
@@ -313,7 +313,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 				},
 				{
 					Title: "Host",
-					Value: fmt.Sprintf("<%s|%s>", t.task.HostId, hostLink(t.uiConfig.Url, t.task.HostId)),
+					Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
 				},
 			},
 		},
