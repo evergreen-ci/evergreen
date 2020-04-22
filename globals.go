@@ -303,6 +303,12 @@ var (
 		RepotrackerVersionRequester,
 		TriggerRequester,
 	}
+
+	ProviderEc2Type = []string{
+		ProviderNameEc2Auto,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Fleet,
+	}
 )
 
 const (
@@ -415,8 +421,9 @@ var (
 
 	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
 	CanRunTaskStatus = []string{
-		HostRunning,
+		HostStarting,
 		HostProvisioning,
+		HostRunning,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.

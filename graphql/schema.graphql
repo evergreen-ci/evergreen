@@ -169,6 +169,15 @@ type Patch {
   baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
+  builds: [Build!]!
+}
+
+type Build {
+  id: String!
+  buildVariant: String!
+  status: String!
+  predictedMakespan: Duration!
+  actualMakespan: Duration!
 }
 
 type PatchProject {

@@ -798,7 +798,13 @@ $http.get(templateUrl).success(function(template) {
     if (cedar && cedar.length) {
       scope.trendResults = scope.trendResults.concat(cedar);
     }
-    scope.trendResults = _.sortBy(scope.trendResults, (result) => Date.parse(result.create_time));
+    scope.trendResults = scope.trendResults.sort((a, b) => {
+      difference = Date.parse(a.create_time) - Date.parse(b.create_time);
+      if (difference !== 0) {
+        return difference;
+      }
+      return a.order - b.order;
+    })
     let rejects = scope.outliers ? scope.outliers.rejects : [];
 
     scope.allTrendSamples = new TrendSamples(scope.trendResults);
