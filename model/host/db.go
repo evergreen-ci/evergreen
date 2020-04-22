@@ -214,7 +214,7 @@ func runningHostsQuery(distroID string) bson.M {
 func startedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
 		StatusKey:    bson.M{"$in": evergreen.StartedHostStatus},
-		StartedByKey: bson.M{"$ne": evergreen.User},
+		StartedByKey: evergreen.User,
 	}
 	if distroID != "" {
 		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
