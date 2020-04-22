@@ -149,6 +149,7 @@ type FileDiff {
 }
 
 type Patch {
+  createTime: Time
   id: ID!
   description: String!
   projectID: String!
