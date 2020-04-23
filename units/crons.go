@@ -1088,6 +1088,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewSpawnhostExpirationWarningsJob(ts)))
+		catcher.Add(queue.Put(ctx, NewVolumeExpirationWarningsJob(ts)))
 		return catcher.Resolve()
 	}
 }
@@ -1138,6 +1139,23 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 		for _, h := range hosts {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateVolumeExpirationJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		volumes, err := host.FindVolumesToDelete(time.Now())
+		if err != nil {
+			return errors.Wrap(err, "can't get volumes to delete")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, v := range volumes {
+			ts := utility.RoundPartOfHour(0).Format(TSFormat)
+			catcher.Add(queue.Put(ctx, NewVolumeDeletionJob(ts, &v)))
 		}
 
 		return catcher.Resolve()

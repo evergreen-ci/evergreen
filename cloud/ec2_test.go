@@ -1462,11 +1462,13 @@ func (s *EC2Suite) TestDetachVolume() {
 	defer cancel()
 
 	oldAttachment := host.VolumeAttachment{
-		VolumeID:   "test-volume",
+		VolumeID:   s.volume.ID,
 		DeviceName: "test-device-name",
 	}
 	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
 	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.volume.Insert())
+
 	s.NoError(s.onDemandManager.DetachVolume(ctx, s.h, "test-volume"))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)

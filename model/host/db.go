@@ -98,6 +98,7 @@ var (
 	VolumeCreatedByKey           = bsonutil.MustHaveTag(Volume{}, "CreatedBy")
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
+	VolumeExpirationKey          = bsonutil.MustHaveTag(Volume{}, "Expiration")
 	VolumeHostKey                = bsonutil.MustHaveTag(Volume{}, "Host")
 	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")

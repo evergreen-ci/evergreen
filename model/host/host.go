@@ -2250,11 +2250,10 @@ func FindSpawnhostsWithNoExpirationToExtend() ([]Host, error) {
 	return Find(query)
 }
 
-func makeExpireOnTag(expireOnValue string) Tag {
-	const expireOnKey = "expire-on"
+func makeExpireOnTag(expireOn string) Tag {
 	return Tag{
-		Key:           expireOnKey,
-		Value:         expireOnValue,
+		Key:           evergreen.TagExpireOn,
+		Value:         expireOn,
 		CanBeModified: false,
 	}
 }
@@ -2263,7 +2262,7 @@ func makeExpireOnTag(expireOnValue string) Tag {
 // and updates its expiration time to avoid early reaping.
 func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 	h.NoExpiration = true
-	h.ExpirationTime = time.Now().AddDate(0, 0, 7)
+	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
 	return UpdateOne(
 		bson.M{
@@ -2283,7 +2282,7 @@ func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 // a normal spawn host, after 24 hours.
 func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	h.NoExpiration = false
-	h.ExpirationTime = time.Now().Add(24 * time.Hour)
+	h.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
 	return UpdateOne(bson.M{
 		IdKey: h.Id,
