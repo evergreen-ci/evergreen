@@ -168,7 +168,8 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	SyncOpts SyncOptions `bson:"sync_opts,omitempty" json:"sync_opts,omitempty"`
+	CanSync       bool
+	SyncAtEndOpts SyncAtEndOptions `bson:"sync_opts,omitempty" json:"sync_opts,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -183,17 +184,10 @@ func (t *Task) S3Path(bv, name string) string {
 	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
 }
 
-// SyncOptions specifies configuration for syncing a task's working directory.
-type SyncOptions struct {
-	// Enabled indicates that this task can run task sync, either from a command
-	// or at the end of a task.
-	Enabled bool `bson:"enabled,omitempty" json:"enabled,omitempty"`
-	// RunAtEndOfTask indicates whether the task should sync its task directory
-	// when it is complete.
-	RunAtCompletion bool `bson:"run_at_completion,omitempty" json:"run_at_completion,omitempty"`
-	// CompletionStatus describes the task status when the task is allowed to sync its
-	// task directory at the end of a task.
-	CompletionStatus string `bson:"completion_status,omitempty" json:"completion_status,omitempty"`
+type SyncAtEndOptions struct {
+	Enabled  bool          `bson:"enabled,omitempty" json:"enabled,omitempty"`
+	Statuses []string      `bson:"statuses,omitempty" json:"statuses,omitempty"`
+	Timeout  time.Duration `bson:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

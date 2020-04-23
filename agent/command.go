@@ -190,9 +190,10 @@ func getFunctionName(commandInfo model.PluginCommandConf) string {
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if !tc.taskModel.SyncOpts.RunAtCompletion {
+	if !tc.taskModel.SyncAtEndOpts.Enabled {
 		return nil
 	}
+	// kim: TODO: use task end details to decide task sync or not.
 	// kim: TODO: return nil if task end detail status != status filter
 	return &model.YAMLCommandSet{
 		SingleCommand: &model.PluginCommandConf{

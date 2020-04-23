@@ -19,7 +19,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addSyncStatusesFlag(), addSyncTimeoutFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -58,6 +58,8 @@ func Patch() cli.Command {
 				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
+				SyncTimeout:       c.Duration(syncTimeoutFlagName),
 				SkipConfirm:       c.Bool(yesFlagName),
 				Description:       c.String(patchDescriptionFlagName),
 				Finalize:          c.Bool(patchFinalizeFlagName),

@@ -19,6 +19,8 @@ type CliIntentSuite struct {
 	tasks        []string
 	syncBVs      []string
 	syncTasks    []string
+	syncStatuses []string
+	syncTimeout  time.Duration
 	module       string
 	user         string
 	projectID    string
@@ -36,8 +38,10 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.user = "octocat"
 	s.module = "module"
 	s.tasks = []string{"task1", "Task2"}
-	s.syncTasks = []string{"task1"}
 	s.syncBVs = []string{"variant1"}
+	s.syncTasks = []string{"task1"}
+	s.syncStatuses = []string{"status"}
+	s.syncTimeout = time.Minute
 	s.variants = []string{"variant1", "variant2"}
 	s.projectID = "project"
 	s.description = "desc"
@@ -50,7 +54,7 @@ func (s *CliIntentSuite) SetupTest() {
 }
 
 func (s *CliIntentSuite) TestNewCliIntent() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NotNil(intent)
 	s.NoError(err)
 	s.Implements((*Intent)(nil), intent)
@@ -70,14 +74,16 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.True(cIntent.Finalize)
 	s.Equal(s.variants, cIntent.BuildVariants)
 	s.Equal(s.tasks, cIntent.Tasks)
-	s.Equal(s.syncBVs, cIntent.SyncBuildVariants)
-	s.Equal(s.syncTasks, cIntent.SyncTasks)
+	s.Equal(s.syncBVs, cIntent.SyncAtEndOpts.BuildVariants)
+	s.Equal(s.syncTasks, cIntent.SyncAtEndOpts.Tasks)
+	s.Equal(s.syncStatuses, cIntent.SyncAtEndOpts.Statuses)
+	s.Equal(s.syncTimeout, cIntent.SyncAtEndOpts.Timeout)
 	s.Zero(cIntent.ProcessedAt)
 	s.Zero(cIntent.CreatedAt)
 	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, "", []string{}, []string{})
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, "", []string{}, []string{}, []string{}, 0)
 	s.NotNil(intent)
 	s.NoError(err)
 
@@ -85,41 +91,44 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.True(ok)
 	s.Empty(cIntent.BuildVariants)
 	s.Empty(cIntent.Tasks)
-	s.Empty(cIntent.SyncBuildVariants)
-	s.Empty(cIntent.SyncTasks)
+	s.Empty(cIntent.SyncAtEndOpts.BuildVariants)
+	s.Empty(cIntent.SyncAtEndOpts.Tasks)
+	s.Empty(cIntent.SyncAtEndOpts.VariantsTasks)
+	s.Empty(cIntent.SyncAtEndOpts.Statuses)
+	s.Zero(cIntent.SyncAtEndOpts.Timeout)
 	s.Empty(cIntent.Description)
 	s.Empty(cIntent.Module)
 	s.Empty(cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NotNil(intent)
 	s.NoError(err)
 }
 
 func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
-	intent, err := NewCliIntent("", s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent("", s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, "", s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, "", s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, "", s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, s.projectID, "", s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, []string{}, s.tasks, "", s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, []string{}, s.tasks, "", s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, []string{}, "", s.syncBVs, s.syncTasks)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, []string{}, "", s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.Nil(intent)
 	s.Error(err)
 }
 
 func (s *CliIntentSuite) TestFindIntentSpecifically() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -136,7 +145,7 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 }
 
 func (s *CliIntentSuite) TestInsert() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NoError(err)
 	s.NotNil(intent)
 
@@ -150,7 +159,7 @@ func (s *CliIntentSuite) TestInsert() {
 }
 
 func (s *CliIntentSuite) TestSetProcessed() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -176,7 +185,7 @@ func findCliIntents(processed bool) ([]*cliIntent, error) {
 }
 
 func (s *CliIntentSuite) TestNewPatch() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks)
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
 	s.NoError(err)
 	s.NotNil(intent)
 

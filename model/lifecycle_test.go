@@ -1024,10 +1024,14 @@ buildvariants:
 				BuildName: buildVar1.Name,
 				Activated: false,
 				TaskNames: []string{},
-				SyncVariantsTasks: []patch.VariantTasks{
-					{
-						Variant: buildVar1.Name,
-						Tasks:   []string{"taskA", "taskB"},
+				SyncAtEndOpts: patch.SyncAtEndOptions{
+					BuildVariants: []string{buildVar1.Name},
+					Tasks:         []string{"taskA", "taskB"},
+					VariantsTasks: []patch.VariantTasks{
+						{
+							Variant: buildVar1.Name,
+							Tasks:   []string{"taskA", "taskB"},
+						},
 					},
 				},
 				TaskCreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
@@ -1052,7 +1056,7 @@ buildvariants:
 			So(tasks[2].Version, ShouldEqual, v.Id)
 			So(tasks[2].Revision, ShouldEqual, v.Revision)
 			So(tasks[2].Project, ShouldEqual, project.Identifier)
-			So(tasks[2].ShouldSync, ShouldBeTrue)
+			So(tasks[2].CanSync, ShouldBeTrue)
 
 			So(tasks[3].Id, ShouldNotEqual, "")
 			So(tasks[3].Secret, ShouldNotEqual, "")
@@ -1069,7 +1073,7 @@ buildvariants:
 			So(tasks[3].Version, ShouldEqual, v.Id)
 			So(tasks[3].Revision, ShouldEqual, v.Revision)
 			So(tasks[3].Project, ShouldEqual, project.Identifier)
-			So(tasks[3].ShouldSync, ShouldBeTrue)
+			So(tasks[3].CanSync, ShouldBeTrue)
 
 			So(tasks[4].Id, ShouldNotEqual, "")
 			So(tasks[4].Secret, ShouldNotEqual, "")
@@ -1086,7 +1090,7 @@ buildvariants:
 			So(tasks[4].Version, ShouldEqual, v.Id)
 			So(tasks[4].Revision, ShouldEqual, v.Revision)
 			So(tasks[4].Project, ShouldEqual, project.Identifier)
-			So(tasks[4].ShouldSync, ShouldBeFalse)
+			So(tasks[4].CanSync, ShouldBeFalse)
 
 			So(tasks[5].Id, ShouldNotEqual, "")
 			So(tasks[5].Secret, ShouldNotEqual, "")
@@ -1103,7 +1107,7 @@ buildvariants:
 			So(tasks[5].Version, ShouldEqual, v.Id)
 			So(tasks[5].Revision, ShouldEqual, v.Revision)
 			So(tasks[5].Project, ShouldEqual, project.Identifier)
-			So(tasks[5].ShouldSync, ShouldBeFalse)
+			So(tasks[5].CanSync, ShouldBeFalse)
 		})
 
 		Convey("if the activated flag is set, the build and all its tasks should be activated",

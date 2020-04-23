@@ -218,6 +218,10 @@ const (
 
 	// can flip this when regions are configured
 	UseSpawnHostRegions = false
+
+	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
+	// end of a patch.
+	DefaultTaskSyncAtEndTimeout = time.Hour
 )
 
 func IsFinishedTaskStatus(status string) bool {

@@ -521,7 +521,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext, detail
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
-	var cancel context.CancelFunc
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
@@ -546,10 +545,14 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext, detail
 	// If task sync was requested for the end of this task, run it now.
 	start = time.Now()
 	if taskSyncCmds := endTaskSyncCommands(tc, detail); taskSyncCmds != nil {
-		// kim: TODO: use task end details to decide task sync or not.
-		// TODO (kim): don't know what would be a sane value for this, so make
-		// it generous since the user explicitly asked for it.
-		syncCtx, cancel := context.WithTimeout(ctx, time.Hour)
+		var syncCtx context.Context
+		if timeout := tc.taskModel.SyncAtEndOpts.Timeout; timeout != 0 {
+			syncCtx, cancel = context.WithTimeout(ctx, timeout)
+		} else {
+			// Default to a generously long timeout if none is specified, since
+			// the sync could be a long operation.
+			syncCtx, cancel = context.WithTimeout(ctx, evergreen.DefaultTaskSyncAtEndTimeout,
+		}
 		defer cancel()
 		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
 		tc.logger.Task().Error(message.WrapError(err, message.Fields{
