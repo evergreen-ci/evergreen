@@ -125,7 +125,7 @@ func addSyncTimeoutFlag(flags ...cli.Flag) []cli.Flag {
 func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  syncStatusesFlagName,
-		Usage: "task statuses for which task sync should run when task ends ('all', 'success', 'failed', 'system-failed', 'setup-failed', 'test-timed-out')",
+		Usage: "filter task statuses for which task sync should run when task ends ('success' or 'failed')",
 	})
 }
 

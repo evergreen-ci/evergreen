@@ -460,7 +460,6 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status)
-	// kim: TODO: run task sync based on task end details
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -551,7 +550,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext, detail
 		} else {
 			// Default to a generously long timeout if none is specified, since
 			// the sync could be a long operation.
-			syncCtx, cancel = context.WithTimeout(ctx, evergreen.DefaultTaskSyncAtEndTimeout,
+			syncCtx, cancel = context.WithTimeout(ctx, evergreen.DefaultTaskSyncAtEndTimeout)
 		}
 		defer cancel()
 		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})

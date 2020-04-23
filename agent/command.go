@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -193,8 +194,16 @@ func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *mode
 	if !tc.taskModel.SyncAtEndOpts.Enabled {
 		return nil
 	}
-	// kim: TODO: use task end details to decide task sync or not.
-	// kim: TODO: return nil if task end detail status != status filter
+	statusFilter := tc.taskModel.SyncAtEndOpts.Statuses
+	if len(statusFilter) != 0 {
+		if detail.Status == evergreen.TaskSucceeded {
+			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
+				return nil
+			}
+		} else if !utility.StringSliceContains(statusFilter, evergreen.TaskFailed) {
+			return nil
+		}
+	}
 	return &model.YAMLCommandSet{
 		SingleCommand: &model.PluginCommandConf{
 			Type:    evergreen.CommandTypeSetup,
