@@ -348,22 +348,22 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
-	s.tc.timedOut = true
+	s.tc.setTimedOut(true, idleTimeout)
 	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	s.tc.timedOut = false
+	s.tc.setTimedOut(false, idleTimeout)
 	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	s.tc.timedOut = true
+	s.tc.setTimedOut(true, idleTimeout)
 	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 
-	s.tc.timedOut = false
+	s.tc.setTimedOut(false, idleTimeout)
 	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)

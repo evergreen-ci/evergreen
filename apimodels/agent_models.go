@@ -2,6 +2,7 @@ package apimodels
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
@@ -35,11 +36,13 @@ type HeartbeatResponse struct {
 // TaskEndDetail contains data sent from the agent to the
 // API server after each task run.
 type TaskEndDetail struct {
-	Status      string    `bson:"status,omitempty" json:"status,omitempty"`
-	Type        string    `bson:"type,omitempty" json:"type,omitempty"`
-	Description string    `bson:"desc,omitempty" json:"desc,omitempty"`
-	TimedOut    bool      `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	Logs        *TaskLogs `bson:"-" json:"logs,omitempty"`
+	Status          string        `bson:"status,omitempty" json:"status,omitempty"`
+	Type            string        `bson:"type,omitempty" json:"type,omitempty"`
+	Description     string        `bson:"desc,omitempty" json:"desc,omitempty"`
+	TimedOut        bool          `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	TimeoutType     string        `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
+	TimeoutDuration time.Duration `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
+	Logs            *TaskLogs     `bson:"-" json:"logs,omitempty"`
 }
 
 type TaskLogs struct {
