@@ -172,7 +172,7 @@ func (s3pc *s3put) validate() error {
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(s3pc, conf.GetAllExpansions()); err != nil {
+	if err = util.ExpandValues(s3pc, conf.GetExpansionsWithRestricted()); err != nil {
 		return errors.WithStack(err)
 	}
 

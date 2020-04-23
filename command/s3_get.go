@@ -116,7 +116,7 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 // Apply the expansions from the relevant task config (including restricted expansions)
 // to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *model.TaskConfig) error {
-	return util.ExpandValues(c, conf.GetAllExpansions())
+	return util.ExpandValues(c, conf.GetExpansionsWithRestricted())
 }
 
 // Implementation of Execute.  Expands the parameters, and then fetches the

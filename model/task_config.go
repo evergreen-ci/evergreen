@@ -115,9 +115,9 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	return dir, nil
 }
 
-// GetAllExpansions should ONLY be used for operations that won't leak restricted expansions.
+// GetExpansionsWithRestricted should ONLY be used for operations that won't leak restricted expansions.
 // Otherwise, use taskConfig.Expansions directly.
-func (c *TaskConfig) GetAllExpansions() *util.Expansions {
+func (c *TaskConfig) GetExpansionsWithRestricted() *util.Expansions {
 	allExpansions := *c.Expansions
 	if c.RestrictedExpansions != nil {
 		allExpansions.Update(c.RestrictedExpansions.Map())
