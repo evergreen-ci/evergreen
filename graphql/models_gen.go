@@ -70,6 +70,11 @@ type PatchReconfigure struct {
 	VariantsTasks []*VariantTasks `json:"variantsTasks"`
 }
 
+type PatchTasks struct {
+	Tasks []*TaskResult `json:"tasks"`
+	Count int           `json:"count"`
+}
+
 type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`

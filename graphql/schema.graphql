@@ -20,7 +20,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
-  ): [TaskResult!]!
+  ): PatchTasks!
   taskTests(
     taskId: String!
     sortCategory: TestSortCategory = TEST_NAME
@@ -112,6 +112,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+type PatchTasks {
+  tasks: [TaskResult!]!
+  count: Int!
 }
 
 type PatchBuildVariant {
