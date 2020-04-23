@@ -77,3 +77,21 @@ func TestCloudStatusJob(t *testing.T) {
 		}
 	}
 }
+
+func TestTerminateUnknownHosts(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection))
+	h1 := host.Host{
+		Id: "h1",
+	}
+	require.NoError(t, h1.Insert())
+	h2 := host.Host{
+		Id: "h2",
+	}
+	require.NoError(t, h2.Insert())
+	env := &mock.Environment{}
+	ctx := context.Background()
+	require.NoError(t, env.Configure(ctx))
+	j := NewCloudHostReadyJob(env, "id").(*cloudHostReadyJob)
+	awsErr := "error getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
+	assert.NoError(t, j.terminateUnknownHosts(ctx, awsErr))
+}

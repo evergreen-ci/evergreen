@@ -1256,6 +1256,7 @@ var (
 )
 
 func StartingHostsByClient() (map[ClientOptions][]Host, error) {
+	const batchSize = 500
 	results := []struct {
 		Options ClientOptions `bson:"_id"`
 		Hosts   []Host        `bson:"hosts"`
@@ -1264,6 +1265,9 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: evergreen.HostStarting},
+		},
+		{
+			"$limit": batchSize,
 		},
 		{
 			"$project": bson.M{
