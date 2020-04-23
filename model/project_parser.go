@@ -188,7 +188,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 			PatchOptional bool   `yaml:"patch_optional"`
 		}{}
 		// ignore error here: expected to fail considering the single-string selector
-		_ := unmarshal(&otherFields)
+		_ = unmarshal(&otherFields)
 		pd.Status = otherFields.Status
 		pd.PatchOptional = otherFields.PatchOptional
 		return nil
@@ -224,7 +224,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	// first, attempt to unmarshal just a selector string
 	// ignore errors here, because there may be other fields that are valid with single-string selectors
 	var onlySelector string
-	_ := unmarshal(&onlySelector)
+	_ = unmarshal(&onlySelector)
 	if onlySelector != "" {
 		vs.StringSelector = onlySelector
 		return nil
@@ -273,11 +273,9 @@ func (tss *taskSelectors) UnmarshalYAML(unmarshal func(interface{}) error) error
 func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
-	if err := unmarshal(&onlySelector); err == nil {
-		if onlySelector != "" {
-			ts.Name = onlySelector
-			return nil
-		}
+	if _ = unmarshal(&onlySelector); onlySelector != "" {
+		ts.Name = onlySelector
+		return nil
 	}
 	// we define a new type so that we can grab the yaml struct tags without the struct methods,
 	// preventing infinite recursion on the UnmarshalYAML() method.
