@@ -27,7 +27,7 @@
             <strong>Availability Zone</strong> <span>[[curVolumeData.zone]]</span>
           </div>
           <div class="entry" ng-show="curVolumeData.host_id">
-            <strong>Mounted On</strong> <span>[[curVolumeData.host_id]]</span>
+            <strong>Mounted On</strong> <span> <a class="pointer" ng-click="goToHost(curVolumeData.host_id)">[[curVolumeData.host_id]]</a> </span>
           </div>
         </md-card-content>
       </md-card>

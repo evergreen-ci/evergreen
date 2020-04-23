@@ -45,7 +45,7 @@
               <strong>IDE</strong> <span> <a href="/host/[[curHostData.id]]/ide/" target="_blank">Open IDE</a> </span>
             </div>
             <div class="entry" ng-show="curHostData.home_volume_id">
-              <strong>Home Volume</strong> <span>[[curHostData.home_volume_id]]</span>
+              <strong>Home Volume</strong> <span> <a class="pointer" ng-click="goToVolume(curHostData.home_volume_id)"> [[curHostData.home_volume_id]] </a> </span>
             </div>
             <div class ="entry" ng-show="curHostData.userdata">
               <strong>User Data:</strong><br/>

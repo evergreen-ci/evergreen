@@ -39,7 +39,7 @@ Evergreen - My Hosts
           <ul class="dropdown-menu" role="menu" aria-labelledby="resourceLabel">
             <li role="presentation" class="dropdown-header">Resource</li>
             <li role="presentation" class="pointer" ng-repeat="t in resourceTypes">
-              <a role="menuitem" ng-click="setResourceType(t)">
+              <a role="menuitem" style="text-transform: capitalize" ng-click="setResourceType(t)">
                 [[t]]
               </a>
             </li>
@@ -47,7 +47,7 @@ Evergreen - My Hosts
         </span>
       </h2>
     </div>
-    <div class="panel hosts-info" ng-show="currentResourceType == 'Hosts'">
+    <div class="panel hosts-info" ng-show="currentResourceType == 'hosts'">
       <div class="panel-body" ng-show="!!hosts && hosts.length == 0">
         <h2>No hosts for user</h2>
       </div>
@@ -132,7 +132,7 @@ Evergreen - My Hosts
         Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
       </em>
     </div>
-    <div class="panel hosts-info" ng-show="currentResourceType == 'Volumes'">
+    <div class="panel hosts-info" ng-show="currentResourceType == 'volumes'">
       <div class="panel-body" ng-show="!!volumes && volumes.length == 0">
         <h2>No volumes for user</h2>
       </div>
@@ -179,8 +179,8 @@ Evergreen - My Hosts
                 <div class="host-name-input-group">
                   <input type="text" class="host-name-input" ng-model="volume.display_name">
                   <span ng-show="volume.originalDisplayName != volume.display_name" >
-                    <i class="fa fa-check pointer" ng-click="setVolumeDisplayName(volume)"></i>
-                    <i class="fa fa-times pointer" ng-click="resetVolumeDisplayName(volume)"></i>
+                    <i class="fa fa-times pointer" style="float: right" ng-click="resetVolumeDisplayName(volume)"></i>
+                    <i class="fa fa-check pointer" style="float: right" ng-click="setVolumeDisplayName(volume)"></i>
                   </span>
                 </div>
               </td>
@@ -202,8 +202,8 @@ Evergreen - My Hosts
     </div>
   </div>
   <div>
-    <user-host-details class="col-lg-6" ng-show="currentResourceType == 'Hosts' && curHostData"></user-host-details>
-    <user-volume-details class="col-lg-6" ng-show="currentResourceType == 'Volumes' && curVolumeData"></user-volume-details>
+    <user-host-details class="col-lg-6" ng-show="currentResourceType == 'hosts' && curHostData"></user-host-details>
+    <user-volume-details class="col-lg-6" ng-show="currentResourceType == 'volumes' && curVolumeData"></user-volume-details>
     <user-spawn-modal>
       <user-host-options ng-show="modalOption=='spawnHost'"></user-host-options>
       <user-host-terminate ng-show="modalOption=='terminateHost'"></user-host-terminate>
