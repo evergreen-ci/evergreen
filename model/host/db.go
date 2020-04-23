@@ -1255,8 +1255,10 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-func StartingHostsByClient() (map[ClientOptions][]Host, error) {
-	const batchSize = 500
+func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
+	if limit <= 0 {
+		limit = 500
+	}
 	results := []struct {
 		Options ClientOptions `bson:"_id"`
 		Hosts   []Host        `bson:"hosts"`
@@ -1267,7 +1269,12 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 			"$match": bson.M{StatusKey: evergreen.HostStarting},
 		},
 		{
-			"$limit": batchSize,
+			"$sort": bson.M{
+				CreateTimeKey: 1,
+			},
+		},
+		{
+			"$limit": limit,
 		},
 		{
 			"$project": bson.M{

@@ -66,7 +66,12 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	// Collect hosts by provider and region
-	startingHostsByClient, err := host.StartingHostsByClient()
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "unable to get evergreen settings"))
+		return
+	}
+	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get starting hosts"))
 		return
