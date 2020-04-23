@@ -192,7 +192,7 @@ Evergreen - My Hosts
               </td>
               <td class="col-sm-2 no-word-wrap">
                 <i class="fa fa-trash pointer" ng-show="!volume.host_id" style="float: right" ng-click="openVolumeModal('deleteVolume')"></i>
-                <i class="fa fa-plug pointer" ng-show="!volume.host_id" style="float: right" ng-click="openVolumeModal('attachVolume')"></i>
+                <i class="fa fa-plug pointer" ng-show="!volume.host_id && hosts.length > 0" style="float: right" ng-click="openVolumeModal('attachVolume')"></i>
                 <i class="fa fa-cut pointer" ng-show="volume.host_id" style="float: right" ng-click="openVolumeModal('detachVolume')"></i>
               </td>
             </tr>

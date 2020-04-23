@@ -483,7 +483,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if vol == nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "no volume '%s' exists", volumeID))
+		uis.LoggedError(w, r, http.StatusNotFound, errors.Wrapf(err, "no volume '%s' exists", volumeID))
 		return
 	}
 
@@ -532,9 +532,10 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID))
 			return
 		}
+
 	case VolumeDetach:
 		if vol.Host == "" {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "volume '%s' is not attached", vol.ID))
@@ -554,6 +555,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID))
 			return
 		}
+
 	case VolumeDelete:
 		if err := mgr.DeleteVolume(ctx, vol); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID))
