@@ -171,8 +171,8 @@ func LogHostProvisionError(hostId string) {
 	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
 }
 
-func LogHostTerminatedExternally(hostId string) {
-	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
+func LogHostTerminatedExternally(hostId, oldStatus string) {
+	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName})
 }
 
 func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string) {
