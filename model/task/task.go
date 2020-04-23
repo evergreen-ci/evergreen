@@ -1986,11 +1986,11 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	if err != nil {
 		return nil, 0, err
 	}
-	count, err := Count(query)
+	total, err := Count(query)
 	if err != nil {
 		return tasks, 0, err
 	}
-	return tasks, count, nil
+	return tasks, total, nil
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task

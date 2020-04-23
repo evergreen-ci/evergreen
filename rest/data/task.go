@@ -211,11 +211,11 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 // FindTasksByVersion gets all tasks for a specific version
 // Results can be filtered by task name, variant name and status in addition to being paginated and limited
 func (tc *DBTaskConnector) FindTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]task.Task, int, error) {
-	tasks, count, err := task.GetTasksByVersion(versionID, sortBy, statuses, variant, taskName, sortDir, page, limit)
+	tasks, total, err := task.GetTasksByVersion(versionID, sortBy, statuses, variant, taskName, sortDir, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	return tasks, count, nil
+	return tasks, total, nil
 }
 
 // MockTaskConnector stores a cached set of tasks that are queried against by the
