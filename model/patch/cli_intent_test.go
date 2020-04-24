@@ -211,5 +211,9 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.False(patchDoc.Activated)
 	s.Empty(patchDoc.PatchedConfig)
 	s.Equal(s.alias, patchDoc.Alias)
+	s.Equal(s.syncBVs, patchDoc.SyncAtEndOpts.BuildVariants)
+	s.Equal(s.syncTasks, patchDoc.SyncAtEndOpts.Tasks)
+	s.Equal(s.syncStatuses, patchDoc.SyncAtEndOpts.Statuses)
+	s.Equal(s.syncTimeout, patchDoc.SyncAtEndOpts.Timeout)
 	s.Zero(patchDoc.GithubPatchData)
 }

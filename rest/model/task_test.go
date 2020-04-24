@@ -14,7 +14,6 @@ type taskCompare struct {
 	st task.Task
 }
 
-// kim: TODO: add test for APISyncOptions
 func TestTaskBuildFromService(t *testing.T) {
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()

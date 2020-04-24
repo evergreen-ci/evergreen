@@ -114,6 +114,8 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		alias:             p.Alias,
 		syncBuildVariants: p.SyncBuildVariants,
 		syncTasks:         p.SyncTasks,
+		syncStatuses:      p.SyncStatuses,
+		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
 	}
 

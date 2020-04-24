@@ -168,8 +168,8 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	CanSync       bool
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_opts,omitempty" json:"sync_opts,omitempty"`
+	CanSync       bool             `bson:"can_sync" json:"can_sync"`
+	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }

@@ -510,6 +510,8 @@ var (
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
 
+	SyncStatuses = []string{TaskSucceeded, TaskFailed}
+
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 )
 

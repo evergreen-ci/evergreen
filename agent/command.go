@@ -194,8 +194,7 @@ func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *mode
 	if !tc.taskModel.SyncAtEndOpts.Enabled {
 		return nil
 	}
-	statusFilter := tc.taskModel.SyncAtEndOpts.Statuses
-	if len(statusFilter) != 0 {
+	if statusFilter := tc.taskModel.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
 		if detail.Status == evergreen.TaskSucceeded {
 			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
 				return nil

@@ -87,7 +87,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !pref.TaskSync.PatchEnabled && len(data.SyncTasks) != 0 || len(data.SyncBuildVariants) != 0 {
+	if !pref.TaskSync.PatchEnabled && (len(data.SyncTasks) != 0 || len(data.SyncBuildVariants) != 0) {
 		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("task sync at the end of a patched task is disabled by project settings"))
 		return
 	}

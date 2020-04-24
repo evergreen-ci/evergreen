@@ -6,7 +6,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -35,7 +37,7 @@ type cliIntent struct {
 	Tasks []string `bson:"tasks"`
 
 	// SyncAtEndOpts describe behavior for task sync at the end of the task.
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts"`
+	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 
 	// Finalize is whether or not the patch should finalized
 	Finalize bool `bson:"finalize"`
@@ -189,6 +191,15 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 	}
 	if len(syncTasks) != 0 && len(syncBVs) == 0 {
 		return nil, errors.New("build variants provided for task sync but task names missing")
+	}
+	for _, status := range syncStatuses {
+		catcher := grip.NewBasicCatcher()
+		if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
+			catcher.Errorf("invalid sync status '%s'", status)
+		}
+		if catcher.HasErrors() {
+			return nil, catcher.Resolve()
+		}
 	}
 
 	return &cliIntent{

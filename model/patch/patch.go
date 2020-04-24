@@ -131,7 +131,7 @@ type Patch struct {
 	BuildVariants   []string         `bson:"build_variants"`
 	Tasks           []string         `bson:"tasks"`
 	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
-	SyncAtEndOpts   SyncAtEndOptions `bson:"sync_at_end_opts"`
+	SyncAtEndOpts   SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 	Patches         []ModulePatch    `bson:"patches"`
 	Activated       bool             `bson:"activated"`
 	PatchedConfig   string           `bson:"patched_config"`

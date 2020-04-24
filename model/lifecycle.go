@@ -874,8 +874,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
 			newTask.CanSync = true
-			newTask.SyncAtEndOpts.Statuses = syncAtEndOpts.Statuses
-			newTask.SyncAtEndOpts.Timeout = syncAtEndOpts.Timeout
+			newTask.SyncAtEndOpts = task.SyncAtEndOptions{
+				Enabled:  true,
+				Statuses: syncAtEndOpts.Statuses,
+				Timeout:  syncAtEndOpts.Timeout,
+			}
 		} else {
 			cmds, err := project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
 			if err != nil {

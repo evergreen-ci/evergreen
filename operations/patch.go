@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -44,8 +45,16 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 
 func Patch() cli.Command {
 	return cli.Command{
-		Name:    "patch",
-		Before:  setPlainLogger,
+		Name: "patch",
+		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
+			catcher := grip.NewBasicCatcher()
+			for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
+				if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
+					catcher.Errorf("invalid sync status '%s'", status)
+				}
+			}
+			return catcher.Resolve()
+		}),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to evergreen",
 		Flags:   getPatchFlags(),
