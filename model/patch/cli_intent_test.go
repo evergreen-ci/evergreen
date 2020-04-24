@@ -40,7 +40,7 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.tasks = []string{"task1", "Task2"}
 	s.syncBVs = []string{"variant1"}
 	s.syncTasks = []string{"task1"}
-	s.syncStatuses = []string{"status"}
+	s.syncStatuses = []string{evergreen.TaskSucceeded}
 	s.syncTimeout = time.Minute
 	s.variants = []string{"variant1", "variant2"}
 	s.projectID = "project"
@@ -129,12 +129,12 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 
 func (s *CliIntentSuite) TestFindIntentSpecifically() {
 	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.Require().NoError(intent.Insert())
 
 	found, err := FindIntent(intent.ID(), intent.GetType())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(found)
 
 	found.(*cliIntent).ProcessedAt = time.Time{}
@@ -146,10 +146,10 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 
 func (s *CliIntentSuite) TestInsert() {
 	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(intent)
 
-	s.NoError(intent.Insert())
+	s.Require().NoError(intent.Insert())
 
 	var intents []*cliIntent
 	intents, err = findCliIntents(false)
@@ -160,11 +160,11 @@ func (s *CliIntentSuite) TestInsert() {
 
 func (s *CliIntentSuite) TestSetProcessed() {
 	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.Require().NoError(intent.Insert())
 
-	s.NoError(intent.SetProcessed())
+	s.Require().NoError(intent.SetProcessed())
 	s.True(intent.IsProcessed())
 
 	var intents []*cliIntent
