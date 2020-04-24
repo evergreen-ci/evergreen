@@ -210,12 +210,12 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 
 // FindTasksByVersion gets all tasks for a specific version
 // Results can be filtered by task name, variant name and status in addition to being paginated and limited
-func (tc *DBTaskConnector) FindTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]task.Task, int, error) {
-	tasks, total, err := task.GetTasksByVersion(versionID, sortBy, statuses, variant, taskName, sortDir, page, limit)
+func (tc *DBTaskConnector) FindTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]task.Task, error) {
+	tasks, err := task.GetTasksByVersion(versionID, sortBy, statuses, variant, taskName, sortDir, page, limit)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return tasks, total, nil
+	return tasks, nil
 }
 
 // MockTaskConnector stores a cached set of tasks that are queried against by the
@@ -422,7 +422,7 @@ func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifes
 	return nil, errors.Errorf("task '%s' not found", taskId)
 }
 
-func (tc *MockTaskConnector) FindTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]task.Task, int, error) {
+func (tc *MockTaskConnector) FindTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]task.Task, error) {
 	// FindTasksByVersion is extensively tested byt he gql test suite for the patchTasks query
-	return nil, 0, nil
+	return nil, nil
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -357,29 +356,4 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
-}
-
-func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
-	tasksFilteredByBaseStatus := []*TaskResult{}
-	for _, taskResult := range taskResults {
-		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-			tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-		}
-	}
-	return tasksFilteredByBaseStatus
-}
-func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
-	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.Status,
-			BuildVariant: task.BuildVariant,
-			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
-		}
-		taskResults = append(taskResults, &t)
-	}
-	return taskResults
 }
