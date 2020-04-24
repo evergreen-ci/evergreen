@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -170,6 +171,23 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
+
+func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
+	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding build by version %s: %s", *obj.Version, err.Error()))
+	}
+	var apiBuilds []*restModel.APIBuild
+	for _, build := range builds {
+		apiBuild := restModel.APIBuild{}
+		err = apiBuild.BuildFromService(build)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIBuild from service: %s", err.Error()))
+		}
+		apiBuilds = append(apiBuilds, &apiBuild)
+	}
+	return apiBuilds, nil
+}
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	// excludes display tasks
@@ -750,7 +768,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	}
 	patches, err := r.sc.FindPatchesByIds(patchIds)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", error.Error(err)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
 	}
 	for i := range commitQueue.Queue {
 		for j := range patches {

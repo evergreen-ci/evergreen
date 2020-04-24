@@ -129,7 +129,8 @@ func TestExpandS3GetParams(t *testing.T) {
 
 			cmd = &s3get{}
 			conf = &model.TaskConfig{
-				Expansions: util.NewExpansions(map[string]string{}),
+				Expansions:           util.NewExpansions(map[string]string{}),
+				RestrictedExpansions: util.NewExpansions(map[string]string{}),
 			}
 
 			Convey("all appropriate values should be expanded, if they"+
@@ -142,12 +143,15 @@ func TestExpandS3GetParams(t *testing.T) {
 
 				conf.Expansions.Update(
 					map[string]string{
-						"aws_key":     "key",
-						"aws_secret":  "secret",
-						"remote_file": "remote",
-						"bucket":      "bck",
+						"aws_key":    "key",
+						"aws_secret": "secret",
 					},
 				)
+				conf.RestrictedExpansions.Update(
+					map[string]string{
+						"remote_file": "remote",
+						"bucket":      "bck",
+					})
 
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.AwsKey, ShouldEqual, "key")

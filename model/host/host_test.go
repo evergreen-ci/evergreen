@@ -4575,7 +4575,7 @@ func TestStartingHostsByClient(t *testing.T) {
 		require.NoError(t, h.Insert())
 	}
 
-	hostsByClient, err := StartingHostsByClient()
+	hostsByClient, err := StartingHostsByClient(0)
 	assert.NoError(t, err)
 	assert.Len(t, hostsByClient, 4)
 	for clientOptions, hosts := range hostsByClient {

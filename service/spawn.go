@@ -69,7 +69,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	maxHosts := cloud.DefaultMaxSpawnHostsPerUser
+	maxHosts := evergreen.DefaultMaxSpawnHostsPerUser
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))

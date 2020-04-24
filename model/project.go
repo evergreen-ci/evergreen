@@ -1239,10 +1239,6 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
-
-	// TODO (EVG-7816): handle generate.tasks, which creates additional build
-	// variants and tasks after patch finalization.
-	patchDoc.SyncBuildVariants, patchDoc.SyncTasks, patchDoc.SyncVariantsTasks = p.resolvePatchVTs(patchDoc.SyncBuildVariants, patchDoc.SyncTasks, "", false)
 }
 
 // resolvePatchVTs resolves a list of build variants and tasks into a list of
@@ -1304,6 +1300,26 @@ func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps
 	vts = tvPairs.TVPairsToVariantTasks()
 	bvs, tasks = patch.ResolveVariantTasks(vts)
 	return bvs, tasks, vts
+}
+
+// GetVariantTasks returns all the build variants and all tasks specified for
+// each build variant.
+func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
+	var vts []patch.VariantTasks
+	for _, bv := range p.BuildVariants {
+		vt := patch.VariantTasks{Variant: bv.Name}
+		for _, t := range bv.Tasks {
+			vt.Tasks = append(vt.Tasks, t.Name)
+		}
+		for _, dt := range bv.DisplayTasks {
+			vt.DisplayTasks = append(vt.DisplayTasks, patch.DisplayTask{
+				Name:      dt.Name,
+				ExecTasks: dt.ExecutionTasks,
+			})
+		}
+		vts = append(vts, vt)
+	}
+	return vts
 }
 
 // TasksThatCallCommand returns a map of tasks that call a given command to the

@@ -26,6 +26,7 @@ func GetServer(addr string, n http.Handler) *http.Server {
 		"action":  "starting service",
 		"service": addr,
 		"build":   evergreen.BuildRevision,
+		"agent":   evergreen.AgentVersion,
 		"process": grip.Name(),
 	})
 

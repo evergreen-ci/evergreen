@@ -140,15 +140,15 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 }
 
 type APIVolume struct {
-	ID               *string `json:"volume_id"`
-	DisplayName      *string `json:"display_name"`
-	CreatedBy        *string `json:"created_by"`
-	Type             *string `json:"type"`
-	AvailabilityZone *string `json:"zone"`
-	Size             int     `json:"size"`
-
-	DeviceName *string `json:"device_name"`
-	HostID     *string `json:"host_id"`
+	ID               *string    `json:"volume_id"`
+	DisplayName      *string    `json:"display_name"`
+	CreatedBy        *string    `json:"created_by"`
+	Type             *string    `json:"type"`
+	AvailabilityZone *string    `json:"zone"`
+	Size             int        `json:"size"`
+	Expiration       *time.Time `json:"expiration"`
+	DeviceName       *string    `json:"device_name"`
+	HostID           *string    `json:"host_id"`
 }
 
 type VolumePostRequest struct {
@@ -188,16 +188,23 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
 	apiVolume.Size = v.Size
 	apiVolume.HostID = ToStringPtr(v.Host)
+	apiVolume.Expiration = ToTimePtr(v.Expiration)
 	return nil
 }
 
 func (apiVolume *APIVolume) ToService() (interface{}, error) {
+	expiration, err := FromTimePtr(apiVolume.Expiration)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get expiration time")
+	}
+
 	return host.Volume{
 		ID:               FromStringPtr(apiVolume.ID),
 		DisplayName:      FromStringPtr(apiVolume.DisplayName),
 		CreatedBy:        FromStringPtr(apiVolume.CreatedBy),
 		Type:             FromStringPtr(apiVolume.Type),
 		AvailabilityZone: FromStringPtr(apiVolume.AvailabilityZone),
+		Expiration:       expiration,
 		Size:             apiVolume.Size,
 	}, nil
 }

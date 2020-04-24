@@ -677,7 +677,7 @@ func TestNextTask(t *testing.T) {
 			Secret:        hostSecret,
 			Provisioned:   true,
 			Status:        evergreen.HostRunning,
-			AgentRevision: evergreen.BuildRevision,
+			AgentRevision: evergreen.AgentVersion,
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -769,7 +769,7 @@ func TestNextTask(t *testing.T) {
 				So(resp.Code, ShouldEqual, http.StatusOK)
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, true)
-				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
+				So(sampleHost.SetAgentRevision(evergreen.AgentVersion), ShouldBeNil) // reset
 			})
 			Convey("with an out of date agent revision and a task group", func() {
 				So(sampleHost.SetAgentRevision("out-of-date-string"), ShouldBeNil)
@@ -779,7 +779,7 @@ func TestNextTask(t *testing.T) {
 				So(resp.Code, ShouldEqual, http.StatusOK)
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, false)
-				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
+				So(sampleHost.SetAgentRevision(evergreen.AgentVersion), ShouldBeNil) // reset
 			})
 			Convey("with a non-legacy host that needs to be reprovisioned", func() {
 				ctx, cancel := context.WithCancel(context.Background())
@@ -813,7 +813,7 @@ func TestNextTask(t *testing.T) {
 				Convey("should prepare to reprovision", func() {
 					_, err := host.FindOneId(h.Id)
 					So(err, ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
@@ -829,7 +829,7 @@ func TestNextTask(t *testing.T) {
 				})
 				Convey("does not reprovision if no reprovision is needed", func() {
 					So(host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
@@ -864,7 +864,7 @@ func TestNextTask(t *testing.T) {
 
 				Convey("should be marked running when it has been provisioned by the app server but not marked as running yet", func() {
 					So(nonLegacyHost.SetProvisionedNotRunning(), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
@@ -882,7 +882,7 @@ func TestNextTask(t *testing.T) {
 					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
 
 					// next task action
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
@@ -891,7 +891,7 @@ func TestNextTask(t *testing.T) {
 				})
 				Convey("should exit when it is quarantined", func() {
 					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
@@ -902,7 +902,7 @@ func TestNextTask(t *testing.T) {
 					So(dbHost.Status, ShouldEqual, evergreen.HostQuarantined)
 				})
 				Convey("with the latest agent revision in the next task details", func() {
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 					So(resp.Code, ShouldEqual, http.StatusOK)
 					respDetails := &apimodels.NextTaskResponse{}
@@ -923,7 +923,7 @@ func TestNextTask(t *testing.T) {
 					Id:            "anotherHost",
 					Secret:        hostSecret,
 					RunningTask:   "existingTask",
-					AgentRevision: evergreen.BuildRevision,
+					AgentRevision: evergreen.AgentVersion,
 					Provisioned:   true,
 					Status:        evergreen.HostRunning,
 				}
@@ -962,7 +962,7 @@ func TestNextTask(t *testing.T) {
 						Id:            "sampleHost",
 						Secret:        hostSecret,
 						RunningTask:   t1.Id,
-						AgentRevision: evergreen.BuildRevision,
+						AgentRevision: evergreen.AgentVersion,
 						Provisioned:   true,
 						Status:        evergreen.HostRunning,
 					}
@@ -1004,7 +1004,7 @@ func TestNextTask(t *testing.T) {
 							RunningTask:   inactiveTask.Id,
 							Provisioned:   true,
 							Status:        evergreen.HostRunning,
-							AgentRevision: evergreen.BuildRevision,
+							AgentRevision: evergreen.AgentVersion,
 						}
 						So(h3.Insert(), ShouldBeNil)
 						anotherBuild := build.Build{
@@ -1134,7 +1134,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			RunningTask:           task1.Id,
 			Provider:              evergreen.ProviderNameStatic,
 			Status:                evergreen.HostRunning,
-			AgentRevision:         evergreen.BuildRevision,
+			AgentRevision:         evergreen.AgentVersion,
 			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
@@ -1267,7 +1267,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				Secret:        hostSecret,
 				RunningTask:   task2.Id,
 				Status:        evergreen.HostRunning,
-				AgentRevision: evergreen.BuildRevision,
+				AgentRevision: evergreen.AgentVersion,
 			}
 			So(sampleHost.Insert(), ShouldBeNil)
 
@@ -1323,7 +1323,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				Secret:        hostSecret,
 				RunningTask:   execTask.Id,
 				Status:        evergreen.HostRunning,
-				AgentRevision: evergreen.BuildRevision,
+				AgentRevision: evergreen.AgentVersion,
 			}
 			So(sampleHost.Insert(), ShouldBeNil)
 

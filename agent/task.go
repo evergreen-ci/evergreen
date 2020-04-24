@@ -64,7 +64,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		grip.Info("task canceled")
 		return
 	}
-	tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
+	tc.logger.Task().Infof("Task logger initialized (agent version %s from %s).", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
@@ -196,7 +196,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 	return tc.currentCommand
 }
 
-func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
+func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 
@@ -211,33 +211,64 @@ func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 		timeout = defaultIdleTimeout
 	}
 
-	tc.timeout = timeout
-	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
-		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), timeout)
+	tc.setIdleTimeout(timeout)
+	tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s",
+		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
 }
 
 func (tc *taskContext) getCurrentTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	if tc.timeout > 0 {
-		return tc.timeout
+	timeout := tc.getIdleTimeout()
+	if timeout > 0 {
+		return timeout
 	}
 	return defaultIdleTimeout
 }
 
-func (tc *taskContext) reachTimeOut() {
+func (tc *taskContext) reachTimeOut(kind timeoutType, dur time.Duration) {
 	tc.Lock()
 	defer tc.Unlock()
 
-	tc.timedOut = true
+	tc.setTimedOut(true, kind)
+	tc.setTimeoutDuration(dur)
 }
 
 func (tc *taskContext) hadTimedOut() bool {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	return tc.timedOut
+	return tc.timedOut()
+}
+
+func (tc *taskContext) setIdleTimeout(dur time.Duration) {
+	tc.timeout.idleTimeoutDuration = dur
+}
+
+func (tc *taskContext) getIdleTimeout() time.Duration {
+	return tc.timeout.idleTimeoutDuration
+}
+
+func (tc *taskContext) setTimedOut(timeout bool, kind timeoutType) {
+	tc.timeout.hadTimeout = timeout
+	tc.timeout.timeoutType = kind
+}
+
+func (tc *taskContext) timedOut() bool {
+	return tc.timeout.hadTimeout
+}
+
+func (tc *taskContext) setTimeoutDuration(dur time.Duration) {
+	tc.timeout.exceededDuration = dur
+}
+
+func (tc *taskContext) getTimeoutDuration() time.Duration {
+	return tc.timeout.exceededDuration
+}
+
+func (tc *taskContext) getTimeoutType() timeoutType {
+	return tc.timeout.timeoutType
 }
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.

@@ -1448,15 +1448,168 @@ func TestCommandsRunOnBV(t *testing.T) {
 			expectedCmdNames: []string{"display1", "display2", "display3"},
 			variant:          variant,
 		},
-		"FindsMatchingCommandsInFunctionFilteredByVariant": {},
+		"FindsMatchingCommandsInFunctionFilteredByVariant": {
+			cmds: []PluginCommandConf{
+				{
+					Function: "function",
+				}, {
+					Command:  cmd,
+					Variants: []string{"other_variant"},
+				}, {
+					Command:     cmd,
+					DisplayName: "display2",
+					Variants:    []string{variant},
+				}, {
+					Command:     cmd,
+					DisplayName: "display3",
+					Variants:    []string{"other_variant", variant},
+				},
+			},
+			funcs: map[string]*YAMLCommandSet{
+				"function": &YAMLCommandSet{
+					SingleCommand: &PluginCommandConf{
+						Command:     cmd,
+						DisplayName: "display1",
+					},
+				},
+			},
+			expectedCmdNames: []string{"display1", "display2", "display3"},
+			variant:          variant,
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			p := &Project{Functions: testCase.funcs}
 			cmds := p.CommandsRunOnBV(testCase.cmds, cmd, variant)
 			assert.Len(t, cmds, len(testCase.expectedCmdNames))
 			for _, cmd := range cmds {
-				assert.True(t, utility.StringSliceContains(testCase.expectedCmdNames, cmd.DisplayName))
+				assert.True(t, utility.StringSliceContains(testCase.expectedCmdNames, cmd.DisplayName), "unexpected command '%s'", cmd.DisplayName)
 			}
 		})
+	}
+}
+
+func TestGetAllVariantTasks(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		project  Project
+		expected []patch.VariantTasks
+	}{
+		"IncludesAllTasksInBVs": {
+			project: Project{
+				BuildVariants: []BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []BuildVariantTaskUnit{
+							{Name: "t1"},
+							{Name: "t2"},
+						},
+					}, {
+						Name: "bv2",
+						Tasks: []BuildVariantTaskUnit{
+							{Name: "t2"},
+							{Name: "t3"},
+						},
+					},
+				},
+			},
+			expected: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2", "t3"},
+				},
+			},
+		},
+		"IncludesAllDisplayTasksInBVs": {
+			project: Project{
+				BuildVariants: []BuildVariant{
+					{
+						Name: "bv1",
+						DisplayTasks: []DisplayTask{
+							{
+								Name:           "dt1",
+								ExecutionTasks: []string{"et1", "et2"},
+							},
+						},
+					}, {
+						Name: "bv2",
+						DisplayTasks: []DisplayTask{
+							{
+								Name:           "dt2",
+								ExecutionTasks: []string{"et2", "et3"},
+							},
+						},
+					},
+				},
+			},
+			expected: []patch.VariantTasks{
+				{
+					Variant: "bv1",
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"et1", "et2"},
+						},
+					},
+				}, {
+					Variant: "bv2",
+					DisplayTasks: []patch.DisplayTask{
+						{
+							Name:      "dt2",
+							ExecTasks: []string{"et2", "et3"},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			vts := testCase.project.GetAllVariantTasks()
+			checkEqualVTs(t, testCase.expected, vts)
+		})
+	}
+}
+
+// checkEqualVT checks that the two VariantTasks are identical.
+func checkEqualVT(t *testing.T, expected patch.VariantTasks, actual patch.VariantTasks) {
+	missingExpected, missingActual := utility.StringSliceSymmetricDifference(expected.Tasks, actual.Tasks)
+	assert.Empty(t, missingExpected, "unexpected tasks '%s' for build variant'%s'", missingExpected, expected.Variant)
+	assert.Empty(t, missingActual, "missing expected tasks '%s' for build variant '%s'", missingActual, actual.Variant)
+
+	expectedDTs := map[string]patch.DisplayTask{}
+	for _, dt := range expected.DisplayTasks {
+		expectedDTs[dt.Name] = dt
+	}
+	actualDTs := map[string]patch.DisplayTask{}
+	for _, dt := range actual.DisplayTasks {
+		actualDTs[dt.Name] = dt
+	}
+	assert.Len(t, actualDTs, len(expectedDTs))
+	for _, expectedDT := range expectedDTs {
+		actualDT, ok := actualDTs[expectedDT.Name]
+		if !assert.True(t, ok, "display task '%s'") {
+			continue
+		}
+		missingExpected, missingActual = utility.StringSliceSymmetricDifference(expectedDT.ExecTasks, actualDT.ExecTasks)
+		assert.Empty(t, missingExpected, "unexpected exec tasks '%s' for display task '%s' in build variant '%s'", missingExpected, expectedDT.Name, expected.Variant)
+		assert.Empty(t, missingActual, "missing exec tasks '%s' for display task '%s' in build variant '%s'", missingActual, actualDT.Name, actual.Variant)
+	}
+}
+
+// checkEqualVTs checks that the two slices of VariantTasks are identical sets.
+func checkEqualVTs(t *testing.T, expected []patch.VariantTasks, actual []patch.VariantTasks) {
+	assert.Len(t, actual, len(expected))
+	for _, expectedVT := range expected {
+		var found bool
+		for _, actualVT := range actual {
+			if actualVT.Variant != expectedVT.Variant {
+				continue
+			}
+			found = true
+			checkEqualVT(t, expectedVT, actualVT)
+			break
+		}
+		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
 	}
 }

@@ -211,6 +211,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeleteAliases       []string                       `json:"delete_aliases"`
 		DefaultLogger       string                         `json:"default_logger"`
 		PrivateVars         map[string]bool                `json:"private_vars"`
+		RestrictedVars      map[string]bool                `json:"restricted_vars"`
 		Enabled             bool                           `json:"enabled"`
 		Private             bool                           `json:"private"`
 		Restricted          bool                           `json:"restricted"`
@@ -555,7 +556,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	projectVars.Vars = responseRef.ProjVarsMap
 	projectVars.PrivateVars = responseRef.PrivateVars
-
+	projectVars.RestrictedVars = responseRef.RestrictedVars
 	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)

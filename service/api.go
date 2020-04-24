@@ -301,7 +301,7 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, "test results successfully attached")
 }
 
-// FetchProjectVars is an API hook for returning the project variables
+// FetchProjectVars is an API hook for returning the unrestricted project variables
 // associated with a task's project.
 func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
@@ -315,7 +315,10 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, projectVars)
+	res := apimodels.ExpansionVars{}
+	res.Vars = projectVars.GetUnrestrictedVars()
+	res.PrivateVars = projectVars.PrivateVars
+	gimlet.WriteJSON(w, res)
 }
 
 // AttachFiles updates file mappings for a task or build

@@ -110,7 +110,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		c.WorkingDir = conf.WorkDir
 	}
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{

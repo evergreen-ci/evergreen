@@ -37,7 +37,7 @@ func TestBuildlogger(t *testing.T) {
 		Secret:        "secret",
 		Provisioned:   true,
 		Status:        evergreen.HostRunning,
-		AgentRevision: evergreen.BuildRevision,
+		AgentRevision: evergreen.AgentVersion,
 	}
 	require.NoError(t, sampleHost.Insert())
 

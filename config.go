@@ -30,6 +30,9 @@ var (
 
 	// Commandline Version String; used to control auto-updating.
 	ClientVersion = "2020-04-15"
+
+	// Agent version to control agent rollover.
+	AgentVersion = "2020-04-22"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -502,18 +505,33 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	if s.Splunk.Populated() {
-		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
+		retryConf := utility.NewDefaultHTTPRetryConf()
+		retryConf.MaxDelay = time.Second
+		retryConf.BaseDelay = 10 * time.Millisecond
+		retryConf.MaxRetries = 10
+		client := utility.GetHTTPRetryableClient(retryConf)
+
+		sender, err = send.NewSplunkLoggerWithClient("", s.Splunk, grip.GetSender().Level(), client)
 		if err == nil {
 			if err = sender.SetLevel(levelInfo); err != nil {
+				utility.PutHTTPClient(client)
 				return nil, errors.Wrap(err, "problem setting level")
 			}
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+				utility.PutHTTPClient(client)
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
 					s.LoggerConfig.Buffer.Count))
+
+			env.RegisterCloser("splunk-http-client", false, func(_ context.Context) error {
+				utility.PutHTTPClient(client)
+				return nil
+			})
+		} else {
+			utility.PutHTTPClient(client)
 		}
 	}
 

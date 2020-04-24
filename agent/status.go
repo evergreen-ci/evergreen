@@ -75,7 +75,8 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 // statusResponse is the structure of the response objects produced by
 // the local status service.
 type statusResponse struct {
-	BuildId        string                 `json:"agent_revision"`
+	BuildRevision  string                 `json:"agent_build"`
+	AgentVersion   string                 `json:"agent_version"`
 	AgentPid       int                    `json:"pid"`
 	HostId         string                 `json:"host_id"`
 	SystemInfo     *message.SystemInfo    `json:"sys_info"`
@@ -138,10 +139,11 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 // process, and is separate to facilitate testing.
 func buildResponse(opts Options) statusResponse {
 	out := statusResponse{
-		BuildId:    evergreen.BuildRevision,
-		AgentPid:   os.Getpid(),
-		HostId:     opts.HostID,
-		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		AgentVersion:  evergreen.AgentVersion,
+		BuildRevision: evergreen.BuildRevision,
+		AgentPid:      os.Getpid(),
+		HostId:        opts.HostID,
+		SystemInfo:    message.CollectSystemInfo().(*message.SystemInfo),
 	}
 
 	psTree := message.CollectProcessInfoSelfWithChildren()

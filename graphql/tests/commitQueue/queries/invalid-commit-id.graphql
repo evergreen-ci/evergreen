@@ -1,12 +1,12 @@
 {
   commitQueue(id: "invalid_id") {
-    ProjectID
-    Queue {
-      Issue
-      Version
-      Modules {
-        Module
-        Issue
+    projectId
+    queue {
+      issue
+      version
+      modules {
+        module
+        issue
       }
     }
   }

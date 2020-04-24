@@ -1386,7 +1386,7 @@ textarea {
   bottom: 0px;
 }
 .label-link:hover {
-  opacity: .8;
+  opacity: 0.8;
   cursor: pointer;
 }
 #log-type-toggle {
@@ -1580,7 +1580,7 @@ textarea {
 }
 .history-item-revision {
   text-transform: none;
-  font-size: .9em;
+  font-size: 0.9em;
   font-weight: bold;
   font-family: Menlo, Monaco, monospace;
   padding: 0px 3px 0px 3px;
@@ -1690,6 +1690,10 @@ textarea {
   background-color: rgba(0, 0, 0, 0.95);
   color: white;
   font-size: 12px;
+}
+.tooltipUnderline {
+  border-bottom: 1px dotted #000;
+  text-decoration: none;
 }
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;

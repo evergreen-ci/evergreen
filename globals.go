@@ -172,9 +172,24 @@ const (
 	MaxDurationPerDistroHost               = 30 * time.Minute
 	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
-	// max expirations
-	SpawnHostExpireDays = 30
-	HostExpireDays      = 10
+	// Spawn hosts
+	SpawnHostExpireDays                 = 30
+	HostExpireDays                      = 10
+	ExpireOnFormat                      = "2006-01-02"
+	DefaultMaxSpawnHostsPerUser         = 3
+	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
+	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
+
+	// host resource tag names
+	TagName             = "name"
+	TagDistro           = "distro"
+	TagEvergreenService = "evergreen-service"
+	TagUsername         = "username"
+	TagOwner            = "owner"
+	TagMode             = "mode"
+	TagStartTime        = "start-time"
+	TagExpireOn         = "expire-on"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -303,6 +318,12 @@ var (
 		RepotrackerVersionRequester,
 		TriggerRequester,
 	}
+
+	ProviderEc2Type = []string{
+		ProviderNameEc2Auto,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Fleet,
+	}
 )
 
 const (
@@ -415,8 +436,9 @@ var (
 
 	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
 	CanRunTaskStatus = []string{
-		HostRunning,
+		HostStarting,
 		HostProvisioning,
+		HostRunning,
 	}
 
 	// DownHostStatus is a list of all host statuses that are considered down.

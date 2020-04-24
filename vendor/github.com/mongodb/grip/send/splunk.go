@@ -3,7 +3,6 @@ package send
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -11,6 +10,7 @@ import (
 	hec "github.com/fuyufjh/splunk-hec-go"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -54,6 +54,16 @@ func (info SplunkConnectionInfo) Populated() bool {
 	return info.ServerURL != "" && info.Token != ""
 }
 
+func (info SplunkConnectionInfo) validateFromEnv() error {
+	if info.ServerURL == "" {
+		return errors.Errorf("environment variable %s not defined, cannot create splunk client", splunkServerURL)
+	}
+	if info.Token == "" {
+		return errors.Errorf("environment variable %s not defined, cannot create splunk client", splunkClientToken)
+	}
+	return nil
+}
+
 func (s *splunkLogger) Send(m message.Composer) {
 	lvl := s.Level()
 
@@ -88,6 +98,47 @@ func (s *splunkLogger) Flush(_ context.Context) error { return nil }
 // messages to a Splunk event collector using the credentials specified
 // in the SplunkConnectionInfo struct.
 func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sender, error) {
+	client := (&http.Client{
+		Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			DisableKeepAlives:   true,
+			TLSHandshakeTimeout: 5 * time.Second,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+		Timeout: 5 * time.Second,
+	})
+
+	s, err := buildSplunkLogger(name, client, info, l)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := s.client.Create(client, info); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return s, nil
+}
+
+// NewSplunkLoggerWithClient makes it possible to pass an existing
+// http.Client to the splunk instance, but is otherwise identical to
+// NewSplunkLogger.
+func NewSplunkLoggerWithClient(name string, info SplunkConnectionInfo, l LevelInfo, client *http.Client) (Sender, error) {
+	s, err := buildSplunkLogger(name, client, info, l)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := s.client.Create(client, info); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return s, nil
+}
+
+func buildSplunkLogger(name string, client *http.Client, info SplunkConnectionInfo, l LevelInfo) (*splunkLogger, error) {
 	s := &splunkLogger{
 		info:   info,
 		client: &splunkClientImpl{},
@@ -96,18 +147,13 @@ func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sende
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	s.hostname = hostname
 
-	if err := s.client.Create(info.ServerURL, info.Token, info.Channel); err != nil {
-		return nil, err
-	}
-
 	if err := s.SetLevel(l); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
-
 	return s, nil
 }
 
@@ -119,15 +165,22 @@ func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sende
 //		GRIP_SPLUNK_CLIENT_CHANNEL
 func MakeSplunkLogger(name string) (Sender, error) {
 	info := GetSplunkConnectionInfo()
-	if info.ServerURL == "" {
-		return nil, fmt.Errorf("environment variable %s not defined, cannot create splunk client",
-			splunkServerURL)
+	if err := info.validateFromEnv(); err != nil {
+		return nil, errors.WithStack(err)
 	}
-	if info.Token == "" {
-		return nil, fmt.Errorf("environment variable %s not defined, cannot create splunk client",
-			splunkClientToken)
-	}
+
 	return NewSplunkLogger(name, info, LevelInfo{level.Trace, level.Trace})
+}
+
+// MakeSplunkLoggerWithClient is identical to MakeSplunkLogger but
+// allows you to pass in a http.Client.
+func MakeSplunkLoggerWithClient(name string, client *http.Client) (Sender, error) {
+	info := GetSplunkConnectionInfo()
+	if err := info.validateFromEnv(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return NewSplunkLoggerWithClient(name, info, LevelInfo{level.Trace, level.Trace}, client)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -137,7 +190,7 @@ func MakeSplunkLogger(name string) (Sender, error) {
 ////////////////////////////////////////////////////////////////////////
 
 type splunkClient interface {
-	Create(string, string, string) error
+	Create(*http.Client, SplunkConnectionInfo) error
 	WriteEvent(*hec.Event) error
 	WriteBatch([]*hec.Event) error
 }
@@ -146,25 +199,15 @@ type splunkClientImpl struct {
 	hec.HEC
 }
 
-func (c *splunkClientImpl) Create(serverURL string, token string, channel string) error {
-	c.HEC = hec.NewClient(serverURL, token)
-	if channel != "" {
-		c.HEC.SetChannel(channel)
+func (c *splunkClientImpl) Create(client *http.Client, info SplunkConnectionInfo) error {
+	c.HEC = hec.NewClient(info.ServerURL, info.Token)
+	if info.Channel != "" {
+		c.HEC.SetChannel(info.Channel)
 	}
 
 	c.HEC.SetKeepAlive(false)
-	c.HEC.SetMaxRetry(0)
-	c.HEC.SetHTTPClient(&http.Client{
-		Transport: &http.Transport{
-			Proxy:               http.ProxyFromEnvironment,
-			DisableKeepAlives:   true,
-			TLSHandshakeTimeout: 5 * time.Second,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-		Timeout: 5 * time.Second,
-	})
+	c.HEC.SetMaxRetry(2)
+	c.HEC.SetHTTPClient(client)
 
 	return nil
 }

@@ -66,12 +66,28 @@ type taskContext struct {
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
 	logDirectories map[string]interface{}
-	timeout        time.Duration
-	timedOut       bool
+	timeout        timeoutInfo
 	project        *model.Project
 	taskModel      *task.Task
 	sync.RWMutex
 }
+
+type timeoutInfo struct {
+	// idleTimeoutDuration maintains the current idle timeout in the task context;
+	// the exec timeout is maintained in the project data structure
+	idleTimeoutDuration time.Duration
+	timeoutType         timeoutType
+	hadTimeout          bool
+	// exceededDuration is the length of the timeout that was extended, if the task timed out
+	exceededDuration time.Duration
+}
+
+type timeoutType string
+
+const (
+	execTimeout timeoutType = "exec"
+	idleTimeout timeoutType = "idle"
+)
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
@@ -158,7 +174,7 @@ LOOP:
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
-				AgentRevision: evergreen.BuildRevision,
+				AgentRevision: evergreen.AgentVersion,
 			})
 			if err != nil {
 				// task secret doesn't match, get another task
@@ -373,6 +389,9 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
+	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
+		go a.startSpotTerminationWatcher(tskCtx, innerCancel)
+	}
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
@@ -486,11 +505,13 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		cmdType = tc.getCurrentCommand().Type()
 	}
 	return &apimodels.TaskEndDetail{
-		Description: description,
-		Type:        cmdType,
-		TimedOut:    tc.hadTimedOut(),
-		Status:      status,
-		Logs:        tc.logs,
+		Description:     description,
+		Type:            cmdType,
+		TimedOut:        tc.hadTimedOut(),
+		TimeoutType:     string(tc.getTimeoutType()),
+		TimeoutDuration: tc.getTimeoutDuration(),
+		Status:          status,
+		Logs:            tc.logs,
 	}
 }
 

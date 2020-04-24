@@ -149,6 +149,7 @@ type FileDiff {
 }
 
 type Patch {
+  createTime: Time
   id: ID!
   description: String!
   projectID: String!
@@ -168,6 +169,15 @@ type Patch {
   baseVersionID: String
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
+  builds: [Build!]!
+}
+
+type Build {
+  id: String!
+  buildVariant: String!
+  status: String!
+  predictedMakespan: Duration!
+  actualMakespan: Duration!
 }
 
 type PatchProject {
@@ -363,21 +373,21 @@ type LogMessage {
 }
 
 type CommitQueue {
-  ProjectID: String
-  Queue: [CommitQueueItem!]
+  projectId: String
+  queue: [CommitQueueItem!]
 }
 
 type CommitQueueItem {
-  Issue: String
-  Version: String
-  EnqueueTime: Time
-  Patch: Patch
-  Modules: [Module!]
+  issue: String
+  version: String
+  enqueueTime: Time
+  patch: Patch
+  modules: [Module!]
 }
 
 type Module {
-  Module: String
-  Issue: String
+  module: String
+  issue: String
 }
 scalar Time
 scalar Duration

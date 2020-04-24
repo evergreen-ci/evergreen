@@ -123,9 +123,9 @@ imports:
 
     # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
-    version: d95fa8b035aec46d608d34e1118a74ae749586b7
+    version: e1c1c34387e6222a5bcde1c32af5648e6fc4c37c
   - name: github.com/mongodb/amboy
-    version: 607328b3b95f396dd2726682cbe97bd198ce976a
+    version: b391fa6a4fdbb0f64b5230bbdd63a02180d40e0a
   - name: github.com/evergreen-ci/gimlet
     version: 185166ff85e8801545747fa65a14486e0fe4680b
   - name: github.com/evergreen-ci/shrub

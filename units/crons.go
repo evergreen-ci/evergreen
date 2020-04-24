@@ -634,31 +634,11 @@ func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
 	}
 }
 
-// PopulateHostAlertJobs adds alerting tasks infrequently for host
-// utilization monitoring.
-func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
+// PopulateHostStatJobs adds host stats jobs.
+func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
-
-		hosts, err := host.Find(host.IsRunningTask)
-		grip.Warning(message.WrapError(err, message.Fields{
-			"cron":      hostAlertingName,
-			"operation": "background task creation",
-			"impact":    "admin alerts not set",
-		}))
-
-		catcher.Add(err)
-		if err == nil {
-			for _, host := range hosts {
-				catcher.Add(queue.Put(ctx, NewHostAlertingJob(host, ts)))
-			}
-		}
-
-		catcher.Add(queue.Put(ctx, NewHostStatsJob(ts)))
-
-		return catcher.Resolve()
+		return (queue.Put(ctx, NewHostStatsJob(ts)))
 	}
 }
 
@@ -1108,6 +1088,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewSpawnhostExpirationWarningsJob(ts)))
+		catcher.Add(queue.Put(ctx, NewVolumeExpirationWarningsJob(ts)))
 		return catcher.Resolve()
 	}
 }
@@ -1158,6 +1139,23 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 		for _, h := range hosts {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateVolumeExpirationJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		volumes, err := host.FindVolumesToDelete(time.Now())
+		if err != nil {
+			return errors.Wrap(err, "can't get volumes to delete")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, v := range volumes {
+			ts := utility.RoundPartOfHour(0).Format(TSFormat)
+			catcher.Add(queue.Put(ctx, NewVolumeDeletionJob(ts, &v)))
 		}
 
 		return catcher.Resolve()

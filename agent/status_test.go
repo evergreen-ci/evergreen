@@ -45,7 +45,8 @@ func (s *StatusSuite) TearDownSuite() {
 }
 
 func (s *StatusSuite) TestBasicAssumptions() {
-	s.Equal(s.resp.BuildId, evergreen.BuildRevision)
+	s.Equal(s.resp.BuildRevision, evergreen.BuildRevision)
+	s.Equal(s.resp.AgentVersion, evergreen.AgentVersion)
 	s.Equal(s.resp.AgentPid, os.Getpid())
 	s.Equal(s.resp.HostId, s.testOpts.HostID)
 }

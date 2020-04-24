@@ -33,7 +33,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}
 
-	httpClient := utility.GetHTTPClient()
+	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
