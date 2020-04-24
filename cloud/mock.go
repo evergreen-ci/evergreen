@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/rest/model"
+
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -395,6 +397,19 @@ func (mockMgr *mockManager) DeleteVolume(ctx context.Context, volume *host.Volum
 	defer l.Unlock()
 	delete(mockMgr.Volumes, volume.ID)
 	return errors.WithStack(volume.Remove())
+}
+
+func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+	v, ok := mockMgr.Volumes[volume.ID]
+	if !ok {
+		return errors.New("volume does not exist")
+	}
+	v.Size = opts.Size
+	mockMgr.Volumes[volume.ID] = v
+	return errors.WithStack(volume.SetSize(opts.Size))
 }
 
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {

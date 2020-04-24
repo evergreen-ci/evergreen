@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -233,6 +234,10 @@ func (m *gceManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, 
 
 func (m *gceManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with gce provider")
+}
+
+func (m *gceManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
+	return errors.New("can't modify volume with gce provider")
 }
 
 func (m *gceManager) CheckInstanceType(context.Context, string) error {

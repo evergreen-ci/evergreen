@@ -28,6 +28,9 @@ const (
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
 	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
+	EC2InvalidParam         = "InvalidParameterValue"
+	EC2VolumeNotFound       = "InvalidVolume.NotFound"
+	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 )
 
 type MountPoint struct {
@@ -579,4 +582,22 @@ func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair)
 		return errors.Wrap(err, "could not add new SSH key")
 	}
 	return nil
+}
+
+func AttachVolumeBadRequest(err error) bool {
+	for _, noRetryError := range []string{EC2VolumeNotFound, EC2InvalidParam} {
+		if strings.Contains(err.Error(), noRetryError) {
+			return true
+		}
+	}
+	return false
+}
+
+func ModifyVolumeBadRequest(err error) bool {
+	for _, noRetryError := range []string{EC2VolumeNotFound, EC2VolumeResizeRate} {
+		if strings.Contains(err.Error(), noRetryError) {
+			return true
+		}
+	}
+	return false
 }

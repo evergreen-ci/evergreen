@@ -89,6 +89,9 @@ type AWSClient interface {
 	// DetachVolume is a wrapper for ec2.DetachVolume.
 	DetachVolume(context.Context, *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error)
 
+	// ModifyVolume is a wrapper for ec2.ModifyVolume.
+	ModifyVolume(context.Context, *ec2.ModifyVolumeInput) (*ec2.ModifyVolumeOutput, error)
+
 	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 	DescribeVolumes(context.Context, *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
 
@@ -578,10 +581,38 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 			output, err = c.EC2.DeleteVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					if strings.Contains(ec2err.Error(), "does not exist") {
+					if strings.Contains(ec2err.Error(), EC2VolumeNotFound) {
 						return false, nil
 					}
 					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
+}
+
+// ModifyVolume is a wrapper for ec2.ModifyWrapper.
+func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolumeInput) (*ec2.ModifyVolumeOutput, error) {
+	var output *ec2.ModifyVolumeOutput
+	var err error
+	msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.ModifyVolumeWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+					if ModifyVolumeBadRequest(ec2err) {
+						return false, err
+					}
 				}
 				return true, err
 			}
@@ -607,10 +638,8 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
-					for _, noRetryError := range []string{"InvalidVolume.NotFound", "InvalidParameterValue"} {
-						if strings.Contains(ec2err.Message(), noRetryError) {
-							return false, err
-						}
+					if AttachVolumeBadRequest(ec2err) {
+						return false, err
 					}
 				}
 				return true, err
@@ -1135,6 +1164,7 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteVolumeInput
 	*ec2.AttachVolumeInput
 	*ec2.DetachVolumeInput
+	*ec2.ModifyVolumeInput
 	*ec2.DescribeVolumesInput
 	*ec2.DescribeSpotPriceHistoryInput
 	*ec2.DescribeSubnetsInput
@@ -1370,6 +1400,11 @@ func (c *awsClientMock) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 // DeleteVolume is a mock for ec2.DeleteVolume.
 func (c *awsClientMock) DeleteVolume(ctx context.Context, input *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error) {
 	c.DeleteVolumeInput = input
+	return nil, nil
+}
+
+func (c *awsClientMock) ModifyVolume(ctx context.Context, input *ec2.ModifyVolumeInput) (*ec2.ModifyVolumeOutput, error) {
+	c.ModifyVolumeInput = input
 	return nil, nil
 }
 

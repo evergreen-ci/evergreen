@@ -535,6 +535,7 @@ func hostDetach() cli.Command {
 func hostModifyVolume() cli.Command {
 	const (
 		idFlagName = "id"
+		sizeFlag   = "size"
 	)
 	return cli.Command{
 		Name:  "modify",
@@ -548,11 +549,21 @@ func hostModifyVolume() cli.Command {
 				Name:  displayNameFlagName,
 				Usage: "new user-friendly name for volume",
 			},
+			cli.IntFlag{
+				Name:  joinFlagNames(sizeFlag, "s"),
+				Usage: "set new volume `SIZE` in GiB",
+			},
 		},
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			requireStringFlag(idFlagName),
+			requireAtLeastOneFlag(displayNameFlagName, sizeFlag),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeID := c.String(idFlagName)
 			name := c.String(displayNameFlagName)
+			size := c.Int(sizeFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -564,7 +575,11 @@ func hostModifyVolume() cli.Command {
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			return client.ModifyVolume(ctx, volumeID, &restModel.VolumeModifyOptions{NewName: name})
+			opts := restModel.VolumeModifyOptions{
+				NewName: name,
+				Size:    size,
+			}
+			return client.ModifyVolume(ctx, volumeID, &opts)
 		},
 	}
 }
@@ -637,7 +652,7 @@ func hostCreateVolume() cli.Command {
 		Name:  "create",
 		Usage: "create a volume for spawn hosts",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			cli.IntFlag{
 				Name:  joinFlagNames(sizeFlag, "s"),
 				Usage: "set volume `SIZE` in GiB",
 			},

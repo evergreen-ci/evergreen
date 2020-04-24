@@ -156,6 +156,7 @@ type VolumePostRequest struct {
 
 type VolumeModifyOptions struct {
 	NewName string `json:"new_name"`
+	Size    int    `json:"size"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {

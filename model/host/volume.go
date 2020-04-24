@@ -57,6 +57,17 @@ func (v *Volume) SetDisplayName(displayName string) error {
 	return nil
 }
 
+func (v *Volume) SetSize(size int) error {
+	err := db.Update(VolumesCollection,
+		bson.M{VolumeIDKey: v.ID},
+		bson.M{"$set": bson.M{VolumeSizeKey: size}})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	v.Size = size
+	return nil
+}
+
 // Remove a volume from the volumes collection.
 // Note this shouldn't be used when you want to
 // remove from AWS itself.
