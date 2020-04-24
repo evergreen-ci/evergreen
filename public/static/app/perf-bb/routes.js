@@ -16,6 +16,14 @@ mciModule.config(function($routeProvider, $locationProvider) {
       controller: 'SignalProcessingCtrl',
       controllerAs: 'spvm',
     })
+    .when('/perf-bb/expanded-metrics-change-points', {
+      redirectTo: applyProject,
+    })
+    .when('/perf-bb/expanded-metrics-change-points/:projectId', {
+      templateUrl: '/static/app/perf-bb/change-points-v2.html',
+      controller: 'SignalProcessingCtrlV2',
+      controllerAs: 'spvm',
+    })
     // TODO make a mixin for this
     // Redirects to the same URL with filled in project id
     .when('/perf-bb/failures', {

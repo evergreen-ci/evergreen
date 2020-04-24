@@ -5,6 +5,7 @@
 
 <script type="text/javascript" src="/static/app/perf-bb/microHazardChart.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/SignalProcessingCtrl.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/perf-bb/SignalProcessingCtrlV2.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/PerfBBFailuresCtrl.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/PerfBBOutliersCtrl.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/PerfBBRejectsCtrl.js?hash={{ BuildRevision }}"></script>
@@ -30,7 +31,7 @@ Signal Processing
 
 <div class="signal-processing">
   <ul class="nav nav-tabs" ng-init="vm = {mode: 'change-points'}">
-    <li ng-repeat="(id, name) in {'change-points': 'Change Points', 'failures': 'Failures', 'outliers': 'Outliers', 'rejects': 'Rejected Outliers'}"
+    <li ng-repeat="(id, name) in {'change-points': 'Change Points', 'expanded-metrics-change-points': 'Change Points - Expanded Metrics', 'failures': 'Failures', 'outliers': 'Outliers', 'rejects': 'Rejected Outliers'}"
         ng-class="{active: (vm.mode==id)}"
     >
       <a ng-click="vm.mode = id" href="/perf-bb/[[id]]/">[[name]]</a>

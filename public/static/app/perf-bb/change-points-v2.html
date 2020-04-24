@@ -1,0 +1,21 @@
+<div class="toolbar">
+  <span>Currently selected: [[spvm.selection.length]]</span>
+</div>
+
+<div
+  class="grid"
+  ui-grid="spvm.gridOptions"
+  ui-grid-auto-resize
+  ui-grid-empty-base-layer
+  ui-grid-grouping
+  ui-grid-move-columns
+  ui-grid-resize-columns
+  ui-grid-selection
+>
+  <div class="ui-grid-overlay ng-cloak">
+    <spinner ng-if="spvm.isLoading"></spinner>
+    <h1 ng-show="!spvm.isLoading && !spvm.gridOptions.data.length">
+      No data available!
+    </h1>
+  </div>
+</div>
