@@ -90,6 +90,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.Equal(t, roles, user.Roles())
 
 			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			assert.NoError(t, err)
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, roles, user.Roles())
 		},
