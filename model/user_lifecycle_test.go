@@ -26,7 +26,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken)
+			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -39,7 +39,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
 		},
 		"UpdateAlwaysSetsNameAndEmail": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken)
+			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -48,27 +48,27 @@ func TestGetOrCreateUser(t *testing.T) {
 
 			newName := "new_name"
 			newEmail := "new_email"
-			user, err = GetOrCreateUser(id, newName, newEmail, accessToken, refreshToken)
+			user, err = GetOrCreateUser(id, newName, newEmail, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, newName, newEmail, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
 		"UpdateSetsTokensIfNonempty": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken)
+			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken)
+			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 
-			user, err = GetOrCreateUser(id, name, email, "", "")
+			user, err = GetOrCreateUser(id, name, email, "", "", nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -76,11 +76,22 @@ func TestGetOrCreateUser(t *testing.T) {
 
 			newAccessToken := "new_access_token"
 			newRefreshToken := "new_refresh_token"
-			user, err = GetOrCreateUser(id, name, email, newAccessToken, newRefreshToken)
+			user, err = GetOrCreateUser(id, name, email, newAccessToken, newRefreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, newAccessToken, newRefreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
+		},
+		"RolesMergeCorrectly": func(t *testing.T) {
+			roles := []string{"one", "two"}
+			user, err := GetOrCreateUser(id, "", "", "", "", roles)
+			assert.NoError(t, err)
+			checkUser(t, user, id, "id", "", "", "")
+			assert.Equal(t, roles, user.Roles())
+
+			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			checkUser(t, user, id, name, email, accessToken, refreshToken)
+			assert.Equal(t, roles, user.Roles())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
