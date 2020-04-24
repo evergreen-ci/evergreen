@@ -203,32 +203,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.reloadVolumes = function () {
-      mciSpawnRestService.getVolumes(
-        {
-          success: function (resp) {
-            var volumes = resp.data;
-            _.each(volumes, function (volume) {
-              for(var i = 0; i < $scope.volumes.length; i++) {
-                if (volume.volume_id != $scope.volumes[i].volume_id) {
-                  continue;
-                }
-                $scope.computeVolumeExpirationTimes(volume);
-                $scope.volumes[i].expiration = volume.expiration;
-                $scope.volumes[i].expires_in = volume.expires_in;
-                $scope.volumes[i].host_id = volume.host_id;
-                if ($scope.volumes[i].host_id) {
-                  $scope.volumes[i].status = "mounted";
-                } else {
-                  $scope.volumes[i].status = "free";
-                }
-              }
-            });
-          }
-        }
-      );
-    }
-
     $scope.computeHostExpirationTimes = function (host) {
       if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
         if (host.no_expiration) {
@@ -293,11 +267,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     }, 60000);
 
     $timeout($scope.fetchVolumes, 1);
-
-    $timeout($scope.reloadVolumes, 5000);
-    setInterval(function () {
-      $scope.reloadVolumes();
-    }, 60000);
 
     // Returns true if the user can spawn another host. If hosts have not been initialized it
     // assumes true.
