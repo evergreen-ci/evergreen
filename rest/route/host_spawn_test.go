@@ -352,6 +352,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 		env:  evergreen.GetEnvironment(),
 		opts: &model.VolumeModifyOptions{},
 	}
+	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
 	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
 		CachedVolumes: []host.Volume{
 			host.Volume{
@@ -381,7 +382,12 @@ func TestModifyVolumeHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	// validate max size
 	h.opts.Size = 500
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	h.opts.Size = 200
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusInternalServerError, resp.Status()) // i.e. passed validation
