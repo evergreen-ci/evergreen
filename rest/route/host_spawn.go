@@ -864,7 +864,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-		if err := checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
+		if err = checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    err.Error(),
@@ -874,7 +874,8 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   cloud.AztoRegion(volume.AvailabilityZone),
 		}
-		mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
+		var mgr cloud.Manager
+		mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
