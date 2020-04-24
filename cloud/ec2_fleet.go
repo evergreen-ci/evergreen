@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -339,6 +340,10 @@ func (m *ec2FleetManager) CreateVolume(context.Context, *host.Volume) (*host.Vol
 
 func (m *ec2FleetManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with ec2 fleet provider")
+}
+
+func (m *ec2FleetManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
+	return errors.New("can't modify volume with ec2 fleet provider")
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
