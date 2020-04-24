@@ -549,6 +549,13 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 		if h == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID))
+			if err = host.UnsetVolumeHost(vol.ID); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
+					"route":   "modifyVolume",
+					"action":  "detach",
+				}))
+			}
 			return
 		}
 
