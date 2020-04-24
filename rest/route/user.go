@@ -403,13 +403,13 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
-	if u == nil {
+	dbUser, valid := u.(*user.DBUser)
+	if dbUser == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
 			StatusCode: http.StatusNotFound,
 		})
 	}
-	dbUser, valid := u.(*user.DBUser)
 	if !valid {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "unexpected structure for user",
