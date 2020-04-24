@@ -383,18 +383,39 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.getHomeVolumeDisplayName = function () {
       if (!$scope.homeVolumeID) {
-        return "New Volume"
+        return "New Volume";
       }
 
-      var name = $scope.homeVolumeID;
-      // append the display name
+      return $scope.getVolumeDisplayName($scope.homeVolumeID);
+    }
+
+    $scope.getVolumeDisplayName = function(volumeID) {
       for (volume of $scope.volumes) {
-        if (volume.volume_id == $scope.homeVolumeID && volume.display_name) {
-          name += " (" + volume.display_name + ")";
+        if (volume.volume_id == volumeID) {
+          return $scope.concatName(volume.volume_id, volume.display_name);
         }
       }
 
-      return name
+      return volumeID;
+    }
+
+    $scope.getHostDisplayName = function(hostID) {
+      for (host of $scope.hosts) {
+        if (host.id == hostID) {
+          return $scope.concatName(host.id, host.display_name);
+        }
+      }
+
+      return hostID;
+    }
+
+    $scope.concatName = function(id, displayName) {
+      var name = id;
+      if (displayName) {
+        name += " (" + displayName + ")";
+      }
+
+      return name;
     };
 
     $scope.setHomeVolume = function (volume) {

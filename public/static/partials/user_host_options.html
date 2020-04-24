@@ -92,7 +92,7 @@
              Volume:
             </span>
             <strong>
-              [[getHomeVolumeDisplayName()]]
+              [[ getHomeVolumeDisplayName() ]]
               <span class="fa fa-caret-down"></span>
             </strong>
           </button>
@@ -105,7 +105,7 @@
             </li>
             <li role="presentation" ng-repeat="volume in $parent.volumes | filter:{status:'free'}">
               <a role="menuitem" ng-click="setHomeVolume(volume)">
-                [[ volume.volume_id + (volume.display_name ? " (" + volume.display_name + ")": "" )]]
+                [[ concatName(volume.volume_id, volume.display_name) ]]
               </a>
             </li>
           </ul>

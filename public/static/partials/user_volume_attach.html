@@ -6,7 +6,7 @@
                Target Host:
               </span>
               <strong>
-                [[volumeAttachHost.id + (volumeAttachHost.display_name ? " (" + volumeAttachHost.display_name + ")" : "")]]
+                [[ concatName(volumeAttachHost.volume_id, volumeAttachHost.display_name) ]]
                 <span class="fa fa-caret-down"></span>
               </strong>
           </button>
@@ -14,7 +14,7 @@
             <li role="presentation" class="dropdown-header">Hosts</li>
             <li role="presentation" class="pointer" ng-repeat="host in hosts | filter: {'status' : 'running'}">
               <a role="menuitem" ng-click="setAttachToHost(host);">
-                [[host.id + (host.display_name ? " (" + host.display_name + ")" : "")]]
+                [[concatName(host.id, host.display_name)]]
               </a>
             </li>
           </ul>

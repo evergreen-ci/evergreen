@@ -1,7 +1,7 @@
 <div class="panel">
     <div class="panel-body row">
       <span class="semi-muted">
-        Delete volume <strong>[[curVolumeData.volume_id]]</strong> [[curVolumeData.display_name ? " (" + curVolumeData.display_name + ")" : ""]]?
+        Delete volume <strong>[[ concatName(curVolumeData.volume_id, curVolumeData.display_name) ]]</strong>?
       </span>
       <br>
       <button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>
