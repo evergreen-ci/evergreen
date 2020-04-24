@@ -1,7 +1,7 @@
 mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q', '$location', 'mciSpawnRestService', 'notificationService', function ($scope, $window, $timeout, $q, $location, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
     $scope.defaultRegion = $window.defaultRegion;
-    $scope.hosts = null;
+    $scope.hosts = [];
     $scope.modalOpen = false;
     $scope.spawnTask = $window.spawnTask;
     $scope.spawnDistro = $window.spawnDistro;
@@ -390,20 +390,18 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     }
 
     $scope.getVolumeDisplayName = function(volumeID) {
-      for (volume of $scope.volumes) {
-        if (volume.volume_id == volumeID) {
-          return $scope.concatName(volume.volume_id, volume.display_name);
-        }
+      volume = $scope.volumes.find(volume => {return volume.volume_id == volumeID})
+      if (volume) {
+        return $scope.concatName(volume.volume_id, volume.display_name);
       }
 
       return volumeID;
     }
 
     $scope.getHostDisplayName = function(hostID) {
-      for (host of $scope.hosts) {
-        if (host.id == hostID) {
-          return $scope.concatName(host.id, host.display_name);
-        }
+      host = $scope.hosts.find(host => {return host.id == hostID})
+      if (host) {
+        return $scope.concatName(host.id, host.display_name);
       }
 
       return hostID;
@@ -411,7 +409,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.concatName = function(id, displayName) {
       var name = id;
-      if (displayName) {
+      if (displayName && displayName != id) {
         name += " (" + displayName + ")";
       }
 

@@ -6,7 +6,7 @@
                Target Host:
               </span>
               <strong>
-                [[ concatName(volumeAttachHost.volume_id, volumeAttachHost.display_name) ]]
+                [[ concatName(volumeAttachHost.id, volumeAttachHost.display_name) ]]
                 <span class="fa fa-caret-down"></span>
               </strong>
           </button>
@@ -18,9 +18,11 @@
               </a>
             </li>
           </ul>
-        </span>
-      <br>
-      <button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>
-      <button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" data-dismiss="modal" ng-click="updateVolume('attachVolume')">Attach</button>
+        </div>
+        <br>
+        <div style="float: right">
+          <button type="button" class="btn btn-primary" style="margin-right: 10px;" data-dismiss="modal" ng-click="updateVolume('attachVolume')">Attach</button>
+          <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+        </div>
     </div>
 </div>

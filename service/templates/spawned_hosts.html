@@ -178,9 +178,9 @@ Evergreen - My Hosts
               <td class="col-lg-2 no-word-wrap">
                 <div class="host-name-input-group">
                   <input type="text" class="host-name-input" ng-model="volume.display_name">
-                  <span ng-show="volume.originalDisplayName != volume.display_name" >
-                    <i class="fa fa-times pointer" style="float: right" ng-click="resetVolumeDisplayName(volume)"></i>
-                    <i class="fa fa-check pointer" style="float: right" ng-click="setVolumeDisplayName(volume)"></i>
+                  <span style="float: right" ng-show="volume.originalDisplayName != volume.display_name" >
+                    <i class="fa fa-check pointer" ng-click="setVolumeDisplayName(volume)"></i>
+                    <i class="fa fa-times pointer" ng-click="resetVolumeDisplayName(volume)"></i>
                   </span>
                 </div>
               </td>
