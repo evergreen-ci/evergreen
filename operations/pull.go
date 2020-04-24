@@ -61,7 +61,7 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "could not get location of task directory in S3")
 			}
 
-			httpClient := utility.GetHTTPClient()
+			httpClient := utility.GetDefaultHTTPRetryableClient()
 			defer utility.PutHTTPClient(httpClient)
 			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, pail.S3Options{
 				Name:        creds.Bucket,
