@@ -521,7 +521,8 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must specify host id"))
 			return
 		}
-		h, err := host.FindOneId(*updateParams.HostID)
+		var h *host.Host
+		h, err = host.FindOneId(*updateParams.HostID)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host))
 			return
@@ -531,7 +532,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
+		if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID))
 			return
 		}
