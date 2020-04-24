@@ -498,16 +498,6 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
-		Region:   cloud.AztoRegion(vol.AvailabilityZone),
-	}
-	mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
-		return
-	}
-
 	// take the specified action
 	switch *updateParams.Action {
 	case VolumeRename:
@@ -517,6 +507,16 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		//TODO
 
 	case VolumeAttach:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
 		if updateParams.HostID == nil || *updateParams.HostID == "" {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must specify host id"))
 			return
@@ -538,6 +538,16 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeDetach:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
 		if vol.Host == "" {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "volume '%s' is not attached", vol.ID))
 			return
@@ -565,6 +575,16 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeDelete:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
 		if err := mgr.DeleteVolume(ctx, vol); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID))
 			return
