@@ -856,10 +856,18 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.opts.Size != 0 {
-		if h.opts.Size <= volume.Size {
+		sizeIncrease := h.opts.Size - volume.Size
+		if sizeIncrease <= 0 {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("volumes can only be sized up (current size is %d GiB)", volume.Size),
+			})
+		}
+		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
+		if err := checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
 			})
 		}
 		mgrOpts := cloud.ManagerOpts{
