@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -158,7 +157,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Keys:                    map[string]string{},
 		Plugins:                 evergreen.PluginConfig{},
 		GithubOrgs:              as.GithubOrgs,
-		SpawnHostsPerUser:       cloud.DefaultMaxSpawnHostsPerUser,
+		SpawnHostsPerUser:       evergreen.DefaultMaxSpawnHostsPerUser,
 		UnexpirableHostsPerUser: host.DefaultUnexpirableHostsPerUser,
 	}
 	if as.ApiUrl != nil {
@@ -879,6 +878,7 @@ type APIHostInitConfig struct {
 	SSHTimeoutSeconds    int64 `json:"ssh_timeout_secs"`
 	HostThrottle         int   `json:"host_throttle"`
 	ProvisioningThrottle int   `json:"provisioning_throttle"`
+	CloudStatusBatchSize int   `json:"cloud_batch_size"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -887,6 +887,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.SSHTimeoutSeconds = v.SSHTimeoutSeconds
 		a.HostThrottle = v.HostThrottle
 		a.ProvisioningThrottle = v.ProvisioningThrottle
+		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -898,6 +899,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		SSHTimeoutSeconds:    a.SSHTimeoutSeconds,
 		HostThrottle:         a.HostThrottle,
 		ProvisioningThrottle: a.ProvisioningThrottle,
+		CloudStatusBatchSize: a.CloudStatusBatchSize,
 	}, nil
 }
 

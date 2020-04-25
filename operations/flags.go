@@ -101,7 +101,7 @@ func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 func addSyncBuildVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  syncBuildVariantsFlagName,
-		Usage: "tasks to sync when task ends",
+		Usage: "build variants to sync when task ends",
 	})
 }
 

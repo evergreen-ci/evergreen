@@ -220,8 +220,8 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 	return nil
 }
 
-// provisioningUserData returns the user data with logic to provision and set up
-// the host as well as run custom user data.
+// makeUserData returns the user data with logic to provision and set up the
+// host as well as run custom user data.
 // If mergeParts is true, the provisioning part and the custom part will
 // be combined into a single user datapart, so they must be the same type (e.g.
 // if shell scripts, both must be the same shell scripting language).

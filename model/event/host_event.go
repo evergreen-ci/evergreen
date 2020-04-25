@@ -15,6 +15,7 @@ import (
 func init() {
 	registry.AddType(ResourceTypeHost, hostEventDataFactory)
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
+	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
@@ -56,6 +57,7 @@ const (
 	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
 	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
+	EventVolumeExpirationWarningSent     = "VOLUME_EXPIRATION_WARNING_SENT"
 )
 
 // implements EventData
@@ -169,8 +171,8 @@ func LogHostProvisionError(hostId string) {
 	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
 }
 
-func LogHostTerminatedExternally(hostId string) {
-	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
+func LogHostTerminatedExternally(hostId, oldStatus string) {
+	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName})
 }
 
 func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string) {
@@ -223,8 +225,12 @@ func LogMonitorOperation(hostId string, op string) {
 	LogHostEvent(hostId, EventHostMonitorFlag, HostEventData{MonitorOp: op})
 }
 
-func LogExpirationWarningSent(hostID string) {
+func LogSpawnhostExpirationWarningSent(hostID string) {
 	LogHostEvent(hostID, EventHostExpirationWarningSent, HostEventData{})
+}
+
+func LogVolumeExpirationWarningSent(volumeID string) {
+	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
 }
 
 // UpdateExecutions updates host events to track multiple executions of the same task

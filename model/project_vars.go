@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	projectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	projectVarIdKey      = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	restrictedVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "RestrictedVars")
 )
 
 const (
@@ -35,6 +36,9 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
+
+	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
+	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
 }
 
 type AWSSSHKey struct {
@@ -103,8 +107,9 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				projectVarsMapKey: projectVars.Vars,
-				privateVarsMapKey: projectVars.PrivateVars,
+				projectVarsMapKey:    projectVars.Vars,
+				privateVarsMapKey:    projectVars.PrivateVars,
+				restrictedVarsMapKey: projectVars.RestrictedVars,
 			},
 		},
 	)
@@ -121,7 +126,8 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
 	update := bson.M{}
-	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 && len(varsToDelete) == 0 {
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
+		len(projectVars.RestrictedVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.Vars {
@@ -130,15 +136,19 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
 	}
-	if len(projectVars.Vars) > 0 || len(projectVars.PrivateVars) > 0 {
+	for key, val := range projectVars.RestrictedVars {
+		setUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, key)] = val
+	}
+	if len(setUpdate) > 0 {
 		update["$set"] = setUpdate
 	}
 
 	for _, val := range varsToDelete {
 		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, val)] = 1
 	}
-	if len(varsToDelete) > 0 {
+	if len(unsetUpdate) > 0 {
 		update["$unset"] = unsetUpdate
 	}
 	return db.FindAndModify(
@@ -154,24 +164,33 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) PublicVarsOnly() *ProjectVars {
-	res := ProjectVars{
-		Id:          projectVars.Id,
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-	}
-	for name, isPrivate := range projectVars.PrivateVars {
-		if val, ok := projectVars.Vars[name]; ok && !isPrivate {
-			res.Vars[name] = val
+func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
+	restrictedVars := map[string]string{}
+
+	for k, v := range projectVars.Vars {
+		if projectVars.RestrictedVars[k] {
+			restrictedVars[k] = v
 		}
 	}
-	return &res
+	return restrictedVars
+}
+
+func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
+	safeVars := map[string]string{}
+
+	for k, v := range projectVars.Vars {
+		if !projectVars.RestrictedVars[k] {
+			safeVars[k] = v
+		}
+	}
+	return safeVars
 }
 
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
+		Vars:           map[string]string{},
+		PrivateVars:    map[string]bool{},
+		RestrictedVars: projectVars.RestrictedVars,
 	}
 	if projectVars == nil {
 		return res

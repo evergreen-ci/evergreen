@@ -28,6 +28,9 @@ const (
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
 	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
+	EC2InvalidParam         = "InvalidParameterValue"
+	EC2VolumeNotFound       = "InvalidVolume.NotFound"
+	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 )
 
 type MountPoint struct {
@@ -125,7 +128,7 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 // expireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
 // in the future.
 func expireInDays(numDays int) string {
-	return time.Now().AddDate(0, 0, numDays).Format("2006-01-02")
+	return time.Now().AddDate(0, 0, numDays).Format(evergreen.ExpireOnFormat)
 }
 
 // makeTags populates a slice of tags based on a host object, which contain keys
@@ -158,14 +161,14 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	}
 
 	systemTags := []host.Tag{
-		host.Tag{Key: "name", Value: intentHost.Id, CanBeModified: false},
-		host.Tag{Key: "distro", Value: intentHost.Distro.Id, CanBeModified: false},
-		host.Tag{Key: "evergreen-service", Value: hostname, CanBeModified: false},
-		host.Tag{Key: "username", Value: username, CanBeModified: false},
-		host.Tag{Key: "owner", Value: intentHost.StartedBy, CanBeModified: false},
-		host.Tag{Key: "mode", Value: "production", CanBeModified: false},
-		host.Tag{Key: "start-time", Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
-		host.Tag{Key: "expire-on", Value: expireOn, CanBeModified: false},
+		host.Tag{Key: evergreen.TagName, Value: intentHost.Id, CanBeModified: false},
+		host.Tag{Key: evergreen.TagDistro, Value: intentHost.Distro.Id, CanBeModified: false},
+		host.Tag{Key: evergreen.TagEvergreenService, Value: hostname, CanBeModified: false},
+		host.Tag{Key: evergreen.TagUsername, Value: username, CanBeModified: false},
+		host.Tag{Key: evergreen.TagOwner, Value: intentHost.StartedBy, CanBeModified: false},
+		host.Tag{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
+		host.Tag{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
+		host.Tag{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
@@ -559,8 +562,8 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
 		return errors.New("host must be stopped to modify instance typed")
 	}
-	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > MaxSpawnHostExpirationDurationHours {
-		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
+	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
+		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
 	}
 
 	return nil
@@ -579,4 +582,22 @@ func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair)
 		return errors.Wrap(err, "could not add new SSH key")
 	}
 	return nil
+}
+
+func AttachVolumeBadRequest(err error) bool {
+	for _, noRetryError := range []string{EC2VolumeNotFound, EC2InvalidParam} {
+		if strings.Contains(err.Error(), noRetryError) {
+			return true
+		}
+	}
+	return false
+}
+
+func ModifyVolumeBadRequest(err error) bool {
+	for _, noRetryError := range []string{EC2VolumeNotFound, EC2VolumeResizeRate} {
+		if strings.Contains(err.Error(), noRetryError) {
+			return true
+		}
+	}
+	return false
 }

@@ -153,6 +153,10 @@ func (hc *DBHostConnector) FindVolumesByUser(user string) ([]host.Volume, error)
 	return host.FindVolumesByUser(user)
 }
 
+func (hc *DBHostConnector) SetVolumeName(v *host.Volume, name string) error {
+	return v.SetDisplayName(name)
+}
+
 func (hc *DBHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
 	return host.FindHostWithVolume(volumeID)
 }
@@ -397,6 +401,15 @@ func (hc *MockConnector) FindHostWithVolume(volumeID string) (*host.Host, error)
 		}
 	}
 	return nil, nil
+}
+
+func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
+	for _, v := range hc.CachedVolumes {
+		if v.ID == volume.ID {
+			v.DisplayName = name
+		}
+	}
+	return nil
 }
 
 func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {

@@ -97,10 +97,10 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 
 		if options.isTaskCommands {
 			tc.setCurrentCommand(cmd)
-			tc.setCurrentTimeout(cmd)
+			tc.setCurrentIdleTimeout(cmd)
 			a.comm.UpdateLastMessageTime()
 		} else {
-			tc.setCurrentTimeout(nil)
+			tc.setCurrentIdleTimeout(nil)
 		}
 
 		start := time.Now()

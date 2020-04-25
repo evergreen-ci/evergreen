@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -128,6 +129,10 @@ func (staticMgr *staticManager) CreateVolume(context.Context, *host.Volume) (*ho
 
 func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with static provider")
+}
+
+func (m *staticManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
+	return errors.New("can't modify volume with static provider")
 }
 
 func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error {

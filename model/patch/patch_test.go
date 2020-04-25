@@ -9,10 +9,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestConfigChanged(t *testing.T) {
@@ -276,4 +278,494 @@ func TestUpdateModulePatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "newer message", pDb.Description)
 	assert.Len(t, pDb.Patches, 1)
+}
+
+func TestResolveSyncVariantsTasks(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		bvs      []string
+		tasks    []string
+		vts      []VariantTasks
+		expected []VariantTasks
+	}{
+		"EmptyForEmptyInputs": {},
+		"ReturnsEmptyForNoVTs": {
+			bvs:   []string{"bv1", "tvB"},
+			tasks: []string{"t1", "t2"},
+		},
+		"ReturnsMatchingBVsAndTasks": {
+			bvs:   []string{"bv1", "bv2", "bv3"},
+			tasks: []string{"t1", "t2"},
+			vts: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t2", "t3"},
+				}, {
+					Variant: "bv4",
+					Tasks:   []string{"t1"},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t2"},
+				},
+			},
+		},
+		"ReturnsMatchingDisplayTasks": {
+			bvs:   []string{"bv1", "bv2"},
+			tasks: []string{"dt1", "dt2", "t1"},
+			vts: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1"},
+						},
+						{Name: "dt3"},
+					},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt2",
+							ExecTasks: []string{"t2", "t3"},
+						},
+					},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1"},
+						},
+					},
+				}, {
+					Variant: "bv2",
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt2",
+							ExecTasks: []string{"t2", "t3"},
+						},
+					},
+				},
+			},
+		},
+		"AllBVsMatched": {
+			bvs:   []string{"all"},
+			tasks: []string{"t1", "t2", "dt1"},
+			vts: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t3"},
+						},
+					},
+				}, {
+					Variant: "bv3",
+					Tasks:   []string{"t3", "t4"},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t3"},
+						},
+					},
+				},
+			},
+		},
+		"AllTasksMatch": {
+			bvs:   []string{"bv1"},
+			tasks: []string{"all"},
+			vts: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t2", "t3"},
+						},
+					},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t2", "t3"},
+						},
+					},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t2", "t3"},
+						},
+					},
+				},
+			},
+		},
+		"AllBVsAndTasksMatch": {
+			bvs:   []string{"all"},
+			tasks: []string{"all"},
+			vts: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1", "t2"},
+						},
+					},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t3", "t4"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt2",
+							ExecTasks: []string{"t1", "t3"},
+						},
+					},
+				}, {
+					Variant: "bv3",
+					Tasks:   []string{"t1", "t2"},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1", "t2"},
+						},
+					},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t3", "t4"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt2",
+							ExecTasks: []string{"t1", "t3"},
+						},
+					},
+				}, {
+					Variant: "bv3",
+					Tasks:   []string{"t1", "t2"},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			p := &Patch{
+				SyncBuildVariants: testCase.bvs,
+				SyncTasks:         testCase.tasks,
+			}
+			actual := p.ResolveSyncVariantTasks(testCase.vts)
+			assert.Len(t, actual, len(testCase.expected))
+			checkEqualVTs(t, testCase.expected, actual)
+		})
+	}
+}
+
+func TestAddSyncVariantsTasks(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		syncBVs         []string
+		syncTasks       []string
+		existingSyncVTs []VariantTasks
+		newVTs          []VariantTasks
+		expectedSyncVTs []VariantTasks
+	}{
+		"AddsNewBVsWithNewTasks": {
+			syncBVs:   []string{"bv1", "bv2"},
+			syncTasks: []string{"t1"},
+			existingSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			newVTs: []VariantTasks{
+				{
+					Variant: "bv2",
+					Tasks:   []string{"t1"},
+				},
+			},
+			expectedSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1"},
+				},
+			},
+		},
+		"AddsNewTasksToExistingBVs": {
+			syncBVs:   []string{"bv1", "bv2"},
+			syncTasks: []string{"t1", "t2"},
+			existingSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			newVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t2", "t3"},
+				},
+			},
+			expectedSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+				},
+			},
+		},
+		"AddsNewBVsWithNewTasksAndAddsNewTasksToExistingBVs": {
+			syncBVs:   []string{"bv1", "bv2"},
+			syncTasks: []string{"t1", "t2"},
+			existingSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			newVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t2"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2", "t3"},
+				},
+			},
+			expectedSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2"},
+				},
+			},
+		},
+		"IgnoresDuplicates": {
+			syncBVs:   []string{"bv1", "bv2"},
+			syncTasks: []string{"t1", "t2"},
+			existingSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			newVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1", "t3"},
+				},
+			},
+			expectedSyncVTs: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t1"},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			p := Patch{
+				Id:                mgobson.NewObjectId(),
+				SyncBuildVariants: testCase.syncBVs,
+				SyncTasks:         testCase.syncTasks,
+				SyncVariantsTasks: testCase.existingSyncVTs,
+			}
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.AddSyncVariantsTasks(testCase.newVTs))
+			dbPatch, err := FindOne(ById(p.Id))
+			require.NoError(t, err)
+			checkEqualVTs(t, testCase.expectedSyncVTs, dbPatch.SyncVariantsTasks)
+			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncVariantsTasks)
+		})
+	}
+}
+
+func TestMergeVariantsTasks(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		vt1      []VariantTasks
+		vt2      []VariantTasks
+		expected []VariantTasks
+	}{
+		"AddsAllVariantTasks": {
+			vt1: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			vt2: []VariantTasks{
+				{
+					Variant: "bv2",
+					Tasks:   []string{"t2"},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				}, {
+					Variant: "bv2",
+					Tasks:   []string{"t2"},
+				},
+			},
+		},
+		"MergesDuplicateVariantTasks": {
+			vt1: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1"},
+				},
+			},
+			vt2: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t2"},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+				},
+			},
+		},
+		"MergesDuplicateVariantDisplayTasks": {
+			vt1: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1"},
+						},
+					},
+				},
+			},
+			vt2: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t2"},
+						},
+					},
+				},
+			},
+			expected: []VariantTasks{
+				{
+					Variant: "bv1",
+					Tasks:   []string{"t1", "t2", "t3"},
+					DisplayTasks: []DisplayTask{
+						{
+							Name:      "dt1",
+							ExecTasks: []string{"t1", "t2"},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			actual := MergeVariantsTasks(testCase.vt1, testCase.vt2)
+			checkEqualVTs(t, testCase.expected, actual)
+		})
+	}
+}
+
+// checkEqualVT checks that the two VariantTasks are identical.
+func checkEqualVT(t *testing.T, expected VariantTasks, actual VariantTasks) {
+	missingExpected, missingActual := utility.StringSliceSymmetricDifference(expected.Tasks, actual.Tasks)
+	assert.Empty(t, missingExpected, "unexpected tasks '%s' for build variant'%s'", missingExpected, expected.Variant)
+	assert.Empty(t, missingActual, "missing expected tasks '%s' for build variant '%s'", missingActual, actual.Variant)
+
+	expectedDTs := map[string]DisplayTask{}
+	for _, dt := range expected.DisplayTasks {
+		expectedDTs[dt.Name] = dt
+	}
+	actualDTs := map[string]DisplayTask{}
+	for _, dt := range actual.DisplayTasks {
+		actualDTs[dt.Name] = dt
+	}
+	assert.Len(t, actualDTs, len(expectedDTs))
+	for _, expectedDT := range expectedDTs {
+		actualDT, ok := actualDTs[expectedDT.Name]
+		if !assert.True(t, ok, "display task '%s'") {
+			continue
+		}
+		missingExpected, missingActual = utility.StringSliceSymmetricDifference(expectedDT.ExecTasks, actualDT.ExecTasks)
+		assert.Empty(t, missingExpected, "unexpected exec tasks '%s' for display task '%s' in build variant '%s'", missingExpected, expectedDT.Name, expected.Variant)
+		assert.Empty(t, missingActual, "missing exec tasks '%s' for display task '%s' in build variant '%s'", missingActual, actualDT.Name, actual.Variant)
+	}
+}
+
+// checkEqualVTs checks that the two slices of VariantTasks are identical sets.
+func checkEqualVTs(t *testing.T, expected []VariantTasks, actual []VariantTasks) {
+	assert.Len(t, actual, len(expected))
+	for _, expectedVT := range expected {
+		var found bool
+		for _, actualVT := range actual {
+			if actualVT.Variant != expectedVT.Variant {
+				continue
+			}
+			found = true
+			checkEqualVT(t, expectedVT, actualVT)
+			break
+		}
+		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
+	}
 }

@@ -4,10 +4,13 @@
     sortBy: BASE_STATUS
     sortDir: DESC
   ) {
-    id
-    status
-    baseStatus
-    displayName
-    buildVariant
+    tasks {
+      id
+      status
+      baseStatus
+      displayName
+      buildVariant
+    }
+    count
   }
 }
