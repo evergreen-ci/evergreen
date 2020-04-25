@@ -386,9 +386,9 @@ func Provisioning() db.Q {
 
 // FindByFirstProvisioningAttempt finds all hosts that have not yet attempted
 // provisioning.
-func FindByFirstProvisioningAttempt() ([]Host, error) {
+func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 	return Find(db.Query(bson.M{
-		ProvisionAttemptsKey: 0,
+		ProvisionAttemptsKey: bson.M{"$lte": attempt},
 		StatusKey:            evergreen.HostProvisioning,
 		NeedsReprovisionKey:  bson.M{"$exists": false},
 	}))

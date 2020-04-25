@@ -365,6 +365,10 @@ func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
+func (h *Host) IsContainer() bool {
+	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
+}
+
 func IsIntentHostId(id string) bool {
 	return strings.HasPrefix(id, "evg-")
 }

@@ -11,8 +11,9 @@ const defaultHostThrottle = 32
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
-	SSHTimeoutSeconds int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
-	HostThrottle      int   `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
+	SSHTimeoutSeconds    int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
+	HostThrottle         int   `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
+	ProvisioningThrottle int   `bson:"provisioning_throttle" json:"provisioning_throttle" yaml:"provisioning_throttle"`
 }
 
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
@@ -45,8 +46,9 @@ func (c *HostInitConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"ssh_timeout_secs": c.SSHTimeoutSeconds,
-			"host_throttle":    c.HostThrottle,
+			"ssh_timeout_secs":      c.SSHTimeoutSeconds,
+			"host_throttle":         c.HostThrottle,
+			"provisioning_throttle": c.ProvisioningThrottle,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -57,5 +59,9 @@ func (c *HostInitConfig) ValidateAndDefault() error {
 	if c.HostThrottle <= 0 {
 		c.HostThrottle = defaultHostThrottle
 	}
+	if c.ProvisioningThrottle <= 0 {
+		c.ProvisioningThrottle = 200
+	}
+
 	return nil
 }
