@@ -58,9 +58,9 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBusy bool, reason string) amboy.Job {
+func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfBusy bool, reason string) amboy.Job {
 	j := makeHostTerminationJob()
-	j.host = &h
+	j.host = h
 	j.HostID = h.Id
 	j.env = env
 	j.TerminateIfBusy = terminateIfBusy

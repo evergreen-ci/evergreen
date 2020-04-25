@@ -42,7 +42,7 @@ func init() {
 
 type idleHostJob struct {
 	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated bool `bson:"terminated" json:"terminated" yaml:"terminated"`
+	Terminated int `bson:"terminated" json:"terminated" yaml:"terminated"`
 
 	env      evergreen.Environment
 	settings *evergreen.Settings
@@ -111,7 +111,8 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
 		hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
 		if err != nil {
-			return errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", "))
+			j.AddError(errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
+			return
 		}
 		for _, h := range hosts {
 			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id))
@@ -143,9 +144,9 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		}
 
 		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
-		for j := 0; j < nHostsToEvaluateForTermination; j++ {
-			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[j])
-			j.AddError(j.checkAndTerminateHost(ctx, *h))
+		for i := 0; i < nHostsToEvaluateForTermination; i++ {
+			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
+			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i]))
 		}
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -167,7 +168,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
-			"host_id":  hID,
+			"host_id":  h.Id,
 			"job_type": j.Type().Name,
 			"status":   h.Status,
 			"provider": h.Distro.Provider,

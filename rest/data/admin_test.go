@@ -229,7 +229,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		SSHTimeoutSeconds:    999,
 		HostThrottle:         64,
 		CloudStatusBatchSize: 1,
-	}
+		g}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,
 		Expansions: newExpansions,
