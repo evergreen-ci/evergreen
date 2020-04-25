@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -301,80 +299,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
-		distroHosts, err := host.IdleEphemeralGroupedByDistroID()
-		if err != nil {
-			return errors.Wrap(err, "database error grouping idle hosts by Distro.Id")
-		}
-
-		distroIDsToFind := make([]string, 0, len(distroHosts))
-		for _, info := range distroHosts {
-			distroIDsToFind = append(distroIDsToFind, info.DistroID)
-		}
-		distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
-		if err != nil {
-			return errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind, ","))
-		}
-
-		if len(distroIDsToFind) > len(distrosFound) {
-			distroIDsFound := make([]string, 0, len(distrosFound))
-			for _, d := range distrosFound {
-				distroIDsFound = append(distroIDsFound, d.Id)
-			}
-			missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
-			if err != nil {
-				return errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", "))
-			}
-			for _, h := range hosts {
-				catcher.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id)
-			}
-			if catcher.HasErrors() {
-				return errors.Wrapf(catcher.Resolve(), "could not decommission hosts from missing distros: %s", strings.Join(missingDistroIDs, ", "))
-			}
-		}
-
-		distrosMap := make(map[string]distro.Distro, len(distrosFound))
-		for i := range distrosFound {
-			d := distrosFound[i]
-			distrosMap[d.Id] = d
-		}
-
-		for _, info := range distroHosts {
-			totalRunningHosts := info.RunningHostsCount
-			minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
-			nIdleHosts := len(info.IdleHosts)
-
-			maxHostsToTerminate := totalRunningHosts - minimumHosts
-			if maxHostsToTerminate <= 0 {
-				continue
-			}
-			nHostsToEvaluateForTermination := nIdleHosts
-			if nIdleHosts > maxHostsToTerminate {
-				nHostsToEvaluateForTermination = maxHostsToTerminate
-			}
-
-			hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
-			for j := 0; j < nHostsToEvaluateForTermination; j++ {
-				hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[j])
-				catcher.Add(queue.Put(ctx, NewIdleHostTerminationJob(env, info.IdleHosts[j], ts)))
-			}
-
-			grip.InfoWhen(sometimes.Percent(10), message.Fields{
-				"id":                         idleHostJobName,
-				"op":                         "dispatcher",
-				"distro_id":                  info.DistroID,
-				"minimum_hosts":              minimumHosts,
-				"num_running_hosts":          totalRunningHosts,
-				"num_idle_hosts":             nIdleHosts,
-				"num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
-				"idle_hosts_to_evaluate":     hostsToEvaluateForTermination,
-			})
-		}
-
-		return catcher.Resolve()
+		return queue.Put(ctx, NewIdleHostTerminationJob(env, utility.RoundPartOfHour(1).Format(TSFormat)))
 	}
 }
 
