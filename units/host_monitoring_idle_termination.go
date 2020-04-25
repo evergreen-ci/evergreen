@@ -41,8 +41,9 @@ func init() {
 }
 
 type idleHostJob struct {
-	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated int `bson:"terminated" json:"terminated" yaml:"terminated"`
+	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
+	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
+	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
 	env      evergreen.Environment
 	settings *evergreen.Settings
@@ -67,7 +68,7 @@ func makeIdleHostJob() *idleHostJob {
 func NewIdleHostTerminationJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeIdleHostJob()
 	j.env = env
-	j.SetID(fmt.Sprintf("%s.%s.%s", idleHostJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s", idleHostJobName, id))
 	return j
 }
 
@@ -201,7 +202,10 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 		return nil
 	}
 
+	fmt.Println("maybe>", h.Id, h.IsWaitingForAgent(), communicationTime, idleTime)
+	grip.Info(h)
 	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
+		fmt.Println("skip>", h.Id)
 		grip.Notice(message.Fields{
 			"op":                j.Type().Name,
 			"id":                j.ID(),
@@ -222,6 +226,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
 		j.Terminated++
+		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
 		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, "host is idle or unreachable"))
 	}
 	return nil
