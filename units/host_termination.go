@@ -58,9 +58,9 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBusy bool, reason string) amboy.Job {
+func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfBusy bool, reason string) amboy.Job {
 	j := makeHostTerminationJob()
-	j.host = &h
+	j.host = h
 	j.HostID = h.Id
 	j.env = env
 	j.TerminateIfBusy = terminateIfBusy
@@ -184,7 +184,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	// set host as decommissioned in DB so no new task will be assigned
+	// set host as decommissioned in DB so no new task will be
+	// assigned
 	prevStatus := j.host.Status
 	if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
