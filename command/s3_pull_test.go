@@ -97,17 +97,17 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Empty(t, files)
 		},
 		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			tmpDir, err := ioutil.TempDir("", "s3-pull")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
+			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
+			require.NoError(t, os.MkdirAll(taskDir, os.ModePerm))
 
-			c.WorkingDir, err = ioutil.TempDir("", "s3-pull-output")
+			require.NoError(t, ioutil.WriteFile(filepath.Join(taskDir, "foo-12345"), []byte("bar"), os.ModePerm))
+
+			wd, err := ioutil.TempDir("", "s3-pull-output")
 			require.NoError(t, err)
 			defer func() {
-				assert.NoError(t, os.RemoveAll(c.WorkingDir))
+				assert.NoError(t, os.RemoveAll(wd))
 			}()
+			c.WorkingDir = wd
 
 			c.ExcludeFilter = "${exclude_filter}"
 			excludeFilterExpansion := "expanded_exclude_filter"
@@ -130,6 +130,18 @@ func TestS3PullExecute(t *testing.T) {
 		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			c.bucket = nil
 			conf.TaskSync.Bucket = ""
+			assert.Error(t, c.Execute(ctx, comm, logger, conf))
+		},
+		"FailsWithNoContentsToPull": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+			emptyDir, err := ioutil.TempDir("", "s3-pull-bucket")
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, os.RemoveAll(emptyDir))
+			}()
+			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
+				Path: emptyDir,
+			})
+			require.NoError(t, err)
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 	} {
