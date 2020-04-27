@@ -118,6 +118,35 @@ func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+type GqlRequest struct {
+	query string
+}
+
+func (uis *UIServer) noMutationsInProdGQLPlaygroundUnlessSuperUser(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqBody := GqlRequest{}
+		err := utility.ReadJSON(r.Body, &reqBody)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("request has no body"))
+		}
+		referrer := r.Referer()
+		isReferrerPlaygroundInProd := utility.StringSliceContains([]string{referrer}, "evergreen.mongodb.com/graphql")
+		isMutation := utility.StringSliceContains([]string{reqBody.query}, "mutation")
+		dbUser := MustHaveUser(r)
+		isSuperUser := dbUser.HasPermission(gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionDistroCreate,
+			RequiredLevel: evergreen.DistroCreate.Value,
+		})
+		if isReferrerPlaygroundInProd && isMutation && !isSuperUser {
+			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return requireUser(next, uis.RedirectToLogin)
 }

@@ -242,6 +242,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
+	noMutationsInProdGQLPlaygroundUnlessSuperUser := gimlet.WrapperMiddleware(uis.noMutationsInProdGQLPlaygroundUnlessSuperUser)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
@@ -293,7 +294,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// GraphQL
-	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
+	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin, noMutationsInProdGQLPlaygroundUnlessSuperUser).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 	// this route is used solely to introspect the schema of the GQL server. OPTIONS request by design do not include auth headers; therefore must not require login.
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
