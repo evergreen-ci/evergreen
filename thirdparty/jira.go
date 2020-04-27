@@ -284,7 +284,7 @@ func (jiraHandler *JiraHandler) HttpClient() *http.Client {
 
 func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 	httpClient := utility.GetHTTPClient()
-	if opts.Oauth1Opts.PrivateKey != nil {
+	if opts.Oauth1Opts.AccessToken != "" {
 		var err error
 		credentials := send.JiraOauthCredentials{
 			PrivateKey:  opts.Oauth1Opts.PrivateKey,
