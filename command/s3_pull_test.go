@@ -98,9 +98,9 @@ func TestS3PullExecute(t *testing.T) {
 		},
 		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
-			require.NoError(t, os.MkdirAll(taskDir, os.ModePerm))
+			require.NoError(t, os.MkdirAll(taskDir, 0777))
 
-			require.NoError(t, ioutil.WriteFile(filepath.Join(taskDir, "foo-12345"), []byte("bar"), os.ModePerm))
+			require.NoError(t, ioutil.WriteFile(filepath.Join(taskDir, "foo"), []byte("bar"), 0777))
 
 			wd, err := ioutil.TempDir("", "s3-pull-output")
 			require.NoError(t, err)
@@ -133,15 +133,6 @@ func TestS3PullExecute(t *testing.T) {
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 		"FailsWithNoContentsToPull": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
-			emptyDir, err := ioutil.TempDir("", "s3-pull-bucket")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(emptyDir))
-			}()
-			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
-				Path: emptyDir,
-			})
-			require.NoError(t, err)
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 	} {
