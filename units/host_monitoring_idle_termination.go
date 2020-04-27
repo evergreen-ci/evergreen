@@ -176,7 +176,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 			"message":  "host termination for a non-spawnable distro",
 			"cause":    "programmer error",
 		})
-		return errors.New("non-spawnable host")
+		return errors.New("attempted to terminate non-ephemeral host")
 	}
 
 	// ask the host how long it has been idle
@@ -202,10 +202,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 		return nil
 	}
 
-	fmt.Println("maybe>", h.Id, h.IsWaitingForAgent(), communicationTime, idleTime)
-	grip.Info(h)
 	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
-		fmt.Println("skip>", h.Id)
 		grip.Notice(message.Fields{
 			"op":                j.Type().Name,
 			"id":                j.ID(),
