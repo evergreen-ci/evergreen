@@ -43,7 +43,7 @@ func (s *UserRouteSuite) SetupTest() {
 }
 
 func (s *UserRouteSuite) TestUpdateNotifications() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "")
+	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -73,7 +73,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 }
 
 func (s *UserRouteSuite) TestUndefinedInput() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "")
+	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	settings := user.UserSettings{
 		SlackUsername: "something",
@@ -107,7 +107,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 }
 
 func (s *UserRouteSuite) TestSaveFeedback() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "")
+	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -330,7 +330,7 @@ func TestPostUserRoles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Error(t, handler.Parse(ctx, request))
 
-	body = `["notarole"]`
+	body = `{"roles": ["notarole"]}`
 	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
 	require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestPostUserRoles(t *testing.T) {
 	resp := handler.Run(ctx)
 	assert.Equal(t, http.StatusNotFound, resp.Status())
 
-	body = `["role1"]`
+	body = `{"roles": ["role1"]}`
 	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
 	require.NoError(t, err)
@@ -346,6 +346,18 @@ func TestPostUserRoles(t *testing.T) {
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"role1"}, dbUser.Roles())
+
+	const newId = "user2"
+	body = `{"create_user": true, "roles": ["role1"]}`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": newId})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	dbUser, err = user.FindOneById(newId)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 }

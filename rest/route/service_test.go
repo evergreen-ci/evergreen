@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -22,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -29,6 +31,10 @@ import (
 
 func init() {
 	testutil.Setup()
+	config := evergreen.NaiveAuthConfig{}
+	um, err := auth.NewNaiveUserManager(&config)
+	grip.Error(err)
+	evergreen.GetEnvironment().SetUserManager(um)
 }
 
 func TestHostParseAndValidate(t *testing.T) {
