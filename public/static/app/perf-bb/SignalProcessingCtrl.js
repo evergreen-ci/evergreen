@@ -9,6 +9,8 @@ mciModule.controller('SignalProcessingCtrl', function(
   // TODO later this might be replaced with some sort of pagination
   const LIMIT = 500;
 
+  const DEFAULT_MAGNITUDE = .05
+
   vm.mode = {
     options: [{
       id: 'processed',
@@ -27,7 +29,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
     project: '=' + $window.project,
     probability: '>0.05',
-    magnitude: '>=.005'
+    magnitude: `>=${DEFAULT_MAGNITUDE}`
   };
 
   vm.changePointFilter = function() {
