@@ -144,6 +144,20 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		"host_id": j.host.Id,
 	})
 
+	if err := j.host.IncProvisionAttempts(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":           j.ID(),
+			"host_id":       j.host.Id,
+			"attempt_value": j.host.ProvisionAttempts,
+			"distro":        j.host.Distro.Id,
+			"operation":     "increment provisioning errors failed",
+			"cause": []string{
+				"job collision",
+				"host data",
+			}}))
+		return errors.Wrap(err, "job collision detected")
+	}
+
 	if err := j.provisionHost(ctx, settings); err != nil {
 		event.LogHostProvisionError(j.host.Id)
 
@@ -513,15 +527,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"distro":  j.host.Distro.Id,
 		"message": "setting up host",
 	})
-
-	incErr := j.host.IncProvisionAttempts()
-	grip.Critical(message.WrapError(incErr, message.Fields{
-		"job":           j.ID(),
-		"host_id":       j.host.Id,
-		"attempt_value": j.host.ProvisionAttempts,
-		"distro":        j.host.Distro.Id,
-		"operation":     "increment provisioning errors failed",
-	}))
 
 	err := j.runHostSetup(ctx, settings)
 	if err != nil {

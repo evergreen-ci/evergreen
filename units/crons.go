@@ -918,6 +918,10 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 		for _, h := range hosts {
 			if !h.IsContainer() {
 				if time.Since(h.StartTime) < 40*time.Second {
+					// emperically no hosts are
+					// ready in less than 40
+					// seconds, so it doesn't seem
+					// worth trying.
 					continue
 				}
 
