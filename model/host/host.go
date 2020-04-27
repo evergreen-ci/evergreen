@@ -2362,3 +2362,23 @@ func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
 	}))
 }
+
+func (h *Host) IsSubjectToHostCreationThrottle() bool {
+	if h.UserHost {
+		return false
+	}
+
+	if h.SpawnOptions.SpawnedByTask {
+		return false
+	}
+
+	if h.HasContainers || h.ParentID != "" {
+		return false
+	}
+
+	if h.Status == evergreen.HostBuilding {
+		return false
+	}
+
+	return true
+}

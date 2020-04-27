@@ -438,6 +438,11 @@ var (
 		HostStopped,
 	}
 
+	StartedHostStatus = []string{
+		HostBuilding,
+		HostStarting,
+	}
+
 	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
 	CanRunTaskStatus = []string{
 		HostStarting,

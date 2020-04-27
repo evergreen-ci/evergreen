@@ -769,7 +769,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return errors.Wrap(err, "problem getting global config")
 		}
 		for _, h := range hosts {
-			if h.UserHost || h.SpawnOptions.SpawnedByTask {
+			if !h.IsSubjectToHostCreationThrottle() {
 				// pass:
 				//    always start spawn hosts asap
 

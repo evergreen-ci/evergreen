@@ -97,6 +97,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "problem refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -119,7 +120,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask && !j.host.UserHost {
+	if j.host.IsSubjectToHostCreationThrottle() {
 		var numHosts int
 		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
@@ -144,13 +145,26 @@ func (j *createHostJob) Run(ctx context.Context) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.CurrentAttempt,
-				"distro":   j.host.Distro,
+				"distro":   j.host.Distro.Id,
 				"job":      j.ID(),
 				"provider": j.host.Provider,
 				"message":  "could not remove intent document",
 				"outcome":  "host pool may exceed maxhost limit",
 			}))
 
+			return
+		}
+
+		if j.selfThrottle() {
+			grip.Debug(message.Fields{
+				"host_id":  j.HostID,
+				"attempt":  j.CurrentAttempt,
+				"distro":   j.host.Distro.Id,
+				"job":      j.ID(),
+				"provider": j.host.Provider,
+				"outcome":  "skipping provisioning",
+				"message":  "throttling host creation",
+			})
 			return
 		}
 	}
@@ -161,6 +175,42 @@ func (j *createHostJob) Run(ctx context.Context) {
 		})
 	}
 	j.AddError(j.createHost(ctx))
+}
+
+func (j *createHostJob) selfThrottle() bool {
+	var (
+		numProv            int
+		runningHosts       int
+		distroRunningHosts int
+		err                error
+	)
+
+	numProv, err = host.CountStartedTaskHosts()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		return true
+	}
+
+	distroRunningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		return true
+	}
+
+	runningHosts, err = host.CountAllRunningDynamicHosts()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		return true
+	}
+
+	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
+		return false
+	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
+		j.AddError(errors.Wrapf(j.host.Remove(), "problem removing host intent for %s", j.host.Id))
+		return true
+	}
+
+	return false
 }
 
 func (j *createHostJob) createHost(ctx context.Context) error {
