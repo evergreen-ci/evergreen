@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	HostRename                 = "changeDisplayName"
+	HostRename                 = "changeHostDisplayName"
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostInstanceTypeUpdate     = "updateInstanceType"
 	HostTagUpdate              = "updateHostTags"
@@ -32,6 +32,11 @@ var (
 	HostTerminate              = "terminate"
 	HostStop                   = "stop"
 	HostStart                  = "start"
+	VolumeRename               = "changeVolumeDisplayName"
+	VolumeExtendExpiration     = "extendVolumeExpiration"
+	VolumeAttach               = "attachVolume"
+	VolumeDetach               = "detachVolume"
+	VolumeDelete               = "deleteVolume"
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -132,7 +137,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	gimlet.WriteJSON(w, distroList)
 }
 
-func (uis *UIServer) availableVolumes(w http.ResponseWriter, r *http.Request) {
+func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 	volumes, err := host.FindVolumesByUser(user.Username())
 	if err != nil {
@@ -142,20 +147,13 @@ func (uis *UIServer) availableVolumes(w http.ResponseWriter, r *http.Request) {
 
 	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
 	for _, vol := range volumes {
-		// check if the volume is already attached
-		h, err := host.FindHostWithVolume(vol.ID)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting host for volume '%s'", vol.ID))
-			return
+		apiVolume := restModel.APIVolume{}
+		if err = apiVolume.BuildFromService(vol); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
+			continue
 		}
-		if h == nil {
-			apiVolume := restModel.APIVolume{}
-			if err = apiVolume.BuildFromService(vol); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
-				continue
-			}
-			apiVolumes = append(apiVolumes, apiVolume)
-		}
+
+		apiVolumes = append(apiVolumes, apiVolume)
 	}
 
 	gimlet.WriteJSON(w, apiVolumes)
@@ -467,5 +465,129 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return
+	}
+}
+
+func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	updateParams := restModel.APIVolumeModify{}
+	if err := utility.ReadJSON(util.NewRequestReader(r), &updateParams); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	volumeID := gimlet.GetVars(r)["volume_id"]
+	vol, err := host.FindVolumeByID(volumeID)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding volume '%s'", volumeID))
+		return
+	}
+	if vol == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.Wrapf(err, "no volume '%s' exists", volumeID))
+		return
+	}
+
+	u := MustHaveUser(r)
+	if u.Username() != vol.CreatedBy {
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this volume"))
+		return
+	}
+
+	if updateParams.Action == nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("no action specified"))
+		return
+	}
+
+	// take the specified action
+	switch *updateParams.Action {
+	case VolumeRename:
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(*updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
+
+	case VolumeExtendExpiration:
+		//TODO
+
+	case VolumeAttach:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
+		if updateParams.HostID == nil || *updateParams.HostID == "" {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must specify host id"))
+			return
+		}
+		var h *host.Host
+		h, err = host.FindOneId(*updateParams.HostID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' does not exist", *updateParams.HostID))
+			return
+		}
+
+		if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID))
+			return
+		}
+
+	case VolumeDetach:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
+		if vol.Host == "" {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "volume '%s' is not attached", vol.ID))
+			return
+		}
+		h, err := host.FindOneId(vol.Host)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID))
+			return
+		}
+		if h == nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID))
+			if err = host.UnsetVolumeHost(vol.ID); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
+					"route":   "modifyVolume",
+					"action":  "detach",
+				}))
+			}
+			return
+		}
+
+		if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID))
+			return
+		}
+
+	case VolumeDelete:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
+		if err := mgr.DeleteVolume(ctx, vol); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID))
+			return
+		}
 	}
 }

@@ -464,9 +464,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		a.runPostTaskCommands(ctx, tc)
+		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		a.runPostTaskCommands(ctx, tc)
+		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case evergreen.TaskConflict:
@@ -520,7 +522,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
-	var cancel context.CancelFunc
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
@@ -536,25 +537,6 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		}))
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",
-			"total_time": time.Since(start).String(),
-		})
-	}
-
-	a.killProcs(postCtx, tc, false)
-
-	// If task sync was requested for the end of this task, run it now.
-	start = time.Now()
-	if taskSyncCmds := endTaskSyncCommands(tc); taskSyncCmds != nil {
-		// TODO (kim): don't know what would be a sane value for this, so make
-		// it generous since the user explicitly asked for it.
-		syncCtx, cancel := context.WithTimeout(ctx, time.Hour)
-		defer cancel()
-		err = a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{})
-		tc.logger.Task().Error(message.WrapError(err, message.Fields{
-			"message": "Error running task sync.",
-		}))
-		tc.logger.Task().InfoWhen(err == nil, message.Fields{
-			"message":    "Finished running task sync.",
 			"total_time": time.Since(start).String(),
 		})
 	}
@@ -588,6 +570,38 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		}))
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
+}
+
+// runEndTaskSync runs task sync if it was requested for the end of this task.
+func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	start := time.Now()
+	taskSyncCmds := endTaskSyncCommands(tc, detail)
+	if taskSyncCmds == nil {
+		return
+	}
+
+	var syncCtx context.Context
+	var cancel context.CancelFunc
+	if timeout := tc.taskModel.SyncAtEndOpts.Timeout; timeout != 0 {
+		syncCtx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		// Default to a generously long timeout if none is specified, since
+		// the sync could be a long operation.
+		syncCtx, cancel = context.WithTimeout(ctx, evergreen.DefaultTaskSyncAtEndTimeout)
+	}
+	defer cancel()
+
+	if err := a.runCommands(syncCtx, tc, taskSyncCmds.List(), runCommandsOptions{}); err != nil {
+		tc.logger.Task().Error(message.WrapError(err, message.Fields{
+			"message":    "Error running task sync.",
+			"total_time": time.Since(start).String(),
+		}))
+		return
+	}
+	tc.logger.Task().Info(message.Fields{
+		"message":    "Finished running task sync.",
+		"total_time": time.Since(start).String(),
+	})
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {

@@ -56,12 +56,12 @@ func Pull() cli.Command {
 				return errors.Wrap(err, "could not fetch credentials")
 			}
 
-			path, err := client.GetTaskSyncPath(ctx, taskID)
+			remotePath, err := client.GetTaskSyncPath(ctx, taskID)
 			if err != nil {
 				return errors.Wrap(err, "could not get location of task directory in S3")
 			}
 
-			httpClient := utility.GetHTTPClient()
+			httpClient := utility.GetDefaultHTTPRetryableClient()
 			defer utility.PutHTTPClient(httpClient)
 			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, pail.S3Options{
 				Name:        creds.Bucket,
@@ -77,7 +77,17 @@ func Pull() cli.Command {
 				Workers: runtime.NumCPU(),
 			}, bucket)
 
-			if err := os.MkdirAll(workingDir, 0755); err != nil {
+			// Verify that the contents exist before pulling, otherwise pull may
+			// no-op.
+			iter, err := bucket.List(ctx, remotePath)
+			if err != nil {
+				return errors.Wrap(err, "error checking for existence of remote task directory contents")
+			}
+			if !iter.Next(ctx) {
+				return errors.Errorf("remote task directory contents could not be found")
+			}
+
+			if err = os.MkdirAll(workingDir, 0755); err != nil {
 				return errors.Wrap(err, "could not make working directory")
 			}
 
@@ -87,7 +97,7 @@ func Pull() cli.Command {
 
 			if err := bucket.Pull(ctx, pail.SyncOptions{
 				Local:  workingDir,
-				Remote: path,
+				Remote: remotePath,
 			}); err != nil {
 				return errors.Wrap(err, "error while pulling task directory")
 			}

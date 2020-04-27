@@ -123,11 +123,22 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "could not find S3 task bucket")
 	}
 
+	remotePath := conf.Task.S3Path(c.FromBuildVariant, c.Task)
+
+	// Verify that the contents exist before pulling, otherwise pull may no-op.
+	iter, err := c.bucket.List(ctx, remotePath)
+	if err != nil {
+		return errors.Wrap(err, "error checking for existence of remote task directory contents")
+	}
+	if !iter.Next(ctx) {
+		return errors.Errorf("remote task directory contents could not be found")
+	}
+
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		fmt.Sprintf("the working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'",
 			c.WorkingDir, conf.WorkDir))
 
-	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
+	if err = createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
 		return errors.Wrap(err, "problem making working directory")
 	}
 	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
@@ -142,7 +153,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	logger.Task().Infof(pullMsg)
 	if err = c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   wd,
-		Remote:  conf.Task.S3Path(c.FromBuildVariant, c.Task),
+		Remote:  remotePath,
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
 		return errors.Wrap(err, "error pulling task data from S3")

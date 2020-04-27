@@ -216,7 +216,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
-	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncTasks) != 0 || len(patchDoc.SyncBuildVariants) != 0) {
+	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
 		j.gitHubError = PatchTaskSyncDisabled
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
 	}
@@ -273,15 +273,15 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
-	if shouldTaskSync := len(patchDoc.SyncBuildVariants) != 0 || len(patchDoc.SyncTasks) != 0; shouldTaskSync {
-		patchDoc.SyncVariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
+	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
+		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
 		// If the user requested task sync in their patch, it should match at least
 		// one valid task in a build variant.
-		if len(patchDoc.SyncVariantsTasks) == 0 {
+		if len(patchDoc.SyncAtEndOpts.VariantsTasks) == 0 {
 			j.gitHubError = NoSyncTasksOrVariants
 			return errors.Errorf("patch requests task sync for tasks '%s' in build variants '%s'"+
 				" but did not match any tasks within any of the specified build variants",
-				patchDoc.SyncTasks, patchDoc.SyncBuildVariants)
+				patchDoc.SyncAtEndOpts.Tasks, patchDoc.SyncAtEndOpts.BuildVariants)
 		}
 	}
 

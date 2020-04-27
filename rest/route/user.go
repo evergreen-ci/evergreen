@@ -365,11 +365,17 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(permissions)
 }
 
+type rolesPostRequest struct {
+	Roles      []string `json:"roles"`
+	CreateUser bool     `json:"create_user"`
+}
+
 type userRolesPostHandler struct {
-	sc     data.Connector
-	rm     gimlet.RoleManager
-	userID string
-	roles  []string
+	sc         data.Connector
+	rm         gimlet.RoleManager
+	userID     string
+	roles      []string
+	createUser bool
 }
 
 func makeModifyUserRoles(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
@@ -387,13 +393,17 @@ func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	var request rolesPostRequest
+	if err := utility.ReadJSON(r.Body, &request); err != nil {
+		return errors.Wrap(err, "request body is malformed")
+	}
+	if len(request.Roles) == 0 {
+		return errors.New("must specify at least 1 role to add")
+	}
+	h.roles = request.Roles
+	h.createUser = request.CreateUser
 	vars := gimlet.GetVars(r)
 	h.userID = vars["user_id"]
-	var roles []string
-	if err := utility.ReadJSON(r.Body, &roles); err != nil {
-		return errors.Wrap(err, "request body is not an array of strings")
-	}
-	h.roles = roles
 
 	return nil
 }
@@ -404,17 +414,30 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
 	dbUser, valid := u.(*user.DBUser)
-	if dbUser == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
-			StatusCode: http.StatusNotFound,
-		})
-	}
 	if !valid {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "unexpected structure for user",
 			StatusCode: http.StatusInternalServerError,
 		})
+	}
+	if dbUser == nil {
+		if h.createUser {
+			um := evergreen.GetEnvironment().UserManager()
+			newUser := user.DBUser{
+				Id:          h.userID,
+				SystemRoles: h.roles,
+			}
+			_, err = um.GetOrCreateUser(&newUser)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to create user"))
+			}
+			return gimlet.NewJSONResponse(struct{}{})
+		} else {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+				StatusCode: http.StatusNotFound,
+			})
+		}
 	}
 	dbRoles, err := h.rm.GetRoles(h.roles)
 	if err != nil {
@@ -439,6 +462,10 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	for _, toAdd := range h.roles {
 		if err = dbUser.AddRole(toAdd); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to add role",
+				"role":    toAdd,
+			}))
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "error adding role",
 				StatusCode: http.StatusInternalServerError,
