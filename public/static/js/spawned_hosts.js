@@ -722,8 +722,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.lastSelectedHost = host;
       $location.search("id", host.id);
       $scope.curHostData = host;
-      $scope.curHostData.isTerminated = host.isTerminated;
-      $scope.curHostData.isStarted = host.isStarted;
       // check if this is a windows host
       $scope.curHostData.isWinHost = false;
       // XXX: if this is-windows check is updated, make sure to also update
