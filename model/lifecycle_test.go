@@ -1534,8 +1534,9 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.True(dbTask.Aborted)
-	assert.Equal("test", dbTask.AbortReason.User)
-	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
+	assert.Equal("test", dbTask.AbortInfo.User)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	assert.True(dbTask.Activated)
 
 	// test that not aborting in-progress tasks does not reset them
 	assert.NoError(resetTaskData())

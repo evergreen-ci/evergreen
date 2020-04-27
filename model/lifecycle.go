@@ -305,18 +305,13 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.Wrap(err, "failed to archive task")
 		}
 
-		restartIds = append(restartIds, t.Id)
 		if t.DisplayOnly {
 			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
 	}
-	// Set all the task fields to indicate restarted
-	if err = MarkTasksReset(restartIds); err != nil {
-		return errors.WithStack(err)
-	}
 
-	// abort selected in-progress tasks
 	if abortInProgress {
+		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
 			bson.M{
 				task.VersionKey: versionId,
@@ -332,6 +327,19 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		if err != nil {
 			return errors.WithStack(err)
 		}
+	}
+
+	if abortInProgress {
+		restartIds = append(restartIds, taskIds...)
+	} else {
+		for _, t := range allTasks {
+			restartIds = append(restartIds, t.Id)
+		}
+	}
+
+	// Set all the task fields to indicate restarted
+	if err = MarkTasksReset(restartIds); err != nil {
+		return errors.WithStack(err)
 	}
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
