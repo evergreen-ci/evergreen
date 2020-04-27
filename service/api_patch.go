@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -352,7 +353,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 		gimlet.WriteJSON(w, "patch finalized")
 	case "cancel":
-		err = model.CancelPatch(p, dbUser.Id)
+		err = model.CancelPatch(p, task.AbortInfo{User: dbUser.Id})
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

@@ -170,30 +170,7 @@ func AbortBuild(buildId string, caller string) error {
 		return errors.Wrapf(err, "can't deactivate build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuild(buildId, caller), "can't abort tasks for build '%s'", buildId)
-}
-
-// AbortVersion sets the abort flag on all tasks associated with the version which are in an
-// abortable state
-func AbortVersion(versionId, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{
-			task.VersionKey: versionId,
-			task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-		},
-		bson.M{"$set": bson.M{task.AbortedKey: true}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "error setting aborted statuses")
-	}
-	ids, err := task.FindAllTaskIDsFromVersion(versionId)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks by version id")
-	}
-	if len(ids) > 0 {
-		event.LogManyTaskAbortRequests(ids, caller)
-	}
-	return nil
+	return errors.Wrapf(task.AbortBuild(buildId, task.AbortInfo{User: caller}), "can't abort tasks for build '%s'", buildId)
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
@@ -327,38 +304,34 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
 		}
+
+		restartIds = append(restartIds, t.Id)
 		if t.DisplayOnly {
 			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
 	}
+	// Set all the task fields to indicate restarted
+	if err = MarkTasksReset(restartIds); err != nil {
+		return errors.WithStack(err)
+	}
 
+	// abort selected in-progress tasks
 	if abortInProgress {
-		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
 			bson.M{
 				task.VersionKey: versionId,
 				task.IdKey:      bson.M{"$in": taskIds},
 				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 			},
-			bson.M{"$set": bson.M{task.AbortedKey: true}},
+			bson.M{"$set": bson.M{
+				task.AbortedKey:     true,
+				task.AbortReasonKey: task.AbortInfo{User: caller},
+			}},
 		)
 
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	}
-
-	if abortInProgress {
-		restartIds = append(restartIds, taskIds...)
-	} else {
-		for _, t := range allTasks {
-			restartIds = append(restartIds, t.Id)
-		}
-	}
-
-	// Set all the task fields to indicate restarted
-	if err = MarkTasksReset(restartIds); err != nil {
-		return errors.WithStack(err)
 	}
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
@@ -428,7 +401,8 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			},
 			bson.M{
 				"$set": bson.M{
-					task.AbortedKey: true,
+					task.AbortedKey:     true,
+					task.AbortReasonKey: task.AbortInfo{User: caller},
 				},
 			},
 		)
