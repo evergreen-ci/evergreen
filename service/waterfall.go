@@ -258,17 +258,17 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			for _, b := range buildsInVersion {
 				bvSet[b.BuildVariant] = true
 
+				// variant may not be defined in project, in which case add display name to mapping
+				if buildVariantMappings[b.BuildVariant] == "" {
+					buildVariantMappings[b.BuildVariant] = b.DisplayName
+				}
 				buildVariant := waterfallBuildVariant{
 					Id:          b.BuildVariant,
 					DisplayName: buildVariantMappings[b.BuildVariant],
 				}
 
-				if buildVariant.DisplayName == "" {
-					buildVariant.DisplayName = b.DisplayName
-				}
-
 				// The version is marked active if there are any
-				// activated tasks for the varant
+				// activated tasks for the variant
 				if variantQuery != "" {
 					if versionActive && !variantMatched {
 						variantMatched = variantHasActiveTasks(
