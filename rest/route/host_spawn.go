@@ -576,6 +576,12 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting targetHost '%s'", h.hostID))
 	}
 
+	if targetHost.HomeVolumeID == h.attachment.VolumeID {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot detach home volume for host '%s'", h.hostID),
+		})
+	}
 	found := false
 	for _, attachment := range targetHost.Volumes {
 		if attachment.VolumeID == h.attachment.VolumeID {
