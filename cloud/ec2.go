@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -1314,6 +1315,23 @@ func (m *ec2Manager) extendVolumeExpiration(ctx context.Context, volume *host.Vo
 	}
 
 	return nil
+}
+
+func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	_, err := m.client.ModifyVolume(ctx, &ec2.ModifyVolumeInput{
+		VolumeId: aws.String(volume.ID),
+		Size:     aws.Int64(int64(opts.Size)),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error modifying volume '%s' in client", volume.ID)
+	}
+
+	return errors.Wrapf(volume.SetSize(opts.Size), "error modifying volume '%s' in db", volume.ID)
 }
 
 // GetDNSName returns the DNS name for the host.
