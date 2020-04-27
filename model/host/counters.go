@@ -11,7 +11,8 @@ import (
 
 func (h *Host) IncProvisionAttempts() error {
 	query := bson.M{
-		IdKey: h.Id,
+		IdKey:                h.Id,
+		ProvisionAttemptsKey: h.ProvisionAttempts,
 	}
 
 	change := adb.Change{
