@@ -324,8 +324,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 			},
 			bson.M{"$set": bson.M{
-				task.AbortedKey:     true,
-				task.AbortReasonKey: task.AbortInfo{User: caller},
+				task.AbortedKey:   true,
+				task.AbortInfoKey: task.AbortInfo{User: caller},
 			}},
 		)
 
@@ -401,8 +401,8 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			},
 			bson.M{
 				"$set": bson.M{
-					task.AbortedKey:     true,
-					task.AbortReasonKey: task.AbortInfo{User: caller},
+					task.AbortedKey:   true,
+					task.AbortInfoKey: task.AbortInfo{User: caller},
 				},
 			},
 		)

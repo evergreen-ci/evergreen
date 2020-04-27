@@ -233,7 +233,13 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     </tr>
                     <tr ng-show="task.abort">
                       <td class="icon"><i class="fa fa-level-down"></i></td>
-                      <td>Aborting</td>
+                      <td>
+                        Aborted
+                        <span ng-show="task.abort_info.user">by [[task.abort_info.user]]</span>
+                        <span ng-show="task.abort_info.task_id">because of failing task <a ng-href="[[task.abort_info.task_id]]">[[task.abort_info.task_id]]</a></span>
+                        <span ng-show="task.abort_info.new_version">because the version is replaced by <a ng-href="/version/[[task.abort_info.new_version]]">[[task.abort_info.new_version]]</a></span>
+                        <span ng-show="task.abort_info.pr_closed">because the GitHub PR was closed</span>
+                      </td>
                     </tr>
                     <tr ng-show="task.start_time > 0 && (task.status != 'undispatched' && task.status != 'dispatched') ">
                       <td class="icon"><i class="fa fa-calendar"></i></td>

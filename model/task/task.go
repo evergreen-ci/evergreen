@@ -118,10 +118,10 @@ type Task struct {
 	Requester string `bson:"r" json:"r"`
 
 	// Status represents the various stages the task could be in
-	Status      string                  `bson:"status" json:"status"`
-	Details     apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
-	Aborted     bool                    `bson:"abort,omitempty" json:"abort"`
-	AbortReason AbortInfo               `bson:"abort_reason,omitempty" json:"abort_reason,omitempty"`
+	Status    string                  `bson:"status" json:"status"`
+	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
+	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
+	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -299,8 +299,8 @@ func NewDisplayTaskCache() DisplayTaskCache {
 }
 
 type AbortInfo struct {
-	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 	User       string `bson:"user,omitempty" json:"user,omitempty"`
+	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 	NewVersion string `bson:"new_version,omitempty" json:"new_version,omitempty"`
 	PRClosed   bool   `bson:"pr_closed,omitempty" json:"pr_closed,omitempty"`
 }
@@ -621,9 +621,9 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				DistroIdKey:      distroId,
 			},
 			"$unset": bson.M{
-				AbortedKey:     "",
-				AbortReasonKey: "",
-				DetailsKey:     "",
+				AbortedKey:   "",
+				AbortInfoKey: "",
+				DetailsKey:   "",
 			},
 		},
 	)
@@ -661,7 +661,7 @@ func (t *Task) MarkAsUndispatched() error {
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
-				AbortReasonKey:   "",
+				AbortInfoKey:     "",
 				DetailsKey:       "",
 			},
 		},
@@ -855,8 +855,8 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				AbortedKey:     true,
-				AbortReasonKey: reason,
+				AbortedKey:   true,
+				AbortInfoKey: reason,
 			},
 		},
 	)
@@ -1261,8 +1261,8 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
 		bson.M{"$set": bson.M{
-			AbortedKey:     true,
-			AbortReasonKey: reason,
+			AbortedKey:   true,
+			AbortInfoKey: reason,
 		}},
 	)
 	if err != nil {
@@ -1300,8 +1300,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
 		bson.M{"$set": bson.M{
-			AbortedKey:     true,
-			AbortReasonKey: reason,
+			AbortedKey:   true,
+			AbortInfoKey: reason,
 		}},
 	)
 	if err != nil {
@@ -1371,7 +1371,7 @@ func (t *Task) Archive() error {
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$unset": bson.M{AbortedKey: "", AbortReasonKey: ""},
+			"$unset": bson.M{AbortedKey: "", AbortInfoKey: ""},
 			"$inc":   inc,
 		})
 	if err != nil {
