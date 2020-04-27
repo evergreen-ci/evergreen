@@ -133,4 +133,120 @@ describe('MDBQueryAdaptorSpec', function() {
       }])
     ).toEqual({$sort: {fld: 1}})
   })
+
+  it('handles magnitude greater than syntax', function() {
+    var expected = {
+      "$or": [
+        {
+          "magnitude": {
+            "$gt": 0.1
+          }
+        },
+        {
+          "magnitude": {
+            "$lt": -0.1
+          }
+        }
+      ]
+    }
+
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>', term: -.1})
+    ).toEqual(expected)
+  })
+
+  it('handles magnitude greater than or equal to syntax', function() {
+    var expected = {
+      "$or": [
+        {
+          "magnitude": {
+            "$gte": 0.1
+          }
+        },
+        {
+          "magnitude": {
+            "$lte": -0.1
+          }
+        }
+      ]
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>=', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>=', term: -.1})
+    ).toEqual(expected)
+  })
+
+  it('handles magnitude less than syntax', function() {
+    var expected = {
+      "$and": [
+        {
+          "magnitude": {
+            "$lt": 0.1
+          }
+        },
+        {
+          "magnitude": {
+            "$gt": -0.1
+          }
+        }
+      ]
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<', term: -.1})
+    ).toEqual(expected)
+  })
+
+  it('handles magnitude less than or equal to syntax', function() {
+    var expected = {
+      "$and": [
+        {
+          "magnitude": {
+            "$lte": 0.1
+          }
+        },
+        {
+          "magnitude": {
+            "$gte": -0.1
+          }
+        }
+      ]
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<=', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<=', term: -.1})
+    ).toEqual(expected)
+  })
+
+  it('handles equal to syntax', function() {
+    const expected = {
+      "$or": [
+        {
+          "magnitude": {
+            "$eq": 0.1
+          }
+        },
+        {
+          "magnitude": {
+            "$eq": -0.1
+          }
+        }
+      ]
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '==', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '==', term: -.1})
+    ).toEqual(expected)
+  })
 })

@@ -121,15 +121,61 @@ mciModule.factory('MDBQueryAdaptor', function() {
       if (!mdbOp) return // Invalid operation
 
       var outer = {}
-      var inner = {}
-      if(_.isFunction(mdbOp)) {
-        inner = mdbOp(predicate.term)
+
+      if (field === "magnitude") {
+        outer = magnitudeExpressionCreator(predicate.term, mdbOp, field)
       } else {
-        inner[mdbOp] = predicate.term
+        var inner = {}
+        if(_.isFunction(mdbOp)) {
+          inner = mdbOp(predicate.term)
+        } else {
+          inner[mdbOp] = predicate.term
+        }
+        outer[field] = inner
       }
-      outer[field] = inner
+
       return outer
     }
+  }
+
+  var opposingMappings = {
+    '$lt': {
+      'opposing': '$gt',
+      'joiner': '$and'
+    },
+    '$lte': {
+      'opposing': '$gte',
+      'joiner': '$and'
+    },
+    '$gt': {
+      'opposing': '$lt',
+      'joiner': '$or'
+    },
+    '$gte': {
+      'opposing': '$lte',
+      'joiner': '$or'
+    },
+    '$eq': {
+      'opposing': '$eq',
+      'joiner': '$or'
+    },
+  }
+
+  function magnitudeExpressionCreator(magnitude, firstOperator, field) {
+    magnitude = Math.abs(magnitude)
+    var positiveExpression = {}
+    positiveExpression[field] = {}
+    positiveExpression[field][firstOperator] = magnitude
+
+    var opposingOperator = opposingMappings[firstOperator]['opposing']
+    negativeExpression = {}
+    negativeExpression[field] = {}
+    negativeExpression[field][opposingOperator] = magnitude * -1
+
+    var joinExpression = opposingMappings[firstOperator]['joiner']
+    var newExpression = {}
+    newExpression[joinExpression] = [positiveExpression, negativeExpression]
+    return newExpression
   }
 
   // field => predicate[] => expr[]
