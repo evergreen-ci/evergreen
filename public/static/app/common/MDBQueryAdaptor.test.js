@@ -135,9 +135,7 @@ describe('MDBQueryAdaptorSpec', function() {
   })
 
   it('handles magnitude greater than syntax', function() {
-    expect(
-      svc._predicateCompiler('magnitude')({op: '>', term: .1})
-    ).toEqual({
+    var expected = {
       "$or": [
         {
           "magnitude": {
@@ -150,13 +148,18 @@ describe('MDBQueryAdaptorSpec', function() {
           }
         }
       ]
-    })
+    }
+
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>', term: -.1})
+    ).toEqual(expected)
   })
 
   it('handles magnitude greater than or equal to syntax', function() {
-    expect(
-      svc._predicateCompiler('magnitude')({op: '>=', term: .1})
-    ).toEqual({
+    var expected = {
       "$or": [
         {
           "magnitude": {
@@ -169,13 +172,17 @@ describe('MDBQueryAdaptorSpec', function() {
           }
         }
       ]
-    })
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>=', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '>=', term: -.1})
+    ).toEqual(expected)
   })
 
   it('handles magnitude less than syntax', function() {
-    expect(
-      svc._predicateCompiler('magnitude')({op: '<', term: .1})
-    ).toEqual({
+    var expected = {
       "$and": [
         {
           "magnitude": {
@@ -188,13 +195,17 @@ describe('MDBQueryAdaptorSpec', function() {
           }
         }
       ]
-    })
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<', term: -.1})
+    ).toEqual(expected)
   })
 
   it('handles magnitude less than or equal to syntax', function() {
-    expect(
-      svc._predicateCompiler('magnitude')({op: '<=', term: .1})
-    ).toEqual({
+    var expected = {
       "$and": [
         {
           "magnitude": {
@@ -207,13 +218,17 @@ describe('MDBQueryAdaptorSpec', function() {
           }
         }
       ]
-    })
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<=', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '<=', term: -.1})
+    ).toEqual(expected)
   })
 
   it('handles equal to syntax', function() {
-    expect(
-      svc._predicateCompiler('magnitude')({op: '==', term: .1})
-    ).toEqual({
+    const expected = {
       "$or": [
         {
           "magnitude": {
@@ -226,6 +241,12 @@ describe('MDBQueryAdaptorSpec', function() {
           }
         }
       ]
-    })
+    }
+    expect(
+      svc._predicateCompiler('magnitude')({op: '==', term: .1})
+    ).toEqual(expected)
+    expect(
+      svc._predicateCompiler('magnitude')({op: '==', term: -.1})
+    ).toEqual(expected)
   })
 })
