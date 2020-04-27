@@ -9,7 +9,7 @@ mciModule.factory('ApiUtil', function($http) {
           case '/': return '/';
           default: return base + '/';
         }
-      })()
+      })();
 
       return function(apiEndpoint, endpointTplParams, httpParams) {
         return $http.get(
@@ -20,4 +20,4 @@ mciModule.factory('ApiUtil', function($http) {
       }
     }
   }
-})
+});

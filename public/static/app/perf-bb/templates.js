@@ -10,7 +10,7 @@ mciModule.run(function($templateCache) {
         '</div>' +
       '</div>' +
     '</div>'
-  )
+  );
 
   $templateCache.put('grouped-link-cell',
     '<div>' +
@@ -24,4 +24,19 @@ mciModule.run(function($templateCache) {
       '</div>' +
     '</div>'
   )
-})
+});
+
+mciModule.run(function($templateCache) {
+  $templateCache.put('percent-change-cell',
+      '<div>' +
+      '<div class="ui-grid-cell-contents" style="text-align: center;">' +
+      '<div ng-if="row.groupHeader" >' +
+      '<micro-hazard-chart points="points" ctx="ctx" />' +
+      '</div>' +
+      '<div ng-if="!row.groupHeader" ng-style="{color: color}">' +
+      '<p ng-if="ratio">[[ratio]]%</p><p ng-if="!ratio">Unknown</p>' +
+      '</div>' +
+      '</div>' +
+      '</div>'
+  );
+});

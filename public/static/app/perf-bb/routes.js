@@ -21,7 +21,7 @@ mciModule.config(function($routeProvider, $locationProvider) {
     })
     .when('/perf-bb/expanded-metrics-change-points/:projectId', {
       templateUrl: '/static/app/perf-bb/change-points-v2.html',
-      controller: 'SignalProcessingCtrlV2',
+      controller: 'ExpandedMetricsSignalProcessingController',
       controllerAs: 'spvm',
     })
     // TODO make a mixin for this
