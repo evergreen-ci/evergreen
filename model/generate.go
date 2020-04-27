@@ -253,20 +253,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	var syncVariantsTasks []patch.VariantTasks
+	var syncAtEndOpts patch.SyncAtEndOptions
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
 		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
 			return errors.Wrap(err, "could not update sync variants and tasks")
 		}
-		syncVariantsTasks = patchDoc.SyncVariantsTasks
+		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncVariantsTasks, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncVariantsTasks, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}

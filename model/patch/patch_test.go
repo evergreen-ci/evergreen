@@ -492,8 +492,10 @@ func TestResolveSyncVariantsTasks(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			p := &Patch{
-				SyncBuildVariants: testCase.bvs,
-				SyncTasks:         testCase.tasks,
+				SyncAtEndOpts: SyncAtEndOptions{
+					BuildVariants: testCase.bvs,
+					Tasks:         testCase.tasks,
+				},
 			}
 			actual := p.ResolveSyncVariantTasks(testCase.vts)
 			assert.Len(t, actual, len(testCase.expected))
@@ -616,18 +618,20 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			p := Patch{
-				Id:                mgobson.NewObjectId(),
-				SyncBuildVariants: testCase.syncBVs,
-				SyncTasks:         testCase.syncTasks,
-				SyncVariantsTasks: testCase.existingSyncVTs,
+				Id: mgobson.NewObjectId(),
+				SyncAtEndOpts: SyncAtEndOptions{
+					BuildVariants: testCase.syncBVs,
+					Tasks:         testCase.syncTasks,
+					VariantsTasks: testCase.existingSyncVTs,
+				},
 			}
 			require.NoError(t, p.Insert())
 
 			require.NoError(t, p.AddSyncVariantsTasks(testCase.newVTs))
 			dbPatch, err := FindOne(ById(p.Id))
 			require.NoError(t, err)
-			checkEqualVTs(t, testCase.expectedSyncVTs, dbPatch.SyncVariantsTasks)
-			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncVariantsTasks)
+			checkEqualVTs(t, testCase.expectedSyncVTs, dbPatch.SyncAtEndOpts.VariantsTasks)
+			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncAtEndOpts.VariantsTasks)
 		})
 	}
 }

@@ -35,17 +35,19 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description       string   `json:"desc"`
-		Project           string   `json:"project"`
-		PatchBytes        []byte   `json:"patch_bytes"`
-		PatchString       string   `json:"patch"`
-		Githash           string   `json:"githash"`
-		Variants          []string `json:"buildvariants_new"`
-		Tasks             []string `json:"tasks"`
-		SyncBuildVariants []string `json:"sync_build_variants"`
-		SyncTasks         []string `json:"sync_tasks"`
-		Finalize          bool     `json:"finalize"`
-		Alias             string   `json:"alias"`
+		Description       string        `json:"desc"`
+		Project           string        `json:"project"`
+		PatchBytes        []byte        `json:"patch_bytes"`
+		PatchString       string        `json:"patch"`
+		Githash           string        `json:"githash"`
+		Variants          []string      `json:"buildvariants_new"`
+		Tasks             []string      `json:"tasks"`
+		SyncBuildVariants []string      `json:"sync_build_variants"`
+		SyncTasks         []string      `json:"sync_tasks"`
+		SyncStatuses      []string      `json:"sync_statuses"`
+		SyncTimeout       time.Duration `json:"sync_timeout"`
+		Finalize          bool          `json:"finalize"`
+		Alias             string        `json:"alias"`
 	}{}
 	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -85,12 +87,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !pref.TaskSync.PatchEnabled && len(data.SyncTasks) != 0 {
+	if !pref.TaskSync.PatchEnabled && (len(data.SyncTasks) != 0 || len(data.SyncBuildVariants) != 0) {
 		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("task sync at the end of a patched task is disabled by project settings"))
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias, data.SyncBuildVariants, data.SyncTasks)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias, data.SyncBuildVariants, data.SyncTasks, data.SyncStatuses, data.SyncTimeout)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return

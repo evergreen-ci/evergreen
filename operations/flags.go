@@ -21,6 +21,8 @@ const (
 	tasksFlagName             = "tasks"
 	syncBuildVariantsFlagName = "sync_variants"
 	syncTasksFlagName         = "sync_tasks"
+	syncTimeoutFlagName       = "sync_timeout"
+	syncStatusesFlagName      = "sync_statuses"
 	largeFlagName             = "large"
 	hostFlagName              = "host"
 	displayNameFlagName       = "name"
@@ -109,6 +111,21 @@ func addSyncTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  syncTasksFlagName,
 		Usage: "tasks to sync when task ends",
+	})
+}
+
+func addSyncTimeoutFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.DurationFlag{
+		Name:  syncTimeoutFlagName,
+		Usage: "max timeout on task sync when task ends (e.g. 15m, 2h)",
+		Value: evergreen.DefaultTaskSyncAtEndTimeout,
+	})
+}
+
+func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  syncStatusesFlagName,
+		Usage: "filter task statuses for which task sync should run when task ends ('success' or 'failed')",
 	})
 }
 

@@ -92,14 +92,14 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, p.SyncVariantsTasks, "")
+	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, p.SyncAtEndOpts, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, p.SyncVariantsTasks, "")
+	_, err := AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, p.SyncAtEndOpts, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
@@ -378,16 +378,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:           *project,
-			Version:           *patchVersion,
-			TaskIDs:           taskIds,
-			BuildName:         vt.Variant,
-			Activated:         true,
-			TaskNames:         taskNames,
-			DisplayNames:      displayNames,
-			DistroAliases:     distroAliases,
-			TaskCreateTime:    createTime,
-			SyncVariantsTasks: p.SyncVariantsTasks,
+			Project:        *project,
+			Version:        *patchVersion,
+			TaskIDs:        taskIds,
+			BuildName:      vt.Variant,
+			Activated:      true,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: createTime,
+			SyncAtEndOpts:  p.SyncAtEndOpts,
 		}
 		var build *build.Build
 		var tasks task.Tasks

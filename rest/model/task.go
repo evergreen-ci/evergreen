@@ -19,51 +19,52 @@ const (
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
-	Id                 *string          `json:"task_id"`
-	ProjectId          *string          `json:"project_id"`
-	CreateTime         *time.Time       `json:"create_time"`
-	DispatchTime       *time.Time       `json:"dispatch_time"`
-	ScheduledTime      *time.Time       `json:"scheduled_time"`
-	StartTime          *time.Time       `json:"start_time"`
-	FinishTime         *time.Time       `json:"finish_time"`
-	IngestTime         *time.Time       `json:"ingest_time"`
-	ActivatedTime      *time.Time       `json:"activated_time"`
-	Version            *string          `json:"version_id"`
-	Revision           *string          `json:"revision"`
-	Priority           int64            `json:"priority"`
-	Activated          bool             `json:"activated"`
-	ActivatedBy        *string          `json:"activated_by"`
-	BuildId            *string          `json:"build_id"`
-	DistroId           *string          `json:"distro_id"`
-	BuildVariant       *string          `json:"build_variant"`
-	DependsOn          []APIDependency  `json:"depends_on"`
-	DisplayName        *string          `json:"display_name"`
-	HostId             *string          `json:"host_id"`
-	HostLink           *string          `json:"host_link"`
-	Restarts           int              `json:"restarts"`
-	Execution          int              `json:"execution"`
-	Order              int              `json:"order"`
-	Status             *string          `json:"status"`
-	Details            ApiTaskEndDetail `json:"status_details"`
-	Logs               LogLinks         `json:"logs"`
-	TimeTaken          APIDuration      `json:"time_taken_ms"`
-	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
-	EstimatedStart     APIDuration      `json:"est_wait_to_start_ms"`
-	EstimatedCost      float64          `json:"estimated_cost"`
-	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
-	GenerateTask       bool             `json:"generate_task"`
-	GeneratedBy        string           `json:"generated_by"`
-	Artifacts          []APIFile        `json:"artifacts"`
-	DisplayOnly        bool             `json:"display_only"`
-	ExecutionTasks     []*string        `json:"execution_tasks,omitempty"`
-	Mainline           bool             `json:"mainline"`
-	TaskGroup          string           `json:"task_group,omitempty"`
-	TaskGroupMaxHosts  int              `json:"task_group_max_hosts,omitempty"`
-	Blocked            bool             `json:"blocked"`
-	Requester          *string          `json:"requester"`
-	TestResults        []APITest        `json:"test_results"`
-	Aborted            bool             `json:"aborted"`
-	ShouldSync         bool             `json:"should_sync,omitempty"`
+	Id                 *string             `json:"task_id"`
+	ProjectId          *string             `json:"project_id"`
+	CreateTime         *time.Time          `json:"create_time"`
+	DispatchTime       *time.Time          `json:"dispatch_time"`
+	ScheduledTime      *time.Time          `json:"scheduled_time"`
+	StartTime          *time.Time          `json:"start_time"`
+	FinishTime         *time.Time          `json:"finish_time"`
+	IngestTime         *time.Time          `json:"ingest_time"`
+	ActivatedTime      *time.Time          `json:"activated_time"`
+	Version            *string             `json:"version_id"`
+	Revision           *string             `json:"revision"`
+	Priority           int64               `json:"priority"`
+	Activated          bool                `json:"activated"`
+	ActivatedBy        *string             `json:"activated_by"`
+	BuildId            *string             `json:"build_id"`
+	DistroId           *string             `json:"distro_id"`
+	BuildVariant       *string             `json:"build_variant"`
+	DependsOn          []APIDependency     `json:"depends_on"`
+	DisplayName        *string             `json:"display_name"`
+	HostId             *string             `json:"host_id"`
+	HostLink           *string             `json:"host_link"`
+	Restarts           int                 `json:"restarts"`
+	Execution          int                 `json:"execution"`
+	Order              int                 `json:"order"`
+	Status             *string             `json:"status"`
+	Details            ApiTaskEndDetail    `json:"status_details"`
+	Logs               LogLinks            `json:"logs"`
+	TimeTaken          APIDuration         `json:"time_taken_ms"`
+	ExpectedDuration   APIDuration         `json:"expected_duration_ms"`
+	EstimatedStart     APIDuration         `json:"est_wait_to_start_ms"`
+	EstimatedCost      float64             `json:"estimated_cost"`
+	PreviousExecutions []APITask           `json:"previous_executions,omitempty"`
+	GenerateTask       bool                `json:"generate_task"`
+	GeneratedBy        string              `json:"generated_by"`
+	Artifacts          []APIFile           `json:"artifacts"`
+	DisplayOnly        bool                `json:"display_only"`
+	ExecutionTasks     []*string           `json:"execution_tasks,omitempty"`
+	Mainline           bool                `json:"mainline"`
+	TaskGroup          string              `json:"task_group,omitempty"`
+	TaskGroupMaxHosts  int                 `json:"task_group_max_hosts,omitempty"`
+	Blocked            bool                `json:"blocked"`
+	Requester          *string             `json:"requester"`
+	TestResults        []APITest           `json:"test_results"`
+	Aborted            bool                `json:"aborted"`
+	CanSync            bool                `json:"can_sync,omitempty"`
+	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 }
 
 type LogLinks struct {
@@ -144,7 +145,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Blocked:           v.Blocked(),
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
-			ShouldSync:        v.ShouldSync,
+			CanSync:           v.CanSync,
+			SyncAtEndOpts: APISyncAtEndOptions{
+				Enabled:  v.SyncAtEndOpts.Enabled,
+				Statuses: v.SyncAtEndOpts.Statuses,
+				Timeout:  v.SyncAtEndOpts.Timeout,
+			},
 		}
 
 		if v.HostId != "" {
@@ -216,7 +222,12 @@ func (ad *APITask) ToService() (interface{}, error) {
 		GeneratedBy:      ad.GeneratedBy,
 		DisplayOnly:      ad.DisplayOnly,
 		Requester:        FromStringPtr(ad.Requester),
-		ShouldSync:       ad.ShouldSync,
+		CanSync:          ad.CanSync,
+		SyncAtEndOpts: task.SyncAtEndOptions{
+			Enabled:  ad.SyncAtEndOpts.Enabled,
+			Statuses: ad.SyncAtEndOpts.Statuses,
+			Timeout:  ad.SyncAtEndOpts.Timeout,
+		},
 	}
 	catcher := grip.NewBasicCatcher()
 	createTime, err := FromTimePtr(ad.CreateTime)
@@ -290,6 +301,12 @@ func (at *APITask) GetArtifacts() error {
 	}
 
 	return nil
+}
+
+type APISyncAtEndOptions struct {
+	Enabled  bool          `json:"enabled"`
+	Statuses []string      `json:"statuses"`
+	Timeout  time.Duration `json:"timeout"`
 }
 
 // APITaskCost is the model to be returned by the API whenever tasks

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
@@ -152,28 +154,46 @@ func (s *CommandSuite) TestS3Copy() {
 }
 
 func TestEndTaskSyncCommands(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, tc *taskContext){
-		"ReturnsNoCommandsForNoSync": func(t *testing.T, tc *taskContext) {
-			tc.taskModel.ShouldSync = false
-			assert.Nil(t, endTaskSyncCommands(tc))
-		},
-		"ReturnsTaskSyncCommands": func(t *testing.T, tc *taskContext) {
-			cmds := endTaskSyncCommands(tc)
-			require.NotNil(t, cmds)
-			var s3PushFound bool
-			for _, cmd := range cmds.List() {
-				if cmd.Command == evergreen.S3PushCommandName {
-					s3PushFound = true
-				}
+	s3PushFound := func(cmds *model.YAMLCommandSet) bool {
+		for _, cmd := range cmds.List() {
+			if cmd.Command == evergreen.S3PushCommandName {
+				return true
 			}
-			assert.True(t, s3PushFound)
+		}
+		return false
+	}
+	for testName, testCase := range map[string]func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail){
+		"ReturnsTaskSyncCommands": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
+			cmds := endTaskSyncCommands(tc, detail)
+			require.NotNil(t, cmds)
+			assert.True(t, s3PushFound(cmds))
+		},
+		"ReturnsNoCommandsForNoSync": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
+			tc.taskModel.SyncAtEndOpts.Enabled = false
+			assert.Nil(t, endTaskSyncCommands(tc, detail))
+		},
+		"ReturnsCommandsIfMatchesTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
+			detail.Status = evergreen.TaskSucceeded
+			tc.taskModel.SyncAtEndOpts.Statuses = []string{evergreen.TaskSucceeded}
+			cmds := endTaskSyncCommands(tc, detail)
+			require.NotNil(t, cmds)
+			assert.True(t, s3PushFound(cmds))
+		},
+		"ReturnsNoCommandsIfDoesNotMatchTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
+			detail.Status = evergreen.TaskSucceeded
+			tc.taskModel.SyncAtEndOpts.Statuses = []string{evergreen.TaskFailed}
+			cmds := endTaskSyncCommands(tc, detail)
+			assert.Nil(t, cmds)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			tc := &taskContext{
-				taskModel: &task.Task{ShouldSync: true},
+				taskModel: &task.Task{
+					SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
+				},
 			}
-			testCase(t, tc)
+			detail := &apimodels.TaskEndDetail{}
+			testCase(t, tc, detail)
 		})
 	}
 }
