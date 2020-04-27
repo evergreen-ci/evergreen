@@ -17,7 +17,7 @@
             <div class="entry">
               <strong>Created at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
             </div>
-            <div class="entry" ng-hide="curHostData.status=='stopped'">
+            <div class="entry" ng-show="curHostData.isStarted">
               <strong>Started at</strong> <span>[[curHostData.start_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
             </div>
             <div class="entry" ng-hide="curHostData.no_expiration">

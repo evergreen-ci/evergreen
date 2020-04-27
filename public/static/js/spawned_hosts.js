@@ -231,15 +231,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     }
 
     $scope.computeUptime = function (host) {
-      host.isTerminated = host.status == 'terminated';
+      host.isTerminated = host.status === 'terminated';
+      host.isStarted = true;
       const terminateTime = moment(host.termination_time);
       const startTime = moment(host.start_time);
       // check if the host is terminated to determine uptime
       if (host.isTerminated && terminateTime > epochTime) {
         const uptime = terminateTime.diff(startTime, 'seconds');
         host.uptime = moment.duration(uptime, 'seconds').humanize();
-      } else if (host.status == 'stopped' || host.start_time == "0001-01-01T00:00:00Z") {
+      } else if (host.status === 'stopped' || host.start_time == "0001-01-01T00:00:00Z") {
         host.uptime = "";
+        host.isStarted = false;
       } else {
         const uptime = moment().diff(startTime, 'seconds');
         host.uptime = moment.duration(uptime, 'seconds').humanize();
@@ -720,7 +722,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.lastSelectedHost = host;
       $location.search("id", host.id);
       $scope.curHostData = host;
-      $scope.curHostData.isTerminated = host.isTerminated;
       // check if this is a windows host
       $scope.curHostData.isWinHost = false;
       // XXX: if this is-windows check is updated, make sure to also update
