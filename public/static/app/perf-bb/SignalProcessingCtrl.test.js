@@ -69,6 +69,7 @@ describe('SignalProcessingFactoriesTest', () => {
           create_time: ">now",
           project: "=my-project",
           probability: ">3.14",
+          magnitude: ">=.005"
         };
         settings.perf.signalProcessing.persistentFiltering = filtering;
         expect(controller.changePointFilter()).toEqual(filtering);

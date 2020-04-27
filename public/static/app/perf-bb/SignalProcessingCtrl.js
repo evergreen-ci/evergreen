@@ -27,6 +27,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
     project: '=' + $window.project,
     probability: '>0.05',
+    magnitude: '>=.005'
   };
 
   vm.changePointFilter = function() {
