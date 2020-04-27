@@ -105,6 +105,15 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.currentResourceType = rtype;
     }
 
+    $scope.isHomeVolume = function(volume) {
+      for (var i = 0; i < $scope.hosts.length; i++) {
+        if ($scope.hosts[i].homeVolumeID === volume.volume_id) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     // Spawn REST API calls
     $scope.fetchSpawnedHosts = function () {
       mciSpawnRestService.getSpawnedHosts(
@@ -114,7 +123,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             _.each(hosts, function (host) {
               $scope.computeUptime(host);
               $scope.computeHostExpirationTimes(host);
-
               host.selectedInstanceType = host.instance_type;
               if (host.display_name == "") {
                 host.display_name = host.id;
