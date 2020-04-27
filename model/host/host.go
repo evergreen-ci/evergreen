@@ -2373,5 +2373,9 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 		return false
 	}
 
+	if h.Status == evergreen.HostBuilding {
+		return false
+	}
+
 	return true
 }

@@ -120,7 +120,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.IsSubjectToHostCreationThrottle() || j.host.Status == evergreen.HostBuilding {
+	if j.host.IsSubjectToHostCreationThrottle() {
 		var numHosts int
 		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
