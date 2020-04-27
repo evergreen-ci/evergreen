@@ -107,7 +107,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.isHomeVolume = function(volume) {
       for (var i = 0; i < $scope.hosts.length; i++) {
-        if ($scope.hosts[i].homeVolumeID === volume.volume_id) {
+        if ($scope.hosts[i].home_volume_id === volume.volume_id) {
           return true;
         }
       }
