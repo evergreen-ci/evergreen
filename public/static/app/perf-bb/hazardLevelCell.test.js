@@ -69,7 +69,7 @@ describe('HazardLevelCellTest', () => {
     var element = $compile(`<hazard-level-cell row=${row} />`)($rootScope);
     $rootScope.$digest();
 
-    var expectedResult = '+900%';
+    var expectedResult = '-900%';
     expect(element.text()).toBe(expectedResult);
   });
 
@@ -90,7 +90,7 @@ describe('HazardLevelCellTest', () => {
     var element = $compile(`<hazard-level-cell row=${row} />`)($rootScope);
     $rootScope.$digest();
 
-    var expectedResult = '-90%';
+    var expectedResult = '+90%';
     expect(element.text()).toBe(expectedResult);
   });
 

@@ -14,6 +14,10 @@ mciModule.directive('hazardLevelCell', function() {
     var a = scope.row.entity.statistics.next.mean;
     var b = scope.row.entity.statistics.previous.mean;
     scope.ratio = ratio(a, b);
+    // Check mode (ops/sec or latency)
+    if (a < 0) {
+      scope.ratio = scope.ratio * -1
+    }
     scope.color = (
       scope.ratio > 0 ? 'green' :
       scope.ratio < 0 ? 'red' :
