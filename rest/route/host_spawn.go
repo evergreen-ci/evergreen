@@ -861,6 +861,12 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	if h.opts.NewName != "" {
+		if err = h.sc.SetVolumeName(volume, h.opts.NewName); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
 	if h.opts.Size != 0 {
 		sizeIncrease := h.opts.Size - volume.Size
 		if sizeIncrease <= 0 {
@@ -876,36 +882,46 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    err.Error(),
 			})
 		}
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(volume.AvailabilityZone),
-		}
-		var mgr cloud.Manager
-		mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
-		if err != nil {
+	}
+
+	if !utility.IsZeroTime(h.opts.Expiration) {
+		if h.opts.Expiration.Before(volume.Expiration) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Message:    "can't move expiration time earlier",
 			})
 		}
-		if err = mgr.ModifyVolume(ctx, volume, h.opts); err != nil {
-			if cloud.ModifyVolumeBadRequest(err) {
-				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusBadRequest,
-					Message:    err.Error(),
-				})
-			}
+		if h.opts.Expiration.Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("can't extend expiration past max duration '%s'", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)),
 			})
 		}
 	}
 
-	if h.opts.NewName != "" {
-		if err = h.sc.SetVolumeName(volume, h.opts.NewName); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   cloud.AztoRegion(volume.AvailabilityZone),
+	}
+	var mgr cloud.Manager
+	mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	if err = mgr.ModifyVolume(ctx, volume, h.opts); err != nil {
+		if cloud.ModifyVolumeBadRequest(err) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			})
 		}
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
