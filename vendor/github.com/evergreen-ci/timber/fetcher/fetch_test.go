@@ -138,7 +138,7 @@ func TestParse(t *testing.T) {
 
 func TestPaginatedReadCloser(t *testing.T) {
 	t.Run("PaginatedRoute", func(t *testing.T) {
-		handler := &mockHandler{paginate: true}
+		handler := &mockHandler{pages: 3}
 		server := httptest.NewServer(handler)
 		handler.baseURL = server.URL
 
@@ -154,7 +154,7 @@ func TestPaginatedReadCloser(t *testing.T) {
 
 		data, err := ioutil.ReadAll(r)
 		require.NoError(t, err)
-		assert.Equal(t, "PAGINATED BODY PAGE 1\nPAGINATED BODY PAGE 2\n", string(data))
+		assert.Equal(t, "PAGINATED BODY PAGE 1\nPAGINATED BODY PAGE 2\nPAGINATED BODY PAGE 3\n", string(data))
 		assert.NoError(t, r.Close())
 	})
 	t.Run("NonPaginatedRoute", func(t *testing.T) {
@@ -178,7 +178,7 @@ func TestPaginatedReadCloser(t *testing.T) {
 		assert.NoError(t, r.Close())
 	})
 	t.Run("SplitPageByteSlice", func(t *testing.T) {
-		handler := &mockHandler{paginate: true}
+		handler := &mockHandler{pages: 2}
 		server := httptest.NewServer(handler)
 		handler.baseURL = server.URL
 
@@ -207,15 +207,15 @@ func TestPaginatedReadCloser(t *testing.T) {
 }
 
 type mockHandler struct {
-	baseURL  string
-	count    int
-	paginate bool
+	baseURL string
+	pages   int
+	count   int
 }
 
 func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.paginate {
+	if h.pages > 0 {
 		w.Header().Set("Link", fmt.Sprintf("<%s>; rel=\"%s\"", h.baseURL, "next"))
-		if h.count <= 1 {
+		if h.count <= h.pages-1 {
 			_, _ = w.Write([]byte(fmt.Sprintf("PAGINATED BODY PAGE %d\n", h.count+1)))
 		}
 		h.count++
