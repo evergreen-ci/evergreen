@@ -173,7 +173,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 			"job_type": j.Type().Name,
 			"status":   h.Status,
 			"provider": h.Distro.Provider,
-			"message":  "host termination for a non-spawnable distro",
+			"message":  "host termination for a non-ephemeral distro",
 			"cause":    "programmer error",
 		})
 		return errors.New("attempted to terminate non-ephemeral host")

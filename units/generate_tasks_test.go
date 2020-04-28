@@ -242,7 +242,7 @@ func TestGenerateTasks(t *testing.T) {
 	require.Len(p.BuildVariants, 2)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 4)
-	assert.Len(p.TaskGroups, 1)
+	require.Len(p.TaskGroups, 1)
 	assert.Len(p.TaskGroups[0].Tasks, 2)
 
 	b, err := build.FindOneId("sample_build_id")
