@@ -34,6 +34,7 @@ var (
 	HostStart                  = "start"
 	VolumeRename               = "changeVolumeDisplayName"
 	VolumeExtendExpiration     = "extendVolumeExpiration"
+	VolumeSetNoExpiration      = "setVolumeNoExpiration"
 	VolumeAttach               = "attachVolume"
 	VolumeDetach               = "detachVolume"
 	VolumeDelete               = "deleteVolume"
@@ -504,7 +505,45 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(*updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
 
 	case VolumeExtendExpiration:
-		//TODO
+		if updateParams.Expiration == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "must specify an expiration time"))
+			return
+		}
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		var mgr cloud.Manager
+		mgr, err = cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(updateParams.Expiration)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "can't parse new expiration time"))
+			return
+		}
+		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
+			Expiration: newExpiration,
+		})
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't update volume '%s' expiration", vol.ID))
+			return
+		}
+
+	case VolumeSetNoExpiration:
+		if updateParams.NoExpiration == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "must specify a value for no expiration"))
+			return
+		}
+
+		if err = vol.SetNoExpiration(*updateParams.NoExpiration); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't set no expiration on volume '%s'", vol.ID))
+			return
+		}
 
 	case VolumeAttach:
 		mgrOpts := cloud.ManagerOpts{

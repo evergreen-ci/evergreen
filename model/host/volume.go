@@ -17,6 +17,7 @@ type Volume struct {
 	Size             int       `bson:"size" json:"size"`
 	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
+	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
 	CreationDate     time.Time `bson:"created_at" json:"created_at"`
 	Host             string    `bson:"host" json:"host"`
 }
@@ -87,6 +88,15 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 		VolumesCollection,
 		v.ID,
 		bson.M{"$set": bson.M{VolumeExpirationKey: v.Expiration}})
+}
+
+func (v *Volume) SetNoExpiration(noExpiration bool) error {
+	v.NoExpiration = noExpiration
+
+	return db.UpdateId(
+		VolumesCollection,
+		v.ID,
+		bson.M{"$set": bson.M{VolumeNoExpirationKey: noExpiration}})
 }
 
 func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {

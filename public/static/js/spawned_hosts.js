@@ -578,10 +578,14 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         data.host_id = $scope.volumeAttachHost.id;
       }
       if (action == "extendVolumeExpiration") {
-        data.no_expiration = $scope.curVolumeData.no_expiration;
-        data.expiration = $scope.curVolumeData.current_expiration;
+        if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
+          action = "setVolumeNoExpiration"
+          data.no_expiration = $scope.curVolumeData.no_expiration;
+        } else if (!$scope.curVolumeData.no_expiration && $scope.curVolumeData.current_expiration != $scope.curVolumeData.original_expiration) {
+          data.expiration = $scope.curVolumeData.current_expiration;
+        }
       }
-
+    
       mciSpawnRestService.updateVolume(action, $scope.curVolumeData.volume_id, data,
       {
           success: function (resp) {
