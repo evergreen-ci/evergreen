@@ -540,10 +540,18 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = vol.SetNoExpiration(*updateParams.NoExpiration); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't set no expiration on volume '%s'", vol.ID))
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
 			return
 		}
+		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
+			NoExpiration: updateParams.NoExpiration,
+		})
 
 	case VolumeAttach:
 		mgrOpts := cloud.ManagerOpts{

@@ -157,10 +157,6 @@ func (hc *DBHostConnector) SetVolumeName(v *host.Volume, name string) error {
 	return v.SetDisplayName(name)
 }
 
-func (hc *DBHostConnector) SetVolumeNoExpiration(v *host.Volume, noExpiration bool) error {
-	return v.SetNoExpiration(noExpiration)
-}
-
 func (hc *DBHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
 	return host.FindHostWithVolume(volumeID)
 }
@@ -411,15 +407,6 @@ func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
 	for i := range hc.CachedVolumes {
 		if hc.CachedVolumes[i].ID == volume.ID {
 			hc.CachedVolumes[i].DisplayName = name
-		}
-	}
-	return nil
-}
-
-func (hc *MockConnector) SetVolumeNoExpiration(volume *host.Volume, noExpiration bool) error {
-	for i := range hc.CachedVolumes {
-		if hc.CachedVolumes[i].ID == volume.ID {
-			hc.CachedVolumes[i].NoExpiration = noExpiration
 		}
 	}
 	return nil

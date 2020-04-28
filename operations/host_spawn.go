@@ -591,7 +591,7 @@ func hostModifyVolume() cli.Command {
 			opts := restModel.VolumeModifyOptions{
 				NewName:      name,
 				Size:         size,
-				NoExpiration: noExpiration,
+				NoExpiration: &noExpiration,
 			}
 			if extendDuration > 0 {
 				opts.Expiration = time.Now().Add(extendDuration)

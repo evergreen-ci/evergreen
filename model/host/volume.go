@@ -102,7 +102,10 @@ func (v *Volume) SetNoExpiration(noExpiration bool) error {
 func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{VolumeExpirationKey: bson.M{"$lte": expirationTime}},
+			"$match": bson.M{
+				VolumeExpirationKey:   bson.M{"$lte": expirationTime},
+				VolumeNoExpirationKey: bson.M{"$ne": true},
+			},
 		},
 		{
 			"$lookup": bson.M{
@@ -165,6 +168,16 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 	}
 
 	return out[0].TotalVolumeSize, nil
+}
+
+func FindVolumesWithNoExpirationToExtend() ([]Volume, error) {
+	query := bson.M{
+		VolumeNoExpirationKey: true,
+		VolumeHostKey:         "",
+		VolumeExpirationKey:   bson.M{"$lte": time.Now().Add(24 * time.Hour)},
+	}
+
+	return FindVolumes(query)
 }
 
 func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {

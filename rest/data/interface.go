@@ -155,7 +155,6 @@ type Connector interface {
 	FindVolumeById(string) (*host.Volume, error)
 	FindVolumesByUser(string) ([]host.Volume, error)
 	SetVolumeName(*host.Volume, string) error
-	SetVolumeNoExpiration(*host.Volume, bool) error
 
 	// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
 	AggregateSpawnhostData() (*host.SpawnHostUsage, error)

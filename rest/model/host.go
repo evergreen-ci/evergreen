@@ -161,7 +161,7 @@ type VolumeModifyOptions struct {
 	NewName      string    `json:"new_name"`
 	Size         int       `json:"size"`
 	Expiration   time.Time `json:"expiration"`
-	NoExpiration bool      `json:"no_expiration"`
+	NoExpiration *bool     `json:"no_expiration"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
