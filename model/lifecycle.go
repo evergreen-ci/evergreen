@@ -170,30 +170,7 @@ func AbortBuild(buildId string, caller string) error {
 		return errors.Wrapf(err, "can't deactivate build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuild(buildId, caller), "can't abort tasks for build '%s'", buildId)
-}
-
-// AbortVersion sets the abort flag on all tasks associated with the version which are in an
-// abortable state
-func AbortVersion(versionId, caller string) error {
-	_, err := task.UpdateAll(
-		bson.M{
-			task.VersionKey: versionId,
-			task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-		},
-		bson.M{"$set": bson.M{task.AbortedKey: true}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "error setting aborted statuses")
-	}
-	ids, err := task.FindAllTaskIDsFromVersion(versionId)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks by version id")
-	}
-	if len(ids) > 0 {
-		event.LogManyTaskAbortRequests(ids, caller)
-	}
-	return nil
+	return errors.Wrapf(task.AbortBuild(buildId, task.AbortInfo{User: caller}), "can't abort tasks for build '%s'", buildId)
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
@@ -327,6 +304,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
 		}
+
 		if t.DisplayOnly {
 			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
@@ -340,7 +318,10 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 				task.IdKey:      bson.M{"$in": taskIds},
 				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 			},
-			bson.M{"$set": bson.M{task.AbortedKey: true}},
+			bson.M{"$set": bson.M{
+				task.AbortedKey:   true,
+				task.AbortInfoKey: task.AbortInfo{User: caller},
+			}},
 		)
 
 		if err != nil {
@@ -428,7 +409,8 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			},
 			bson.M{
 				"$set": bson.M{
-					task.AbortedKey: true,
+					task.AbortedKey:   true,
+					task.AbortInfoKey: task.AbortInfo{User: caller},
 				},
 			},
 		)
@@ -500,7 +482,7 @@ func RefreshTasksCache(buildId string) error {
 
 // AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
-	displayNames []string, generatedBy string, tasksInBuild []task.Task, syncVariantsTasks []patch.VariantTasks, distroAliases map[string][]string) (*build.Build, task.Tasks, error) {
+	displayNames []string, generatedBy string, tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
@@ -516,7 +498,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
 	}
 
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild, syncVariantsTasks, distroAliases, createTime)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild, syncAtEndOpts, distroAliases, createTime)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -535,20 +517,20 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
-	Project           Project                 // project to create the build for
-	Version           Version                 // the version the build belong to
-	TaskIDs           TaskIdConfig            // pre-generated IDs for the tasks to be created
-	BuildName         string                  // name of the buildvariant
-	Activated         bool                    // true if the build should be scheduled
-	TaskNames         []string                // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames      []string                // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy       string                  // ID of the task that generated this build
-	SourceRev         string                  // githash of the revision that triggered this build
-	DefinitionID      string                  // definition ID of the trigger used to create this build
-	Aliases           ProjectAliases          // project aliases to use to filter tasks created
-	DistroAliases     distro.AliasLookupTable // map of distro aliases to names of distros
-	TaskCreateTime    time.Time               // create time of tasks in the build
-	SyncVariantsTasks []patch.VariantTasks
+	Project        Project                 // project to create the build for
+	Version        Version                 // the version the build belong to
+	TaskIDs        TaskIdConfig            // pre-generated IDs for the tasks to be created
+	BuildName      string                  // name of the buildvariant
+	Activated      bool                    // true if the build should be scheduled
+	TaskNames      []string                // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames   []string                // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy    string                  // ID of the task that generated this build
+	SourceRev      string                  // githash of the revision that triggered this build
+	DefinitionID   string                  // definition ID of the trigger used to create this build
+	Aliases        ProjectAliases          // project aliases to use to filter tasks created
+	DistroAliases  distro.AliasLookupTable // map of distro aliases to names of distros
+	TaskCreateTime time.Time               // create time of tasks in the build
+	SyncAtEndOpts  patch.SyncAtEndOptions
 }
 
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
@@ -610,7 +592,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.SyncVariantsTasks, args.DistroAliases, args.TaskCreateTime)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -673,7 +655,7 @@ type displayTaskInfo struct {
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
-	aliases ProjectAliases, tasksInBuild []task.Task, syncVariantsTasks []patch.VariantTasks, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
+	aliases ProjectAliases, tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -872,16 +854,20 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		newTask.GeneratedBy = generatedBy
 
-		if shouldSyncTask(syncVariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
-			newTask.ShouldSync = true
-			newTask.RunsSync = true
+		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
+			newTask.CanSync = true
+			newTask.SyncAtEndOpts = task.SyncAtEndOptions{
+				Enabled:  true,
+				Statuses: syncAtEndOpts.Statuses,
+				Timeout:  syncAtEndOpts.Timeout,
+			}
 		} else {
 			cmds, err := project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error checking if task definition contains command '%s'", evergreen.S3PushCommandName)
 			}
 			if len(cmds) != 0 {
-				newTask.RunsSync = true
+				newTask.CanSync = true
 			}
 		}
 
@@ -1261,7 +1247,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, syncVariantsTasks []patch.VariantTasks, generatedBy string) ([]string, []string, error) {
+func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 	taskIds := NewTaskIdTable(p, v, "", "")
 
 	newBuildIds := make([]string, 0)
@@ -1291,16 +1277,16 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:           *p,
-			Version:           *v,
-			TaskIDs:           taskIds,
-			BuildName:         pair.Variant,
-			Activated:         activated,
-			TaskNames:         taskNames,
-			DisplayNames:      displayNames,
-			GeneratedBy:       generatedBy,
-			TaskCreateTime:    createTime,
-			SyncVariantsTasks: syncVariantsTasks,
+			Project:        *p,
+			Version:        *v,
+			TaskIDs:        taskIds,
+			BuildName:      pair.Variant,
+			Activated:      activated,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			GeneratedBy:    generatedBy,
+			TaskCreateTime: createTime,
+			SyncAtEndOpts:  syncAtEndOpts,
 		}
 
 		grip.Info(message.Fields{
@@ -1357,7 +1343,7 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pairs TaskVariantPairs, syncVariantsTasks []patch.VariantTasks, generatedBy string) ([]string, error) {
+func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pairs TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
 	}
@@ -1406,7 +1392,7 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 			continue
 		}
 		// Add the new set of tasks to the build.
-		_, tasks, err := AddTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild, syncVariantsTasks, distroAliases)
+		_, tasks, err := AddTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases)
 		if err != nil {
 			return nil, err
 		}

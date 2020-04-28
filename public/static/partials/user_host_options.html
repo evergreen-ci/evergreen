@@ -92,20 +92,20 @@
              Volume:
             </span>
             <strong>
-              [[getHomeVolumeDisplayName()]]
+              [[ getHomeVolumeDisplayName() ]]
               <span class="fa fa-caret-down"></span>
             </strong>
           </button>
           <ul class="dropdown-menu" role="menu" aria-labelledby="volumes">
             <li role="presentation" class="dropdown-header">Home Volume</li>
             <li role="presentation">
-              <a role="menuitem" ng-click="setVolume()">
+              <a role="menuitem" ng-click="setHomeVolume()">
                 New Volume
               </a>
             </li>
-            <li role="presentation" ng-repeat="volume in $parent.availableVolumes">
-              <a role="menuitem" ng-click="setVolume(volume)">
-                [[ volume.display_name ? volume.display_name : volume.volume_id ]]
+            <li role="presentation" ng-repeat="volume in $parent.volumes | filter:{status:'free'}">
+              <a role="menuitem" ng-click="setHomeVolume(volume)">
+                [[ concatName(volume.volume_id, volume.display_name) ]]
               </a>
             </li>
           </ul>
@@ -132,7 +132,7 @@
       <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.spawnTaskChecked" />
         Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
       <br/>
-      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation || !spawnTask.runs_sync || !$parent.spawnTaskChecked" ng-model="$parent.spawnTaskSyncChecked" />
+      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation || !spawnTask.can_sync || !$parent.spawnTaskChecked" ng-model="$parent.spawnTaskSyncChecked" />
         Load from task sync
       <br/>
       <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.useTaskConfig" />

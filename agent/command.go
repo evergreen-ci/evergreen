@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -97,10 +99,10 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 
 		if options.isTaskCommands {
 			tc.setCurrentCommand(cmd)
-			tc.setCurrentTimeout(cmd)
+			tc.setCurrentIdleTimeout(cmd)
 			a.comm.UpdateLastMessageTime()
 		} else {
-			tc.setCurrentTimeout(nil)
+			tc.setCurrentIdleTimeout(nil)
 		}
 
 		start := time.Now()
@@ -188,9 +190,18 @@ func getFunctionName(commandInfo model.PluginCommandConf) string {
 
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was
 // requested when the task completes.
-func endTaskSyncCommands(tc *taskContext) *model.YAMLCommandSet {
-	if !tc.taskModel.ShouldSync {
+func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
+	if !tc.taskModel.SyncAtEndOpts.Enabled {
 		return nil
+	}
+	if statusFilter := tc.taskModel.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
+		if detail.Status == evergreen.TaskSucceeded {
+			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
+				return nil
+			}
+		} else if !utility.StringSliceContains(statusFilter, evergreen.TaskFailed) {
+			return nil
+		}
 	}
 	return &model.YAMLCommandSet{
 		SingleCommand: &model.PluginCommandConf{

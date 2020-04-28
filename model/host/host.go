@@ -327,6 +327,10 @@ const (
 	// Max total EBS volume size for user
 	DefaultMaxVolumeSizePerUser = 200
 
+	// provisioningCutoff is the threshold before a host is considered stuck in
+	// provisioning.
+	provisioningCutoff = 25 * time.Minute
+
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
 
@@ -363,6 +367,10 @@ func (h *Host) IdleTime() time.Duration {
 
 func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+}
+
+func (h *Host) IsContainer() bool {
+	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
 
 func IsIntentHostId(id string) bool {
@@ -1417,14 +1425,9 @@ func (h *Host) AddSSHKeyName(name string) error {
 }
 
 func FindHostsToTerminate() ([]Host, error) {
-	const (
-		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
-		provisioningCutoff = 25 * time.Minute
-
-		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
-		// as reachable again before giving up and terminating it.
-		unreachableCutoff = 5 * time.Minute
-	)
+	// unreachableCutoff is the threshold to wait for an decommissioned host to
+	// become marked as reachable again before giving up and terminating it.
+	const unreachableCutoff = 5 * time.Minute
 
 	now := time.Now()
 
@@ -1443,9 +1446,12 @@ func FindHostsToTerminate() ([]Host, error) {
 				StatusKey: evergreen.HostProvisionFailed,
 			},
 			{
-				// Non-user data hosts that are either taking too long to
-				// provision or a user data host has started tasks before
-				// provisioning finished but not checked in recently
+				// Either:
+				// - Host that does not provision with user data is taking too
+				//   long to provision
+				// - Host that provisions with user data is taking too long to
+				//   provision, but has already started running tasks and not
+				//   checked in recently.
 				"$and": []bson.M{
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
@@ -2357,4 +2363,24 @@ func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
 		ProviderKey:    evergreen.ProviderNameStatic,
 		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
 	}))
+}
+
+func (h *Host) IsSubjectToHostCreationThrottle() bool {
+	if h.UserHost {
+		return false
+	}
+
+	if h.SpawnOptions.SpawnedByTask {
+		return false
+	}
+
+	if h.HasContainers || h.ParentID != "" {
+		return false
+	}
+
+	if h.Status == evergreen.HostBuilding {
+		return false
+	}
+
+	return true
 }

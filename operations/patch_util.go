@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -57,6 +58,8 @@ type patchParams struct {
 	Tasks             []string
 	SyncBuildVariants []string
 	SyncTasks         []string
+	SyncStatuses      []string
+	SyncTimeout       time.Duration
 	Description       string
 	SkipConfirm       bool
 	Finalize          bool
@@ -77,6 +80,8 @@ type patchSubmission struct {
 	tasks             []string
 	syncBuildVariants []string
 	syncTasks         []string
+	syncStatuses      []string
+	syncTimeout       time.Duration
 	finalize          bool
 }
 
@@ -109,6 +114,8 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		alias:             p.Alias,
 		syncBuildVariants: p.SyncBuildVariants,
 		syncTasks:         p.SyncTasks,
+		syncStatuses:      p.SyncStatuses,
+		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
 	}
 

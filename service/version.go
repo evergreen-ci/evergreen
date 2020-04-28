@@ -258,7 +258,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if jsonMap.Abort {
-			if err = model.AbortVersion(projCtx.Version.Id, authName); err != nil {
+			if err = task.AbortVersion(projCtx.Version.Id, task.AbortInfo{User: authName}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

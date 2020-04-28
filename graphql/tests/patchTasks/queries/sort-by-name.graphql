@@ -1,9 +1,12 @@
 {
   patchTasks(patchId: "5e4ff3abe3c3317e352062e4", sortBy: NAME) {
-    id
-    status
-    baseStatus
-    displayName
-    buildVariant
+    tasks {
+      id
+      status
+      baseStatus
+      displayName
+      buildVariant
+    }
+    count
   }
 }

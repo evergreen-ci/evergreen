@@ -226,8 +226,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	newBanner := "new banner"
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostinit := restModel.APIHostInitConfig{
-		SSHTimeoutSeconds: 999,
-		HostThrottle:      64,
+		SSHTimeoutSeconds:    999,
+		HostThrottle:         64,
+		CloudStatusBatchSize: 1,
+		ProvisioningThrottle: 200,
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,

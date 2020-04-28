@@ -404,6 +404,28 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
     return orderedTestStatuses.indexOf(task.test_result.status);
   }
 
+  $scope.timeoutLabel = function (type) {
+    switch (type) {
+      case "exec":
+        return "execution";
+      case "idle":
+        return "idle";
+      default:
+        return type;
+    }
+  }
+
+  $scope.timeoutTooltip = function (type) {
+    switch (type) {
+      case "exec":
+        return "The displayed command took too long to return";
+      case "idle":
+        return "While the displayed command running, there was no output from it for too long";
+      default:
+        return "";
+    }
+  }
+
   // filter tests in a task based on their display name
   $scope.filterTests = function () {
     if ($scope.task.searchField != "") {

@@ -133,7 +133,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"distro":  h.Distro.Id,
 		})
 
-		event.LogHostTerminatedExternally(h.Id)
+		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		// the instance was terminated from outside our control
 		catcher := grip.NewBasicCatcher()

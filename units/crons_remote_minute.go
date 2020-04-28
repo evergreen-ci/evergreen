@@ -48,19 +48,19 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateIdleHostJobs(j.env),
-		PopulateHostTerminationJobs(j.env),
-		PopulateHostMonitoring(j.env),
-		PopulateEventAlertProcessing(j.env, 1),
 		PopulateBackgroundStatsJobs(j.env, 0),
+		PopulateCommitQueueJobs(j.env),
+		PopulateContainerStateJobs(j.env),
+		PopulateDataCleanupJobs(j.env),
+		PopulateEventAlertProcessing(j.env, 1),
+		PopulateGenerateTasksJobs(j.env),
+		PopulateHostMonitoring(j.env),
+		PopulateHostTerminationJobs(j.env),
+		PopulateIdleHostJobs(j.env),
 		PopulateLastContainerFinishTimeJobs(),
+		PopulateOldestImageRemovalJobs(),
 		PopulateParentDecommissionJobs(),
 		PopulatePeriodicNotificationJobs(1),
-		PopulateContainerStateJobs(j.env),
-		PopulateOldestImageRemovalJobs(),
-		PopulateCommitQueueJobs(j.env),
-		PopulateGenerateTasksJobs(j.env),
-		PopulateDataCleanupJobs(j.env),
 	}
 
 	catcher := grip.NewBasicCatcher()

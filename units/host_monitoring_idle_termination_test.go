@@ -16,30 +16,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, error) {
+func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {
 	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
-	if err := queue.Start(ctx); err != nil {
-		return nil, err
-	}
+	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 
-	if err := PopulateIdleHostJobs(env)(ctx, queue); err != nil {
-		return nil, err
-	}
+	require.NoError(t, PopulateIdleHostJobs(env)(ctx, queue))
 
 	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
-
-	terminated := []string{}
-
+	out := []string{}
+	num := 0
 	for j := range queue.Results(ctx) {
 		if ij, ok := j.(*idleHostJob); ok {
-			if ij.Terminated {
-				terminated = append(terminated, ij.HostID)
-			}
+			num += ij.Terminated
+			out = append(out, ij.TerminatedHosts...)
 		}
 	}
 
-	return terminated, nil
+	assert.Equal(t, num, len(out))
+
+	return num, out
 }
 
 // testFlaggingIdleHostsSetupTest resets the relevant db collections prior to a test
@@ -81,9 +77,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
 
 		// finding idle hosts should not return the host
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("EvenWithLastCommunicationTimeGreaterThanTenMinutes", func(t *testing.T) {
@@ -110,9 +106,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
 
 		// finding idle hosts should not return the host
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleAtLeastFifteenMinutesAndWillIncurPaymentInLessThanTenMinutes", func(t *testing.T) {
@@ -154,10 +150,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
 
 		// finding idle hosts should only return the first host
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(idle))
-		assert.Equal(t, "h1", idle[0])
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 1, num)
+		assert.Equal(t, hosts[0], "h1")
 	})
 
 	t.Run("HostsNotCurrentlyRunningTaskWithLastCommunicationTimeGreaterThanTenMinsShouldBeMarkedAsIdle", func(t *testing.T) {
@@ -198,10 +193,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
 
 		// finding idle hosts should only return the first host 'h1'
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(idle))
-		assert.Equal(t, "h1", idle[0])
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 1, num)
+		assert.Equal(t, hosts[0], "h1")
 	})
 
 	t.Run("HostsThatHaveBeenProvisionedShouldHaveTheTimerReset", func(t *testing.T) {
@@ -227,9 +221,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, h5.Insert(), "error inserting host '%s'", h5.Id)
 
 		// 'h5' should not be flagged as idle
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
@@ -259,9 +253,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
 
 		// finding idle hosts should not return the host
-		idle, err := flagIdleHosts(ctx, env)
-		require.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("NonLegacyHostsThatNeedNewAgentMonitorsShouldNotBeMarkedIdle", func(t *testing.T) {
@@ -291,9 +285,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
 
 		// finding idle hosts should not return the host
-		idle, err := flagIdleHosts(ctx, env)
-		require.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("NonLegacyHostsThatDoNotNeedNewAgentMonitorsShouldBeMarkedIdle", func(t *testing.T) {
@@ -311,7 +305,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    "host1",
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
@@ -323,9 +317,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
 
 		// finding idle hosts should not return the host
-		idle, err := flagIdleHosts(ctx, env)
-		require.NoError(t, err)
-		assert.Equal(t, 1, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 1, num)
+		assert.Equal(t, hosts[0], "host1")
 	})
 }
 
@@ -418,15 +412,12 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
-		idle, err := flagIdleHosts(ctx, env)
-		require.NoError(t, err)
-		require.Len(t, idle, 3)
-		for _, h := range []host.Host{host3, host4, host5} {
-			dbHost, err := host.FindOneId(h.Id)
-			require.NoError(t, err)
-			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status, h.Id)
-			assert.Contains(t, idle, h.Id)
-		}
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 3, num)
+
+		assert.Contains(t, hosts, "h3")
+		assert.Contains(t, hosts, "h4")
+		assert.Contains(t, hosts, "h5")
 	})
 }
 
@@ -473,9 +464,9 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
 
 		// Nither host should be returned
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(idle))
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("MinimumHostsIsTwo;OneHostIsRunningItsTaskAndTwoHostsAreIdle", func(t *testing.T) {
@@ -522,10 +513,9 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, host3.Insert(), "error inserting host '%s'", host3.Id)
 
 		// Only the oldest host not running a task should be flagged as idle - leaving 2 running hosts.
-		idle, err := flagIdleHosts(ctx, env)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(idle))
-		assert.Equal(t, "h1", idle[0])
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Equal(t, 1, num)
+		assert.Equal(t, "h1", hosts[0])
 	})
 }
 

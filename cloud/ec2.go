@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -941,24 +942,32 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	for _, attachedVolume := range h.Volumes {
-		v, err := host.FindVolumeByID(attachedVolume.VolumeID)
+	for _, vol := range h.Volumes {
+		volDB, err := host.FindVolumeByID(vol.VolumeID)
 		if err != nil {
-			return errors.Wrapf(err, "can't get volume '%s' for host '%s'", attachedVolume.VolumeID, h.Id)
+			return errors.Wrap(err, "can't query for volumes")
 		}
-		if v == nil {
+		if volDB == nil {
 			continue
 		}
-		if err = m.extendVolumeExpiration(ctx, v); err != nil {
+
+		if err = m.extendVolumeExpiration(ctx, volDB); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error updating volume expiration",
-				"user":          user,
-				"host_id":       h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-				"volume":        attachedVolume.VolumeID,
+				"message": "error updating volume expiration",
+				"user":    user,
+				"host_id": h.Id,
+				"volume":  volDB.ID,
 			}))
-			return errors.Wrapf(err, "error updating volume '%s' expiration", v.ID)
+			return errors.Wrapf(err, "error updating volume '%s' expiration", volDB.ID)
+		}
+
+		if err = host.UnsetVolumeHost(volDB.ID); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"host_id":   h.Id,
+				"volume_id": volDB.ID,
+				"op":        "terminating host",
+				"message":   "problem un-setting host info on volume records",
+			}))
 		}
 	}
 
@@ -1314,6 +1323,23 @@ func (m *ec2Manager) extendVolumeExpiration(ctx context.Context, volume *host.Vo
 	}
 
 	return nil
+}
+
+func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	_, err := m.client.ModifyVolume(ctx, &ec2.ModifyVolumeInput{
+		VolumeId: aws.String(volume.ID),
+		Size:     aws.Int64(int64(opts.Size)),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "error modifying volume '%s' in client", volume.ID)
+	}
+
+	return errors.Wrapf(volume.SetSize(opts.Size), "error modifying volume '%s' in db", volume.ID)
 }
 
 // GetDNSName returns the DNS name for the host.

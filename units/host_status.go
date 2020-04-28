@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,6 +37,7 @@ func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyJobName, id))
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{cloudHostReadyJobName})
 	// Jobs never appear to exceed 1 minute, but add a bunch of padding.
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: 10 * time.Minute})
 	return j
@@ -65,11 +67,17 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	// Collect hosts by provider and region
-	startingHostsByClient, err := host.StartingHostsByClient()
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "unable to get evergreen settings"))
+		return
+	}
+	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get starting hosts"))
 		return
 	}
+clientsLoop:
 	for clientOpts, hosts := range startingHostsByClient {
 		if ctx.Err() != nil {
 			j.AddError(ctx.Err())
@@ -92,12 +100,16 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		if batch, ok := m.(cloud.BatchManager); ok {
 			statuses, err := batch.GetInstanceStatuses(ctx, hosts)
 			if err != nil {
+				if strings.Contains(err.Error(), "InvalidInstanceID.NotFound") {
+					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
+					continue clientsLoop
+				}
 				j.AddError(errors.Wrap(err, "error getting host statuses for providers"))
-				continue
+				continue clientsLoop
 			}
 			if len(statuses) != len(hosts) {
 				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
-				continue
+				continue clientsLoop
 			}
 			hostIDs := []string{}
 			for _, h := range hosts {
@@ -106,17 +118,42 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 			for i := range hosts {
 				j.AddError(errors.Wrap(setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
 			}
-			continue
+			continue clientsLoop
 		}
 		for _, h := range hosts {
 			hostStatus, err := m.GetInstanceStatus(ctx, &h)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
-				continue
+				continue clientsLoop
 			}
 			j.AddError(errors.Wrap(setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
 		}
 	}
+}
+
+func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr string) error {
+	pieces := strings.Split(awsErr, "'")
+	if len(pieces) != 3 {
+		return errors.Errorf("unexpected format of AWS error: %s", awsErr)
+	}
+	instanceIDs := strings.Split(pieces[1], ",")
+	grip.Warning(message.Fields{
+		"message": "host IDs not found in AWS, will terminate",
+		"hosts":   instanceIDs,
+	})
+	catcher := grip.NewBasicCatcher()
+	for _, hostID := range instanceIDs {
+		h, err := host.FindOneId(hostID)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		if h == nil {
+			continue
+		}
+		catcher.Add(j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, true, "instance ID not found")))
+	}
+	return catcher.Resolve()
 }
 
 // setCloudHostStatus sets the host's status to HostProvisioning if host is running.
