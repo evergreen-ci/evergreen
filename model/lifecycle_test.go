@@ -1538,6 +1538,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.True(dbTask.Aborted)
+	assert.Equal("test", dbTask.AbortInfo.User)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 	assert.True(dbTask.Activated)
 

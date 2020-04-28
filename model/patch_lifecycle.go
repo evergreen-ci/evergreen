@@ -436,12 +436,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	return patchVersion, nil
 }
 
-func CancelPatch(p *patch.Patch, caller string) error {
+func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	if p.Version != "" {
-		if err := SetVersionActivation(p.Version, false, caller); err != nil {
+		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(AbortVersion(p.Version, caller))
+		return errors.WithStack(task.AbortVersion(p.Version, reason))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
@@ -451,7 +451,7 @@ func CancelPatch(p *patch.Patch, caller string) error {
 // the given time, with the same pr number, and base repository. Tasks which
 // are abortable (see model/task.IsAbortable()) will be aborted, while
 // dispatched/running/completed tasks will not be affected
-func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string, prNumber int) error {
+func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "initial patch fetch failed")
@@ -468,7 +468,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 	catcher := grip.NewSimpleCatcher()
 	for i, _ := range patches {
 		if patches[i].Version != "" {
-			if err = CancelPatch(&patches[i], evergreen.GithubPRRequester); err != nil {
+			if err = CancelPatch(&patches[i], task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",
 					"created_before": createdBefore.String(),

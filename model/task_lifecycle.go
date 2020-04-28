@@ -264,7 +264,7 @@ func AbortTask(taskId, caller string) error {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-	return t.SetAborted()
+	return t.SetAborted(task.AbortInfo{User: caller})
 }
 
 // Deactivate any previously activated but undispatched
@@ -558,8 +558,8 @@ func UpdateUnblockedDependencies(t *task.Task) error {
 	return nil
 }
 
-func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, requester string) error {
-	p, err := patch.FindOne(patch.ByVersion(versionId))
+func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, caller string) error {
+	p, err := patch.FindOne(patch.ByVersion(t.Version))
 	if err != nil {
 		return errors.Wrapf(err, "error finding patch")
 	}
@@ -585,7 +585,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, req
 	}
 	removed, err := cq.Remove(issue)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", versionId, projectRef.Identifier)
+		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", t.Version, projectRef.Identifier)
 	}
 	if !removed {
 		return nil
@@ -604,7 +604,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, req
 			var url string
 			uiConfig := evergreen.UIConfig{}
 			if err := uiConfig.Get(env); err == nil {
-				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionId)
+				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, t.Version)
 			}
 			status := message.GithubStatus{
 				Context:     commitqueue.Context,
@@ -621,7 +621,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, versionId, req
 	}
 
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
-	return errors.Wrapf(CancelPatch(p, requester), "Error aborting failed commit queue patch")
+	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "Error aborting failed commit queue patch")
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {

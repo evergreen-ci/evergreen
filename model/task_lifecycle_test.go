@@ -1240,8 +1240,8 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 		BuildId:   b.Id,
 	}
 	q := []commitqueue.CommitQueueItem{
-		commitqueue.CommitQueueItem{Issue: "12"},
-		commitqueue.CommitQueueItem{Issue: "42"},
+		{Issue: "12"},
+		{Issue: "42"},
 	}
 	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Processing: true, Queue: q}
 	assert.NoError(t, v.Insert())
@@ -1255,7 +1255,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 
 	pRef := &ProjectRef{Identifier: cq.ProjectID}
 
-	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, v.Id, evergreen.User))
+	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)

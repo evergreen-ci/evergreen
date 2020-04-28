@@ -148,8 +148,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		}))
 
 		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
-			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
-			patchDoc.GithubPatchData.PRNumber))
+			false, patchDoc.Id.Hex(), patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber))
 	}
 }
 

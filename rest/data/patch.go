@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -126,7 +127,7 @@ func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
 			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
 	}
-	return model.CancelPatch(p, user)
+	return model.CancelPatch(p, task.AbortInfo{User: user})
 }
 
 // SetPatchPriority attempts to set the priority on the corresponding version.
@@ -209,7 +210,7 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 		return err
 	}
 
-	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
+	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt, true, "",
 		owner, repo, *event.Number)
 	if err != nil {
 		return gimlet.ErrorResponse{
