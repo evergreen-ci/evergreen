@@ -536,6 +536,7 @@ func hostModifyVolume() cli.Command {
 	const (
 		idFlagName = "id"
 		sizeFlag   = "size"
+		extendFlag = "extend"
 	)
 	return cli.Command{
 		Name:  "modify",
@@ -553,17 +554,22 @@ func hostModifyVolume() cli.Command {
 				Name:  joinFlagNames(sizeFlag, "s"),
 				Usage: "set new volume `SIZE` in GiB",
 			},
+			cli.DurationFlag{
+				Name:  extendFlag,
+				Usage: "extend volume's expiration",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireStringFlag(idFlagName),
-			requireAtLeastOneFlag(displayNameFlagName, sizeFlag),
+			requireAtLeastOneFlag(displayNameFlagName, sizeFlag, extendFlag),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			volumeID := c.String(idFlagName)
 			name := c.String(displayNameFlagName)
 			size := c.Int(sizeFlag)
+			extendDuration := c.Duration(extendFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -578,6 +584,9 @@ func hostModifyVolume() cli.Command {
 			opts := restModel.VolumeModifyOptions{
 				NewName: name,
 				Size:    size,
+			}
+			if extendDuration > 0 {
+				opts.Expiration = time.Now().Add(extendDuration)
 			}
 			return client.ModifyVolume(ctx, volumeID, &opts)
 		},
