@@ -280,21 +280,25 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
 	usr := route.MustHaveUser(ctx)
 	userIdParam := usr.Username()
 	if userID != nil {
 		userIdParam = *userID
 	}
-	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	patchPointers := []*restModel.APIPatch{}
 	if err != nil {
-		return patchPointers, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	for i := range patches {
 		patchPointers = append(patchPointers, &patches[i])
 	}
-	return patchPointers, nil
+	userPatches := UserPatches{
+		Patches:            patchPointers,
+		FilteredPatchCount: *count,
+	}
+	return &userPatches, nil
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
