@@ -16,6 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.curVolumeData;
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
+    $scope.maxUnexpirableVolumesPerUser = $window.maxUnexpirableVolumesPerUser;
     $scope.spawnReqSent = false;
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
@@ -236,6 +237,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         var expiretime = moment().diff(volume.expiration, 'seconds');
         volume.expires_in = moment.duration(expiretime, 'seconds').humanize();
       }
+
+      volume.original_expiration = new Date(volume.expiration);
+      volume.current_expiration = new Date(volume.expiration);
+      volume.original_no_expiration = volume.no_expiration;
     }
 
     $scope.computeUptime = function (host) {
@@ -290,8 +295,18 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }).length;
     }
 
-    $scope.unexpirableEnabled = function () {
+    $scope.unexpirableHostEnabled = function () {
       return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData && ($scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null)
+    }
+
+    $scope.availableUnexpirableVolumes = function () {
+      return $scope.maxUnexpirableVolumesPerUser - _.where($scope.volumes, {
+        no_expiration: true
+      }).length;
+    }
+
+    $scope.unexpirableVolumeEnabled = function () {
+      return $scope.availableUnexpirableVolumes() > 0 || ($scope.curVolumeData && $scope.curVolumeData.no_expiration)
     }
 
     $scope.generatePassword = function () {
@@ -485,7 +500,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.update = function () {
+    $scope.updateHost = function () {
       let promises = [];
       // update expiration if it changed
       if (!moment($scope.curHostData.original_expiration).startOf("second").isSame(moment($scope.curHostData.current_expiration).startOf("second"))) {
@@ -562,6 +577,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       if (action == "attachVolume" && $scope.volumeAttachHost) {
         data.host_id = $scope.volumeAttachHost.id;
       }
+      if (action == "extendVolumeExpiration") {
+        data.no_expiration = $scope.curVolumeData.no_expiration;
+        data.expiration = $scope.curVolumeData.current_expiration;
+      }
+
       mciSpawnRestService.updateVolume(action, $scope.curVolumeData.volume_id, data,
       {
           success: function (resp) {
@@ -572,6 +592,21 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         }
       }
     );
+    }
+
+    $scope.updateVolumeExpirationEnabled = function() {
+      if (!$scope.curVolumeData) {
+        return false;
+      }
+
+      if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
+        return true;
+      }
+      if (!$scope.curVolumeData.no_expiration && !moment($scope.curVolumeData.original_expiration).startOf("second").isSame(moment($scope.curVolumeData.current_expiration).startOf("second"))) {
+        return true;
+      }
+
+      return false;
     }
 
     // API helper methods
