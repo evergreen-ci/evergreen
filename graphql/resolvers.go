@@ -896,6 +896,21 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, patchId string) (*restModel.APIPatch, error) {
+	usr := route.MustHaveUser(ctx)
+	username := usr.Username()
+	p, err := r.sc.FindPatchById(patchId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchId, err.Error()))
+	}
+	err = r.sc.AbortPatch(patchId, username)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error cancelling patch %s: %s", patchId, err.Error()))
+	}
+	p, _ = r.sc.FindPatchById(patchId)
+	return p, nil
+}
+
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
