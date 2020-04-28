@@ -7,9 +7,12 @@
     page: 0
     limit: 2
   ) {
-    status
-    id
-    description
-    alias
+    patches {
+      status
+      id
+      description
+      alias
+    }
+    filteredPatchCount
   }
 }
