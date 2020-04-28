@@ -593,9 +593,12 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+
+	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	s.Require().NoError(err)
+	s.NoError(g.Save(context.Background(), p, pp, v, &genTask, pm))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
@@ -669,9 +672,11 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
+	s.Require().NoError(err)
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0], pm))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -758,9 +763,11 @@ buildvariants:
 		},
 	}
 
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
+	s.Require().NoError(err)
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &t1, pm))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -802,9 +809,11 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	s.Require().NoError(err)
+	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists, pm))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
