@@ -299,6 +299,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.unexpirableEnabled = function () {
       return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData && ($scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null)
+    };
 
     $scope.availableVolumeSize = function () {
       var totalSize = $scope.maxVolumeSizePerUser;
@@ -310,7 +311,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.invalidVolumeSize = function(size) {
         return $scope.availableVolumeSize() - size < 0;
-    }
+    };
 
     $scope.generatePassword = function () {
       $scope.curHostData.password = _.shuffle(
