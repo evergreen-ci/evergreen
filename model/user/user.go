@@ -251,7 +251,7 @@ func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 
 func (u *DBUser) AddRole(role string) error {
 	if utility.StringSliceContains(u.SystemRoles, role) {
-		return errors.Errorf("cannot add duplicate role '%s'", role)
+		return nil
 	}
 	update := bson.M{
 		"$push": bson.M{RolesKey: role},
