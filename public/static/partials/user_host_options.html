@@ -112,7 +112,7 @@
           </ul>
           <div ng-show="!$parent.homeVolumeID">
             <label> Volume size (GB) </label>
-            <input type="number" ng-disabled="availableVolumes() <= 0" ng-model="$parent.homeVolumeSize" min="1" max="availableVolumeSize()" />
+            <input type="number" ng-disabled="availableVolumeSize() <= 0" ng-model="$parent.homeVolumeSize" min="1" max="availableVolumeSize()" />
             <span class="warning-text" ng-show="invalidVolumeSize($parent.homeVolumeSize)"><i class="fa fa-warning"></i>
           Can have at most [[ maxVolumeSizePerUser ]] GiB per user
             </span>

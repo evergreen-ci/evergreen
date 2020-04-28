@@ -200,10 +200,10 @@ Evergreen - My Hosts
           </tbody>
         </table>
       </div>
-      <md-button type="button" class="btn-info md-raised" ng-click="openVolumeModal('createVolume')" ng-disabled="!availableVolumes()" ng-cloak>
+      <md-button type="button" class="btn-info md-raised" ng-click="openVolumeModal('createVolume')" ng-disabled="availableVolumeSize() <= 0" ng-cloak>
         Spawn Volume
       </md-button>
-      <em ng-class="{'text-muted': availableVolumes(), 'text-error': !availableVolumes()}" style="margin-left: 5px;" ng-cloak>
+      <em ng-class="{'text-muted': availableVolumeSize() > 0, 'text-error': availableVolumeSize() <= 0}" style="margin-left: 5px;" ng-cloak>
         Limit [[maxVolumeSizePerUser]] GiB per User
       </em>
     </div>
