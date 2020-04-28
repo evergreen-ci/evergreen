@@ -173,10 +173,10 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 					{
 						StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}},
 						bootstrapKey: distro.BootstrapMethodUserData,
-						// User data hosts have a grace period during which
-						// they are not considered idle to give agents time to
-						// start.
-						LastCommunicationTimeKey: bson.M{"$lte": time.Now().Add(-MaxUncommunicativeInterval)},
+						// User data hosts have a grace period between creation
+						// and provisioning during which they are not considered
+						// for idle termination to give agents time to start.
+						CreateTimeKey: bson.M{"$lte": time.Now().Add(-provisioningCutoff)},
 					},
 				},
 			},
