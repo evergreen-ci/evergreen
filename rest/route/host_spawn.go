@@ -867,6 +867,17 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	if h.opts.NoExpiration {
+		if err = h.sc.SetVolumeNoExpiration(volume, true); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
+	// no cloud modifications needed
+	if utility.IsZeroTime(h.opts.Expiration) && h.opts.Size == 0 {
+		return nil
+	}
+
 	if h.opts.Size != 0 {
 		sizeIncrease := h.opts.Size - volume.Size
 		if sizeIncrease <= 0 {
@@ -896,6 +907,10 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("can't extend expiration past max duration '%s'", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)),
 			})
+		}
+
+		if err = h.sc.SetVolumeNoExpiration(volume, false); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 

@@ -534,9 +534,10 @@ func hostDetach() cli.Command {
 
 func hostModifyVolume() cli.Command {
 	const (
-		idFlagName = "id"
-		sizeFlag   = "size"
-		extendFlag = "extend"
+		idFlagName       = "id"
+		sizeFlag         = "size"
+		extendFlag       = "extend"
+		noExpireFlagName = "no-expire"
 	)
 	return cli.Command{
 		Name:  "modify",
@@ -558,11 +559,16 @@ func hostModifyVolume() cli.Command {
 				Name:  extendFlag,
 				Usage: "extend volume's expiration",
 			},
+			cli.BoolFlag{
+				Name:  noExpireFlagName,
+				Usage: "make volume never expire",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireStringFlag(idFlagName),
-			requireAtLeastOneFlag(displayNameFlagName, sizeFlag, extendFlag),
+			requireAtLeastOneFlag(displayNameFlagName, sizeFlag, extendFlag, noExpireFlagName),
+			mutuallyExclusiveArgs(false, extendFlag, noExpireFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -570,6 +576,7 @@ func hostModifyVolume() cli.Command {
 			name := c.String(displayNameFlagName)
 			size := c.Int(sizeFlag)
 			extendDuration := c.Duration(extendFlag)
+			noExpiration := c.Bool(noExpireFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -582,8 +589,9 @@ func hostModifyVolume() cli.Command {
 			defer client.Close()
 
 			opts := restModel.VolumeModifyOptions{
-				NewName: name,
-				Size:    size,
+				NewName:      name,
+				Size:         size,
+				NoExpiration: noExpiration,
 			}
 			if extendDuration > 0 {
 				opts.Expiration = time.Now().Add(extendDuration)
