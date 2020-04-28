@@ -7,19 +7,18 @@ mciModule.directive('hazardLevelCell', function() {
   }
 
   function ratio(a, b) {
-    return 100 * (a > b ? a / b - 1 : -b / a + 1)
+    return 100 * ((a/b) - 1);
   }
 
   function renderUnfoldedItem(scope, row) {
-    var a = scope.row.entity.statistics.next.mean
-    var b = scope.row.entity.statistics.previous.mean
-    // Check mode (ops/sec or latency)
-    scope.ratio = a > 0 ? ratio(a, b) : ratio(b, a)
+    var a = scope.row.entity.statistics.next.mean;
+    var b = scope.row.entity.statistics.previous.mean;
+    scope.ratio = ratio(a, b);
     scope.color = (
       scope.ratio > 0 ? 'green' :
       scope.ratio < 0 ? 'red' :
       'black'
-    )
+    );
   }
 
   return {
