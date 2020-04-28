@@ -199,9 +199,9 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
-func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.Volume) (*host.Volume, error) {
+func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.Volume, provider string) (*host.Volume, error) {
 	mgrOpts := ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: provider,
 		Region:   AztoRegion(volume.AvailabilityZone),
 	}
 	mgr, err := GetManager(ctx, env, mgrOpts)

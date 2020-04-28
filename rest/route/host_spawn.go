@@ -681,7 +681,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	res, err := cloud.CreateVolume(ctx, h.env, h.volume)
+	res, err := cloud.CreateVolume(ctx, h.env, h.volume, h.provider)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

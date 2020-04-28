@@ -492,7 +492,7 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := uis.env.Context()
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, authedUser)
-	if _, err := cloud.CreateVolume(ctx, uis.env, volume); err != nil {
+	if _, err := cloud.CreateVolume(ctx, uis.env, volume, evergreen.ProviderNameEc2OnDemand); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error creating volume"))
 		return
 	}
