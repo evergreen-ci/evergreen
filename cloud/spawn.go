@@ -199,6 +199,22 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
+func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.Volume) (*host.Volume, error) {
+	mgrOpts := ManagerOpts{
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   AztoRegion(volume.AvailabilityZone),
+	}
+	mgr, err := GetManager(ctx, env, mgrOpts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting manager")
+	}
+
+	if volume, err = mgr.CreateVolume(ctx, volume); err != nil {
+		return nil, errors.Wrapf(err, "error creating volume")
+	}
+	return volume, nil
+}
+
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {

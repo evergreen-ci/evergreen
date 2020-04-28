@@ -681,27 +681,12 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	mgrOpts := cloud.ManagerOpts{
-		Provider: h.provider,
-		Region:   cloud.AztoRegion(h.volume.AvailabilityZone),
-	}
-	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
+	res, err := cloud.CreateVolume(ctx, h.env, h.volume)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-
-	if h.volume, err = mgr.CreateVolume(ctx, h.volume); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
-	}
-
 	volumeModel := &model.APIVolume{}
-	err = volumeModel.BuildFromService(h.volume)
+	err = volumeModel.BuildFromService(res)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
