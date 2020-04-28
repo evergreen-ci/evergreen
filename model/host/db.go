@@ -419,6 +419,7 @@ func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 		ProvisionAttemptsKey: bson.M{"$lte": attempt},
 		StatusKey:            evergreen.HostProvisioning,
 		NeedsReprovisionKey:  bson.M{"$exists": false},
+		ProvisionedKey:       false,
 	}))
 }
 
