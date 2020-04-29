@@ -81,12 +81,13 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Distro                     distro.Distro
-		Task                       *task.Task
-		MaxHostsPerUser            int
-		MaxUnexpirableHostsPerUser int
+		Distro                       distro.Distro
+		Task                         *task.Task
+		MaxHostsPerUser              int
+		MaxUnexpirableHostsPerUser   int
+		MaxUnexpirableVolumesPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, settings.UnexpirableHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, settings.UnexpirableHostsPerUser, settings.UnexpirableVolumesPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {

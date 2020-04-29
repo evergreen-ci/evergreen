@@ -326,6 +326,8 @@ const (
 	DefaultUnexpirableHostsPerUser = 1
 	// Max total EBS volume size for user
 	DefaultMaxVolumeSizePerUser = 200
+	// Max number of volumes with no expiration for user
+	DefaultUnexpirableVolumesPerUser = 1
 
 	// provisioningCutoff is the threshold before a host is considered stuck in
 	// provisioning.

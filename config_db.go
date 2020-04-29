@@ -40,6 +40,7 @@ var (
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")
 	spawnHostsKey         = bsonutil.MustHaveTag(Settings{}, "SpawnHostsPerUser")
 	unexpirableHostsKey   = bsonutil.MustHaveTag(Settings{}, "UnexpirableHostsPerUser")
+	unexpirableVolumesKey = bsonutil.MustHaveTag(Settings{}, "UnexpirableVolumesPerUser")
 	schedulerConfigKey    = bsonutil.MustHaveTag(Settings{}, "Scheduler")
 	amboyKey              = bsonutil.MustHaveTag(Settings{}, "Amboy")
 	expansionsKey         = bsonutil.MustHaveTag(Settings{}, "Expansions")

@@ -69,6 +69,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
 	assert.Equal(testSettings.SpawnHostsPerUser, *apiSettings.SpawnHostsPerUser)
 	assert.Equal(testSettings.UnexpirableHostsPerUser, *apiSettings.UnexpirableHostsPerUser)
+	assert.Equal(testSettings.UnexpirableVolumesPerUser, *apiSettings.UnexpirableVolumesPerUser)
 	for k, v := range testSettings.Credentials {
 		assert.Contains(apiSettings.Credentials, k)
 		assert.Equal(v, apiSettings.Credentials[k])
