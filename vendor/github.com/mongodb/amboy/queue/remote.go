@@ -49,9 +49,15 @@ func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.Queue
 
 	if opts.Client == nil {
 		if opts.MDB.UseGroups {
-			driver = newMongoGroupDriver(opts.Name, opts.MDB, opts.MDB.GroupName)
+			driver, err = newMongoGroupDriver(opts.Name, opts.MDB, opts.MDB.GroupName)
+			if err != nil {
+				return nil, errors.Wrap(err, "problem creating group driver")
+			}
 		} else {
-			driver = newMongoDriver(opts.Name, opts.MDB)
+			driver, err = newMongoDriver(opts.Name, opts.MDB)
+			if err != nil {
+				return nil, errors.Wrap(err, "problem creating driver")
+			}
 		}
 
 		err = driver.Open(ctx)

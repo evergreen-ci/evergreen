@@ -310,7 +310,38 @@ func (s *ManagerSuite) TestCompleteJob() {
 	s.Equal(3, jobCount)
 }
 
-func (s *ManagerSuite) TestCompleteJobsByType() {
+func (s *ManagerSuite) TestCompleteJobsInvalidFilter() {
+	s.Error(s.manager.CompleteJobs(s.ctx, "invalid"))
+	s.Error(s.manager.CompleteJobs(s.ctx, Completed))
+}
+
+func (s *ManagerSuite) TestCompleteJobsValidFilter() {
+	j1 := job.NewShellJob("ls", "")
+	s.Require().NoError(s.queue.Put(s.ctx, j1))
+	j2 := newTestJob("0")
+	s.Require().NoError(s.queue.Put(s.ctx, j2))
+	j3 := newTestJob("1")
+	s.Require().NoError(s.queue.Put(s.ctx, j3))
+
+	s.Require().NoError(s.manager.CompleteJobs(s.ctx, Pending))
+	jobCount := 0
+	for jobStats := range s.queue.JobStats(s.ctx) {
+		s.True(jobStats.Completed)
+		_, ok := s.manager.(*dbQueueManager)
+		if ok {
+			s.Equal(3, jobStats.ModificationCount)
+		}
+		jobCount++
+	}
+	s.Equal(3, jobCount)
+}
+
+func (s *ManagerSuite) TestCompleteJobsByTypeInvalidFilter() {
+	s.Error(s.manager.CompleteJobsByType(s.ctx, "invalid", "type"))
+	s.Error(s.manager.CompleteJobsByType(s.ctx, Completed, "type"))
+}
+
+func (s *ManagerSuite) TestCompleteJobsByTypeValidFilter() {
 	j1 := job.NewShellJob("ls", "")
 	s.Require().NoError(s.queue.Put(s.ctx, j1))
 	j2 := newTestJob("0")

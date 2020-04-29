@@ -50,7 +50,7 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 		}
 
 		if newStatus == evergreen.HostTerminated {
-			if !queue.Started() {
+			if !queue.Info().Started {
 				return "", gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    HostTerminationQueueingError,

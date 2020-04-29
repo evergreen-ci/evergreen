@@ -105,12 +105,18 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 	}
 }
 
-// Started reports if the queue has begun processing jobs.
-func (q *remoteBase) Started() bool {
+func (q *remoteBase) Info() amboy.QueueInfo {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	return q.started
+	lockTimeout := amboy.LockTimeout
+	if q.driver != nil {
+		lockTimeout = q.driver.LockTimeout()
+	}
+	return amboy.QueueInfo{
+		Started:     q.started,
+		LockTimeout: lockTimeout,
+	}
 }
 
 func (q *remoteBase) Save(ctx context.Context, j amboy.Job) error {
@@ -154,7 +160,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 
 			err = q.driver.Complete(ctx, j)
 			if err != nil {
-				if time.Since(startAt) > time.Minute+amboy.LockTimeout {
+				if time.Since(startAt) > time.Minute+q.Info().LockTimeout {
 					grip.Warning(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
@@ -225,7 +231,7 @@ func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	return q.driver.JobStats(ctx)
 }
 
-// Stats returns a amboy. QueueStats object that reflects the progress
+// Stats returns a amboy.QueueStats object that reflects the progress
 // jobs in the queue.
 func (q *remoteBase) Stats(ctx context.Context) amboy.QueueStats {
 	output := q.driver.Stats(ctx)
@@ -267,7 +273,7 @@ func (q *remoteBase) Driver() remoteQueueDriver {
 // instances. It is an error to change Driver instances after starting
 // a queue. This method is not part of the amboy.Queue interface.
 func (q *remoteBase) SetDriver(d remoteQueueDriver) error {
-	if q.Started() {
+	if q.Info().Started {
 		return errors.New("cannot change drivers after starting queue")
 	}
 	q.driver = d
@@ -282,7 +288,7 @@ func (q *remoteBase) SetDriver(d remoteQueueDriver) error {
 // error. To release the resources created when starting the queue,
 // cancel the context used when starting the queue.
 func (q *remoteBase) Start(ctx context.Context) error {
-	if q.Started() {
+	if q.Info().Started {
 		return nil
 	}
 
@@ -305,9 +311,8 @@ func (q *remoteBase) Start(ctx context.Context) error {
 	}
 
 	go q.jobServer(ctx)
-	q.mutex.Lock()
+
 	q.started = true
-	q.mutex.Unlock()
 
 	return nil
 }
@@ -336,16 +341,20 @@ func (q *remoteBase) canDispatch(j amboy.Job) bool {
 	return true
 }
 
-func isDispatchable(stat amboy.JobStatusInfo) bool {
+func isDispatchable(stat amboy.JobStatusInfo, lockTimeout time.Duration) bool {
+	if jobCanRestart(stat, lockTimeout) {
+		return true
+	}
 	if stat.Completed {
 		return false
 	}
 	if stat.InProgress {
-		if time.Since(stat.ModificationTime) > amboy.LockTimeout {
-			return true
-		}
 		return false
 	}
 
 	return true
+}
+
+func jobCanRestart(stat amboy.JobStatusInfo, lockTimeout time.Duration) bool {
+	return stat.InProgress && time.Since(stat.ModificationTime) > lockTimeout
 }

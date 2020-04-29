@@ -62,12 +62,12 @@ type simpleRateLimited struct {
 	queue    amboy.Queue
 	canceler context.CancelFunc
 	wg       sync.WaitGroup
-	mu       sync.Mutex
+	mu       sync.RWMutex
 }
 
 func (p *simpleRateLimited) Started() bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 
 	return p.canceler != nil
 }

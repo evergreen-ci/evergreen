@@ -22,7 +22,7 @@ func (s *QueueService) getStatus(ctx context.Context) status {
 		SupportedJobTypes: s.registeredTypes,
 	}
 
-	if s.queue != nil && s.queue.Started() {
+	if s.queue != nil && s.queue.Info().Started {
 		output.Status = "ok"
 		output.QueueRunning = true
 		output.PendingJobs = s.queue.Stats(ctx).Pending

@@ -111,9 +111,9 @@ func (s *OrderedQueueSuite) TestInternalRunnerCannotBeChangedAfterStartingAQueue
 	defer cancel()
 
 	runner := s.queue.Runner()
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	newRunner := pool.NewLocalWorkers(2, s.queue)
 	s.Error(s.queue.SetRunner(newRunner))
@@ -143,17 +143,17 @@ func (s *OrderedQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	amboy.Wait(ctx, s.queue)
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	// you can call start more than once until the queue has
 	// completed
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 }
 
 func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
