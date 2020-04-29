@@ -324,7 +324,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     columnDefs: [
       {
         // TODO Jim: Should be managed by PERF-1546
-        name: 'Hazard Level',
+        name: 'Percent Change',
         field: 'magnitude',
         type: 'number',
         cellTemplate: '<hazard-level-cell row="row" ctx="grid.appScope.spvm.refCtx" />',
