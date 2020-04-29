@@ -97,7 +97,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 	start = time.Now()
 
-	g := model.MergeGeneratedProjects(projects)
+	g, err := model.MergeGeneratedProjects(projects)
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
 		"function":      "generate",
@@ -107,6 +107,9 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
+	if err != nil {
+		return errors.Wrap(err, "error merging generated projects")
+	}
 	start = time.Now()
 	g.TaskID = j.TaskID
 
