@@ -52,7 +52,7 @@ describe('HazardLevelCellTest', () => {
     expect(element.text()).toBe(expectedResult);
   });
 
-  it('should handle a negative decrease case', () => {
+  it('should handle a latency increase case', () => {
     var row = {
       entity: {
         statistics: {
@@ -73,7 +73,7 @@ describe('HazardLevelCellTest', () => {
     expect(element.text()).toBe(expectedResult);
   });
 
-  it('should handle a negative increase case', () => {
+  it('should handle a latency decrease case', () => {
     var row = {
       entity: {
         statistics: {

@@ -14,7 +14,7 @@ mciModule.directive('hazardLevelCell', function() {
     var a = scope.row.entity.statistics.next.mean;
     var b = scope.row.entity.statistics.previous.mean;
     scope.ratio = ratio(a, b);
-    // Check mode (ops/sec or latency)
+    // a < 0 is a latency change, ensure ratio correct.
     if (a < 0) {
       scope.ratio = scope.ratio * -1
     }
