@@ -97,7 +97,7 @@ func NewEventMetaJob(env evergreen.Environment, q amboy.Queue, ts string) amboy.
 	return j
 }
 
-func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
+func (j *eventMetaJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
 		return nil, errors.New("nil event")
 	}
@@ -194,7 +194,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 			defer recovery.LogStackTraceAndContinue("problem during notification dispatch")
 
 			for e := range input {
-				n, err := tryProcessOneEvent(&e)
+				n, err := j.tryProcessOneEvent(&e)
 				catcher.Add(err)
 				catcher.Add(logger.MarkProcessed(&e))
 
