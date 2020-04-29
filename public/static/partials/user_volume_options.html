@@ -3,7 +3,7 @@
     <div style="margin-left: 10px;">
       <div style="margin-bottom:5px">
         <label> Volume size (GB) </label>
-        <input type="number" ng-model="createVolumeInfo.size" min="1" max="availableVolumeSize()"/>
+        <input type="number" ng-model="createVolumeInfo.size" min="1"/>
         <span class="warning-text" ng-show="invalidVolumeSize(createVolumeInfo.size)"><i class="fa fa-warning"></i>
       Can have at most [[ maxVolumeSizePerUser ]] GiB per user
         </span>
@@ -18,7 +18,7 @@
       </div>
     </div>
     <div>
-      <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" data-dismiss="modal" ng-disabled="!form.$valid || invalidVolumeSize(createVolumeInfo.size)">Spawn</button>
+      <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" ng-disabled="!form.$valid || invalidVolumeSize(createVolumeInfo.size)">Spawn</button>
       <button type="button" class="btn btn-danger" style="float: left; margin-left: 30px;" data-dismiss="modal">Cancel</button>
     </div>
   </fieldset>
