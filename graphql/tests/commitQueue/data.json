@@ -114,5 +114,24 @@
       ],
       "processing_updated_time": { "$date": "2020-04-13T19:52:10.216Z" }
     }
+  ],
+  "project_ref": [
+    {
+      "_id": { "$oid": "5e94c2dfe3c3312519b59432" },
+      "owner_name": "evergreen",
+      "repo_name": "spruce",
+      "branch_name": "NOBRANCH",
+      "repo_kind": "github",
+      "enabled": true,
+      "private": false,
+      "batch_time": 0,
+      "remote_path": ".docker-test.yaml",
+      "identifier": "mongodb-evergreen-spruce",
+      "display_name": "evergreen-spruce",
+      "local_config": "",
+      "deactivate_previous": false,
+      "tracked": true,
+      "repotracker_error": null
+    }
   ]
 }

@@ -128,7 +128,7 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
-		RemovePatchFromCommitQueue func(childComplexity int, patchID string) int
+		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
 		RestartTask                func(childComplexity int, taskID string) int
 		SaveSubscription           func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch              func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
@@ -368,7 +368,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	RemovePatchFromCommitQueue(ctx context.Context, patchID string) (bool, error)
+	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -751,7 +751,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["patchId"].(string)), true
+		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["patchId"].(string)), true
 
 	case "Mutation.restartTask":
 		if e.complexity.Mutation.RestartTask == nil {
@@ -1998,7 +1998,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(patchId: String!): Boolean!
+  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -2403,13 +2403,21 @@ func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx c
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["patchId"]; ok {
+	if tmp, ok := rawArgs["commitQueueId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["patchId"] = arg0
+	args["commitQueueId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg1
 	return args, nil
 }
 
@@ -4577,7 +4585,7 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemovePatchFromCommitQueue(rctx, args["patchId"].(string))
+		return ec.resolvers.Mutation().RemovePatchFromCommitQueue(rctx, args["commitQueueId"].(string), args["patchId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
