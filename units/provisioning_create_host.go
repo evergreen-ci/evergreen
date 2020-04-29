@@ -349,7 +349,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 }
 
 func (j *createHostJob) tryRequeue(ctx context.Context) {
-	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
+	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Info().Started {
 		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts, j.BuildImageStarted)
 		wait := time.Minute
 		if j.host.ParentID != "" {

@@ -163,7 +163,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 }
 
 func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
-	if j.shouldRetry(ctx) && j.env.RemoteQueue().Started() {
+	if j.shouldRetry(ctx) && j.env.RemoteQueue().Info().Started {
 		job := NewBuildingContainerImageJob(j.env, j.parent, j.DockerOptions, j.Provider)
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: time.Now().Add(time.Second * 10),

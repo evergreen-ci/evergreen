@@ -80,7 +80,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 	}
 
 	localQueue := j.env.LocalQueue()
-	if !j.ExcludeLocal && (localQueue != nil && localQueue.Started()) {
+	if !j.ExcludeLocal && (localQueue != nil && localQueue.Info().Started) {
 		j.logger.Info(message.Fields{
 			"message": "amboy local queue stats",
 			"stats":   localQueue.Stats(ctx),
@@ -88,7 +88,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 	}
 
 	remoteQueue := j.env.RemoteQueue()
-	if !j.ExcludeRemote && (remoteQueue != nil && remoteQueue.Started()) {
+	if !j.ExcludeRemote && (remoteQueue != nil && remoteQueue.Info().Started) {
 		j.logger.Info(message.Fields{
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(ctx),
