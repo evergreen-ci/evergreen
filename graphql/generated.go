@@ -368,7 +368,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (bool, error)
+	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1998,7 +1998,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): Boolean!
+  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
 }
 
 enum TaskSortCategory {
@@ -4592,14 +4592,11 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -11207,9 +11204,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removePatchFromCommitQueue":
 			out.Values[i] = ec._Mutation_removePatchFromCommitQueue(ctx, field)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

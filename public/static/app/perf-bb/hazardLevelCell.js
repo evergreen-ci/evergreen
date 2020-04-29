@@ -2,8 +2,7 @@
 mciModule.directive('hazardLevelCell', function() {
 
   function renderFoldedItem(scope, row) {
-    var points = _.map(scope.row.treeNode.children, (d) => d.row.entity)
-    scope.points = points
+    scope.points = _.map(scope.row.treeNode.children, (d) => d.row.entity)
   }
 
   function ratio(a, b) {
@@ -45,4 +44,4 @@ mciModule.directive('hazardLevelCell', function() {
       })
     }
   }
-})
+});
