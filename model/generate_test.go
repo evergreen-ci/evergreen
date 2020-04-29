@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +18,7 @@ import (
 )
 
 var (
+	batchTime              = 60
 	sampleGeneratedProject = GeneratedProject{
 		Tasks: []parserTask{
 			parserTask{
@@ -61,7 +63,8 @@ var (
 				},
 			},
 			parserBV{
-				Name: "another_variant",
+				Name:      "another_variant",
+				BatchTime: &batchTime,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "example_task_group",
@@ -305,7 +308,11 @@ func TestGenerateSuite(t *testing.T) {
 }
 
 func (s *GenerateSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection))
+	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
+	ref := ProjectRef{
+		Identifier: "proj",
+	}
+	s.Require().NoError(ref.Insert())
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -572,6 +579,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	genTask := task.Task{
 		Id:       "task_that_called_generate_task",
+		Project:  "proj",
 		Version:  "version_that_called_generate_task",
 		Priority: 10,
 	}
@@ -584,6 +592,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	}
 	v := &Version{
 		Id:                 "version_that_called_generate_task",
+		Identifier:         "proj",
 		BuildIds:           []string{"sample_build"},
 		Config:             sampleProjYml,
 		ConfigUpdateNumber: 4,
@@ -602,6 +611,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Equal(4, v.ConfigUpdateNumber)
+	s.False(v.BuildVariants[0].Activated)
+	s.InDelta(time.Now().Unix(), v.BuildVariants[0].ActivateAt.Unix(), 1)
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)

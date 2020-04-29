@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -112,6 +114,39 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
+}
+
+func (v *Version) SetActivateAt(variant string, activateAt time.Time) error {
+	coll := evergreen.GetEnvironment().DB().Collection(VersionCollection)
+	query := bson.M{VersionIdKey: v.Id}
+	update := bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(VersionBuildVariantsKey, "$[element]", VersionBuildStatusActivateAtKey): activateAt,
+		},
+	}
+	opts := options.UpdateOptions{
+		ArrayFilters: &options.ArrayFilters{
+			Filters: bson.A{
+				bson.M{bsonutil.GetDottedKeyName("element", VersionBuildStatusVariantKey): variant},
+			},
+		},
+	}
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	result, err := coll.UpdateOne(ctx, query, update, &opts)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount != 1 {
+		return errors.Errorf("variant %s matched %d variants in version %s", variant, result.ModifiedCount, v.Id)
+	}
+	for i := range v.BuildVariants {
+		if v.BuildVariants[i].BuildVariant == variant {
+			v.BuildVariants[i].ActivateAt = activateAt
+			break
+		}
+	}
+	return nil
 }
 
 // VersionBuildStatus stores metadata relating to each build

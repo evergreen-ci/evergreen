@@ -219,7 +219,11 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-
+	// for patches activate all builds, otherwise activate ones that are not setting batchtime
+	var variantsToActivate []string
+	if !evergreen.IsPatchRequester(v.Requester) {
+		variantsToActivate = g.findVariantsToActivate()
+	}
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -261,12 +265,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, false, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, variantsToActivate, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
@@ -276,6 +280,19 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 
 	return nil
+}
+
+func (g *GeneratedProject) findVariantsToActivate() []string {
+	var toActivate []string
+	for _, bv := range g.BuildVariants {
+		if bv.BatchTime == nil {
+			if toActivate == nil {
+				toActivate = []string{}
+			}
+			toActivate = append(toActivate, bv.name())
+		}
+	}
+	return toActivate
 }
 
 func addDependencies(t *task.Task, newTaskIds []string) error {

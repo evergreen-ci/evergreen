@@ -120,3 +120,25 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(v2.Id, mostRecent.Id)
 }
+
+func TestSetActivateAt(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	v1 := Version{
+		Id: "v1",
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv1",
+			},
+			{
+				BuildVariant: "bv2",
+			},
+		},
+	}
+	assert.NoError(t, v1.Insert())
+	now := time.Now().Round(time.Second)
+	assert.NoError(t, v1.SetActivateAt("bv2", now))
+	assert.Equal(t, now, v1.BuildVariants[1].ActivateAt)
+	dbVersion, err := VersionFindOneId(v1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, now, dbVersion.BuildVariants[1].ActivateAt)
+}
