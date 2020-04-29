@@ -232,7 +232,9 @@ func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notificatio
 	catcher := grip.NewSimpleCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			catcher.Add(j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)))
+			if err := j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)); !amboy.IsDuplicateJobError(err) {
+				catcher.Add(err)
+			}
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
 		}
@@ -319,7 +321,8 @@ func (j *eventMetaJob) logEventCount(eventCount, limit int) error {
 		"job_id":  j.ID(),
 		"job":     eventMetaJobName,
 		"message": "unprocessed event count",
-		"count":   eventCount,
+		"pending": eventCount,
+		"current": len(j.events),
 		"source":  "events-processing",
 	})
 
