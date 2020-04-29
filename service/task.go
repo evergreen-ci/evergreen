@@ -293,7 +293,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uiTask.HostDNS = taskHost.Host
 			// ensure that the ability to spawn is updated from the existing distro
 			taskHost.Distro.SpawnAllowed = false
-			d, err := distro.FindByID(taskHost.Distro.Id)
+			var d *distro.Distro
+			d, err = distro.FindByID(taskHost.Distro.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
