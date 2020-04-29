@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,9 +35,9 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests.uuid = uuid.New().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	mDriver := newMongoDriver(
-		"test-"+tests.uuid,
-		opts).(*mongoDriver)
+	driver, err := newMongoDriver("test-"+tests.uuid, opts)
+	require.NoError(t, err)
+	mDriver := driver.(*mongoDriver)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -211,7 +212,7 @@ func (s *DriverSuite) TestNextMethodDoesNotReturnLastJob() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	j := job.NewShellJob("echo foo", "")
-	s.Require().NoError(j.Lock("taken"))
+	s.Require().NoError(j.Lock("taken", amboy.LockTimeout))
 
 	s.NoError(s.driver.Put(s.ctx, j))
 	s.Equal(1, s.driver.Stats(s.ctx).Total)
@@ -267,4 +268,16 @@ func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
 	}
 	s.Equal(len(names), counter)
 	s.Equal(counter, 30)
+}
+
+func (s *DriverSuite) TestReturnsDefaultLockTimeout() {
+	s.Equal(amboy.LockTimeout, s.driver.LockTimeout())
+}
+
+func (s *DriverSuite) TestInfoReturnsConfigurableLockTimeout() {
+	opts := DefaultMongoDBOptions()
+	opts.LockTimeout = 25 * time.Minute
+	d, err := newMongoDriver(s.T().Name(), opts)
+	s.Require().NoError(err)
+	s.Equal(opts.LockTimeout, d.LockTimeout())
 }

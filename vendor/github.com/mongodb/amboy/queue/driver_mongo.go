@@ -34,27 +34,34 @@ type mongoDriver struct {
 // NewMongoDriver constructs a MongoDB backed queue driver
 // implementation using the go.mongodb.org/mongo-driver as the
 // database interface.
-func newMongoDriver(name string, opts MongoDBOptions) remoteQueueDriver {
+func newMongoDriver(name string, opts MongoDBOptions) (remoteQueueDriver, error) {
 	host, _ := os.Hostname() // nolint
 
-	if !opts.Format.IsValid() {
-		opts.Format = amboy.BSON
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid mongo driver options")
 	}
 
 	return &mongoDriver{
 		name:       name,
 		opts:       opts,
 		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.New()),
-	}
+	}, nil
 }
 
 // openNewMongoDriver constructs and opens a new MongoDB driver instance
 // using the specified session. It is equivalent to calling
 // NewMongoDriver() and calling driver.Open().
 func openNewMongoDriver(ctx context.Context, name string, opts MongoDBOptions, client *mongo.Client) (remoteQueueDriver, error) {
-	d := newMongoDriver(name, opts).(*mongoDriver)
+	d, err := newMongoDriver(name, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create driver")
+	}
+	md, ok := d.(*mongoDriver)
+	if !ok {
+		return nil, errors.New("amboy programmer error: incorrect constructor")
+	}
 
-	if err := d.start(ctx, client); err != nil {
+	if err := md.start(ctx, client); err != nil {
 		return nil, errors.Wrap(err, "problem starting driver")
 	}
 
@@ -65,11 +72,11 @@ func openNewMongoDriver(ctx context.Context, name string, opts MongoDBOptions, c
 // prefixes job ids with a prefix and adds the group field to the
 // documents in the database which makes it possible to manage
 // distinct queues with a single MongoDB collection.
-func newMongoGroupDriver(name string, opts MongoDBOptions, group string) remoteQueueDriver {
+func newMongoGroupDriver(name string, opts MongoDBOptions, group string) (remoteQueueDriver, error) {
 	host, _ := os.Hostname() // nolint
 
-	if !opts.Format.IsValid() {
-		opts.Format = amboy.BSON
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid mongo driver options")
 	}
 	opts.UseGroups = true
 	opts.GroupName = group
@@ -78,14 +85,18 @@ func newMongoGroupDriver(name string, opts MongoDBOptions, group string) remoteQ
 		name:       name,
 		opts:       opts,
 		instanceID: fmt.Sprintf("%s.%s.%s.%s", name, group, host, uuid.New()),
-	}
+	}, nil
 }
 
 // OpenNewMongoGroupDriver constructs and opens a new MongoDB driver instance
 // using the specified session. It is equivalent to calling
 // NewMongoGroupDriver() and calling driver.Open().
 func openNewMongoGroupDriver(ctx context.Context, name string, opts MongoDBOptions, group string, client *mongo.Client) (remoteQueueDriver, error) {
-	d, ok := newMongoGroupDriver(name, opts, group).(*mongoDriver)
+	d, err := newMongoGroupDriver(name, opts, group)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create driver")
+	}
+	md, ok := d.(*mongoDriver)
 	if !ok {
 		return nil, errors.New("amboy programmer error: incorrect constructor")
 	}
@@ -93,7 +104,7 @@ func openNewMongoGroupDriver(ctx context.Context, name string, opts MongoDBOptio
 	opts.UseGroups = true
 	opts.GroupName = group
 
-	if err := d.start(ctx, client); err != nil {
+	if err := md.start(ctx, client); err != nil {
 		return nil, errors.Wrap(err, "problem starting driver")
 	}
 
@@ -438,8 +449,11 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 	return nil
 }
 
-func getAtomicQuery(owner, jobName string, modCount int) bson.M {
-	timeoutTs := time.Now().Add(-amboy.LockTimeout)
+func (d *mongoDriver) getAtomicQuery(jobName string, modCount int) bson.M {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	owner := d.instanceID
+	timeoutTs := time.Now().Add(-d.LockTimeout())
 
 	return bson.M{
 		"_id": jobName,
@@ -519,7 +533,7 @@ func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange,
 
 func (d *mongoDriver) doUpdate(ctx context.Context, job *registry.JobInterchange) error {
 	d.processJobForGroup(job)
-	query := getAtomicQuery(d.instanceID, job.Name, job.Status.ModificationCount)
+	query := d.getAtomicQuery(job.Name, job.Status.ModificationCount)
 	res, err := d.getCollection().ReplaceOne(ctx, query, job)
 	if err != nil {
 		return errors.Wrapf(err, "problem saving document %s: %+v", job.Name, res)
@@ -653,6 +667,9 @@ func (d *mongoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 }
 
 func (d *mongoDriver) getNextQuery() bson.M {
+	d.mu.RLock()
+	lockTimeout := d.LockTimeout()
+	d.mu.RUnlock()
 	now := time.Now()
 	qd := bson.M{
 		"$or": []bson.M{
@@ -663,7 +680,7 @@ func (d *mongoDriver) getNextQuery() bson.M {
 			{
 				"status.completed": false,
 				"status.in_prog":   true,
-				"status.mod_ts":    bson.M{"$lte": now.Add(-amboy.LockTimeout)},
+				"status.mod_ts":    bson.M{"$lte": now.Add(-lockTimeout)},
 			},
 		},
 	}
@@ -799,7 +816,11 @@ RETRY:
 					continue CURSOR
 				}
 
-				if d.scopesInUse(ctx, job.Scopes()) || !isDispatchable(job.Status()) {
+				if !isDispatchable(job.Status(), d.opts.LockTimeout) {
+					dispatchSkips++
+					job = nil
+					continue CURSOR
+				} else if d.scopesInUse(ctx, job.Scopes()) && !jobCanRestart(job.Status(), d.opts.LockTimeout) {
 					dispatchSkips++
 					job = nil
 					continue CURSOR
@@ -808,7 +829,7 @@ RETRY:
 				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
 					dispatchMisses++
 					grip.DebugWhen(
-						isDispatchable(job.Status()),
+						isDispatchable(job.Status(), d.opts.LockTimeout),
 						message.WrapError(err, message.Fields{
 							"id":            d.instanceID,
 							"service":       "amboy.queue.mdb",
@@ -930,6 +951,13 @@ func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 		Completed: int(numJobs - pending),
 		Running:   int(numLocked),
 	}
+}
+
+func (d *mongoDriver) LockTimeout() time.Duration {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	return d.opts.LockTimeout
 }
 
 func (d *mongoDriver) Dispatcher() Dispatcher {

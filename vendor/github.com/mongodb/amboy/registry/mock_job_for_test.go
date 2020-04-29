@@ -70,7 +70,7 @@ func (j *JobTest) Error() error {
 	return nil
 }
 
-func (j *JobTest) Lock(id string) error {
+func (j *JobTest) Lock(id string, lockTimeout time.Duration) error {
 	if j.IsLocked {
 		return errors.New("Cannot lock locked job")
 	}
@@ -81,7 +81,7 @@ func (j *JobTest) Lock(id string) error {
 	return nil
 }
 
-func (j *JobTest) Unlock(id string) {
+func (j *JobTest) Unlock(id string, lockTimeout time.Duration) {
 	if !j.IsLocked {
 		return
 	}

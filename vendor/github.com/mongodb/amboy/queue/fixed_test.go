@@ -43,13 +43,13 @@ func (s *LimitedSizeQueueSuite) TestBufferForPendingWorkEqualToCapacityForResult
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.queue.Runner().Close(ctx)
 	s.Nil(s.queue.channel)
 	s.Error(s.queue.Put(ctx, job.NewShellJob("sleep 10", "")))
 
 	s.NoError(s.queue.Start(ctx))
-	s.require.True(s.queue.Started())
+	s.require.True(s.queue.Info().Started)
 	for i := 0; i < 100*s.numCapacity*s.numWorkers; i++ {
 		var outcome bool
 		err := s.queue.Put(ctx, job.NewShellJob("sleep 10", ""))
@@ -72,7 +72,7 @@ func (s *LimitedSizeQueueSuite) TestBufferForPendingWorkEqualToCapacityForResult
 }
 
 func (s *LimitedSizeQueueSuite) TestCallingStartMultipleTimesDoesNotImpactState() {
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.Nil(s.queue.channel)
 	ctx := context.Background()
 	s.NoError(s.queue.Start(ctx))
@@ -89,17 +89,17 @@ func (s *LimitedSizeQueueSuite) TestCannotSetRunnerAfterQueueIsOpened() {
 	secondRunner := pool.NewSingle()
 	runner := s.queue.runner
 
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	for i := 0; i < 25; i++ {
 		s.NoError(s.queue.SetRunner(secondRunner))
 		s.NoError(s.queue.SetRunner(runner))
 	}
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 
 	ctx := context.Background()
 	s.NoError(s.queue.Start(ctx))
 
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	for i := 0; i < 30; i++ {
 		s.Error(s.queue.SetRunner(secondRunner))

@@ -20,7 +20,7 @@ type scopeManagerImpl struct {
 }
 
 // NewLocalScopeManager constructs a ScopeManager implementation
-// suitable for use in most local (in memeory) queue implementations.
+// suitable for use in most local (in memory) queue implementations.
 func NewLocalScopeManager() ScopeManager {
 	return &scopeManagerImpl{
 		scopes: map[string]string{},

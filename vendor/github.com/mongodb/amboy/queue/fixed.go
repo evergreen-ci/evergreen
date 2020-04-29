@@ -63,7 +63,7 @@ func (q *limitedSizeLocal) ID() string {
 // stored in the results storage,) or is pending, and finally if the
 // queue is at capacity.
 func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
 	}
 
@@ -94,7 +94,7 @@ func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 }
 
 func (q *limitedSizeLocal) Save(ctx context.Context, j amboy.Job) error {
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
 	}
 
@@ -183,13 +183,14 @@ func (q *limitedSizeLocal) requeue(job amboy.Job) {
 	}
 }
 
-// Started returns true if the queue is open and is processing jobs,
-// and false otherwise.
-func (q *limitedSizeLocal) Started() bool {
+func (q *limitedSizeLocal) Info() amboy.QueueInfo {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.channel != nil
+	return amboy.QueueInfo{
+		Started:     q.channel != nil,
+		LockTimeout: amboy.LockTimeout,
+	}
 }
 
 // Results is a generator of all completed tasks in the queue.

@@ -87,7 +87,7 @@ func (q *adaptiveLocalOrdering) reactor(ctx context.Context) {
 }
 
 func (q *adaptiveLocalOrdering) Put(ctx context.Context, j amboy.Job) error {
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.New("cannot add job to unopened queue")
 	}
 
@@ -115,7 +115,7 @@ func (q *adaptiveLocalOrdering) Put(ctx context.Context, j amboy.Job) error {
 }
 
 func (q *adaptiveLocalOrdering) Save(ctx context.Context, j amboy.Job) error {
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.New("cannot add job to unopened queue")
 	}
 
@@ -140,7 +140,7 @@ func (q *adaptiveLocalOrdering) Save(ctx context.Context, j amboy.Job) error {
 }
 
 func (q *adaptiveLocalOrdering) Get(ctx context.Context, name string) (amboy.Job, bool) {
-	if !q.Started() {
+	if !q.Info().Started {
 		return nil, false
 	}
 
@@ -219,7 +219,7 @@ func (q *adaptiveLocalOrdering) JobStats(ctx context.Context) <-chan amboy.JobSt
 }
 
 func (q *adaptiveLocalOrdering) Stats(ctx context.Context) amboy.QueueStats {
-	if !q.Started() {
+	if !q.Info().Started {
 		return amboy.QueueStats{}
 	}
 
@@ -244,7 +244,13 @@ func (q *adaptiveLocalOrdering) Stats(ctx context.Context) amboy.QueueStats {
 	}
 }
 
-func (q *adaptiveLocalOrdering) Started() bool { return q.operations != nil }
+func (q *adaptiveLocalOrdering) Info() amboy.QueueInfo {
+	return amboy.QueueInfo{
+		Started:     q.operations != nil,
+		LockTimeout: amboy.LockTimeout,
+	}
+}
+
 func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 	ret := make(chan amboy.Job)
 	op := func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {

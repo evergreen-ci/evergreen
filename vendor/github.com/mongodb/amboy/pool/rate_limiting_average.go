@@ -114,8 +114,17 @@ func (p *ewmaRateLimiting) getNextTime(dur time.Duration) time.Duration {
 	return (excessTime / time.Duration(p.target))
 }
 
-func (p *ewmaRateLimiting) Started() bool { return p.canceler != nil }
+func (p *ewmaRateLimiting) Started() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return p.canceler != nil
+}
+
 func (p *ewmaRateLimiting) Start(ctx context.Context) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.canceler != nil {
 		return nil
 	}

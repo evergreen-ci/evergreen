@@ -413,7 +413,7 @@ func (s *QueueClientSuite) TestRunningWiwthRunningQueue() {
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
-	s.True(s.service.queue.Started())
+	s.True(s.service.queue.Info().Started)
 
 	running, err := s.client.Running(ctx)
 	s.NoError(err)
