@@ -34,7 +34,7 @@ mciModule.run(function($templateCache) {
       '<micro-hazard-chart points="points" ctx="ctx" />' +
       '</div>' +
       '<div ng-if="!row.groupHeader" ng-style="{color: color}">' +
-      '<p ng-if="ratio">[[ratio]]%</p><p ng-if="!ratio">Unknown</p>' +
+      '<p ng-if="ratio!==undefined">[[ratio]]%</p><p ng-if="ratio===undefined">Unknown</p>' +
       '</div>' +
       '</div>' +
       '</div>'

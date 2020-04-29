@@ -2,8 +2,7 @@
 mciModule.directive('hazardLevelCell', function() {
 
   function renderFoldedItem(scope, row) {
-    var points = _.map(scope.row.treeNode.children, (d) => d.row.entity)
-    scope.points = points
+    scope.points = _.map(scope.row.treeNode.children, (d) => d.row.entity)
   }
 
   function ratio(a, b) {
@@ -11,10 +10,10 @@ mciModule.directive('hazardLevelCell', function() {
   }
 
   function renderUnfoldedItem(scope, row) {
-    var a = scope.row.entity.statistics.next.mean
-    var b = scope.row.entity.statistics.previous.mean
+    var a = scope.row.entity.statistics.next.mean;
+    var b = scope.row.entity.statistics.previous.mean;
     // Check mode (ops/sec or latency)
-    scope.ratio = a > 0 ? ratio(a, b) : ratio(b, a)
+    scope.ratio = a > 0 ? ratio(a, b) : ratio(b, a);
     scope.color = (
       scope.ratio > 0 ? 'green' :
       scope.ratio < 0 ? 'red' :
@@ -42,4 +41,4 @@ mciModule.directive('hazardLevelCell', function() {
       })
     }
   }
-})
+});

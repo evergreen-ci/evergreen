@@ -1,60 +1,61 @@
 mciModule.controller('ExpandedMetricsSignalProcessingController', function(
   $scope, CHANGE_POINTS_GRID, CedarClient, $routeParams
 ) {
-  const vm = this;
-  $scope.page = 1;
+  $scope.page = 0;
   $scope.pageSize = 10;
   $scope.totalPages = 1;
-  vm.projectId = $routeParams.projectId;
+  $scope.projectId = $routeParams.projectId;
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
       $scope.page--;
-      getPoints(vm, CedarClient, $scope)
+      getPoints($scope, CedarClient)
     }
   };
 
   $scope.nextPage = () => {
     if ($scope.page + 1 < $scope.totalPages) {
       $scope.page++;
-      getPoints(vm, CedarClient, $scope)
+      getPoints($scope, CedarClient)
     }
   };
 
-  setupGrid(vm, CHANGE_POINTS_GRID);
-  getPoints(vm, CedarClient, $scope);
+  setupGrid($scope, CHANGE_POINTS_GRID);
+  getPoints($scope, CedarClient);
 });
 
-function getPoints(vm, CedarClient, $scope) {
-  vm.gridOptions.data = [];
-  vm.isLoading = true;
+function handleResponse(result, $scope) {
+  $scope.totalPages = result.data.total_pages;
+  for (version of result.data.versions) {
+    for (cp of version.change_points) {
+      $scope.gridOptions.data.push({
+        version: version.version_id,
+        variant: cp.variant,
+        task: cp.task,
+        test: cp.test,
+        measurement: cp.measurement,
+        percent_change: cp.percent_change.toFixed(2),
+        triage_status: cp.triage.triage_status,
+        thread_level: cp.thread_level,
+      })
+    }
+  }
+  $scope.isLoading = false;
+}
+
+function getPoints($scope, CedarClient) {
+  $scope.gridOptions.data = [];
+  $scope.isLoading = true;
   $scope.errorMessage = null;
-  CedarClient.getVersionChangePoints(vm.projectId, $scope.page, $scope.pageSize)
-      .then(result => {
-        $scope.totalPages = result.data.total_pages;
-        for (version of result.data.versions) {
-          for (cp of version.change_points) {
-            vm.gridOptions.data.push({
-              version: version.version_id,
-              variant: cp.variant,
-              task: cp.task,
-              test: cp.test,
-              measurement: cp.measurement,
-              percent_change: 100,
-              triage_status: cp.triage.triage_status,
-              thread_level: 2,
-            })
-          }
-        }
-        vm.isLoading = false;
-      }, err => {
-        vm.isLoading = false;
+  CedarClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize)
+      .then(result => handleResponse(result, $scope), err => {
+        $scope.isLoading = false;
         $scope.errorMessage = err.data.message;
       });
 }
 
-function setupGrid(vm, CHANGE_POINTS_GRID) {
-  vm.gridOptions = {
+function setupGrid($scope, CHANGE_POINTS_GRID) {
+  $scope.gridOptions = {
     enableFiltering: true,
     enableRowSelection: true,
     enableSelectAll: true,

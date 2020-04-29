@@ -1,6 +1,6 @@
 <div
   class="grid"
-  ui-grid="spvm.gridOptions"
+  ui-grid="gridOptions"
   ui-grid-auto-resize
   ui-grid-empty-base-layer
   ui-grid-grouping
@@ -9,8 +9,8 @@
   ui-grid-selection
 >
   <div class="ui-grid-overlay ng-cloak">
-    <spinner ng-if="spvm.isLoading"></spinner>
-    <h1 ng-show="!spvm.isLoading && !spvm.gridOptions.data.length">
+    <spinner ng-if="isLoading"></spinner>
+    <h1 ng-show="!isLoading && !gridOptions.data.length">
       No data available!
     </h1>
   </div>
