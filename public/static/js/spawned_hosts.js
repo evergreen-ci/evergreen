@@ -18,11 +18,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.maxVolumeSizePerUser = $window.maxVolumeSizePerUser;
     $scope.spawnReqSent = false;
-    $scope.createVolumeReqSent = false;
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
     $scope.noExpiration = false;
-    $scope.homeVolumeSize = 500;
+    $scope.volumeSizeDefault = 100;
+    $scope.homeVolumeSize = $scope.volumeSizeDefault;
     $scope.homeVolumeID;
     $scope.volumeAttachHost;
     $scope.createVolumeInfo = {
@@ -205,7 +205,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
               }
             });
             $scope.volumes = volumes;
-            $scope.homeVolumeSize = $scope.availableVolumeSize();
+            $scope.homeVolumeSize = Math.min($scope.volumeSizeDefault, $scope.availableVolumeSize());
             $scope.createVolumeInfo.size = $scope.homeVolumeSize;
           },
           error: function (resp) {
@@ -303,10 +303,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.availableVolumeSize = function () {
       var totalSize = $scope.maxVolumeSizePerUser;
-      for (var i = 0; i < $scope.volumes.length; i++) {
-        totalSize -= $scope.volumes[i].size;
-      };
-      return totalSize;
+      return _.reduce($scope.volumes, function(availableSize, v){ return availableSize - v.size;}, totalSize);
     };
 
     $scope.invalidVolumeSize = function(size) {
@@ -490,14 +487,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.createVolume = function () {
-      $scope.createVolumeReqSent = true;
       mciSpawnRestService.createVolume(
         $scope.createVolumeInfo, {}, {
           success: function (resp) {
             $window.location.reload();
           },
           error: function (resp) {
-            $scope.createVolumeReqSent = false;
             notificationService.pushNotification('Error creating volume: ' + resp.data.error, 'errorHeader');
           }
         }
@@ -692,7 +687,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       // clear home volume settings when switching between distros
       $scope.isVirtualWorkstation = $scope.selectedDistro.virtual_workstation_allowed && !$scope.spawnTaskChecked && !$scope.spawnTaskSyncChecked;
       $scope.noExpiration = $scope.selectedDistro.virtual_workstation_allowed && ($scope.availableUnexpirableHosts() > 0);
-      $scope.homeVolumeSize = $scope.availableVolumeSize();
+      $scope.homeVolumeSize = Math.min($scope.volumeSizeDefault, $scope.availableVolumeSize());
     };
 
     $scope.setRegion = function(region) {
@@ -920,7 +915,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       switch (opt) {
         case 'createVolume':
           initializeModal(modal, 'Create Volume');
-          attachEnterHandler('createVolume');
           break;
         case 'deleteVolume':
           initializeModal(modal, 'Delete Volume');

@@ -200,7 +200,7 @@ Evergreen - My Hosts
           </tbody>
         </table>
       </div>
-      <md-button type="button" class="btn-info md-raised" ng-click="openVolumeModal('createVolume')" ng-disabled="availableVolumeSize() <= 0" ng-cloak>
+      <md-button type="button" class="btn-info md-raised" ng-click="openVolumeModal('createVolume')" ng-disabled="availableVolumeSize() <= 0">
         Spawn Volume
       </md-button>
       <em ng-class="{'text-muted': availableVolumeSize() > 0, 'text-error': availableVolumeSize() <= 0}" style="margin-left: 5px;" ng-cloak>

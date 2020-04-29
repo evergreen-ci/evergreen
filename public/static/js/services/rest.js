@@ -299,8 +299,8 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         data: data
       };
       config.data['size'] = volumeInfo.size;
-      config.data['zone'] = volumeInfo.zone;
       config.data['type'] = volumeInfo.type;
+      config.data['availability_zone'] = volumeInfo.zone;
       baseSvc.putResource(resource, ["volumes"], config, callbacks);
     }
 

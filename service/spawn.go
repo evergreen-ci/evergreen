@@ -484,14 +484,13 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	if volume.AvailabilityZone == "" {
 		volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
+
 	}
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
 	}
 	volume.CreatedBy = authedUser.Id
-	ctx, cancel := uis.env.Context()
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, authedUser)
+	ctx := r.Context()
 	if _, err := cloud.CreateVolume(ctx, uis.env, volume, evergreen.ProviderNameEc2OnDemand); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error creating volume"))
 		return
