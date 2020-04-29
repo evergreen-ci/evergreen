@@ -33,8 +33,6 @@ type GeneratedProject struct {
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
 func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
-	catcher := grip.NewBasicCatcher()
-
 	bvs := map[string]*parserBV{}
 	tasks := map[string]*parserTask{}
 	functions := map[string]*YAMLCommandSet{}
@@ -44,9 +42,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	mergeBuildVariants:
 		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
-				if _, ok := bvs[bv.Name]; ok {
-					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
-				} else {
+				if _, ok := bvs[bv.Name]; !ok {
 					bvs[bv.Name] = &p.BuildVariants[i]
 					continue mergeBuildVariants
 				}
@@ -58,22 +54,15 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 			bvs[bv.Name] = &p.BuildVariants[i]
 		}
 		for i, t := range p.Tasks {
-			if _, ok := tasks[t.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task (%s)", t.Name))
-			} else {
+			if _, ok := tasks[t.Name]; !ok {
 				tasks[t.Name] = &p.Tasks[i]
 			}
 		}
 		for f, val := range p.Functions {
-			if _, ok := functions[f]; ok {
-				catcher.Add(errors.Errorf("found duplicate function (%s)", f))
-			}
 			functions[f] = val
 		}
 		for i, tg := range p.TaskGroups {
-			if _, ok := taskGroups[tg.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task group (%s)", tg.Name))
-			} else {
+			if _, ok := taskGroups[tg.Name]; !ok {
 				taskGroups[tg.Name] = &p.TaskGroups[i]
 			}
 		}
