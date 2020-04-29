@@ -145,6 +145,7 @@ type Communicator interface {
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, *restmodel.HostRequestOptions) (*restmodel.APIHost, error)
+	GetSpawnHost(context.Context, string) (*restmodel.APIHost, error)
 	ModifySpawnHost(context.Context, string, host.HostModifyOptions) error
 	StopSpawnHost(context.Context, string, string, bool) error
 	StartSpawnHost(context.Context, string, string, bool) error
