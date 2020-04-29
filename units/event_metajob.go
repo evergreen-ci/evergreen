@@ -106,6 +106,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 			n = nil
 			err = errors.Errorf("panicked while processing event %s", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
+				"job_id":      j.ID(),
 				"job":         eventMetaJobName,
 				"source":      "events-processing",
 				"event_id":    e.ID,
@@ -118,6 +119,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	startDebug := time.Now()
 	n, err = trigger.NotificationsFromEvent(e)
 	grip.Info(message.Fields{
+		"job_id":        j.ID(),
 		"job":           eventMetaJobName,
 		"source":        "events-processing",
 		"message":       "event processed",
@@ -129,6 +131,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	})
 
 	grip.Error(message.WrapError(err, message.Fields{
+		"job_id":     j.ID(),
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "errors processing triggers for event",
@@ -138,6 +141,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
+		"job_id":     j.ID(),
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "project triggers evaluated",
@@ -151,6 +155,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		versions = append(versions, version.Id)
 	}
 	grip.InfoWhen(len(versions) > 0, message.Fields{
+		"job_id":   j.ID(),
 		"job":      eventMetaJobName,
 		"source":   "events-processing",
 		"message":  "triggering downstream builds",
