@@ -180,15 +180,20 @@ func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (
 }
 
 func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {
+	taskHost := j.host.User == evergreen.User && !j.host.SpawnOptions.SpawnedByTask
+
 	// post host idle time message
 	msg := message.Fields{
-		"stat":         "host-idle",
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Distro.Provider,
-		"provisioning": j.host.Distro.BootstrapSettings.Method,
-		"host_id":      j.host.Id,
-		"status":       j.host.Status,
-		"idle_secs":    idleTime.Seconds(),
+		"stat":            "host-idle",
+		"distro":          j.host.Distro.Id,
+		"provider":        j.host.Distro.Provider,
+		"provisioning":    j.host.Distro.BootstrapSettings.Method,
+		"host_id":         j.host.Id,
+		"status":          j.host.Status,
+		"idle_secs":       idleTime.Seconds(),
+		"spawn_host":      j.host.User != evergreen.User,
+		"task_spawn_host": j.host.SpawnOptions.SpawnedByTask,
+		"task_host":       taskHost,
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
@@ -208,9 +213,12 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 	}
 
 	if j.host.Status == evergreen.HostTerminated {
-		msg["total_idle_secs"] = j.host.TotalIdleTime.Seconds()
 		msg["total_uptime_secs"] = j.host.TerminationTime.Sub(j.host.CreationTime).Seconds()
-		msg["total_utilization_secs"] = (j.host.TerminationTime.Sub(j.host.CreationTime) - j.host.TotalIdleTime).Seconds()
+		if taskHost {
+			msg["total_idle_secs"] = j.host.TotalIdleTime.Seconds()
+			msg["total_utilization_secs"] = (j.host.TerminationTime.Sub(j.host.CreationTime) - j.host.TotalIdleTime).Seconds()
+		}
+
 	}
 
 	return message.ConvertToComposer(level.Info, msg)
