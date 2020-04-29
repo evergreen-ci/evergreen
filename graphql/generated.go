@@ -368,7 +368,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	RemovePatchFromCommitQueue(ctx context.Context, patchID string) (*model.APIPatch, error)
+	RemovePatchFromCommitQueue(ctx context.Context, patchID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1998,7 +1998,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(patchId: String!): Patch!
+  removePatchFromCommitQueue(patchId: String!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -4585,13 +4585,13 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	}
 	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null bullshit")
+			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIPatch)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
