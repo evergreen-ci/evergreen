@@ -1330,6 +1330,11 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 }
 
 func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	if !utility.IsZeroTime(opts.Expiration) {
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
 			return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
@@ -1346,11 +1351,6 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 		}
 	}
 	if opts.Size > 0 {
-		if err := m.client.Create(m.credentials, m.region); err != nil {
-			return errors.Wrap(err, "error creating client")
-		}
-		defer m.client.Close()
-
 		_, err := m.client.ModifyVolume(ctx, &ec2.ModifyVolumeInput{
 			VolumeId: aws.String(volume.ID),
 			Size:     aws.Int64(int64(opts.Size)),

@@ -606,7 +606,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
         return true;
       }
-      if (!$scope.curVolumeData.no_expiration && !moment($scope.curVolumeData.original_expiration).startOf("second").isSame(moment($scope.curVolumeData.current_expiration).startOf("second"))) {
+      if (!$scope.curVolumeData.no_expiration && moment($scope.curVolumeData.original_expiration).startOf("second").isBefore(moment($scope.curVolumeData.current_expiration).startOf("second"))) {
         return true;
       }
 
