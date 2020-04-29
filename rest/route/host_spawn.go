@@ -509,6 +509,12 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		"volume":  h.attachment,
 	})
 	if err = mgr.AttachVolume(ctx, targetHost, h.attachment); err != nil {
+		if cloud.ModifyVolumeBadRequest(err) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			})
+		}
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "error attaching volume %s for spawnhost %s", h.attachment.VolumeID, h.hostID).Error(),
@@ -570,6 +576,12 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting targetHost '%s'", h.hostID))
 	}
 
+	if targetHost.HomeVolumeID == h.attachment.VolumeID {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot detach home volume for host '%s'", h.hostID),
+		})
+	}
 	found := false
 	for _, attachment := range targetHost.Volumes {
 		if attachment.VolumeID == h.attachment.VolumeID {
@@ -801,15 +813,17 @@ type modifyVolumeHandler struct {
 	opts     *model.VolumeModifyOptions
 }
 
-func makeModifyVolume(sc data.Connector) gimlet.RouteHandler {
+func makeModifyVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &modifyVolumeHandler{
-		sc: sc,
+		sc:  sc,
+		env: env,
 	}
 }
 
 func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 	return &modifyVolumeHandler{
 		sc:   h.sc,
+		env:  h.env,
 		opts: &model.VolumeModifyOptions{},
 	}
 }
@@ -847,11 +861,53 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	if h.opts.Size != 0 {
+		sizeIncrease := h.opts.Size - volume.Size
+		if sizeIncrease <= 0 {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("volumes can only be sized up (current size is %d GiB)", volume.Size),
+			})
+		}
+		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
+		if err = checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			})
+		}
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(volume.AvailabilityZone),
+		}
+		var mgr cloud.Manager
+		mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			})
+		}
+		if err = mgr.ModifyVolume(ctx, volume, h.opts); err != nil {
+			if cloud.ModifyVolumeBadRequest(err) {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    err.Error(),
+				})
+			}
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			})
+		}
+	}
+
 	if h.opts.NewName != "" {
-		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
+		if err = h.sc.SetVolumeName(volume, h.opts.NewName); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

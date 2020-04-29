@@ -218,6 +218,10 @@ const (
 
 	// can flip this when regions are configured
 	UseSpawnHostRegions = false
+
+	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
+	// end of a patch.
+	DefaultTaskSyncAtEndTimeout = time.Hour
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -434,6 +438,11 @@ var (
 		HostStopped,
 	}
 
+	StartedHostStatus = []string{
+		HostBuilding,
+		HostStarting,
+	}
+
 	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
 	CanRunTaskStatus = []string{
 		HostStarting,
@@ -505,6 +514,8 @@ var (
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+
+	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 )

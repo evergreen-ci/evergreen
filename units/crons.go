@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -265,8 +264,8 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		}))
 		catcher.Add(err)
 
-		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true, "host is expired, decommissioned, or failed to provision")))
+		for idx := range hosts {
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, &hosts[idx], true, "host is expired, decommissioned, or failed to provision")))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -277,8 +276,8 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		}))
 		catcher.Add(err)
 
-		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true, "host spawned by task has gone out of scope")))
+		for idx := range hosts {
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, &hosts[idx], true, "host spawned by task has gone out of scope")))
 		}
 
 		return catcher.Resolve()
@@ -301,80 +300,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
-		distroHosts, err := host.IdleEphemeralGroupedByDistroID()
-		if err != nil {
-			return errors.Wrap(err, "database error grouping idle hosts by Distro.Id")
-		}
-
-		distroIDsToFind := make([]string, 0, len(distroHosts))
-		for _, info := range distroHosts {
-			distroIDsToFind = append(distroIDsToFind, info.DistroID)
-		}
-		distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
-		if err != nil {
-			return errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind, ","))
-		}
-
-		if len(distroIDsToFind) > len(distrosFound) {
-			distroIDsFound := make([]string, 0, len(distrosFound))
-			for _, d := range distrosFound {
-				distroIDsFound = append(distroIDsFound, d.Id)
-			}
-			missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
-			if err != nil {
-				return errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", "))
-			}
-			for _, h := range hosts {
-				catcher.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id)
-			}
-			if catcher.HasErrors() {
-				return errors.Wrapf(catcher.Resolve(), "could not decommission hosts from missing distros: %s", strings.Join(missingDistroIDs, ", "))
-			}
-		}
-
-		distrosMap := make(map[string]distro.Distro, len(distrosFound))
-		for i := range distrosFound {
-			d := distrosFound[i]
-			distrosMap[d.Id] = d
-		}
-
-		for _, info := range distroHosts {
-			totalRunningHosts := info.RunningHostsCount
-			minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
-			nIdleHosts := len(info.IdleHosts)
-
-			maxHostsToTerminate := totalRunningHosts - minimumHosts
-			if maxHostsToTerminate <= 0 {
-				continue
-			}
-			nHostsToEvaluateForTermination := nIdleHosts
-			if nIdleHosts > maxHostsToTerminate {
-				nHostsToEvaluateForTermination = maxHostsToTerminate
-			}
-
-			hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
-			for j := 0; j < nHostsToEvaluateForTermination; j++ {
-				hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[j])
-				catcher.Add(queue.Put(ctx, NewIdleHostTerminationJob(env, info.IdleHosts[j], ts)))
-			}
-
-			grip.InfoWhen(sometimes.Percent(10), message.Fields{
-				"id":                         idleHostJobName,
-				"op":                         "dispatcher",
-				"distro_id":                  info.DistroID,
-				"minimum_hosts":              minimumHosts,
-				"num_running_hosts":          totalRunningHosts,
-				"num_idle_hosts":             nIdleHosts,
-				"num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
-				"idle_hosts_to_evaluate":     hostsToEvaluateForTermination,
-			})
-		}
-
-		return catcher.Resolve()
+		return queue.Put(ctx, NewIdleHostTerminationJob(env, utility.RoundPartOfHour(1).Format(TSFormat)))
 	}
 }
 
@@ -843,7 +769,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return errors.Wrap(err, "problem getting global config")
 		}
 		for _, h := range hosts {
-			if h.UserHost || h.SpawnOptions.SpawnedByTask {
+			if !h.IsSubjectToHostCreationThrottle() {
 				// pass:
 				//    always start spawn hosts asap
 
@@ -891,8 +817,12 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			})
 			return nil
 		}
+		hostInitSettings := env.Settings().HostInit
+		if err = hostInitSettings.Get(env); err != nil {
+			hostInitSettings = env.Settings().HostInit
+		}
 
-		hosts, err := host.FindByFirstProvisioningAttempt()
+		hosts, err := host.FindByProvisioningAttempt(provisionRetryLimit)
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background host provisioning",
 			"cron":      setupHostJobName,
@@ -902,13 +832,50 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
-		ts := utility.RoundPartOfMinute(30).Format(TSFormat)
+		sort.Slice(hosts, func(i, j int) bool {
+			return hosts[i].StartTime.Before(hosts[j].StartTime)
+		})
+
+		attemptsUsed := 0
+		jobsSubmitted := 0
+		collisions := 0
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostSetupJob(env, h, ts)))
+			if !h.IsContainer() {
+				if time.Since(h.StartTime) < 40*time.Second {
+					// emperically no hosts are
+					// ready in less than 40
+					// seconds, so it doesn't seem
+					// worth trying.
+					continue
+				}
+
+				if jobsSubmitted >= hostInitSettings.ProvisioningThrottle {
+					continue
+				}
+			}
+
+			err := queue.Put(ctx, NewHostSetupJob(env, &h))
+			if amboy.IsDuplicateJobError(err) {
+				collisions++
+				continue
+			}
+			catcher.Add(err)
+
+			attemptsUsed += h.ProvisionAttempts
+			jobsSubmitted++
 		}
 
-		catcher.Add(queue.Put(ctx, NewCloudHostReadyJob(env, ts)))
+		grip.Info(message.Fields{
+			"provisioning_hosts": len(hosts),
+			"throttle":           hostInitSettings.ProvisioningThrottle,
+			"jobs_submitted":     jobsSubmitted,
+			"total_attempts":     attemptsUsed,
+			"duplicates_seen":    collisions,
+			"message":            "host provisioning setup",
+		})
+
+		catcher.Add(queue.Put(ctx, NewCloudHostReadyJob(env, utility.RoundPartOfMinute(30).Format(TSFormat))))
 
 		return catcher.Resolve()
 	}

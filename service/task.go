@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -52,6 +53,7 @@ type uiTaskData struct {
 	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults          []uiTestResult          `json:"test_results"`
 	Aborted              bool                    `json:"abort"`
+	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
 	OverrideDependencies bool                    `json:"override_dependencies"`
@@ -95,8 +97,8 @@ type uiTaskData struct {
 	PartOfDisplay  bool         `json:"in_display"`
 	DisplayTaskID  string       `json:"display_task,omitempty"`
 
-	// RunsSync specifies if the task syncs to S3.
-	RunsSync bool `json:"runs_sync"`
+	// CanSync indicates that the task can sync its working directory.
+	CanSync bool `json:"can_sync"`
 }
 
 type uiDep struct {
@@ -235,6 +237,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		TimeTaken:            projCtx.Task.TimeTaken,
 		Priority:             projCtx.Task.Priority,
 		Aborted:              projCtx.Task.Aborted,
+		AbortInfo:            projCtx.Task.AbortInfo,
 		DisplayOnly:          projCtx.Task.DisplayOnly,
 		OverrideDependencies: projCtx.Task.OverrideDependencies,
 		CurrentTime:          time.Now().UnixNano(),
@@ -250,7 +253,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
-		RunsSync:             projCtx.Task.RunsSync,
+		CanSync:              projCtx.Task.CanSync,
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
@@ -288,6 +291,17 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		if taskHost != nil {
 			uiTask.HostDNS = taskHost.Host
+			// ensure that the ability to spawn is updated from the existing distro
+			taskHost.Distro.SpawnAllowed = false
+			var d *distro.Distro
+			d, err = distro.FindByID(taskHost.Distro.Id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if d != nil {
+				taskHost.Distro.SpawnAllowed = d.SpawnAllowed
+			}
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gophercloud/gophercloud"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -244,6 +245,10 @@ func (m *openStackManager) CreateVolume(context.Context, *host.Volume) (*host.Vo
 
 func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volumes with openstack provider")
+}
+
+func (m *openStackManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
+	return errors.New("can't modify volume with openstack provider")
 }
 
 func (m *openStackManager) CheckInstanceType(context.Context, string) error {

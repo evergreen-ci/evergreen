@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"github.com/sam-falvo/mbox"
@@ -100,34 +101,42 @@ type DisplayTask struct {
 	ExecTasks []string
 }
 
+// SyncAtEndOptions describes when and how tasks perform sync at the end of a
+// task.
+type SyncAtEndOptions struct {
+	// BuildVariants filters which variants will sync.
+	BuildVariants []string `bson:"build_variants,omitempty"`
+	// Tasks filters which tasks will sync.
+	Tasks []string `bson:"tasks,omitempty"`
+	// VariantsTasks are the resolved pairs of build variants and tasks that
+	// this patch can actually run task sync for.
+	VariantsTasks []VariantTasks `bson:"variants_tasks,omitempty"`
+	Statuses      []string       `bson:"statuses,omitempty"`
+	Timeout       time.Duration  `bson:"timeout,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id            mgobson.ObjectId `bson:"_id,omitempty"`
-	Description   string           `bson:"desc"`
-	Project       string           `bson:"branch"`
-	Githash       string           `bson:"githash"`
-	PatchNumber   int              `bson:"patch_number"`
-	Author        string           `bson:"author"`
-	Version       string           `bson:"version"`
-	Status        string           `bson:"status"`
-	CreateTime    time.Time        `bson:"create_time"`
-	StartTime     time.Time        `bson:"start_time"`
-	FinishTime    time.Time        `bson:"finish_time"`
-	BuildVariants []string         `bson:"build_variants"`
-	Tasks         []string         `bson:"tasks"`
-	VariantsTasks []VariantTasks   `bson:"variants_tasks"`
-	// SyncBuildVariants and SyncTasks refer to the build variants and tasks
-	// that were originally requested for this patch.
-	SyncBuildVariants []string `bson:"sync_build_variants"`
-	SyncTasks         []string `bson:"sync_tasks"`
-	// SyncVariantsTasks are the resolved pairs of build variants and tasks that
-	// this patch can actually run task sync for.
-	SyncVariantsTasks []VariantTasks `bson:"sync_variants_tasks"`
-	Patches           []ModulePatch  `bson:"patches"`
-	Activated         bool           `bson:"activated"`
-	PatchedConfig     string         `bson:"patched_config"`
-	Alias             string         `bson:"alias"`
-	GithubPatchData   GithubPatch    `bson:"github_patch_data,omitempty"`
+	Id              mgobson.ObjectId `bson:"_id,omitempty"`
+	Description     string           `bson:"desc"`
+	Project         string           `bson:"branch"`
+	Githash         string           `bson:"githash"`
+	PatchNumber     int              `bson:"patch_number"`
+	Author          string           `bson:"author"`
+	Version         string           `bson:"version"`
+	Status          string           `bson:"status"`
+	CreateTime      time.Time        `bson:"create_time"`
+	StartTime       time.Time        `bson:"start_time"`
+	FinishTime      time.Time        `bson:"finish_time"`
+	BuildVariants   []string         `bson:"build_variants"`
+	Tasks           []string         `bson:"tasks"`
+	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
+	SyncAtEndOpts   SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
+	Patches         []ModulePatch    `bson:"patches"`
+	Activated       bool             `bson:"activated"`
+	PatchedConfig   string           `bson:"patched_config"`
+	Alias           string           `bson:"alias"`
+	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -308,11 +317,11 @@ func (p *Patch) AddTasks(tasks []string) error {
 	return err
 }
 
-// ResolveSyncVariantTasks filters the given tasks by variant to find only those that
-// match the build variant and task filters.
+// ResolveSyncVariantTasks filters the given tasks by variant to find only those
+// that match the build variant and task filters.
 func (p *Patch) ResolveSyncVariantTasks(vts []VariantTasks) []VariantTasks {
-	bvs := p.SyncBuildVariants
-	tasks := p.SyncTasks
+	bvs := p.SyncAtEndOpts.BuildVariants
+	tasks := p.SyncAtEndOpts.Tasks
 
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
@@ -370,20 +379,21 @@ func (p *Patch) ResolveSyncVariantTasks(vts []VariantTasks) []VariantTasks {
 }
 
 // AddSyncVariantsTasks adds new tasks for variants filtered from the given
-// sequence of VariantsTasks to the existing SyncVariantsTasks.
+// sequence of VariantsTasks to the existing synced VariantTasks.
 func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
-	resolved := MergeVariantsTasks(p.SyncVariantsTasks, p.ResolveSyncVariantTasks(vts))
+	resolved := MergeVariantsTasks(p.SyncAtEndOpts.VariantsTasks, p.ResolveSyncVariantTasks(vts))
+	syncVariantsTasksKey := bsonutil.GetDottedKeyName(SyncAtEndOptionsKey, SyncAtEndOptionsVariantsTasksKey)
 	if err := UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
-				SyncVariantsTasksKey: resolved,
+				syncVariantsTasksKey: resolved,
 			},
 		},
 	); err != nil {
 		return errors.WithStack(err)
 	}
-	p.SyncVariantsTasks = resolved
+	p.SyncAtEndOpts.VariantsTasks = resolved
 	return nil
 }
 

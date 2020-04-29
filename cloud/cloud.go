@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 )
 
@@ -70,6 +71,9 @@ type Manager interface {
 
 	// DeleteVolume deletes a volume.
 	DeleteVolume(context.Context, *host.Volume) error
+
+	// ModifyVolume modifies an existing volume.
+	ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error
 
 	// CheckInstanceType determines if the given instance type is available in the current region.
 	CheckInstanceType(context.Context, string) error

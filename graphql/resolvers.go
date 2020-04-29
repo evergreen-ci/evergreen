@@ -363,7 +363,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) ([]*TaskResult, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
 	sorter := ""
 	if sortBy != nil {
 		switch *sortBy {
@@ -408,7 +408,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if taskName != nil {
 		taskNameParam = *taskName
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -416,19 +416,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
-
-	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.Status,
-			BuildVariant: task.BuildVariant,
-			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
-		}
-		taskResults = append(taskResults, &t)
-	}
+	taskResults := ConvertDBTasksToGqlTasks(tasks, baseTaskStatuses)
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
 			if sortDirParam == 1 {
@@ -438,15 +426,23 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 		})
 	}
 	if len(baseStatuses) > 0 {
-		tasksFilteredByBaseStatus := []*TaskResult{}
-		for _, taskResult := range taskResults {
-			if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-			}
+		// tasks cannot be filtered by base status through a DB query. tasks are filtered by base status here.
+		allTasks, err := task.Find(task.ByVersion(patchID))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch %s: %s", patchID, err.Error()))
 		}
-		taskResults = tasksFilteredByBaseStatus
+		taskResults = FilterTasksByBaseStatuses(taskResults, baseStatuses, baseTaskStatuses)
+		if count > 0 {
+			// calculate filtered task count by base status
+			allTasksGql := ConvertDBTasksToGqlTasks(allTasks, baseTaskStatuses)
+			count = len(FilterTasksByBaseStatuses(allTasksGql, baseStatuses, baseTaskStatuses))
+		}
 	}
-	return taskResults, nil
+	patchTasks := PatchTasks{
+		Count: count,
+		Tasks: taskResults,
+	}
+	return &patchTasks, nil
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
@@ -725,7 +721,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
@@ -898,6 +894,14 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (bool, error) {
+	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
+	}
+	return result, nil
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {

@@ -118,9 +118,10 @@ type Task struct {
 	Requester string `bson:"r" json:"r"`
 
 	// Status represents the various stages the task could be in
-	Status  string                  `bson:"status" json:"status"`
-	Details apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
-	Aborted bool                    `bson:"abort,omitempty" json:"abort"`
+	Status    string                  `bson:"status" json:"status"`
+	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
+	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
+	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -168,12 +169,8 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	// ShouldSync indicates whether the task should sync its task directory to
-	// S3 when it is complete.
-	// TODO (EVG-7817): allow different statuses
-	ShouldSync bool `bson:"should_sync,omitempty" json:"should_sync,omitempty"`
-	// RunsSync indicates whether this task syncs its task directory to S3.
-	RunsSync bool `bson:"runs_sync,omitempty" json:"runs_sync,omitempty"`
+	CanSync       bool             `bson:"can_sync" json:"can_sync"`
+	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -186,6 +183,12 @@ func (t *Task) GetTaskGroupString() string {
 // S3Path returns the path to a task's directory dump in S3.
 func (t *Task) S3Path(bv, name string) string {
 	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
+}
+
+type SyncAtEndOptions struct {
+	Enabled  bool          `bson:"enabled,omitempty" json:"enabled,omitempty"`
+	Statuses []string      `bson:"statuses,omitempty" json:"statuses,omitempty"`
+	Timeout  time.Duration `bson:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -295,6 +298,13 @@ func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
 
 func NewDisplayTaskCache() DisplayTaskCache {
 	return DisplayTaskCache{execToDisplay: map[string]*Task{}, displayTasks: []*Task{}}
+}
+
+type AbortInfo struct {
+	User       string `bson:"user,omitempty" json:"user,omitempty"`
+	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	NewVersion string `bson:"new_version,omitempty" json:"new_version,omitempty"`
+	PRClosed   bool   `bson:"pr_closed,omitempty" json:"pr_closed,omitempty"`
 }
 
 var (
@@ -613,8 +623,9 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				DistroIdKey:      distroId,
 			},
 			"$unset": bson.M{
-				AbortedKey: "",
-				DetailsKey: "",
+				AbortedKey:   "",
+				AbortInfoKey: "",
+				DetailsKey:   "",
 			},
 		},
 	)
@@ -652,6 +663,7 @@ func (t *Task) MarkAsUndispatched() error {
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
+				AbortInfoKey:     "",
 				DetailsKey:       "",
 			},
 		},
@@ -837,7 +849,7 @@ func (t *Task) MarkSystemFailed() error {
 }
 
 // SetAborted sets the abort field of task to aborted
-func (t *Task) SetAborted() error {
+func (t *Task) SetAborted(reason AbortInfo) error {
 	t.Aborted = true
 	return UpdateOne(
 		bson.M{
@@ -845,7 +857,8 @@ func (t *Task) SetAborted() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				AbortedKey: true,
+				AbortedKey:   true,
+				AbortInfoKey: reason,
 			},
 		},
 	)
@@ -1227,24 +1240,78 @@ func IncSpawnedHostCost(taskID string, cost float64) error {
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state
-func AbortBuild(buildId, caller string) error {
-	_, err := UpdateAll(
-		bson.M{
-			BuildIdKey: buildId,
-			StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-		},
-		bson.M{"$set": bson.M{AbortedKey: true}},
+func AbortBuild(buildId string, reason AbortInfo) error {
+	q := bson.M{
+		BuildIdKey: buildId,
+		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+	}
+	if reason.TaskID != "" {
+		q[IdKey] = bson.M{"$ne": reason.TaskID}
+	}
+	ids, err := findAllTaskIDs(db.Query(q))
+	if err != nil {
+		return errors.Wrapf(err, "error finding tasks to abort from build '%s'", buildId)
+	}
+	if len(ids) == 0 {
+		grip.Info(message.Fields{
+			"message": "no tasks aborted for build",
+			"buildId": buildId,
+		})
+		return nil
+	}
+
+	_, err = UpdateAll(
+		bson.M{IdKey: bson.M{"$in": ids}},
+		bson.M{"$set": bson.M{
+			AbortedKey:   true,
+			AbortInfoKey: reason,
+		}},
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error setting aborted statuses for tasks in build '%s'", buildId)
+	}
+
+	event.LogManyTaskAbortRequests(ids, reason.User)
+
+	return nil
+}
+
+// AbortVersion sets the abort flag on all tasks associated with the version which are in an
+// abortable state
+func AbortVersion(versionId string, reason AbortInfo) error {
+	q := bson.M{
+		VersionKey: versionId,
+		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+	}
+	if reason.TaskID != "" {
+		q[IdKey] = bson.M{"$ne": reason.TaskID}
+	}
+	ids, err := findAllTaskIDs(db.Query(q))
+	if err != nil {
+		return errors.Wrap(err, "error finding updated tasks")
+	}
+
+	if len(ids) == 0 {
+		grip.Info(message.Fields{
+			"message": "no tasks aborted for version",
+			"buildId": versionId,
+		})
+		return nil
+	}
+
+	_, err = UpdateAll(
+		bson.M{IdKey: bson.M{"$in": ids}},
+		bson.M{"$set": bson.M{
+			AbortedKey:   true,
+			AbortInfoKey: reason,
+		}},
 	)
 	if err != nil {
 		return errors.Wrap(err, "error setting aborted statuses")
 	}
-	ids, err := FindAllTaskIDsFromBuild(buildId)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks by build id")
-	}
-	if len(ids) > 0 {
-		event.LogManyTaskAbortRequests(ids, caller)
-	}
+
+	event.LogManyTaskAbortRequests(ids, reason.User)
+
 	return nil
 }
 
@@ -1272,7 +1339,6 @@ func (t *Task) Insert() error {
 
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
-	var update bson.M
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
 			execTask, err := FindOne(ById(et))
@@ -1288,39 +1354,31 @@ func (t *Task) Archive() error {
 		}
 	}
 
-	// only increment restarts if have a current restarts
-	// this way restarts will never be set for new tasks but will be
-	// maintained for old ones
-	if t.Restarts > 0 {
-		update = bson.M{
-			"$inc": bson.M{
-				ExecutionKey: 1,
-				RestartsKey:  1,
-			},
-			"$unset": bson.M{AbortedKey: ""},
-		}
-	} else {
-		update = bson.M{
-			"$inc":   bson.M{ExecutionKey: 1},
-			"$unset": bson.M{AbortedKey: ""},
-		}
-	}
-	err := UpdateOne(
-		bson.M{IdKey: t.Id},
-		update)
-	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed")
-	}
-
 	archiveTask := *t
 	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
 	archiveTask.OldTaskId = t.Id
 	archiveTask.Archived = true
-	err = db.Insert(OldCollection, &archiveTask)
+	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
 
+	// only increment restarts if have a current restarts
+	// this way restarts will never be set for new tasks but will be
+	// maintained for old ones
+	inc := bson.M{ExecutionKey: 1}
+	if t.Restarts > 0 {
+		inc[RestartsKey] = 1
+	}
+	err = UpdateOne(
+		bson.M{IdKey: t.Id},
+		bson.M{
+			"$unset": bson.M{AbortedKey: "", AbortInfoKey: ""},
+			"$inc":   inc,
+		})
+	if err != nil {
+		return errors.Wrap(err, "task.Archive() failed")
+	}
 	t.Aborted = false
 
 	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
@@ -1952,7 +2010,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, error) {
+func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, int, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}
@@ -1984,9 +2042,13 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return tasks, nil
+	total, err := Count(query)
+	if err != nil {
+		return tasks, 0, err
+	}
+	return tasks, total, nil
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task

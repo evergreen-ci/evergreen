@@ -17,7 +17,7 @@
             <div class="entry">
               <strong>Created at</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
             </div>
-            <div class="entry" ng-hide="curHostData.status=='stopped'">
+            <div class="entry" ng-show="curHostData.isStarted">
               <strong>Started at</strong> <span>[[curHostData.start_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
             </div>
             <div class="entry" ng-hide="curHostData.no_expiration">
@@ -38,11 +38,14 @@
             <div class="entry" ng-show="!curHostData.isTerminated">
               <strong>Work Directory</strong> <span class="mono">[[curHostData.distro.work_dir]]</span>
             </div>
-            <div class="entry"ng-show="curHostData.zone">
+            <div class="entry" ng-show="curHostData.zone">
               <strong>Availability Zone</strong> <span>[[curHostData.zone]]</span>
             </div>
             <div class="entry" ng-show="curHostData.is_virtual_workstation && curHostData.status == 'running'">
               <strong>IDE</strong> <span> <a href="/host/[[curHostData.id]]/ide/" target="_blank">Open IDE</a> </span>
+            </div>
+            <div class="entry" ng-show="curHostData.home_volume_id">
+              <strong>Home Volume</strong> <span> <a class="pointer" ng-click="goToVolume(curHostData.home_volume_id)"> [[ getVolumeDisplayName(curHostData.home_volume_id) ]] </a> </span>
             </div>
             <div class ="entry" ng-show="curHostData.userdata">
               <strong>User Data:</strong><br/>

@@ -173,10 +173,10 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 					{
 						StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}},
 						bootstrapKey: distro.BootstrapMethodUserData,
-						// User data hosts have a grace period during which
-						// they are not considered idle to give agents time to
-						// start.
-						LastCommunicationTimeKey: bson.M{"$lte": time.Now().Add(-MaxUncommunicativeInterval)},
+						// User data hosts have a grace period between creation
+						// and provisioning during which they are not considered
+						// for idle termination to give agents time to start.
+						CreateTimeKey: bson.M{"$lte": time.Now().Add(-provisioningCutoff)},
 					},
 				},
 			},
@@ -206,16 +206,43 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 func runningHostsQuery(distroID string) bson.M {
 	query := IsLive()
 	if distroID != "" {
-		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-		query[key] = distroID
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
+	return query
+}
+
+func startedTaskHostsQuery(distroID string) bson.M {
+	query := bson.M{
+		StatusKey:    bson.M{"$in": evergreen.StartedHostStatus},
+		StartedByKey: evergreen.User,
+	}
+	if distroID != "" {
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
 	return query
 }
 
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
 	return num, errors.Wrap(err, "problem finding running hosts")
+}
+
+func CountAllRunningDynamicHosts() (int, error) {
+	query := IsLive()
+	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
+	num, err := Count(db.Query(query))
+	return num, errors.Wrap(err, "problem finding running dynamic hosts")
+}
+
+func CountStartedTaskHosts() (int, error) {
+	num, err := Count(db.Query(startedTaskHostsQuery("")))
+	return num, errors.Wrap(err, "problem finding provisioning hosts")
+}
+
+func CountStartedTaskHostsForDistro(distroID string) (int, error) {
+	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
+	return num, errors.Wrapf(err, "problem finding started hosts for '%s'", distroID)
 }
 
 // AllActiveHosts produces a HostGroup for all hosts with UpHost
@@ -387,11 +414,12 @@ func Provisioning() db.Q {
 
 // FindByFirstProvisioningAttempt finds all hosts that have not yet attempted
 // provisioning.
-func FindByFirstProvisioningAttempt() ([]Host, error) {
+func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 	return Find(db.Query(bson.M{
-		ProvisionAttemptsKey: 0,
+		ProvisionAttemptsKey: bson.M{"$lte": attempt},
 		StatusKey:            evergreen.HostProvisioning,
 		NeedsReprovisionKey:  bson.M{"$exists": false},
+		ProvisionedKey:       false,
 	}))
 }
 
@@ -1256,7 +1284,10 @@ var (
 	awsSecretKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "Secret")
 )
 
-func StartingHostsByClient() (map[ClientOptions][]Host, error) {
+func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
+	if limit <= 0 {
+		limit = 500
+	}
 	results := []struct {
 		Options ClientOptions `bson:"_id"`
 		Hosts   []Host        `bson:"hosts"`
@@ -1265,6 +1296,14 @@ func StartingHostsByClient() (map[ClientOptions][]Host, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: evergreen.HostStarting},
+		},
+		{
+			"$sort": bson.M{
+				CreateTimeKey: 1,
+			},
+		},
+		{
+			"$limit": limit,
 		},
 		{
 			"$project": bson.M{

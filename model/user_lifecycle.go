@@ -35,7 +35,7 @@ func FindUserByID(id string) (*user.DBUser, error) {
 
 // GetOrCreateUser fetches a user with the given userId and returns it. If no document exists for
 // that userId, inserts it along with the provided display name and email.
-func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken string) (*user.DBUser, error) {
+func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken string, roles []string) (*user.DBUser, error) {
 	u := &user.DBUser{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
@@ -50,13 +50,17 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	if refreshToken != "" {
 		setFields[bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheRefreshTokenKey)] = refreshToken
 	}
+	setOnInsertFields := bson.M{
+		user.APIKeyKey: utility.RandomString(),
+	}
+	if roles != nil && len(roles) > 0 {
+		setOnInsertFields[user.RolesKey] = roles
+	}
 	res := env.DB().Collection(user.Collection).FindOneAndUpdate(ctx,
 		bson.M{user.IdKey: userId},
 		bson.M{
-			"$set": setFields,
-			"$setOnInsert": bson.M{
-				user.APIKeyKey: utility.RandomString(),
-			},
+			"$set":         setFields,
+			"$setOnInsert": setOnInsertFields,
 		},
 		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
 	)

@@ -68,13 +68,21 @@ func makeSetupHostJob() *setupHostJob {
 
 // NewHostSetupJob creates a job that performs any additional provisioning for
 // a host to prepare it to run.
-func NewHostSetupJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j := makeSetupHostJob()
-	j.host = &h
+	j.host = h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
+
+	var id string
+	if h.IsContainer() {
+		id = time.Now().Format(TSFormat)
+	} else {
+		id = utility.RoundPartOfMinute(15).Format(TSFormat)
+	}
+
+	j.SetID(fmt.Sprintf("%s.%s.%s.attempt-%d", setupHostJobName, j.HostID, id, h.ProvisionAttempts))
 	return j
 }
 
@@ -105,7 +113,6 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	defer j.tryRequeue(ctx)
 
 	settings := j.env.Settings()
 
@@ -136,6 +143,20 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		"distro":  j.host.Distro.Id,
 		"host_id": j.host.Id,
 	})
+
+	if err := j.host.IncProvisionAttempts(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":           j.ID(),
+			"host_id":       j.host.Id,
+			"attempt_value": j.host.ProvisionAttempts,
+			"distro":        j.host.Distro.Id,
+			"operation":     "increment provisioning errors failed",
+			"cause": []string{
+				"job collision",
+				"host data",
+			}}))
+		return errors.Wrap(err, "job collision detected")
+	}
 
 	if err := j.provisionHost(ctx, settings); err != nil {
 		event.LogHostProvisionError(j.host.Id)
@@ -507,15 +528,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"message": "setting up host",
 	})
 
-	incErr := j.host.IncProvisionAttempts()
-	grip.Critical(message.WrapError(incErr, message.Fields{
-		"job":           j.ID(),
-		"host_id":       j.host.Id,
-		"attempt_value": j.host.ProvisionAttempts,
-		"distro":        j.host.Distro.Id,
-		"operation":     "increment provisioning errors failed",
-	}))
-
 	err := j.runHostSetup(ctx, settings)
 	if err != nil {
 		if shouldRetryProvisioning(j.host) {
@@ -715,24 +727,6 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}))
 
 	return errors.Wrap(err, "could not fetch remote task data")
-}
-
-func (j *setupHostJob) tryRequeue(ctx context.Context) {
-	if shouldRetryProvisioning(j.host) && j.env.RemoteQueue().Started() {
-		job := NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts))
-		job.UpdateTimeInfo(amboy.JobTimeInfo{
-			WaitUntil: time.Now().Add(time.Minute),
-		})
-		err := j.env.RemoteQueue().Put(ctx, job)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "failed to requeue setup job",
-			"host_id":  j.host.Id,
-			"job":      j.ID(),
-			"distro":   j.host.Distro.Id,
-			"attempts": j.host.ProvisionAttempts,
-		}))
-		j.AddError(err)
-	}
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {

@@ -16,17 +16,18 @@ import (
 )
 
 type TaskConfig struct {
-	Distro          *distro.Distro
-	ProjectRef      *ProjectRef
-	Project         *Project
-	Task            *task.Task
-	BuildVariant    *BuildVariant
-	Expansions      *util.Expansions
-	Redacted        map[string]bool
-	WorkDir         string
-	GithubPatchData patch.GithubPatch
-	Timeout         *Timeout
-	TaskSync        evergreen.S3Credentials
+	Distro               *distro.Distro
+	ProjectRef           *ProjectRef
+	Project              *Project
+	Task                 *task.Task
+	BuildVariant         *BuildVariant
+	Expansions           *util.Expansions
+	RestrictedExpansions *util.Expansions
+	Redacted             map[string]bool
+	WorkDir              string
+	GithubPatchData      patch.GithubPatch
+	Timeout              *Timeout
+	TaskSync             evergreen.S3Credentials
 
 	mu sync.RWMutex
 }
@@ -114,6 +115,16 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	return dir, nil
 }
 
+// GetExpansionsWithRestricted should ONLY be used for operations that won't leak restricted expansions.
+// Otherwise, use taskConfig.Expansions directly.
+func (c *TaskConfig) GetExpansionsWithRestricted() *util.Expansions {
+	allExpansions := *c.Expansions
+	if c.RestrictedExpansions != nil {
+		allExpansions.Update(c.RestrictedExpansions.Map())
+	}
+	return &allExpansions
+}
+
 func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if t == nil {
 		return nil, errors.New("no task to make a TaskConfig from")
@@ -177,7 +188,9 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project vars")
 	}
-	tc.Expansions.Update(projVars.Vars)
+
+	tc.Expansions.Update(projVars.GetUnrestrictedVars())
+	tc.RestrictedExpansions.Update(projVars.GetRestrictedVars())
 	tc.Redacted = projVars.PrivateVars
 	return tc, nil
 }

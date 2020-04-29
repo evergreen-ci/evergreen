@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -233,12 +234,16 @@ func (m *dockerManager) CreateVolume(context.Context, *host.Volume) (*host.Volum
 	return nil, errors.New("can't create volume with docker provider")
 }
 
-func (m *dockerManager) CheckInstanceType(context.Context, string) error {
-	return errors.New("can't specify instance type with docker provider")
-}
-
 func (m *dockerManager) DeleteVolume(context.Context, *host.Volume) error {
 	return errors.New("can't delete volume with docker provider")
+}
+
+func (m *dockerManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
+	return errors.New("can't modify volume with docker provider")
+}
+
+func (m *dockerManager) CheckInstanceType(context.Context, string) error {
+	return errors.New("can't specify instance type with docker provider")
 }
 
 // TimeTilNextPayment returns the amount of time until the next payment is due

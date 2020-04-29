@@ -3,17 +3,22 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -36,9 +41,9 @@ func init() {
 }
 
 type idleHostJob struct {
-	HostID     string `bson:"host" json:"host" yaml:"host"`
-	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated bool `bson:"terminated" json:"terminated" yaml:"terminated"`
+	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
+	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
+	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
 	env      evergreen.Environment
 	settings *evergreen.Settings
@@ -60,28 +65,16 @@ func makeIdleHostJob() *idleHostJob {
 	return j
 }
 
-func NewIdleHostTerminationJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+func NewIdleHostTerminationJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeIdleHostJob()
-	j.host = &h
-	j.HostID = h.Id
-	j.SetID(fmt.Sprintf("%s.%s.%s", idleHostJobName, j.HostID, id))
+	j.env = env
+	j.SetID(fmt.Sprintf("%s.%s", idleHostJobName, id))
 	return j
 }
 
 func (j *idleHostJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	var err error
-	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
-		j.AddError(err)
-		if err != nil {
-			return
-		} else if j.host == nil {
-			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
-			return
-		}
-	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -94,68 +87,144 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !j.host.IsEphemeral() {
+	// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "database error grouping idle hosts by Distro.Id"))
+		return
+	}
+
+	distroIDsToFind := make([]string, 0, len(distroHosts))
+	for _, info := range distroHosts {
+		distroIDsToFind = append(distroIDsToFind, info.DistroID)
+	}
+	distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind, ",")))
+		return
+	}
+
+	if len(distroIDsToFind) > len(distrosFound) {
+		distroIDsFound := make([]string, 0, len(distrosFound))
+		for _, d := range distrosFound {
+			distroIDsFound = append(distroIDsFound, d.Id)
+		}
+		missingDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
+		hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
+			return
+		}
+		for _, h := range hosts {
+			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id))
+		}
+
+		if j.HasErrors() {
+			return
+		}
+	}
+
+	distrosMap := make(map[string]distro.Distro, len(distrosFound))
+	for i := range distrosFound {
+		d := distrosFound[i]
+		distrosMap[d.Id] = d
+	}
+
+	for _, info := range distroHosts {
+		totalRunningHosts := info.RunningHostsCount
+		minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
+		nIdleHosts := len(info.IdleHosts)
+
+		maxHostsToTerminate := totalRunningHosts - minimumHosts
+		if maxHostsToTerminate <= 0 {
+			continue
+		}
+		nHostsToEvaluateForTermination := nIdleHosts
+		if nIdleHosts > maxHostsToTerminate {
+			nHostsToEvaluateForTermination = maxHostsToTerminate
+		}
+
+		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
+		for i := 0; i < nHostsToEvaluateForTermination; i++ {
+			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
+			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i]))
+		}
+
+		grip.InfoWhen(sometimes.Percent(10), message.Fields{
+			"id":                         j.ID(),
+			"job_type":                   idleHostJobName,
+			"runner":                     "monitor",
+			"op":                         "dispatcher",
+			"distro_id":                  info.DistroID,
+			"minimum_hosts":              minimumHosts,
+			"num_running_hosts":          totalRunningHosts,
+			"num_idle_hosts":             nIdleHosts,
+			"num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
+			"idle_hosts_to_evaluate":     hostsToEvaluateForTermination,
+		})
+	}
+}
+
+func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) error {
+	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
-			"host_id":  j.HostID,
+			"host_id":  h.Id,
 			"job_type": j.Type().Name,
-			"status":   j.host.Status,
-			"provider": j.host.Distro.Provider,
-			"message":  "host termination for a non-spawnable distro",
+			"status":   h.Status,
+			"provider": h.Distro.Provider,
+			"message":  "host termination for a non-ephemeral distro",
 			"cause":    "programmer error",
 		})
-		j.AddError(errors.New("non-spawnable host"))
-		return
+		return errors.New("attempted to terminate non-ephemeral host")
 	}
 
 	// ask the host how long it has been idle
-	idleTime := j.host.IdleTime()
+	idleTime := h.IdleTime()
 
 	// if the communication time is > 10 mins then there may not be an agent on the host.
-	communicationTime := j.host.GetElapsedCommunicationTime()
+	communicationTime := h.GetElapsedCommunicationTime()
 
 	// get a cloud manager for the host
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for host '%s'", j.host.Id))
-		return
+		return errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
 	}
 	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud manager for host %v", j.host.Id))
-		return
+		return errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
 	}
 
 	// ask how long until the next payment for the host
-	tilNextPayment := manager.TimeTilNextPayment(j.host)
+	tilNextPayment := manager.TimeTilNextPayment(h)
 
 	if tilNextPayment > maxTimeTilNextPayment {
-		return
+		return nil
 	}
 
-	if j.host.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
+	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
 		grip.Notice(message.Fields{
 			"op":                j.Type().Name,
 			"id":                j.ID(),
 			"message":           "not flagging idle host, waiting for an agent",
-			"host_id":           j.host.Id,
-			"distro":            j.host.Distro.Id,
+			"host_id":           h.Id,
+			"distro":            h.Distro.Id,
 			"idle":              idleTime.String(),
 			"last_communicated": communicationTime.String(),
 		})
-		return
+		return nil
 	}
 
 	idleThreshold := idleTimeCutoff
-	if j.host.RunningTaskGroup != "" {
+	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupHostCutoff
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
-		j.Terminated = true
-		tjob := NewHostTerminationJob(j.env, *j.host, false, "host is idle or unreachable")
-		queue := j.env.RemoteQueue()
-		j.AddError(queue.Put(ctx, tjob))
+		j.Terminated++
+		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
+		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, "host is idle or unreachable"))
 	}
+	return nil
 }

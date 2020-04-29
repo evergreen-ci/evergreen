@@ -233,7 +233,13 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     </tr>
                     <tr ng-show="task.abort">
                       <td class="icon"><i class="fa fa-level-down"></i></td>
-                      <td>Aborting</td>
+                      <td>
+                        Aborted
+                        <span ng-show="task.abort_info.user">by [[task.abort_info.user]]</span>
+                        <span ng-show="task.abort_info.task_id">because of failing task <a ng-href="[[task.abort_info.task_id]]">[[task.abort_info.task_id]]</a></span>
+                        <span ng-show="task.abort_info.new_version">because of new version <a ng-href="/version/[[task.abort_info.new_version]]">[[task.abort_info.new_version]]</a></span>
+                        <span ng-show="task.abort_info.pr_closed">because the GitHub PR was closed</span>
+                      </td>
                     </tr>
                     <tr ng-show="task.start_time > 0 && (task.status != 'undispatched' && task.status != 'dispatched') ">
                       <td class="icon"><i class="fa fa-calendar"></i></td>
@@ -243,9 +249,22 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td class="icon"><i class="fa fa-calendar"></i></td>
                       <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
                     </tr>
-                    <tr ng-show="task.task_end_details.status == 'failed' && (task.task_end_details.type == 'setup' || task.task_end_details.type == 'system') ">
+                    <tr ng-show="task.task_end_details.status == 'failed'">
                       <td class="icon"><i class="fa fa-code"></i></td>
                       <td>Failing Command: [[task.task_end_details.desc]]</td>
+                    </tr>
+                    <tr ng-show="task.task_end_details.timeout_type">
+                      <td class="icon"><i class="fa fa-hourglass"></i></td>
+                      <td> 
+                        <div>
+                          <span>Reached </span>
+                          <span>
+                            <md-tooltip class="tooltip" md-direction="bottom">[[timeoutTooltip(task.task_end_details.timeout_type)]]</md-tooltip>
+                            <span class="tooltipUnderline">[[timeoutLabel(task.task_end_details.timeout_type)]]</span>
+                          </span>
+                          <span> timeout ([[task.task_end_details.timeout_duration | stringifyNanoseconds]])</span>
+                        </div>
+                      </td>
                     </tr>
                     <tr ng-show="task.priority > 0">
                       <td class="icon"><i class="fa fa-rocket"></i></td>
@@ -338,7 +357,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
             <patch-diff-panel type="Test" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info" baselink=""></patch-diff-panel>
 
-            <div class="row" ng-show="task.runs_sync">
+            <div class="row" ng-show="task.can_sync">
               <div class="col-lg-12">
                 <h3 class="section-heading"><i class="fa fa-arrow-circle-o-down"></i> Pull Task Sync Command</h3>
                   <pre readOnly>evergreen pull --task [[task.id]]</pre>

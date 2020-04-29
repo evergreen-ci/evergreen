@@ -24,6 +24,7 @@ type APIHost struct {
 	InstanceType     *string    `json:"instance_type"`
 	AvailabilityZone *string    `json:"zone"`
 	DisplayName      *string    `json:"display_name"`
+	HomeVolumeID     *string    `json:"home_volume_id"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -106,6 +107,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.InstanceType = ToStringPtr(v.InstanceType)
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
+	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
@@ -132,6 +134,7 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Status:       FromStringPtr(apiHost.Status),
 		Zone:         FromStringPtr(apiHost.AvailabilityZone),
 		DisplayName:  FromStringPtr(apiHost.DisplayName),
+		HomeVolumeID: FromStringPtr(apiHost.HomeVolumeID),
 	}
 	return interface{}(h), nil
 }
@@ -156,6 +159,7 @@ type VolumePostRequest struct {
 
 type VolumeModifyOptions struct {
 	NewName string `json:"new_name"`
+	Size    int    `json:"size"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
@@ -184,6 +188,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.Type = ToStringPtr(v.Type)
 	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
 	apiVolume.Size = v.Size
+	apiVolume.HostID = ToStringPtr(v.Host)
 	apiVolume.Expiration = ToTimePtr(v.Expiration)
 	return nil
 }
@@ -216,6 +221,13 @@ type APISpawnHostModify struct {
 	AddTags      []*string  `json:"tags_to_add"`
 	DeleteTags   []*string  `json:"tags_to_delete"`
 	NewName      *string    `json:"new_name"`
+}
+
+type APIVolumeModify struct {
+	Action     *string    `json:"action"`
+	HostID     *string    `json:"host_id"`
+	Expiration *time.Time `json:"expiration"`
+	NewName    *string    `json:"new_name"`
 }
 
 type APIHostScript struct {

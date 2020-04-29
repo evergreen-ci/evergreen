@@ -183,7 +183,7 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken())
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
 }
 
 func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }

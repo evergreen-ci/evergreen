@@ -3331,7 +3331,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 		assert.NoError(hosts[i].Insert())
 	}
 
-	hosts, err := FindByFirstProvisioningAttempt()
+	hosts, err := FindByProvisioningAttempt(1)
 	require.NoError(err)
 	require.Len(hosts, 1)
 	assert.Equal("host3", hosts[0].Id)
@@ -3341,7 +3341,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 		"_id":    "host5",
 		"status": evergreen.HostProvisioning,
 	}))
-	hosts, err = FindByFirstProvisioningAttempt()
+	hosts, err = FindByProvisioningAttempt(1)
 	assert.NoError(err)
 	assert.Empty(hosts)
 
@@ -3352,7 +3352,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 		NeedsReprovision: ReprovisionToNew,
 	}
 	require.NoError(h.Insert())
-	hosts, err = FindByFirstProvisioningAttempt()
+	hosts, err = FindByProvisioningAttempt(1)
 	assert.NoError(err)
 	assert.Empty(hosts)
 }
@@ -4575,7 +4575,7 @@ func TestStartingHostsByClient(t *testing.T) {
 		require.NoError(t, h.Insert())
 	}
 
-	hostsByClient, err := StartingHostsByClient()
+	hostsByClient, err := StartingHostsByClient(0)
 	assert.NoError(t, err)
 	assert.Len(t, hostsByClient, 4)
 	for clientOptions, hosts := range hostsByClient {

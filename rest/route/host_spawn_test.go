@@ -346,6 +346,53 @@ func TestDetachVolumeHandler(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, resp.Status())
 }
 
+func TestModifyVolumeHandler(t *testing.T) {
+	h := &modifyVolumeHandler{
+		sc:   &data.MockConnector{},
+		env:  evergreen.GetEnvironment(),
+		opts: &model.VolumeModifyOptions{},
+	}
+	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
+	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
+		CachedVolumes: []host.Volume{
+			host.Volume{
+				ID:               "volume1",
+				CreatedBy:        "user",
+				Size:             64,
+				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+			},
+		},
+	}
+
+	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
+	jsonBody, err := json.Marshal(opts)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+
+	r, err := http.NewRequest("PATCH", "/volume/volume1/modify", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
+	assert.NoError(t, h.Parse(ctx, r))
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusUnauthorized, resp.Status())
+
+	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	// validate max size
+	h.opts.Size = 500
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	h.opts.Size = 200
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusInternalServerError, resp.Status()) // i.e. passed validation
+}
+
 func TestGetVolumesHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	h := &getVolumesHandler{

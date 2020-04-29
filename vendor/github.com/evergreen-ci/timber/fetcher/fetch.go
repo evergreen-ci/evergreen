@@ -129,15 +129,23 @@ func (r *paginatedReadCloser) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	var m int
-	n, err := r.ReadCloser.Read(p)
-	if err == io.EOF && n > 0 {
-		if err = r.getNextPage(); err == nil && n < len(p) {
-			m, err = r.ReadCloser.Read(p[n:])
+	var (
+		n      int
+		offset int
+		err    error
+	)
+	for offset < len(p) {
+		n, err = r.ReadCloser.Read(p[offset:])
+		offset += n
+		if err == io.EOF && n > 0 {
+			err = r.getNextPage()
+		}
+		if err != nil {
+			break
 		}
 	}
 
-	return n + m, err
+	return offset, err
 }
 
 func (r *paginatedReadCloser) getNextPage() error {
@@ -148,8 +156,8 @@ func (r *paginatedReadCloser) getNextPage() error {
 			return errors.Wrap(err, "problem requesting next page")
 		}
 
-		if err = errors.Wrap(r.Close(), "problem closing last response reader"); err != nil {
-			return errors.Wrap(r.Close(), "problem closing last response reader")
+		if err = r.Close(); err != nil {
+			return errors.Wrap(err, "problem closing last response reader")
 		}
 
 		r.header = resp.Header

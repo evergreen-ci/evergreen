@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -19,7 +20,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addSyncStatusesFlag(), addSyncTimeoutFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -44,8 +45,16 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 
 func Patch() cli.Command {
 	return cli.Command{
-		Name:    "patch",
-		Before:  setPlainLogger,
+		Name: "patch",
+		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
+			catcher := grip.NewBasicCatcher()
+			for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
+				if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
+					catcher.Errorf("invalid sync status '%s'", status)
+				}
+			}
+			return catcher.Resolve()
+		}),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to evergreen",
 		Flags:   getPatchFlags(),
@@ -58,6 +67,8 @@ func Patch() cli.Command {
 				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
+				SyncTimeout:       c.Duration(syncTimeoutFlagName),
 				SkipConfirm:       c.Bool(yesFlagName),
 				Description:       c.String(patchDescriptionFlagName),
 				Finalize:          c.Bool(patchFinalizeFlagName),

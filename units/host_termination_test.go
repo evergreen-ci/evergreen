@@ -54,7 +54,7 @@ func TestTerminateHosts(t *testing.T) {
 		Provisioned: true,
 	}
 	assert.NoError(h.Insert())
-	j := NewHostTerminationJob(env, *h, true, "foo")
+	j := NewHostTerminationJob(env, h, true, "foo")
 	j.Run(ctx)
 
 	assert.NoError(j.Error())
@@ -104,7 +104,7 @@ func TestHostCosts(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	j := NewHostTerminationJob(env, *h, true, "")
+	j := NewHostTerminationJob(env, h, true, "")
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))

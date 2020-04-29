@@ -291,6 +291,18 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+func (d *Distro) ManagementMethodsUseSSH() bool {
+	if utility.StringSliceContains([]string{BootstrapMethodLegacySSH, BootstrapMethodSSH}, d.BootstrapSettings.Method) {
+		return true
+	}
+
+	if utility.StringSliceContains([]string{CommunicationMethodLegacySSH, CommunicationMethodSSH}, d.BootstrapSettings.Communication) {
+		return true
+	}
+
+	return false
+}
+
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
 	// gceMaxNameLength is the maximum length of an instance name permitted by GCE.

@@ -20,7 +20,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
-  ): [TaskResult!]!
+  ): PatchTasks!
   taskTests(
     taskId: String!
     sortCategory: TestSortCategory = TEST_NAME
@@ -47,6 +47,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): Boolean!
 }
 
 enum TaskSortCategory {
@@ -112,6 +113,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+type PatchTasks {
+  tasks: [TaskResult!]!
+  count: Int!
 }
 
 type PatchBuildVariant {

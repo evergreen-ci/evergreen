@@ -9,6 +9,8 @@ mciModule.controller('SignalProcessingCtrl', function(
   // TODO later this might be replaced with some sort of pagination
   const LIMIT = 500;
 
+  const DEFAULT_MAGNITUDE = .05
+
   vm.mode = {
     options: [{
       id: 'processed',
@@ -27,6 +29,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
     project: '=' + $window.project,
     probability: '>0.05',
+    magnitude: `>=${DEFAULT_MAGNITUDE}`
   };
 
   vm.changePointFilter = function() {
@@ -321,7 +324,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     columnDefs: [
       {
         // TODO Jim: Should be managed by PERF-1546
-        name: 'Hazard Level',
+        name: 'Percent Change',
         field: 'magnitude',
         type: 'number',
         cellTemplate: '<hazard-level-cell row="row" ctx="grid.appScope.spvm.refCtx" />',

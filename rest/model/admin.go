@@ -875,8 +875,10 @@ type APIBanner struct {
 }
 
 type APIHostInitConfig struct {
-	SSHTimeoutSeconds int64 `json:"ssh_timeout_secs"`
-	HostThrottle      int   `json:"host_throttle"`
+	SSHTimeoutSeconds    int64 `json:"ssh_timeout_secs"`
+	HostThrottle         int   `json:"host_throttle"`
+	ProvisioningThrottle int   `json:"provisioning_throttle"`
+	CloudStatusBatchSize int   `json:"cloud_batch_size"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -884,6 +886,8 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 	case evergreen.HostInitConfig:
 		a.SSHTimeoutSeconds = v.SSHTimeoutSeconds
 		a.HostThrottle = v.HostThrottle
+		a.ProvisioningThrottle = v.ProvisioningThrottle
+		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -892,8 +896,10 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 
 func (a *APIHostInitConfig) ToService() (interface{}, error) {
 	return evergreen.HostInitConfig{
-		SSHTimeoutSeconds: a.SSHTimeoutSeconds,
-		HostThrottle:      a.HostThrottle,
+		SSHTimeoutSeconds:    a.SSHTimeoutSeconds,
+		HostThrottle:         a.HostThrottle,
+		ProvisioningThrottle: a.ProvisioningThrottle,
+		CloudStatusBatchSize: a.CloudStatusBatchSize,
 	}, nil
 }
 

@@ -32,7 +32,7 @@ type GeneratedProject struct {
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
-func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
+func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 
 	bvs := map[string]*parserBV{}
@@ -45,7 +45,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
-					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
+					catcher.Errorf("found duplicate buildvariant (%s)", bv.Name)
 				} else {
 					bvs[bv.Name] = &p.BuildVariants[i]
 					continue mergeBuildVariants
@@ -59,20 +59,20 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 		}
 		for i, t := range p.Tasks {
 			if _, ok := tasks[t.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task (%s)", t.Name))
+				catcher.Errorf("found duplicate task (%s)", t.Name)
 			} else {
 				tasks[t.Name] = &p.Tasks[i]
 			}
 		}
 		for f, val := range p.Functions {
 			if _, ok := functions[f]; ok {
-				catcher.Add(errors.Errorf("found duplicate function (%s)", f))
+				catcher.Errorf("found duplicate function (%s)", f)
 			}
 			functions[f] = val
 		}
 		for i, tg := range p.TaskGroups {
 			if _, ok := taskGroups[tg.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task group (%s)", tg.Name))
+				catcher.Errorf("found duplicate task group (%s)", tg.Name)
 			} else {
 				taskGroups[tg.Name] = &p.TaskGroups[i]
 			}
@@ -90,7 +90,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	for i := range taskGroups {
 		g.TaskGroups = append(g.TaskGroups, *taskGroups[i])
 	}
-	return g
+	return g, catcher.Resolve()
 }
 
 // ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
@@ -253,20 +253,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	var syncVariantsTasks []patch.VariantTasks
+	var syncAtEndOpts patch.SyncAtEndOptions
 	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
 		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
 			return errors.Wrap(err, "could not update sync variants and tasks")
 		}
-		syncVariantsTasks = patchDoc.SyncVariantsTasks
+		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncVariantsTasks, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncVariantsTasks, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}

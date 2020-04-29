@@ -37,6 +37,14 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "remove-patch-from-commit-queue.graphql",
+      "result": {
+        "data": {
+          "removePatchFromCommitQueue": true
+        }
+      }
     }
   ]
 }

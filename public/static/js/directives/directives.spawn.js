@@ -52,6 +52,34 @@ directives.spawn.directive('userHostUpdate', function() {
   }
 });
 
+directives.spawn.directive('userVolumeAttach', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_volume_attach.html'
+  }
+});
+
+directives.spawn.directive('userVolumeDelete', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_volume_delete.html'
+  }
+});
+
+directives.spawn.directive('userVolumeDetach', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_volume_detach.html'
+  }
+});
+
+directives.spawn.directive('userVolumeDetails', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_volume_details.html'
+  }
+});
+
 // Validation directives
 directives.spawn.directive('keyNameUnique', function() {
   return {
