@@ -9,8 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func moduleExpansionName(module string) string { return fmt.Sprintf("%s_rev", module) }
-
 // manifestLoad
 type manifestLoad struct{ base }
 
@@ -34,12 +32,11 @@ func (c *manifestLoad) Load(ctx context.Context,
 	}
 
 	for moduleName := range manifest.Modules {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
-		}
-
 		// put the url for the module in the expansions
-		conf.Expansions.Put(moduleExpansionName(moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(fmt.Sprintf("%s_rev", moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
+		conf.Expansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
+		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
 	}
 
 	logger.Execution().Info("manifest loaded successfully")
