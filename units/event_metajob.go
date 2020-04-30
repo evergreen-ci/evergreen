@@ -66,6 +66,7 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	q        amboy.Queue
+	limit    int
 	events   []event.EventLogEntry
 	flags    *evergreen.ServiceFlags
 	env      evergreen.Environment
@@ -96,7 +97,7 @@ func NewEventMetaJob(env evergreen.Environment, q amboy.Queue, ts string) amboy.
 	return j
 }
 
-func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
+func (j *eventMetaJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
 		return nil, errors.New("nil event")
 	}
@@ -106,6 +107,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 			n = nil
 			err = errors.Errorf("panicked while processing event %s", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
+				"job_id":      j.ID(),
 				"job":         eventMetaJobName,
 				"source":      "events-processing",
 				"event_id":    e.ID,
@@ -118,6 +120,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	startDebug := time.Now()
 	n, err = trigger.NotificationsFromEvent(e)
 	grip.Info(message.Fields{
+		"job_id":        j.ID(),
 		"job":           eventMetaJobName,
 		"source":        "events-processing",
 		"message":       "event processed",
@@ -129,6 +132,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	})
 
 	grip.Error(message.WrapError(err, message.Fields{
+		"job_id":     j.ID(),
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "errors processing triggers for event",
@@ -138,6 +142,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
+		"job_id":     j.ID(),
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "project triggers evaluated",
@@ -151,6 +156,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		versions = append(versions, version.Id)
 	}
 	grip.InfoWhen(len(versions) > 0, message.Fields{
+		"job_id":   j.ID(),
 		"job":      eventMetaJobName,
 		"source":   "events-processing",
 		"message":  "triggering downstream builds",
@@ -188,7 +194,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 			defer recovery.LogStackTraceAndContinue("problem during notification dispatch")
 
 			for e := range input {
-				n, err := tryProcessOneEvent(&e)
+				n, err := j.tryProcessOneEvent(&e)
 				catcher.Add(err)
 				catcher.Add(logger.MarkProcessed(&e))
 
@@ -215,8 +221,8 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"job_id":     j.ID(),
 		"job":        eventMetaJobName,
-		"source":     "events-processing",
-		"message":    "stats",
+		"operation":  "events-processing",
+		"message":    "event-stats",
 		"start_time": startTime.String(),
 		"end_time":   endTime.String(),
 		"duration":   totalDuration.Seconds(),
@@ -229,10 +235,12 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 }
 
 func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notification.Notification) error {
-	catcher := grip.NewSimpleCatcher()
+	catcher := grip.NewBasicCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			catcher.Add(j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)))
+			if err := j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)); !amboy.IsDuplicateJobError(err) {
+				catcher.Add(err)
+			}
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
 		}
@@ -286,18 +294,19 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 
 	j.AddError(j.dispatchUnprocessedNotifications(ctx))
 
-	settings := j.env.Settings()
-	limit := settings.Notify.EventProcessingLimit
-	if limit <= 0 {
-		limit = evergreen.DefaultEventProcessingLimit
+	notifySettings := j.env.Settings().Notify
+	j.AddError(notifySettings.Get(j.env))
+	j.limit = notifySettings.EventProcessingLimit
+	if j.limit <= 0 {
+		j.limit = evergreen.DefaultEventProcessingLimit
 	}
-	j.events, err = event.FindUnprocessedEvents(limit)
+	j.events, err = event.FindUnprocessedEvents(j.limit)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
 
-	j.AddError(errors.Wrap(j.logEventCount(len(j.events), limit), "can't log unprocessed event count"))
+	j.AddError(errors.Wrap(j.logEventCount(), "can't log unprocessed event count"))
 
 	if len(j.events) == 0 {
 		return
@@ -306,8 +315,9 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	j.AddError(j.dispatchLoop(ctx))
 }
 
-func (j *eventMetaJob) logEventCount(eventCount, limit int) error {
-	if eventCount == limit {
+func (j *eventMetaJob) logEventCount() error {
+	eventCount := len(j.events)
+	if eventCount == j.limit {
 		var err error
 		eventCount, err = event.CountUnprocessedEvents()
 		if err != nil {
@@ -319,7 +329,9 @@ func (j *eventMetaJob) logEventCount(eventCount, limit int) error {
 		"job_id":  j.ID(),
 		"job":     eventMetaJobName,
 		"message": "unprocessed event count",
-		"count":   eventCount,
+		"pending": eventCount,
+		"limit":   j.limit,
+		"current": len(j.events),
 		"source":  "events-processing",
 	})
 
