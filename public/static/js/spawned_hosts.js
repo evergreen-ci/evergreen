@@ -754,7 +754,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.invalidDelete = function (checkDelete) {
-      if ($scope.curHostData && $scope.curHostData.no_expiration && checkDelete !== $scope.curHostData.id) {
+      if ($scope.curHostData && $scope.curHostData.no_expiration && checkDelete !== "delete") {
         return true;
       };
       return false;
