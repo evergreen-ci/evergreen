@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -348,14 +349,16 @@ func TestDetachVolumeHandler(t *testing.T) {
 
 func TestModifyVolumeHandler(t *testing.T) {
 	h := &modifyVolumeHandler{
-		sc:   &data.MockConnector{},
-		env:  evergreen.GetEnvironment(),
-		opts: &model.VolumeModifyOptions{},
+		sc:       &data.MockConnector{},
+		env:      evergreen.GetEnvironment(),
+		opts:     &model.VolumeModifyOptions{},
+		provider: evergreen.ProviderNameMock,
+		volumeID: "volume1",
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
 	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
 		CachedVolumes: []host.Volume{
-			host.Volume{
+			{
 				ID:               "volume1",
 				CreatedBy:        "user",
 				Size:             64,
@@ -364,33 +367,42 @@ func TestModifyVolumeHandler(t *testing.T) {
 		},
 	}
 
-	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
-	jsonBody, err := json.Marshal(opts)
-	assert.NoError(t, err)
-	buffer := bytes.NewBuffer(jsonBody)
-
-	r, err := http.NewRequest("PATCH", "/volume/volume1/modify", buffer)
-	assert.NoError(t, err)
-	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
-	assert.NoError(t, h.Parse(ctx, r))
+	// volume's owner
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	// another user
+	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
+	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusUnauthorized, resp.Status())
 
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
-	// validate max size
-	h.opts.Size = 500
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	// resize
 	h.opts.Size = 200
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusInternalServerError, resp.Status()) // i.e. passed validation
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	// resize, exceeding max size
+	h.opts = &model.VolumeModifyOptions{Size: 500}
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// set expiration
+	h.opts = &model.VolumeModifyOptions{Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	// no expiration
+	trueVar := true
+	h.opts = &model.VolumeModifyOptions{NoExpiration: &trueVar}
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
 }
 
 func TestGetVolumesHandler(t *testing.T) {
@@ -411,21 +423,21 @@ func TestGetVolumesHandler(t *testing.T) {
 	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
 		CachedHosts: []host.Host{h1},
 		CachedVolumes: []host.Volume{
-			host.Volume{
+			{
 				ID:               "volume1",
 				CreatedBy:        "user",
 				Type:             evergreen.DefaultEBSType,
 				Size:             64,
 				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 			},
-			host.Volume{
+			{
 				ID:               "volume2",
 				CreatedBy:        "user",
 				Type:             evergreen.DefaultEBSType,
 				Size:             36,
 				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 			},
-			host.Volume{
+			{
 				ID:        "volume3",
 				CreatedBy: "different-user",
 			},

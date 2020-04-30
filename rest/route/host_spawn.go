@@ -809,6 +809,7 @@ type modifyVolumeHandler struct {
 	sc  data.Connector
 	env evergreen.Environment
 
+	provider string
 	volumeID string
 	opts     *model.VolumeModifyOptions
 }
@@ -833,8 +834,13 @@ func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
 		return err
 	}
-	h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
-	return err
+	if h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"]); err != nil {
+		return err
+	}
+
+	h.provider = evergreen.ProviderNameEc2OnDemand
+
+	return nil
 }
 
 func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
@@ -906,7 +912,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: h.provider,
 		Region:   cloud.AztoRegion(volume.AvailabilityZone),
 	}
 	var mgr cloud.Manager

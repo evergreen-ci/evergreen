@@ -47,3 +47,23 @@ func TestFindVolumesToDelete(t *testing.T) {
 		assert.Contains(t, expectedVolumeIDs, vol.ID)
 	}
 }
+
+func TestFindVolumesWithNoExpirationToExtend(t *testing.T) {
+	require.NoError(t, db.Clear(VolumesCollection))
+
+	volumes := []Volume{
+		{ID: "v0", Expiration: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC), NoExpiration: true},
+		{ID: "v1", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
+		{ID: "v2", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), NoExpiration: true, Host: "h1"},
+		{ID: "v3", Expiration: time.Now().Add(time.Hour * 48), NoExpiration: true},
+	}
+
+	for _, vol := range volumes {
+		require.NoError(t, vol.Insert())
+	}
+
+	volumesToExtend, err := FindVolumesWithNoExpirationToExtend()
+	assert.NoError(t, err)
+	assert.Len(t, volumesToExtend, 1)
+	assert.Equal(t, "v0", volumesToExtend[0].ID)
+}

@@ -50,6 +50,7 @@ func NewVolumeExpirationCheckJob(ts string, v *host.Volume) amboy.Job {
 	j := makeVolumeExpirationCheckJob()
 	j.SetID(fmt.Sprintf("%s.%s", volumeExpirationCheckName, ts))
 	j.VolumeID = v.ID
+	j.Provider = evergreen.ProviderNameEc2OnDemand
 	return j
 }
 
