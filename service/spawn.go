@@ -484,11 +484,15 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	if volume.AvailabilityZone == "" {
 		volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
-
 	}
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
 	}
+	if !utility.StringSliceContains(cloud.ValidVolumeTypes, volume.Type) {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("%s is not a valid EBS type"))
+		return
+	}
+
 	volume.CreatedBy = authedUser.Id
 	ctx := r.Context()
 	if _, err := cloud.CreateVolume(ctx, uis.env, volume, evergreen.ProviderNameEc2OnDemand); err != nil {

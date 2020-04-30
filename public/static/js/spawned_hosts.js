@@ -21,7 +21,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
     $scope.noExpiration = false;
-    $scope.volumeSizeDefault = 100;
+    $scope.volumeSizeDefault = 500;
     $scope.homeVolumeSize = $scope.volumeSizeDefault;
     $scope.homeVolumeID;
     $scope.volumeAttachHost;

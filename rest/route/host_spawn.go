@@ -669,6 +669,12 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.volume.Type == "" {
 		h.volume.Type = evergreen.DefaultEBSType
 	}
+	if !utility.StringSliceContains(cloud.ValidVolumeTypes, h.volume.Type) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("valid types are: %v", cloud.ValidVolumeTypes),
+		})
+	}
 	if h.volume.AvailabilityZone == "" {
 		h.volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
 	}
