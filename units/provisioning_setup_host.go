@@ -76,16 +76,9 @@ func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.env = env
 	j.SetPriority(1)
 
-	var id string
-	if h.IsContainer() {
-		id = time.Now().Format(TSFormat)
-	} else {
-		id = utility.RoundPartOfMinute(15).Format(TSFormat)
-	}
+	j.AttemptNumber = h.ProvisionAttempts
 
-	j.AttemptNubmer = h.ProvisionAttempts
-
-	j.SetID(fmt.Sprintf("%s.%s.%s.attempt-%d", setupHostJobName, j.HostID, id, h.ProvisionAttempts))
+	j.SetID(fmt.Sprintf("%s.%s.attempt-%d", setupHostJobName, j.HostID, h.ProvisionAttempts))
 	return j
 }
 
@@ -117,7 +110,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		grip.Info(message.Fields{
 			"job":     j.ID(),
 			"host_id": j.host.Id,
-			"message": "skipping setup because of attempt missmatch",
+			"message": "skipping setup because of attempt mismatch",
 		})
 		return
 	}
