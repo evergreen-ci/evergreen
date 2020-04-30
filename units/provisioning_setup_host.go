@@ -107,11 +107,8 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
-
-	j.AddError(j.setupHost(ctx, settings))
-
-	if err := j.host.IncProvisionAttempts(); err != nil {
+	defer func() {
+		err := j.host.IncProvisionAttempts()
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":           j.ID(),
 			"host_id":       j.host.Id,
@@ -123,7 +120,11 @@ func (j *setupHostJob) Run(ctx context.Context) {
 				"host data",
 			}}))
 		j.AddError(errors.Wrap(err, "job collision detected"))
-	}
+	}()
+
+	settings := j.env.Settings()
+
+	j.AddError(j.setupHost(ctx, settings))
 }
 
 var (
