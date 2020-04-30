@@ -45,9 +45,8 @@ func init() {
 }
 
 type setupHostJob struct {
-	HostID        string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	AttemptNubmer int    `bson:"attempt" json:"attempt" yaml:"attempt"`
-	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -76,8 +75,6 @@ func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.env = env
 	j.SetPriority(1)
 
-	j.AttemptNumber = h.ProvisionAttempts
-
 	j.SetID(fmt.Sprintf("%s.%s.attempt-%d", setupHostJobName, j.HostID, h.ProvisionAttempts))
 	return j
 }
@@ -102,15 +99,6 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			"job":     j.ID(),
 			"host_id": j.host.Id,
 			"message": "skipping setup because host is already set up",
-		})
-		return
-	}
-
-	if j.host.ProvisionAttempts != j.AttemptNubmer {
-		grip.Info(message.Fields{
-			"job":     j.ID(),
-			"host_id": j.host.Id,
-			"message": "skipping setup because of attempt mismatch",
 		})
 		return
 	}
