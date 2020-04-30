@@ -45,8 +45,9 @@ func init() {
 }
 
 type setupHostJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID        string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	AttemptNubmer int    `bson:"attempt" json:"attempt" yaml:"attempt"`
+	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -68,7 +69,7 @@ func makeSetupHostJob() *setupHostJob {
 
 // NewHostSetupJob creates a job that performs any additional provisioning for
 // a host to prepare it to run.
-func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
+func NewHostSetupJob(env evergreen.Environment, h *host.Host, attempt int) amboy.Job {
 	j := makeSetupHostJob()
 	j.host = h
 	j.HostID = h.Id
@@ -81,6 +82,8 @@ func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	} else {
 		id = utility.RoundPartOfMinute(15).Format(TSFormat)
 	}
+
+	j.AttemptNubmer = h.ProvisionAttempts
 
 	j.SetID(fmt.Sprintf("%s.%s.%s.attempt-%d", setupHostJobName, j.HostID, id, h.ProvisionAttempts))
 	return j
@@ -106,6 +109,15 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			"job":     j.ID(),
 			"host_id": j.host.Id,
 			"message": "skipping setup because host is already set up",
+		})
+		return
+	}
+
+	if j.host.ProvisionAttempts != j.AttemptNubmer {
+		grip.Info(message.Fields{
+			"job":     j.ID(),
+			"host_id": j.host.Id,
+			"message": "skipping setup because of attempt missmatch",
 		})
 		return
 	}
@@ -609,8 +621,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
 				"host_id":   j.host.Id,
+				"operation": "setting host unprovisioned",
 				"distro":    j.host.Distro.Id,
 				"job":       j.ID(),
 			}))
