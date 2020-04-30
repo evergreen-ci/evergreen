@@ -69,7 +69,7 @@ func makeSetupHostJob() *setupHostJob {
 
 // NewHostSetupJob creates a job that performs any additional provisioning for
 // a host to prepare it to run.
-func NewHostSetupJob(env evergreen.Environment, h *host.Host, attempt int) amboy.Job {
+func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j := makeSetupHostJob()
 	j.host = h
 	j.HostID = h.Id
