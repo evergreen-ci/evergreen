@@ -672,7 +672,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if !utility.StringSliceContains(cloud.ValidVolumeTypes, h.volume.Type) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("valid types are: %v", cloud.ValidVolumeTypes),
+			Message:    fmt.Sprintf("valid EBS volume types are: %v", cloud.ValidVolumeTypes),
 		})
 	}
 	if h.volume.AvailabilityZone == "" {
