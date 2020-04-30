@@ -119,6 +119,11 @@ type TaskTestResult struct {
 	TestResults       []*model.APITest `json:"testResults"`
 }
 
+type UserPatches struct {
+	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int               `json:"filteredPatchCount"`
+}
+
 type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`

@@ -192,7 +192,7 @@ type Connector interface {
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchesByUser fetches a page of patches for the input user ordered by creation
 	// time and filters when given statuses, patch name, and commit queue parameters
-	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, error)
+	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs

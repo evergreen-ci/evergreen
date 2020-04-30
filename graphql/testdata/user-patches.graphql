@@ -1,20 +1,23 @@
 {
   userPatches(userId: "testuser") {
-    id
-    description
-    projectID
-    githash
-    patchNumber
-    author
-    version
-    status
-    tasks
-    activated
-    alias
-    variants
-    variantsTasks {
-      name
+    patches {
+      id
+      description
+      projectID
+      githash
+      patchNumber
+      author
+      version
+      status
       tasks
+      activated
+      alias
+      variants
+      variantsTasks {
+        name
+        tasks
+      }
     }
+    filteredPatchCount
   }
 }

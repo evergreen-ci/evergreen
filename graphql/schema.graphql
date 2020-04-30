@@ -6,9 +6,9 @@ type Query {
     statuses: [String!] = []
     userId: String
     includeCommitQueue: Boolean = false
-  ): [Patch!]!
-  patch(id: String!): Patch!
+  ): UserPatches!
   task(taskId: String!): Task
+  patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
     patchId: String!
@@ -152,6 +152,11 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+}
+
+type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
 }
 
 type Patch {

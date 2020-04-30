@@ -169,21 +169,25 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
-func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, error) {
+func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
 	patches, err := patch.Find(patch.ByUserPatchNameStatusesCommitQueuePaginated(user, patchName, statuses, includeCommitQueue, page, limit))
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
+		return nil, nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
+	}
+	count, err := patch.Count(patch.ByUserPatchNameStatusesCommitQueuePaginated(user, patchName, statuses, includeCommitQueue, 0, 0))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "problem counting patches for user %s", user)
 	}
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
+			return nil, nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
-	return apiPatches, nil
+	return apiPatches, &count, nil
 }
 
 func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
@@ -317,8 +321,8 @@ func (pc *MockPatchConnector) SetPatchActivated(ctx context.Context, patchId str
 	return nil
 }
 
-func (hp *MockPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, error) {
-	return nil, nil
+func (hp *MockPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
+	return nil, nil, nil
 }
 
 // FindPatchesByUser iterates through the cached patches slice to find the correct patches
