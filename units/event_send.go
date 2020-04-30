@@ -49,11 +49,11 @@ func makeEventNotificationJob() *eventNotificationJob {
 	return j
 }
 
-func NewEventNotificationJob(id string) amboy.Job {
+func NewEventNotificationJob(id, ts string) amboy.Job {
 	j := makeEventNotificationJob()
 	j.NotificationID = id
 
-	j.SetID(fmt.Sprintf("%s:%s", eventNotificationJobName, id))
+	j.SetID(fmt.Sprintf("%s:%s:%s", eventNotificationJobName, id, ts))
 	return j
 }
 
