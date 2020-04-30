@@ -48,6 +48,7 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  restartPatch(patchId: String!): String
 }
 
 enum TaskSortCategory {

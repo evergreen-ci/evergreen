@@ -900,6 +900,15 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string) (*string, error) {
+	usr := route.MustHaveUser(ctx)
+	err := r.sc.RestartVersion(patchID, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting patch %s: %s", patchID, err.Error()))
+	}
+	return &patchID, nil
+}
+
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID)
 	if err != nil {
