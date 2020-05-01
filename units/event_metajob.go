@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/trigger"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -238,7 +239,8 @@ func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notificatio
 	catcher := grip.NewBasicCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			if err := j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)); !amboy.IsDuplicateJobError(err) {
+			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+			if err := j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID, ts)); !amboy.IsDuplicateJobError(err) {
 				catcher.Add(err)
 			}
 		} else {
