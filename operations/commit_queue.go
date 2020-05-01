@@ -441,6 +441,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 	if !p.skipConfirm {
 		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
+		grip.InfoWhen(diffData.log != "", diffData.log)
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil
 		}
