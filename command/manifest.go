@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
+
 // manifestLoad
 type manifestLoad struct{ base }
 
@@ -33,7 +35,7 @@ func (c *manifestLoad) Load(ctx context.Context,
 
 	for moduleName := range manifest.Modules {
 		// put the url for the module in the expansions
-		conf.Expansions.Put(fmt.Sprintf("%s_rev", moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
 		conf.Expansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
 		conf.Expansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
 		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
