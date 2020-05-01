@@ -283,7 +283,10 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := route.MustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
-	userSettings.BuildFromService(usr.Settings)
+	err := userSettings.BuildFromService(usr.Settings)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
 	return &userSettings, nil
 }
 
