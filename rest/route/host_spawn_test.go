@@ -367,17 +367,17 @@ func TestModifyVolumeHandler(t *testing.T) {
 		},
 	}
 
-	// volume's owner
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	// another user
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
+	assert.Equal(t, http.StatusUnauthorized, resp.Status())
 
-	// another user
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
+	// volume's owner
+	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusUnauthorized, resp.Status())
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 	// resize
 	h.opts.Size = 200

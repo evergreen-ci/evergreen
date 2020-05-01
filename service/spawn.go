@@ -553,6 +553,10 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
 			NoExpiration: updateParams.NoExpiration,
 		})
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't update volume '%s' to no expiration", vol.ID))
+			return
+		}
 
 	case VolumeAttach:
 		mgrOpts := cloud.ManagerOpts{
