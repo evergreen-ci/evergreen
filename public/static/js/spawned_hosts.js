@@ -307,6 +307,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       return _.reduce($scope.volumes, function(availableSize, v){ return availableSize - v.size;}, totalSize);
     };
 
+    $scope.invalidHostOptions = function() {
+      if ($scope.isVirtualWorkstation && ($scope.homeVolumeID === undefined || $scope.homeVolumeID === "")) {
+        return $scope.invalidVolumeSize($scope.homeVolumeSize);
+      }
+      return false;
+    };
+
     $scope.invalidVolumeSize = function(size) {
         return $scope.availableVolumeSize() - size < 0;
     };
