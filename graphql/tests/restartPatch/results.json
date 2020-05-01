@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "query_file": "restart-patch.graphql",
+      "result": {
+        "data": {
+          "restartPatch": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "invalid-patch-id.graphql",
+      "result": {
+        "data": {
+          "restartPatch": null
+        },
+        "errors": [
+          {
+            "message": "error finding patch not-a-real-id: 400 (Bad Request): id 'not-a-real-id' is not a valid patch id",
+            "path": ["restartPatch"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ]
+      }
+    }
+  ]
+}
