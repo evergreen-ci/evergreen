@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -156,7 +157,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	env := evergreen.GetEnvironment()
 	job := NewEventMetaJob(env, env.RemoteQueue(), "1").(*eventMetaJob)
 	job.flags = &flags
-	s.NoError(job.dispatch(ctx, s.n))
+	s.NoError(dispatchNotifications(ctx, s.n, job.q, job.flags))
 	s.NoError(job.Error())
 
 	out := []notification.Notification{}
@@ -308,6 +309,55 @@ func (s *eventMetaJobSuite) TestDispatchUnprocessedNotifications() {
 	s.Equal(origStats.Total+6, stats.Total)
 }
 
+func (s *eventMetaJobSuite) TestBatchingCanCount() {
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
+	flags, err := evergreen.GetServiceFlags()
+	s.NoError(err)
+	job.flags = flags
+	notifSettings := evergreen.NotifyConfig{
+		EventProcessingLimit: 2,
+	}
+	s.NoError(notifSettings.Set())
+	events := []event.EventLogEntry{
+		{
+			ResourceType: event.ResourceTypeTask,
+			EventType:    event.TaskFinished,
+			Data:         &event.TaskEventData{},
+		},
+		{
+			ResourceType: event.ResourceTypeTask,
+			EventType:    event.TaskFinished,
+			Data:         &event.TaskEventData{},
+		},
+		{
+			ResourceType: event.ResourceTypeTask,
+			EventType:    event.TaskFinished,
+			Data:         &event.TaskEventData{},
+		},
+		{
+			ResourceType: event.ResourceTypeTask,
+			EventType:    event.TaskFinished,
+			Data:         &event.TaskEventData{},
+		},
+		{
+			ResourceType: event.ResourceTypeTask,
+			EventType:    event.TaskFinished,
+			Data:         &event.TaskEventData{},
+		},
+	}
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+
+	for _, evt := range events {
+		s.NoError(logger.LogEvent(&evt))
+	}
+	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+	job.Run(s.ctx)
+
+	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+	s.Equal(origStats.Total+3, stats.Total)
+}
+
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
 	err := http.Serve(ln, handler)
 	grip.Error(err)
@@ -380,4 +430,8 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		"signature": string(sig),
 		"body":      string(body),
 	})
+}
+
+func TestChecksum(t *testing.T) {
+	assert.Equal(t, "19cc02f26df43cc571bc9ed7b0c4d29224a3ec229529221725ef76d021c8326f", sha256sum([]string{"abc", "def", "ghi"}))
 }

@@ -2,23 +2,20 @@ package units
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"runtime"
-	"sync"
-	"time"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/trigger"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -98,159 +95,6 @@ func NewEventMetaJob(env evergreen.Environment, q amboy.Queue, ts string) amboy.
 	return j
 }
 
-func (j *eventMetaJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
-	if e == nil {
-		return nil, errors.New("nil event")
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			n = nil
-			err = errors.Errorf("panicked while processing event %s", e.ID)
-			grip.Alert(message.WrapError(err, message.Fields{
-				"job_id":      j.ID(),
-				"job":         eventMetaJobName,
-				"source":      "events-processing",
-				"event_id":    e.ID,
-				"event_type":  e.ResourceType,
-				"panic_value": r,
-			}))
-		}
-	}()
-
-	startDebug := time.Now()
-	n, err = trigger.NotificationsFromEvent(e)
-	grip.Info(message.Fields{
-		"job_id":        j.ID(),
-		"job":           eventMetaJobName,
-		"source":        "events-processing",
-		"message":       "event processed",
-		"event_id":      e.ID,
-		"event_type":    e.ResourceType,
-		"notifications": len(n),
-		"duration":      time.Now().Sub(startDebug),
-		"stat":          "notifications-from-event",
-	})
-
-	grip.Error(message.WrapError(err, message.Fields{
-		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
-		"source":     "events-processing",
-		"message":    "errors processing triggers for event",
-		"event_id":   e.ID,
-		"event_type": e.ResourceType,
-	}))
-
-	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
-	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
-		"source":     "events-processing",
-		"message":    "project triggers evaluated",
-		"event_id":   e.ID,
-		"event_type": e.ResourceType,
-		"duration":   time.Now().Sub(startDebug),
-		"stat":       "eval-project-triggers",
-	})
-	versions := []string{}
-	for _, version := range v {
-		versions = append(versions, version.Id)
-	}
-	grip.InfoWhen(len(versions) > 0, message.Fields{
-		"job_id":   j.ID(),
-		"job":      eventMetaJobName,
-		"source":   "events-processing",
-		"message":  "triggering downstream builds",
-		"event_id": e.ID,
-		"versions": versions,
-	})
-
-	return n, err
-}
-
-func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
-	// TODO: in the future we may want to split up this job so
-	// that the parallelism is pushed up to amboy rather than down
-	// into this job.
-	startTime := time.Now()
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-	catcher := grip.NewSimpleCatcher()
-
-	input := make(chan event.EventLogEntry, len(j.events))
-	for _, e := range j.events {
-		select {
-		case input <- e:
-			continue
-		case <-ctx.Done():
-			return errors.New("operation aborted")
-		}
-	}
-	close(input)
-
-	wg := &sync.WaitGroup{}
-	for i := 0; i < runtime.NumCPU(); i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer recovery.LogStackTraceAndContinue("problem during notification dispatch")
-
-			for e := range input {
-				n, err := j.tryProcessOneEvent(&e)
-				catcher.Add(err)
-				catcher.Add(logger.MarkProcessed(&e))
-
-				if err = notification.InsertMany(n...); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"job_id":        j.ID(),
-						"job":           eventMetaJobName,
-						"source":        "events-processing",
-						"notifications": n,
-						"message":       "can't insert notifications",
-					}))
-					catcher.Add(err)
-				}
-
-				catcher.Add(j.dispatch(ctx, n))
-			}
-		}()
-	}
-	wg.Wait()
-
-	endTime := time.Now()
-	totalDuration := endTime.Sub(startTime)
-
-	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
-		"operation":  "events-processing",
-		"message":    "event-stats",
-		"start_time": startTime.String(),
-		"end_time":   endTime.String(),
-		"duration":   totalDuration.Seconds(),
-		"n":          len(j.events),
-		"has_errors": catcher.HasErrors(),
-		"num_errors": catcher.Len(),
-	})
-
-	return catcher.Resolve()
-}
-
-func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notification.Notification) error {
-	catcher := grip.NewBasicCatcher()
-	for i := range notifications {
-		if notificationIsEnabled(j.flags, &notifications[i]) {
-			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-			if err := j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID, ts)); !amboy.IsDuplicateJobError(err) {
-				catcher.Add(err)
-			}
-		} else {
-			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
-		}
-	}
-
-	return catcher.Resolve()
-}
-
 // dispatchUnprocessedNotifications gets unprocessed notifications
 // leftover by previous runs and dispatches them
 func (j *eventMetaJob) dispatchUnprocessedNotifications(ctx context.Context) error {
@@ -259,7 +103,7 @@ func (j *eventMetaJob) dispatchUnprocessedNotifications(ctx context.Context) err
 		return errors.Wrap(err, "can't find unprocessed notifications")
 	}
 
-	return j.dispatch(ctx, unprocessedNotifications)
+	return dispatchNotifications(ctx, unprocessedNotifications, j.q, j.flags)
 }
 
 func (j *eventMetaJob) Run(ctx context.Context) {
@@ -302,19 +146,26 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	if j.limit <= 0 {
 		j.limit = evergreen.DefaultEventProcessingLimit
 	}
-	j.events, err = event.FindUnprocessedEvents(j.limit)
+	j.events, err = event.FindUnprocessedEvents(-1)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
+	grip.Info(j.events)
 
 	j.AddError(errors.Wrap(j.logEventCount(), "can't log unprocessed event count"))
 
 	if len(j.events) == 0 {
 		return
 	}
-
-	j.AddError(j.dispatchLoop(ctx))
+	eventIDs := []string{}
+	for i, evt := range j.events {
+		eventIDs = append(eventIDs, evt.ID)
+		if (i+1)%j.limit == 0 || i+1 == len(j.events) {
+			j.q.Put(ctx, NewEventNotifierJob(j.env, j.q, sha256sum(eventIDs), eventIDs))
+			eventIDs = []string{}
+		}
+	}
 }
 
 func (j *eventMetaJob) logEventCount() error {
@@ -338,4 +189,9 @@ func (j *eventMetaJob) logEventCount() error {
 	})
 
 	return nil
+}
+
+func sha256sum(ids []string) string {
+	sum := sha256.Sum256([]byte(strings.Join(ids, "")))
+	return hex.EncodeToString(sum[:])
 }
