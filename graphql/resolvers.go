@@ -280,6 +280,13 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
+func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
+	usr := route.MustHaveUser(ctx)
+	userSettings := restModel.APIUserSettings{}
+	userSettings.BuildFromService(usr.Settings)
+	return &userSettings, nil
+}
+
 func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
 	usr := route.MustHaveUser(ctx)
 	userIdParam := usr.Username()

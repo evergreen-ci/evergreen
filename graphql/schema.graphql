@@ -35,6 +35,7 @@ type Query {
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
+  userSettings: UserSettings
 }
 
 type Mutation {
@@ -399,6 +400,27 @@ type CommitQueueItem {
 type Module {
   module: String
   issue: String
+}
+
+type UserSettings {
+  timezone: String
+  region: String
+  githubUser: GithubUser
+  slackUsername: String
+  notifications: Notifications
+}
+
+type GithubUser {
+  uid: Int
+  lastKnownAs: String
+}
+type Notifications {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
 }
 scalar Time
 scalar Duration
