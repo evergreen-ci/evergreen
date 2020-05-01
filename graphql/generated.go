@@ -265,7 +265,6 @@ type ComplexityRoot struct {
 		Logs              func(childComplexity int) int
 		Order             func(childComplexity int) int
 		PatchMetadata     func(childComplexity int) int
-		PatchNumber       func(childComplexity int) int
 		Priority          func(childComplexity int) int
 		ProjectId         func(childComplexity int) int
 		ReliesOn          func(childComplexity int) int
@@ -404,7 +403,6 @@ type TaskResolver interface {
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
-	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 }
 
@@ -1491,13 +1489,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.PatchMetadata(childComplexity), true
 
-	case "Task.patchNumber":
-		if e.complexity.Task.PatchNumber == nil {
-			break
-		}
-
-		return e.complexity.Task.PatchNumber(childComplexity), true
-
 	case "Task.priority":
 		if e.complexity.Task.Priority == nil {
 			break
@@ -2291,7 +2282,6 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  patchNumber: Int
   baseTaskMetadata: BaseTaskMetadata!
 }
 
@@ -8072,37 +8062,6 @@ func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.Col
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().PatchNumber(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12189,17 +12148,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_generatedBy(ctx, field, obj)
 		case "aborted":
 			out.Values[i] = ec._Task_aborted(ctx, field, obj)
-		case "patchNumber":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_patchNumber(ctx, field, obj)
-				return res
-			})
 		case "baseTaskMetadata":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
