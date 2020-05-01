@@ -18,6 +18,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.maxVolumeSizePerUser = $window.maxVolumeSizePerUser;
     $scope.spawnReqSent = false;
+    $scope.volumeReqSent = false;
     $scope.useTaskConfig = false;
     $scope.isVirtualWorkstation = false;
     $scope.noExpiration = false;
@@ -487,12 +488,14 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.createVolume = function () {
+      $scope.volumeReqSent = true;
       mciSpawnRestService.createVolume(
         $scope.createVolumeInfo, {}, {
           success: function (resp) {
             $window.location.reload();
           },
           error: function (resp) {
+              $scope.volumeReqSent = false;
             notificationService.pushNotification('Error creating volume: ' + resp.data.error, 'errorHeader');
           }
         }

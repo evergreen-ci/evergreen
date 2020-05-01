@@ -669,14 +669,15 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.volume.Type == "" {
 		h.volume.Type = evergreen.DefaultEBSType
 	}
-	if !utility.StringSliceContains(cloud.ValidVolumeTypes, h.volume.Type) {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("valid EBS volume types are: %v", cloud.ValidVolumeTypes),
-		})
-	}
 	if h.volume.AvailabilityZone == "" {
 		h.volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
+	}
+
+	if err := cloud.ValidVolumeOptions(h.volume, h.env.Settings()); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser

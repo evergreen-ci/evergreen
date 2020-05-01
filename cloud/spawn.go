@@ -342,15 +342,9 @@ func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settin
 			return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
 		}
 
-		azFound := false
-		for _, subnet := range settings.Providers.AWS.Subnets {
-			if subnet.AZ == volume.AvailabilityZone {
-				azFound = true
-				ec2Settings.SubnetId = subnet.SubnetID
-			}
-		}
-		if !azFound {
-			return nil, errors.Errorf("no subnet found for AZ '%s'", volume.AvailabilityZone)
+		ec2Settings.SubnetId, err = getSubnetForZone(settings.Providers.AWS.Subnets, volume.AvailabilityZone)
+		if err != nil {
+			return nil, errors.Wrapf(err, "no subnet found for AZ '%s'", volume.AvailabilityZone)
 		}
 	}
 

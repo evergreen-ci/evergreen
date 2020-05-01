@@ -488,9 +488,8 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
 	}
-	if !utility.StringSliceContains(cloud.ValidVolumeTypes, volume.Type) {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("valid EBS volume types are: %v", cloud.ValidVolumeTypes))
-		return
+	if err := cloud.ValidVolumeOptions(volume, &uis.Settings); err != nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
 	volume.CreatedBy = authedUser.Id
