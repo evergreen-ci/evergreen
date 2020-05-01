@@ -1,0 +1,3 @@
+mutation {
+  restartPatch(patchId: "not-a-real-id")
+}

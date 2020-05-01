@@ -129,6 +129,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
+		RestartPatch               func(childComplexity int, patchID string) int
 		RestartTask                func(childComplexity int, taskID string) int
 		SaveSubscription           func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch              func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
@@ -374,6 +375,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
+	RestartPatch(ctx context.Context, patchID string) (*string, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -757,6 +759,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["patchId"].(string)), true
+
+	case "Mutation.restartPatch":
+		if e.complexity.Mutation.RestartPatch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_restartPatch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RestartPatch(childComplexity, args["patchId"].(string)), true
 
 	case "Mutation.restartTask":
 		if e.complexity.Mutation.RestartTask == nil {
@@ -2018,6 +2032,7 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  restartPatch(patchId: String!): String
 }
 
 enum TaskSortCategory {
@@ -2442,6 +2457,20 @@ func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx c
 		}
 	}
 	args["patchId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_restartPatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -4610,6 +4639,44 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().RemovePatchFromCommitQueue(rctx, args["commitQueueId"].(string), args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_restartPatch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RestartPatch(rctx, args["patchId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11296,6 +11363,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removePatchFromCommitQueue":
 			out.Values[i] = ec._Mutation_removePatchFromCommitQueue(ctx, field)
+		case "restartPatch":
+			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
