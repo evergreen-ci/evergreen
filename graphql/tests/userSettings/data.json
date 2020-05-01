@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "first_name": "Mohamed",
+      "last_name": "Khelif",
+      "settings": {
+        "timezone": "America/New_York",
+        "region": "us-east-1",
+        "github_user": {
+          "last_known_as": "khelif96"
+        }
+      }
+    }
+  ]
+}
