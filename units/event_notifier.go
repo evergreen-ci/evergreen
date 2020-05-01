@@ -69,6 +69,9 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 	if len(j.Events) == 0 {
 		return
 	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 	if j.q == nil {
 		j.q = j.env.RemoteQueue()
 	}

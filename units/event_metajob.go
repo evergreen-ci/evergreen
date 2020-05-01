@@ -151,7 +151,6 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	grip.Info(j.events)
 
 	j.AddError(errors.Wrap(j.logEventCount(), "can't log unprocessed event count"))
 
@@ -162,7 +161,11 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	for i, evt := range j.events {
 		eventIDs = append(eventIDs, evt.ID)
 		if (i+1)%j.limit == 0 || i+1 == len(j.events) {
-			j.q.Put(ctx, NewEventNotifierJob(j.env, j.q, sha256sum(eventIDs), eventIDs))
+			err = j.q.Put(ctx, NewEventNotifierJob(j.env, j.q, sha256sum(eventIDs), eventIDs))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to queue event notifier job",
+				"job_id":  j.ID(),
+			}))
 			eventIDs = []string{}
 		}
 	}
