@@ -127,7 +127,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	// degraded mode shouldn't process events
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	s.NoError(logger.LogEvent(&e))
-	s.NoError(processEvents(s.env)(s.ctx, s.env.RemoteQueue()))
+	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, s.env.RemoteQueue()))
 
 	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
@@ -268,7 +268,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	env := evergreen.GetEnvironment()
 	q := env.LocalQueue()
-	s.NoError(processEvents(s.env)(s.ctx, q))
+	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, q))
 
 	grip.Info("waiting for dispatches")
 	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
@@ -336,7 +336,7 @@ func (s *cronsEventSuite) TestBatchingCanCount() {
 		s.NoError(logger.LogEvent(&evt))
 	}
 	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	s.NoError(processEvents(s.env)(s.ctx, env.LocalQueue()))
+	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, env.LocalQueue()))
 
 	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+3, stats.Total)

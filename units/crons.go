@@ -199,7 +199,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func processEvents(env evergreen.Environment) amboy.QueueOperation {
+func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -257,21 +257,6 @@ func processEvents(env evergreen.Environment) amboy.QueueOperation {
 		return nil
 	}
 
-}
-
-// dispatchUnprocessedNotifications gets unprocessed notifications
-// leftover by previous runs and dispatches them
-func dispatchUnprocessedNotifications(ctx context.Context, q amboy.Queue, flags *evergreen.ServiceFlags) error {
-	unprocessedNotifications, err := notification.FindUnprocessed()
-	if err != nil {
-		return errors.Wrap(err, "can't find unprocessed notifications")
-	}
-
-	return dispatchNotifications(ctx, unprocessedNotifications, q, flags)
-}
-
-func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperation {
-	return processEvents(env)
 }
 
 func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
@@ -1349,4 +1334,15 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		return catcher.Resolve()
 	}
+}
+
+// dispatchUnprocessedNotifications gets unprocessed notifications
+// leftover by previous runs and dispatches them
+func dispatchUnprocessedNotifications(ctx context.Context, q amboy.Queue, flags *evergreen.ServiceFlags) error {
+	unprocessedNotifications, err := notification.FindUnprocessed()
+	if err != nil {
+		return errors.Wrap(err, "can't find unprocessed notifications")
+	}
+
+	return dispatchNotifications(ctx, unprocessedNotifications, q, flags)
 }
