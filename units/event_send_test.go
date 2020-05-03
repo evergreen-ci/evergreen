@@ -187,7 +187,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	s.NoError(flags.Set())
 
 	for i := range s.notifications {
-		job := NewEventNotificationJob(s.notifications[i].ID, "").(*eventNotificationJob)
+		job := NewEventSendJob(s.notifications[i].ID, "").(*eventSendJob)
 		job.env = evergreen.GetEnvironment()
 
 		job.Run(s.ctx)
@@ -198,7 +198,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
-	job := NewEventNotificationJob(s.webhook.ID, "").(*eventNotificationJob)
+	job := NewEventSendJob(s.webhook.ID, "").(*eventSendJob)
 	job.env = s.env
 
 	job.Run(s.ctx)
@@ -215,7 +215,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 }
 
 func (s *eventNotificationSuite) TestSlack() {
-	job := NewEventNotificationJob(s.slack.ID, "").(*eventNotificationJob)
+	job := NewEventSendJob(s.slack.ID, "").(*eventSendJob)
 	job.env = s.env
 	job.Run(s.ctx)
 
@@ -233,7 +233,7 @@ func (s *eventNotificationSuite) TestSlack() {
 }
 
 func (s *eventNotificationSuite) TestJIRAComment() {
-	job := NewEventNotificationJob(s.jiraComment.ID, "").(*eventNotificationJob)
+	job := NewEventSendJob(s.jiraComment.ID, "").(*eventSendJob)
 	job.env = s.env
 	job.Run(s.ctx)
 
@@ -250,7 +250,7 @@ func (s *eventNotificationSuite) TestJIRAComment() {
 }
 
 func (s *eventNotificationSuite) TestJIRAIssue() {
-	job := NewEventNotificationJob(s.jiraIssue.ID, "").(*eventNotificationJob)
+	job := NewEventSendJob(s.jiraIssue.ID, "").(*eventSendJob)
 	job.env = s.env
 	job.Run(s.ctx)
 
@@ -276,7 +276,7 @@ func (s *eventNotificationSuite) TestSendFailureResultsInNoMessages() {
 		n[i].Payload = nil
 		s.NoError(notification.InsertMany(n[i]))
 
-		job := NewEventNotificationJob(n[i].ID, "").(*eventNotificationJob)
+		job := NewEventSendJob(n[i].ID, "").(*eventSendJob)
 		job.env = s.env
 		job.Run(s.ctx)
 		s.Error(job.Error())

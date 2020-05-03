@@ -27,7 +27,7 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-type eventMetaJobSuite struct {
+type cronsEventSuite struct {
 	suite.Suite
 	cancel func()
 	n      []notification.Notification
@@ -35,8 +35,8 @@ type eventMetaJobSuite struct {
 	env    evergreen.Environment
 }
 
-func TestEventMetaJob(t *testing.T) {
-	s := &eventMetaJobSuite{}
+func TestEventCrons(t *testing.T) {
+	s := &cronsEventSuite{}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	env := evergreen.GetEnvironment()
@@ -45,11 +45,11 @@ func TestEventMetaJob(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *eventMetaJobSuite) TearDownSuite() {
+func (s *cronsEventSuite) TearDownSuite() {
 	s.cancel()
 }
 
-func (s *eventMetaJobSuite) SetupTest() {
+func (s *cronsEventSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
 
 	events := []event.EventLogEntry{
@@ -109,7 +109,7 @@ func (s *eventMetaJobSuite) SetupTest() {
 	}
 }
 
-func (s *eventMetaJobSuite) TestDegradedMode() {
+func (s *cronsEventSuite) TestDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		EventProcessingDisabled: true,
 	}
@@ -127,18 +127,14 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	// degraded mode shouldn't process events
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	s.NoError(logger.LogEvent(&e))
-
-	env := evergreen.GetEnvironment()
-	job := NewEventMetaJob(env, env.RemoteQueue(), "1")
-	job.Run(s.ctx)
-	s.NoError(job.Error())
+	s.NoError(processEvents(s.env)(s.ctx, s.env.RemoteQueue()))
 
 	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
 	s.Len(out, 1)
 }
 
-func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
+func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	flags := evergreen.ServiceFlags{
 		JIRANotificationsDisabled:    true,
 		SlackNotificationsDisabled:   true,
@@ -154,11 +150,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
 
-	env := evergreen.GetEnvironment()
-	job := NewEventMetaJob(env, env.RemoteQueue(), "1").(*eventMetaJob)
-	job.flags = &flags
-	s.NoError(dispatchNotifications(ctx, s.n, job.q, job.flags))
-	s.NoError(job.Error())
+	s.NoError(dispatchNotifications(ctx, s.n, s.env.RemoteQueue(), &flags))
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
@@ -175,7 +167,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.Equal(startingStats.Total, stats.Total)
 }
 
-func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
+func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
 		s.True(notificationIsEnabled(&flags, &s.n[i]))
@@ -196,7 +188,7 @@ func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
 	}
 }
 
-func (s *eventMetaJobSuite) TestEndToEnd() {
+func (s *cronsEventSuite) TestEndToEnd() {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
@@ -275,15 +267,13 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	go httpServer(ln, handler)
 
 	env := evergreen.GetEnvironment()
-	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
-	job.q = evergreen.GetEnvironment().LocalQueue()
-	job.Run(s.ctx)
-	s.NoError(job.Error())
+	q := env.LocalQueue()
+	s.NoError(processEvents(s.env)(s.ctx, q))
 
 	grip.Info("waiting for dispatches")
-	amboy.WaitInterval(s.ctx, job.q, 10*time.Millisecond)
+	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
 	grip.Info("waiting for senders")
-	amboy.Wait(s.ctx, job.q)
+	amboy.Wait(s.ctx, q)
 	grip.Info("senders are done")
 
 	out := []notification.Notification{}
@@ -294,27 +284,21 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
-func (s *eventMetaJobSuite) TestDispatchUnprocessedNotifications() {
+func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
 	env := evergreen.GetEnvironment()
-	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
 	flags, err := evergreen.GetServiceFlags()
 	s.NoError(err)
-	job.flags = flags
 	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 
-	s.NoError(job.dispatchUnprocessedNotifications(s.ctx))
+	s.NoError(dispatchUnprocessedNotifications(s.ctx, env.LocalQueue(), flags))
 
 	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+6, stats.Total)
 }
 
-func (s *eventMetaJobSuite) TestBatchingCanCount() {
+func (s *cronsEventSuite) TestBatchingCanCount() {
 	env := evergreen.GetEnvironment()
-	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
-	flags, err := evergreen.GetServiceFlags()
-	s.NoError(err)
-	job.flags = flags
 	notifSettings := evergreen.NotifyConfig{
 		EventProcessingLimit: 2,
 	}
@@ -352,7 +336,7 @@ func (s *eventMetaJobSuite) TestBatchingCanCount() {
 		s.NoError(logger.LogEvent(&evt))
 	}
 	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	job.Run(s.ctx)
+	s.NoError(processEvents(s.env)(s.ctx, env.LocalQueue()))
 
 	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+3, stats.Total)

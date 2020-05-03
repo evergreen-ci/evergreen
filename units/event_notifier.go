@@ -2,8 +2,12 @@ package units
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"runtime"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,7 +63,7 @@ func NewEventNotifierJob(env evergreen.Environment, q amboy.Queue, id string, ev
 	j.q = q
 	j.env = env
 
-	j.SetID(fmt.Sprintf("%s:%s", eventNotifierName, id))
+	j.SetID(fmt.Sprintf("%s.%s", eventNotifierName, id))
 	j.Events = events
 
 	return j
@@ -87,8 +91,8 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 	}
 	if j.flags.EventProcessingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job":     eventMetaJobName,
-			"message": "events processing is disabled",
+			"job_type": j.Type().Name,
+			"message":  "events processing is disabled",
 		})
 		return
 	}
@@ -136,7 +140,7 @@ func (j *eventNotifierJob) dispatchLoop(ctx context.Context, events []event.Even
 				if err = notification.InsertMany(n...); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":        j.ID(),
-						"job":           eventMetaJobName,
+						"job_type":      j.Type().Name,
 						"source":        "events-processing",
 						"notifications": n,
 						"message":       "can't insert notifications",
@@ -155,7 +159,7 @@ func (j *eventNotifierJob) dispatchLoop(ctx context.Context, events []event.Even
 
 	grip.Info(message.Fields{
 		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
+		"job_type":   j.Type().Name,
 		"operation":  "events-processing",
 		"message":    "event-stats",
 		"start_time": startTime.String(),
@@ -180,7 +184,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 			err = errors.Errorf("panicked while processing event %s", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
 				"job_id":      j.ID(),
-				"job":         eventMetaJobName,
+				"job_type":    j.Type().Name,
 				"source":      "events-processing",
 				"event_id":    e.ID,
 				"event_type":  e.ResourceType,
@@ -193,7 +197,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 	n, err = trigger.NotificationsFromEvent(e)
 	grip.Info(message.Fields{
 		"job_id":        j.ID(),
-		"job":           eventMetaJobName,
+		"job_type":      j.Type().Name,
 		"source":        "events-processing",
 		"message":       "event processed",
 		"event_id":      e.ID,
@@ -205,7 +209,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
+		"job_type":   j.Type().Name,
 		"source":     "events-processing",
 		"message":    "errors processing triggers for event",
 		"event_id":   e.ID,
@@ -215,7 +219,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
 		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
+		"job_type":   j.Type().Name,
 		"source":     "events-processing",
 		"message":    "project triggers evaluated",
 		"event_id":   e.ID,
@@ -229,7 +233,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 	}
 	grip.InfoWhen(len(versions) > 0, message.Fields{
 		"job_id":   j.ID(),
-		"job":      eventMetaJobName,
+		"job_type": j.Type().Name,
 		"source":   "events-processing",
 		"message":  "triggering downstream builds",
 		"event_id": e.ID,
@@ -243,7 +247,7 @@ func dispatchNotifications(ctx context.Context, notifications []notification.Not
 	catcher := grip.NewBasicCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(flags, &notifications[i]) {
-			if err := q.Put(ctx, NewEventNotificationJob(notifications[i].ID, utility.RoundPartOfMinute(1).Format(TSFormat))); !amboy.IsDuplicateJobError(err) {
+			if err := q.Put(ctx, NewEventSendJob(notifications[i].ID, utility.RoundPartOfMinute(1).Format(TSFormat))); !amboy.IsDuplicateJobError(err) {
 				catcher.Add(err)
 			}
 		} else {
@@ -252,4 +256,43 @@ func dispatchNotifications(ctx context.Context, notifications []notification.Not
 	}
 
 	return catcher.Resolve()
+}
+
+func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
+	switch n.Subscriber.Type {
+	case event.GithubPullRequestSubscriberType:
+		return !flags.GithubStatusAPIDisabled
+
+	case event.GithubMergeSubscriberType:
+		return !flags.CommitQueueDisabled
+
+	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType:
+		return !flags.JIRANotificationsDisabled
+
+	case event.EvergreenWebhookSubscriberType:
+		return !flags.WebhookNotificationsDisabled
+
+	case event.EmailSubscriberType:
+		return !flags.EmailNotificationsDisabled
+
+	case event.SlackSubscriberType:
+		return !flags.SlackNotificationsDisabled
+
+	case event.CommitQueueDequeueSubscriberType:
+		return !flags.CommitQueueDisabled
+
+	default:
+		grip.Alert(message.Fields{
+			"message": "notificationIsEnabled saw unknown subscriber type",
+			"cause":   "programmer error",
+		})
+	}
+
+	return false
+}
+
+func sha256sum(ids []string) string {
+	sort.Strings(ids)
+	sum := sha256.Sum256([]byte(strings.Join(ids, "")))
+	return hex.EncodeToString(sum[:])
 }

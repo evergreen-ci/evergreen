@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
@@ -197,7 +199,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateEventAlertProcessing(env evergreen.Environment, parts int) amboy.QueueOperation {
+func processEvents(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -213,10 +215,63 @@ func PopulateEventAlertProcessing(env evergreen.Environment, parts int) amboy.Qu
 			return nil
 		}
 
-		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
+		err = dispatchUnprocessedNotifications(ctx, queue, flags)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to dispatch unprocessed notifications",
+		}))
+		notifySettings := env.Settings().Notify
+		if err = notifySettings.Get(env); err != nil {
+			return errors.Wrap(err, "unable to get notify settings")
+		}
+		limit := notifySettings.EventProcessingLimit
+		if limit <= 0 {
+			limit = evergreen.DefaultEventProcessingLimit
+		}
 
-		return errors.Wrap(queue.Put(ctx, NewEventMetaJob(env, queue, ts)), "failed to queue event-metajob")
+		events, err := event.FindUnprocessedEvents(-1)
+		if err != nil {
+			return errors.Wrap(err, "unable to find unprocessed events")
+		}
+		grip.Info(message.Fields{
+			"message": "unprocessed event count",
+			"pending": len(events),
+			"limit":   limit,
+			"source":  "events-processing",
+		})
+		if len(events) == 0 {
+			return nil
+		}
+
+		eventIDs := []string{}
+		for i, evt := range events {
+			eventIDs = append(eventIDs, evt.ID)
+			if (i+1)%limit == 0 || i+1 == len(events) {
+				err = queue.Put(ctx, NewEventNotifierJob(env, queue, sha256sum(eventIDs), eventIDs))
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "unable to queue event notifier job",
+				}))
+				eventIDs = []string{}
+			}
+		}
+
+		return nil
 	}
+
+}
+
+// dispatchUnprocessedNotifications gets unprocessed notifications
+// leftover by previous runs and dispatches them
+func dispatchUnprocessedNotifications(ctx context.Context, q amboy.Queue, flags *evergreen.ServiceFlags) error {
+	unprocessedNotifications, err := notification.FindUnprocessed()
+	if err != nil {
+		return errors.Wrap(err, "can't find unprocessed notifications")
+	}
+
+	return dispatchNotifications(ctx, unprocessedNotifications, q, flags)
+}
+
+func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperation {
+	return processEvents(env)
 }
 
 func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
