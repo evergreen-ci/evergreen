@@ -29,7 +29,6 @@
     hostId
     restarts
     execution
-    order
     requester
     status
     details {

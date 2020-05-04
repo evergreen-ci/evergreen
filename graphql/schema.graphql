@@ -310,7 +310,6 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
-  order: Int
   patchNumber: Int
   requester: String!
   status: String!
