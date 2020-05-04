@@ -172,6 +172,21 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
+	var commitQueuePosition *int
+	if *apiPatch.Alias == evergreen.CommitQueueAlias {
+		cq, err := commitqueue.FindOneId(*apiPatch.ProjectId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting commit queue position for patch %s: %s", *apiPatch.Id, err.Error()))
+		}
+		if cq != nil {
+			position := cq.FindItem(*apiPatch.Id)
+			commitQueuePosition = &position
+		}
+	}
+	return commitQueuePosition, nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {

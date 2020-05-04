@@ -153,27 +153,28 @@ type ComplexityRoot struct {
 	}
 
 	Patch struct {
-		Activated         func(childComplexity int) int
-		Alias             func(childComplexity int) int
-		Author            func(childComplexity int) int
-		BaseVersionID     func(childComplexity int) int
-		Builds            func(childComplexity int) int
-		CreateTime        func(childComplexity int) int
-		Description       func(childComplexity int) int
-		Duration          func(childComplexity int) int
-		Githash           func(childComplexity int) int
-		Id                func(childComplexity int) int
-		ModuleCodeChanges func(childComplexity int) int
-		PatchNumber       func(childComplexity int) int
-		Project           func(childComplexity int) int
-		ProjectId         func(childComplexity int) int
-		Status            func(childComplexity int) int
-		TaskCount         func(childComplexity int) int
-		Tasks             func(childComplexity int) int
-		Time              func(childComplexity int) int
-		Variants          func(childComplexity int) int
-		VariantsTasks     func(childComplexity int) int
-		Version           func(childComplexity int) int
+		Activated           func(childComplexity int) int
+		Alias               func(childComplexity int) int
+		Author              func(childComplexity int) int
+		BaseVersionID       func(childComplexity int) int
+		Builds              func(childComplexity int) int
+		CommitQueuePosition func(childComplexity int) int
+		CreateTime          func(childComplexity int) int
+		Description         func(childComplexity int) int
+		Duration            func(childComplexity int) int
+		Githash             func(childComplexity int) int
+		Id                  func(childComplexity int) int
+		ModuleCodeChanges   func(childComplexity int) int
+		PatchNumber         func(childComplexity int) int
+		Project             func(childComplexity int) int
+		ProjectId           func(childComplexity int) int
+		Status              func(childComplexity int) int
+		TaskCount           func(childComplexity int) int
+		Tasks               func(childComplexity int) int
+		Time                func(childComplexity int) int
+		Variants            func(childComplexity int) int
+		VariantsTasks       func(childComplexity int) int
+		Version             func(childComplexity int) int
 	}
 
 	PatchBuildVariant struct {
@@ -408,6 +409,7 @@ type PatchResolver interface {
 
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 	Builds(ctx context.Context, obj *model.APIPatch) ([]*model.APIBuild, error)
+	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
@@ -958,6 +960,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Builds(childComplexity), true
+
+	case "Patch.commitQueuePosition":
+		if e.complexity.Patch.CommitQueuePosition == nil {
+			break
+		}
+
+		return e.complexity.Patch.CommitQueuePosition(childComplexity), true
 
 	case "Patch.createTime":
 		if e.complexity.Patch.CreateTime == nil {
@@ -2289,6 +2298,7 @@ type Patch {
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
+  commitQueuePosition: Int
 }
 
 type Build {
@@ -4858,6 +4868,44 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_restartPatch_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RestartPatch(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5031,44 +5079,6 @@ func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, fiel
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.CommitQueue, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_restartPatch_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RestartPatch(rctx, args["patchId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5776,6 +5786,37 @@ func (ec *executionContext) _Patch_builds(ctx context.Context, field graphql.Col
 	res := resTmp.([]*model.APIBuild)
 	fc.Result = res
 	return ec.marshalNBuild2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_commitQueuePosition(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().CommitQueuePosition(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
@@ -12164,6 +12205,17 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "commitQueuePosition":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_commitQueuePosition(ctx, field, obj)
 				return res
 			})
 		default:
