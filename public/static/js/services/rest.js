@@ -294,6 +294,16 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
+    service.createVolume = function (volumeInfo, data, callbacks) {
+      var config = {
+        data: data
+      };
+      config.data['size'] = volumeInfo.size;
+      config.data['type'] = volumeInfo.type;
+      config.data['availability_zone'] = volumeInfo.zone;
+      baseSvc.putResource(resource, ["volumes"], config, callbacks);
+    }
+
     service.updateHostStatus = function (action, hostId, data, callbacks) {
         var config = {
             data: data
@@ -365,7 +375,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
 
         config.data['action'] = action;
         return baseSvc.postResource(resource, ["volume", volumeId], config, callbacks);
-    }
+    };
 
     return service;
 }]);

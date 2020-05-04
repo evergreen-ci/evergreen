@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -290,6 +291,17 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		if taskHost != nil {
 			uiTask.HostDNS = taskHost.Host
+			// ensure that the ability to spawn is updated from the existing distro
+			taskHost.Distro.SpawnAllowed = false
+			var d *distro.Distro
+			d, err = distro.FindByID(taskHost.Distro.Id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if d != nil {
+				taskHost.Distro.SpawnAllowed = d.SpawnAllowed
+			}
 		}
 	}
 

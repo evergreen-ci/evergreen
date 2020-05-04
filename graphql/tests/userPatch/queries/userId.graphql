@@ -1,5 +1,8 @@
 {
   userPatches(userId: "user1") {
-    id
+    patches {
+      id
+    }
+    filteredPatchCount
   }
 }

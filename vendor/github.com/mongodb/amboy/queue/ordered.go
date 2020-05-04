@@ -154,7 +154,7 @@ func (q *depGraphOrderedLocal) Runner() amboy.Runner {
 // implementations at run time. This method fails if the runner has
 // started.
 func (q *depGraphOrderedLocal) SetRunner(r amboy.Runner) error {
-	if q.Started() {
+	if q.Info().Started {
 		return errors.New("cannot change runners after starting")
 	}
 
@@ -162,10 +162,14 @@ func (q *depGraphOrderedLocal) SetRunner(r amboy.Runner) error {
 	return nil
 }
 
-// Started returns true when the Queue has begun dispatching tasks to
-// runners.
-func (q *depGraphOrderedLocal) Started() bool {
-	return q.started
+func (q *depGraphOrderedLocal) Info() amboy.QueueInfo {
+	q.mutex.RLock()
+	defer q.mutex.RUnlock()
+
+	return amboy.QueueInfo{
+		Started:     q.started,
+		LockTimeout: amboy.LockTimeout,
+	}
 }
 
 // Next returns a job from the Queue. This call is non-blocking. If
@@ -305,7 +309,7 @@ func (q *depGraphOrderedLocal) buildGraph() error {
 // Start starts the runner worker processes organizes the graph and
 // begins dispatching jobs to the workers.
 func (q *depGraphOrderedLocal) Start(ctx context.Context) error {
-	if q.started {
+	if q.Info().Started {
 		return nil
 	}
 

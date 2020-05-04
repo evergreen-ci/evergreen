@@ -73,6 +73,13 @@ directives.spawn.directive('userVolumeDetach', function() {
   }
 });
 
+directives.spawn.directive('userVolumeOptions', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/user_volume_options.html'
+  }
+});
+
 directives.spawn.directive('userVolumeDetails', function() {
   return {
     restrict: 'E',

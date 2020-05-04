@@ -111,11 +111,11 @@ func (b *Base) ID() string {
 // uniquely identify the runtime instance of the queue that holds the
 // lock, and the method returns an error if the lock cannot be
 // acquired.
-func (b *Base) Lock(id string) error {
+func (b *Base) Lock(id string, lockTimeout time.Duration) error {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if b.status.InProgress && time.Since(b.status.ModificationTime) < amboy.LockTimeout && b.status.Owner != id {
+	if b.status.InProgress && time.Since(b.status.ModificationTime) < lockTimeout && b.status.Owner != id {
 		return errors.Errorf("cannot take lock for '%s' because lock has been held for %s by %s",
 			id, time.Since(b.status.ModificationTime), b.status.Owner)
 	}
@@ -128,11 +128,11 @@ func (b *Base) Lock(id string) error {
 
 // Unlock attempts to remove the current lock state in the job, if
 // possible.
-func (b *Base) Unlock(id string) {
+func (b *Base) Unlock(id string, lockTimeout time.Duration) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if b.status.InProgress && time.Since(b.status.ModificationTime) < amboy.LockTimeout && b.status.Owner != id {
+	if b.status.InProgress && time.Since(b.status.ModificationTime) < lockTimeout && b.status.Owner != id {
 		return
 	}
 

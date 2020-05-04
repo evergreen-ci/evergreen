@@ -6,9 +6,9 @@ type Query {
     statuses: [String!] = []
     userId: String
     includeCommitQueue: Boolean = false
-  ): [Patch!]!
-  patch(id: String!): Patch!
+  ): UserPatches!
   task(taskId: String!): Task
+  patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
     patchId: String!
@@ -47,7 +47,8 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): Boolean!
+  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  restartPatch(patchId: String!): String
 }
 
 enum TaskSortCategory {
@@ -152,6 +153,11 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+}
+
+type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
 }
 
 type Patch {

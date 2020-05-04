@@ -75,14 +75,7 @@ func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.env = env
 	j.SetPriority(1)
 
-	var id string
-	if h.IsContainer() {
-		id = time.Now().Format(TSFormat)
-	} else {
-		id = utility.RoundPartOfMinute(15).Format(TSFormat)
-	}
-
-	j.SetID(fmt.Sprintf("%s.%s.%s.attempt-%d", setupHostJobName, j.HostID, id, h.ProvisionAttempts))
+	j.SetID(fmt.Sprintf("%s.%s.attempt-%d", setupHostJobName, j.HostID, h.ProvisionAttempts))
 	return j
 }
 
@@ -114,6 +107,21 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	defer func() {
+		err := j.host.IncProvisionAttempts()
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":           j.ID(),
+			"host_id":       j.host.Id,
+			"attempt_value": j.host.ProvisionAttempts,
+			"distro":        j.host.Distro.Id,
+			"operation":     "increment provisioning errors failed",
+			"cause": []string{
+				"job collision",
+				"host data",
+			}}))
+		j.AddError(errors.Wrap(err, "job collision detected"))
+	}()
+
 	settings := j.env.Settings()
 
 	j.AddError(j.setupHost(ctx, settings))
@@ -143,20 +151,6 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		"distro":  j.host.Distro.Id,
 		"host_id": j.host.Id,
 	})
-
-	if err := j.host.IncProvisionAttempts(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":           j.ID(),
-			"host_id":       j.host.Id,
-			"attempt_value": j.host.ProvisionAttempts,
-			"distro":        j.host.Distro.Id,
-			"operation":     "increment provisioning errors failed",
-			"cause": []string{
-				"job collision",
-				"host data",
-			}}))
-		return errors.Wrap(err, "job collision detected")
-	}
 
 	if err := j.provisionHost(ctx, settings); err != nil {
 		event.LogHostProvisionError(j.host.Id)
@@ -609,8 +603,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
 				"host_id":   j.host.Id,
+				"operation": "setting host unprovisioned",
 				"distro":    j.host.Distro.Id,
 				"job":       j.ID(),
 			}))

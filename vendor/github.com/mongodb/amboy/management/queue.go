@@ -58,7 +58,7 @@ func (m *queueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobStatu
 		}
 	case Stale:
 		for stat := range m.queue.JobStats(ctx) {
-			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
+			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > m.queue.Info().LockTimeout {
 				job, ok := m.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
@@ -221,7 +221,7 @@ func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f Stat
 					continue
 				}
 			}
-			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
+			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > m.queue.Info().LockTimeout {
 				ids = append(ids, stat.ID)
 			}
 		}
@@ -514,7 +514,7 @@ func (m *queueManager) CompleteJobsByType(ctx context.Context, f StatusFilter, j
 
 		switch f {
 		case Stale:
-			if !stat.InProgress || time.Since(stat.ModificationTime) < amboy.LockTimeout {
+			if !stat.InProgress || time.Since(stat.ModificationTime) < m.queue.Info().LockTimeout {
 				continue
 			}
 		case InProgress:
@@ -553,7 +553,7 @@ func (m *queueManager) CompleteJobs(ctx context.Context, f StatusFilter) error {
 
 		switch f {
 		case Stale:
-			if stat.InProgress && time.Since(stat.ModificationTime) > amboy.LockTimeout {
+			if stat.InProgress && time.Since(stat.ModificationTime) > m.queue.Info().LockTimeout {
 				continue
 			}
 		case InProgress:

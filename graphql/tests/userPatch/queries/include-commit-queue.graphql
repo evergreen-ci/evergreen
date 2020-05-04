@@ -1,5 +1,8 @@
 {
   userPatches(includeCommitQueue: true) {
-    id
+    patches {
+      id
+    }
+    filteredPatchCount
   }
 }

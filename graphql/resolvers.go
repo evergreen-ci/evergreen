@@ -280,21 +280,25 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
 	usr := route.MustHaveUser(ctx)
 	userIdParam := usr.Username()
 	if userID != nil {
 		userIdParam = *userID
 	}
-	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	patchPointers := []*restModel.APIPatch{}
 	if err != nil {
-		return patchPointers, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	for i := range patches {
 		patchPointers = append(patchPointers, &patches[i])
 	}
-	return patchPointers, nil
+	userPatches := UserPatches{
+		Patches:            patchPointers,
+		FilteredPatchCount: *count,
+	}
+	return &userPatches, nil
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
@@ -896,12 +900,29 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
-func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (bool, error) {
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string) (*string, error) {
+	usr := route.MustHaveUser(ctx)
+	_, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+	}
+	err = r.sc.RestartVersion(patchID, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting patch %s: %s", patchID, err.Error()))
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
 	}
-	return result, nil
+	if result != true {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s", patchID))
+	}
+
+	return &patchID, nil
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
