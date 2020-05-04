@@ -96,22 +96,17 @@ func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 		},
 		{
 			"$lookup": bson.M{
-				"from":         Collection,
-				"localField":   "_id",
-				"foreignField": "volumes.volume_id",
-				"as":           "hosts",
-			},
-		},
-		{
-			"$project": bson.M{
-				"hosts": bson.M{
-					"$filter": bson.M{
-						"input": "$hosts",
-						"as":    "host",
-						"cond":  bson.M{"$ne": []string{"$$host.status", evergreen.HostTerminated}},
+				"from": Collection,
+				"let":  bson.M{"host_id": "$host"},
+				"pipeline": bson.A{
+					bson.M{
+						"$match": bson.M{"$expr": bson.M{"$and": bson.A{
+							bson.M{"$eq": bson.A{"$_id", "$$host_id"}},
+							bson.M{"$ne": bson.A{"$status", evergreen.HostTerminated}},
+						}}},
 					},
 				},
-				VolumeExpirationKey: 1,
+				"as": "hosts",
 			},
 		},
 		{

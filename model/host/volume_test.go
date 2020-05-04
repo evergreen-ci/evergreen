@@ -15,8 +15,8 @@ func TestFindVolumesToDelete(t *testing.T) {
 
 	volumes := []Volume{
 		{ID: "v0", Expiration: time.Date(2010, time.December, 10, 23, 0, 0, 0, time.UTC)},
-		{ID: "v1", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
-		{ID: "v2", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
+		{ID: "v1", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Host: "h0"},
+		{ID: "v2", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Host: "h1"},
 		{ID: "v3", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 	}
 	for _, vol := range volumes {
