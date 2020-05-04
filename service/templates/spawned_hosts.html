@@ -6,8 +6,9 @@
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
   window.defaultRegion = {{ GetRegion $.User }};
-  window.maxHostsPerUser = {{$.MaxHostsPerUser}}
-  window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}}
+  window.maxHostsPerUser = {{$.MaxHostsPerUser}};
+  window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}};
+  window.maxVolumeSizePerUser = {{$.MaxVolumeSizePerUser}};
   {{if .Task}}
   window.spawnTask = {{.Task}}
   {{end}}
@@ -199,6 +200,12 @@ Evergreen - My Hosts
           </tbody>
         </table>
       </div>
+      <md-button type="button" class="btn-info md-raised" ng-click="openVolumeModal('createVolume')" ng-disabled="availableVolumeSize() <= 0">
+        Create Volume
+      </md-button>
+      <em ng-class="{'text-muted': availableVolumeSize() > 0, 'text-error': availableVolumeSize() <= 0}" style="margin-left: 5px;" ng-cloak>
+        Limit [[maxVolumeSizePerUser]] GiB per User
+      </em>
     </div>
   </div>
   <div>
@@ -210,6 +217,7 @@ Evergreen - My Hosts
       <user-host-stop ng-show="modalOption=='stopHost'"></user-host-stop>
       <user-host-start ng-show="modalOption=='startHost'"></user-host-start>
       <user-host-update ng-show="modalOption=='updateRDPPassword'"></user-host-update>
+      <user-volume-options ng-show="modalOption=='createVolume'"></user-volume-options>
       <user-volume-delete ng-show="modalOption=='deleteVolume'"></user-volume-delete>
       <user-volume-attach ng-show="modalOption=='attachVolume'"></user-volume-attach>
       <user-volume-detach ng-show="modalOption=='detachVolume'"></user-volume-detach>

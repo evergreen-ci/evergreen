@@ -556,6 +556,9 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 			output, err = c.EC2.CreateVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Error(), EC2InvalidParam) {
+						return false, err
+					}
 					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
