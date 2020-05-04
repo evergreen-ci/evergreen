@@ -975,6 +975,10 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	return db.Update(ProjectRefCollection, filter, update)
 }
 
+func (p *ProjectRef) HasRepotrackerError() bool {
+	return p.RepotrackerError != nil && p.RepotrackerError.Exists
+}
+
 func (t TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindOneProjectRef(t.Project)
 	if err != nil {
