@@ -265,6 +265,7 @@ type ComplexityRoot struct {
 		Logs              func(childComplexity int) int
 		Order             func(childComplexity int) int
 		PatchMetadata     func(childComplexity int) int
+		PatchNumber       func(childComplexity int) int
 		Priority          func(childComplexity int) int
 		ProjectId         func(childComplexity int) int
 		ReliesOn          func(childComplexity int) int
@@ -402,6 +403,8 @@ type TaskResolver interface {
 	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+
+	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 }
@@ -1489,6 +1492,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.PatchMetadata(childComplexity), true
 
+	case "Task.patchNumber":
+		if e.complexity.Task.PatchNumber == nil {
+			break
+		}
+
+		return e.complexity.Task.PatchNumber(childComplexity), true
+
 	case "Task.priority":
 		if e.complexity.Task.Priority == nil {
 			break
@@ -2272,6 +2282,7 @@ type Task {
   restarts: Int
   execution: Int
   order: Int
+  patchNumber: Int
   requester: String!
   status: String!
   details: TaskEndDetail
@@ -7746,6 +7757,37 @@ func (ec *executionContext) _Task_order(ctx context.Context, field graphql.Colle
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().PatchNumber(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_requester(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12122,6 +12164,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
 		case "order":
 			out.Values[i] = ec._Task_order(ctx, field, obj)
+		case "patchNumber":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_patchNumber(ctx, field, obj)
+				return res
+			})
 		case "requester":
 			out.Values[i] = ec._Task_requester(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

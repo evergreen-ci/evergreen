@@ -311,6 +311,7 @@ type Task {
   restarts: Int
   execution: Int
   order: Int
+  patchNumber: Int
   requester: String!
   status: String!
   details: TaskEndDetail

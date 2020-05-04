@@ -1058,6 +1058,11 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 	return nil, nil
 }
 
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
+	order := obj.Order
+	return &order, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{
