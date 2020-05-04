@@ -427,6 +427,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 	commits := fmt.Sprintf(commitFmtString, commitMessages, owner, repo, module.Branch)
 	message := fmt.Sprintf("%s || %s", patch.Description, commits)
+	// replace the description if the original patch was empty
 	if strings.HasSuffix(patch.Description, noCommits) {
 		message = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
 	}
