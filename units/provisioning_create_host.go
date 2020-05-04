@@ -337,7 +337,6 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		}
 	}
 
-	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
 		"message": "successfully started host",
 		"host_id": j.host.Id,
