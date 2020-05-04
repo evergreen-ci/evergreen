@@ -867,7 +867,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         case 'terminateHost':
           $scope.curHostData.checkDelete = "";
           initializeModal(modal, 'Terminate Host');
-          attachEnterHandler('terminate');
           break;
         case 'stopHost':
           initializeModal(modal, 'Stop Host');
