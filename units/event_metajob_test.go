@@ -21,13 +21,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-type cronsEventSuite struct {
+type eventMetaJobSuite struct {
 	suite.Suite
 	cancel func()
 	n      []notification.Notification
@@ -35,8 +34,8 @@ type cronsEventSuite struct {
 	env    evergreen.Environment
 }
 
-func TestEventCrons(t *testing.T) {
-	s := &cronsEventSuite{}
+func TestEventMetaJob(t *testing.T) {
+	s := &eventMetaJobSuite{}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	env := evergreen.GetEnvironment()
@@ -45,11 +44,11 @@ func TestEventCrons(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *cronsEventSuite) TearDownSuite() {
+func (s *eventMetaJobSuite) TearDownSuite() {
 	s.cancel()
 }
 
-func (s *cronsEventSuite) SetupTest() {
+func (s *eventMetaJobSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
 
 	events := []event.EventLogEntry{
@@ -109,7 +108,7 @@ func (s *cronsEventSuite) SetupTest() {
 	}
 }
 
-func (s *cronsEventSuite) TestDegradedMode() {
+func (s *eventMetaJobSuite) TestDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		EventProcessingDisabled: true,
 	}
@@ -127,14 +126,18 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	// degraded mode shouldn't process events
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	s.NoError(logger.LogEvent(&e))
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, s.env.RemoteQueue()))
+
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.RemoteQueue(), "1")
+	job.Run(s.ctx)
+	s.NoError(job.Error())
 
 	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	s.NoError(err)
 	s.Len(out, 1)
 }
 
-func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
+func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	flags := evergreen.ServiceFlags{
 		JIRANotificationsDisabled:    true,
 		SlackNotificationsDisabled:   true,
@@ -150,7 +153,11 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
 
-	s.NoError(dispatchNotifications(ctx, s.n, s.env.RemoteQueue(), &flags))
+	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.RemoteQueue(), "1").(*eventMetaJob)
+	job.flags = &flags
+	s.NoError(job.dispatch(ctx, s.n))
+	s.NoError(job.Error())
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
@@ -167,7 +174,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.Equal(startingStats.Total, stats.Total)
 }
 
-func (s *cronsEventSuite) TestNotificationIsEnabled() {
+func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
 		s.True(notificationIsEnabled(&flags, &s.n[i]))
@@ -188,7 +195,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	}
 }
 
-func (s *cronsEventSuite) TestEndToEnd() {
+func (s *eventMetaJobSuite) TestEndToEnd() {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
@@ -267,13 +274,15 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	go httpServer(ln, handler)
 
 	env := evergreen.GetEnvironment()
-	q := env.LocalQueue()
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, q))
+	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
+	job.q = evergreen.GetEnvironment().LocalQueue()
+	job.Run(s.ctx)
+	s.NoError(job.Error())
 
 	grip.Info("waiting for dispatches")
-	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
+	amboy.WaitInterval(s.ctx, job.q, 10*time.Millisecond)
 	grip.Info("waiting for senders")
-	amboy.Wait(s.ctx, q)
+	amboy.Wait(s.ctx, job.q)
 	grip.Info("senders are done")
 
 	out := []notification.Notification{}
@@ -284,62 +293,19 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
-func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
+func (s *eventMetaJobSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
 	env := evergreen.GetEnvironment()
+	job := NewEventMetaJob(env, env.LocalQueue(), "1").(*eventMetaJob)
 	flags, err := evergreen.GetServiceFlags()
 	s.NoError(err)
+	job.flags = flags
 	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 
-	s.NoError(dispatchUnprocessedNotifications(s.ctx, env.LocalQueue(), flags))
+	s.NoError(job.dispatchUnprocessedNotifications(s.ctx))
 
 	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+6, stats.Total)
-}
-
-func (s *cronsEventSuite) TestBatchingCanCount() {
-	env := evergreen.GetEnvironment()
-	notifSettings := evergreen.NotifyConfig{
-		EventProcessingLimit: 2,
-	}
-	s.NoError(notifSettings.Set())
-	events := []event.EventLogEntry{
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-	}
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-
-	for _, evt := range events {
-		s.NoError(logger.LogEvent(&evt))
-	}
-	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, env.LocalQueue()))
-
-	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	s.Equal(origStats.Total+3, stats.Total)
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
@@ -414,8 +380,4 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		"signature": string(sig),
 		"body":      string(body),
 	})
-}
-
-func TestChecksum(t *testing.T) {
-	assert.Equal(t, "19cc02f26df43cc571bc9ed7b0c4d29224a3ec229529221725ef76d021c8326f", sha256sum([]string{"abc", "def", "ghi"}))
 }

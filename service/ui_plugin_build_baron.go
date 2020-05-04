@@ -337,7 +337,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = uis.queue.Put(r.Context(), units.NewEventSendJob(n.ID, ts))
+	err = uis.queue.Put(r.Context(), units.NewEventNotificationJob(n.ID, ts))
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, fmt.Sprintf("error inserting notification job: %s", err.Error()))
 		return
