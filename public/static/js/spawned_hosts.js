@@ -753,8 +753,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.curVolumeData = volume;
     };
 
-    $scope.invalidDelete = function (checkDelete) {
-      if ($scope.curHostData && $scope.curHostData.no_expiration && checkDelete !== "delete") {
+    $scope.invalidDelete = function () {
+      if ($scope.curHostData && $scope.curHostData.no_expiration && $scope.curHostData.checkDelete !== "delete") {
         return true;
       };
       return false;
@@ -865,6 +865,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           initializeModal(modal, 'Spawn Host');
           break;
         case 'terminateHost':
+          $scope.curHostData.checkDelete = "";
           initializeModal(modal, 'Terminate Host');
           attachEnterHandler('terminate');
           break;

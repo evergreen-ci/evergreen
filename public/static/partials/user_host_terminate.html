@@ -7,10 +7,10 @@
       <span class="semi-muted">
         Host is unexpirable. If you'd really like to terminate, please type "delete":
       </span>
-      <input type="text" id="input-type"  ng-model="checkDelete"/>
+      <input type="text" id="input-type"  ng-model="curHostData.checkDelete"/>
     </div>
     <br>
     <button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>
-    <button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-disabled="invalidDelete(checkDelete)" ng-click="updateHostStatus('terminate')">Yes</button>
+    <button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-disabled="invalidDelete()" ng-click="updateHostStatus('terminate')">Yes</button>
   </div>
 </div>

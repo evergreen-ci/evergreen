@@ -45,7 +45,7 @@ func confirmWithMatchingString(message string, confirmation string) bool {
 	var reply string
 	for {
 		reply = prompt(message)
-		if strings.Contains(confirmation, strings.TrimSpace(strings.ToLower(reply))) {
+		if confirmation == strings.TrimSpace(strings.ToLower(reply)) {
 			return true
 		}
 		return false
