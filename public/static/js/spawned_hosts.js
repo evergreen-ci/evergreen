@@ -484,8 +484,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {
+            // we don't use reload here because we need to clear query parameters
+            // in the case of spawning a host from a task
             $window.location.href = "/spawn";
-            $scope.setResourceType("hosts");
           },
           error: function (resp) {
             $scope.spawnReqSent = false;
@@ -500,8 +501,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.createVolume(
         $scope.createVolumeInfo, {}, {
           success: function (resp) {
-              $window.location.href = "/spawn";
-              $scope.setResourceType("volumes");
+              $window.location.reload();
           },
           error: function (resp) {
               $scope.volumeReqSent = false;
