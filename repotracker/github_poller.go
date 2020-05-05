@@ -217,7 +217,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			if err = gRepoPoller.ProjectRef.UpdateRevisionForProject(baseRevision); err != nil {
 				return []model.Revision{}, errors.Wrapf(err, "error updating revision to '%s' for project", baseRevision)
 			}
-			revisionError = nil
 			grip.Info(message.Fields{
 				"source":        "github poller",
 				"message":       "set new revision",
