@@ -160,14 +160,16 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			"revision": lastRevision,
 		})
 		// if the projectRef has a repotracker error then don't get the revisions
-		if projectRef.HasRepotrackerError() {
-			grip.Warning(message.Fields{
-				"runner":  RunnerName,
-				"message": "repotracker error for base revision",
-				"project": projectRef,
-				"path":    fmt.Sprintf("%s/%s:%s", projectRef.Owner, projectRef.Repo, projectRef.Branch),
-			})
-			return nil
+		if projectRef.RepotrackerError != nil {
+			if projectRef.RepotrackerError.Exists {
+				grip.Warning(message.Fields{
+					"runner":  RunnerName,
+					"message": "repotracker error for base revision",
+					"project": projectRef,
+					"path":    fmt.Sprintf("%s/%s:%s", projectRef.Owner, projectRef.Repo, projectRef.Branch),
+				})
+				return nil
+			}
 		}
 		max := settings.RepoTracker.MaxRepoRevisionsToSearch
 		if max <= 0 {

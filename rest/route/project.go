@@ -379,23 +379,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	newRevision := model.FromStringPtr(requestProjectRef.Revision)
-	// user didn't provide updated revision, but we should still update if branch has changed
-	if newRevision == "" && newProjectRef.Branch != oldProject.Branch && !newProjectRef.HasRepotrackerError() {
-		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID).Run(ctx)
-		projectWithRevision, err := h.sc.FindProjectById(h.projectID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error checking project for new revision"))
-		}
-		if projectWithRevision.HasRepotrackerError() {
-			// if we've found a new merge base revision, set this automatically
-			if projectWithRevision.RepotrackerError.MergeBaseRevision != "" {
-				newRevision = projectWithRevision.RepotrackerError.MergeBaseRevision
-			} else {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error checking for new revision, may have to include in request"))
-			}
-		}
-	}
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.projectID, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
