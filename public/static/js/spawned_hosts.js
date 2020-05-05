@@ -501,7 +501,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.createVolume(
         $scope.createVolumeInfo, {}, {
           success: function (resp) {
-              $window.location.reload();
+            $window.location.reload();
           },
           error: function (resp) {
               $scope.volumeReqSent = false;
