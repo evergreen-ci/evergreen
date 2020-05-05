@@ -90,7 +90,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			continue
 		}
 
-		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)
+		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier, false)
 		job.SetPriority(1)
 
 		if err := q.Put(context.TODO(), job); err != nil {

@@ -479,7 +479,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if responseRef.ForceRepotrackerRun {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier, false)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
@@ -719,31 +719,22 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the latest revision to be the revision id
-	err = model.UpdateLastRevision(id, revision)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// update the projectRef too
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	projectRef.RepotrackerError.Exists = false
-	projectRef.RepotrackerError.InvalidRevision = ""
-	projectRef.RepotrackerError.MergeBaseRevision = ""
-	err = projectRef.Upsert()
-	if err != nil {
+	if projectRef == nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("project not found"))
+		return
+	}
+	if err = projectRef.UpdateRevisionForProject(revision); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
 	// run the repotracker for the project
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), id, false)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}

@@ -26,9 +26,10 @@ func init() {
 }
 
 type repotrackerJob struct {
-	ProjectID string `bson:"project_id" json:"project_id" yaml:"project_id"`
-	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env       evergreen.Environment
+	ProjectID   string `bson:"project_id" json:"project_id" yaml:"project_id"`
+	SetRevision bool   `bson:"skip_confirm" json:"skip_confirm" yaml:"skip_confirm"`
+	job.Base    `bson:"job_base" json:"job_base" yaml:"job_base"`
+	env         evergreen.Environment
 }
 
 func makeRepotrackerJob() *repotrackerJob {
@@ -47,9 +48,10 @@ func makeRepotrackerJob() *repotrackerJob {
 // NewRepotrackerJob creates a job to run repotracker against a repository.
 // The code creating this job is responsible for verifying that the project
 // should track push events
-func NewRepotrackerJob(msgID, projectID string) amboy.Job {
+func NewRepotrackerJob(msgID, projectID string, setRevision bool) amboy.Job {
 	job := makeRepotrackerJob()
 	job.ProjectID = projectID
+	job.SetRevision = setRevision
 	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
 	return job
 }
@@ -106,13 +108,14 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref)
+	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref, j.SetRevision)
 
 	if err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
-			"job":     repotrackerJobName,
-			"job_id":  j.ID(),
-			"project": j.ProjectID,
+			"job":          repotrackerJobName,
+			"job_id":       j.ID(),
+			"project":      j.ProjectID,
+			"skip_confirm": j.SetRevision,
 		}))
 		j.AddError(err)
 	}

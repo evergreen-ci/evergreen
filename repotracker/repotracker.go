@@ -40,6 +40,7 @@ const (
 type RepoTracker struct {
 	*evergreen.Settings
 	*model.ProjectRef
+	SetRevision bool
 	RepoPoller
 }
 
@@ -90,7 +91,7 @@ type RepoPoller interface {
 	// allow to search through - in order to find 'revision' - before we give
 	// up. A value <= 0 implies we allow to search through till we hit the first
 	// revision for the project.
-	GetRevisionsSince(sinceRevision string, maxRevisions int) ([]model.Revision, error)
+	GetRevisionsSince(sinceRevision string, maxRevisions int, setRevision bool) ([]model.Revision, error)
 	// Fetches the most recent 'numNewRepoRevisionsToFetch' revisions for a
 	// project - with the most recent revision appearing as the first element in
 	// the slice.
@@ -175,7 +176,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		if max <= 0 {
 			max = DefaultMaxRepoRevisionsToSearch
 		}
-		revisions, err = repoTracker.GetRevisionsSince(lastRevision, max)
+		revisions, err = repoTracker.GetRevisionsSince(lastRevision, max, repoTracker.SetRevision)
 	}
 
 	if err != nil {

@@ -128,7 +128,7 @@ func TestGetRevisionsSinceWithPaging(t *testing.T) {
 			distantEvgRevision, err := getDistantEVGRevision()
 			So(err, ShouldBeNil)
 			So(distantEvgRevision, ShouldNotEqual, "")
-			revisions, err := grp.GetRevisionsSince(distantEvgRevision, 5000)
+			revisions, err := grp.GetRevisionsSince(distantEvgRevision, 5000, false)
 			So(err, ShouldBeNil)
 			Convey("and the revision should be found", func() {
 				So(len(revisions), ShouldNotEqual, 0)
@@ -155,7 +155,7 @@ func TestGetRevisionsSince(t *testing.T) {
 				// The test repository contains only 3 revisions with revision
 				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
 				// revision
-				revisions, err := self.GetRevisionsSince(firstRevision, 10)
+				revisions, err := self.GetRevisionsSince(firstRevision, 10, false)
 				require.NoError(t, err, "Error fetching github revisions")
 				So(len(revisions), ShouldEqual, 2)
 
@@ -173,7 +173,7 @@ func TestGetRevisionsSince(t *testing.T) {
 		Convey("There should be no revisions since the last revision", func() {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := self.GetRevisionsSince(lastRevision, 10)
+			revisions, err := self.GetRevisionsSince(lastRevision, 1, false)
 			require.NoError(t, err, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 0)
 		})
@@ -182,12 +182,12 @@ func TestGetRevisionsSince(t *testing.T) {
 			"isn't found", func() {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := self.GetRevisionsSince("lastRevision", 10)
+			revisions, err := self.GetRevisionsSince("lastRevision", 10, false)
 			So(len(revisions), ShouldEqual, 0)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("If the revision is not valid because it has less than 10 characters, should return an error", func() {
-			_, err := self.GetRevisionsSince("master", 10)
+			_, err := self.GetRevisionsSince("master", 10, false)
 			So(err, ShouldNotBeNil)
 		})
 	})

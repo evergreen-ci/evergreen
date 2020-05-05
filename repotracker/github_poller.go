@@ -118,7 +118,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 
 // GetRevisionsSince fetches the all commits from the corresponding Github
 // ProjectRef that were made after 'revision'
-func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int, setRevision bool) ([]model.Revision, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 
@@ -213,12 +213,25 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				revision, baseRevision)
 		}
 
-		gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
-		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
-			return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
+		if setRevision && baseRevision != "" {
+			if err = gRepoPoller.ProjectRef.UpdateRevisionForProject(baseRevision); err != nil {
+				return []model.Revision{}, errors.Wrapf(err, "error updating revision to '%s' for project", baseRevision)
+			}
+			revisionError = nil
+			grip.Info(message.Fields{
+				"source":        "github poller",
+				"message":       "set new revision",
+				"last_revision": revision,
+				"project":       gRepoPoller.ProjectRef,
+				"new_revision":  baseRevision,
+			})
+		} else {
+			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
+			if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
+				return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
+			}
+			return []model.Revision{}, revisionError
 		}
-
-		return []model.Revision{}, revisionError
 	}
 
 	if len(revisions) == 0 {

@@ -20,7 +20,7 @@ const (
 	githubAPILimitCeiling = 20
 )
 
-func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracker, error) {
+func getTracker(conf *evergreen.Settings, project model.ProjectRef, setRevision bool) (*RepoTracker, error) {
 	token, err := conf.GetGithubOauthToken()
 	if err != nil {
 		grip.Warning(message.Fields{
@@ -31,20 +31,21 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 	}
 
 	tracker := &RepoTracker{
-		Settings:   conf,
-		ProjectRef: &project,
-		RepoPoller: NewGithubRepositoryPoller(&project, token),
+		Settings:    conf,
+		SetRevision: setRevision,
+		ProjectRef:  &project,
+		RepoPoller:  NewGithubRepositoryPoller(&project, token),
 	}
 
 	return tracker, nil
 }
 
-func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef) error {
+func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef, setRevision bool) error {
 	if !project.Enabled || project.RepotrackerDisabled {
 		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
 
-	tracker, err := getTracker(conf, project)
+	tracker, err := getTracker(conf, project, setRevision)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"project": project.Identifier,

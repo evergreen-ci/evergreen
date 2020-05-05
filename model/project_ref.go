@@ -713,6 +713,17 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 	}
 }
 
+func (p *ProjectRef) UpdateRevisionForProject(revision string) error {
+	// update the latest revision to be the revision id
+	if err := UpdateLastRevision(p.Identifier, revision); err != nil {
+		return errors.Wrapf(err, "error updating last revision to '%s'", revision)
+	}
+	p.RepotrackerError.Exists = false
+	p.RepotrackerError.InvalidRevision = ""
+	p.RepotrackerError.MergeBaseRevision = ""
+	return errors.Wrapf(p.Update(), "error updating project '%s'", p.Identifier)
+}
+
 // return the next valid batch time
 func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
 

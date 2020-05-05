@@ -431,7 +431,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// run the repotracker for the project
 	if newRevision != "" {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID, true)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
 		if err = queue.Put(ctx, j); err != nil {

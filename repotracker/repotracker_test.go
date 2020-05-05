@@ -36,9 +36,9 @@ func TestFetchRevisions(t *testing.T) {
 		resetProjectRefs()
 
 		repoTracker := RepoTracker{
-			testConfig,
-			evgProjectRef,
-			NewGithubRepositoryPoller(evgProjectRef, token),
+			Settings:   testConfig,
+			ProjectRef: evgProjectRef,
+			RepoPoller: NewGithubRepositoryPoller(evgProjectRef, token),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
@@ -80,7 +80,11 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, token)}
+		repoTracker := RepoTracker{
+			Settings:   testConfig,
+			ProjectRef: evgProjectRef,
+			RepoPoller: NewGithubRepositoryPoller(evgProjectRef, token),
+		}
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
@@ -171,12 +175,12 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		poller := NewMockRepoPoller(project, revisions)
 
 		repoTracker := RepoTracker{
-			testConfig,
-			&model.ProjectRef{
+			Settings: testConfig,
+			ProjectRef: &model.ProjectRef{
 				Identifier: "testproject",
 				BatchTime:  10,
 			},
-			poller,
+			RepoPoller: poller,
 		}
 
 		// insert distros used in testing.
@@ -292,12 +296,12 @@ func TestBatchTimes(t *testing.T) {
 			}
 
 			repoTracker := RepoTracker{
-				testConfig,
-				&model.ProjectRef{
+				Settings: testConfig,
+				ProjectRef: &model.ProjectRef{
 					Identifier: "testproject",
 					BatchTime:  1,
 				},
-				NewMockRepoPoller(project, revisions),
+				RepoPoller: NewMockRepoPoller(project, revisions),
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
@@ -317,12 +321,12 @@ func TestBatchTimes(t *testing.T) {
 				*createTestRevision("bar", time.Now().Add(-6*time.Minute)),
 			}
 			repoTracker := RepoTracker{
-				testConfig,
-				&model.ProjectRef{
+				Settings: testConfig,
+				ProjectRef: &model.ProjectRef{
 					Identifier: "testproject",
 					BatchTime:  0,
 				},
-				NewMockRepoPoller(project, revisions),
+				RepoPoller: NewMockRepoPoller(project, revisions),
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
@@ -352,12 +356,12 @@ func TestBatchTimes(t *testing.T) {
 			}
 
 			repoTracker := RepoTracker{
-				testConfig,
-				&model.ProjectRef{
+				Settings: testConfig,
+				ProjectRef: &model.ProjectRef{
 					Identifier: "testproject",
 					BatchTime:  60,
 				},
-				NewMockRepoPoller(project, revisions),
+				RepoPoller: NewMockRepoPoller(project, revisions),
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
@@ -385,12 +389,12 @@ func TestBatchTimes(t *testing.T) {
 			}
 
 			repoTracker := RepoTracker{
-				testConfig,
-				&model.ProjectRef{
+				Settings: testConfig,
+				ProjectRef: &model.ProjectRef{
 					Identifier: "testproject",
 					BatchTime:  60,
 				},
-				NewMockRepoPoller(project, revisions),
+				RepoPoller: NewMockRepoPoller(project, revisions),
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
@@ -439,12 +443,12 @@ func TestBatchTimes(t *testing.T) {
 			*createTestRevision("garply", time.Now()),
 		}
 		repoTracker := RepoTracker{
-			testConfig,
-			&model.ProjectRef{
+			Settings: testConfig,
+			ProjectRef: &model.ProjectRef{
 				Identifier: "testproject",
 				BatchTime:  60,
 			},
-			NewMockRepoPoller(project, revisions),
+			RepoPoller: NewMockRepoPoller(project, revisions),
 		}
 		err := repoTracker.StoreRevisions(ctx, revisions)
 		So(err, ShouldBeNil)
