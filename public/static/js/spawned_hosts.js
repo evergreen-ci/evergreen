@@ -484,7 +484,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {
-            $window.location.reload();
+            // we don't use reload here because we need to clear query parameters
+            // in the case of spawning a host from a task
+            $window.location.href = "/spawn";
           },
           error: function (resp) {
             $scope.spawnReqSent = false;
