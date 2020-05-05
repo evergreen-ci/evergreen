@@ -51,6 +51,37 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 	return &spawnHostResp, nil
 }
 
+// CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
+func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*model.APIHost, error) {
+
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("hosts/%s", hostId),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		err = errors.Wrapf(err, "error sending request to spawn host")
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem getting host and parsing error message")
+		}
+		return nil, errors.Wrap(errMsg, "problem getting host")
+	}
+
+	spawnHostResp := model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, &spawnHostResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &spawnHostResp, nil
+}
+
 // ModifySpawnHost will start a job that updates the specified user-spawned host
 // with the modifications passed as a parameter.
 func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {

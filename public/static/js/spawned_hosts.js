@@ -592,7 +592,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             $window.location.reload();
           },
           error: function (resp) {
-            notificationService.pushNotification('Error changing host status: ' + resp.data, 'errorHeader');
+            notificationService.pushNotification('Error changing host status: ' + resp.data.error, 'errorHeader');
           }
         }
       );
@@ -795,6 +795,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.curVolumeData = volume;
     };
 
+    $scope.invalidDelete = function () {
+      if ($scope.curHostData && $scope.curHostData.no_expiration && $scope.curHostData.checkDelete !== "delete") {
+        return true;
+      };
+      return false;
+    };
+
     $scope.getTags = function () {
       $scope.curHostData.tags_to_delete = [];
       $scope.curHostData.tags_to_add = {};
@@ -900,8 +907,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           initializeModal(modal, 'Spawn Host');
           break;
         case 'terminateHost':
+          $scope.curHostData.checkDelete = "";
           initializeModal(modal, 'Terminate Host');
-          attachEnterHandler('terminate');
           break;
         case 'stopHost':
           initializeModal(modal, 'Stop Host');
