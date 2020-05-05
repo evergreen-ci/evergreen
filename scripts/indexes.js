@@ -447,6 +447,12 @@ db.subscriptions.ensureIndex({
     "owner_type": 1,
     "owner": 1
 })
+db.subscriptions.createIndex({
+    "last_updated": 1,
+}, {
+    sparse: true,
+    expireAfterSeconds: 1209600 // 2 weeks
+})
 
 //======users======//
 db.users.ensureIndex({
