@@ -1339,16 +1339,26 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 			return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
 		}
 	}
-	if opts.NoExpiration != nil {
-		if *opts.NoExpiration {
-			if err := m.modifyVolumeExpiration(ctx, volume, time.Now().Add(evergreen.SpawnHostNoExpirationDuration)); err != nil {
-				return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
-			}
+
+	if opts.NoExpiration && opts.HasExpiration {
+		return errors.New("can't set no expiration and has expiration")
+	}
+
+	if opts.NoExpiration {
+		if err := m.modifyVolumeExpiration(ctx, volume, time.Now().Add(evergreen.SpawnHostNoExpirationDuration)); err != nil {
+			return errors.Wrapf(err, "error modifying volume '%s' background expiration", volume.ID)
 		}
-		if err := volume.SetNoExpiration(*opts.NoExpiration); err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' no-expiration in db", volume.ID)
+		if err := volume.SetNoExpiration(true); err != nil {
+			return errors.Wrapf(err, "error setting volume '%s' no-expiration in db", volume.ID)
 		}
 	}
+
+	if opts.HasExpiration {
+		if err := volume.SetNoExpiration(false); err != nil {
+			return errors.Wrapf(err, "error clearing volume '%s' no-expiration in db", volume.ID)
+		}
+	}
+
 	if opts.Size > 0 {
 		_, err := m.client.ModifyVolume(ctx, &ec2.ModifyVolumeInput{
 			VolumeId: aws.String(volume.ID),

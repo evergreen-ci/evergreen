@@ -1120,9 +1120,9 @@ func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		for _, v := range volumes {
-			ts := utility.RoundPartOfHour(0).Format(TSFormat)
-			catcher.Add(queue.Put(ctx, NewVolumeExpirationCheckJob(ts, &v)))
+		ts := utility.RoundPartOfHour(0).Format(TSFormat)
+		for i := range volumes {
+			catcher.Add(queue.Put(ctx, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2OnDemand)))
 		}
 
 		return catcher.Resolve()

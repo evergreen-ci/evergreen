@@ -46,11 +46,13 @@ func makeVolumeExpirationCheckJob() *volumeExpirationCheckJob {
 	return j
 }
 
-func NewVolumeExpirationCheckJob(ts string, v *host.Volume) amboy.Job {
+func NewVolumeExpirationCheckJob(ts string, v *host.Volume, provider string) amboy.Job {
 	j := makeVolumeExpirationCheckJob()
 	j.SetID(fmt.Sprintf("%s.%s", volumeExpirationCheckName, ts))
 	j.VolumeID = v.ID
-	j.Provider = evergreen.ProviderNameEc2OnDemand
+	j.Provider = provider
+
+	j.volume = v
 	return j
 }
 
@@ -79,8 +81,7 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error getting cloud manager for volume '%s' in volume expiration check job", j.VolumeID))
 		return
 	}
-	noExpiration := true
-	if err := mgr.ModifyVolume(ctx, j.volume, &model.VolumeModifyOptions{NoExpiration: &noExpiration}); err != nil {
+	if err := mgr.ModifyVolume(ctx, j.volume, &model.VolumeModifyOptions{NoExpiration: true}); err != nil {
 		j.AddError(errors.Wrapf(err, "error extending expiration for volume '%s' using cloud manager", j.VolumeID))
 		return
 	}

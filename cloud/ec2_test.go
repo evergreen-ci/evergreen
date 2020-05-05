@@ -1509,8 +1509,7 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 
 func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 	s.NoError(s.volume.Insert())
-	trueVal := true
-	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NoExpiration: &trueVal}))
+	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NoExpiration: true}))
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)

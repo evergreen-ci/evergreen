@@ -35,6 +35,7 @@ var (
 	VolumeRename               = "changeVolumeDisplayName"
 	VolumeExtendExpiration     = "extendVolumeExpiration"
 	VolumeSetNoExpiration      = "setVolumeNoExpiration"
+	VolumeSetHasExpiration     = "setVolumeHasExpiration"
 	VolumeAttach               = "attachVolume"
 	VolumeDetach               = "detachVolume"
 	VolumeDelete               = "deleteVolume"
@@ -76,8 +77,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 		return
 	}
-	if settings.SpawnHostsPerUser >= 0 {
-		maxHosts = settings.SpawnHostsPerUser
+	if settings.Spawnhost.SpawnhostsPerUser >= 0 {
+		maxHosts = settings.Spawnhost.SpawnhostsPerUser
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -87,7 +88,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxUnexpirableHostsPerUser   int
 		MaxUnexpirableVolumesPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, settings.UnexpirableHostsPerUser, settings.UnexpirableVolumesPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -381,7 +382,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 				return
 			}
-			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.UnexpirableHostsPerUser); err != nil {
+			if err = route.CheckUnexpirableHostLimitExceeded(u.Id, settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(err.Error()))
 				uis.LoggedError(w, r, http.StatusBadRequest, err)
 				return
@@ -536,11 +537,6 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeSetNoExpiration:
-		if updateParams.NoExpiration == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "must specify a value for no expiration"))
-			return
-		}
-
 		mgrOpts := cloud.ManagerOpts{
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   cloud.AztoRegion(vol.AvailabilityZone),
@@ -551,10 +547,28 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
-			NoExpiration: updateParams.NoExpiration,
+			NoExpiration: true,
 		})
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't update volume '%s' to no expiration", vol.ID))
+			return
+		}
+
+	case VolumeSetHasExpiration:
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(vol.AvailabilityZone),
+		}
+		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
+		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
+			HasExpiration: true,
+		})
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't update volume '%s' to have expiration", vol.ID))
 			return
 		}
 

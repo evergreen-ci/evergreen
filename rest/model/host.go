@@ -159,10 +159,11 @@ type VolumePostRequest struct {
 }
 
 type VolumeModifyOptions struct {
-	NewName      string    `json:"new_name"`
-	Size         int       `json:"size"`
-	Expiration   time.Time `json:"expiration"`
-	NoExpiration *bool     `json:"no_expiration"`
+	NewName       string    `json:"new_name"`
+	Size          int       `json:"size"`
+	Expiration    time.Time `json:"expiration"`
+	NoExpiration  bool      `json:"no_expiration"`
+	HasExpiration bool      `json:"has_expiration"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
@@ -229,11 +230,10 @@ type APISpawnHostModify struct {
 }
 
 type APIVolumeModify struct {
-	Action       *string    `json:"action"`
-	HostID       *string    `json:"host_id"`
-	Expiration   *time.Time `json:"expiration"`
-	NoExpiration *bool      `json:"no_expiration"`
-	NewName      *string    `json:"new_name"`
+	Action     *string    `json:"action"`
+	HostID     *string    `json:"host_id"`
+	Expiration *time.Time `json:"expiration"`
+	NewName    *string    `json:"new_name"`
 }
 
 type APIHostScript struct {

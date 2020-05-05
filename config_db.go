@@ -38,9 +38,6 @@ var (
 	uiKey                 = bsonutil.MustHaveTag(Settings{}, "Ui")
 	hostInitConfigKey     = bsonutil.MustHaveTag(Settings{}, "HostInit")
 	notifyKey             = bsonutil.MustHaveTag(Settings{}, "Notify")
-	spawnHostsKey         = bsonutil.MustHaveTag(Settings{}, "SpawnHostsPerUser")
-	unexpirableHostsKey   = bsonutil.MustHaveTag(Settings{}, "UnexpirableHostsPerUser")
-	unexpirableVolumesKey = bsonutil.MustHaveTag(Settings{}, "UnexpirableVolumesPerUser")
 	schedulerConfigKey    = bsonutil.MustHaveTag(Settings{}, "Scheduler")
 	amboyKey              = bsonutil.MustHaveTag(Settings{}, "Amboy")
 	expansionsKey         = bsonutil.MustHaveTag(Settings{}, "Expansions")
@@ -59,6 +56,7 @@ var (
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
 	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
+	spawnhostKey          = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 
 	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
 	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
@@ -115,6 +113,11 @@ var (
 	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
 	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
 	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
+
+	// Spawnhost keys
+	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnhostConfig{}, "UnexpirableHostsPerUser")
+	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnhostConfig{}, "UnexpirableVolumesPerUser")
+	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnhostConfig{}, "SpawnhostsPerUser")
 )
 
 func byId(id string) bson.M {

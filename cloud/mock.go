@@ -415,9 +415,13 @@ func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volum
 		v.Expiration = opts.Expiration
 		volume.Expiration = opts.Expiration
 	}
-	if opts.NoExpiration != nil {
-		v.NoExpiration = *opts.NoExpiration
-		volume.NoExpiration = *opts.NoExpiration
+	if opts.NoExpiration {
+		v.NoExpiration = true
+		volume.NoExpiration = true
+	}
+	if opts.HasExpiration {
+		v.NoExpiration = false
+		volume.NoExpiration = false
 	}
 
 	if ok {

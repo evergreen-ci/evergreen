@@ -99,9 +99,9 @@ func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 		return errors.Wrapf(err, "Error occurred getting evergreen settings")
 	}
 
-	if numCurrentHosts >= settings.SpawnHostsPerUser {
+	if numCurrentHosts >= settings.Spawnhost.SpawnhostsPerUser {
 		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			numCurrentHosts, settings.SpawnHostsPerUser)
+			numCurrentHosts, settings.Spawnhost.SpawnhostsPerUser)
 	}
 	return nil
 }

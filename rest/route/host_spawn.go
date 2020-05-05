@@ -60,7 +60,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
 	if hph.options.NoExpiration {
-		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.UnexpirableHostsPerUser); err != nil {
+		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -138,7 +138,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(cloud.CheckInstanceTypeValid(ctx, foundHost.Distro, h.options.InstanceType, allowedTypes))
 	}
 	if h.options.NoExpiration != nil && *h.options.NoExpiration {
-		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().UnexpirableHostsPerUser))
+		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().Spawnhost.UnexpirableHostsPerUser))
 	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
@@ -903,12 +903,20 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    fmt.Sprintf("can't extend expiration past max duration '%s'", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)),
 			})
 		}
-		if h.opts.NoExpiration != nil && *h.opts.NoExpiration {
+
+		if h.opts.NoExpiration {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "can't specify both expiration and no-expiration",
 			})
 		}
+	}
+
+	if h.opts.NoExpiration && h.opts.HasExpiration {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "can't specify both has expiration and no-expiration",
+		})
 	}
 
 	mgrOpts := cloud.ManagerOpts{

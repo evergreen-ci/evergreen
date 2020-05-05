@@ -67,9 +67,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
-	assert.Equal(testSettings.SpawnHostsPerUser, *apiSettings.SpawnHostsPerUser)
-	assert.Equal(testSettings.UnexpirableHostsPerUser, *apiSettings.UnexpirableHostsPerUser)
-	assert.Equal(testSettings.UnexpirableVolumesPerUser, *apiSettings.UnexpirableVolumesPerUser)
 	for k, v := range testSettings.Credentials {
 		assert.Contains(apiSettings.Credentials, k)
 		assert.Equal(v, apiSettings.Credentials[k])
@@ -159,6 +156,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Splunk.Channel, FromStringPtr(apiSettings.Splunk.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, FromStringPtr(apiSettings.Ui.HttpListenAddr))
+	assert.Equal(testSettings.Spawnhost.SpawnhostsPerUser, apiSettings.Spawnhost.SpawnhostsPerUser)
+	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, apiSettings.Spawnhost.UnexpirableHostsPerUser)
+	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -230,6 +230,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, dbSettings.Ui.HttpListenAddr)
+	assert.EqualValues(testSettings.Spawnhost.SpawnhostsPerUser, dbSettings.Spawnhost.SpawnhostsPerUser)
+	assert.EqualValues(testSettings.Spawnhost.UnexpirableHostsPerUser, dbSettings.Spawnhost.UnexpirableHostsPerUser)
+	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
+
 }
 
 func TestRestart(t *testing.T) {

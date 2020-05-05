@@ -173,7 +173,7 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 func FindVolumesWithNoExpirationToExtend() ([]Volume, error) {
 	query := bson.M{
 		VolumeNoExpirationKey: true,
-		VolumeHostKey:         "",
+		VolumeHostKey:         bson.M{"$exists": false},
 		VolumeExpirationKey:   bson.M{"$lte": time.Now().Add(24 * time.Hour)},
 	}
 

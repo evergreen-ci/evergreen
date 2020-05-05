@@ -30,7 +30,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	config, err := evergreen.GetConfig()
 	assert.NoError(err)
-	config.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
+	config.Spawnhost.SpawnhostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
 	assert.NoError(config.Set())
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),
@@ -398,8 +398,13 @@ func TestModifyVolumeHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 
 	// no expiration
-	trueVar := true
-	h.opts = &model.VolumeModifyOptions{NoExpiration: &trueVar}
+	h.opts = &model.VolumeModifyOptions{NoExpiration: true}
+	resp = h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	// has expiration
+	h.opts = &model.VolumeModifyOptions{HasExpiration: true}
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())

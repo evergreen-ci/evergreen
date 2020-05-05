@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -40,54 +39,53 @@ func NewConfigModel() *APIAdminSettings {
 		Splunk:            &APISplunkConnectionInfo{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
+		Spawnhost:         &APISpawnhostConfig{},
 	}
 }
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts                    *APIAlertsConfig                  `json:"alerts,omitempty"`
-	Amboy                     *APIAmboyConfig                   `json:"amboy,omitempty"`
-	Api                       *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl                    *string                           `json:"api_url,omitempty"`
-	AuthConfig                *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner                    *string                           `json:"banner,omitempty"`
-	BannerTheme               *string                           `json:"banner_theme,omitempty"`
-	Backup                    *APIBackupConfig                  `json:"backup,omitempty"`
-	ClientBinariesDir         *string                           `json:"client_binaries_dir,omitempty"`
-	CommitQueue               *APICommitQueueConfig             `json:"commit_queue,omitempty"`
-	ConfigDir                 *string                           `json:"configdir,omitempty"`
-	ContainerPools            *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials               map[string]string                 `json:"credentials,omitempty"`
-	DomainName                *string                           `json:"domain_name,omitempty"`
-	Expansions                map[string]string                 `json:"expansions,omitempty"`
-	Bugsnag                   *string                           `json:"bugsnag,omitempty"`
-	GithubPRCreatorOrg        *string                           `json:"github_pr_creator_org,omitempty"`
-	GithubOrgs                []string                          `json:"github_orgs,omitempty"`
-	HostInit                  *APIHostInitConfig                `json:"hostinit,omitempty"`
-	HostJasper                *APIHostJasperConfig              `json:"host_jasper,omitempty"`
-	Jira                      *APIJiraConfig                    `json:"jira,omitempty"`
-	JIRANotifications         *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys                      map[string]string                 `json:"keys,omitempty"`
-	LDAPRoleMap               *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
-	LoggerConfig              *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath                   *string                           `json:"log_path,omitempty"`
-	NewRelic                  *APINewRelicConfig                `json:"newrelic,omitempty"`
-	Notify                    *APINotifyConfig                  `json:"notify,omitempty"`
-	Plugins                   map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort                 *string                           `json:"pprof_port,omitempty"`
-	Providers                 *APICloudProviders                `json:"providers,omitempty"`
-	RepoTracker               *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	Scheduler                 *APISchedulerConfig               `json:"scheduler,omitempty"`
-	ServiceFlags              *APIServiceFlags                  `json:"service_flags,omitempty"`
-	Slack                     *APISlackConfig                   `json:"slack,omitempty"`
-	SSHKeyDirectory           *string                           `json:"ssh_key_directory,omitempty"`
-	SSHKeyPairs               []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
-	SpawnHostsPerUser         *int                              `json:"spawn_hosts_per_user"`
-	Splunk                    *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	Triggers                  *APITriggerConfig                 `json:"triggers,omitempty"`
-	Ui                        *APIUIConfig                      `json:"ui,omitempty"`
-	UnexpirableHostsPerUser   *int                              `json:"unexpirable_hosts_per_user"`
-	UnexpirableVolumesPerUser *int                              `json:"unexpirable_volumes_per_user"`
+	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl             *string                           `json:"api_url,omitempty"`
+	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner             *string                           `json:"banner,omitempty"`
+	BannerTheme        *string                           `json:"banner_theme,omitempty"`
+	Backup             *APIBackupConfig                  `json:"backup,omitempty"`
+	ClientBinariesDir  *string                           `json:"client_binaries_dir,omitempty"`
+	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
+	ConfigDir          *string                           `json:"configdir,omitempty"`
+	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	DomainName         *string                           `json:"domain_name,omitempty"`
+	Expansions         map[string]string                 `json:"expansions,omitempty"`
+	Bugsnag            *string                           `json:"bugsnag,omitempty"`
+	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs         []string                          `json:"github_orgs,omitempty"`
+	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	HostJasper         *APIHostJasperConfig              `json:"host_jasper,omitempty"`
+	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
+	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
+	Keys               map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap        *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
+	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath            *string                           `json:"log_path,omitempty"`
+	NewRelic           *APINewRelicConfig                `json:"newrelic,omitempty"`
+	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort          *string                           `json:"pprof_port,omitempty"`
+	Providers          *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack              *APISlackConfig                   `json:"slack,omitempty"`
+	SSHKeyDirectory    *string                           `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs        []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
+	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
+	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
+	Spawnhost          *APISpawnhostConfig               `json:"spawnhost,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -142,9 +140,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				Private: ToStringPtr(pair.Private),
 			})
 		}
-		as.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
-		as.UnexpirableVolumesPerUser = &v.UnexpirableVolumesPerUser
-		as.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -154,14 +149,11 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials:               map[string]string{},
-		Expansions:                map[string]string{},
-		Keys:                      map[string]string{},
-		Plugins:                   evergreen.PluginConfig{},
-		GithubOrgs:                as.GithubOrgs,
-		SpawnHostsPerUser:         evergreen.DefaultMaxSpawnHostsPerUser,
-		UnexpirableHostsPerUser:   host.DefaultUnexpirableHostsPerUser,
-		UnexpirableVolumesPerUser: host.DefaultUnexpirableVolumesPerUser,
+		Credentials: map[string]string{},
+		Expansions:  map[string]string{},
+		Keys:        map[string]string{},
+		Plugins:     evergreen.PluginConfig{},
+		GithubOrgs:  as.GithubOrgs,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -189,15 +181,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
-	}
-	if as.SpawnHostsPerUser != nil {
-		settings.SpawnHostsPerUser = *as.SpawnHostsPerUser
-	}
-	if as.UnexpirableHostsPerUser != nil {
-		settings.UnexpirableHostsPerUser = *as.UnexpirableHostsPerUser
-	}
-	if as.UnexpirableVolumesPerUser != nil {
-		settings.UnexpirableVolumesPerUser = *as.UnexpirableVolumesPerUser
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
@@ -1458,7 +1441,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	config := evergreen.AWSConfig{
 		S3BaseURL:            FromStringPtr(a.S3BaseURL),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
-		MaxVolumeSizePerUser: host.DefaultMaxVolumeSizePerUser,
+		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
 	}
 
 	var i interface{}
@@ -2252,4 +2235,22 @@ func (c *APIHostJasperConfig) ToService() (interface{}, error) {
 		URL:              FromStringPtr(c.URL),
 		Version:          FromStringPtr(c.Version),
 	}, nil
+}
+
+type APISpawnhostConfig struct {
+	UnexpirableHostsPerUser   int `json:"unexpirable_hosts_per_user"`
+	UnexpirableVolumesPerUser int `json:"unexpirable_volumes_per_user"`
+	SpawnhostsPerUser         int `json:"spawnhosts_per_user"`
+}
+
+func (c *APISpawnhostConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SpawnhostConfig:
+		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
+		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
+		c.SpawnhostsPerUser = v.SpawnhostsPerUser
+	default:
+		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
+	}
+	return nil
 }
