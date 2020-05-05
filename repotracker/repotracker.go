@@ -437,6 +437,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	subscriptionBase := event.Subscription{
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      "build-break",
+		LastUpdated:  time.Now(),
 		Selectors: []event.Selector{
 			{
 				Type: "object",
