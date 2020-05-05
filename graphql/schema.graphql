@@ -312,7 +312,7 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
-  order: Int
+  patchNumber: Int
   requester: String!
   status: String!
   details: TaskEndDetail
@@ -323,7 +323,6 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  patchNumber: Int
   baseTaskMetadata: BaseTaskMetadata!
 }
 

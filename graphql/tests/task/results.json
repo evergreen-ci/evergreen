@@ -1,17 +1,6 @@
 {
   "tests": [
     {
-      "query_file": "patchNumber.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "taskity_task",
-            "patchNumber": 1234
-          }
-        }
-      }
-    },
-    {
       "query_file": "baseTaskMetadata.graphql",
       "result": {
         "data": {
@@ -204,6 +193,10 @@
     {
       "query_file": "failedTestCount-no-tests.graphql",
       "result": { "data": { "task": { "failedTestCount": 0 } } }
+    },
+    {
+      "query_file": "patchNumber.graphql",
+      "result": { "data": { "task": { "patchNumber": 2567 } } }
     }
   ]
 }

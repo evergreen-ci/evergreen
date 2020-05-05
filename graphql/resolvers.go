@@ -1019,14 +1019,6 @@ func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 
 type taskResolver struct{ *Resolver }
 
-func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
-	patch, err := r.sc.FindPatchById(*obj.Version)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
-	}
-	return &patch.PatchNumber, nil
-}
-
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
@@ -1087,6 +1079,11 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 		return &link, nil
 	}
 	return nil, nil
+}
+
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
+	order := obj.Order
+	return &order, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

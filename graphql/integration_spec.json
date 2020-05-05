@@ -1749,7 +1749,7 @@
             "hostId": "host",
             "restarts": 5,
             "execution": 5,
-            "order": 5,
+            "patchNumber": 5,
             "requester": "merge_test",
             "status": "started",
             "details": {
