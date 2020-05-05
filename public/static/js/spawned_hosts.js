@@ -484,7 +484,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {
-            window.location.href = "/spawn";
+            $window.location.href = "/spawn";
             $scope.setResourceType("hosts");
           },
           error: function (resp) {
@@ -500,7 +500,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.createVolume(
         $scope.createVolumeInfo, {}, {
           success: function (resp) {
-              window.location.href = "/spawn";
+              $window.location.href = "/spawn";
               $scope.setResourceType("volumes");
           },
           error: function (resp) {
