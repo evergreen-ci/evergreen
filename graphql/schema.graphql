@@ -183,6 +183,7 @@ type Patch {
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
+  commitQueuePosition: Int
 }
 
 type Build {

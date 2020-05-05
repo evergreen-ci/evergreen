@@ -469,6 +469,26 @@
         "author_uid": 15262143,
         "merge_commit_sha": ""
       }
+    },
+    {
+      "_id": { "$oid": "5c74085f32f41738270aeba8" },
+      "desc": "PATCH ON COMMIT QUEUE",
+      "branch": "mongodb-mongo-master",
+      "alias": "__commit_queue"
+    }
+  ],
+  "commit_queue": [
+    {
+      "_id": "mongodb-mongo-master",
+      "processing": true,
+      "queue": [
+        {
+          "issue": "5c74085f32f41738270aeba8",
+          "enqueue_time": { "$date": "2020-04-13T19:52:00.182Z" },
+          "modules": null
+        }
+      ],
+      "processing_updated_time": { "$date": "2020-04-13T19:52:10.216Z" }
     }
   ]
 }
