@@ -574,10 +574,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.updateVolume = function (action) {
       data = {};
-      if (action == "attachVolume" && $scope.volumeAttachHost) {
+      if (action === "attachVolume" && $scope.volumeAttachHost) {
         data.host_id = $scope.volumeAttachHost.id;
       }
-      if (action == "extendVolumeExpiration") {
+      if (action === "extendVolumeExpiration") {
         if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
           action = $scope.curVolumeData.no_expiration? "setVolumeNoExpiration" : "setVolumeHasExpiration";
         } else if (!$scope.curVolumeData.no_expiration && $scope.curVolumeData.current_expiration != $scope.curVolumeData.original_expiration) {

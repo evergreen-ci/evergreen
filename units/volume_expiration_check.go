@@ -70,6 +70,10 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrapf(err, "error getting volume '%s' in volume expiration check job", j.VolumeID))
 			return
 		}
+		if j.volume == nil {
+			j.AddError(errors.Wrapf(err, "volume '%s' is not found", j.VolumeID))
+			return
+		}
 	}
 
 	mgrOpts := cloud.ManagerOpts{

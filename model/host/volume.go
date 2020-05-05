@@ -177,7 +177,14 @@ func FindVolumesWithNoExpirationToExtend() ([]Volume, error) {
 		VolumeExpirationKey:   bson.M{"$lte": time.Now().Add(24 * time.Hour)},
 	}
 
-	return FindVolumes(query)
+	return findVolumes(query)
+}
+
+func FindVolumesByUser(userID string) ([]Volume, error) {
+	query := bson.M{
+		VolumeCreatedByKey: userID,
+	}
+	return findVolumes(query)
 }
 
 func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {

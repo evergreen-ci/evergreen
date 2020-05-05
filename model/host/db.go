@@ -1255,18 +1255,11 @@ func FindDistroForHost(hostID string) (string, error) {
 	return h.Distro.Id, nil
 }
 
-func FindVolumes(q bson.M) ([]Volume, error) {
+func findVolumes(q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
 	err := db.FindAll(VolumesCollection, q, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
 
 	return volumes, err
-}
-
-func FindVolumesByUser(userID string) ([]Volume, error) {
-	query := bson.M{
-		VolumeCreatedByKey: userID,
-	}
-	return FindVolumes(query)
 }
 
 type ClientOptions struct {

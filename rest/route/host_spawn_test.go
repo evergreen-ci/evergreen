@@ -349,11 +349,9 @@ func TestDetachVolumeHandler(t *testing.T) {
 
 func TestModifyVolumeHandler(t *testing.T) {
 	h := &modifyVolumeHandler{
-		sc:       &data.MockConnector{},
-		env:      evergreen.GetEnvironment(),
-		opts:     &model.VolumeModifyOptions{},
-		provider: evergreen.ProviderNameMock,
-		volumeID: "volume1",
+		sc:   &data.MockConnector{},
+		env:  evergreen.GetEnvironment(),
+		opts: &model.VolumeModifyOptions{},
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
 	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
@@ -367,6 +365,21 @@ func TestModifyVolumeHandler(t *testing.T) {
 		},
 	}
 
+	// parse request
+	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
+	jsonBody, err := json.Marshal(opts)
+	assert.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+	r, err := http.NewRequest("", "", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
+	assert.NoError(t, h.Parse(context.Background(), r))
+	assert.Equal(t, "volume1", h.volumeID)
+	assert.Equal(t, 20, h.opts.Size)
+	assert.Equal(t, "my-favorite-volume", h.opts.NewName)
+
+	h.provider = evergreen.ProviderNameMock
+	h.opts = &model.VolumeModifyOptions{}
 	// another user
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
 	resp := h.Run(ctx)
