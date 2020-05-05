@@ -801,12 +801,12 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}()
 
 	output, err := h.RunJasperProcess(ctx, env, &options.Create{
-		Args: []string{"lsblk"},
+		Args: []string{"lsblk", "-o", "+UUID"},
 	})
 	if err != nil {
 		return errors.Wrap(err, "can't run lsblk")
 	}
-	deviceName, err := getMostRecentlyAddedDevice(output)
+	deviceName, deviceUUID, err := getMostRecentlyAddedDevice(output)
 	if err != nil {
 		return errors.Wrapf(err, "can't get device name from '%s'", output)
 	}
@@ -851,7 +851,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	// write to fstab so the volume is mounted on restart
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("%s /%s auto noatime 0 0\n", deviceName, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s /%s auto noatime 0 0\n", deviceUUID, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem appending to fstab")
 	}
@@ -890,21 +890,21 @@ func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host
 	return nil
 }
 
-func getMostRecentlyAddedDevice(lsblkOutput []string) (string, error) {
+func getMostRecentlyAddedDevice(lsblkOutput []string) (string, string, error) {
 	// lsblk contains at least the header and one device
 	if len(lsblkOutput) < 2 {
-		return "", errors.Errorf("lsblk output is length '%d'", len(lsblkOutput))
+		return "", "", errors.Errorf("lsblk output is length '%d'", len(lsblkOutput))
 	}
 
 	device := lsblkOutput[len(lsblkOutput)-1]
-	deviceNameRegexp, err := regexp.Compile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1)`)
+	deviceNameRegexp, err := regexp.Compile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1).*\b(?P<deviceUUID>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)
 	if err != nil {
-		return "", errors.Wrap(err, "can't compile device name regexp")
+		return "", "", errors.Wrap(err, "can't compile device name regexp")
 	}
 	deviceNameMatch := deviceNameRegexp.FindStringSubmatch(device)
-	if len(deviceNameMatch) < 2 {
-		return "", errors.Errorf("can't get device name from device: '%s'", device)
+	if len(deviceNameMatch) < 3 {
+		return "", "", errors.Errorf("can't get device name from device: '%s'", device)
 	}
 
-	return fmt.Sprintf("/dev/%s", deviceNameMatch[1]), nil
+	return fmt.Sprintf("/dev/%s", deviceNameMatch[1]), deviceNameMatch[2], nil
 }
