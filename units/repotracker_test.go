@@ -27,7 +27,7 @@ func (s *repotrackerJobSuite) TearDownTest() {
 }
 
 func (s *repotrackerJobSuite) TestJob() {
-	j := NewRepotrackerJob("1", "mci").(*repotrackerJob)
+	j := NewRepotrackerJob("1", "mci", false).(*repotrackerJob)
 	s.Equal("mci", j.ProjectID)
 	s.Equal("repotracker:1:mci", j.ID())
 	j.Run(context.Background())
@@ -42,7 +42,7 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	job := NewRepotrackerJob("1", "mci")
+	job := NewRepotrackerJob("1", "mci", false)
 	job.Run(context.Background())
 
 	s.Error(job.Error())
