@@ -203,7 +203,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
 						return false, err
 					}
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -227,7 +227,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -250,7 +250,7 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -273,7 +273,7 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 			output, err = c.EC2.DescribeInstanceTypeOfferingsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -297,7 +297,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -321,7 +321,7 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -356,7 +356,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 						return false, nil
 					}
 
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -380,7 +380,7 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 			output, err = c.EC2.StopInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -404,7 +404,7 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 			output, err = c.EC2.StartInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -428,7 +428,7 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -452,7 +452,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input 
 			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -559,7 +559,7 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 					if strings.Contains(ec2err.Error(), EC2InvalidParam) {
 						return false, err
 					}
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -587,7 +587,7 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 					if strings.Contains(ec2err.Error(), EC2VolumeNotFound) {
 						return false, nil
 					}
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -612,7 +612,7 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 			output, err = c.EC2.ModifyVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 					if ModifyVolumeBadRequest(ec2err) {
 						return false, err
 					}
@@ -640,7 +640,7 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 			output, err = c.EC2.AttachVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 					if AttachVolumeBadRequest(ec2err) {
 						return false, err
 					}
@@ -668,7 +668,7 @@ func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 			output, err = c.EC2.DetachVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -694,7 +694,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -718,7 +718,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -742,7 +742,7 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -766,7 +766,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -818,7 +818,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -845,7 +845,7 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 						grip.Info(msg)
 						return false, ec2err
 					}
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -869,7 +869,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -893,7 +893,7 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 			output, err = c.pricing.GetProductsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -917,7 +917,7 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 			output, err = c.EC2.CreateLaunchTemplateWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -941,7 +941,7 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 			output, err = c.EC2.DeleteLaunchTemplateWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
@@ -968,7 +968,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
 						return false, err
 					}
-					grip.Error(message.WrapError(ec2err, msg))
+					grip.Debug(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}

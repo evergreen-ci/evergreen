@@ -484,7 +484,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       mciSpawnRestService.spawnHost(
         $scope.spawnInfo, {}, {
           success: function (resp) {
-            $window.location.reload();
+            // we don't use reload here because we need to clear query parameters
+            // in the case of spawning a host from a task
+            $window.location.href = "/spawn";
           },
           error: function (resp) {
             $scope.spawnReqSent = false;
@@ -590,7 +592,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             $window.location.reload();
           },
           error: function (resp) {
-            notificationService.pushNotification('Error changing host status: ' + resp.data, 'errorHeader');
+            notificationService.pushNotification('Error changing host status: ' + resp.data.error, 'errorHeader');
           }
         }
       );
@@ -793,6 +795,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.curVolumeData = volume;
     };
 
+    $scope.invalidDelete = function () {
+      if ($scope.curHostData && $scope.curHostData.no_expiration && $scope.curHostData.checkDelete !== "delete") {
+        return true;
+      };
+      return false;
+    };
+
     $scope.getTags = function () {
       $scope.curHostData.tags_to_delete = [];
       $scope.curHostData.tags_to_add = {};
@@ -898,8 +907,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           initializeModal(modal, 'Spawn Host');
           break;
         case 'terminateHost':
+          $scope.curHostData.checkDelete = "";
           initializeModal(modal, 'Terminate Host');
-          attachEnterHandler('terminate');
           break;
         case 'stopHost':
           initializeModal(modal, 'Stop Host');

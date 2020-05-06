@@ -810,6 +810,9 @@ func printHosts(hosts []*restModel.APIHost) {
 }
 
 func hostTerminate() cli.Command {
+	const (
+		deleteConfirmation = "delete"
+	)
 	return cli.Command{
 		Name:   "terminate",
 		Usage:  "terminate active spawn hosts",
@@ -829,6 +832,16 @@ func hostTerminate() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
+			h, err := client.GetSpawnHost(ctx, hostID)
+			if err != nil {
+				return errors.Wrap(err, "problem getting spawn host")
+			}
+			if h.NoExpiration {
+				msg := fmt.Sprintf("This host is non-expirable. Please type '%s' if you are sure you want to terminate", deleteConfirmation)
+				if !confirmWithMatchingString(msg, deleteConfirmation) {
+					return nil
+				}
+			}
 			err = client.TerminateSpawnHost(ctx, hostID)
 			if err != nil {
 				return errors.Wrap(err, "problem terminating host")
