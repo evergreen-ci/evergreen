@@ -92,7 +92,11 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	_, _, err := AddNewBuilds(ctx, p.Activated, patchVersion, project, tasks, p.SyncAtEndOpts, "")
+	toActivate := []string{}
+	if p.Activated {
+		toActivate = nil
+	}
+	_, _, err := AddNewBuilds(ctx, toActivate, patchVersion, project, tasks, p.SyncAtEndOpts, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 

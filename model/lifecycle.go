@@ -1246,10 +1246,17 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
-// (see AddNewTasksForPatch).
-func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
+// (see AddNewTasksForPatch). activatedVariants is a list of variant names to activate, null will
+// activate all variants whereas an empty array will activate none
+func AddNewBuilds(ctx context.Context, activatedVariants []string, v *Version, p *Project, tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 	taskIds := NewTaskIdTable(p, v, "", "")
-
+	projectRef, err := FindOneProjectRef(p.Identifier)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unable to find project ref")
+	}
+	if projectRef == nil {
+		return nil, nil, errors.Errorf("project %s not found", p.Identifier)
+	}
 	newBuildIds := make([]string, 0)
 	newTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
@@ -1276,6 +1283,7 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
+		activated := activatedVariants == nil || utility.StringSliceContains(activatedVariants, pair.Variant)
 		buildArgs := BuildCreateArgs{
 			Project:        *p,
 			Version:        *v,
@@ -1317,17 +1325,25 @@ func AddNewBuilds(ctx context.Context, activated bool, v *Version, p *Project, t
 		}
 
 		newBuildIds = append(newBuildIds, build.Id)
+		var activateAt time.Time
+		if !activated {
+			activateAt, err = projectRef.GetActivationTime(p.FindBuildVariant(pair.Variant))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to get activation time",
+				"version": v.Id,
+			}))
+		}
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant: pair.Variant,
 				BuildId:      build.Id,
 				Activated:    activated,
+				ActivateAt:   activateAt,
 			},
 		)
 		for _, t := range tasks {
 			newTaskIds = append(newTaskIds, t.Id)
 		}
-
 	}
 
 	return newBuildIds, newTaskIds, errors.WithStack(VersionUpdateOne(

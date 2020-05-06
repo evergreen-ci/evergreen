@@ -640,7 +640,7 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection), "problem clearing collections")
 	p := &patch.Patch{
 		Activated: true,
 	}
@@ -661,6 +661,10 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(p.Insert())
 	assert.NoError(v.Insert())
 	assert.NoError(baseVersion.Insert())
+	ref := ProjectRef{
+		Identifier: "project",
+	}
+	assert.NoError(ref.Insert())
 
 	proj := &Project{
 		Identifier: "project",
