@@ -65,7 +65,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"task":    t.Id,
 			"version": t.Version,
 		})
-		return nil
+		return mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
 		grip.Debug(message.Fields{
@@ -106,7 +106,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"task":    t.Id,
 			"version": t.Version,
 		})
-		return nil
+		return mongo.ErrNoDocuments
 	}
 
 	var projects []model.GeneratedProject
