@@ -2240,7 +2240,7 @@ func (c *APIHostJasperConfig) ToService() (interface{}, error) {
 type APISpawnHostConfig struct {
 	UnexpirableHostsPerUser   int `json:"unexpirable_hosts_per_user"`
 	UnexpirableVolumesPerUser int `json:"unexpirable_volumes_per_user"`
-	SpawnhostsPerUser         int `json:"spawnhosts_per_user"`
+	SpawnHostsPerUser         int `json:"spawnhosts_per_user"`
 }
 
 func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
@@ -2248,7 +2248,7 @@ func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
 	case evergreen.SpawnHostConfig:
 		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
 		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
-		c.SpawnhostsPerUser = v.SpawnhostsPerUser
+		c.SpawnHostsPerUser = v.SpawnHostsPerUser
 	default:
 		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
 	}

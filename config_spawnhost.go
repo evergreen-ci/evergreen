@@ -10,7 +10,7 @@ import (
 type SpawnHostConfig struct {
 	UnexpirableHostsPerUser   int `yaml:"unexpirable_hosts_per_user" bson:"unexpirable_hosts_per_user" json:"unexpirable_hosts_per_user"`
 	UnexpirableVolumesPerUser int `yaml:"unexpirable_volumes_per_user" bson:"unexpirable_volumes_per_user" json:"unexpirable_volumes_per_user"`
-	SpawnhostsPerUser         int `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
+	SpawnHostsPerUser         int `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 }
 
 func (c *SpawnHostConfig) SectionId() string { return "spawnhost" }
@@ -46,15 +46,15 @@ func (c *SpawnHostConfig) Set() error {
 		"$set": bson.M{
 			unexpirableHostsPerUserKey:   c.UnexpirableHostsPerUser,
 			unexpirableVolumesPerUserKey: c.UnexpirableVolumesPerUser,
-			spawnhostsPerUserKey:         c.SpawnhostsPerUser,
+			spawnhostsPerUserKey:         c.SpawnHostsPerUser,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
 func (c *SpawnHostConfig) ValidateAndDefault() error {
-	if c.SpawnhostsPerUser == 0 {
-		c.SpawnhostsPerUser = DefaultMaxSpawnHostsPerUser
+	if c.SpawnHostsPerUser == 0 {
+		c.SpawnHostsPerUser = DefaultMaxSpawnHostsPerUser
 	}
 	if c.UnexpirableHostsPerUser == 0 {
 		c.UnexpirableHostsPerUser = DefaultUnexpirableHostsPerUser

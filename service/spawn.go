@@ -77,8 +77,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error retrieving settings"))
 		return
 	}
-	if settings.Spawnhost.SpawnhostsPerUser >= 0 {
-		maxHosts = settings.Spawnhost.SpawnhostsPerUser
+	if settings.Spawnhost.SpawnHostsPerUser >= 0 {
+		maxHosts = settings.Spawnhost.SpawnHostsPerUser
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {

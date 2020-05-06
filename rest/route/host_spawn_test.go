@@ -30,7 +30,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	config, err := evergreen.GetConfig()
 	assert.NoError(err)
-	config.Spawnhost.SpawnhostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
+	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
 	assert.NoError(config.Set())
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),

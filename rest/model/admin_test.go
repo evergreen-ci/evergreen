@@ -156,7 +156,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Splunk.Channel, FromStringPtr(apiSettings.Splunk.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, FromStringPtr(apiSettings.Ui.HttpListenAddr))
-	assert.Equal(testSettings.Spawnhost.SpawnhostsPerUser, apiSettings.Spawnhost.SpawnhostsPerUser)
+	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, apiSettings.Spawnhost.SpawnHostsPerUser)
 	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, apiSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 
@@ -230,7 +230,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, dbSettings.Ui.HttpListenAddr)
-	assert.EqualValues(testSettings.Spawnhost.SpawnhostsPerUser, dbSettings.Spawnhost.SpawnhostsPerUser)
+	assert.EqualValues(testSettings.Spawnhost.SpawnHostsPerUser, dbSettings.Spawnhost.SpawnHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableHostsPerUser, dbSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
 
