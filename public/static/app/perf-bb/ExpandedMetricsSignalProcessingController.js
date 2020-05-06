@@ -36,7 +36,7 @@ function handleResponse(result, $scope) {
         measurement: cp.measurement,
         percent_change: cp.percent_change.toFixed(2),
         triage_status: cp.triage.triage_status,
-        thread_level: cp.thread_level,
+        thread_level: cp.arguments["thread_level"],
       })
     }
   }
