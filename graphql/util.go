@@ -452,24 +452,3 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 	}
 	return nil, 0
 }
-
-// func ActivatePatchHandler(ctx context.Context, dataConnector data.Connector, versionId string, active bool) (*restModel.APIPatch, error) {
-// 	version, err := dataConnector.FindVersionById(versionId)
-// 	if err != nil {
-// 		return nil, errors.Errorf("error finding version: %s", err)
-// 	}
-// 	modifications := Modifications{
-// 		Action: "set_active",
-// 		Active: active,
-// 	}
-// 	user := route.MustHaveUser(ctx)
-// 	err, _ := ModifyVersion(version, *user, nil, modifications)
-// 	if err != nil {
-// 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", versionId, err))
-// 	}
-// 	version, err = dataConnector.FindVersionById(versionId)
-// 	apiVersion := restModel.APIVersion{}
-// 	apiVersion.BuildFromService(version)
-
-// 	return apiVersion, nil
-// }
