@@ -384,8 +384,11 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	return taskResults
 }
 
-func isTaskAborted(task *restModel.APITask) bool {
-	return *task.Status == evergreen.TaskUndispatched && task.Activated == false && !task.DispatchTime.IsZero()
+func isTaskAborted(at *restModel.APITask) bool {
+	if at.DispatchTime == nil {
+		return false
+	}
+	return *at.Status == evergreen.TaskUndispatched && at.Activated == false && at.DispatchTime.IsZero() == false
 }
 
 func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
