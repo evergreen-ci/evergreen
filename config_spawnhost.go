@@ -53,13 +53,13 @@ func (c *SpawnHostConfig) Set() error {
 }
 
 func (c *SpawnHostConfig) ValidateAndDefault() error {
-	if c.SpawnHostsPerUser == 0 {
+	if c.SpawnHostsPerUser < 0 {
 		c.SpawnHostsPerUser = DefaultMaxSpawnHostsPerUser
 	}
-	if c.UnexpirableHostsPerUser == 0 {
+	if c.UnexpirableHostsPerUser < 0 {
 		c.UnexpirableHostsPerUser = DefaultUnexpirableHostsPerUser
 	}
-	if c.UnexpirableVolumesPerUser == 0 {
+	if c.UnexpirableVolumesPerUser < 0 {
 		c.UnexpirableVolumesPerUser = DefaultUnexpirableVolumesPerUser
 	}
 	return nil

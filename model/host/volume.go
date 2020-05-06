@@ -205,3 +205,10 @@ func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 	}
 	return volume, nil
 }
+
+func CountNoExpirationVolumesForUser(userID string) (int, error) {
+	return db.Count(VolumesCollection, bson.M{
+		VolumeNoExpirationKey: true,
+		VolumeCreatedByKey:    userID,
+	})
+}

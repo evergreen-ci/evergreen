@@ -67,3 +67,20 @@ func TestFindVolumesWithNoExpirationToExtend(t *testing.T) {
 	assert.Len(t, volumesToExtend, 1)
 	assert.Equal(t, "v0", volumesToExtend[0].ID)
 }
+
+func TestCountNoExpirationVolumesForUser(t *testing.T) {
+	require.NoError(t, db.Clear(VolumesCollection))
+
+	volumes := []Volume{
+		{ID: "v0", NoExpiration: true},
+		{ID: "v1", NoExpiration: true, CreatedBy: "me"},
+		{ID: "v2", CreatedBy: "me"},
+	}
+	for _, vol := range volumes {
+		require.NoError(t, vol.Insert())
+	}
+
+	count, err := CountNoExpirationVolumesForUser("me")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+}

@@ -913,11 +913,27 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if h.opts.NoExpiration && h.opts.HasExpiration {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "can't specify both has expiration and no-expiration",
-		})
+	if h.opts.NoExpiration {
+		if h.opts.HasExpiration {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "can't specify both has expiration and no-expiration",
+			})
+		}
+		var unexpirableVolumesForUser int
+		unexpirableVolumesForUser, err = host.CountNoExpirationVolumesForUser(u.Id)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "can't get no-expire count",
+			})
+		}
+		if h.env.Settings().Spawnhost.UnexpirableVolumesPerUser-unexpirableVolumesForUser <= 0 {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "user '%s' has no unexpirable volumes remaining",
+			})
+		}
 	}
 
 	mgrOpts := cloud.ManagerOpts{

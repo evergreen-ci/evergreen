@@ -2238,19 +2238,38 @@ func (c *APIHostJasperConfig) ToService() (interface{}, error) {
 }
 
 type APISpawnHostConfig struct {
-	UnexpirableHostsPerUser   int `json:"unexpirable_hosts_per_user"`
-	UnexpirableVolumesPerUser int `json:"unexpirable_volumes_per_user"`
-	SpawnHostsPerUser         int `json:"spawnhosts_per_user"`
+	UnexpirableHostsPerUser   *int `json:"unexpirable_hosts_per_user"`
+	UnexpirableVolumesPerUser *int `json:"unexpirable_volumes_per_user"`
+	SpawnHostsPerUser         *int `json:"spawn_hosts_per_user"`
 }
 
 func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SpawnHostConfig:
-		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
-		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
-		c.SpawnHostsPerUser = v.SpawnHostsPerUser
+		c.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
+		c.UnexpirableVolumesPerUser = &v.UnexpirableVolumesPerUser
+		c.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
-		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
+		return errors.Errorf("expected evergreen.SpawnHostConfig but got %T instead", h)
 	}
 	return nil
+}
+
+func (c *APISpawnHostConfig) ToService() (interface{}, error) {
+	config := evergreen.SpawnHostConfig{
+		UnexpirableHostsPerUser:   evergreen.DefaultUnexpirableHostsPerUser,
+		UnexpirableVolumesPerUser: evergreen.DefaultUnexpirableVolumesPerUser,
+		SpawnHostsPerUser:         evergreen.DefaultMaxSpawnHostsPerUser,
+	}
+	if c.UnexpirableHostsPerUser != nil {
+		config.UnexpirableHostsPerUser = *c.UnexpirableHostsPerUser
+	}
+	if c.UnexpirableVolumesPerUser != nil {
+		config.UnexpirableVolumesPerUser = *c.UnexpirableVolumesPerUser
+	}
+	if c.SpawnHostsPerUser != nil {
+		config.SpawnHostsPerUser = *c.SpawnHostsPerUser
+	}
+
+	return config, nil
 }
