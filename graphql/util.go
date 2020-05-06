@@ -409,7 +409,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	restartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
-	canRestart := utility.StringSliceContains(restartableStatuses, *at.Status) || isAborted || (at.DisplayOnly && *taskBlocked)
+	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
+	canRestart := utility.StringSliceContains(nonrestartableStatuses, *at.Status) == false || isAborted || (at.DisplayOnly && *taskBlocked)
 	return &canRestart, nil
 }
