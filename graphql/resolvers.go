@@ -857,19 +857,14 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 }
 
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	version, err := r.sc.FindVersionById(patchID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
-	}
 	modifications := Modifications{
 		Action: "set_active",
 		Active: true,
 		Abort:  false,
 	}
-	user := route.MustHaveUser(ctx)
-	err, _ = ModifyVersion(*version, *user, nil, modifications)
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", patchID, err))
+		return nil, err
 	}
 	return &patchID, nil
 }
