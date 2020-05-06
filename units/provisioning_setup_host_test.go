@@ -21,7 +21,7 @@ func TestGetMostRecentlyAddedDevice(t *testing.T) {
 	]
 }`
 
-	device, err := getMostRecentlyAddedDevice(lsblkOutput)
+	device, err := parseLsblkOutput(lsblkOutput)
 	assert.NoError(t, err)
 	assert.Equal(t, "nvme1n1", device.Name)
 	assert.Equal(t, "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", device.UUID)

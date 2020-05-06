@@ -890,10 +890,14 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	if err != nil {
 		return blockDevice{}, errors.Wrap(err, "can't run lsblk")
 	}
+	return parseLsblkOutput(strings.Join(lsblkOutput, "\n"))
+}
+
+func parseLsblkOutput(lsblkOutput string) (blockDevice, error) {
 	devices := struct {
 		BlockDevices []blockDevice `json:"blockdevices"`
 	}{}
-	if err := json.Unmarshal([]byte(strings.Join(lsblkOutput, "\n")), &devices); err != nil {
+	if err := json.Unmarshal([]byte(lsblkOutput), &devices); err != nil {
 		return blockDevice{}, errors.Wrapf(err, "can't parse lsblk output '%s'", lsblkOutput)
 	}
 
