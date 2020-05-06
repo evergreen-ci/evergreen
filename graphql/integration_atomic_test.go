@@ -52,7 +52,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 func setup(t *testing.T, directory string) atomicGraphQLState {
 	const apiKey = "testapikey"
 	const apiUser = "testuser"
-
+	const slackUsername = "testslackuser"
 	state := atomicGraphQLState{taskLogDB: model.TaskLogDB, taskLogColl: model.TaskLogCollection}
 	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	testUser := user.DBUser{
 		Id:          apiUser,
 		APIKey:      apiKey,
-		Settings:    user.UserSettings{Timezone: "America/New_York"},
+		Settings:    user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
 		SystemRoles: []string{"unrestrictedTaskAccess"},
 	}
 	require.NoError(t, testUser.Insert())

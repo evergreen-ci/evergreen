@@ -364,6 +364,10 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
+func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, error) {
+	return nil, errors.New("(*Mock) GetSpawnHost is not implemented")
+}
+
 func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
 	return errors.New("(*Mock) ModifySpawnHost is not implemented")
 }

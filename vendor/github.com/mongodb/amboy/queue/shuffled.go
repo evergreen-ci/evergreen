@@ -101,7 +101,7 @@ func (q *shuffledLocal) reactor(ctx context.Context) {
 func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("cannot put job %s; queue not started", id)
 	}
 
@@ -144,7 +144,7 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
-	if !q.Started() {
+	if !q.Info().Started {
 		return errors.Errorf("cannot save job %s; queue not started", id)
 	}
 
@@ -185,7 +185,7 @@ func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
 // Get returns a job based on the specified ID. Considers all pending,
 // completed, and in progress jobs.
 func (q *shuffledLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
-	if !q.Started() {
+	if !q.Info().Started {
 		return nil, false
 	}
 
@@ -228,7 +228,7 @@ func (q *shuffledLocal) Get(ctx context.Context, name string) (amboy.Job, bool) 
 func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
-	if !q.Started() {
+	if !q.Info().Started {
 		close(output)
 		return output
 	}
@@ -302,7 +302,7 @@ func (q *shuffledLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo
 // Stats returns a standard report on the number of pending, running,
 // and completed jobs processed by the queue.
 func (q *shuffledLocal) Stats(ctx context.Context) amboy.QueueStats {
-	if !q.Started() {
+	if !q.Info().Started {
 		return amboy.QueueStats{}
 	}
 
@@ -333,11 +333,11 @@ func (q *shuffledLocal) Stats(ctx context.Context) amboy.QueueStats {
 	}
 }
 
-// Started returns true after the queue has started processing work,
-// and false otherwise. When the queue has terminated (as a result of
-// the starting context's cancellation.
-func (q *shuffledLocal) Started() bool {
-	return q.operations != nil
+func (q *shuffledLocal) Info() amboy.QueueInfo {
+	return amboy.QueueInfo{
+		Started:     q.operations != nil,
+		LockTimeout: amboy.LockTimeout,
+	}
 }
 
 // Next returns a new pending job, and is used by the Runner interface

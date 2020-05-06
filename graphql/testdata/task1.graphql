@@ -10,6 +10,7 @@
     createTime
     ingestTime
     dispatchTime
+    patchNumber
     scheduledTime
     startTime
     finishTime
@@ -29,7 +30,6 @@
     hostId
     restarts
     execution
-    order
     requester
     status
     details {

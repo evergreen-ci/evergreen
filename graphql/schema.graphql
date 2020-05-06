@@ -6,9 +6,9 @@ type Query {
     statuses: [String!] = []
     userId: String
     includeCommitQueue: Boolean = false
-  ): [Patch!]!
-  patch(id: String!): Patch!
+  ): UserPatches!
   task(taskId: String!): Task
+  patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
     patchId: String!
@@ -35,6 +35,7 @@ type Query {
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
+  userSettings: UserSettings
 }
 
 type Mutation {
@@ -47,6 +48,8 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  restartPatch(patchId: String!): String
 }
 
 enum TaskSortCategory {
@@ -153,6 +156,11 @@ type FileDiff {
   diffLink: String!
 }
 
+type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
 type Patch {
   createTime: Time
   id: ID!
@@ -175,6 +183,7 @@ type Patch {
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
+  commitQueuePosition: Int
 }
 
 type Build {
@@ -304,7 +313,7 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
-  order: Int
+  patchNumber: Int
   requester: String!
   status: String!
   details: TaskEndDetail
@@ -315,7 +324,6 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  patchNumber: Int
   baseTaskMetadata: BaseTaskMetadata!
 }
 
@@ -393,6 +401,27 @@ type CommitQueueItem {
 type Module {
   module: String
   issue: String
+}
+
+type UserSettings {
+  timezone: String
+  region: String
+  githubUser: GithubUser
+  slackUsername: String
+  notifications: Notifications
+}
+
+type GithubUser {
+  uid: Int
+  lastKnownAs: String
+}
+type Notifications {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
 }
 scalar Time
 scalar Duration

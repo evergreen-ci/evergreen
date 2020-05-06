@@ -419,6 +419,7 @@ func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 		ProvisionAttemptsKey: bson.M{"$lte": attempt},
 		StatusKey:            evergreen.HostProvisioning,
 		NeedsReprovisionKey:  bson.M{"$exists": false},
+		ProvisionedKey:       false,
 	}))
 }
 
@@ -1254,14 +1255,16 @@ func FindDistroForHost(hostID string) (string, error) {
 	return h.Distro.Id, nil
 }
 
-func FindVolumesByUser(userID string) ([]Volume, error) {
+func FindVolumes(query bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	query := bson.M{
-		VolumeCreatedByKey: userID,
-	}
 	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
 
 	return volumes, err
+}
+
+func FindVolumesByUser(userID string) ([]Volume, error) {
+	query := bson.M{VolumeCreatedByKey: userID}
+	return FindVolumes(query)
 }
 
 type ClientOptions struct {

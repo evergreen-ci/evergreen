@@ -172,6 +172,21 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
+	var commitQueuePosition *int
+	if *apiPatch.Alias == evergreen.CommitQueueAlias {
+		cq, err := commitqueue.FindOneId(*apiPatch.ProjectId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting commit queue position for patch %s: %s", *apiPatch.Id, err.Error()))
+		}
+		if cq != nil {
+			position := cq.FindItem(*apiPatch.Id)
+			commitQueuePosition = &position
+		}
+	}
+	return commitQueuePosition, nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -280,21 +295,35 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
-func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) ([]*restModel.APIPatch, error) {
+func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
+	usr := route.MustHaveUser(ctx)
+	userSettings := restModel.APIUserSettings{}
+	err := userSettings.BuildFromService(usr.Settings)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &userSettings, nil
+}
+
+func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
 	usr := route.MustHaveUser(ctx)
 	userIdParam := usr.Username()
 	if userID != nil {
 		userIdParam = *userID
 	}
-	patches, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
 	patchPointers := []*restModel.APIPatch{}
 	if err != nil {
-		return patchPointers, InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	for i := range patches {
 		patchPointers = append(patchPointers, &patches[i])
 	}
-	return patchPointers, nil
+	userPatches := UserPatches{
+		Patches:            patchPointers,
+		FilteredPatchCount: *count,
+	}
+	return &userPatches, nil
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
@@ -896,6 +925,31 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string) (*string, error) {
+	usr := route.MustHaveUser(ctx)
+	_, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+	}
+	err = r.sc.RestartVersion(patchID, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting patch %s: %s", patchID, err.Error()))
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
+	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
+	}
+	if result != true {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s", patchID))
+	}
+
+	return &patchID, nil
+}
+
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
@@ -980,14 +1034,6 @@ func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 
 type taskResolver struct{ *Resolver }
 
-func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
-	patch, err := r.sc.FindPatchById(*obj.Version)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
-	}
-	return &patch.PatchNumber, nil
-}
-
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
@@ -1048,6 +1094,11 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 		return &link, nil
 	}
 	return nil, nil
+}
+
+func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
+	order := obj.Order
+	return &order, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

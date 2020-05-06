@@ -835,7 +835,8 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	projects := []GeneratedProject{smallGeneratedProject}
-	merged := MergeGeneratedProjects(projects)
+	merged, err := MergeGeneratedProjects(projects)
+	s.Require().NoError(err)
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)

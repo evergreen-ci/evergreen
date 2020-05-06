@@ -68,7 +68,7 @@ func (r *localWorkers) Started() bool {
 }
 
 // Start initializes all worker process, and returns an error if the
-// Runner has already started.
+// Runner does not have a queue.
 func (r *localWorkers) Start(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

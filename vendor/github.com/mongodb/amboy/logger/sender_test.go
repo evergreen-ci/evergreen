@@ -59,7 +59,7 @@ func (s *SenderSuite) SetupTest() {
 
 	s.queue = queue.NewLocalLimitedSize(4, 128)
 	s.NoError(s.queue.Start(ctx))
-	s.Require().True(s.queue.Started())
+	s.Require().True(s.queue.Info().Started)
 
 	s.senders["single-shared"] = MakeQueueSender(ctx, s.queue, s.mock)
 	s.senders["multi-shared"] = MakeQueueMultiSender(ctx, s.queue, s.mock)

@@ -168,9 +168,9 @@ func (s *RemoteUnorderedSuite) TestInternalRunnerCannotBeChangedAfterStartingAQu
 	s.NoError(s.queue.SetDriver(s.driver))
 
 	runner := s.queue.Runner()
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 	s.NoError(s.queue.Start(ctx))
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	newRunner := pool.NewLocalWorkers(2, s.queue)
 	s.Error(s.queue.SetRunner(newRunner))
@@ -244,7 +244,7 @@ func (s *RemoteUnorderedSuite) TestStartMethodCanBeCalledMultipleTimes() {
 	s.NoError(s.queue.SetDriver(s.driver))
 	for i := 0; i < 200; i++ {
 		s.NoError(s.queue.Start(ctx))
-		s.True(s.queue.Started())
+		s.True(s.queue.Info().Started)
 	}
 }
 
@@ -263,10 +263,10 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 
 		if i%3 == 0 {
 			numLocked++
-			err := j.Lock(s.driver.ID())
+			err := j.Lock(s.driver.ID(), amboy.LockTimeout)
 			s.NoError(err)
 
-			s.Error(j.Lock("elsewhere"))
+			s.Error(j.Lock("elsewhere", amboy.LockTimeout))
 			lockedJobs[j.ID()] = struct{}{}
 		}
 
@@ -347,4 +347,17 @@ func (s *RemoteUnorderedSuite) TestTimeInfoPersists() {
 	go s.queue.jobServer(ctx)
 	j2 := s.queue.Next(ctx)
 	s.NotZero(j2.TimeInfo())
+}
+
+func (s *RemoteUnorderedSuite) TestInfoReturnsDefaultLockTimeout() {
+	s.Equal(amboy.LockTimeout, s.queue.Info().LockTimeout)
+}
+
+func (s *RemoteUnorderedSuite) TestInfoReturnsConfigurableLockTimeout() {
+	opts := DefaultMongoDBOptions()
+	opts.LockTimeout = 30 * time.Minute
+	d, err := newMongoDriver(s.T().Name(), opts)
+	s.Require().NoError(err)
+	s.Require().NoError(s.queue.SetDriver(d))
+	s.Equal(opts.LockTimeout, s.queue.Info().LockTimeout)
 }

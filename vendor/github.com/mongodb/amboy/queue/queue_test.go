@@ -466,14 +466,14 @@ func TestQueueSmoke(t *testing.T) {
 								require.NoError(t, q.Start(ctx))
 								require.NoError(t, q.Put(ctx, j))
 
-								require.NoError(t, j.Lock(q.ID()))
+								require.NoError(t, j.Lock(q.ID(), q.Info().LockTimeout))
 								require.NoError(t, q.Save(ctx, j))
 
 								if test.IsRemote {
 									// this errors because you can't save if you've double-locked,
 									// but only real remote drivers check locks.
-									require.NoError(t, j.Lock(q.ID()))
-									require.NoError(t, j.Lock(q.ID()))
+									require.NoError(t, j.Lock(q.ID(), q.Info().LockTimeout))
+									require.NoError(t, j.Lock(q.ID(), q.Info().LockTimeout))
 									require.Error(t, q.Save(ctx, j))
 								}
 
@@ -481,7 +481,7 @@ func TestQueueSmoke(t *testing.T) {
 									var ok bool
 									j, ok = q.Get(ctx, j.ID())
 									require.True(t, ok)
-									require.NoError(t, j.Lock(q.ID()))
+									require.NoError(t, j.Lock(q.ID(), q.Info().LockTimeout))
 									require.NoError(t, q.Save(ctx, j))
 								}
 

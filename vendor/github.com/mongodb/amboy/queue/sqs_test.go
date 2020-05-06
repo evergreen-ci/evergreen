@@ -71,7 +71,7 @@ func (s *SQSFifoQueueSuite) TestGetMethodReturnsRequestedJob() {
 }
 
 func (s *SQSFifoQueueSuite) TestCannotSetRunnerWhenQueueStarted() {
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 	s.Error(s.queue.SetRunner(pool.NewSingle()))
 }
 

@@ -1,7 +1,7 @@
 mciModule.factory('ChangePointsService', function(
   $log, $mdDialog, PROCESSED_TYPE, Stitch, STITCH_CONFIG, confirmDialogFactory
 ) {
-  var conn = Stitch.use(STITCH_CONFIG.PERF)
+  var conn = Stitch.use(STITCH_CONFIG.PERF);
 
   function dbMarkPoints(points, mark) {
     // Put items to prcoessed list
@@ -36,12 +36,12 @@ mciModule.factory('ChangePointsService', function(
   }
 
   function dbDispatchMarkPoints(points, mark, mode) {
-    if (!points || !points.length) return
+    if (!points || !points.length) return;
     // Dispatching
-    if (mark == PROCESSED_TYPE.NONE) {
+    if (mark === PROCESSED_TYPE.NONE) {
       dbUnmarkPoints(points)
     } else if (_.contains(PROCESSED_TYPE.ALL, mark)) {
-      if (mode == 'processed') {
+      if (mode === 'processed') {
         dbChangeExistingMark(points, mark)
       } else {
         dbMarkPoints(points, mark)
@@ -58,9 +58,9 @@ mciModule.factory('ChangePointsService', function(
   function markPoints(points, mark, mode) {
     return confirmMarkAction(points).then(function(r) {
       // Apply change locally
-      _.patch(points, {processed_type: mark})
+      _.patch(points, {processed_type: mark});
       // Propagate changes to the db
-      dbDispatchMarkPoints(points, mark, mode)
+      dbDispatchMarkPoints(points, mark, mode);
       return true
     })
   }

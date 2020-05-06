@@ -121,7 +121,7 @@ $(buildDir)/output.%.race:$(buildDir)/ .FORCE
 	$(goEnv) $(gobin) test $(testArgs) -race ./$(subst -,/,$*) | tee  $@
 #  targets to run any tests in the top-level package
 $(buildDir)/output.$(name).test:$(buildDir)/
-	$(goEnv) $(gobin) test $(testArgs) $@ ./ | tee $@
+	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
 $(buildDir)/output.$(name).race:$(buildDir)/
 	$(goEnv) $(gobin) test $(testArgs) -race ./ | tee $@
 #  targets to generate gotest output from the linter.

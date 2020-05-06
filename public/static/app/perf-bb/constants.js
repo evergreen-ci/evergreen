@@ -11,6 +11,7 @@ mciModule
     'Major Regression',
     'Moderate Regression',
     'Minor Regression',
+    'No Change',
     'Minor Improvement',
     'Moderate Improvement',
     'Major Improvement',
