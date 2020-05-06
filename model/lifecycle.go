@@ -1254,6 +1254,9 @@ func AddNewBuilds(ctx context.Context, activatedVariants []string, v *Version, p
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to find project ref")
 	}
+	if projectRef == nil {
+		return nil, nil, errors.Errorf("project %s not found", p.Identifier)
+	}
 	newBuildIds := make([]string, 0)
 	newTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
