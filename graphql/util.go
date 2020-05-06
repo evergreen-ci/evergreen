@@ -401,13 +401,6 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			return errors.Errorf("error restarting patch: %s", err), http.StatusInternalServerError
 		}
 	case "set_active":
-		if proj == nil {
-			projRef, err := model.FindOneProjectRef(version.Branch)
-			if err != nil {
-				return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
-			}
-			proj = projRef
-		}
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return errors.Errorf("error activating patch: %s", err), http.StatusInternalServerError
 		}
@@ -419,6 +412,13 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
+			if proj == nil {
+				projRef, err := model.FindOneProjectRef(version.Branch)
+				if err != nil {
+					return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
+				}
+				proj = projRef
+			}
 			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
 				proj.CommitQueue.PatchType, version.Id, true)
 			if err != nil {
