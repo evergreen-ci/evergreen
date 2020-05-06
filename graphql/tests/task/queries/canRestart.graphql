@@ -1,0 +1,8 @@
+{
+  yes: task(taskId: "some_task") {
+    canRestart
+  }
+  no: task(taskId: "taskity_task") {
+    canRestart
+  }
+}
