@@ -39,7 +39,7 @@ func NewConfigModel() *APIAdminSettings {
 		Splunk:            &APISplunkConnectionInfo{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
-		Spawnhost:         &APISpawnhostConfig{},
+		Spawnhost:         &APISpawnHostConfig{},
 	}
 }
 
@@ -85,7 +85,7 @@ type APIAdminSettings struct {
 	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
-	Spawnhost          *APISpawnhostConfig               `json:"spawnhost,omitempty"`
+	Spawnhost          *APISpawnHostConfig               `json:"spawnhost,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -2237,15 +2237,15 @@ func (c *APIHostJasperConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APISpawnhostConfig struct {
+type APISpawnHostConfig struct {
 	UnexpirableHostsPerUser   int `json:"unexpirable_hosts_per_user"`
 	UnexpirableVolumesPerUser int `json:"unexpirable_volumes_per_user"`
 	SpawnhostsPerUser         int `json:"spawnhosts_per_user"`
 }
 
-func (c *APISpawnhostConfig) BuildFromService(h interface{}) error {
+func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.SpawnhostConfig:
+	case evergreen.SpawnHostConfig:
 		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
 		c.UnexpirableHostsPerUser = v.UnexpirableHostsPerUser
 		c.SpawnhostsPerUser = v.SpawnhostsPerUser

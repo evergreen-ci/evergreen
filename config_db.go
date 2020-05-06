@@ -115,9 +115,9 @@ var (
 	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
 
 	// Spawnhost keys
-	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnhostConfig{}, "UnexpirableHostsPerUser")
-	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnhostConfig{}, "UnexpirableVolumesPerUser")
-	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnhostConfig{}, "SpawnhostsPerUser")
+	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")
+	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")
+	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnhostsPerUser")
 )
 
 func byId(id string) bson.M {

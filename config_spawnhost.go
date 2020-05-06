@@ -7,15 +7,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type SpawnhostConfig struct {
+type SpawnHostConfig struct {
 	UnexpirableHostsPerUser   int `yaml:"unexpirable_hosts_per_user" bson:"unexpirable_hosts_per_user" json:"unexpirable_hosts_per_user"`
 	UnexpirableVolumesPerUser int `yaml:"unexpirable_volumes_per_user" bson:"unexpirable_volumes_per_user" json:"unexpirable_volumes_per_user"`
 	SpawnhostsPerUser         int `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 }
 
-func (c *SpawnhostConfig) SectionId() string { return "spawnhost" }
+func (c *SpawnHostConfig) SectionId() string { return "spawnhost" }
 
-func (c *SpawnhostConfig) Get(env Environment) error {
+func (c *SpawnHostConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 
@@ -23,7 +23,7 @@ func (c *SpawnhostConfig) Get(env Environment) error {
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
-			*c = SpawnhostConfig{}
+			*c = SpawnHostConfig{}
 			return nil
 		}
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -35,7 +35,7 @@ func (c *SpawnhostConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *SpawnhostConfig) Set() error {
+func (c *SpawnHostConfig) Set() error {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -52,7 +52,7 @@ func (c *SpawnhostConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-func (c *SpawnhostConfig) ValidateAndDefault() error {
+func (c *SpawnHostConfig) ValidateAndDefault() error {
 	if c.SpawnhostsPerUser == 0 {
 		c.SpawnhostsPerUser = DefaultMaxSpawnHostsPerUser
 	}
