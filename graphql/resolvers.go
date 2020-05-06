@@ -1101,6 +1101,23 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
+func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+}
+
+func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+}
+func (r *taskResolver) CanSchedlue(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+}
+func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+}
+func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{
