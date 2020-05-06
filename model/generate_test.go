@@ -313,6 +313,10 @@ func (s *GenerateSuite) SetupTest() {
 		Identifier: "proj",
 	}
 	s.Require().NoError(ref.Insert())
+	ref2 := ProjectRef{
+		Identifier: "",
+	}
+	s.Require().NoError(ref2.Insert())
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
