@@ -1504,7 +1504,7 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 
 	input := *mock.CreateTagsInput
 	s.Len(input.Tags, 1)
-	s.Equal(newExpiration.Add(evergreen.ExpireOnCushion).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
+	s.Equal(newExpiration.Add(time.Hour*24*evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
 }
 
 func (s *EC2Suite) TestModifyVolumeNoExpiration() {
@@ -1522,7 +1522,7 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 
 	input := *mock.CreateTagsInput
 	s.Len(input.Tags, 1)
-	s.Equal(vol.Expiration.Add(evergreen.ExpireOnCushion).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
+	s.Equal(vol.Expiration.Add(time.Hour*24*evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
 }
 
 func (s *EC2Suite) TestModifyVolumeSize() {

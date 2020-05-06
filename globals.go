@@ -176,7 +176,6 @@ const (
 	SpawnHostExpireDays                 = 30
 	HostExpireDays                      = 10
 	ExpireOnFormat                      = "2006-01-02"
-	ExpireOnCushion                     = 24 * time.Hour * 30
 	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour

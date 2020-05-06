@@ -1319,7 +1319,7 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 		Resources: []*string{aws.String(volume.ID)},
 		Tags: []*ec2.Tag{{
 			Key:   aws.String(evergreen.TagExpireOn),
-			Value: aws.String(newExpiration.Add(evergreen.ExpireOnCushion).Format(evergreen.ExpireOnFormat))}},
+			Value: aws.String(newExpiration.Add(time.Hour * 24 * evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat))}},
 	})
 	if err != nil {
 		return errors.Wrapf(err, "can't update expire-on tag for volume '%s'", volume.ID)
