@@ -897,7 +897,7 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
 	modifications := Modifications{
-		Action:   "restart",
+		Action:   "set_priority",
 		Priority: int64(priority),
 	}
 	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
