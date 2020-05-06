@@ -862,7 +862,45 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 		Active: true,
 		Abort:  false,
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
+	modifications := Modifications{
+		Action: "set_active",
+		Active: false,
+		Abort:  abort,
+	}
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
+	modifications := Modifications{
+		Action:  "restart",
+		Abort:   abort,
+		TaskIds: taskIds,
+	}
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
+	modifications := Modifications{
+		Action:   "restart",
+		Priority: int64(priority),
+	}
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -936,10 +974,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
-}
-
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
-	panic("not implemented")
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {

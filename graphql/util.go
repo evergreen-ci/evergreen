@@ -454,7 +454,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 }
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications Modifications) error {
+func modifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications Modifications) error {
 	version, err := dataConnector.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
