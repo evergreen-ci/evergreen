@@ -383,3 +383,30 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	}
 	return taskResults
 }
+
+func isTaskAborted(task *restModel.APITask) bool {
+	return *task.Status == evergreen.TaskUndispatched && task.Activated == false && !task.DispatchTime.IsZero()
+}
+
+func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	t, err := task.FindOneId(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	isBlocked := t.Blocked()
+	return &isBlocked, nil
+}
+
+func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	isAborted := isTaskAborted(at)
+	taskBlocked, err := isTaskBlocked(ctx, at)
+	if err != nil {
+		return nil, err
+	}
+	restartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
+	canRestart := utility.StringSliceContains(restartableStatuses, *at.Status) || isAborted || (at.DisplayOnly && *taskBlocked)
+	return &canRestart, nil
+}
