@@ -2,12 +2,12 @@ package units
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -30,12 +29,11 @@ import (
 )
 
 const (
-	provisionRetryLimit  = 15
-	mountRetryLimit      = 10
-	mountSleepDuration   = time.Second * 10
-	umountMountErrorCode = 32
-	setupHostJobName     = "provisioning-setup-host"
-	scpTimeout           = time.Minute
+	provisionRetryLimit = 15
+	mountRetryLimit     = 10
+	mountSleepDuration  = time.Second * 10
+	setupHostJobName    = "provisioning-setup-host"
+	scpTimeout          = time.Minute
 )
 
 func init() {
@@ -772,7 +770,10 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		// attach to the host
 		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
-			return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
+			// another job has already attached the volume
+			if !strings.Contains(err.Error(), "IncorrectState") {
+				return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
+			}
 		}
 	}
 
@@ -800,44 +801,24 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	output, err := h.RunJasperProcess(ctx, env, &options.Create{
-		Args: []string{"lsblk", "-o", "+UUID"},
-	})
+	device, err := getMostRecentlyAddedDevice(ctx, env, h)
 	if err != nil {
-		return errors.Wrap(err, "can't run lsblk")
-	}
-	deviceName, deviceUUID, err := getMostRecentlyAddedDevice(output)
-	if err != nil {
-		return errors.Wrapf(err, "can't get device name from '%s'", output)
+		return errors.Wrap(err, "can't get device info")
 	}
 
-	// continue on umount mount error
-	cmd := client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("umount -f %s", deviceName)).Background(true)
-	if err = cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "can't run umount command")
+	cmd := client.CreateCommand(ctx).Sudo(true)
+	// umount if it's already mounted
+	if device.MountPoint != "" {
+		cmd.Append(fmt.Sprintf("umount -f %s", device.Name))
 	}
-	exitCode, err := cmd.Wait(ctx)
-	if err != nil && exitCode != umountMountErrorCode {
-		return errors.Wrap(err, "problem waiting for umount command")
+	// format if the volume doesn't have a filesystem
+	if device.FSType == "" {
+		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, device.Name))
 	}
-
-	cmd = client.CreateCommand(ctx).Sudo(true)
-
-	// skip formatting if the volume already contains a filesystem
-	output, err = h.RunJasperProcess(ctx, env, &options.Create{
-		Args: []string{"sudo", "file", "-s", deviceName},
-	})
-	if err != nil {
-		return errors.Wrap(err, "problem checking for formatted device")
-	}
-	if utility.StringSliceContains(output, fmt.Sprintf("%s: data", deviceName)) {
-		cmd.Append(fmt.Sprintf("%s %s", h.Distro.HomeVolumeSettings.FormatCommand, deviceName))
-	}
-
 	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("mount %s /%s", deviceName, evergreen.HomeVolumeDir))
+	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", device.Name, evergreen.HomeVolumeDir))
 	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-
+	// add symlink if it wasn't created yet
 	symlinkExists, err := symlinkExists(ctx, client, h)
 	if err != nil {
 		return errors.Wrapf(err, "can't verify if symlink exists for host '%s'", h.Id)
@@ -850,8 +831,13 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "problem running mount commands")
 	}
 
-	// write to fstab so the volume is mounted on restart
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s /%s auto noatime 0 0\n", deviceUUID, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	// write to /etc/fstab so the volume is mounted on restart
+	// use the UUID which is constant over the life of the filesystem
+	device, err = getMostRecentlyAddedDevice(ctx, env, h)
+	if err != nil {
+		return errors.Wrap(err, "can't refresh device info")
+	}
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s /%s auto noatime 0 0\n", device.UUID, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem appending to fstab")
 	}
@@ -890,21 +876,30 @@ func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host
 	return nil
 }
 
-func getMostRecentlyAddedDevice(lsblkOutput []string) (string, string, error) {
-	// lsblk contains at least the header and one device
-	if len(lsblkOutput) < 2 {
-		return "", "", errors.Errorf("lsblk output is length '%d'", len(lsblkOutput))
-	}
+type blockDevice struct {
+	Name       string `json:"name"`
+	FSType     string `json:"fstype"`
+	UUID       string `json:"uuid"`
+	MountPoint string `json:"mountpoint"`
+}
 
-	device := lsblkOutput[len(lsblkOutput)-1]
-	deviceNameRegexp, err := regexp.Compile(`^(?P<deviceName>sd[a-z]\d{0,2}|xvd[a-z]|hd[a-z]\d{0,2}|nvme\d{1,2}n1).*\b(?P<deviceUUID>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)
+func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
+	lsblkOutput, err := h.RunJasperProcess(ctx, env, &options.Create{
+		Args: []string{"lsblk", "--fs", "--json"},
+	})
 	if err != nil {
-		return "", "", errors.Wrap(err, "can't compile device name regexp")
+		return blockDevice{}, errors.Wrap(err, "can't run lsblk")
 	}
-	deviceNameMatch := deviceNameRegexp.FindStringSubmatch(device)
-	if len(deviceNameMatch) < 3 {
-		return "", "", errors.Errorf("can't get device name from device: '%s'", device)
+	devices := struct {
+		BlockDevices []blockDevice `json:"blockdevices"`
+	}{}
+	if err := json.Unmarshal([]byte(strings.Join(lsblkOutput, "\n")), &devices); err != nil {
+		return blockDevice{}, errors.Wrapf(err, "can't parse lsblk output '%s'", lsblkOutput)
 	}
 
-	return fmt.Sprintf("/dev/%s", deviceNameMatch[1]), deviceNameMatch[2], nil
+	if len(devices.BlockDevices) == 0 {
+		return blockDevice{}, errors.New("output contained no devices")
+	}
+
+	return devices.BlockDevices[len(devices.BlockDevices)-1], nil
 }
