@@ -138,6 +138,7 @@ type ComplexityRoot struct {
 		RestartTask                func(childComplexity int, taskID string) int
 		SaveSubscription           func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch              func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
+		SchedulePatchTasks         func(childComplexity int, patchID string) int
 		ScheduleTask               func(childComplexity int, taskID string) int
 		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
@@ -280,7 +281,6 @@ type ComplexityRoot struct {
 		Id                func(childComplexity int) int
 		IngestTime        func(childComplexity int) int
 		Logs              func(childComplexity int) int
-		Order             func(childComplexity int) int
 		PatchMetadata     func(childComplexity int) int
 		PatchNumber       func(childComplexity int) int
 		Priority          func(childComplexity int) int
@@ -392,6 +392,7 @@ type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*model.APIPatch, error)
+	SchedulePatchTasks(ctx context.Context, patchID string) (*model.APIPatch, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -848,6 +849,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["reconfigure"].(PatchReconfigure)), true
+
+	case "Mutation.schedulePatchTasks":
+		if e.complexity.Mutation.SchedulePatchTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_schedulePatchTasks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SchedulePatchTasks(childComplexity, args["patchId"].(string)), true
 
 	case "Mutation.scheduleTask":
 		if e.complexity.Mutation.ScheduleTask == nil {
@@ -1588,13 +1601,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Logs(childComplexity), true
 
-	case "Task.order":
-		if e.complexity.Task.Order == nil {
-			break
-		}
-
-		return e.complexity.Task.Order(childComplexity), true
-
 	case "Task.patchMetadata":
 		if e.complexity.Task.PatchMetadata == nil {
 			break
@@ -2158,6 +2164,7 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
+  schedulePatchTasks(patchId: String!): Patch
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -2429,7 +2436,6 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
-  order: Int
   patchNumber: Int
   requester: String!
   status: String!
@@ -2654,6 +2660,20 @@ func (ec *executionContext) field_Mutation_saveSubscription_args(ctx context.Con
 		}
 	}
 	args["subscription"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_schedulePatchTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -4583,6 +4603,44 @@ func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field g
 	res := resTmp.(*model.APIPatch)
 	fc.Result = res
 	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_schedulePatchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_schedulePatchTasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SchedulePatchTasks(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -8244,37 +8302,6 @@ func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.C
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Execution, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_order(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Order, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11977,6 +12004,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "schedulePatchTasks":
+			out.Values[i] = ec._Mutation_schedulePatchTasks(ctx, field)
 		case "scheduleTask":
 			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -12932,8 +12961,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_restarts(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
-		case "order":
-			out.Values[i] = ec._Task_order(ctx, field, obj)
 		case "patchNumber":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

@@ -856,6 +856,28 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 	return scheduledPatch, nil
 }
 
+func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+	version, err := r.sc.FindVersionById(patchID)
+	if err != nil {
+		return nil, errors.Errorf("error finding version: %s", err)
+	}
+	modifications := Modifications{
+		Action: "set_active",
+		Active: true,
+		Abort:  false,
+	}
+	user := route.MustHaveUser(ctx)
+	err, _ = ModifyVersion(*version, *user, nil, modifications)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", patchID, err))
+	}
+	patch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error retrieving patch %s: %s", patchID, err.Error()))
+	}
+	return patch, nil
+}
+
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {

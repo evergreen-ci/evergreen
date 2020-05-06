@@ -6,9 +6,9 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -227,70 +227,14 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	user := MustHaveUser(r)
 
-	jsonMap := struct {
-		Action   string   `json:"action"`
-		Active   bool     `json:"active"`
-		Abort    bool     `json:"abort"`
-		Priority int64    `json:"priority"`
-		TaskIds  []string `json:"task_ids"`
-	}{}
-
-	if err = utility.ReadJSON(util.NewRequestReader(r), &jsonMap); err != nil {
+	modifications := graphql.Modifications{}
+	if err = utility.ReadJSON(util.NewRequestReader(r), &modifications); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	authName := user.DisplayName()
-
-	// determine what action needs to be taken
-	switch jsonMap.Action {
-	case "restart":
-		if err = model.RestartVersion(projCtx.Version.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	case "set_active":
-		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// abort after deactivating the version so we aren't bombarded with failing tasks while
-		// the deactivation is in progress
-		if jsonMap.Abort {
-			if err = task.AbortVersion(projCtx.Version.Id, task.AbortInfo{User: authName}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		if !jsonMap.Active && projCtx.Version.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItem(projCtx.ProjectRef.Identifier,
-				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Version.Id, true)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-	case "set_priority":
-		if jsonMap.Priority > evergreen.MaxTaskPriority {
-			requiredPermission := gimlet.PermissionOpts{
-				Resource:      projCtx.ProjectRef.Identifier,
-				ResourceType:  "project",
-				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: evergreen.TasksAdmin.Value,
-			}
-			if !user.HasPermission(requiredPermission) {
-				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", jsonMap.Priority, evergreen.MaxTaskPriority),
-					http.StatusUnauthorized)
-				return
-			}
-		}
-		if err = model.SetVersionPriority(projCtx.Version.Id, jsonMap.Priority); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	default:
-		gimlet.WriteJSONError(w, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
+	err, httpStatus := graphql.ModifyVersion(*projCtx.Version, *user, projCtx.ProjectRef, modifications)
+	if err != nil {
+		http.Error(w, err.Error(), httpStatus)
 		return
 	}
 

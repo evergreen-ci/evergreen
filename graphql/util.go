@@ -11,8 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
@@ -383,3 +385,91 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	}
 	return taskResults
 }
+
+type Modifications struct {
+	Action   string   `json:"action"`
+	Active   bool     `json:"active"`
+	Abort    bool     `json:"abort"`
+	Priority int64    `json:"priority"`
+	TaskIds  []string `json:"task_ids"`
+}
+
+func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications Modifications) (error, int) {
+	switch modifications.Action {
+	case "restart":
+		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+			return errors.Errorf("error restarting patch: %s", err), http.StatusInternalServerError
+		}
+	case "set_active":
+		if proj == nil {
+			projRef, err := model.FindOneProjectRef(version.Branch)
+			if err != nil {
+				return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+			}
+			proj = projRef
+		}
+		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
+			return errors.Errorf("error activating patch: %s", err), http.StatusInternalServerError
+		}
+		// abort after deactivating the version so we aren't bombarded with failing tasks while
+		// the deactivation is in progress
+		if modifications.Abort {
+			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
+				return errors.Errorf("error aborting patch: %s", err), http.StatusInternalServerError
+			}
+		}
+		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
+			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
+				proj.CommitQueue.PatchType, version.Id, true)
+			if err != nil {
+				return errors.Errorf("error removing patch from commit queue: %s", err), http.StatusInternalServerError
+			}
+		}
+	case "set_priority":
+		if proj == nil {
+			projRef, err := model.FindOneProjectRef(version.Branch)
+			if err != nil {
+				return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+			}
+			proj = projRef
+		}
+		if modifications.Priority > evergreen.MaxTaskPriority {
+			requiredPermission := gimlet.PermissionOpts{
+				Resource:      proj.Identifier,
+				ResourceType:  "project",
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: evergreen.TasksAdmin.Value,
+			}
+			if !user.HasPermission(requiredPermission) {
+				return errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority), http.StatusUnauthorized
+			}
+		}
+		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
+			return errors.Errorf("error setting version priority: %s", err), http.StatusInternalServerError
+		}
+	default:
+		return errors.Errorf("Unrecognized action: %v", modifications.Action), http.StatusBadRequest
+	}
+	return nil, 0
+}
+
+// func ActivatePatchHandler(ctx context.Context, dataConnector data.Connector, versionId string, active bool) (*restModel.APIPatch, error) {
+// 	version, err := dataConnector.FindVersionById(versionId)
+// 	if err != nil {
+// 		return nil, errors.Errorf("error finding version: %s", err)
+// 	}
+// 	modifications := Modifications{
+// 		Action: "set_active",
+// 		Active: active,
+// 	}
+// 	user := route.MustHaveUser(ctx)
+// 	err, _ := ModifyVersion(version, *user, nil, modifications)
+// 	if err != nil {
+// 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", versionId, err))
+// 	}
+// 	version, err = dataConnector.FindVersionById(versionId)
+// 	apiVersion := restModel.APIVersion{}
+// 	apiVersion.BuildFromService(version)
+
+// 	return apiVersion, nil
+// }
