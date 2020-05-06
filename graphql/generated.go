@@ -264,7 +264,7 @@ type ComplexityRoot struct {
 		BuildVariant      func(childComplexity int) int
 		CanAbort          func(childComplexity int) int
 		CanRestart        func(childComplexity int) int
-		CanSchedlue       func(childComplexity int) int
+		CanSchedule       func(childComplexity int) int
 		CanSetPriority    func(childComplexity int) int
 		CanUnschedule     func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
@@ -441,7 +441,7 @@ type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
-	CanSchedlue(ctx context.Context, obj *model.APITask) (bool, error)
+	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 }
@@ -1485,12 +1485,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanRestart(childComplexity), true
 
-	case "Task.canSchedlue":
-		if e.complexity.Task.CanSchedlue == nil {
+	case "Task.canSchedule":
+		if e.complexity.Task.CanSchedule == nil {
 			break
 		}
 
-		return e.complexity.Task.CanSchedlue(childComplexity), true
+		return e.complexity.Task.CanSchedule(childComplexity), true
 
 	case "Task.canSetPriority":
 		if e.complexity.Task.CanSetPriority == nil {
@@ -2480,7 +2480,7 @@ type Task {
   baseTaskMetadata: BaseTaskMetadata!
   canRestart: Boolean!
   canAbort: Boolean!
-  canSchedlue: Boolean!
+  canSchedule: Boolean!
   canUnschedule: Boolean!
   canSetPriority: Boolean!
 }
@@ -8747,7 +8747,7 @@ func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.Co
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_canSchedlue(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+func (ec *executionContext) _Task_canSchedule(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8764,7 +8764,7 @@ func (ec *executionContext) _Task_canSchedlue(ctx context.Context, field graphql
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().CanSchedlue(rctx, obj)
+		return ec.resolvers.Task().CanSchedule(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13191,7 +13191,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
-		case "canSchedlue":
+		case "canSchedule":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -13199,7 +13199,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Task_canSchedlue(ctx, field, obj)
+				res = ec._Task_canSchedule(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

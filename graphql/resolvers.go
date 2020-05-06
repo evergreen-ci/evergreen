@@ -1113,7 +1113,7 @@ func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bo
 	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
 }
 
-func (r *taskResolver) CanSchedlue(ctx context.Context, obj *restModel.APITask) (bool, error) {
+func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	canRestart, err := canRestartTask(ctx, obj)
 	if err != nil {
 		return false, err
