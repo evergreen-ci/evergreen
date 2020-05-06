@@ -265,7 +265,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, false, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
+	tasksInExistingBuilds, err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}

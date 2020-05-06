@@ -625,6 +625,12 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(err)
 	s.Len(builds, 2)
 	s.Len(tasks, 6)
+	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id))
+	s.NoError(err)
+	s.Len(existingVariantTasks, 2)
+	for _, existingTask := range existingVariantTasks {
+		s.True(existingTask.Activated)
+	}
 
 	for _, task := range tasks {
 		if task.DisplayOnly {
