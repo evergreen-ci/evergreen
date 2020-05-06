@@ -404,7 +404,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Branch)
 			if err != nil {
-				return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+				return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
 			}
 			proj = projRef
 		}
@@ -429,7 +429,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Branch)
 			if err != nil {
-				return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+				return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
 			}
 			proj = projRef
 		}
