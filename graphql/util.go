@@ -426,6 +426,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 	case "set_priority":
+		fmt.Println("111111")
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Branch)
 			if err != nil {
@@ -433,6 +434,8 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 			proj = projRef
 		}
+		fmt.Println("222222")
+		fmt.Println(proj)
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
 				Resource:      proj.Identifier,
@@ -444,6 +447,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				return errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority), http.StatusUnauthorized
 			}
 		}
+		fmt.Println("333333333")
 		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
 			return errors.Errorf("error setting version priority: %s", err), http.StatusInternalServerError
 		}
