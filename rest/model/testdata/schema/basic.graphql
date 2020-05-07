@@ -1,0 +1,13 @@
+type MyType {
+  stringField: String
+  AnotherStringField: String
+  aTime: Time
+  number: Int
+  complex: [What!]
+}
+
+type What {
+  yes: String
+}
+
+scalar Time
