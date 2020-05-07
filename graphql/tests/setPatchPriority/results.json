@@ -1,27 +1,44 @@
 {
   "tests": [
     {
-      "query_file": "schedule-patch-tasks-error.graphql",
+      "query_file": "set-priority-bad-id.graphql",
       "result": {
         "errors": [
           {
             "message": "error finding version washington: 404 (Not Found): version with id washington not found",
-            "path": ["schedulePatchTasks"],
+            "path": ["setPatchPriority"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ],
         "data": {
-          "schedulePatchTasks": null
+          "setPatchPriority": null
         }
       }
     },
     {
-      "query_file": "schedule-patch-tasks.graphql",
+      "query_file": "set-priority.graphql",
       "result": {
         "data": {
-          "schedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+          "setPatchPriority": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "set-priority-too-high-for-permission-level.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error activating version `5e4ff3abe3c3317e352062e4`: Insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "path": ["setPatchPriority"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "setPatchPriority": null
         }
       }
     }
