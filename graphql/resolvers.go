@@ -856,6 +856,19 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 	return scheduledPatch, nil
 }
 
+func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
+	modifications := VersionModifications{
+		Action: SetActive,
+		Active: true,
+		Abort:  false,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {

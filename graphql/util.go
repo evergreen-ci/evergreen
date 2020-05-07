@@ -11,8 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
@@ -22,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -382,6 +385,110 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 		taskResults = append(taskResults, &t)
 	}
 	return taskResults
+}
+
+type VersionModificationAction string
+
+const (
+	Restart     VersionModificationAction = "restart"
+	SetActive   VersionModificationAction = "set_active"
+	SetPriority VersionModificationAction = "set_priority"
+)
+
+type VersionModifications struct {
+	Action   VersionModificationAction `json:"action"`
+	Active   bool                      `json:"active"`
+	Abort    bool                      `json:"abort"`
+	Priority int64                     `json:"priority"`
+	TaskIds  []string                  `json:"task_ids"`
+}
+
+func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
+	switch modifications.Action {
+	case Restart:
+		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
+		}
+	case SetActive:
+		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
+			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
+		}
+		// abort after deactivating the version so we aren't bombarded with failing tasks while
+		// the deactivation is in progress
+		if modifications.Abort {
+			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error aborting patch: %s", err)
+			}
+		}
+		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
+			if proj == nil {
+				projRef, err := model.FindOneProjectRef(version.Branch)
+				if err != nil {
+					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
+				}
+				proj = projRef
+			}
+			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
+				proj.CommitQueue.PatchType, version.Id, true)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
+			}
+		}
+	case SetPriority:
+		if proj == nil {
+			projRef, err := model.FindOneProjectRef(version.Branch)
+			if err != nil {
+				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
+			}
+			proj = projRef
+		}
+		if modifications.Priority > evergreen.MaxTaskPriority {
+			requiredPermission := gimlet.PermissionOpts{
+				Resource:      proj.Identifier,
+				ResourceType:  "project",
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: evergreen.TasksAdmin.Value,
+			}
+			if !user.HasPermission(requiredPermission) {
+				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
+			}
+		}
+		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
+			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
+		}
+	default:
+		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)
+	}
+	return 0, nil
+}
+
+// ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
+func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications VersionModifications) error {
+	version, err := dataConnector.FindVersionById(patchID)
+	if err != nil {
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
+	}
+	user := route.MustHaveUser(ctx)
+	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
+	if err != nil {
+		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+	return nil
+}
+
+func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gqlerror.Error {
+	switch httpStatus {
+	case http.StatusInternalServerError:
+		return InternalServerError.Send(ctx, err.Error())
+	case http.StatusNotFound:
+		return ResourceNotFound.Send(ctx, err.Error())
+	case http.StatusUnauthorized:
+		return Forbidden.Send(ctx, err.Error())
+	case http.StatusBadRequest:
+		return InputValidationError.Send(ctx, err.Error())
+	default:
+		return InternalServerError.Send(ctx, err.Error())
+	}
 }
 
 func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
