@@ -227,7 +227,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	user := MustHaveUser(r)
 
-	modifications := graphql.Modifications{}
+	modifications := graphql.VersionModifications{}
 	if err = utility.ReadJSON(util.NewRequestReader(r), &modifications); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

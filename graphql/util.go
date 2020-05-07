@@ -386,7 +386,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	return taskResults
 }
 
-type Modifications struct {
+type VersionModifications struct {
 	Action   string   `json:"action"`
 	Active   bool     `json:"active"`
 	Abort    bool     `json:"abort"`
@@ -394,7 +394,7 @@ type Modifications struct {
 	TaskIds  []string `json:"task_ids"`
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications Modifications) (error, int) {
+func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (error, int) {
 	switch modifications.Action {
 	case "restart":
 		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
@@ -454,7 +454,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 }
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications Modifications) error {
+func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications VersionModifications) error {
 	version, err := dataConnector.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
