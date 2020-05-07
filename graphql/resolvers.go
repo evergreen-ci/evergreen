@@ -883,6 +883,9 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 }
 
 func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
+	if len(taskIds) == 0 {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("`taskIds` array is empty. You must provide at least one task id"))
+	}
 	modifications := VersionModifications{
 		Action:  "restart",
 		Abort:   abort,

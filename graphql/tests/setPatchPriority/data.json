@@ -2,9 +2,7 @@
   "versions": [
     {
       "_id": "5e4ff3abe3c3317e352062e4",
-      "branch": "evergreen",
-      "identifier": "evergreen",
-      "r": "patch_request"
+      "branch": "evergreen"
     }
   ],
   "tasks": [
@@ -97,15 +95,6 @@
           "message": ""
         }
       ]
-    }
-  ],
-  "projects": [
-    {
-      "_id": "evergreen",
-      "identifier": "evergreen",
-      "commit_queue": {
-        "patch_type": "PR"
-      }
     }
   ]
 }

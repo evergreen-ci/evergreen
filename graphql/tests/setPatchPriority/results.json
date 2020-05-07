@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "schedule-patch-tasks-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "error finding version washington: 404 (Not Found): version with id washington not found",
+            "path": ["schedulePatchTasks"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": {
+          "schedulePatchTasks": null
+        }
+      }
+    },
+    {
+      "query_file": "schedule-patch-tasks.graphql",
+      "result": {
+        "data": {
+          "schedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    }
+  ]
+}

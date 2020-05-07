@@ -1,26 +1,36 @@
 {
   "tests": [
     {
-      "query_file": "restart-patch.graphql",
+      "query_file": "unschedule-patch-tasks-bad-id.graphql",
       "result": {
+        "errors": [
+          {
+            "message": "error finding version washington: 404 (Not Found): version with id washington not found",
+            "path": ["unschedulePatchTasks"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
         "data": {
-          "restartPatch": "5e4ff3abe3c3317e352062e4"
+          "unschedulePatchTasks": null
         }
       }
     },
     {
-      "query_file": "invalid-patch-id.graphql",
+      "query_file": "unschedule-patch-tasks.graphql",
       "result": {
         "data": {
-          "restartPatch": null
-        },
-        "errors": [
-          {
-            "message": "error finding patch not-a-real-id: 400 (Bad Request): id 'not-a-real-id' is not a valid patch id",
-            "path": ["restartPatch"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
-          }
-        ]
+          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "abort-unschedule-patch-tasks.graphql",
+      "result": {
+        "data": {
+          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+        }
       }
     }
   ]
