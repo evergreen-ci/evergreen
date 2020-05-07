@@ -490,3 +490,25 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 		return InternalServerError.Send(ctx, err.Error())
 	}
 }
+
+func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	t, err := task.FindOneId(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	isBlocked := t.Blocked()
+	return &isBlocked, nil
+}
+
+func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	taskBlocked, err := isTaskBlocked(ctx, at)
+	if err != nil {
+		return nil, err
+	}
+	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
+	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	return &canRestart, nil
+}
