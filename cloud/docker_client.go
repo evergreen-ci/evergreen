@@ -340,10 +340,12 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
-
+	provisionedImage := containerHost.DockerOptions.Image
 	// Extract image name from url
-	baseName := path.Base(containerHost.DockerOptions.Image)
-	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	if containerHost.DockerOptions.Method == distro.DockerImageBuildTypeImport {
+		baseName := path.Base(containerHost.DockerOptions.Image)
+		provisionedImage = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	}
 	if !containerHost.DockerOptions.SkipImageBuild {
 		provisionedImage = fmt.Sprintf(provisionedImageTag, provisionedImage)
 	}
