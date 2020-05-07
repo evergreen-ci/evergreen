@@ -402,42 +402,42 @@ type VersionModifications struct {
 	TaskIds  []string                  `json:"task_ids"`
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (error, int) {
+func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
 		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
-			return errors.Errorf("error restarting patch: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
-			return errors.Errorf("error activating patch: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {
 			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
-				return errors.Errorf("error aborting patch: %s", err), http.StatusInternalServerError
+				return http.StatusInternalServerError, errors.Errorf("error aborting patch: %s", err)
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			if proj == nil {
 				projRef, err := model.FindOneProjectRef(version.Branch)
 				if err != nil {
-					return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
+					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 				}
 				proj = projRef
 			}
 			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
 				proj.CommitQueue.PatchType, version.Id, true)
 			if err != nil {
-				return errors.Errorf("error removing patch from commit queue: %s", err), http.StatusInternalServerError
+				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
 		}
 	case SetPriority:
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Branch)
 			if err != nil {
-				return errors.Errorf("error getting project ref: %s", err), http.StatusNotFound
+				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}
 			proj = projRef
 		}
@@ -449,16 +449,16 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
 			if !user.HasPermission(requiredPermission) {
-				return errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority), http.StatusUnauthorized
+				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
 		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
-			return errors.Errorf("error setting version priority: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
 	default:
-		return errors.Errorf("Unrecognized action: %v", modifications.Action), http.StatusBadRequest
+		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)
 	}
-	return nil, 0
+	return 0, nil
 }
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
@@ -468,7 +468,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := route.MustHaveUser(ctx)
-	err, _ = ModifyVersion(*version, *user, nil, modifications)
+	_, err = ModifyVersion(*version, *user, nil, modifications)
 	if err != nil {
 		return InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", patchID, err))
 	}

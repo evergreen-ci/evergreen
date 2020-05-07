@@ -232,7 +232,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err, httpStatus := graphql.ModifyVersion(*projCtx.Version, *user, projCtx.ProjectRef, modifications)
+	httpStatus, err := graphql.ModifyVersion(*projCtx.Version, *user, projCtx.ProjectRef, modifications)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return
