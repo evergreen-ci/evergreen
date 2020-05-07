@@ -857,12 +857,12 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 }
 
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	modifications := Modifications{
-		Action: "set_active",
+	modifications := VersionModifications{
+		Action: SetActive,
 		Active: true,
 		Abort:  false,
 	}
-	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -870,12 +870,12 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 }
 
 func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
-	modifications := Modifications{
+	modifications := VersionModifications{
 		Action: "set_active",
 		Active: false,
 		Abort:  abort,
 	}
-	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -883,12 +883,12 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 }
 
 func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
-	modifications := Modifications{
+	modifications := VersionModifications{
 		Action:  "restart",
 		Abort:   abort,
 		TaskIds: taskIds,
 	}
-	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -896,11 +896,11 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 }
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
-	modifications := Modifications{
+	modifications := VersionModifications{
 		Action:   "set_priority",
 		Priority: int64(priority),
 	}
-	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}

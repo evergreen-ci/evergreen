@@ -386,56 +386,64 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	return taskResults
 }
 
-type Modifications struct {
-	Action   string   `json:"action"`
-	Active   bool     `json:"active"`
-	Abort    bool     `json:"abort"`
-	Priority int64    `json:"priority"`
-	TaskIds  []string `json:"task_ids"`
+type VersionModificationAction string
+
+const (
+	Restart     VersionModificationAction = "restart"
+	SetActive   VersionModificationAction = "set_active"
+	SetPriority VersionModificationAction = "set_priority"
+)
+
+type VersionModifications struct {
+	Action   VersionModificationAction `json:"action"`
+	Active   bool                      `json:"active"`
+	Abort    bool                      `json:"abort"`
+	Priority int64                     `json:"priority"`
+	TaskIds  []string                  `json:"task_ids"`
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications Modifications) (error, int) {
+func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
-	case "restart":
+	case Restart:
 		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
-			return errors.Errorf("error restarting patch: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
-	case "set_active":
+	case SetActive:
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
-			return errors.Errorf("error activating patch: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {
 			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
-				return errors.Errorf("error aborting patch: %s", err), http.StatusInternalServerError
+				return http.StatusInternalServerError, errors.Errorf("error aborting patch: %s", err)
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			if proj == nil {
 				projRef, err := model.FindOneProjectRef(version.Identifier)
 				if err != nil {
-					return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 				}
 				if projRef == nil {
-					return errors.Errorf("project for %s came back nil: %s", version.Branch, err), http.StatusNotFound
+					return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 				}
 				proj = projRef
 			}
 			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
 				proj.CommitQueue.PatchType, version.Id, true)
 			if err != nil {
-				return errors.Errorf("error removing patch from commit queue: %s", err), http.StatusInternalServerError
+				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
 		}
-	case "set_priority":
+	case SetPriority:
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Identifier)
 			if err != nil {
-				return errors.Errorf("error getting project ref: %s", err), http.StatusInternalServerError
+				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}
 			if projRef == nil {
-				return errors.Errorf("getting project `%s` came back nil: %s", version.Branch, err), http.StatusNotFound
+				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
 			fmt.Println(projRef)
 			proj = projRef
@@ -449,26 +457,26 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
 			if !user.HasPermission(requiredPermission) {
-				return errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority), http.StatusUnauthorized
+				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
 		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
-			return errors.Errorf("error setting version priority: %s", err), http.StatusInternalServerError
+			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
 	default:
-		return errors.Errorf("Unrecognized action: %v", modifications.Action), http.StatusBadRequest
+		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)
 	}
-	return nil, 0
+	return 0, nil
 }
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func modifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications Modifications) error {
+func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications VersionModifications) error {
 	version, err := dataConnector.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := route.MustHaveUser(ctx)
-	err, _ = ModifyVersion(*version, *user, nil, modifications)
+	_, err = ModifyVersion(*version, *user, nil, modifications)
 	if err != nil {
 		return InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", patchID, err))
 	}
