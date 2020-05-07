@@ -1142,6 +1142,34 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
+func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	canRestart, err := canRestartTask(ctx, obj)
+	if err != nil {
+		return false, err
+	}
+	return *canRestart, nil
+}
+
+func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
+}
+
+func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	canRestart, err := canRestartTask(ctx, obj)
+	if err != nil {
+		return false, err
+	}
+	return *canRestart == false && !obj.Aborted, nil
+}
+
+func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return obj.Activated && *obj.Status == evergreen.TaskUndispatched, nil
+}
+
+func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return *obj.Status == evergreen.TaskUndispatched, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{

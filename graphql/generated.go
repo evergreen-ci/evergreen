@@ -265,6 +265,11 @@ type ComplexityRoot struct {
 		BaseTaskMetadata  func(childComplexity int) int
 		BuildId           func(childComplexity int) int
 		BuildVariant      func(childComplexity int) int
+		CanAbort          func(childComplexity int) int
+		CanRestart        func(childComplexity int) int
+		CanSchedule       func(childComplexity int) int
+		CanSetPriority    func(childComplexity int) int
+		CanUnschedule     func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
 		Details           func(childComplexity int) int
 		DispatchTime      func(childComplexity int) int
@@ -395,9 +400,12 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
+<<<<<<< HEAD
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
+=======
+>>>>>>> master
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -440,6 +448,11 @@ type TaskResolver interface {
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
+	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
+	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
+	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
+	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
+	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 }
 
 type executableSchema struct {
@@ -1503,6 +1516,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.BuildVariant(childComplexity), true
 
+	case "Task.canAbort":
+		if e.complexity.Task.CanAbort == nil {
+			break
+		}
+
+		return e.complexity.Task.CanAbort(childComplexity), true
+
+	case "Task.canRestart":
+		if e.complexity.Task.CanRestart == nil {
+			break
+		}
+
+		return e.complexity.Task.CanRestart(childComplexity), true
+
+	case "Task.canSchedule":
+		if e.complexity.Task.CanSchedule == nil {
+			break
+		}
+
+		return e.complexity.Task.CanSchedule(childComplexity), true
+
+	case "Task.canSetPriority":
+		if e.complexity.Task.CanSetPriority == nil {
+			break
+		}
+
+		return e.complexity.Task.CanSetPriority(childComplexity), true
+
+	case "Task.canUnschedule":
+		if e.complexity.Task.CanUnschedule == nil {
+			break
+		}
+
+		return e.complexity.Task.CanUnschedule(childComplexity), true
+
 	case "Task.createTime":
 		if e.complexity.Task.CreateTime == nil {
 			break
@@ -2193,9 +2241,12 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
+<<<<<<< HEAD
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
   setPatchPriority(patchId: String!, priority: Int!): String
+=======
+>>>>>>> master
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -2478,6 +2529,11 @@ type Task {
   generatedBy: String
   aborted: Boolean
   baseTaskMetadata: BaseTaskMetadata!
+  canRestart: Boolean!
+  canAbort: Boolean!
+  canSchedule: Boolean!
+  canUnschedule: Boolean!
+  canSetPriority: Boolean!
 }
 
 type Projects {
@@ -4696,6 +4752,47 @@ func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field g
 }
 
 func (ec *executionContext) _Mutation_schedulePatchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+<<<<<<< HEAD
+=======
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_schedulePatchTasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SchedulePatchTasks(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+>>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8862,6 +8959,176 @@ func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field gr
 	return ec.marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_canRestart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanRestart(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanAbort(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_canSchedule(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanSchedule(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_canUnschedule(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanUnschedule(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_canSetPriority(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanSetPriority(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12172,12 +12439,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "schedulePatchTasks":
 			out.Values[i] = ec._Mutation_schedulePatchTasks(ctx, field)
+<<<<<<< HEAD
 		case "unschedulePatchTasks":
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
 		case "setPatchPriority":
 			out.Values[i] = ec._Mutation_setPatchPriority(ctx, field)
+=======
+>>>>>>> master
 		case "scheduleTask":
 			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -13177,6 +13447,76 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_baseTaskMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canRestart":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canRestart(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canAbort":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canAbort(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canSchedule":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canSchedule(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canUnschedule":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canUnschedule(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canSetPriority":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canSetPriority(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

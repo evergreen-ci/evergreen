@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -445,7 +446,6 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			if projRef == nil {
 				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
-			fmt.Println(projRef)
 			proj = projRef
 		}
 		fmt.Println(proj)
@@ -476,9 +476,46 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := route.MustHaveUser(ctx)
-	_, err = ModifyVersion(*version, *user, nil, modifications)
+	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
 	if err != nil {
-		return InternalServerError.Send(ctx, fmt.Sprintf("Error activating version `%s`: %s", patchID, err))
+		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	return nil
+}
+
+func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gqlerror.Error {
+	switch httpStatus {
+	case http.StatusInternalServerError:
+		return InternalServerError.Send(ctx, err.Error())
+	case http.StatusNotFound:
+		return ResourceNotFound.Send(ctx, err.Error())
+	case http.StatusUnauthorized:
+		return Forbidden.Send(ctx, err.Error())
+	case http.StatusBadRequest:
+		return InputValidationError.Send(ctx, err.Error())
+	default:
+		return InternalServerError.Send(ctx, err.Error())
+	}
+}
+
+func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	t, err := task.FindOneId(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	isBlocked := t.Blocked()
+	return &isBlocked, nil
+}
+
+func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	taskBlocked, err := isTaskBlocked(ctx, at)
+	if err != nil {
+		return nil, err
+	}
+	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
+	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	return &canRestart, nil
 }

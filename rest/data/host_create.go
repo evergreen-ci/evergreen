@@ -184,8 +184,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 	base := path.Base(createHost.Image)
 	hasPrefix := strings.HasPrefix(base, "http")
-	filepathExt := filepath.Ext(createHost.Image)
-	if filepathExt == "" && !hasPrefix { // not a url
+	if !hasPrefix { // not a url
 		method = distro.DockerImageBuildTypePull
 	}
 
