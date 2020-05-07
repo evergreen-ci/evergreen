@@ -325,6 +325,11 @@ type Task {
   generatedBy: String
   aborted: Boolean
   baseTaskMetadata: BaseTaskMetadata!
+  canRestart: Boolean!
+  canAbort: Boolean!
+  canSchedule: Boolean!
+  canUnschedule: Boolean!
+  canSetPriority: Boolean!
 }
 
 type Projects {

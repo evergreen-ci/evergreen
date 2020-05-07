@@ -1,0 +1,8 @@
+{
+  yes: task(taskId: "some_task") {
+    canAbort
+  }
+  no: task(taskId: "taskity_task") {
+    canAbort
+  }
+}
