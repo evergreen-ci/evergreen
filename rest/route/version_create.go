@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
@@ -42,9 +44,22 @@ func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	newVersion, err := h.sc.CreateVersionFromConfig(ctx, h.ProjectID, h.Config, u, h.Message, h.Active)
+	metadata := model.VersionMetadata{
+		Message: h.Message,
+		User:    u,
+	}
+	projectInfo := &model.ProjectInfo{}
+	var err error
+	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, h.ProjectID, projectInfo.Project)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(err)
+		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "unable to unmarshal yaml config").Error(),
+		})
+	}
+	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 	return gimlet.NewJSONResponse(newVersion)
 }

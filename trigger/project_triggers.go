@@ -52,7 +52,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	}
 
 	// create version
-	projectInfo := &repotracker.ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 &args.DownstreamProject,
 		Project:             proj,
 		IntermediateProject: pp,
@@ -102,8 +102,8 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	return v, nil
 }
 
-func metadataFromVersion(source model.Version, ref model.ProjectRef) (repotracker.VersionMetadata, error) {
-	metadata := repotracker.VersionMetadata{
+func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.VersionMetadata, error) {
+	metadata := model.VersionMetadata{
 		SourceVersion: &source,
 	}
 	metadata.Revision = model.Revision{

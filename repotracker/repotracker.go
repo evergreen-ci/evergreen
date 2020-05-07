@@ -48,31 +48,6 @@ type VersionErrors struct {
 	Warnings []string
 }
 
-// VersionMetadata is used to pass information about upstream versions to downstream version creation
-type VersionMetadata struct {
-	Revision            model.Revision
-	TriggerID           string
-	TriggerType         string
-	EventID             string
-	TriggerDefinitionID string
-	SourceVersion       *model.Version
-	IsAdHoc             bool
-	User                *user.DBUser
-	Message             string
-	Alias               string
-	PeriodicBuildID     string
-}
-
-type ProjectInfo struct {
-	Ref                 *model.ProjectRef
-	Project             *model.Project
-	IntermediateProject *model.ParserProject
-}
-
-func (p *ProjectInfo) notPopulated() bool {
-	return p.Ref == nil || p.IntermediateProject == nil
-}
-
 // The RepoPoller interface specifies behavior required of all repository poller
 // implementations
 type RepoPoller interface {
@@ -264,7 +239,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ref, VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := shellVersionFromRevision(ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
@@ -315,10 +290,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		metadata := VersionMetadata{
+		metadata := model.VersionMetadata{
 			Revision: revisions[i],
 		}
-		projectInfo := &ProjectInfo{
+		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
 			Project:             project,
 			IntermediateProject: intermediateProject,
@@ -598,9 +573,9 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
-func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
-	metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
-	if projectInfo.notPopulated() {
+func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
+	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
+	if projectInfo.NotPopulated() {
 		return nil, errors.New("project ref and parser project cannot be nil")
 	}
 
@@ -669,7 +644,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *ProjectInfo,
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (*model.Version, error) {
+func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
@@ -707,7 +682,9 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 		v.Id = mgobson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
 		v.CreateTime = time.Now()
-		v.Message = metadata.Message
+		if metadata.Message != "" {
+			v.Message = metadata.Message
+		}
 		if metadata.User != nil {
 			num, err := metadata.User.IncPatchNumber()
 			if err != nil {
@@ -747,7 +724,7 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(ctx context.Context, v *model.Version, metadata VersionMetadata, projectInfo *ProjectInfo, aliases model.ProjectAliases) error {
+func createVersionItems(ctx context.Context, v *model.Version, metadata model.VersionMetadata, projectInfo *model.ProjectInfo, aliases model.ProjectAliases) error {
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return errors.WithStack(err)
