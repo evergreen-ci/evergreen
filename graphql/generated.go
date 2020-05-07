@@ -400,12 +400,9 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
-<<<<<<< HEAD
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
-=======
->>>>>>> master
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -2241,12 +2238,9 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
-<<<<<<< HEAD
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
   setPatchPriority(patchId: String!, priority: Int!): String
-=======
->>>>>>> master
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -4752,47 +4746,6 @@ func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field g
 }
 
 func (ec *executionContext) _Mutation_schedulePatchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-<<<<<<< HEAD
-=======
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_schedulePatchTasks_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SchedulePatchTasks(rctx, args["patchId"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Mutation_scheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
->>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -12439,15 +12392,12 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "schedulePatchTasks":
 			out.Values[i] = ec._Mutation_schedulePatchTasks(ctx, field)
-<<<<<<< HEAD
 		case "unschedulePatchTasks":
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
 		case "setPatchPriority":
 			out.Values[i] = ec._Mutation_setPatchPriority(ctx, field)
-=======
->>>>>>> master
 		case "scheduleTask":
 			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {
