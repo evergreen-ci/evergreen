@@ -153,8 +153,6 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 		}
 	}
 
-	// We can replace this painful zero-checking logic once we upgrade to go1.13
-	// and use (reflect.Value).IsZero() (https://golang.org/pkg/reflect/#Value.IsZero).
 	if c.TestDir != "" && (c.Script != "" || len(c.Args) != 0) {
 		return errors.New("cannot specify both test directory and a script or command to run")
 	}
