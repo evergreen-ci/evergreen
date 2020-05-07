@@ -1118,8 +1118,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, err
 	}
-	isAborted := isTaskAborted(obj)
-	return *canRestart == false && isAborted == false, nil
+	return *canRestart == false && !obj.Aborted, nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
