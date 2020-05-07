@@ -448,7 +448,6 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 			proj = projRef
 		}
-		fmt.Println(proj)
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
 				Resource:      proj.Identifier,
