@@ -1,35 +1,52 @@
 {
   "tests": [
     {
-      "query_file": "unschedule-patch-tasks-bad-id.graphql",
+      "query_file": "restart-patch-no-task-ids.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "`taskIds` array is empty. You must provide at least one task id",
+            "path": ["restartPatch"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "restartPatch": null
+        }
+      }
+    },
+    {
+      "query_file": "restart-patch.graphql",
+      "result": {
+        "data": {
+          "restartPatch": "5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "restart-patch-bad-id.graphql",
       "result": {
         "errors": [
           {
             "message": "error finding version washington: 404 (Not Found): version with id washington not found",
-            "path": ["unschedulePatchTasks"],
+            "path": ["restartPatch"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ],
         "data": {
-          "unschedulePatchTasks": null
+          "restartPatch": null
         }
       }
     },
     {
-      "query_file": "unschedule-patch-tasks.graphql",
+      "query_file": "restart-patch-abort.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
-        }
-      }
-    },
-    {
-      "query_file": "abort-unschedule-patch-tasks.graphql",
-      "result": {
-        "data": {
-          "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
+          "restartPatch": "5e4ff3abe3c3317e352062e4"
         }
       }
     }
