@@ -61,6 +61,16 @@ type Project struct {
 	Private bool `yaml:"private,omitempty" bson:"private"`
 }
 
+type ProjectInfo struct {
+	Ref                 *ProjectRef
+	Project             *Project
+	IntermediateProject *ParserProject
+}
+
+func (p *ProjectInfo) NotPopulated() bool {
+	return p.Ref == nil || p.IntermediateProject == nil
+}
+
 // Unmarshalled from the "tasks" list in an individual build variant. Can be either a task or task group
 type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at

@@ -98,10 +98,8 @@ type Connector interface {
 	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int) ([]model.ProjectRef, error)
-	// FindProjectByBranch is a method to find the projectref given a branch name.
-	FindProjectByBranch(string) (*model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
-
+	FindEnabledProjectRefsByOwnerAndRepo(string, string) ([]model.ProjectRef, error)
 	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
 	AddTagsToProject(string, ...string) error
 	RemoveTagFromProject(string, string) error
@@ -109,9 +107,11 @@ type Connector interface {
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
-	CreateVersionFromConfig(context.Context, string, []byte, *user.DBUser, string, bool) (*model.Version, error)
+	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
 	GetVersionsInProject(string, string, int, int) ([]restModel.APIVersion, error)
 
+	// Given a version and a project ID, return the translated project and the intermediate project.
+	LoadProjectForVersion(*model.Version, string) (*model.Project, *model.ParserProject, error)
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
 	// for paginating through the results.
@@ -126,7 +126,8 @@ type Connector interface {
 	FindTasksByVersion(string, string, []string, string, string, int, int, int) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
-
+	//FindUserByGithubUID is a method to find a user given their Github UID, if configured.
+	FindUserByGithubUID(int) (gimlet.User, error)
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)
@@ -184,6 +185,11 @@ type Connector interface {
 
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*model.Version, error)
+
+	// FindVersionByProjectAndRevision returns the version with this project and revision
+	FindVersionByProjectAndRevision(string, string) (*model.Version, error)
+	// AddGitTagToVersion adds a git tag to a version document
+	AddGitTagToVersion(string, model.GitTag) error
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
@@ -260,7 +266,8 @@ type Connector interface {
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project
 	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
-
+	// HasMatchingGitTagAlias returns true if the project has aliases defined that match the given tag
+	HasMatchingGitTagAlias(string, string) (bool, error)
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
 	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error

@@ -34,6 +34,7 @@ type APIProjectVars struct {
 
 type APIProjectAlias struct {
 	Alias       *string   `json:"alias"`
+	GitTag      *string   `json:"git_tag"`
 	Variant     *string   `json:"variant"`
 	Task        *string   `json:"task"`
 	VariantTags []*string `json:"variant_tags,omitempty"`
@@ -132,6 +133,7 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 		Alias:       FromStringPtr(a.Alias),
 		Task:        FromStringPtr(a.Task),
 		Variant:     FromStringPtr(a.Variant),
+		GitTag:      FromStringPtr(a.GitTag),
 		TaskTags:    FromStringPtrSlice(a.TaskTags),
 		VariantTags: FromStringPtrSlice(a.VariantTags),
 	}
@@ -149,6 +151,7 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 
 		a.Alias = ToStringPtr(v.Alias)
 		a.Variant = ToStringPtr(v.Variant)
+		a.GitTag = ToStringPtr(v.GitTag)
 		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
@@ -159,6 +162,7 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 
 		a.Alias = ToStringPtr(v.Alias)
 		a.Variant = ToStringPtr(v.Variant)
+		a.GitTag = ToStringPtr(v.GitTag)
 		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
@@ -176,6 +180,7 @@ func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias
 			Alias:       ToStringPtr(alias.Alias),
 			Variant:     ToStringPtr(alias.Variant),
 			Task:        ToStringPtr(alias.Task),
+			GitTag:      ToStringPtr(alias.GitTag),
 			TaskTags:    ToStringPtrSlice(alias.TaskTags),
 			VariantTags: ToStringPtrSlice(alias.VariantTags),
 		}

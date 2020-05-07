@@ -6,16 +6,14 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/mongodb/grip"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -62,6 +60,14 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version,
 	return v, nil
 }
 
+func (vc *DBVersionConnector) FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
+	return model.VersionFindOne(model.VersionByProjectIdAndRevision(projectId, revision))
+}
+
+func (vc *DBVersionConnector) AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
+	return model.AddGitTag(versionId, gitTag)
+}
+
 // AbortVersion aborts all tasks of a version given its ID.
 // It wraps the service level AbortModel.Version
 func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
@@ -89,6 +95,10 @@ func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) er
 		taskIds = append(taskIds, task.Id)
 	}
 	return model.RestartVersion(versionId, taskIds, true, caller)
+}
+
+func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
+	return model.LoadProjectForVersion(v, projectId, false)
 }
 
 // Fetch versions until 'numVersionElements' elements are created, including
@@ -307,38 +317,25 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 	return nil
 }
 
-func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
-	ref, err := model.FindOneProjectRef(projectID)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "error finding project",
+func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
+	metadata model.VersionMetadata, active bool) (*model.Version, error) {
+	if projectInfo.Ref == nil {
+		ref, err := model.FindOneProjectRef(projectInfo.Ref.Identifier)
+		if err != nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "error finding project",
+			}
 		}
-	}
-	if ref == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project %s does not exist", projectID),
+		if ref == nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project %s does not exist", projectInfo.Ref.Identifier),
+			}
 		}
+		projectInfo.Ref = ref
 	}
-	project := &model.Project{}
-	intermediateProject, err := model.LoadProjectInto(config, projectID, project)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error parsing project config: %s", err.Error()),
-		}
-	}
-	metadata := repotracker.VersionMetadata{
-		IsAdHoc: true,
-		User:    user,
-		Message: message,
-	}
-	projectInfo := &repotracker.ProjectInfo{
-		Ref:                 ref,
-		Project:             project,
-		IntermediateProject: intermediateProject,
-	}
+
 	newVersion, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -410,6 +407,24 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*model.Versi
 	}
 }
 
+func (mvc *MockVersionConnector) FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
+	for _, v := range mvc.CachedVersions {
+		if v.Identifier == projectId && v.Revision == revision {
+			return &v, nil
+		}
+	}
+	return nil, nil
+}
+
+func (mvc *MockVersionConnector) AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
+	for _, v := range mvc.CachedVersions {
+		if v.Id == versionId {
+			v.GitTags = append(v.GitTags, gitTag)
+		}
+	}
+	return errors.New("no version found")
+}
+
 // AbortVersion aborts all tasks of a version given its ID. Specifically, it sets the
 // Aborted key of the tasks to true if they are currently in abortable statuses.
 func (mvc *MockVersionConnector) AbortVersion(versionId, caller string) error {
@@ -436,6 +451,15 @@ func (mvc *MockVersionConnector) GetVersionsAndVariants(skip, numVersionElements
 	return nil, nil
 }
 
-func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
+func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
 	return nil, nil
+}
+
+func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
+	if v.Config != "" {
+		p := &model.Project{}
+		pp, err := model.LoadProjectInto([]byte(v.Config), projectId, p)
+		return p, pp, err
+	}
+	return nil, nil, errors.New("no project for version")
 }
