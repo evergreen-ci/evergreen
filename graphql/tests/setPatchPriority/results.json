@@ -30,10 +30,10 @@
       "result": {
         "errors": [
           {
-            "message": "Error activating version `5e4ff3abe3c3317e352062e4`: Insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "message": "Insufficient access to set priority 999, can only set priority less than or equal to 100",
             "path": ["setPatchPriority"],
             "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
+              "code": "FORBIDDEN"
             }
           }
         ],
