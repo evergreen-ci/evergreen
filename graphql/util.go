@@ -386,21 +386,29 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 	return taskResults
 }
 
+type VersionModificationAction string
+
+const (
+	Restart     VersionModificationAction = "restart"
+	SetActive   VersionModificationAction = "set_active"
+	SetPriority VersionModificationAction = "set_priority"
+)
+
 type VersionModifications struct {
-	Action   string   `json:"action"`
-	Active   bool     `json:"active"`
-	Abort    bool     `json:"abort"`
-	Priority int64    `json:"priority"`
-	TaskIds  []string `json:"task_ids"`
+	Action   VersionModificationAction `json:"action"`
+	Active   bool                      `json:"active"`
+	Abort    bool                      `json:"abort"`
+	Priority int64                     `json:"priority"`
+	TaskIds  []string                  `json:"task_ids"`
 }
 
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (error, int) {
 	switch modifications.Action {
-	case "restart":
+	case Restart:
 		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 			return errors.Errorf("error restarting patch: %s", err), http.StatusInternalServerError
 		}
-	case "set_active":
+	case SetActive:
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return errors.Errorf("error activating patch: %s", err), http.StatusInternalServerError
 		}
@@ -425,7 +433,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				return errors.Errorf("error removing patch from commit queue: %s", err), http.StatusInternalServerError
 			}
 		}
-	case "set_priority":
+	case SetPriority:
 		if proj == nil {
 			projRef, err := model.FindOneProjectRef(version.Branch)
 			if err != nil {

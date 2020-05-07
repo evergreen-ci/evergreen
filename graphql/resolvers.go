@@ -858,7 +858,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
 	modifications := VersionModifications{
-		Action: "set_active",
+		Action: SetActive,
 		Active: true,
 		Abort:  false,
 	}
