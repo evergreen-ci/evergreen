@@ -871,7 +871,7 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 
 func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
 	modifications := VersionModifications{
-		Action: "set_active",
+		Action: SetActive,
 		Active: false,
 		Abort:  abort,
 	}
@@ -887,7 +887,7 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("`taskIds` array is empty. You must provide at least one task id"))
 	}
 	modifications := VersionModifications{
-		Action:  "restart",
+		Action:  Restart,
 		Abort:   abort,
 		TaskIds: taskIds,
 	}
@@ -900,7 +900,7 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
 	modifications := VersionModifications{
-		Action:   "set_priority",
+		Action:   SetPriority,
 		Priority: int64(priority),
 	}
 	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
