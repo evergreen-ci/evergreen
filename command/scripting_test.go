@@ -14,7 +14,7 @@ func TestScripting(t *testing.T) {
 		assert.Equal(t, "subprocess.scripting", cmd.Name())
 	})
 	t.Run("Parse", func(t *testing.T) {
-		t.Run("ErrorMisMatchedTypes", func(t *testing.T) {
+		t.Run("ErrorMismatchedTypes", func(t *testing.T) {
 			cmd := &scriptingExec{}
 			err := cmd.ParseParams(map[string]interface{}{"args": true})
 			require.Error(t, err)
@@ -29,8 +29,41 @@ func TestScripting(t *testing.T) {
 		t.Run("BothArgsAndScript", func(t *testing.T) {
 			cmd := &scriptingExec{}
 			err := cmd.ParseParams(map[string]interface{}{"args": []string{"ls"}, "script": "ls"})
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "but not both")
+			assert.Error(t, err)
+		})
+		t.Run("ErrorsForArgsAndTestDir", func(t *testing.T) {
+			cmd := &scriptingExec{}
+			err := cmd.ParseParams(map[string]interface{}{
+				"args":     []string{"arg"},
+				"test_dir": "dir",
+			})
+			assert.Error(t, err)
+		})
+		t.Run("ErrorsForCommandAndTestDir", func(t *testing.T) {
+			cmd := &scriptingExec{}
+			err := cmd.ParseParams(map[string]interface{}{
+				"command":  "script",
+				"test_dir": "dir",
+			})
+			assert.Error(t, err)
+
+		})
+		t.Run("ErrorsForScriptAndTestDir", func(t *testing.T) {
+			cmd := &scriptingExec{}
+			err := cmd.ParseParams(map[string]interface{}{
+				"script":   "script",
+				"test_dir": "dir",
+			})
+			assert.Error(t, err)
+		})
+		t.Run("ErrorsForTestOptionsWithoutTestDir", func(t *testing.T) {
+			cmd := &scriptingExec{}
+			err := cmd.ParseParams(map[string]interface{}{
+				"test_options": map[string]interface{}{
+					"name": "name",
+				},
+			})
+			assert.Error(t, err)
 		})
 		t.Run("SplitCommandWithArgs", func(t *testing.T) {
 			cmd := &scriptingExec{}
@@ -51,7 +84,6 @@ func TestScripting(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot ignore standard out, and redirect")
 		})
-
 	})
 
 }

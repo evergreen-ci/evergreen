@@ -30,18 +30,27 @@ type scriptingExec struct {
 
 	////////////////////////////////
 	//
-	// Exeuction Options
+	// Execution Options
 
 	// Specify the command to run as a string that Evergreen will
-	// split into an argument array. This, as with subprocess.exec
+	// split into an argument array. This, as with subprocess.exec,
 	// is split using shell parsing rules.
 	Command string `mapstructure:"command"`
 	// Specify the command to run as a list of arguments.
 	Args []string `mapstructure:"args"`
+
 	// Specify the content of a script to execute in the
 	// environment. This probably only makes sense for roswell,
 	// but is here for completeness, and won't be documented.
 	Script string `mapstructure:"script"`
+
+	// TestDir specifies the directory containing the tests that should be run.
+	// This should be a subdirectory of the working directory.
+	TestDir string `mapstructure:"test_dir"`
+	// TestOptions specifies additional options that determine how tests should
+	// be executed.
+	TestOptions *scripting.TestOptions `mapstructure:"test_options"`
+
 	// Specify a list of directories to add to the PATH of the
 	// environment.
 	Path []string `mapstructure:"add_to_path"`
@@ -144,11 +153,23 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 		}
 	}
 
-	if c.Script == "" && len(c.Args) == 0 {
-		return errors.New("must specify either a script or a command")
+	if c.TestDir != "" && (c.Script != "" || len(c.Args) != 0) {
+		return errors.New("cannot specify both test directory and a script or command to run")
+	}
+	if c.Script == "" && len(c.Args) == 0 && c.TestDir == "" {
+		return errors.New("must specify either a script, a command, or a test directory")
 	}
 	if c.Script != "" && len(c.Args) > 0 {
-		return errors.New("must specify either a script or a command, but not both")
+		return errors.New("cannot specify both a script and a command")
+	}
+	if c.Script != "" && c.TestDir != "" {
+		return errors.New("cannot specify both a script and a test directory")
+	}
+	if len(c.Args) > 0 && c.TestDir != "" {
+		return errors.New("cannot specify both a command and a test directory")
+	}
+	if c.TestDir == "" && c.TestOptions != nil {
+		return errors.New("cannot specify options for testing without specifying a test directory")
 	}
 
 	if c.CacheDurationSeconds < 1 {
@@ -356,6 +377,21 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	}
 	if c.Script != "" {
 		catcher.Add(harness.RunScript(ctx, c.Script))
+	}
+	if c.TestDir != "" {
+		var opts scripting.TestOptions
+		if c.TestOptions != nil {
+			opts = *c.TestOptions
+		}
+		results, err := harness.Test(ctx, filepath.Join(c.WorkingDir, c.TestDir), opts)
+		catcher.Add(err)
+		for _, res := range results {
+			logger.Task().Info(message.Fields{
+				"name":     res.Name,
+				"outcome":  res.Outcome,
+				"duration": res.Duration,
+			})
+		}
 	}
 	catcher.CheckExtend(closer)
 	if c.CleanupHarness {
