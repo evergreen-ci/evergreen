@@ -70,7 +70,7 @@ func (s *ArtifactsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *ArtifactsSuite) TestParseErrorWOrks() {
+func (s *ArtifactsSuite) TestParseErrorWorks() {
 	s.cmd.Files = []string{"foo"}
 
 	s.NoError(s.cmd.ParseParams(map[string]interface{}{}))

@@ -49,7 +49,7 @@ type scriptingExec struct {
 	TestDir string `mapstructure:"test_dir"`
 	// TestOptions specifies additional options that determine how tests should
 	// be executed.
-	TestOptions *scripting.TestOptions `mapstructure:"test_options"`
+	TestOptions *scriptingTestOptions `mapstructure:"test_options"`
 
 	// Specify a list of directories to add to the PATH of the
 	// environment.
@@ -131,6 +131,24 @@ type scriptingExec struct {
 	base
 }
 
+type scriptingTestOptions struct {
+	Name        string   `bson:"name" json:"name" yaml:"name"`
+	Args        []string `bson:"args" json:"args" yaml:"args"`
+	Pattern     string   `bson:"pattern" json:"pattern" yaml:"pattern"`
+	TimeoutSecs int      `bson:"timeout_secs" json:"timeout_secs" yaml:"timeout_secs"`
+	Count       int      `bson:"count" json:"count" yaml:"count"`
+}
+
+func (opts *scriptingTestOptions) validate() error {
+	if opts.TimeoutSecs < 0 {
+		return errors.New("cannot specify negative timeout seconds")
+	}
+	if opts.Count < 0 {
+		return errors.New("cannot specify negative run count")
+	}
+	return nil
+}
+
 func subprocessScriptingFactory() Command {
 	return &scriptingExec{}
 }
@@ -168,8 +186,10 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 	if len(c.Args) > 0 && c.TestDir != "" {
 		return errors.New("cannot specify both a command and a test directory")
 	}
-	if c.TestDir == "" && c.TestOptions != nil {
-		return errors.New("cannot specify options for testing without specifying a test directory")
+	if c.TestOptions != nil {
+		if err := c.TestOptions.validate(); err != nil {
+			return errors.Wrap(err, "invalid test options")
+		}
 	}
 
 	if c.CacheDurationSeconds < 1 {
@@ -381,7 +401,13 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	if c.TestDir != "" {
 		var opts scripting.TestOptions
 		if c.TestOptions != nil {
-			opts = *c.TestOptions
+			opts = scripting.TestOptions{
+				Name:    c.TestOptions.Name,
+				Args:    c.TestOptions.Args,
+				Pattern: c.TestOptions.Pattern,
+				Timeout: time.Duration(c.TestOptions.TimeoutSecs) * time.Second,
+				Count:   c.TestOptions.Count,
+			}
 		}
 		results, err := harness.Test(ctx, filepath.Join(c.WorkingDir, c.TestDir), opts)
 		catcher.Add(err)
