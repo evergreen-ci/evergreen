@@ -7,27 +7,24 @@ import (
 )
 
 func TestGetMostRecentlyAddedDevice(t *testing.T) {
-	lsblkOutput := []string{
-		"NAME    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT",
-		"loop0     7:0    0 88.5M  1 loop ...",
-		"xvda    202:0    0   64G  0 disk",
-		"`-xvda1 202:1    0   64G  0 part /",
-		"xvdc    202:160  0   10G  0 disk",
-	}
+	lsblkOutput := `{
+	"blockdevices": [
+		{"name": "loop0", "fstype": "squashfs", "label": null, "uuid": null, "mountpoint": "/snap/core/8935"},
+		{"name": "loop1", "fstype": "squashfs", "label": null, "uuid": null, "mountpoint": "/snap/amazon-ssm-agent/1566"},
+		{"name": "loop2", "fstype": "squashfs", "label": null, "uuid": null, "mountpoint": "/snap/core/9066"},
+		{"name": "nvme0n1", "fstype": null, "label": null, "uuid": null, "mountpoint": null,
+			"children": [
+				{"name": "nvme0n1p1", "fstype": "ext4", "label": "cloudimg-rootfs", "uuid": "6156ec80-9446-4eb1-95e0-9ae6b7a46187", "mountpoint": "/"}
+			]
+		},
+		{"name": "nvme1n1", "fstype": "xfs", "label": null, "uuid": "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", "mountpoint": "/user_home"}
+	]
+}`
 
-	output, err := getMostRecentlyAddedDevice(lsblkOutput)
+	device, err := parseLsblkOutput(lsblkOutput)
 	assert.NoError(t, err)
-	assert.Equal(t, "/dev/xvdc", output)
-
-	lsblkOutput = []string{
-		"NAME        MAJ:MIN RM SIZE RO TYPE MOUNTPOINT",
-		"nvme0n1     259:1    0  40G  0 disk",
-		"`-nvme0n1p1 259:2    0  40G  0 part /",
-		"nvme1n1     259:0    0  40G  0 disk /data",
-		"nvme2n1     259:3    0  10G  0 disk",
-	}
-
-	output, err = getMostRecentlyAddedDevice(lsblkOutput)
-	assert.NoError(t, err)
-	assert.Equal(t, "/dev/nvme2n1", output)
+	assert.Equal(t, "nvme1n1", device.Name)
+	assert.Equal(t, "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", device.UUID)
+	assert.Equal(t, "xfs", device.FSType)
+	assert.Equal(t, "/user_home", device.MountPoint)
 }
