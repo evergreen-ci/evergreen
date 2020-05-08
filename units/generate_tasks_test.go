@@ -197,6 +197,9 @@ func TestGenerateTasks(t *testing.T) {
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
+	projectRef := model.ProjectRef{Identifier: "mci"}
+	require.NoError(projectRef.Insert())
+
 	j := NewGenerateTasksJob("sample_task", "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
