@@ -632,7 +632,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		}
 	}
 	var aliases model.ProjectAliases
-	if metadata.Alias != "" {
+	if metadata.Alias == evergreen.GitTagAlias {
+		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Identifier, metadata.GitTag.Tag)
+		if err != nil {
+			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
+		}
+	} else if metadata.Alias != "" {
 		aliases, err = model.FindAliasInProject(projectInfo.Ref.Identifier, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")

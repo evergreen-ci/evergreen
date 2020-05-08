@@ -126,8 +126,8 @@ type Connector interface {
 	FindTasksByVersion(string, string, []string, string, string, int, int, int) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
-	//FindUserByGithubUID is a method to find a user given their Github UID, if configured.
-	FindUserByGithubUID(int) (gimlet.User, error)
+	//FindUserByGithubName is a method to find a user given their Github name, if configured.
+	FindUserByGithubName(string) (gimlet.User, error)
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)

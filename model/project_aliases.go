@@ -95,6 +95,14 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
+	aliases, err := FindAliasInProject(projectID, evergreen.GitTagAlias)
+	if err != nil {
+		return nil, err
+	}
+	return aliasesMatchingGitTag(aliases, tag)
+}
+
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
 func IsValidId(id string) bool {
 	return mgobson.IsObjectIdHex(id)
@@ -154,19 +162,25 @@ func RemoveProjectAlias(id string) error {
 }
 
 func (a ProjectAliases) HasMatchingGitTag(tag string) (bool, error) {
+	matchingAliases, err := aliasesMatchingGitTag(a, tag)
+	if err != nil {
+		return false, err
+	}
+	return len(matchingAliases) > 0, nil
+}
+
+func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error) {
+	res := []ProjectAlias{}
 	for _, alias := range a {
-		if alias.Alias != evergreen.GitTagAlias {
-			continue
-		}
 		gitTagRegex, err := regexp.Compile(alias.GitTag)
 		if err != nil {
-			return false, errors.Wrapf(err, "unable to compile regex %s", gitTagRegex)
+			return nil, errors.Wrapf(err, "unable to compile regex %s", gitTagRegex)
 		}
 		if isValidRegexOrTag(tag, alias.GitTag, nil, nil, gitTagRegex) {
-			return true, nil
+			res = append(res, alias)
 		}
 	}
-	return false, nil
+	return res, nil
 }
 
 func (a ProjectAliases) HasMatchingVariant(variant string, variantTags []string) (bool, error) {

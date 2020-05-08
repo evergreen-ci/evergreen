@@ -28,8 +28,8 @@ func (tc *DBUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	return t, nil
 }
 
-func (tc *DBUserConnector) FindUserByGithubUID(uid int) (gimlet.User, error) {
-	return user.FindByGithubUID(uid)
+func (tc *DBUserConnector) FindUserByGithubName(name string) (gimlet.User, error) {
+	return user.FindByGithubName(name)
 }
 
 func (u *DBUserConnector) AddPublicKey(user *user.DBUser, keyName, keyValue string) error {
@@ -188,9 +188,9 @@ func (muc *MockUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	return u, nil
 }
 
-func (muc *MockUserConnector) FindUserByGithubUID(uid int) (gimlet.User, error) {
+func (muc *MockUserConnector) FindUserByGithubName(name string) (gimlet.User, error) {
 	for _, u := range muc.CachedUsers {
-		if u.Settings.GithubUser.UID == uid {
+		if u.Settings.GithubUser.LastKnownAs == name {
 			return u, nil
 		}
 	}
