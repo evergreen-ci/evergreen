@@ -869,6 +869,47 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 	return &patchID, nil
 }
 
+func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
+	modifications := VersionModifications{
+		Action: SetActive,
+		Active: false,
+		Abort:  abort,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
+	if len(taskIds) == 0 {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("`taskIds` array is empty. You must provide at least one task id"))
+	}
+	modifications := VersionModifications{
+		Action:  Restart,
+		Abort:   abort,
+		TaskIds: taskIds,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
+	modifications := VersionModifications{
+		Action:   SetPriority,
+		Priority: int64(priority),
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {
@@ -936,19 +977,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
-}
-
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string) (*string, error) {
-	usr := route.MustHaveUser(ctx)
-	_, err := r.sc.FindPatchById(patchID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
-	}
-	err = r.sc.RestartVersion(patchID, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting patch %s: %s", patchID, err.Error()))
-	}
-	return &patchID, nil
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {

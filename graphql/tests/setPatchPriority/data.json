@@ -1,10 +1,29 @@
 {
+  "project_ref": [
+    {
+      "_id": "5a21b064635bf9fa8a3d667a",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "branch_name": "master",
+      "repo_kind": "github",
+      "enabled": true,
+      "private": false,
+      "batch_time": 0,
+      "remote_path": "scripts/agent.yml",
+      "identifier": "evergreen",
+      "display_name": "evergreen smoke test",
+      "local_config": "",
+      "deactivate_previous": true,
+      "tracked": true,
+      "admins": [],
+      "repotracker_error": null
+    }
+  ],
   "versions": [
     {
       "_id": "5e4ff3abe3c3317e352062e4",
       "branch": "evergreen",
-      "identifier": "evergreen",
-      "r": "patch_request"
+      "identifier": "evergreen"
     }
   ],
   "tasks": [
@@ -97,15 +116,6 @@
           "message": ""
         }
       ]
-    }
-  ],
-  "projects": [
-    {
-      "_id": "evergreen",
-      "identifier": "evergreen",
-      "commit_queue": {
-        "patch_type": "PR"
-      }
     }
   ]
 }

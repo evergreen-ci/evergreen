@@ -422,9 +422,12 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			if proj == nil {
-				projRef, err := model.FindOneProjectRef(version.Branch)
+				projRef, err := model.FindOneProjectRef(version.Identifier)
 				if err != nil {
 					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
+				}
+				if projRef == nil {
+					return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 				}
 				proj = projRef
 			}
@@ -436,9 +439,12 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 	case SetPriority:
 		if proj == nil {
-			projRef, err := model.FindOneProjectRef(version.Branch)
+			projRef, err := model.FindOneProjectRef(version.Identifier)
 			if err != nil {
 				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
+			}
+			if projRef == nil {
+				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
 			proj = projRef
 		}
