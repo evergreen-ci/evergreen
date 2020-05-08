@@ -44,8 +44,8 @@ type scriptingExec struct {
 	// but is here for completeness, and won't be documented.
 	Script string `mapstructure:"script"`
 
-	// TestDir specifies the directory containing tests that should be run. This
-	// should be a subdirectory of the working directory.
+	// TestDir specifies the directory containing the tests that should be run.
+	// This should be a subdirectory of the working directory.
 	TestDir string `mapstructure:"test_dir"`
 	// TestOptions specifies additional options that determine how tests should
 	// be executed.
