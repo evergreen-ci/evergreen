@@ -163,9 +163,6 @@ func (ch *CreateHost) ValidateDocker() error {
 	if ch.Image == "" {
 		catcher.New("docker image must be set")
 	}
-	if ch.Command == "" {
-		catcher.New("docker command must be set")
-	}
 
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
