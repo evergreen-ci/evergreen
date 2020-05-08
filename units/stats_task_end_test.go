@@ -33,9 +33,11 @@ func TestRecordTaskCost(t *testing.T) {
 	j.host = h1
 	j.task = t1
 
-	assert.NoError(t, j.recordTaskCost(context.Background()))
+	cost, err := j.recordTaskCost(context.Background())
+	assert.NoError(t, err)
+	assert.NotZero(t, cost)
 
-	h1, err := host.FindOneId(h1.Id)
+	h1, err = host.FindOneId(h1.Id)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 60, h1.TotalCost)
 
