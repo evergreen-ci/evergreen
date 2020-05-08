@@ -121,7 +121,6 @@ func (s *createHostSuite) TestParamValidation() {
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "distro must be set")
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker image must be set")
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker command must be set")
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts cannot be greater than 1")
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
