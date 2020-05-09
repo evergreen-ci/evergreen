@@ -340,6 +340,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
+	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeout) * time.Minute
 
 	args := queue.MongoDBQueueCreationOptions{
 		Size:    e.settings.Amboy.PoolSizeRemote,
@@ -375,6 +376,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = true
 	opts.GroupName = e.settings.Amboy.Name
+	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeout) * time.Minute
 
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
