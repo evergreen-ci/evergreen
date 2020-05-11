@@ -981,7 +981,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// to the standard `err != nil` case above.
 			if !ec2CreateFleetResponseContainsInstance(output) {
 				if len(output.Errors) > 0 {
-					grip.Error(message.WrapError(errors.New(output.Errors[0].String()), msg))
+					grip.Debug(message.WrapError(errors.New(output.Errors[0].String()), msg))
 					return true, errors.Errorf("Got error in CreateFleet response: %s", output.Errors[0].String())
 				}
 				grip.Error(message.WrapError(errors.New("No instance ID and no error in CreateFleet response"), msg))
