@@ -529,6 +529,7 @@ tasks:
           directory: gopath/src/github.com/evergreen-ci/evergreen
           token: ${github_token}
           shallow_clone: false
+      - func: go-get-tools
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
