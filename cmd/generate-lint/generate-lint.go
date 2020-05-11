@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/shrub"
@@ -63,7 +64,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
+			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") || strings.HasPrefix(dir, filepath.Join("rest", "model", "testdata")) {
 				continue
 			}
 
