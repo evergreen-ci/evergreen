@@ -56,7 +56,7 @@ func SchemaToGo(schema string) ([]byte, error) {
 	}
 	parsedAst, parseErr := gqlparser.LoadSchema(&source)
 	if parseErr != nil {
-		return nil, errors.New(parseErr.Error())
+		return nil, errors.Wrap(parseErr, "error parsing schema")
 	}
 	catcher := grip.NewBasicCatcher()
 	structs := ""
@@ -72,7 +72,7 @@ func SchemaToGo(schema string) ([]byte, error) {
 			continue
 		}
 		if gqlType.Kind == ast.Scalar {
-			continue // TODO: add more validation here
+			continue
 		}
 		fields := ""
 		for _, field := range gqlType.Fields {
