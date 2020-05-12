@@ -484,7 +484,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-// FindOneProjectRefByRepoAndBranch finds a signle ProjectRef with matching
+// FindOneProjectRefByRepoAndBranch finds a single ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing. If more than one
 // is found, an error is returned
 func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (*ProjectRef, error) {
@@ -551,6 +551,33 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	projectRef.checkDefaultLogger()
 
 	return projectRef, nil
+}
+
+func FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefEnabledKey: true,
+			ProjectRefOwnerKey:   owner,
+			ProjectRefRepoKey:    repo,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
+	return projectRefs, nil
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {

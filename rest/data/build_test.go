@@ -68,19 +68,6 @@ func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
 	s.Nil(b)
 }
 
-func (s *BuildConnectorFetchByIdSuite) TestFindProjByBranch() {
-	r, err := s.ctx.FindProjectByBranch("branch")
-	s.NoError(err)
-	s.NotNil(r)
-	s.Equal("project", r.Repo)
-}
-
-func (s *BuildConnectorFetchByIdSuite) TestFindProjByBranchFail() {
-	r, err := s.ctx.FindProjectByBranch("notbranch")
-	s.NoError(err)
-	s.Nil(r)
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for change build status route

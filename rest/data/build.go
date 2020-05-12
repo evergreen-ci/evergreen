@@ -31,12 +31,6 @@ func (bc *DBBuildConnector) FindBuildById(buildId string) (*build.Build, error) 
 	return b, nil
 }
 
-// FindProjectByBranch queries the project_refs database to find the name of the
-// project a given branch falls under.
-func (bc *DBBuildConnector) FindProjectByBranch(branch string) (*model.ProjectRef, error) {
-	return model.FindOneProjectRef(branch)
-}
-
 // AbortBuild wraps the service level AbortBuild
 func (bc *DBBuildConnector) AbortBuild(buildId string, user string) error {
 	return model.AbortBuild(buildId, user)
@@ -80,16 +74,6 @@ func (bc *MockBuildConnector) FindBuildById(buildId string) (*build.Build, error
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("build with id %s not found", buildId),
 	}
-}
-
-// FindProjectByBranch accesses the map of branch names to project names to find
-// the project corresponding to a given branch.
-func (bc *MockBuildConnector) FindProjectByBranch(branch string) (*model.ProjectRef, error) {
-	proj, ok := bc.CachedProjects[branch]
-	if !ok {
-		return nil, nil
-	}
-	return proj, nil
 }
 
 // AbortBuild sets the value of the input build Id in CachedAborted to true.

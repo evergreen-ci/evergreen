@@ -125,13 +125,13 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing config file")
 	}
-	metadata := repotracker.VersionMetadata{
+	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
 	}
-	projectInfo := &repotracker.ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 j.project,
 		Project:             proj,
 		IntermediateProject: intermediateProject,

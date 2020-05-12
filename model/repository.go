@@ -48,6 +48,12 @@ type Revision struct {
 	CreateTime      time.Time
 }
 
+type GitTag struct {
+	Tag             string
+	Pusher          string
+	PusherGithubUID int
+}
+
 // FindRepository gets the repository object of a project.
 func FindRepository(projectId string) (*Repository, error) {
 	repository := &Repository{}
