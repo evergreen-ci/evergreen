@@ -350,8 +350,10 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		provisionedImage = fmt.Sprintf(provisionedImageTag, provisionedImage)
 	}
 
-	agentCmdParts := []string{containerHost.DockerOptions.Command}
-	if containerHost.DockerOptions.Command == "" {
+	var agentCmdParts []string
+	if containerHost.DockerOptions.Command != "" {
+		agentCmdParts = append(agentCmdParts, containerHost.DockerOptions.Command)
+	} else if containerHost.DockerOptions.Command == "" && !containerHost.SpawnOptions.SpawnedByTask {
 		// Generate the host secret for container if none exists.
 		if containerHost.Secret == "" {
 			if err = containerHost.CreateSecret(); err != nil {
