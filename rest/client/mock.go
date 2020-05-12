@@ -416,6 +416,10 @@ func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
 	return nil, errors.New("(*Mock) GetVolumesByUser is not implemented")
 }
 
+func (c *Mock) GetVolume(context.Context, string) (*model.APIVolume, error) {
+	return nil, errors.New("(*Mock) GetVolume is not implemented")
+}
+
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	spawnRequest := &model.HostRequestOptions{

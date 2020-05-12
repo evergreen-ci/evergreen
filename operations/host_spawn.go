@@ -738,7 +738,8 @@ func hostCreateVolume() cli.Command {
 
 func hostDeleteVolume() cli.Command {
 	const (
-		idFlagName = "id"
+		idFlagName         = "id"
+		deleteConfirmation = "delete"
 	)
 
 	return cli.Command{
@@ -764,7 +765,16 @@ func hostDeleteVolume() cli.Command {
 			}
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
-
+			v, err := client.GetVolume(ctx, volumeID)
+			if err != nil {
+				return errors.Wrap(err, "problem getting volume")
+			}
+			if v.NoExpiration {
+				msg := fmt.Sprintf("This volume is non-expirable. Please type '%s' if you are sure you want to terminate", deleteConfirmation)
+				if !confirmWithMatchingString(msg, deleteConfirmation) {
+					return nil
+				}
+			}
 			if err = client.DeleteVolume(ctx, volumeID); err != nil {
 				return err
 			}
