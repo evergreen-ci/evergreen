@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -49,11 +50,16 @@ const (
 // all tasks containing the string “test” on all variants containing the string
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
+
+// Git tags use a special alias "__git_tag" and create a new version for the matching
+// variants/tasks, assuming the tag matches the defined git_tag regex.
+// In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
 	ID          mgobson.ObjectId `bson:"_id" json:"_id"`
 	ProjectID   string           `bson:"project_id" json:"project_id"`
 	Alias       string           `bson:"alias" json:"alias"`
 	Variant     string           `bson:"variant,omitempty" json:"variant"`
+	GitTag      string           `bson:"git_tag" json:"git_tag"`
 	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags"`
 	Task        string           `bson:"task,omitempty" json:"task"`
 	TaskTags    []string         `bson:"tags,omitempty" json:"tags"`
@@ -87,6 +93,14 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 		return []ProjectAlias{}, errors.Wrap(err, "error finding project aliases")
 	}
 	return out, nil
+}
+
+func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
+	aliases, err := FindAliasInProject(projectID, evergreen.GitTagAlias)
+	if err != nil {
+		return nil, err
+	}
+	return aliasesMatchingGitTag(aliases, tag)
 }
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
@@ -145,6 +159,28 @@ func RemoveProjectAlias(id string) error {
 		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}
 	return nil
+}
+
+func (a ProjectAliases) HasMatchingGitTag(tag string) (bool, error) {
+	matchingAliases, err := aliasesMatchingGitTag(a, tag)
+	if err != nil {
+		return false, err
+	}
+	return len(matchingAliases) > 0, nil
+}
+
+func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error) {
+	res := []ProjectAlias{}
+	for _, alias := range a {
+		gitTagRegex, err := regexp.Compile(alias.GitTag)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to compile regex %s", gitTagRegex)
+		}
+		if isValidRegexOrTag(tag, alias.GitTag, nil, nil, gitTagRegex) {
+			res = append(res, alias)
+		}
+	}
+	return res, nil
 }
 
 func (a ProjectAliases) HasMatchingVariant(variant string, variantTags []string) (bool, error) {
@@ -213,12 +249,18 @@ func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 		if (strings.TrimSpace(pd.Task) == "") == (len(pd.TaskTags) == 0) {
 			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or task tags on line #%d", aliasType, i+1))
 		}
+		if pd.Alias == evergreen.GitTagAlias && strings.TrimSpace(pd.GitTag) == "" {
+			errs = append(errs, fmt.Sprintf("%s: must define git tag regex on line #%d", aliasType, i+1))
+		}
 
 		if _, err := regexp.Compile(pd.Variant); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
 		}
 		if _, err := regexp.Compile(pd.Task); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
+		}
+		if _, err := regexp.Compile(pd.GitTag); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: git tag regex #%d is invalid", aliasType, i+1))
 		}
 	}
 

@@ -63,6 +63,21 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 	return &u, nil
 }
 
+func FindByGithubName(name string) (*DBUser, error) {
+	u := DBUser{}
+	err := db.FindOneQ(Collection, db.Query(bson.M{
+		bsonutil.GetDottedKeyName(SettingsKey, userSettingsGithubUserKey, githubUserLastKnownAs): name,
+	}), &u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch user by github name")
+	}
+
+	return &u, nil
+}
+
 func ById(userId string) db.Q {
 	return db.Query(bson.M{IdKey: userId})
 }

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -80,6 +81,16 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	}
 	return catcher.Resolve()
 }
+func (d *DBAliasConnector) HasMatchingGitTagAlias(projectId, tag string) (bool, error) {
+	aliasesList, err := model.FindAliasInProject(projectId, evergreen.GitTagAlias)
+	if err != nil {
+		return false, err
+	}
+	if len(aliasesList) == 0 {
+		return false, nil
+	}
+	return model.ProjectAliases(aliasesList).HasMatchingGitTag(tag)
+}
 
 // MockAliasConnector is a struct that implements mock versions of
 // Alias-related methods for testing.
@@ -98,4 +109,7 @@ func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId strin
 
 func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	return nil
+}
+func (d *MockAliasConnector) HasMatchingGitTagAlias(projectId, tag string) (bool, error) {
+	return true, nil
 }

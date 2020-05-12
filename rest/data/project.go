@@ -250,6 +250,10 @@ func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owne
 	return proj, nil
 }
 
+func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
+	return model.FindEnabledProjectRefsByOwnerAndRepo(owner, repo)
+}
+
 func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
 	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(project, requester, limit, startOrder))
 	if err != nil {
@@ -474,6 +478,17 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 	}
 	return nil, nil
 }
+
+func (pc *MockProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
+	refs := []model.ProjectRef{}
+	for _, p := range pc.CachedProjects {
+		if p.Owner == owner && p.Repo == repo && p.Enabled == true {
+			refs = append(refs, p)
+		}
+	}
+	return refs, nil
+}
+
 func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	return true, nil
 }

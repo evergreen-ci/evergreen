@@ -203,6 +203,7 @@ const (
 	// CommitQueueAlias and GithubAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias = "__commit_queue"
 	GithubAlias      = "__github"
+	GitTagAlias      = "__git_tag"
 
 	MergeTaskVariant = "commit-queue-merge"
 	MergeTaskName    = "merge-patch"

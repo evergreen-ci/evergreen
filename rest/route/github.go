@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -28,6 +29,7 @@ const (
 	githubActionReopened    = "reopened"
 
 	retryComment = "evergreen retry"
+	refTags      = "refs/tags/"
 )
 
 type githubHookApi struct {
@@ -194,10 +196,23 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	case *github.PushEvent:
+		grip.Debug(message.Fields{
+			"source":     "github hook",
+			"msg_id":     gh.msgID,
+			"event":      gh.eventType,
+			"event_data": event,
+			"ref":        event.GetRef(),
+			"is_tag":     isTag(event.GetRef()),
+		})
+		if isTag(event.GetRef()) {
+			if err := gh.createVersionForTag(ctx, event); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+			return gimlet.NewJSONResponse(struct{}{})
+		}
 		if err := gh.sc.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		return gimlet.NewJSONResponse(struct{}{})
 
 	case *github.IssueCommentEvent:
 		if event.Issue.IsPullRequest() {
@@ -306,6 +321,190 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest) error {
 	return nil
 }
 
+func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.PushEvent) error {
+	if err := validatePushTagEvent(event); err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "error validating event",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+		}))
+		return err
+	}
+
+	pusher := event.GetPusher().GetName()
+	u, err := gh.sc.FindUserByGithubName(pusher)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "error finding user",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"pusher":  pusher,
+		}))
+		return errors.Errorf("Error finding evergreen user for Github name %s", pusher)
+	}
+	if u == nil {
+		grip.Debug(message.Fields{
+			"source":  "github hook",
+			"message": "no user found",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"pusher":  pusher,
+		})
+		return errors.Errorf("No user found with Github name %s", pusher)
+	}
+	// TODO: add validation for user
+	tag := model.GitTag{
+		Tag:    strings.TrimPrefix(event.GetRef(), refTags),
+		Pusher: event.GetPusher().GetName(),
+	}
+	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
+	hash := event.HeadCommit.GetID()
+
+	projectRefs, err := gh.sc.FindEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "error finding projects",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"owner":   ownerAndRepo[0],
+			"repo":    ownerAndRepo[1],
+			"tag":     tag,
+		}))
+		return errors.Wrapf(err, "error finding projects of repo '%s'", ownerAndRepo)
+	}
+	if len(projectRefs) == 0 {
+		grip.Debug(message.Fields{
+			"source":  "github hook",
+			"message": "no projects found",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"owner":   ownerAndRepo[0],
+			"repo":    ownerAndRepo[1],
+			"tag":     tag,
+		})
+		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
+	}
+	catcher := grip.NewBasicCatcher()
+	for _, pRef := range projectRefs {
+		// if a version for this revision exists for this project, add tag
+		existingVersion, err := gh.sc.FindVersionByProjectAndRevision(pRef.Identifier, hash)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
+				pRef.Identifier, hash, tag.Tag))
+			continue
+		}
+		if existingVersion == nil {
+			grip.Debug(message.Fields{
+				"source":  "github hook",
+				"message": "no version to add tag to",
+				"ref":     event.GetRef(),
+				"event":   gh.eventType,
+				"project": pRef.Identifier,
+				"branch":  pRef.Branch,
+				"owner":   pRef.Owner,
+				"repo":    pRef.Repo,
+				"hash":    hash,
+				"tag":     tag,
+			})
+			continue
+		}
+
+		grip.Debug(message.Fields{
+			"source":  "github hook",
+			"message": "adding tag to version",
+			"version": existingVersion.Id,
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"branch":  pRef.Branch,
+			"owner":   pRef.Owner,
+			"repo":    pRef.Repo,
+			"hash":    hash,
+			"tag":     tag,
+		})
+
+		if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
+			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
+			continue
+		}
+
+		// TODO: only do this if project doesn't have a separate yaml defined
+		hasAliases, err := gh.sc.HasMatchingGitTagAlias(pRef.Identifier, tag.Tag)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem finding aliases for project '%s'", pRef.Identifier))
+			continue
+		}
+		if !hasAliases {
+			continue
+		}
+
+		p, pp, err := gh.sc.LoadProjectForVersion(existingVersion, pRef.Identifier)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier))
+			continue
+		}
+		info := &model.ProjectInfo{
+			Ref:                 &pRef,
+			Project:             p,
+			IntermediateProject: pp,
+		}
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem populating project info for tag '%s' for project '%s'", tag.Tag, pRef.Identifier))
+			continue
+
+		}
+		metadata := model.VersionMetadata{
+			Revision: model.Revision{
+				Author:          event.GetSender().GetLogin(),
+				AuthorGithubUID: int(event.GetSender().GetID()),
+				AuthorEmail:     event.GetSender().GetEmail(),
+				Revision:        hash,
+			},
+			IsAdHoc: true,
+			Alias:   evergreen.GitTagAlias,
+			GitTag:  tag,
+		}
+		_, err = gh.sc.CreateVersionFromConfig(ctx, info, metadata, true)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem creating version for tag '%s' for project '%s'", tag.Tag, pRef.Identifier))
+			continue
+		}
+	}
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		"source":  "github hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"ref":     event.GetRef(),
+		"owner":   ownerAndRepo[0],
+		"repo":    ownerAndRepo[1],
+		"tag":     tag,
+		"message": "errors updating/creating versions for git tag",
+	}))
+	return nil
+}
+
+func validatePushTagEvent(event *github.PushEvent) error {
+	if len(strings.Split(event.Repo.GetFullName(), "/")) != 2 {
+		return errors.New("Repo name is invalid (expected [owner]/[repo])")
+	}
+
+	// check if tag is valid for project
+	if event.GetRef() == "" {
+		return errors.New("Base ref is empty")
+	}
+
+	if event.GetSender().GetLogin() == "" || event.GetSender().GetID() == 0 {
+		return errors.New("Github sender missing login name or uid")
+	}
+
+	if event.GetPusher().GetName() == "" {
+		return errors.New("Github pusher missing login name")
+	}
+	return nil
+}
+
 func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.IssueCommentEvent) error {
 	userRepo := data.UserRepoInfo{
 		Username: *event.Comment.User.Login,
@@ -403,4 +602,8 @@ func triggersRetry(action, comment string) bool {
 	}
 
 	return comment == retryComment
+}
+
+func isTag(ref string) bool {
+	return strings.Contains(ref, refTags)
 }
