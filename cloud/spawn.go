@@ -43,7 +43,7 @@ type SpawnOptions struct {
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
-func (so *SpawnOptions) validate() error {
+func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	if so.Owner == nil {
 		return errors.New("spawn options include nil user")
 	}
@@ -63,7 +63,7 @@ func (so *SpawnOptions) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts)); err != nil {
+	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts), settings); err != nil {
 		return err
 	}
 
@@ -93,12 +93,7 @@ func (so *SpawnOptions) validate() error {
 	return nil
 }
 
-func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrapf(err, "Error occurred getting evergreen settings")
-	}
-
+func checkSpawnHostLimitExceeded(numCurrentHosts int, settings *evergreen.Settings) error {
 	if numCurrentHosts >= settings.Spawnhost.SpawnHostsPerUser {
 		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
 			numCurrentHosts, settings.Spawnhost.SpawnHostsPerUser)
@@ -108,7 +103,7 @@ func checkSpawnHostLimitExceeded(numCurrentHosts int) error {
 
 // CreateSpawnHost spawns a host with the given options.
 func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.Settings) (*host.Host, error) {
-	if err := so.validate(); err != nil {
+	if err := so.validate(settings); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

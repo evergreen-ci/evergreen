@@ -19,7 +19,7 @@ type Volume struct {
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
 	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
 	CreationDate     time.Time `bson:"created_at" json:"created_at"`
-	Host             string    `bson:"host" json:"host"`
+	Host             string    `bson:"host,omitempty" json:"host"`
 }
 
 // Insert a volume into the volumes collection.

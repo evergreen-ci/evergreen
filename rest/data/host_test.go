@@ -275,7 +275,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	config, err := evergreen.GetConfig()
 	s.NoError(err)
 	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
-	s.NoError(config.Set())
 
 	d := &distro.Distro{
 		Id:                   testDistroID,

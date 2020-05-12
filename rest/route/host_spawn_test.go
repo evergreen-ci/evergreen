@@ -31,7 +31,6 @@ func TestHostPostHandler(t *testing.T) {
 	config, err := evergreen.GetConfig()
 	assert.NoError(err)
 	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
-	assert.NoError(config.Set())
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
@@ -43,10 +42,9 @@ func TestHostPostHandler(t *testing.T) {
 		ProviderSettingsList: []*birch.Document{doc},
 	}
 	require.NoError(d.Insert())
-	settings, err := evergreen.GetConfig()
 	assert.NoError(err)
 	h := &hostPostHandler{
-		settings: settings,
+		settings: config,
 		options: &model.HostRequestOptions{
 			TaskID:   "task",
 			DistroID: "distro",

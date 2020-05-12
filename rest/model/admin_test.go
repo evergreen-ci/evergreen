@@ -156,9 +156,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Splunk.Channel, FromStringPtr(apiSettings.Splunk.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, FromStringPtr(apiSettings.Ui.HttpListenAddr))
-	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, apiSettings.Spawnhost.SpawnHostsPerUser)
-	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, apiSettings.Spawnhost.UnexpirableHostsPerUser)
-	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, apiSettings.Spawnhost.UnexpirableVolumesPerUser)
+	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, *apiSettings.Spawnhost.SpawnHostsPerUser)
+	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, *apiSettings.Spawnhost.UnexpirableHostsPerUser)
+	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
