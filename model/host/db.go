@@ -99,6 +99,7 @@ var (
 	VolumeTypeKey                = bsonutil.MustHaveTag(Volume{}, "Type")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Volume{}, "Size")
 	VolumeExpirationKey          = bsonutil.MustHaveTag(Volume{}, "Expiration")
+	VolumeNoExpirationKey        = bsonutil.MustHaveTag(Volume{}, "NoExpiration")
 	VolumeHostKey                = bsonutil.MustHaveTag(Volume{}, "Host")
 	VolumeAttachmentIDKey        = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey          = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
@@ -1255,16 +1256,11 @@ func FindDistroForHost(hostID string) (string, error) {
 	return h.Distro.Id, nil
 }
 
-func FindVolumes(query bson.M) ([]Volume, error) {
+func findVolumes(q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	err := db.FindAll(VolumesCollection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
+	err := db.FindAll(VolumesCollection, q, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
 
 	return volumes, err
-}
-
-func FindVolumesByUser(userID string) ([]Volume, error) {
-	query := bson.M{VolumeCreatedByKey: userID}
-	return FindVolumes(query)
 }
 
 type ClientOptions struct {

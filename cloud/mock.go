@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -39,9 +40,11 @@ type MockInstance struct {
 }
 
 type MockVolume struct {
-	DeviceName string
-	Type       string
-	Size       int
+	DeviceName   string
+	Type         string
+	Size         int
+	Expiration   time.Time
+	NoExpiration bool
 }
 
 type MockProvider interface {
@@ -404,12 +407,28 @@ func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volum
 	l.Lock()
 	defer l.Unlock()
 	v, ok := mockMgr.Volumes[volume.ID]
-	if !ok {
-		return errors.New("volume does not exist")
+	if opts.Size > 0 {
+		v.Size = opts.Size
+		volume.Size = opts.Size
 	}
-	v.Size = opts.Size
-	mockMgr.Volumes[volume.ID] = v
-	return errors.WithStack(volume.SetSize(opts.Size))
+	if !utility.IsZeroTime(opts.Expiration) {
+		v.Expiration = opts.Expiration
+		volume.Expiration = opts.Expiration
+	}
+	if opts.NoExpiration {
+		v.NoExpiration = true
+		volume.NoExpiration = true
+	}
+	if opts.HasExpiration {
+		v.NoExpiration = false
+		volume.NoExpiration = false
+	}
+
+	if ok {
+		mockMgr.Volumes[volume.ID] = v
+	}
+
+	return nil
 }
 
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {

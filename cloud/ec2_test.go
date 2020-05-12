@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -132,10 +133,11 @@ func (s *EC2Suite) SetupTest() {
 	}
 
 	s.volume = &host.Volume{
-		ID:        "test-volume",
-		CreatedBy: "test-user",
-		Type:      "standard",
-		Size:      32,
+		ID:         "test-volume",
+		CreatedBy:  "test-user",
+		Type:       "standard",
+		Size:       32,
+		Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -1484,4 +1486,58 @@ func (s *EC2Suite) TestDetachVolume() {
 	s.NotNil(host)
 	s.NoError(err)
 	s.NotContains(host.Volumes, oldAttachment)
+}
+
+func (s *EC2Suite) TestModifyVolumeExpiration() {
+	s.NoError(s.volume.Insert())
+	newExpiration := s.volume.Expiration.Add(time.Hour)
+	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Expiration: newExpiration}))
+
+	vol, err := host.FindVolumeByID(s.volume.ID)
+	s.NoError(err)
+	s.True(newExpiration.Equal(vol.Expiration))
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.CreateTagsInput
+	s.Len(input.Tags, 1)
+	s.Equal(newExpiration.Add(time.Hour*24*evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
+}
+
+func (s *EC2Suite) TestModifyVolumeNoExpiration() {
+	s.NoError(s.volume.Insert())
+	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NoExpiration: true}))
+
+	vol, err := host.FindVolumeByID(s.volume.ID)
+	s.NoError(err)
+	s.True(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration) < time.Minute)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.CreateTagsInput
+	s.Len(input.Tags, 1)
+	s.Equal(vol.Expiration.Add(time.Hour*24*evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat), *input.Tags[0].Value)
+}
+
+func (s *EC2Suite) TestModifyVolumeSize() {
+	s.NoError(s.volume.Insert())
+	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Size: 100}))
+
+	vol, err := host.FindVolumeByID(s.volume.ID)
+	s.NoError(err)
+	s.Equal(vol.Size, 100)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	input := *mock.ModifyVolumeInput
+	s.Equal(int(*input.Size), 100)
 }

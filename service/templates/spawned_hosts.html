@@ -6,8 +6,9 @@
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
   window.defaultRegion = {{ GetRegion $.User }};
-  window.maxHostsPerUser = {{$.MaxHostsPerUser}};
-  window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}};
+  window.maxHostsPerUser = {{$.MaxHostsPerUser}}
+  window.maxUnexpirableHostsPerUser = {{$.MaxUnexpirableHostsPerUser}}
+  window.maxUnexpirableVolumesPerUser = {{$.MaxUnexpirableVolumesPerUser}}
   window.maxVolumeSizePerUser = {{$.MaxVolumeSizePerUser}};
   {{if .Task}}
   window.spawnTask = {{.Task}}

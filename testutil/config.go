@@ -323,8 +323,11 @@ func MockConfig() *evergreen.Settings {
 			CacheTemplates: true,
 			CsrfKey:        "12345678901234567890123456789012",
 		},
-		SpawnHostsPerUser:       5,
-		UnexpirableHostsPerUser: 2,
+		Spawnhost: evergreen.SpawnHostConfig{
+			SpawnHostsPerUser:         5,
+			UnexpirableHostsPerUser:   2,
+			UnexpirableVolumesPerUser: 2,
+		},
 	}
 }
 

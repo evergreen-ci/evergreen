@@ -152,6 +152,7 @@ type APIVolume struct {
 	Expiration       *time.Time `json:"expiration"`
 	DeviceName       *string    `json:"device_name"`
 	HostID           *string    `json:"host_id"`
+	NoExpiration     bool       `json:"no_expiration"`
 }
 
 type VolumePostRequest struct {
@@ -161,8 +162,11 @@ type VolumePostRequest struct {
 }
 
 type VolumeModifyOptions struct {
-	NewName string `json:"new_name"`
-	Size    int    `json:"size"`
+	NewName       string    `json:"new_name"`
+	Size          int       `json:"size"`
+	Expiration    time.Time `json:"expiration"`
+	NoExpiration  bool      `json:"no_expiration"`
+	HasExpiration bool      `json:"has_expiration"`
 }
 
 func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
@@ -193,6 +197,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.Size = v.Size
 	apiVolume.HostID = ToStringPtr(v.Host)
 	apiVolume.Expiration = ToTimePtr(v.Expiration)
+	apiVolume.NoExpiration = v.NoExpiration
 	return nil
 }
 
@@ -210,6 +215,7 @@ func (apiVolume *APIVolume) ToService() (interface{}, error) {
 		AvailabilityZone: FromStringPtr(apiVolume.AvailabilityZone),
 		Expiration:       expiration,
 		Size:             apiVolume.Size,
+		NoExpiration:     apiVolume.NoExpiration,
 	}, nil
 }
 

@@ -52,6 +52,7 @@ func resetRegistry() error {
 		&Settings{},
 		&JIRANotificationsConfig{},
 		&TriggerConfig{},
+		&SpawnHostConfig{},
 	}
 
 	ConfigRegistry = newConfigSectionRegistry()

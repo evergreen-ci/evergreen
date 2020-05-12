@@ -404,9 +404,9 @@ func (hc *MockConnector) FindHostWithVolume(volumeID string) (*host.Host, error)
 }
 
 func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
-	for _, v := range hc.CachedVolumes {
-		if v.ID == volume.ID {
-			v.DisplayName = name
+	for i := range hc.CachedVolumes {
+		if hc.CachedVolumes[i].ID == volume.ID {
+			hc.CachedVolumes[i].DisplayName = name
 		}
 	}
 	return nil

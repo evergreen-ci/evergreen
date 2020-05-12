@@ -16,6 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.curVolumeData;
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
+    $scope.maxUnexpirableVolumesPerUser = $window.maxUnexpirableVolumesPerUser;
     $scope.maxVolumeSizePerUser = $window.maxVolumeSizePerUser;
     $scope.spawnReqSent = false;
     $scope.volumeReqSent = false;
@@ -245,6 +246,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         var expiretime = moment().diff(volume.expiration, 'seconds');
         volume.expires_in = moment.duration(expiretime, 'seconds').humanize();
       }
+
+      volume.original_expiration = new Date(volume.expiration);
+      volume.current_expiration = new Date(volume.expiration);
+      volume.original_no_expiration = volume.no_expiration;
     }
 
     $scope.computeUptime = function (host) {
@@ -298,7 +303,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       }).length;
     }
 
-    $scope.unexpirableEnabled = function () {
+    $scope.unexpirableHostEnabled = function () {
       return $scope.availableUnexpirableHosts() > 0 || $scope.curHostData && ($scope.curHostData.no_expiration || $scope.curHostData.original_expiration == null)
     };
 
@@ -317,6 +322,16 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.invalidVolumeSize = function(size) {
         return $scope.availableVolumeSize() - size < 0;
     };
+
+    $scope.availableUnexpirableVolumes = function () {
+      return $scope.maxUnexpirableVolumesPerUser - _.where($scope.volumes, {
+        no_expiration: true
+      }).length;
+    }
+
+    $scope.unexpirableVolumeEnabled = function () {
+      return $scope.availableUnexpirableVolumes() > 0 || ($scope.curVolumeData && $scope.curVolumeData.no_expiration)
+    }
 
     $scope.generatePassword = function () {
       $scope.curHostData.password = _.shuffle(
@@ -526,7 +541,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       );
     };
 
-    $scope.update = function () {
+    $scope.updateHost = function () {
       let promises = [];
       // update expiration if it changed
       if (!moment($scope.curHostData.original_expiration).startOf("second").isSame(moment($scope.curHostData.current_expiration).startOf("second"))) {
@@ -600,9 +615,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.updateVolume = function (action) {
       data = {};
-      if (action == "attachVolume" && $scope.volumeAttachHost) {
+      if (action === "attachVolume" && $scope.volumeAttachHost) {
         data.host_id = $scope.volumeAttachHost.id;
       }
+      if (action === "extendVolumeExpiration") {
+        if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
+          action = $scope.curVolumeData.no_expiration? "setVolumeNoExpiration" : "setVolumeHasExpiration";
+        } else if (!$scope.curVolumeData.no_expiration && $scope.curVolumeData.current_expiration != $scope.curVolumeData.original_expiration) {
+          data.expiration = $scope.curVolumeData.current_expiration;
+        }
+      }
+    
       mciSpawnRestService.updateVolume(
         action,
         $scope.curVolumeData.volume_id, data, {
@@ -615,6 +638,21 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         }
       );
     };
+
+    $scope.updateVolumeExpirationEnabled = function() {
+      if (!$scope.curVolumeData) {
+        return false;
+      }
+
+      if ($scope.curVolumeData.no_expiration != $scope.curVolumeData.original_no_expiration) {
+        return true;
+      }
+      if (!$scope.curVolumeData.no_expiration && moment($scope.curVolumeData.original_expiration).startOf("second").isBefore(moment($scope.curVolumeData.current_expiration).startOf("second"))) {
+        return true;
+      }
+
+      return false;
+    }
 
     // API helper methods
     $scope.setSpawnableDistros = function (distros, selectDistroId) {

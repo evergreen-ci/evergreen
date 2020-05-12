@@ -1152,6 +1152,23 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	}
 }
 
+func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		volumes, err := host.FindVolumesWithNoExpirationToExtend()
+		if err != nil {
+			return err
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfHour(0).Format(TSFormat)
+		for i := range volumes {
+			catcher.Add(queue.Put(ctx, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2OnDemand)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateVolumeExpirationJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		volumes, err := host.FindVolumesToDelete(time.Now())

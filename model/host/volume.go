@@ -16,6 +16,7 @@ type Volume struct {
 	Size             int       `bson:"size" json:"size"`
 	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
+	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`
 	CreationDate     time.Time `bson:"created_at" json:"created_at"`
 	Host             string    `bson:"host,omitempty" json:"host"`
 }
@@ -88,13 +89,22 @@ func (v *Volume) SetExpiration(expiration time.Time) error {
 		bson.M{"$set": bson.M{VolumeExpirationKey: v.Expiration}})
 }
 
+func (v *Volume) SetNoExpiration(noExpiration bool) error {
+	v.NoExpiration = noExpiration
+
+	return db.UpdateId(
+		VolumesCollection,
+		v.ID,
+		bson.M{"$set": bson.M{VolumeNoExpirationKey: noExpiration}})
+}
+
 func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	q := bson.M{
 		VolumeExpirationKey: bson.M{"$lte": expirationTime},
 		VolumeHostKey:       bson.M{"$exists": false},
 	}
 
-	return FindVolumes(q)
+	return findVolumes(q)
 }
 
 // FindVolumeByID finds a volume by its ID field.
@@ -126,6 +136,23 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 	return out[0].TotalVolumeSize, nil
 }
 
+func FindVolumesWithNoExpirationToExtend() ([]Volume, error) {
+	query := bson.M{
+		VolumeNoExpirationKey: true,
+		VolumeHostKey:         bson.M{"$exists": false},
+		VolumeExpirationKey:   bson.M{"$lte": time.Now().Add(24 * time.Hour)},
+	}
+
+	return findVolumes(query)
+}
+
+func FindVolumesByUser(userID string) ([]Volume, error) {
+	query := bson.M{
+		VolumeCreatedByKey: userID,
+	}
+	return findVolumes(query)
+}
+
 func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 	volume, err := FindVolumeByID(volumeID)
 	if err != nil {
@@ -143,4 +170,11 @@ func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 		return nil, errors.Errorf("volume '%s' is already attached to host '%s'", volumeID, sourceHost.Id)
 	}
 	return volume, nil
+}
+
+func CountNoExpirationVolumesForUser(userID string) (int, error) {
+	return db.Count(VolumesCollection, bson.M{
+		VolumeNoExpirationKey: true,
+		VolumeCreatedByKey:    userID,
+	})
 }
