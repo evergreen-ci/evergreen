@@ -426,7 +426,6 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	h := &getVolumesHandler{
 		sc: &data.MockConnector{},
 	}
@@ -445,6 +444,7 @@ func TestGetVolumesHandler(t *testing.T) {
 		CachedVolumes: []host.Volume{
 			{
 				ID:               "volume1",
+				Host:             "has-a-volume",
 				CreatedBy:        "user",
 				Type:             evergreen.DefaultEBSType,
 				Size:             64,
@@ -489,7 +489,6 @@ func TestGetVolumesHandler(t *testing.T) {
 }
 
 func TestGetVolumeByIDHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	h := &getVolumeByIDHandler{
 		sc: &data.MockConnector{},
 	}
@@ -508,6 +507,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		CachedVolumes: []host.Volume{
 			{
 				ID:               "volume1",
+				Host:             "has-a-volume",
 				CreatedBy:        "user",
 				Type:             evergreen.DefaultEBSType,
 				Size:             64,
