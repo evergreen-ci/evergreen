@@ -198,33 +198,34 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	origProjectRef := *projectRef
 
 	responseRef := struct {
-		Identifier          string                         `json:"identifier"`
-		DisplayName         string                         `json:"display_name"`
-		RemotePath          string                         `json:"remote_path"`
-		BatchTime           int                            `json:"batch_time"`
-		DeactivatePrevious  bool                           `json:"deactivate_previous"`
-		Branch              string                         `json:"branch_name"`
-		ProjVarsMap         map[string]string              `json:"project_vars"`
-		GitHubAliases       []model.ProjectAlias           `json:"github_aliases"`
-		CommitQueueAliases  []model.ProjectAlias           `json:"commit_queue_aliases"`
-		PatchAliases        []model.ProjectAlias           `json:"patch_aliases"`
-		DeleteAliases       []string                       `json:"delete_aliases"`
-		DefaultLogger       string                         `json:"default_logger"`
-		PrivateVars         map[string]bool                `json:"private_vars"`
-		RestrictedVars      map[string]bool                `json:"restricted_vars"`
-		Enabled             bool                           `json:"enabled"`
-		Private             bool                           `json:"private"`
-		Restricted          bool                           `json:"restricted"`
-		Owner               string                         `json:"owner_name"`
-		Repo                string                         `json:"repo_name"`
-		Admins              []string                       `json:"admins"`
-		TracksPushEvents    bool                           `json:"tracks_push_events"`
-		PRTestingEnabled    bool                           `json:"pr_testing_enabled"`
-		CommitQueue         restModel.APICommitQueueParams `json:"commit_queue"`
-		TaskSync            restModel.APITaskSyncOptions   `json:"task_sync"`
-		PatchingDisabled    bool                           `json:"patching_disabled"`
-		RepotrackerDisabled bool                           `json:"repotracker_disabled"`
-		AlertConfig         map[string][]struct {
+		Identifier            string                         `json:"identifier"`
+		DisplayName           string                         `json:"display_name"`
+		RemotePath            string                         `json:"remote_path"`
+		BatchTime             int                            `json:"batch_time"`
+		DeactivatePrevious    bool                           `json:"deactivate_previous"`
+		Branch                string                         `json:"branch_name"`
+		ProjVarsMap           map[string]string              `json:"project_vars"`
+		GitHubAliases         []model.ProjectAlias           `json:"github_aliases"`
+		CommitQueueAliases    []model.ProjectAlias           `json:"commit_queue_aliases"`
+		PatchAliases          []model.ProjectAlias           `json:"patch_aliases"`
+		DeleteAliases         []string                       `json:"delete_aliases"`
+		DefaultLogger         string                         `json:"default_logger"`
+		PrivateVars           map[string]bool                `json:"private_vars"`
+		RestrictedVars        map[string]bool                `json:"restricted_vars"`
+		Enabled               bool                           `json:"enabled"`
+		Private               bool                           `json:"private"`
+		Restricted            bool                           `json:"restricted"`
+		Owner                 string                         `json:"owner_name"`
+		Repo                  string                         `json:"repo_name"`
+		Admins                []string                       `json:"admins"`
+		GitTagAuthorizedUsers []string                       `json:"git_tag_authorized_users"`
+		TracksPushEvents      bool                           `json:"tracks_push_events"`
+		PRTestingEnabled      bool                           `json:"pr_testing_enabled"`
+		CommitQueue           restModel.APICommitQueueParams `json:"commit_queue"`
+		TaskSync              restModel.APITaskSyncOptions   `json:"task_sync"`
+		PatchingDisabled      bool                           `json:"patching_disabled"`
+		RepotrackerDisabled   bool                           `json:"repotracker_disabled"`
+		AlertConfig           map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
@@ -446,6 +447,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
+	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
