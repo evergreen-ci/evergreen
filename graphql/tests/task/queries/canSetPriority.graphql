@@ -1,0 +1,8 @@
+{
+  yes: task(taskId: "some_task_2") {
+    canSetPriority
+  }
+  no: task(taskId: "some_task") {
+    canSetPriority
+  }
+}

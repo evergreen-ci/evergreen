@@ -51,8 +51,8 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 
 	s.False(j.ExcludeLocal)
 	s.False(j.ExcludeRemote)
-	s.True(j.env.LocalQueue().Started())
-	s.True(j.env.RemoteQueue().Started())
+	s.True(j.env.LocalQueue().Info().Started)
+	s.True(j.env.RemoteQueue().Info().Started)
 
 	j.Run(context.Background())
 	s.True(s.sender.HasMessage())

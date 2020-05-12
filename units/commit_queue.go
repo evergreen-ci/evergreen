@@ -375,7 +375,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 
 	subscriber := event.NewCommitQueueDequeueSubscriber()
 
-	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
+	patchSub := event.NewExpiringPatchOutcomeSubscription(nextItem.Issue, subscriber)
 	if err = patchSub.Upsert(); err != nil {
 		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
@@ -559,7 +559,7 @@ func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest,
 		Item:        strconv.Itoa(*pr.Number),
 		MergeMethod: projectRef.CommitQueue.MergeMethod,
 	})
-	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)
+	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, mergeSubscriber)
 	if err := patchSub.Upsert(); err != nil {
 		return errors.Wrapf(err, "failed to insert patch subscription for commit queue merge on PR %d", *pr.Number)
 	}

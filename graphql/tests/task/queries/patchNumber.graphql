@@ -1,6 +1,5 @@
 {
   task(taskId: "taskity_task") {
-    id
     patchNumber
   }
 }

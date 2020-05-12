@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// LockTimeout describes the period of time that a queue will respect
+// LockTimeout describes the default period of time that a queue will respect
 // a stale lock from another queue before beginning work on a job.
 const LockTimeout = 10 * time.Minute
 
@@ -77,8 +77,8 @@ type Job interface {
 	// not-in-progress, and should be a no-op if the job does not
 	// belong to the owner. In general the owner should be the value
 	// of queue.ID()
-	Lock(string) error
-	Unlock(string)
+	Lock(owner string, lockTimeout time.Duration) error
+	Unlock(owner string, lockTimeout time.Duration)
 
 	// Scope provides the ability to provide more configurable
 	// exclusion a job can provide.
@@ -183,9 +183,8 @@ type Queue interface {
 	// blocking, but may be interrupted with a canceled context.
 	Next(context.Context) Job
 
-	// Makes it possible to detect if a Queue has started
-	// dispatching jobs to runners.
-	Started() bool
+	// Info returns information related to management of the Queue.
+	Info() QueueInfo
 
 	// Used to mark a Job complete and remove it from the pending
 	// work of the queue.
@@ -221,6 +220,12 @@ type Queue interface {
 	// Begins the execution of the job Queue, using the embedded
 	// Runner.
 	Start(context.Context) error
+}
+
+// QueueInfo describes runtime information associated with a Queue.
+type QueueInfo struct {
+	Started     bool
+	LockTimeout time.Duration
 }
 
 // QueueGroup describes a group of queues. Each queue is indexed by a

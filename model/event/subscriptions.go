@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -31,6 +33,7 @@ var (
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
 	subscriptionTriggerDataKey    = bsonutil.MustHaveTag(Subscription{}, "TriggerData")
+	subscriptionLastUpdatedKey    = bsonutil.MustHaveTag(Subscription{}, "LastUpdated")
 )
 
 type OwnerType string
@@ -80,6 +83,7 @@ type Subscription struct {
 	OwnerType      OwnerType         `bson:"owner_type"`
 	Owner          string            `bson:"owner"`
 	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
+	LastUpdated    time.Time         `bson:"last_updated,omitempty"`
 }
 
 type unmarshalSubscription struct {
@@ -219,6 +223,9 @@ func (s *Subscription) Upsert() error {
 		subscriptionOwnerKey:          s.Owner,
 		subscriptionOwnerTypeKey:      s.OwnerType,
 		subscriptionTriggerDataKey:    s.TriggerData,
+	}
+	if !utility.IsZeroTime(s.LastUpdated) {
+		update[subscriptionLastUpdatedKey] = s.LastUpdated
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
@@ -502,8 +509,10 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 	}
 }
 
-func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
-	return NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
+func NewExpiringPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
+	subscription.LastUpdated = time.Now()
+	return subscription
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
@@ -571,7 +580,7 @@ func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger 
 	}
 }
 
-func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
+func NewExpiringBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
 	return Subscription{
 		ResourceType: ResourceTypeBuild,
 		Trigger:      TriggerOutcome,
@@ -581,7 +590,8 @@ func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subs
 				Data: versionID,
 			},
 		},
-		Subscriber: sub,
+		Subscriber:  sub,
+		LastUpdated: time.Now(),
 	}
 }
 

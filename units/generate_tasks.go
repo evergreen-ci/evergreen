@@ -65,7 +65,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"task":    t.Id,
 			"version": t.Version,
 		})
-		return nil
+		return mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
 		grip.Debug(message.Fields{
@@ -76,8 +76,40 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
+	v, err := model.VersionFindOneId(t.Version)
+	if err != nil {
+		return errors.Wrapf(err, "error finding version %s", t.Version)
+	}
+	if v == nil {
+		return errors.Wrapf(err, "unable to find version %s", t.Version)
+	}
+	p, pp, err := model.LoadProjectForVersion(v, t.Project, false)
+	if err != nil {
+		return errors.Wrapf(err, "error getting project for version %s", t.Version)
+	}
+
+	// Get task again, to exit early if another generator finished while we looked for a
+	// version. This makes it less likely that we enter `NewVersion` with a config that has
+	// already been updated by another generator and therefore will be invalid because the
+	// config has already been modified. We do this again in `handleError` to reduce the chances
+	// of this race as close to zero as possible.
+	t, err = task.FindOneId(t.Id)
+	if err != nil {
+		return errors.Wrapf(err, "error finding task %s", t.Id)
+	}
+	if t == nil {
+		return errors.Errorf("unable to find task %s", t.Id)
+	}
+	if t.GeneratedTasks {
+		grip.Debug(message.Fields{
+			"message": "attempted to generate tasks after getting config, but generator already ran for this task",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return mongo.ErrNoDocuments
+	}
+
 	var projects []model.GeneratedProject
-	var err error
 	if len(t.GeneratedJSONAsString) > 0 {
 		projects, err = parseProjectsAsString(t.GeneratedJSONAsString)
 	} else {
@@ -97,7 +129,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 	start = time.Now()
 
-	g := model.MergeGeneratedProjects(projects)
+	g, err := model.MergeGeneratedProjects(projects)
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
 		"function":      "generate",
@@ -107,10 +139,13 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
+	if err != nil {
+		return errors.Wrap(err, "error merging generated projects")
+	}
 	start = time.Now()
 	g.TaskID = j.TaskID
 
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
@@ -170,6 +205,26 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 // handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
 func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
+	// Get task again, to exit nil if another generator finished, which caused us to error.
+	// Checking this again here makes it very unlikely that there is a race, because both
+	// `t.GeneratedTasks` checks must have been in between the racing generator's call to
+	// save the config and set the task's boolean.
+	t, err := task.FindOneId(j.TaskID)
+	if err != nil {
+		return errors.Wrapf(err, "error finding task %s", j.TaskID)
+	}
+	if t == nil {
+		return errors.Errorf("unable to find task %s", j.TaskID)
+	}
+	if t.GeneratedTasks {
+		grip.Debug(message.Fields{
+			"message": "handledError encountered task that already generating, nooping",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return mongo.ErrNoDocuments
+	}
+
 	if v == nil {
 		return handledError
 	}

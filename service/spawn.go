@@ -87,8 +87,10 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxHostsPerUser              int
 		MaxUnexpirableHostsPerUser   int
 		MaxUnexpirableVolumesPerUser int
+		MaxVolumeSizePerUser         int
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
+		uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -469,6 +471,39 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return
 	}
+}
+
+func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
+	authedUser := MustHaveUser(r)
+	volume := &host.Volume{}
+	if err := utility.ReadJSON(util.NewRequestReader(r), volume); err != nil {
+		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
+		return
+	}
+	if volume.Size == 0 {
+		http.Error(w, "Size is required", http.StatusBadRequest)
+		return
+	}
+	if volume.AvailabilityZone == "" {
+		volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone
+	}
+	if volume.Type == "" {
+		volume.Type = evergreen.DefaultEBSType
+	}
+	if err := cloud.ValidVolumeOptions(volume, &uis.Settings); err != nil {
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
+	}
+
+	volume.CreatedBy = authedUser.Id
+	ctx := r.Context()
+	if _, err := cloud.CreateVolume(ctx, uis.env, volume, evergreen.ProviderNameEc2OnDemand); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error creating volume"))
+		return
+	}
+
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Volume Created"))
+	gimlet.WriteJSON(w, "Volume successfully created")
+	return
 }
 
 func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {

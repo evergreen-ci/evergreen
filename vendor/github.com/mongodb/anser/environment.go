@@ -116,7 +116,7 @@ func (e *envState) Setup(q amboy.Queue, cl client.Client, session db.Session) er
 	defer e.mu.Unlock()
 	catcher.NewWhen(e.isSetup, "reconfiguring a queue is not supported")
 
-	catcher.NewWhen(!q.Started(), "configuring anser environment with a non-running queue")
+	catcher.NewWhen(!q.Info().Started, "configuring anser environment with a non-running queue")
 
 	if catcher.HasErrors() {
 		return catcher.Resolve()

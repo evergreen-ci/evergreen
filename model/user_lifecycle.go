@@ -50,16 +50,17 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	if refreshToken != "" {
 		setFields[bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheRefreshTokenKey)] = refreshToken
 	}
-	if roles != nil {
-		setFields[user.RolesKey] = roles
+	setOnInsertFields := bson.M{
+		user.APIKeyKey: utility.RandomString(),
+	}
+	if roles != nil && len(roles) > 0 {
+		setOnInsertFields[user.RolesKey] = roles
 	}
 	res := env.DB().Collection(user.Collection).FindOneAndUpdate(ctx,
 		bson.M{user.IdKey: userId},
 		bson.M{
-			"$set": setFields,
-			"$setOnInsert": bson.M{
-				user.APIKeyKey: utility.RandomString(),
-			},
+			"$set":         setFields,
+			"$setOnInsert": setOnInsertFields,
 		},
 		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
 	)

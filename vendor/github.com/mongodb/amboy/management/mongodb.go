@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -48,6 +47,7 @@ func (o *DBQueueManagerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(o.SingleGroup && o.ByGroups, "cannot specify conflicting group options")
 	catcher.NewWhen(o.Name == "", "must specify queue name")
+	catcher.Wrap(o.Options.Validate(), "invalid mongo options")
 	return catcher.Resolve()
 }
 
@@ -243,7 +243,7 @@ func (db *dbQueueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobSt
 		match["status.completed"] = false
 	case Stale:
 		match["status.in_prog"] = true
-		match["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+		match["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-db.opts.Options.LockTimeout)}
 		match["status.completed"] = false
 	case Completed:
 		match["status.in_prog"] = false
@@ -384,7 +384,7 @@ func (db *dbQueueManager) JobIDsByState(ctx context.Context, jobType string, f S
 		query["status.in_prog"] = false
 	case Stale:
 		query["status.in_prog"] = true
-		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-db.opts.Options.LockTimeout)}
 	case Completed:
 		query["status.in_prog"] = false
 		query["status.completed"] = true
@@ -602,12 +602,14 @@ func (db *dbQueueManager) completeJobs(ctx context.Context, query bson.M, f Stat
 		query["status.in_prog"] = true
 	case Stale:
 		query["status.in_prog"] = true
-		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-amboy.LockTimeout)}
+		query["status.mod_ts"] = bson.M{"$gt": time.Now().Add(-db.opts.Options.LockTimeout)}
 	case Pending:
 		query["status.completed"] = false
 		query["status.in_prog"] = false
 	case All:
 		query["status.in_prog"] = false
+	default:
+		return errors.New("invalid job status filter")
 	}
 
 	res, err := db.collection.UpdateMany(ctx, query, db.getUpdateStatement())

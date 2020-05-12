@@ -184,6 +184,24 @@ const (
 	checkSuccessInitPeriod = 2 * time.Second
 )
 
+const (
+	VolumeTypeStandard = "standard"
+	VolumeTypeIo2      = "io1"
+	VolumeTypeGp2      = "gp2"
+	VolumeTypeSc1      = "sc1"
+	VolumeTypeSt1      = "st1"
+)
+
+var (
+	ValidVolumeTypes = []string{
+		VolumeTypeStandard,
+		VolumeTypeIo2,
+		VolumeTypeGp2,
+		VolumeTypeSc1,
+		VolumeTypeSt1,
+	}
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.

@@ -2,16 +2,15 @@ package model
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -32,7 +31,7 @@ type GeneratedProject struct {
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
-func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
+func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 
 	bvs := map[string]*parserBV{}
@@ -45,7 +44,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
-					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
+					catcher.Errorf("found duplicate buildvariant (%s)", bv.Name)
 				} else {
 					bvs[bv.Name] = &p.BuildVariants[i]
 					continue mergeBuildVariants
@@ -59,20 +58,20 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 		}
 		for i, t := range p.Tasks {
 			if _, ok := tasks[t.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task (%s)", t.Name))
+				catcher.Errorf("found duplicate task (%s)", t.Name)
 			} else {
 				tasks[t.Name] = &p.Tasks[i]
 			}
 		}
 		for f, val := range p.Functions {
 			if _, ok := functions[f]; ok {
-				catcher.Add(errors.Errorf("found duplicate function (%s)", f))
+				catcher.Errorf("found duplicate function (%s)", f)
 			}
 			functions[f] = val
 		}
 		for i, tg := range p.TaskGroups {
 			if _, ok := taskGroups[tg.Name]; ok {
-				catcher.Add(errors.Errorf("found duplicate task group (%s)", tg.Name))
+				catcher.Errorf("found duplicate task group (%s)", tg.Name)
 			} else {
 				taskGroups[tg.Name] = &p.TaskGroups[i]
 			}
@@ -90,7 +89,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	for i := range taskGroups {
 		g.TaskGroups = append(g.TaskGroups, *taskGroups[i])
 	}
-	return g
+	return g, catcher.Resolve()
 }
 
 // ParseProjectFromJSON returns a GeneratedTasks type from JSON. We use the
@@ -118,57 +117,46 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
-func (g *GeneratedProject) NewVersion() (*Project, *ParserProject, *Version, *task.Task, *projectMaps, error) {
-	// Get task, version, and project.
-	t, err := task.FindOneId(g.TaskID)
-	if err != nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
-	}
-	if t == nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find task %s", g.TaskID)}
-	}
-	v, err := VersionFindOneId(t.Version)
-	if err != nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
-	}
-	if v == nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
-	}
-	p, pp, err := LoadProjectForVersion(v, t.Project, false)
-	if err != nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error getting project for version %s", t.Version).Error()}
-	}
-
+func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, *projectMaps, error) {
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
 	// Validate generated project against original project.
-	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
+	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
-		return nil, pp, v, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
+		return nil, pp, v, nil, errors.Wrap(err, "generated project is invalid")
 	}
 
 	newPP, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+		return nil, nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
 	}
 	newPP.Id = v.Id
 	p, err = TranslateProject(newPP)
 	if err != nil {
-		return nil, nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error translating project").Error()}
+		return nil, nil, nil, nil, errors.Wrap(err, "error translating project")
 	}
-	return p, newPP, v, t, &cachedProject, nil
+	return p, newPP, v, &cachedProject, nil
 }
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
+	// Get task again, to exit early if another generator finished early.
+	t, err := task.FindOneId(g.TaskID)
+	if err != nil {
+		return errors.Wrapf(err, "error finding task %s", g.TaskID)
+	}
+	if t == nil {
+		return errors.Errorf("unable to find task %s", g.TaskID)
+	}
+	if t.GeneratedTasks {
+		grip.Debug(message.Fields{
+			"message": "skipping attempting to update parser project because another generator marked the task complete",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return mongo.ErrNoDocuments
+	}
+
 	if err := updateParserProject(v, pp); err != nil {
 		return errors.WithStack(err)
 	}
@@ -219,7 +207,11 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-
+	// for patches activate all builds, otherwise activate ones that are not setting batchtime
+	var variantsToActivate []string
+	if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester {
+		variantsToActivate = g.findVariantsToActivate()
+	}
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -266,7 +258,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, true, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
+	_, tasksInNewBuilds, err := AddNewBuilds(ctx, variantsToActivate, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
@@ -276,6 +268,19 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	}
 
 	return nil
+}
+
+func (g *GeneratedProject) findVariantsToActivate() []string {
+	var toActivate []string
+	for _, bv := range g.BuildVariants {
+		if bv.BatchTime == nil && bv.CronBatchTime == "" {
+			if toActivate == nil {
+				toActivate = []string{}
+			}
+			toActivate = append(toActivate, bv.name())
+		}
+	}
+	return toActivate
 }
 
 func addDependencies(t *task.Task, newTaskIds []string) error {

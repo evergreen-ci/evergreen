@@ -331,12 +331,12 @@ func TestQueueGroup(t *testing.T) {
 					q1, err := g.Get(ctx, "one")
 					require.NoError(t, err)
 					require.NotNil(t, q1)
-					require.True(t, q1.Started())
+					require.True(t, q1.Info().Started)
 
 					q2, err := g.Get(ctx, "two")
 					require.NoError(t, err)
 					require.NotNil(t, q2)
-					require.True(t, q2.Started())
+					require.True(t, q2.Info().Started)
 
 					j1 := job.NewShellJob("true", "")
 					j2 := job.NewShellJob("true", "")
@@ -397,28 +397,28 @@ func TestQueueGroup(t *testing.T) {
 					q1, err := g.Get(ctx, "one")
 					require.NoError(t, err)
 					require.NotNil(t, q1)
-					if !q1.Started() {
+					if !q1.Info().Started {
 						require.NoError(t, q1.Start(ctx))
 					}
 
 					q2, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.Error(t, g.Put(ctx, "one", q2), "cannot add queue to existing index")
-					if !q2.Started() {
+					if !q2.Info().Started {
 						require.NoError(t, q2.Start(ctx))
 					}
 
 					q3, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "three", q3))
-					if !q3.Started() {
+					if !q3.Info().Started {
 						require.NoError(t, q3.Start(ctx))
 					}
 
 					q4, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "four", q4))
-					if !q4.Started() {
+					if !q4.Info().Started {
 						require.NoError(t, q4.Start(ctx))
 					}
 

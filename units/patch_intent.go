@@ -119,6 +119,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"repo":         patchDoc.GithubPatchData.BaseRepo,
 				"pr_number":    patchDoc.GithubPatchData.PRNumber,
 				"commit":       patchDoc.GithubPatchData.HeadHash,
+				"project":      patchDoc.Project,
+				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
 			}))
 		}
@@ -312,11 +314,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			PRNumber: patchDoc.GithubPatchData.PRNumber,
 			Ref:      patchDoc.GithubPatchData.HeadHash,
 		})
-		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 		if err = patchSub.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
 		}
-		buildSub := event.NewBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
+		buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 		if err = buildSub.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}

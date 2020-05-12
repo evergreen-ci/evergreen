@@ -194,6 +194,22 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
+func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.Volume, provider string) (*host.Volume, error) {
+	mgrOpts := ManagerOpts{
+		Provider: provider,
+		Region:   AztoRegion(volume.AvailabilityZone),
+	}
+	mgr, err := GetManager(ctx, env, mgrOpts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting manager")
+	}
+
+	if volume, err = mgr.CreateVolume(ctx, volume); err != nil {
+		return nil, errors.Wrapf(err, "error creating volume")
+	}
+	return volume, nil
+}
+
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {
@@ -321,15 +337,9 @@ func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settin
 			return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
 		}
 
-		azFound := false
-		for _, subnet := range settings.Providers.AWS.Subnets {
-			if subnet.AZ == volume.AvailabilityZone {
-				azFound = true
-				ec2Settings.SubnetId = subnet.SubnetID
-			}
-		}
-		if !azFound {
-			return nil, errors.Errorf("no subnet found for AZ '%s'", volume.AvailabilityZone)
+		ec2Settings.SubnetId, err = getSubnetForZone(settings.Providers.AWS.Subnets, volume.AvailabilityZone)
+		if err != nil {
+			return nil, errors.Wrapf(err, "no subnet found for AZ '%s'", volume.AvailabilityZone)
 		}
 	}
 

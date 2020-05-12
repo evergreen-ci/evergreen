@@ -295,7 +295,7 @@ func TestPreventMergeForItemPR(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 
 	patchID := "abcdef012345"
-	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
+	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
 	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
@@ -313,7 +313,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection))
 
 	patchID := "abcdef012345"
-	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
 	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
@@ -348,7 +348,7 @@ func TestClearVersionPatchSubscriber(t *testing.T) {
 	require.NoError(t, db.Clear(event.SubscriptionsCollection))
 
 	patchID := "abcdef012345"
-	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
 	assert.NoError(t, patchSub.Upsert())
 
 	assert.NoError(t, clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))

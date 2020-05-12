@@ -2,6 +2,7 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/suite"
@@ -15,6 +16,7 @@ func TestSubscriptions(t *testing.T) {
 type subscriptionsSuite struct {
 	suite.Suite
 	subscriptions []Subscription
+	now           time.Time
 }
 
 func (s *subscriptionsSuite) SetupTest() {
@@ -25,6 +27,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	t3 := "someone3@example.com"
 	t4 := "someone4@example.com"
 	t5 := "slack_user"
+	s.now = time.Now().Round(time.Second)
 	s.subscriptions = []Subscription{
 		{
 			ID:           mgobson.NewObjectId().Hex(),
@@ -125,8 +128,9 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   SlackSubscriberType,
 				Target: &t5,
 			},
-			Owner:     "me",
-			OwnerType: OwnerTypeProject,
+			Owner:       "me",
+			OwnerType:   OwnerTypeProject,
+			LastUpdated: s.now,
 		},
 		NewPatchOutcomeSubscriptionByOwner("user_0", Subscriber{
 			Type:   EmailSubscriberType,
@@ -155,6 +159,9 @@ func (s *subscriptionsSuite) TestUpsert() {
 		}
 		if sub.ID == "5949645c9acd9604fdd202d8" {
 			s.Equal(s.subscriptions[3].TriggerData, sub.TriggerData)
+		}
+		if sub.ID == s.subscriptions[4].ID {
+
 		}
 	}
 }

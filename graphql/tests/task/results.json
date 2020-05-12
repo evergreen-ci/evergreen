@@ -1,17 +1,6 @@
 {
   "tests": [
     {
-      "query_file": "patchNumber.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "taskity_task",
-            "patchNumber": 1234
-          }
-        }
-      }
-    },
-    {
       "query_file": "baseTaskMetadata.graphql",
       "result": {
         "data": {
@@ -204,6 +193,49 @@
     {
       "query_file": "failedTestCount-no-tests.graphql",
       "result": { "data": { "task": { "failedTestCount": 0 } } }
+    },
+    {
+      "query_file": "patchNumber.graphql",
+      "result": { "data": { "task": { "patchNumber": 2567 } } }
+    },
+    {
+      "query_file": "canAbort.graphql",
+      "result": {
+        "data": { "yes": { "canAbort": true }, "no": { "canAbort": false } }
+      }
+    },
+    {
+      "query_file": "canSchedule.graphql",
+      "result": {
+        "data": {
+          "yes": { "canSchedule": true },
+          "no": { "canSchedule": false }
+        }
+      }
+    },
+    {
+      "query_file": "canRestart.graphql",
+      "result": {
+        "data": { "yes": { "canRestart": true }, "no": { "canRestart": false } }
+      }
+    },
+    {
+      "query_file": "canSetPriority.graphql",
+      "result": {
+        "data": {
+          "yes": { "canSetPriority": true },
+          "no": { "canSetPriority": false }
+        }
+      }
+    },
+    {
+      "query_file": "canUnschedule.graphql",
+      "result": {
+        "data": {
+          "yes": { "canUnschedule": true },
+          "no": { "canUnschedule": false }
+        }
+      }
     }
   ]
 }

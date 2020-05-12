@@ -569,6 +569,28 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 	return nil
 }
 
+func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
+	catcher := grip.NewBasicCatcher()
+	if !utility.StringSliceContains(ValidVolumeTypes, v.Type) {
+		catcher.Add(errors.Errorf("Valid EBS volume types are: %v", ValidVolumeTypes))
+	}
+
+	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
+	catcher.Add(err)
+	return catcher.Resolve()
+}
+
+func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
+	zones := []string{}
+	for _, subnet := range subnets {
+		if subnet.AZ == zone {
+			return subnet.SubnetID, nil
+		}
+		zones = append(zones, subnet.AZ)
+	}
+	return "", errors.Errorf("Valid availability zones are: %v", zones)
+}
+
 // addSSHKey adds an SSH key for the given client. If an SSH key already exists
 // with the given name, this no-ops.
 func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair) error {

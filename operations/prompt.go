@@ -40,3 +40,14 @@ func confirm(message string, defaultYes bool) bool {
 		}
 	}
 }
+
+func confirmWithMatchingString(message string, confirmation string) bool {
+	var reply string
+	for {
+		reply = prompt(message)
+		if confirmation == strings.TrimSpace(strings.ToLower(reply)) {
+			return true
+		}
+		return false
+	}
+}

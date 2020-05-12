@@ -201,6 +201,9 @@ func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, v.Insert())
 
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
+	h.env.Settings().Providers.AWS.Subnets = []evergreen.Subnet{
+		{AZ: "us-east-1a", SubnetID: "123"},
+	}
 	v = host.Volume{ID: "volume-new", Size: 80, CreatedBy: "user"}
 	h.volume = &v
 

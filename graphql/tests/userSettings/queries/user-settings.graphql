@@ -1,0 +1,10 @@
+{
+  userSettings {
+    timezone
+    region
+    githubUser {
+      lastKnownAs
+    }
+    slackUsername
+  }
+}

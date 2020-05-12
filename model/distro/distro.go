@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -756,7 +757,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		Type:        evergreen.DistroResourceType,
 		ParentScope: evergreen.AllDistrosScope,
 	}
-	if err := rm.AddScope(newScope); err != nil {
+	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "error adding scope for distro '%s'", d.Id)
 	}
 	newRole := gimlet.Role{
