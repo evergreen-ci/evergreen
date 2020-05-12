@@ -429,23 +429,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
 			continue
 		}
-
-		// TODO: only do this if project doesn't have a separate yaml defined
-		hasAliases, err := gh.sc.HasMatchingGitTagAlias(pRef.Identifier, tag.Tag)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem finding aliases for project '%s'", pRef.Identifier))
-			continue
-		}
-		if !hasAliases {
-			continue
-		}
-
-		p, pp, err := gh.sc.LoadProjectForVersion(existingVersion, pRef.Identifier)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier))
-			continue
-		}
-		// add ability to create version from config here
+		// TODO: add ability to create version from config here
 	}
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
