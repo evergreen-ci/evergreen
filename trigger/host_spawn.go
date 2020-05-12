@@ -170,7 +170,10 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 	if !t.host.UserHost {
 		return nil, nil
 	}
-
+	if t.event.EventType == event.EventHostStarted && t.data.Successful && !t.host.Provisioned {
+		// we'll send notification when provisioning, so return
+		return nil, nil
+	}
 	payload, err := t.makePayload(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't make payload")

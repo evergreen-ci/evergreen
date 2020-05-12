@@ -20,6 +20,7 @@ type APIHost struct {
 	Status           *string    `json:"status"`
 	RunningTask      taskInfo   `json:"running_task"`
 	UserHost         bool       `json:"user_host"`
+	NoExpiration     bool       `json:"no_expiration"`
 	InstanceTags     []host.Tag `json:"instance_tags"`
 	InstanceType     *string    `json:"instance_type"`
 	AvailabilityZone *string    `json:"zone"`
@@ -103,6 +104,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.User = ToStringPtr(v.User)
 	apiHost.Status = ToStringPtr(v.Status)
 	apiHost.UserHost = v.UserHost
+	apiHost.NoExpiration = v.NoExpiration
 	apiHost.InstanceTags = v.InstanceTags
 	apiHost.InstanceType = ToStringPtr(v.InstanceType)
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
@@ -127,6 +129,7 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
 		Id:           FromStringPtr(apiHost.Id),
 		Provisioned:  apiHost.Provisioned,
+		NoExpiration: apiHost.NoExpiration,
 		StartedBy:    FromStringPtr(apiHost.StartedBy),
 		Provider:     FromStringPtr(apiHost.Provider),
 		InstanceType: FromStringPtr(apiHost.InstanceType),

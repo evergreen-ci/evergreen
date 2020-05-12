@@ -51,7 +51,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
                 'task': 'another_task',
                 'test': 'another_test',
                 'variant': 'another_variant',
-                'thread_level': 5,
+                'arguments': {
+                  "thread_level": 5,
+                },
                 'index': 2,
                 'measurement': 'another_measurement',
                 'calculated_on': '2020-04-26T22:09:45.438Z',
@@ -250,7 +252,9 @@ function expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API,  page, pageSize, 
             'task': 'large_scale_model',
             'test': 'HotCollectionDeleter.Delete.2.2',
             'variant': 'linux-standalone',
-            'thread_level': 0,
+            'arguments': {
+              "thread_level": 0
+            },
             'index': 2,
             'measurement': 'AverageSize',
             'calculated_on': '2020-04-26T22:09:45.438Z',

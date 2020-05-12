@@ -20,14 +20,14 @@ import (
 )
 
 const (
-	eventNotificationJobName = "event-send"
+	eventSendJobName = "event-send"
 )
 
 func init() {
-	registry.AddJobType(eventNotificationJobName, func() amboy.Job { return makeEventNotificationJob() })
+	registry.AddJobType(eventSendJobName, func() amboy.Job { return makeEventSendJob() })
 }
 
-type eventNotificationJob struct {
+type eventSendJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 	flags    *evergreen.ServiceFlags
@@ -35,11 +35,11 @@ type eventNotificationJob struct {
 	NotificationID string `bson:"notification_id" json:"notification_id" yaml:"notification_id"`
 }
 
-func makeEventNotificationJob() *eventNotificationJob {
-	j := &eventNotificationJob{
+func makeEventSendJob() *eventSendJob {
+	j := &eventSendJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    eventNotificationJobName,
+				Name:    eventSendJobName,
 				Version: 0,
 			},
 		},
@@ -49,15 +49,15 @@ func makeEventNotificationJob() *eventNotificationJob {
 	return j
 }
 
-func NewEventNotificationJob(id, ts string) amboy.Job {
-	j := makeEventNotificationJob()
+func NewEventSendJob(id, ts string) amboy.Job {
+	j := makeEventSendJob()
 	j.NotificationID = id
 
-	j.SetID(fmt.Sprintf("%s:%s:%s", eventNotificationJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s:%s:%s", eventSendJobName, id, ts))
 	return j
 }
 
-func (j *eventNotificationJob) setup() error {
+func (j *eventSendJob) setup() error {
 	if len(j.NotificationID) == 0 {
 		return errors.New("notification ID is not valid")
 	}
@@ -78,7 +78,7 @@ func (j *eventNotificationJob) setup() error {
 	return nil
 }
 
-func (j *eventNotificationJob) Run(_ context.Context) {
+func (j *eventSendJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.setup(); err != nil {
@@ -117,7 +117,7 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 	j.AddError(n.MarkError(err))
 }
 
-func (j *eventNotificationJob) send(n *notification.Notification) error {
+func (j *eventSendJob) send(n *notification.Notification) error {
 	c, err := n.Composer()
 	if err != nil {
 		return err
@@ -143,7 +143,7 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 	return nil
 }
 
-func (j *eventNotificationJob) checkDegradedMode(n *notification.Notification) error {
+func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	switch n.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType:
 		return checkFlag(j.flags.GithubStatusAPIDisabled)
@@ -177,7 +177,7 @@ func (j *eventNotificationJob) checkDegradedMode(n *notification.Notification) e
 func checkFlag(flag bool) error {
 	if flag {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job":     eventNotificationJobName,
+			"job":     eventSendJobName,
 			"message": "sender is disabled, not sending notification",
 		})
 		return errors.New("sender is disabled, not sending notification")

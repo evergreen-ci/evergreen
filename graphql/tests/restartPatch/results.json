@@ -1,6 +1,23 @@
 {
   "tests": [
     {
+      "query_file": "restart-patch-no-task-ids.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "`taskIds` array is empty. You must provide at least one task id",
+            "path": ["restartPatch"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "restartPatch": null
+        }
+      }
+    },
+    {
       "query_file": "restart-patch.graphql",
       "result": {
         "data": {
@@ -9,18 +26,28 @@
       }
     },
     {
-      "query_file": "invalid-patch-id.graphql",
+      "query_file": "restart-patch-bad-id.graphql",
       "result": {
-        "data": {
-          "restartPatch": null
-        },
         "errors": [
           {
-            "message": "error finding patch not-a-real-id: 400 (Bad Request): id 'not-a-real-id' is not a valid patch id",
+            "message": "error finding version washington: 404 (Not Found): version with id washington not found",
             "path": ["restartPatch"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
-        ]
+        ],
+        "data": {
+          "restartPatch": null
+        }
+      }
+    },
+    {
+      "query_file": "restart-patch-abort.graphql",
+      "result": {
+        "data": {
+          "restartPatch": "5e4ff3abe3c3317e352062e4"
+        }
       }
     }
   ]

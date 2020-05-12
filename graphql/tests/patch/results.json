@@ -137,6 +137,18 @@
       "result": {
         "data": { "patch": { "createTime": null } }
       }
+    },
+    {
+      "query_file": "commit-queue.graphql",
+      "result": {
+        "data": { "patch": { "commitQueuePosition": 0 } }
+      }
+    },
+    {
+      "query_file": "commit-queue-null.graphql",
+      "result": {
+        "data": { "patch": { "commitQueuePosition": null } }
+      }
     }
   ]
 }

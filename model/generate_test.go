@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +18,7 @@ import (
 )
 
 var (
+	batchTime              = 60
 	sampleGeneratedProject = GeneratedProject{
 		Tasks: []parserTask{
 			parserTask{
@@ -61,7 +63,8 @@ var (
 				},
 			},
 			parserBV{
-				Name: "another_variant",
+				Name:      "another_variant",
+				BatchTime: &batchTime,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "example_task_group",
@@ -305,7 +308,15 @@ func TestGenerateSuite(t *testing.T) {
 }
 
 func (s *GenerateSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection))
+	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
+	ref := ProjectRef{
+		Identifier: "proj",
+	}
+	s.Require().NoError(ref.Insert())
+	ref2 := ProjectRef{
+		Identifier: "",
+	}
+	s.Require().NoError(ref2.Insert())
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -572,6 +583,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	genTask := task.Task{
 		Id:       "task_that_called_generate_task",
+		Project:  "proj",
 		Version:  "version_that_called_generate_task",
 		Priority: 10,
 	}
@@ -584,6 +596,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	}
 	v := &Version{
 		Id:                 "version_that_called_generate_task",
+		Identifier:         "proj",
 		BuildIds:           []string{"sample_build"},
 		Config:             sampleProjYml,
 		ConfigUpdateNumber: 4,
@@ -593,15 +606,20 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+
+	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	s.Require().NoError(err)
+	s.NoError(g.Save(context.Background(), p, pp, v, &genTask, pm))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Equal(4, v.ConfigUpdateNumber)
+	s.False(v.BuildVariants[0].Activated)
+	s.InDelta(time.Now().Unix(), v.BuildVariants[0].ActivateAt.Unix(), 1)
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
@@ -614,6 +632,12 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(err)
 	s.Len(builds, 2)
 	s.Len(tasks, 6)
+	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id))
+	s.NoError(err)
+	s.Len(existingVariantTasks, 2)
+	for _, existingTask := range existingVariantTasks {
+		s.True(existingTask.Activated)
+	}
 
 	for _, task := range tasks {
 		if task.DisplayOnly {
@@ -669,9 +693,11 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
+	s.Require().NoError(err)
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0], pm))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -758,9 +784,11 @@ buildvariants:
 		},
 	}
 
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
+	s.Require().NoError(err)
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &t1, pm))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -802,9 +830,11 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, v, t, pm, err := g.NewVersion()
+	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, t, pm))
+	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	s.Require().NoError(err)
+	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists, pm))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)

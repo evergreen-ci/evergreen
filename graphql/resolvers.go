@@ -172,6 +172,21 @@ type queryResolver struct{ *Resolver }
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
+	var commitQueuePosition *int
+	if *apiPatch.Alias == evergreen.CommitQueueAlias {
+		cq, err := commitqueue.FindOneId(*apiPatch.ProjectId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting commit queue position for patch %s: %s", *apiPatch.Id, err.Error()))
+		}
+		if cq != nil {
+			position := cq.FindItem(*apiPatch.Id)
+			commitQueuePosition = &position
+		}
+	}
+	return commitQueuePosition, nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -841,6 +856,60 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 	return scheduledPatch, nil
 }
 
+func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
+	modifications := VersionModifications{
+		Action: SetActive,
+		Active: true,
+		Abort:  false,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
+	modifications := VersionModifications{
+		Action: SetActive,
+		Active: false,
+		Abort:  abort,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
+	if len(taskIds) == 0 {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("`taskIds` array is empty. You must provide at least one task id"))
+	}
+	modifications := VersionModifications{
+		Action:  Restart,
+		Abort:   abort,
+		TaskIds: taskIds,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
+	modifications := VersionModifications{
+		Action:   SetPriority,
+		Priority: int64(priority),
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {
@@ -908,19 +977,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
-}
-
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string) (*string, error) {
-	usr := route.MustHaveUser(ctx)
-	_, err := r.sc.FindPatchById(patchID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
-	}
-	err = r.sc.RestartVersion(patchID, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting patch %s: %s", patchID, err.Error()))
-	}
-	return &patchID, nil
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
@@ -1084,6 +1140,34 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask)
 func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
 	order := obj.Order
 	return &order, nil
+}
+
+func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	canRestart, err := canRestartTask(ctx, obj)
+	if err != nil {
+		return false, err
+	}
+	return *canRestart, nil
+}
+
+func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
+}
+
+func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	canRestart, err := canRestartTask(ctx, obj)
+	if err != nil {
+		return false, err
+	}
+	return *canRestart == false && !obj.Aborted, nil
+}
+
+func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return obj.Activated && *obj.Status == evergreen.TaskUndispatched, nil
+}
+
+func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return *obj.Status == evergreen.TaskUndispatched, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

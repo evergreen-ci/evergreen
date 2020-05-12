@@ -42,6 +42,10 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
+  schedulePatchTasks(patchId: String!): String
+  unschedulePatchTasks(patchId: String!, abort: Boolean!): String
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -49,7 +53,6 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
-  restartPatch(patchId: String!): String
 }
 
 enum TaskSortCategory {
@@ -183,6 +186,7 @@ type Patch {
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
+  commitQueuePosition: Int
 }
 
 type Build {
@@ -324,6 +328,11 @@ type Task {
   generatedBy: String
   aborted: Boolean
   baseTaskMetadata: BaseTaskMetadata!
+  canRestart: Boolean!
+  canAbort: Boolean!
+  canSchedule: Boolean!
+  canUnschedule: Boolean!
+  canSetPriority: Boolean!
 }
 
 type Projects {
