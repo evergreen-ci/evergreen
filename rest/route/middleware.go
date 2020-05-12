@@ -204,8 +204,6 @@ func (m *HostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-
-
 func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskAuthMiddleware{
 		sc: sc,

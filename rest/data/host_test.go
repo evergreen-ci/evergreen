@@ -395,11 +395,11 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 	s.Error(err)
 	s.Equal(http.StatusBadRequest, code)
 
-	code, err = s.ctx.CheckHostSecret("abcdef", r)
+	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
+	code, err = s.ctx.CheckHostSecret("host1", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 
-	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
 	code, err = s.ctx.CheckHostSecret("", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
