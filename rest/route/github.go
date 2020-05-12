@@ -445,32 +445,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 			catcher.Add(errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier))
 			continue
 		}
-		info := &model.ProjectInfo{
-			Ref:                 &pRef,
-			Project:             p,
-			IntermediateProject: pp,
-		}
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem populating project info for tag '%s' for project '%s'", tag.Tag, pRef.Identifier))
-			continue
-
-		}
-		metadata := model.VersionMetadata{
-			Revision: model.Revision{
-				Author:          event.GetSender().GetLogin(),
-				AuthorGithubUID: int(event.GetSender().GetID()),
-				AuthorEmail:     event.GetSender().GetEmail(),
-				Revision:        hash,
-			},
-			IsAdHoc: true,
-			Alias:   evergreen.GitTagAlias,
-			GitTag:  tag,
-		}
-		_, err = gh.sc.CreateVersionFromConfig(ctx, info, metadata, true)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem creating version for tag '%s' for project '%s'", tag.Tag, pRef.Identifier))
-			continue
-		}
+		// add ability to create version from config here
 	}
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
