@@ -140,8 +140,8 @@ func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, u
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
 }
 
-func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
-	_, code, err := model.ValidateHost("", r)
+func (hc *DBHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
+	_, code, err := model.ValidateHost(hostID, r)
 	return code, errors.WithStack(err)
 }
 
@@ -362,7 +362,10 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
-func (hc *MockHostConnector) CheckHostSecret(r *http.Request) (int, error) {
+func (hc *MockHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
+	if hostID != "" {
+		return http.StatusOK, nil
+	}
 	if r.Header.Get(evergreen.HostSecretHeader) == "" {
 		return http.StatusBadRequest, errors.New("Bad request")
 	}

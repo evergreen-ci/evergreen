@@ -252,7 +252,7 @@ type Connector interface {
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
 
-	CheckHostSecret(*http.Request) (int, error)
+	CheckHostSecret(string, *http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]restModel.APIProjectAlias, error)
