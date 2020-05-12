@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"github.com/evergreen-ci/utility"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
