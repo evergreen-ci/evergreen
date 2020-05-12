@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/utility"
 	"net/http"
 	"strconv"
 	"strings"
@@ -427,6 +428,9 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 
 		if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
+			continue
+		}
+		if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, u.Username()) {
 			continue
 		}
 		// TODO: add ability to create version from config here
