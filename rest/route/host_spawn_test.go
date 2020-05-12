@@ -355,6 +355,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 		opts: &model.VolumeModifyOptions{},
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
+	h.env.Settings().Spawnhost.UnexpirableVolumesPerUser = 1
 	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
 		CachedVolumes: []host.Volume{
 			{
