@@ -119,6 +119,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"repo":         patchDoc.GithubPatchData.BaseRepo,
 				"pr_number":    patchDoc.GithubPatchData.PRNumber,
 				"commit":       patchDoc.GithubPatchData.HeadHash,
+				"project":      patchDoc.Project,
+				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
 			}))
 		}
