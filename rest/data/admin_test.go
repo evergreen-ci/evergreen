@@ -146,7 +146,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
-	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
@@ -226,7 +225,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	newBanner := "new banner"
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostinit := restModel.APIHostInitConfig{
-		SSHTimeoutSeconds:    999,
 		HostThrottle:         64,
 		CloudStatusBatchSize: 1,
 		ProvisioningThrottle: 200,

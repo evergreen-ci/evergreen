@@ -11,10 +11,9 @@ const defaultHostThrottle = 32
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
-	SSHTimeoutSeconds    int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
-	HostThrottle         int   `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
-	ProvisioningThrottle int   `bson:"provisioning_throttle" json:"provisioning_throttle" yaml:"provisioning_throttle"`
-	CloudStatusBatchSize int   `bson:"cloud_batch_size" json:"cloud_batch_size" yaml:"cloud_batch_size"`
+	HostThrottle         int `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
+	ProvisioningThrottle int `bson:"provisioning_throttle" json:"provisioning_throttle" yaml:"provisioning_throttle"`
+	CloudStatusBatchSize int `bson:"cloud_batch_size" json:"cloud_batch_size" yaml:"cloud_batch_size"`
 }
 
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
@@ -47,7 +46,6 @@ func (c *HostInitConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"ssh_timeout_secs":      c.SSHTimeoutSeconds,
 			"host_throttle":         c.HostThrottle,
 			"provisioning_throttle": c.ProvisioningThrottle,
 			"cloud_batch_size":      c.CloudStatusBatchSize,

@@ -124,7 +124,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Id, settings.ContainerPools.Pools[0].Id)
 	s.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, settings.ContainerPools.Pools[0].MaxContainers)
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
-	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settings.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
