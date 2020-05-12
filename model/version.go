@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -33,6 +35,7 @@ type Version struct {
 	RepoKind            string               `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	GitTags             []GitTag             `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
@@ -120,6 +123,22 @@ type VersionBuildStatus struct {
 	Activated    bool      `bson:"activated" json:"activated"`
 	ActivateAt   time.Time `bson:"activate_at,omitempty" json:"activate_at,omitempty"`
 	BuildId      string    `bson:"build_id,omitempty" json:"build_id,omitempty"`
+}
+
+// VersionMetadata is used to pass information about upstream versions to downstream version creation
+type VersionMetadata struct {
+	Revision            Revision
+	TriggerID           string
+	TriggerType         string
+	EventID             string
+	TriggerDefinitionID string
+	SourceVersion       *Version
+	IsAdHoc             bool
+	User                *user.DBUser
+	Message             string
+	Alias               string
+	PeriodicBuildID     string
+	GitTag              GitTag
 }
 
 var (

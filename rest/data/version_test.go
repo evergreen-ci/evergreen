@@ -432,8 +432,21 @@ func TestCreateVersionFromConfig(t *testing.T) {
 			]
 		}`
 
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(config1), ref.Identifier, p)
+	assert.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Project:             p,
+		IntermediateProject: pp,
+		Ref:                 &ref,
+	}
+	metadata := model.VersionMetadata{
+		Message: "my message",
+		User:    &u,
+		IsAdHoc: true,
+	}
 	dc := DBVersionConnector{}
-	newVersion, err := dc.CreateVersionFromConfig(context.Background(), ref.Identifier, []byte(config1), &u, "my message", true)
+	newVersion, err := dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata, true)
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -442,7 +455,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 	assert.Empty(newVersion.Config)
 
-	pp, err := model.ParserProjectFindOneById(newVersion.Id)
+	pp, err = model.ParserProjectFindOneById(newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(pp.Stepback)
@@ -468,8 +481,17 @@ buildvariants:
 tasks:
 - name: t1
 `
-
-	newVersion, err = dc.CreateVersionFromConfig(context.Background(), ref.Identifier, []byte(config2), &u, "message 2", true)
+	p = &model.Project{}
+	pp, err = model.LoadProjectInto([]byte(config2), ref.Identifier, p)
+	assert.NoError(err)
+	projectInfo.Project = p
+	projectInfo.IntermediateProject = pp
+	metadata = model.VersionMetadata{
+		Message: "message 2",
+		User:    &u,
+		IsAdHoc: true,
+	}
+	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata, true)
 	assert.NoError(err)
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)

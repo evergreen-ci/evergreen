@@ -644,12 +644,12 @@ tasks:
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	projectInfo := &ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -683,12 +683,12 @@ tasks:
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	projectInfo := &ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev}, false, nil)
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -725,12 +725,12 @@ tasks:
 		Errors:   []string{"err1"},
 		Warnings: []string{"warn1", "warn2"},
 	}
-	projectInfo := &ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev}, false, &vErrs)
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -763,12 +763,12 @@ tasks:
 	}
 	s.NoError(v.Insert())
 
-	projectInfo := &ProjectInfo{
+	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
 		Project:             p,
 	}
-	v, err = CreateVersionFromConfig(context.Background(), projectInfo, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err = CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.Error(err)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
