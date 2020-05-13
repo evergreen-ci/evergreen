@@ -245,8 +245,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
 	// erase contents so requestProjectRef will only be populated with new elements
-	requestProjectRef.Admins = nil // the 'admins' field of the request are the admins to add
 	requestProjectRef.Triggers = nil
+	// these fields in the request represent the admins/users to be added
+	requestProjectRef.Admins = nil
+	requestProjectRef.GitTagAuthorizedUsers = nil
 	if err = json.Unmarshal(h.body, requestProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
@@ -353,17 +355,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	adminsToDelete := []string{}
-	for _, admin := range requestProjectRef.DeleteAdmins {
-		adminsToDelete = append(adminsToDelete, model.FromStringPtr(admin))
-	}
-	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...)) // get original and new admin
-	newProjectRef.Admins = []string{}
-	for _, admin := range allAdmins {
-		if !utility.StringSliceContains(adminsToDelete, admin) {
-			newProjectRef.Admins = append(newProjectRef.Admins, admin)
-		}
-	}
+	adminsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
+	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...))      // get original and new admin
+	newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
+
+	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
+	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
+	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()

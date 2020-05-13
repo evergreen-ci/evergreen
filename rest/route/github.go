@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -427,6 +428,9 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 
 		if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
+			continue
+		}
+		if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, u.Username()) {
 			continue
 		}
 		// TODO: add ability to create version from config here
