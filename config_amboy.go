@@ -111,6 +111,9 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 	if c.GroupTTLMinutes <= 0 {
 		c.GroupTTLMinutes = defaultGroupTTLMinutes
 	}
+	if c.LockTimeoutMinutes <= 0 {
+		c.LockTimeoutMinutes = defaultLockTimeoutMinutes
+	}
 
 	return nil
 }

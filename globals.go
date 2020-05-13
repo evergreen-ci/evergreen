@@ -414,6 +414,7 @@ const (
 	defaultGroupPruneFrequencyMinutes            = 10
 	defaultGroupTTLMinutes                       = 1
 	maxNotificationsPerSecond                    = 100
+	defaultLockTimeoutMinutes                    = 10 // should match value in amboy.LockTimeout
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
