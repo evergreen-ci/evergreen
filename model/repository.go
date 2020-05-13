@@ -50,9 +50,8 @@ type Revision struct {
 }
 
 type GitTag struct {
-	Tag             string
-	Pusher          string
-	PusherGithubUID int
+	Tag    string
+	Pusher string
 }
 
 func FormatGitTagsAsString(tags []GitTag) string {
