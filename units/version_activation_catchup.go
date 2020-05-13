@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +27,6 @@ func init() {
 }
 
 type versionActivationCatchup struct {
-	Project  string `bson:"project" json:"project" yaml:"project"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
@@ -32,7 +35,7 @@ func makeVersionActivationCatchupJob() *versionActivationCatchup {
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    versionActivationCatchupJobName,
-				Version: 0,
+				Version: 1,
 			},
 		},
 	}
@@ -41,24 +44,52 @@ func makeVersionActivationCatchupJob() *versionActivationCatchup {
 
 }
 
-func NewVersionActivationJob(project string, id string) amboy.Job {
+func NewVersionActivationJob(id string) amboy.Job {
 	j := makeVersionActivationCatchupJob()
-	j.Project = project
 
-	j.SetID(fmt.Sprintf("%s.%s.%s", versionActivationCatchupJobName, project, id))
+	j.SetID(fmt.Sprintf("%s.%s", versionActivationCatchupJobName, id))
 	j.SetPriority(-1)
 	return j
 }
 
-func (j *versionActivationCatchup) Run(_ context.Context) {
+func (j *versionActivationCatchup) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	ref, err := model.FindOneProjectRef(j.Project)
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.WithStack(err))
+		j.AddError(err)
 		return
 	}
 
-	j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(*ref),
-		"problem activating builds for project %s", j.Project))
+	if flags.SchedulerDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "scheduler is disabled",
+			"impact":  "skipping batch time activation",
+			"mode":    "degraded",
+		})
+		return
+	}
+
+	projects, err := model.FindAllTrackedProjectRefs()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	count := 0
+	for _, ref := range projects {
+		if !ref.Enabled {
+			continue
+		}
+		j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(ref),
+			"problem activating builds for project %s", ref.Identifier))
+		count++
+	}
+
+	grip.Info(message.Fields{
+		"message":  "version activation catch up report",
+		"projects": len(projects),
+		"active":   count,
+		"errors":   j.HasErrors(),
+	})
 }
