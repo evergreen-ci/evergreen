@@ -86,6 +86,8 @@ type jiraTestFailure struct {
 	Name       string
 	URL        string
 	HistoryURL string
+	TaskID     string
+	Execution  int
 }
 
 type jiraBuilder struct {
@@ -331,6 +333,8 @@ func (j *jiraBuilder) getDescription() (string, error) {
 				Name:       cleanTestName(test.TestFile),
 				URL:        logURL(test, j.data.UIRoot),
 				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestFile), j.data.UIRoot),
+				TaskID:     test.TaskID,
+				Execution:  test.Execution,
 			})
 		}
 	}
