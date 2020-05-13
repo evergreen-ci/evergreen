@@ -27,8 +27,10 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
-[Task Logs | {{taskLogUrl .}} ]
-`
+{{if and (.Task.DisplayOnly) (gt (len .Tests) (0))}}{{range executionTaskLogURLs . }}[Task Logs ({{.Tests}}) | {{.URL}}]
+{{end}}{{else}}[Task Logs | {{taskLogUrl .}}]
+{{end}}`
+
 const (
 	jiraMaxTitleLength = 254
 
@@ -37,10 +39,11 @@ const (
 
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
-	"taskurl":           getTaskURL,
-	"formatAsTimestamp": formatAsTimestamp,
-	"host":              getHostMetadata,
-	"taskLogUrl":        getTaskLogURL,
+	"taskurl":              getTaskURL,
+	"formatAsTimestamp":    formatAsTimestamp,
+	"host":                 getHostMetadata,
+	"taskLogUrl":           getTaskLogURL,
+	"executionTaskLogURLs": getExecutionTaskLogURLs,
 }).Parse(descriptionTemplateString))
 
 func formatAsTimestamp(t time.Time) string {
@@ -79,6 +82,31 @@ func getTaskLogURL(data *jiraTemplateData) (string, error) {
 	}
 
 	return taskLogLink(data.UIRoot, id, execution), nil
+}
+
+type executionTaskInfo struct {
+	Tests string
+	URL   string
+}
+
+func getExecutionTaskLogURLs(data *jiraTemplateData) []executionTaskInfo {
+	execTaskMap := make(map[string][]jiraTestFailure)
+	for _, test := range data.Tests {
+		execTaskMap[test.TaskID] = append(execTaskMap[test.TaskID], test)
+	}
+	result := make([]executionTaskInfo, 0, len(execTaskMap))
+	for taskID, tests := range execTaskMap {
+		info := executionTaskInfo{URL: taskLogLink(data.UIRoot, taskID, tests[0].Execution)}
+		testIDs := make([]string, 0, len(tests))
+		for _, test := range tests {
+			testIDs = append(testIDs, test.Name)
+		}
+		info.Tests = strings.Join(testIDs, " ")
+
+		result = append(result, info)
+	}
+
+	return result
 }
 
 // jiraTestFailure contains the required fields for generating a failure report.
