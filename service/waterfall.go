@@ -116,6 +116,7 @@ type waterfallVersion struct {
 	Revisions           []string         `json:"revisions"`
 	RevisionOrderNumber int              `json:"revision_order"`
 	UpstreamData        []uiUpstreamData `json:"upstream_data"`
+	GitTags             []string         `json:"git_tags"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
@@ -312,7 +313,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 					lastRolledUpVersion.CreateTimes, versionFromDB.CreateTime)
 				lastRolledUpVersion.Revisions = append(
 					lastRolledUpVersion.Revisions, versionFromDB.Revision)
-
+				lastRolledUpVersion.GitTags = append(
+					lastRolledUpVersion.GitTags, model.FormatGitTagsAsString(versionFromDB.GitTags))
 				// move on to the next version
 				continue
 			}
@@ -340,6 +342,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				Warnings:            []waterfallVersionError{{versionFromDB.Warnings}},
 				Ignoreds:            []bool{versionFromDB.Ignored},
 				RevisionOrderNumber: versionFromDB.RevisionOrderNumber,
+				GitTags:             []string{model.FormatGitTagsAsString(versionFromDB.GitTags)},
 			}
 			if versionFromDB.TriggerID != "" {
 				var projectName string

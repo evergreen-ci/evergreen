@@ -24,6 +24,10 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
+function formatMessageWithGitTags(message, git_tags) {
+  return message + " (Git Tags: " + git_tags + ")";
+}
+
 function generateURLParameters(params) {
   var ret = [];
   for (var p in params) {
@@ -763,7 +767,8 @@ function ActiveVersionHeader(_ref5) {
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0, 5);
-  var message = version.messages[0];
+  var message = formatMessageWithGitTags(version.messages[0], version.git_tags[0]);
+
   if (version.upstream_data) {
     var upstreamData = version.upstream_data[0];
     var upstreamLink = "/" + upstreamData.trigger_type + "/" + upstreamData.trigger_id;
@@ -894,6 +899,7 @@ function RolledUpVersionHeader(_ref6) {
         author: version.authors[i],
         commit: version.revisions[i],
         message: version.messages[i],
+        gitTags: version.git_tags[i],
         versionId: version.ids[i],
         key: id, userTz: userTz,
         createTime: version.create_times[i],
@@ -921,14 +927,15 @@ function RolledUpVersionSummary(_ref7) {
   var author = _ref7.author,
       commit = _ref7.commit,
       message = _ref7.message,
+      gitTags = _ref7.gitTags,
       versionId = _ref7.versionId,
       createTime = _ref7.createTime,
       userTz = _ref7.userTz,
       jiraHost = _ref7.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
+  message = formatMessageWithGitTags(message, gitTags);
   commit = commit.substring(0, 10);
-
   return React.createElement(
     "div",
     { className: "rolled-up-version-summary" },
