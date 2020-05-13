@@ -357,7 +357,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 	// TODO: add validation for user
 	tag := model.GitTag{
 		Tag:    strings.TrimPrefix(event.GetRef(), refTags),
-		Pusher: event.GetPusher().GetName(),
+		Pusher: u.Username(),
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
 	hash := event.HeadCommit.GetID()
