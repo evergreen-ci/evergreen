@@ -180,7 +180,7 @@ func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (
 }
 
 func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {
-	runsTasks := j.host.User == evergreen.User && !j.host.HasContainers
+	runsTasks := j.host.StartedBy == evergreen.User && !j.host.HasContainers
 
 	// post host idle time message
 	msg := message.Fields{
@@ -191,7 +191,7 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 		"host_id":         j.host.Id,
 		"status":          j.host.Status,
 		"idle_secs":       idleTime.Seconds(),
-		"spawn_host":      j.host.User != evergreen.User && !j.host.SpawnOptions.SpawnedByTask,
+		"spawn_host":      j.host.StartedBy != evergreen.User && !j.host.SpawnOptions.SpawnedByTask,
 		"task_spawn_host": j.host.SpawnOptions.SpawnedByTask,
 		"has_containers":  j.host.HasContainers,
 		"task_host":       runsTasks,
