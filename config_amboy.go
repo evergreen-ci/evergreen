@@ -20,7 +20,7 @@ type AmboyConfig struct {
 	GroupPruneFrequencyMinutes            int    `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
 	GroupTTLMinutes                       int    `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
 	RequireRemotePriority                 bool   `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
-	LockTimeoutMinutes                           int    `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
+	LockTimeoutMinutes                    int    `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
 }
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
@@ -64,7 +64,7 @@ func (c *AmboyConfig) Set() error {
 			"group_prune_frequency":             c.GroupPruneFrequencyMinutes,
 			"group_ttl":                         c.GroupTTLMinutes,
 			"require_remote_priority":           c.RequireRemotePriority,
-			"lock_timeout_minutes":                      c.LockTimeoutMinutes,
+			"lock_timeout_minutes":              c.LockTimeoutMinutes,
 		},
 	}, options.Update().SetUpsert(true))
 

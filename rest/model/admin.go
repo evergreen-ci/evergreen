@@ -328,7 +328,7 @@ type APIAmboyConfig struct {
 	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int     `json:"group_ttl"`
 	RequireRemotePriority                 bool    `json:"require_remote_priority"`
-	LockTimeoutMinutes                           int     `json:"lock_timeout_minutes"`
+	LockTimeoutMinutes                    int     `json:"lock_timeout_minutes"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -365,7 +365,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
-		LockTimeoutMinutes:                           a.LockTimeoutMinutes,
+		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 	}, nil
 }
 
