@@ -365,6 +365,8 @@ revendor:run-glide vendor-clean
 else
 revendor:
 endif
+get-go-imports:
+	GOPATH=$(gopath) $(gobin) get -u golang.org/x/tools/imports
 # end vendoring tooling configuration
 
 
