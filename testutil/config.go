@@ -104,6 +104,7 @@ func MockConfig() *evergreen.Settings {
 			GroupBackgroundCreateFrequencyMinutes: 50,
 			GroupPruneFrequencyMinutes:            60,
 			GroupTTLMinutes:                       70,
+			LockTimeoutMinutes:                    7,
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
