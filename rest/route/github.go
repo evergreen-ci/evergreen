@@ -334,31 +334,9 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 	}
 
 	pusher := event.GetPusher().GetName()
-	u, err := gh.sc.FindUserByGithubName(pusher)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"source":  "github hook",
-			"message": "error finding user",
-			"ref":     event.GetRef(),
-			"event":   gh.eventType,
-			"pusher":  pusher,
-		}))
-		return errors.Errorf("Error finding evergreen user for Github name %s", pusher)
-	}
-	if u == nil {
-		grip.Debug(message.Fields{
-			"source":  "github hook",
-			"message": "no user found",
-			"ref":     event.GetRef(),
-			"event":   gh.eventType,
-			"pusher":  pusher,
-		})
-		return errors.Errorf("No user found with Github name %s", pusher)
-	}
-	// TODO: add validation for user
 	tag := model.GitTag{
 		Tag:    strings.TrimPrefix(event.GetRef(), refTags),
-		Pusher: event.GetPusher().GetName(),
+		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
 	hash := event.HeadCommit.GetID()
@@ -430,7 +408,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
 			continue
 		}
-		if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, u.Username()) {
+		if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, pusher) {
 			continue
 		}
 		// TODO: add ability to create version from config here
