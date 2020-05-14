@@ -49,9 +49,8 @@ type Revision struct {
 }
 
 type GitTag struct {
-	Tag             string
-	Pusher          string
-	PusherGithubUID int
+	Tag    string
+	Pusher string
 }
 
 // FindRepository gets the repository object of a project.
