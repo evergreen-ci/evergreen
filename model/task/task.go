@@ -267,6 +267,8 @@ type TestResult struct {
 	ExitCode  int     `json:"exit_code" bson:"exit_code"`
 	StartTime float64 `json:"start" bson:"start"`
 	EndTime   float64 `json:"end" bson:"end"`
+	TaskID    string  `json:"task_id" bson:"task_id"`
+	Execution int     `json:"execution" bson:"execution"`
 
 	// LogRaw is not saved in the task
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
@@ -1180,6 +1182,8 @@ func ConvertToOld(in *testresult.TestResult) TestResult {
 		StartTime: in.StartTime,
 		EndTime:   in.EndTime,
 		LogRaw:    in.LogRaw,
+		TaskID:    in.TaskID,
+		Execution: in.Execution,
 	}
 }
 
