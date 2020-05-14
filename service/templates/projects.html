@@ -391,7 +391,7 @@ Evergreen Projects
               </div>
           </div>
           <!-- GIT TAGS -->
-          <div class="authorized_for_git_tags" ng-hide="true"> <!-- after functionality is finished, change to ng-show="github_webhooks_enabled"-->
+          <div class="authorized_for_git_tags"> <!-- after functionality is finished, change to ng-show="github_webhooks_enabled" -->
             <div class="form-group">
               <div class="col-header col-lg-4 form-control-static"> <h3> Users Authorized To Create Versions From Git Tags </h3></div>
             </div>
@@ -417,8 +417,9 @@ Evergreen Projects
             <div class="form-group">
               <div class="col-header col-lg-6 form-control-static"> <h4> Git Tag Version Definitions </h4>
                 <div class="muted small">
-                  If an authorized user pushes a tag that matches one or more regex, the version will be fully populated from the given config file,
-                  OR have all variants and tasks that match each variant and task regex pair. (This is not yet fully implemented!)
+                  If an authorized user pushes a tag that matches a regex, the version will be fully populated from the given config file,
+                  OR have all variants and tasks that match the variant and task regex pair. If multiple regexes match and a config file has been
+                  defined for one or more of them, the version is ambiguous and so no version will be created.
                 </div>
               </div>
             </div>
