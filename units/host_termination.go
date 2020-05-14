@@ -393,8 +393,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	provisioningFailedStatuses := []string{evergreen.HostStarting, evergreen.HostProvisioning, evergreen.HostProvisionFailed, evergreen.HostBuilding}
-	if utility.StringSliceContains(provisioningFailedStatuses, prevStatus) && j.host.TaskCount == 0 {
+	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
 		event.LogProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
 			"message":     "provisioning failure",
@@ -403,7 +402,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"distro":      j.host.Distro.Id,
 			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
 			"provider":    j.host.Provider,
-			"spawn_host":  j.host.User != evergreen.User,
+			"spawn_host":  j.host.StartedBy != evergreen.User,
 			"cost":        j.host.TotalCost,
 		})
 	}

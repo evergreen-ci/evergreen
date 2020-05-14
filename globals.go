@@ -448,6 +448,15 @@ var (
 		HostStarting,
 	}
 
+	// ProvisioningHostStatus describes hosts that have started,
+	// but have not yet completed the provisioning process.
+	ProvisioningHostStatus = []string{
+		evergreen.HostStarting,
+		evergreen.HostProvisioning,
+		evergreen.HostProvisionFailed,
+		evergreen.HostBuilding,
+	}
+
 	// CanRunTaskStatus is a list of all host statuses in which a host could be running a task.
 	CanRunTaskStatus = []string{
 		HostStarting,
