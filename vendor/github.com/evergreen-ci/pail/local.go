@@ -17,7 +17,8 @@ type localFileSystem struct {
 	path         string
 	prefix       string
 	dryRun       bool
-	deleteOnSync bool
+	deleteOnPush bool
+	deleteOnPull bool
 	verbose      bool
 }
 
@@ -27,7 +28,17 @@ type LocalOptions struct {
 	Prefix       string
 	DryRun       bool
 	DeleteOnSync bool
+	DeleteOnPush bool
+	DeleteOnPull bool
 	Verbose      bool
+}
+
+func (o *LocalOptions) validate() error {
+	if (o.DeleteOnPush != o.DeleteOnPull) && o.DeleteOnSync {
+		return errors.New("ambiguous delete on sync options set")
+	}
+
+	return nil
 }
 
 func (b *localFileSystem) normalizeKey(key string) string {
@@ -41,11 +52,16 @@ func (b *localFileSystem) normalizeKey(key string) string {
 // that stores files in the local file system. Returns an error if the
 // directory doesn't exist.
 func NewLocalBucket(opts LocalOptions) (Bucket, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
+
 	b := &localFileSystem{
 		path:         opts.Path,
 		prefix:       opts.Prefix,
 		dryRun:       opts.DryRun,
-		deleteOnSync: opts.DeleteOnSync,
+		deleteOnPush: opts.DeleteOnPush || opts.DeleteOnSync,
+		deleteOnPull: opts.DeleteOnPull || opts.DeleteOnSync,
 	}
 	if err := b.Check(context.TODO()); err != nil {
 		return nil, errors.WithStack(err)
@@ -59,12 +75,21 @@ func NewLocalBucket(opts LocalOptions) (Bucket, error) {
 // issues creating the temporary directory. This implementation does
 // not provide a mechanism to delete the temporary directory.
 func NewLocalTemporaryBucket(opts LocalOptions) (Bucket, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
 	dir, err := ioutil.TempDir("", "pail-local-tmp-bucket")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating temporary directory")
 	}
 
-	return &localFileSystem{path: dir, prefix: opts.Prefix, dryRun: opts.DryRun, deleteOnSync: opts.DeleteOnSync}, nil
+	return &localFileSystem{
+		path:         dir,
+		prefix:       opts.Prefix,
+		dryRun:       opts.DryRun,
+		deleteOnPush: opts.DeleteOnPush || opts.DeleteOnSync,
+		deleteOnPull: opts.DeleteOnPull || opts.DeleteOnSync,
+	}, nil
 }
 
 func (b *localFileSystem) Check(_ context.Context) error {
@@ -114,6 +139,9 @@ func (b *localFileSystem) Reader(_ context.Context, name string) (io.ReadCloser,
 	path := filepath.Join(b.path, b.normalizeKey(name))
 	f, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = MakeKeyNotFoundError(err)
+		}
 		return nil, errors.Wrapf(err, "problem opening file '%s'", path)
 	}
 
@@ -258,8 +286,11 @@ func (b *localFileSystem) Remove(ctx context.Context, key string) error {
 	}
 
 	path := filepath.Join(b.path, b.normalizeKey(key))
-
-	return errors.Wrapf(os.Remove(path), "problem removing path %s", path)
+	err := os.Remove(path)
+	if os.IsNotExist(err) {
+		err = MakeKeyNotFoundError(err)
+	}
+	return errors.Wrapf(err, "problem removing path %s", path)
 }
 
 func (b *localFileSystem) RemoveMany(ctx context.Context, keys ...string) error {
@@ -362,7 +393,7 @@ func (b *localFileSystem) Push(ctx context.Context, opts SyncOptions) error {
 		}
 	}
 
-	if b.deleteOnSync && !b.dryRun {
+	if b.deleteOnPush && !b.dryRun {
 		return errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "problem with delete on sync after push")
 	}
 	return nil
@@ -427,7 +458,7 @@ func (b *localFileSystem) Pull(ctx context.Context, opts SyncOptions) error {
 		}
 	}
 
-	if b.deleteOnSync && !b.dryRun {
+	if b.deleteOnPull && !b.dryRun {
 		return errors.Wrap(deleteOnPull(ctx, keys, opts.Local), "problem with delete on sync after pull")
 	}
 	return nil

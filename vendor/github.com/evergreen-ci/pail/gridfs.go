@@ -28,7 +28,17 @@ type GridFSOptions struct {
 	MongoDBURI   string
 	DryRun       bool
 	DeleteOnSync bool
+	DeleteOnPush bool
+	DeleteOnPull bool
 	Verbose      bool
+}
+
+func (o *GridFSOptions) validate() error {
+	if (o.DeleteOnPush != o.DeleteOnPull) && o.DeleteOnSync {
+		return errors.New("ambiguous delete on sync options set")
+	}
+
+	return nil
 }
 
 type gridfsBucket struct {
@@ -59,6 +69,9 @@ func NewGridFSBucketWithClient(ctx context.Context, client *mongo.Client, opts G
 		return NewGridFSBucket(ctx, opts)
 	}
 
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
 	return &gridfsBucket{opts: opts, client: client}, nil
 }
 
@@ -66,6 +79,10 @@ func NewGridFSBucketWithClient(ctx context.Context, client *mongo.Client, opts G
 // driver, creating a new client and connecting to the URI.
 // Use the Check method to verify that this bucket ise operationsal.
 func NewGridFSBucket(ctx context.Context, opts GridFSOptions) (Bucket, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
+
 	client, err := mongo.NewClient(options.Client().ApplyURI(opts.MongoDBURI))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem constructing client")
@@ -152,6 +169,9 @@ func (b *gridfsBucket) Reader(ctx context.Context, name string) (io.ReadCloser, 
 
 	reader, err := grid.OpenDownloadStreamByName(b.normalizeKey(name))
 	if err != nil {
+		if err == gridfs.ErrFileNotFound {
+			err = MakeKeyNotFoundError(err)
+		}
 		return nil, errors.Wrap(err, "problem opening stream")
 	}
 
@@ -286,7 +306,7 @@ func (b *gridfsBucket) Push(ctx context.Context, opts SyncOptions) error {
 		}
 	}
 
-	if b.opts.DeleteOnSync && !b.opts.DryRun {
+	if (b.opts.DeleteOnPush || b.opts.DeleteOnSync) && !b.opts.DryRun {
 		return errors.Wrap(deleteOnPush(ctx, localPaths, opts.Remote, b), "problem with delete on sync after push")
 	}
 
@@ -339,7 +359,7 @@ func (b *gridfsBucket) Pull(ctx context.Context, opts SyncOptions) error {
 		return errors.WithStack(err)
 	}
 
-	if b.opts.DeleteOnSync && !b.opts.DryRun {
+	if (b.opts.DeleteOnPull || b.opts.DeleteOnSync) && !b.opts.DryRun {
 		return errors.Wrap(deleteOnPull(ctx, keys, opts.Local), "problem with delete on sync after pull")
 	}
 

@@ -15,7 +15,8 @@ import (
 type parallelBucketImpl struct {
 	Bucket
 	size         int
-	deleteOnSync bool
+	deleteOnPush bool
+	deleteOnPull bool
 	dryRun       bool
 }
 
@@ -30,17 +31,28 @@ type ParallelBucketOptions struct {
 	// exist in the source after the completion of a sync operation
 	// (Push/Pull).
 	DeleteOnSync bool
+	// DeleteOnPush will delete all objects from the target that do not
+	// exist in the source after the completion of Push.
+	DeleteOnPush bool
+	// DeleteOnPull will delete all objects from the target that do not
+	// exist in the source after the completion of Pull.
+	DeleteOnPull bool
 }
 
 // NewParallelSyncBucket returns a layered bucket implemenation that supports
 // parallel sync operations.
-func NewParallelSyncBucket(opts ParallelBucketOptions, b Bucket) Bucket {
+func NewParallelSyncBucket(opts ParallelBucketOptions, b Bucket) (Bucket, error) {
+	if (opts.DeleteOnPush != opts.DeleteOnPull) && opts.DeleteOnSync {
+		return nil, errors.New("ambiguous delete on sync options set")
+	}
+
 	return &parallelBucketImpl{
 		size:         opts.Workers,
-		deleteOnSync: opts.DeleteOnSync,
+		deleteOnPush: opts.DeleteOnPush || opts.DeleteOnSync,
+		deleteOnPull: opts.DeleteOnPull || opts.DeleteOnSync,
 		dryRun:       opts.DryRun,
 		Bucket:       b,
-	}
+	}, nil
 }
 
 func (b *parallelBucketImpl) Push(ctx context.Context, opts SyncOptions) error {
@@ -96,7 +108,7 @@ func (b *parallelBucketImpl) Push(ctx context.Context, opts SyncOptions) error {
 	}
 	wg.Wait()
 
-	if ctx.Err() == nil && b.deleteOnSync && !b.dryRun {
+	if ctx.Err() == nil && b.deleteOnPush && !b.dryRun {
 		catcher.Add(errors.Wrap(deleteOnPush(ctx, files, opts.Remote, b), "problem with delete on sync after push"))
 	}
 
@@ -191,12 +203,12 @@ func (b *parallelBucketImpl) Pull(ctx context.Context, opts SyncOptions) error {
 			keys = append(keys, key)
 		}
 
-		if b.deleteOnSync && b.dryRun {
+		if b.deleteOnPull && b.dryRun {
 			grip.Debug(message.Fields{
 				"dry_run": true,
 				"message": "would delete after push",
 			})
-		} else if ctx.Err() == nil && b.deleteOnSync {
+		} else if ctx.Err() == nil && b.deleteOnPull {
 			catcher.Add(errors.Wrap(deleteOnPull(ctx, keys, opts.Local), "problem with delete on sync after pull"))
 		}
 	}()
