@@ -19,6 +19,8 @@ var (
 	idKey          = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
 	projectIDKey   = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
 	aliasKey       = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	gitTagKey      = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
+	remotePathKey  = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
 	variantKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
 	taskKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
 	variantTagsKey = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
@@ -60,6 +62,7 @@ type ProjectAlias struct {
 	Alias       string           `bson:"alias" json:"alias"`
 	Variant     string           `bson:"variant,omitempty" json:"variant"`
 	GitTag      string           `bson:"git_tag" json:"git_tag"`
+	RemotePath  string           `bson:"remote_path" json:"remote_path"`
 	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags"`
 	Task        string           `bson:"task,omitempty" json:"task"`
 	TaskTags    []string         `bson:"tags,omitempty" json:"tags"`
@@ -120,6 +123,8 @@ func (p *ProjectAlias) Upsert() error {
 	}
 	update := bson.M{
 		aliasKey:       p.Alias,
+		gitTagKey:      p.GitTag,
+		remotePathKey:  p.RemotePath,
 		projectIDKey:   p.ProjectID,
 		variantKey:     p.Variant,
 		variantTagsKey: p.VariantTags,
@@ -220,7 +225,6 @@ func (a ProjectAliases) HasMatchingTask(variant string, variantTags []string, t 
 
 func isValidRegexOrTag(curItem, aliasRegex string, curTags, aliasTags []string, regexp *regexp.Regexp) bool {
 	isValidRegex := aliasRegex != "" && regexp.MatchString(curItem)
-
 	isValidTag := false
 	for _, tag := range aliasTags {
 		if utility.StringSliceContains(curTags, tag) {
@@ -243,26 +247,56 @@ func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 		if strings.TrimSpace(pd.Alias) == "" {
 			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
 		}
-		if (strings.TrimSpace(pd.Variant) == "") == (len(pd.VariantTags) == 0) {
-			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of variant regex or variant tags on line #%d", aliasType, i+1))
+		if pd.Alias == evergreen.GitTagAlias {
+			errs = append(errs, validateGitTagAlias(pd, aliasType, i+1)...)
+			continue
 		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.TaskTags) == 0) {
-			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or task tags on line #%d", aliasType, i+1))
+		if strings.TrimSpace(pd.GitTag) != "" || strings.TrimSpace(pd.RemotePath) != "" {
+			errs = append(errs, fmt.Sprintf("%s: cannot define git tag or remote path on line #%d", aliasType, i+1))
 		}
-		if pd.Alias == evergreen.GitTagAlias && strings.TrimSpace(pd.GitTag) == "" {
-			errs = append(errs, fmt.Sprintf("%s: must define git tag regex on line #%d", aliasType, i+1))
-		}
-
-		if _, err := regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
-		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
-		}
-		if _, err := regexp.Compile(pd.GitTag); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: git tag regex #%d is invalid", aliasType, i+1))
-		}
+		errs = append(errs, validateAliasPatchDefinition(pd, aliasType, i+1)...)
 	}
 
 	return errs
+}
+
+func validateAliasPatchDefinition(pd ProjectAlias, aliasType string, lineNum int) []string {
+	errs := []string{}
+	if (strings.TrimSpace(pd.Variant) == "") == (len(pd.VariantTags) == 0) {
+		errs = append(errs, fmt.Sprintf("%s: must specify exactly one of variant regex or variant tags on line #%d", aliasType, lineNum))
+	}
+	if (strings.TrimSpace(pd.Task) == "") == (len(pd.TaskTags) == 0) {
+		errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or task tags on line #%d", aliasType, lineNum))
+	}
+
+	if _, err := regexp.Compile(pd.Variant); err != nil {
+		errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, lineNum))
+	}
+	if _, err := regexp.Compile(pd.Task); err != nil {
+		errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, lineNum))
+	}
+	return errs
+}
+
+func validateGitTagAlias(pd ProjectAlias, aliasType string, lineNum int) []string {
+	errs := []string{}
+	if strings.TrimSpace(pd.GitTag) == "" {
+		errs = append(errs, fmt.Sprintf("%s: must define valid git tag regex on line #%d", aliasType, lineNum))
+	}
+	if _, err := regexp.Compile(pd.GitTag); err != nil {
+		errs = append(errs, fmt.Sprintf("%s: git tag regex #%d is invalid", aliasType, lineNum))
+	}
+	// if path is defined then no patch definition can be given
+	if strings.TrimSpace(pd.RemotePath) != "" && populatedPatchDefinition(pd) {
+		errs = append(errs, fmt.Sprintf("%s: cannot define remote path and task/variant constraints on line #%d", aliasType, lineNum))
+	}
+	if strings.TrimSpace(pd.RemotePath) == "" {
+		errs = append(errs, validateAliasPatchDefinition(pd, aliasType, lineNum)...)
+	}
+	return errs
+}
+
+func populatedPatchDefinition(pd ProjectAlias) bool {
+	return strings.TrimSpace(pd.Variant) != "" || strings.TrimSpace(pd.Task) != "" ||
+		len(pd.VariantTags) != 0 || len(pd.Task) != 0
 }

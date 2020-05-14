@@ -1,6 +1,7 @@
 mciModule.component('tagInput', {
   bindings: {
     items: '=',
+    disabled: '=',
     klass: '@',
     placeholder: '@',
   },

@@ -37,6 +37,7 @@ type APIProjectAlias struct {
 	GitTag      *string   `json:"git_tag"`
 	Variant     *string   `json:"variant"`
 	Task        *string   `json:"task"`
+	RemotePath  *string   `json:"remote_path"`
 	VariantTags []*string `json:"variant_tags,omitempty"`
 	TaskTags    []*string `json:"tags,omitempty"`
 	Delete      bool      `json:"delete,omitempty"`
@@ -134,6 +135,7 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 		Task:        FromStringPtr(a.Task),
 		Variant:     FromStringPtr(a.Variant),
 		GitTag:      FromStringPtr(a.GitTag),
+		RemotePath:  FromStringPtr(a.RemotePath),
 		TaskTags:    FromStringPtrSlice(a.TaskTags),
 		VariantTags: FromStringPtrSlice(a.VariantTags),
 	}
@@ -152,6 +154,7 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 		a.Alias = ToStringPtr(v.Alias)
 		a.Variant = ToStringPtr(v.Variant)
 		a.GitTag = ToStringPtr(v.GitTag)
+		a.RemotePath = ToStringPtr(v.RemotePath)
 		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
@@ -163,6 +166,7 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 		a.Alias = ToStringPtr(v.Alias)
 		a.Variant = ToStringPtr(v.Variant)
 		a.GitTag = ToStringPtr(v.GitTag)
+		a.RemotePath = ToStringPtr(v.RemotePath)
 		a.Task = ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
@@ -180,6 +184,7 @@ func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias
 			Alias:       ToStringPtr(alias.Alias),
 			Variant:     ToStringPtr(alias.Variant),
 			Task:        ToStringPtr(alias.Task),
+			RemotePath:  ToStringPtr(alias.RemotePath),
 			GitTag:      ToStringPtr(alias.GitTag),
 			TaskTags:    ToStringPtrSlice(alias.TaskTags),
 			VariantTags: ToStringPtrSlice(alias.VariantTags),

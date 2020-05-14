@@ -208,6 +208,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitHubAliases         []model.ProjectAlias           `json:"github_aliases"`
 		CommitQueueAliases    []model.ProjectAlias           `json:"commit_queue_aliases"`
 		PatchAliases          []model.ProjectAlias           `json:"patch_aliases"`
+		GitTagAliases         []model.ProjectAlias           `json:"git_tag_aliases"`
 		DeleteAliases         []string                       `json:"delete_aliases"`
 		DefaultLogger         string                         `json:"default_logger"`
 		PrivateVars           map[string]bool                `json:"private_vars"`
@@ -263,6 +264,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GitTagAliases, "Git Tag Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -421,9 +423,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	for i, trigger := range responseRef.Triggers {
-		catcher.Add(trigger.Validate(id))
-		if trigger.DefinitionID == "" {
+	for i, t := range responseRef.Triggers {
+		catcher.Add(t.Validate(id))
+		if t.DefinitionID == "" {
 			responseRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
@@ -570,6 +572,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
 	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
 	projectAliases = append(projectAliases, responseRef.PatchAliases...)
+	projectAliases = append(projectAliases, responseRef.GitTagAliases...)
 
 	catcher.Add(model.UpsertAliasesForProject(projectAliases, id))
 

@@ -178,7 +178,7 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 func TestMatching(t *testing.T) {
 	assert := assert.New(t)
 	aliases := ProjectAliases{
-		{Alias: "one", Variant: "bv1", Task: "t1"},
+		{Alias: "one", Variant: "bv1", Task: "t1", GitTag: "tag-."},
 		{Alias: "two", Variant: "bv2", Task: "t2"},
 		{Alias: "three", Variant: "bv3", TaskTags: []string{"tag3"}},
 		{Alias: "four", VariantTags: []string{"variantTag"}, TaskTags: []string{"tag4"}},
@@ -245,4 +245,40 @@ func TestMatching(t *testing.T) {
 	match, err = aliases.HasMatchingTask("bv4", nil, task)
 	assert.NoError(err)
 	assert.True(match)
+
+	match, err = aliases.HasMatchingGitTag("tag-1")
+	assert.NoError(err)
+	assert.True(match)
+
+	match, err = aliases.HasMatchingGitTag("tag1")
+	assert.NoError(err)
+	assert.False(match)
+}
+
+func TestValidateGitTagAlias(t *testing.T) {
+	a := ProjectAlias{Alias: "one"}
+	errs := validateGitTagAlias(a, "gitTag", 1)
+	assert.NotEmpty(t, errs)
+
+	a.GitTag = "#$!)"
+	errs = validateGitTagAlias(a, "gitTag", 1)
+	assert.NotEmpty(t, errs)
+
+	a.GitTag = "tag-1"
+	errs = validateGitTagAlias(a, "gitTag", 1)
+	assert.NotEmpty(t, errs)
+
+	a.RemotePath = "hello.yml"
+	a.Variant = "variant-also-defined"
+	errs = validateGitTagAlias(a, "gitTag", 1)
+	assert.NotEmpty(t, errs)
+
+	a.RemotePath = ""
+	a.Variant = ""
+	errs = validateGitTagAlias(a, "gitTag", 1)
+	assert.NotEmpty(t, errs)
+
+	a.RemotePath = "hello.yml"
+	errs = validateGitTagAlias(a, "gitTag", 1)
+	assert.Empty(t, errs)
 }

@@ -370,7 +370,7 @@ Evergreen Projects
           </div>
         </div>
 
-        <div class="variables" ng-show="github_webhooks_enabled">
+        <div class="variables">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Pull Request Testing</h3> </div>
           </div>
@@ -391,7 +391,7 @@ Evergreen Projects
               </div>
           </div>
           <!-- GIT TAGS -->
-          <div class="authorized_for_git_tags" ng-show="github_webhooks_enabled">
+          <div class="authorized_for_git_tags" ng-hide="true"> <!-- after functionality is finished, change to ng-show="github_webhooks_enabled"-->
             <div class="form-group">
               <div class="col-header col-lg-4 form-control-static"> <h3> Users Authorized To Create Versions From Git Tags </h3></div>
             </div>
@@ -411,6 +411,72 @@ Evergreen Projects
                 <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_user_name)" type="button" ng-click="addGitTagUser()">
                   <i class="fa fa-plus"></i>
                 </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="col-header col-lg-6 form-control-static"> <h4> Git Tag Version Definitions </h4>
+                <div class="muted small">
+                  If an authorized user pushes a tag that matches one or more regex, the version will be fully populated from the given config file,
+                  OR have all variants and tasks that match each variant and task regex pair. (This is not yet fully implemented!)
+                </div>
+              </div>
+            </div>
+
+            <div id="patch-variants-list-header" class="form-group">
+              <div class="col-lg-2"> <label class="control-label"> Git Tag Regex </label> </div>
+              <div class="col-lg-2"> <label class="control-label"> Config File </label> </div>
+              <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+              <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
+              <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
+              <div class="col-lg-2"></div>
+            </div>
+
+            <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.git_tag_aliases track by $index">
+              <div class="col-lg-2">
+                <input class="form-control" ng-model="obj.git_tag" type="text" placeholder="git tag regex">
+              </div>
+              <div class="col-lg-2">
+                <input class="form-control" ng-model="obj.remote_path" ng-disabled="patchDefinitionPopulated(obj)" type="text" placeholder="yaml file">
+              </div>
+              <div ng-disabled="obj.remote_path">
+                <div class="col-lg-2">
+                  <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
+                </div>
+                <div class="col-lg-2">
+                  <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
+                </div>
+                <div class="col-lg-2">
+                  <tag-input klass="form-control" items="obj.tags" placeholder="tags (comma-delimited)" />
+                </div>
+              </div>
+              <div class="col-lg-2">
+                <button class="btn btn-default btn-danger" type="button" ng-click="removeGitTagAlias($index)">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-lg-2">
+                <input ng-model="git_tag_alias.git_tag" class="form-control" type="text" placeholder="git tag regex">
+              </div>
+              <div class="col-lg-2">
+                <input class="form-control" ng-model="git_tag_alias.remote_path" ng-disabled="patchDefinitionPopulated(git_tag_alias)" type="text" placeholder="yaml file">
+              </div>
+              <div class="col-lg-2">
+                <input ng-model="git_tag_alias.variant" class="form-control" ng-disabled="git_tag_alias.remote_path" type="text" placeholder="variant regex">
+              </div>
+              <div class="col-lg-2">
+                <input ng-model="git_tag_alias.task" class="form-control" ng-disabled="git_tag_alias.remote_path" type="text" placeholder="task regex">
+              </div>
+              <div class="col-lg-2">
+                <tag-input klass="form-control" disabled="git_tag_alias.remote_path" items="git_tag_alias.tags" placeholder="tags (comma-delimited)" />
+              </div>
+              <div class="col-lg-2">
+                <button class="plus-button btn btn-primary" ng-disabled="!validGitTagVersionDefinition(git_tag_alias)" type="button" ng-click="addGitTagAlias()">
+                  <i class="fa fa-plus"></i>
+                </button>
+                <label class="distro-error">[[invalidGitTagAliasMessage]]</label>
               </div>
             </div>
           </div>
