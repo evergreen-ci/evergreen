@@ -268,6 +268,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"message":  "problem terminating intent host in db",
 			}))
 		}
+
 		return
 	}
 
@@ -390,6 +391,21 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				j.AddError(task.IncSpawnedHostCost(j.host.StartedBy, cost))
 			}
 		}
+	}
+
+	provisioningFailedStatuses := []string{evergreen.HostStarting, evergreen.HostProvisioning, evergreen.HostProvisionFailed, evergreen.HostBuilding}
+	if utility.StringSliceContains(provisioningFailedStatuses, prevStatus) && j.host.TaskCount == 0 {
+		event.LogProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
+		grip.Info(message.Fields{
+			"message":     "provisioning failure",
+			"status":      prevStatus,
+			"host_id":     j.HostID,
+			"distro":      j.host.Distro.Id,
+			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
+			"provider":    j.host.Provider,
+			"spawn_host":  j.host.User != evergreen.User,
+			"cost":        j.host.TotalCost,
+		})
 	}
 }
 
