@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -36,14 +35,8 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
-	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
-		Workers:      runtime.NumCPU(),
-		DeleteOnSync: true,
-	}); err != nil {
+	if err := c.createBucket(httpClient, conf); err != nil {
 		return errors.Wrap(err, "could not set up S3 task bucket")
-	}
-	if err := c.bucket.Check(ctx); err != nil {
-		return errors.Wrap(err, "could not find S3 task bucket")
 	}
 
 	wd, err := conf.GetWorkingDirectory("")
