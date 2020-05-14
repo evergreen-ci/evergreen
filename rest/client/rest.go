@@ -266,6 +266,35 @@ func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, op
 	return nil
 }
 
+func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*model.APIVolume, error) {
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("volumes/%s", volumeID),
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get volumes")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err = utility.ReadJSON(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem getting volume and parsing error message")
+		}
+		return nil, errors.Wrapf(errMsg, "problem getting volume '%s'", volumeID)
+	}
+
+	volumeResp := &model.APIVolume{}
+	if err = utility.ReadJSON(resp.Body, volumeResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return volumeResp, nil
+}
+
 func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVolume, error) {
 	info := requestInfo{
 		method:  get,

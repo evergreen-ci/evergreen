@@ -158,6 +158,7 @@ type Communicator interface {
 	CreateVolume(context.Context, *host.Volume) (*restmodel.APIVolume, error)
 	DeleteVolume(context.Context, string) error
 	ModifyVolume(context.Context, string, *restmodel.VolumeModifyOptions) error
+	GetVolume(context.Context, string) (*restmodel.APIVolume, error)
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
 	StartHostProcesses(context.Context, []string, string, int) ([]restmodel.APIHostProcess, error)
 	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess, int) ([]restmodel.APIHostProcess, error)

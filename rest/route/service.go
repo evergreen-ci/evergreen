@@ -114,6 +114,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/volumes").Version(2).Post().Wrap(checkUser).RouteHandler(makeCreateVolume(sc, env))
 	app.AddRoute("/volumes/{volume_id}").Version(2).Wrap(checkUser).Delete().RouteHandler(makeDeleteVolume(sc, env))
 	app.AddRoute("/volumes/{volume_id}").Version(2).Wrap(checkUser).Patch().RouteHandler(makeModifyVolume(sc, env))
+	app.AddRoute("/volumes/{volume_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetVolumeByID(sc))
 	app.AddRoute("/keys").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchKeys(sc))
 	app.AddRoute("/keys").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetKey(sc))
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(checkUser).RouteHandler(makeDeleteKeys(sc))

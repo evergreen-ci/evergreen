@@ -426,7 +426,6 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	h := &getVolumesHandler{
 		sc: &data.MockConnector{},
 	}
@@ -445,6 +444,7 @@ func TestGetVolumesHandler(t *testing.T) {
 		CachedVolumes: []host.Volume{
 			{
 				ID:               "volume1",
+				Host:             "has-a-volume",
 				CreatedBy:        "user",
 				Type:             evergreen.DefaultEBSType,
 				Size:             64,
@@ -486,6 +486,53 @@ func TestGetVolumesHandler(t *testing.T) {
 			assert.Equal(t, v.Size, 36)
 		}
 	}
+}
+
+func TestGetVolumeByIDHandler(t *testing.T) {
+	h := &getVolumeByIDHandler{
+		sc: &data.MockConnector{},
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	h1 := host.Host{
+		Id:        "has-a-volume",
+		StartedBy: "user",
+		Volumes: []host.VolumeAttachment{
+			{VolumeID: "volume1", DeviceName: "/dev/sdf4"},
+		},
+	}
+
+	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
+		CachedHosts: []host.Host{h1},
+		CachedVolumes: []host.Volume{
+			{
+				ID:               "volume1",
+				Host:             "has-a-volume",
+				CreatedBy:        "user",
+				Type:             evergreen.DefaultEBSType,
+				Size:             64,
+				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+			},
+		},
+	}
+	r, err := http.NewRequest("GET", "/volumes/volume1", nil)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
+	assert.NoError(t, h.Parse(ctx, r))
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	v, ok := resp.Data().(*model.APIVolume)
+	assert.True(t, ok)
+	require.NotNil(t, v)
+	assert.Equal(t, "user", model.FromStringPtr(v.CreatedBy))
+	assert.Equal(t, evergreen.DefaultEBSType, model.FromStringPtr(v.Type))
+	assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromStringPtr(v.AvailabilityZone))
+	assert.Equal(t, h1.Id, model.FromStringPtr(v.HostID))
+	assert.Equal(t, h1.Volumes[0].DeviceName, model.FromStringPtr(v.DeviceName))
+	assert.Equal(t, v.Size, 64)
 }
 
 func TestMakeSpawnHostSubscription(t *testing.T) {

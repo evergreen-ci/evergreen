@@ -996,21 +996,84 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		// if the volume is attached to a host, also return the host ID and volume device name
-		h, err := h.sc.FindHostWithVolume(v.ID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
-		}
-		if h != nil {
-			volumeDoc.HostID = model.ToStringPtr(h.Id)
-			for _, attachment := range h.Volumes {
-				if attachment.VolumeID == v.ID {
-					volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
+		if v.Host != "" {
+			h, err := h.sc.FindHostById(v.Host)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
+			}
+			if h != nil {
+				for _, attachment := range h.Volumes {
+					if attachment.VolumeID == v.ID {
+						volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
+					}
 				}
 			}
 		}
 		volumeDocs = append(volumeDocs, volumeDoc)
 	}
 	return gimlet.NewJSONResponse(volumeDocs)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/volumes
+
+type getVolumeByIDHandler struct {
+	volumeID string
+	sc       data.Connector
+}
+
+func makeGetVolumeByID(sc data.Connector) gimlet.RouteHandler {
+	return &getVolumeByIDHandler{
+		sc: sc,
+	}
+}
+
+func (h *getVolumeByIDHandler) Factory() gimlet.RouteHandler {
+	return &getVolumeByIDHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	if h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"]); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
+	v, err := h.sc.FindVolumeById(h.volumeID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "volume not found",
+		})
+	}
+	volumeDoc := &model.APIVolume{}
+	if err = volumeDoc.BuildFromService(v); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
+	}
+	// if the volume is attached to a host, also return the host ID and volume device name
+	if v.Host != "" {
+		attachedHost, err := h.sc.FindHostById(v.Host)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
+		}
+		if attachedHost != nil {
+			for _, attachment := range attachedHost.Volumes {
+				if attachment.VolumeID == v.ID {
+					volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
+				}
+			}
+		}
+	}
+
+	return gimlet.NewJSONResponse(volumeDoc)
 }
 
 ////////////////////////////////////////////////////////////////////////
