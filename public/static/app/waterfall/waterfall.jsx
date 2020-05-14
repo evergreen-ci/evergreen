@@ -12,8 +12,11 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
-function formatMessageWithGitTags(message, git_tags) {
-  return message + " (Git Tags: " + git_tags + ")";
+function gitTagsMessage(git_tags) {
+  if (!git_tags || git_tags === "") {
+    return "";
+  }
+  return "Git Tags: " + git_tags + "";
 }
 
 function generateURLParameters(params) {
@@ -620,7 +623,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
-  var message = formatMessageWithGitTags(version.messages[0], version.git_tags[0]);
+  var tags = gitTagsMessage(version.git_tags[0]);
 
   if (version.upstream_data) {
     var upstreamData = version.upstream_data[0];
@@ -655,6 +658,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
             <div className="row">
               <strong>{author}</strong> - <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
               {button}
+              <div>{tags}</div>
             </div>
           </div>
         </div>
@@ -685,7 +689,6 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
 
   var versionStr = (version.messages.length > 1) ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr;
-
   var popovers = (
     <Popover id="popover-positioned-bottom" title="">
       {
@@ -714,7 +717,7 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
 };
 function RolledUpVersionSummary ({author, commit, message, gitTags, versionId, createTime, userTz, jiraHost}) {
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A' );
-  message = formatMessageWithGitTags(message, gitTags);
+  gitTags = gitTagsMessage(gitTags);
   commit = commit.substring(0,10);
   return (
     <div className="rolled-up-version-summary">
@@ -723,6 +726,7 @@ function RolledUpVersionSummary ({author, commit, message, gitTags, versionId, c
       <a href={"/version/" + versionId}>{commit}</a> - <strong>{author}</strong>
       <br />
       <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
+      <div>{gitTags}</div>
       <br />
     </div>
   );

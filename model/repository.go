@@ -54,7 +54,9 @@ type GitTag struct {
 	Pusher string
 }
 
-func FormatGitTagsAsString(tags []GitTag) string {
+type GitTags []GitTag
+
+func (tags GitTags) String() string {
 	tagNames := []string{}
 	for _, t := range tags {
 		tagNames = append(tagNames, t.Tag)

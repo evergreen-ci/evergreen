@@ -24,8 +24,11 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
-function formatMessageWithGitTags(message, git_tags) {
-  return message + " (Git Tags: " + git_tags + ")";
+function gitTagsMessage(git_tags) {
+  if (!git_tags || git_tags === "") {
+    return "";
+  }
+  return "Git Tags: " + git_tags + "";
 }
 
 function generateURLParameters(params) {
@@ -767,7 +770,7 @@ function ActiveVersionHeader(_ref5) {
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0, 5);
-  var message = formatMessageWithGitTags(version.messages[0], version.git_tags[0]);
+  var tags = gitTagsMessage(version.git_tags[0]);
 
   if (version.upstream_data) {
     var upstreamData = version.upstream_data[0];
@@ -834,7 +837,12 @@ function ActiveVersionHeader(_ref5) {
             { jiraHost: jiraHost },
             message
           ),
-          button
+          button,
+          React.createElement(
+            "div",
+            null,
+            tags
+          )
         )
       )
     )
@@ -890,7 +898,6 @@ function RolledUpVersionHeader(_ref6) {
 
   var versionStr = version.messages.length > 1 ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr;
-
   var popovers = React.createElement(
     Popover,
     { id: "popover-positioned-bottom", title: "" },
@@ -934,7 +941,7 @@ function RolledUpVersionSummary(_ref7) {
       jiraHost = _ref7.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
-  message = formatMessageWithGitTags(message, gitTags);
+  gitTags = gitTagsMessage(gitTags);
   commit = commit.substring(0, 10);
   return React.createElement(
     "div",
@@ -961,6 +968,11 @@ function RolledUpVersionSummary(_ref7) {
       JiraLink,
       { jiraHost: jiraHost },
       message
+    ),
+    React.createElement(
+      "div",
+      null,
+      gitTags
     ),
     React.createElement("br", null)
   );
