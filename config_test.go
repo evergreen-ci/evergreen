@@ -253,6 +253,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		GroupBackgroundCreateFrequencyMinutes: 50,
 		GroupPruneFrequencyMinutes:            60,
 		GroupTTLMinutes:                       70,
+		LockTimeoutMinutes:                    7,
 	}
 
 	err := config.Set()
@@ -324,8 +325,7 @@ func (s *AdminSuite) TestAuthConfig() {
 
 func (s *AdminSuite) TestHostinitConfig() {
 	config := HostInitConfig{
-		SSHTimeoutSeconds: 10,
-		HostThrottle:      64,
+		HostThrottle: 64,
 	}
 
 	err := config.Set()

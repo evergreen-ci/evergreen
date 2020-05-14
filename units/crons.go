@@ -28,7 +28,7 @@ import (
 
 const TSFormat = "2006-01-02.15-04-05"
 
-func PopulateCatchupJobs(part int) amboy.QueueOperation {
+func PopulateCatchupJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -48,7 +48,8 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := utility.RoundPartOfHour(part).Format(TSFormat)
+		// run once an hour
+		ts := utility.RoundPartOfDay(0).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -70,7 +71,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			if mostRecentVersion.CreateTime.Before(time.Now().Add(-2 * time.Hour)) {
+			if mostRecentVersion.CreateTime.Before(time.Now().Add(-4 * time.Hour)) {
 				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)
 				j.SetPriority(-1)
 				catcher.Add(queue.Put(ctx, j))
@@ -81,7 +82,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 	}
 }
 
-func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
+func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -102,7 +103,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := utility.RoundPartOfHour(part).Format(TSFormat)
+		ts := utility.RoundPartOfHour(15).Format(TSFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -135,23 +136,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		ts := utility.RoundPartOfHour(part).Format(TSFormat)
-
-		catcher := grip.NewBasicCatcher()
-		for _, proj := range projects {
-			if !proj.Enabled {
-				continue
-			}
-
-			catcher.Add(queue.Put(ctx, NewVersionActivationJob(proj.Identifier, ts)))
-		}
-
-		return catcher.Resolve()
+		return queue.Put(ctx, NewVersionActivationJob(utility.RoundPartOfHour(part).Format(TSFormat)))
 	}
 }
 

@@ -64,6 +64,9 @@ type ProjectRef struct {
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
+	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
+	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
+
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
 	// RepoDetails contain the details of the status of the consistency
@@ -162,35 +165,36 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefOwnerKey               = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey                = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey              = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefRepoKindKey            = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
-	ProjectRefEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey             = bsonutil.MustHaveTag(ProjectRef{}, "Private")
-	ProjectRefRestrictedKey          = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
-	ProjectRefBatchTimeKey           = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey          = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
-	ProjectRefDisplayNameKey         = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefDeactivatePreviousKey  = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
-	ProjectRefRemotePathKey          = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefTrackedKey             = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
-	ProjectRefRepotrackerError       = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefFilesIgnoredFromCache  = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
-	ProjectRefDisabledStatsCache     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
-	ProjectRefAdminsKey              = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
-	projectRefTracksPushEventsKey    = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
-	projectRefDefaultLogger          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
-	projectRefPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefRepotrackerDisabledKey = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
-	projectRefCommitQueueKey         = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey            = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
-	projectRefPatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
-	projectRefNotifyOnFailureKey     = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
-	projectRefTriggersKey            = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
-	projectRefPeriodicBuildsKey      = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
-	projectRefTagsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
-	projectRefWorkstationConfigKey   = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
+	ProjectRefOwnerKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey                = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefRepoKindKey              = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
+	ProjectRefEnabledKey               = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey               = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
+	ProjectRefBatchTimeKey             = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey            = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefDisplayNameKey           = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefDeactivatePreviousKey    = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
+	ProjectRefRemotePathKey            = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefTrackedKey               = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
+	ProjectRefRepotrackerError         = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefFilesIgnoredFromCache    = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
+	ProjectRefDisabledStatsCache       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefAdminsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	ProjectRefGitTagAuthorizedUsersKey = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
+	projectRefTracksPushEventsKey      = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefDefaultLogger            = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
+	projectRefPRTestingEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefRepotrackerDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
+	projectRefCommitQueueKey           = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey              = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
+	projectRefPatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefNotifyOnFailureKey       = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefTriggersKey              = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPeriodicBuildsKey        = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefTagsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
+	projectRefWorkstationConfigKey     = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -683,35 +687,36 @@ func (projectRef *ProjectRef) Upsert() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ProjectRefRepoKindKey:            projectRef.RepoKind,
-				ProjectRefEnabledKey:             projectRef.Enabled,
-				ProjectRefPrivateKey:             projectRef.Private,
-				ProjectRefRestrictedKey:          projectRef.Restricted,
-				ProjectRefBatchTimeKey:           projectRef.BatchTime,
-				ProjectRefOwnerKey:               projectRef.Owner,
-				ProjectRefRepoKey:                projectRef.Repo,
-				ProjectRefBranchKey:              projectRef.Branch,
-				ProjectRefDisplayNameKey:         projectRef.DisplayName,
-				projectRefTagsKey:                projectRef.Tags,
-				ProjectRefDeactivatePreviousKey:  projectRef.DeactivatePrevious,
-				ProjectRefTrackedKey:             projectRef.Tracked,
-				ProjectRefRemotePathKey:          projectRef.RemotePath,
-				ProjectRefTrackedKey:             projectRef.Tracked,
-				ProjectRefRepotrackerError:       projectRef.RepotrackerError,
-				ProjectRefFilesIgnoredFromCache:  projectRef.FilesIgnoredFromCache,
-				ProjectRefDisabledStatsCache:     projectRef.DisabledStatsCache,
-				ProjectRefAdminsKey:              projectRef.Admins,
-				projectRefTracksPushEventsKey:    projectRef.TracksPushEvents,
-				projectRefDefaultLogger:          projectRef.DefaultLogger,
-				projectRefPRTestingEnabledKey:    projectRef.PRTestingEnabled,
-				projectRefCommitQueueKey:         projectRef.CommitQueue,
-				projectRefTaskSyncKey:            projectRef.TaskSync,
-				projectRefPatchingDisabledKey:    projectRef.PatchingDisabled,
-				projectRefRepotrackerDisabledKey: projectRef.RepotrackerDisabled,
-				projectRefNotifyOnFailureKey:     projectRef.NotifyOnBuildFailure,
-				projectRefTriggersKey:            projectRef.Triggers,
-				projectRefPeriodicBuildsKey:      projectRef.PeriodicBuilds,
-				projectRefWorkstationConfigKey:   projectRef.WorkstationConfig,
+				ProjectRefRepoKindKey:              projectRef.RepoKind,
+				ProjectRefEnabledKey:               projectRef.Enabled,
+				ProjectRefPrivateKey:               projectRef.Private,
+				ProjectRefRestrictedKey:            projectRef.Restricted,
+				ProjectRefBatchTimeKey:             projectRef.BatchTime,
+				ProjectRefOwnerKey:                 projectRef.Owner,
+				ProjectRefRepoKey:                  projectRef.Repo,
+				ProjectRefBranchKey:                projectRef.Branch,
+				ProjectRefDisplayNameKey:           projectRef.DisplayName,
+				projectRefTagsKey:                  projectRef.Tags,
+				ProjectRefDeactivatePreviousKey:    projectRef.DeactivatePrevious,
+				ProjectRefTrackedKey:               projectRef.Tracked,
+				ProjectRefRemotePathKey:            projectRef.RemotePath,
+				ProjectRefTrackedKey:               projectRef.Tracked,
+				ProjectRefRepotrackerError:         projectRef.RepotrackerError,
+				ProjectRefFilesIgnoredFromCache:    projectRef.FilesIgnoredFromCache,
+				ProjectRefDisabledStatsCache:       projectRef.DisabledStatsCache,
+				ProjectRefAdminsKey:                projectRef.Admins,
+				ProjectRefGitTagAuthorizedUsersKey: projectRef.GitTagAuthorizedUsers,
+				projectRefTracksPushEventsKey:      projectRef.TracksPushEvents,
+				projectRefDefaultLogger:            projectRef.DefaultLogger,
+				projectRefPRTestingEnabledKey:      projectRef.PRTestingEnabled,
+				projectRefCommitQueueKey:           projectRef.CommitQueue,
+				projectRefTaskSyncKey:              projectRef.TaskSync,
+				projectRefPatchingDisabledKey:      projectRef.PatchingDisabled,
+				projectRefRepotrackerDisabledKey:   projectRef.RepotrackerDisabled,
+				projectRefNotifyOnFailureKey:       projectRef.NotifyOnBuildFailure,
+				projectRefTriggersKey:              projectRef.Triggers,
+				projectRefPeriodicBuildsKey:        projectRef.PeriodicBuilds,
+				projectRefWorkstationConfigKey:     projectRef.WorkstationConfig,
 			},
 		},
 	)

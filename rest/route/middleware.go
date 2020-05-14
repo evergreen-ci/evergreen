@@ -170,6 +170,40 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
+func NewHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &HostAuthMiddleware{
+		sc: sc,
+	}
+}
+
+type HostAuthMiddleware struct {
+	sc data.Connector
+}
+
+func (m *HostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	vars := gimlet.GetVars(r)
+	hostID, ok := vars["host_id"]
+	if !ok {
+		hostID = r.Header.Get(evergreen.HostHeader)
+		if hostID == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
+	}
+	if code, err := m.sc.CheckHostSecret(hostID, r); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: code,
+			Message:    err.Error(),
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
 func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskAuthMiddleware{
 		sc: sc,
@@ -201,7 +235,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	if code, err := m.sc.CheckHostSecret(r); err != nil {
+	if code, err := m.sc.CheckHostSecret("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),

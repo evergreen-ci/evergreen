@@ -317,6 +317,7 @@ type APIAmboyConfig struct {
 	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int     `json:"group_ttl"`
 	RequireRemotePriority                 bool    `json:"require_remote_priority"`
+	LockTimeoutMinutes                    int     `json:"lock_timeout_minutes"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -333,6 +334,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
 		a.RequireRemotePriority = v.RequireRemotePriority
+		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -352,6 +354,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
+		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 	}, nil
 }
 
@@ -864,16 +867,14 @@ type APIBanner struct {
 }
 
 type APIHostInitConfig struct {
-	SSHTimeoutSeconds    int64 `json:"ssh_timeout_secs"`
-	HostThrottle         int   `json:"host_throttle"`
-	ProvisioningThrottle int   `json:"provisioning_throttle"`
-	CloudStatusBatchSize int   `json:"cloud_batch_size"`
+	HostThrottle         int `json:"host_throttle"`
+	ProvisioningThrottle int `json:"provisioning_throttle"`
+	CloudStatusBatchSize int `json:"cloud_batch_size"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.HostInitConfig:
-		a.SSHTimeoutSeconds = v.SSHTimeoutSeconds
 		a.HostThrottle = v.HostThrottle
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
@@ -885,7 +886,6 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 
 func (a *APIHostInitConfig) ToService() (interface{}, error) {
 	return evergreen.HostInitConfig{
-		SSHTimeoutSeconds:    a.SSHTimeoutSeconds,
 		HostThrottle:         a.HostThrottle,
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,

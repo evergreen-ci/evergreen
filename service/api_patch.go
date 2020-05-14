@@ -39,7 +39,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Description       string        `json:"desc"`
 		Project           string        `json:"project"`
 		PatchBytes        []byte        `json:"patch_bytes"`
-		PatchString       string        `json:"patch"`
 		Githash           string        `json:"githash"`
 		Variants          []string      `json:"buildvariants_new"`
 		Tasks             []string      `json:"tasks"`
@@ -56,9 +55,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchString := string(data.PatchBytes)
-	if patchString == "" {
-		patchString = data.PatchString
-	}
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
@@ -166,28 +162,24 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Module      string `json:"module"`
-		PatchBytes  []byte `json:"patch_bytes"`
-		PatchString string `json:"patch"`
-		Githash     string `json:"githash"`
-		Message     string `json:"message"`
+		Module     string `json:"module"`
+		PatchBytes []byte `json:"patch_bytes"`
+		Githash    string `json:"githash"`
+		Message    string `json:"message"`
 	}{}
 	if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
-	if p.Alias == evergreen.CommitQueueAlias && len(data.PatchString) != 0 && !patch.IsMailboxDiff(data.PatchString) {
+	patchContent := string(data.PatchBytes)
+	if p.Alias == evergreen.CommitQueueAlias && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
 			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
 		return
 	}
 
 	moduleName, githash, message := data.Module, data.Githash, data.Message
-	patchContent := string(data.PatchBytes)
-	if patchContent == "" {
-		patchContent = data.PatchString
-	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {

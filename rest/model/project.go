@@ -197,29 +197,31 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 }
 
 type APIProjectRef struct {
-	Owner                *string              `json:"owner_name"`
-	Repo                 *string              `json:"repo_name"`
-	Branch               *string              `json:"branch_name"`
-	RepoKind             *string              `json:"repo_kind"`
-	Enabled              bool                 `json:"enabled"`
-	Private              bool                 `json:"private"`
-	BatchTime            int                  `json:"batch_time"`
-	RemotePath           *string              `json:"remote_path"`
-	Identifier           *string              `json:"identifier"`
-	DisplayName          *string              `json:"display_name"`
-	DeactivatePrevious   bool                 `json:"deactivate_previous"`
-	TracksPushEvents     bool                 `json:"tracks_push_events"`
-	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
-	DefaultLogger        *string              `json:"default_logger"`
-	CommitQueue          APICommitQueueParams `json:"commit_queue"`
-	TaskSync             APITaskSyncOptions   `json:"task_sync"`
-	Tracked              bool                 `json:"tracked"`
-	PatchingDisabled     bool                 `json:"patching_disabled"`
-	RepotrackerDisabled  bool                 `json:"repotracker_disabled"`
-	Admins               []*string            `json:"admins"`
-	DeleteAdmins         []*string            `json:"delete_admins,omitempty"`
-	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
-	Tags                 []*string            `json:"tags"`
+	Owner                       *string              `json:"owner_name"`
+	Repo                        *string              `json:"repo_name"`
+	Branch                      *string              `json:"branch_name"`
+	RepoKind                    *string              `json:"repo_kind"`
+	Enabled                     bool                 `json:"enabled"`
+	Private                     bool                 `json:"private"`
+	BatchTime                   int                  `json:"batch_time"`
+	RemotePath                  *string              `json:"remote_path"`
+	Identifier                  *string              `json:"identifier"`
+	DisplayName                 *string              `json:"display_name"`
+	DeactivatePrevious          bool                 `json:"deactivate_previous"`
+	TracksPushEvents            bool                 `json:"tracks_push_events"`
+	PRTestingEnabled            bool                 `json:"pr_testing_enabled"`
+	DefaultLogger               *string              `json:"default_logger"`
+	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
+	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
+	Tracked                     bool                 `json:"tracked"`
+	PatchingDisabled            bool                 `json:"patching_disabled"`
+	RepotrackerDisabled         bool                 `json:"repotracker_disabled"`
+	Admins                      []*string            `json:"admins"`
+	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
+	GitTagAuthorizedUsers       []*string            `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
+	DeleteGitTagAuthorizedUsers []*string            `bson:"delete_git_tag_authorized_users,omitempty" json:"delete_git_tag_authorized_users,omitempty"`
+	NotifyOnBuildFailure        bool                 `json:"notify_on_failure"`
+	Tags                        []*string            `json:"tags"`
 
 	Revision            *string                `json:"revision"`
 	Triggers            []APITriggerDefinition `json:"triggers"`
@@ -248,41 +250,30 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	}
 
 	projectRef := model.ProjectRef{
-		Owner:                FromStringPtr(p.Owner),
-		Repo:                 FromStringPtr(p.Repo),
-		Branch:               FromStringPtr(p.Branch),
-		RepoKind:             FromStringPtr(p.RepoKind),
-		Enabled:              p.Enabled,
-		Private:              p.Private,
-		BatchTime:            p.BatchTime,
-		RemotePath:           FromStringPtr(p.RemotePath),
-		Identifier:           FromStringPtr(p.Identifier),
-		DisplayName:          FromStringPtr(p.DisplayName),
-		DeactivatePrevious:   p.DeactivatePrevious,
-		TracksPushEvents:     p.TracksPushEvents,
-		DefaultLogger:        FromStringPtr(p.DefaultLogger),
-		PRTestingEnabled:     p.PRTestingEnabled,
-		CommitQueue:          commitQueue.(model.CommitQueueParams),
-		TaskSync:             taskSync,
-		Tracked:              p.Tracked,
-		PatchingDisabled:     p.PatchingDisabled,
-		RepotrackerDisabled:  p.RepotrackerDisabled,
-		NotifyOnBuildFailure: p.NotifyOnBuildFailure,
+		Owner:                 FromStringPtr(p.Owner),
+		Repo:                  FromStringPtr(p.Repo),
+		Branch:                FromStringPtr(p.Branch),
+		RepoKind:              FromStringPtr(p.RepoKind),
+		Enabled:               p.Enabled,
+		Private:               p.Private,
+		BatchTime:             p.BatchTime,
+		RemotePath:            FromStringPtr(p.RemotePath),
+		Identifier:            FromStringPtr(p.Identifier),
+		DisplayName:           FromStringPtr(p.DisplayName),
+		DeactivatePrevious:    p.DeactivatePrevious,
+		TracksPushEvents:      p.TracksPushEvents,
+		DefaultLogger:         FromStringPtr(p.DefaultLogger),
+		PRTestingEnabled:      p.PRTestingEnabled,
+		CommitQueue:           commitQueue.(model.CommitQueueParams),
+		TaskSync:              taskSync,
+		Tracked:               p.Tracked,
+		PatchingDisabled:      p.PatchingDisabled,
+		RepotrackerDisabled:   p.RepotrackerDisabled,
+		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
+		Admins:                FromStringPtrSlice(p.Admins),
+		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
+		Tags:                  FromStringPtrSlice(p.Tags),
 	}
-
-	// Copy admins
-	admins := []string{}
-	for _, admin := range p.Admins {
-		admins = append(admins, FromStringPtr(admin))
-	}
-	projectRef.Admins = admins
-
-	// Copy tags
-	tags := []string{}
-	for _, tag := range p.Tags {
-		tags = append(tags, FromStringPtr(tag))
-	}
-	projectRef.Tags = tags
 
 	// Copy triggers
 	triggers := []model.TriggerDefinition{}
@@ -348,20 +339,9 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
-
-	// Copy admins
-	admins := []*string{}
-	for _, admin := range projectRef.Admins {
-		admins = append(admins, ToStringPtr(admin))
-	}
-	p.Admins = admins
-
-	// Copy tags
-	tags := []*string{}
-	for _, tag := range projectRef.Tags {
-		tags = append(tags, ToStringPtr(tag))
-	}
-	p.Tags = tags
+	p.Admins = ToStringPtrSlice(projectRef.Admins)
+	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
+	p.Tags = ToStringPtrSlice(projectRef.Tags)
 
 	// Copy triggers
 	triggers := []APITriggerDefinition{}

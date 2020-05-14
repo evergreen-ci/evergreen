@@ -104,6 +104,7 @@ func MockConfig() *evergreen.Settings {
 			GroupBackgroundCreateFrequencyMinutes: 50,
 			GroupPruneFrequencyMinutes:            60,
 			GroupTTLMinutes:                       70,
+			LockTimeoutMinutes:                    7,
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
@@ -170,8 +171,7 @@ func MockConfig() *evergreen.Settings {
 		Bugsnag:            "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
-			SSHTimeoutSeconds: 10,
-			HostThrottle:      64,
+			HostThrottle: 64,
 		},
 		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",

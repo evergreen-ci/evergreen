@@ -381,6 +381,19 @@ func TestJIRADescription(t *testing.T) {
 			So(strings.Contains(desc, "http://evergreen.ui/task/t1%21/0"), ShouldBeTrue)
 			So(strings.Contains(desc, "shouldn't be here"), ShouldBeFalse)
 		})
+		Convey("display tasks have links to execution task logs", func() {
+			j.data.Task.DisplayOnly = true
+			j.data.Task.LocalTestResults = []task.TestResult{
+				{TestFile: "test0", Status: evergreen.TestFailedStatus, TaskID: "et0", Execution: 0},
+				{TestFile: "test1", Status: evergreen.TestFailedStatus, TaskID: "et1", Execution: 1},
+				{TestFile: "test2", Status: evergreen.TestFailedStatus, TaskID: "et1", Execution: 1},
+			}
+
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(strings.Contains(desc, "[Task Logs (test0) | http://evergreen.ui/task_log_raw/et0/0?type=T]"), ShouldBeTrue)
+			So(strings.Contains(desc, "[Task Logs (test1 test2) | http://evergreen.ui/task_log_raw/et1/1?type=T]"), ShouldBeTrue)
+		})
 	})
 }
 

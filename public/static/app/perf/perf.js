@@ -58,7 +58,11 @@ $http.get(templateUrl).success(function(template) {
     var hash = {}
     var locationHash = decodeURIComponent($location.hash());
     if (locationHash.length > 0) {
-      hash = JSON.parse(locationHash)
+      try {
+        hash = JSON.parse(locationHash);
+      } catch (e) {
+        return;
+      }
     }
     if (Object.keys($scope.hiddenGraphs).length > 0) {
       hash.hiddenGraphs = Object.keys($scope.hiddenGraphs)
