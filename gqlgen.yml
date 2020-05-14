@@ -76,3 +76,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   GithubUser:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  UserSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
+  NotificationsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
+  GithubUserInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
