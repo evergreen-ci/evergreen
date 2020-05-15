@@ -551,8 +551,8 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.invalidGithubPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.github_alias);
-    item["alias"] = "__github";
+    var item = Object.assign({}, $scope.github_alias);
+    item.alias = "__github";
     $scope.settingsFormData.github_aliases = $scope.settingsFormData.github_aliases.concat([item]);
     delete $scope.github_alias;
     $scope.invalidGitHubPatchDefinitionMessage = "";
@@ -563,8 +563,8 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.invalidCommitQueuePatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.commit_queue_alias);
-    item["alias"] = "__commit_queue";
+    var item = Object.assign({}, $scope.commit_queue_alias);
+    item.alias = "__commit_queue";
     $scope.settingsFormData.commit_queue_aliases = $scope.settingsFormData.commit_queue_aliases.concat([item]);
     delete $scope.commit_queue_alias;
     $scope.invalidCommitQueuePatchDefinitionMessage = "";
@@ -575,8 +575,8 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.invalidGitTagAliasMessage = "An alias must have a git tag alias, variant regex, and exactly one of task regex or tag";
       return;
     }
-    item = Object.assign({}, $scope.git_tag_alias);
-    item["alias"] = "__git_tag";
+    var item = Object.assign({}, $scope.git_tag_alias);
+    item.alias = "__git_tag";
     $scope.settingsFormData.git_tag_aliases = $scope.settingsFormData.git_tag_aliases.concat([item]);
     delete $scope.git_tag_alias;
     $scope.invalidGitTagAliasMessage = "";
@@ -587,7 +587,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, exactly one of variant regex or tag, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.patch_alias)
+    var item = Object.assign({}, $scope.patch_alias)
     $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
     delete $scope.patch_alias;
     $scope.invalidPatchAliasMessage = "";
@@ -807,7 +807,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   }
 
   $scope.patchDefinitionPopulated = function(alias) {
-    return alias && (Boolean(alias.variant) || Boolean(alias.task) || !_.isEmpty(alias.variant_tags) || !_.isEmpty(alias.tags));
+    return alias && (alias.variant || alias.task || !_.isEmpty(alias.variant_tags) || !_.isEmpty(alias.tags));
   }
 
   $scope.aliasRemotePathPopulated = function(alias) {
@@ -815,7 +815,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   }
 
   $scope.validGitTagVersionDefinition = function (alias) {
-    if (!alias || !Boolean(alias.git_tag)) {
+    if (!alias || !alias.git_tag) {
       return false;
     }
     // must have ONLY yaml file defined, or a valid patch definition
