@@ -106,7 +106,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 						JasperCredentialsPath: "/jasper_credentials_path",
 					},
 					SSHKey: sshKeyName,
-					Arch:   distro.ArchLinuxAmd64,
+					Arch:   evergreen.ArchLinuxAmd64,
 				},
 				Host: "localhost",
 				User: evergreen.User,
