@@ -680,7 +680,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
 	conf := s.modelData2.TaskConfig
-	conf.Expansions.Put(moduleExpansionName("sample"), correctHash)
+	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
 	ctx := context.Background()
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)

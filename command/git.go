@@ -445,7 +445,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 				}
 			}
 			if revision == "" {
-				revision = conf.Expansions.Get(moduleExpansionName(moduleName))
+				revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
 				if revision != "" {
 					c.logModuleRevision(logger, revision, moduleName, "from manifest")
 				}
