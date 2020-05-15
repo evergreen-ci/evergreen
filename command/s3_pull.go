@@ -109,6 +109,9 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	}
 
 	httpClient := utility.GetDefaultHTTPRetryableClient()
+	// Do not time out a download since it could be an expensive operation
+	// depending on the download speed and the size of the pull.
+	httpClient.Timeout = 0
 	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf); err != nil {

@@ -62,7 +62,7 @@ func Pull() cli.Command {
 
 			httpClient := utility.GetDefaultHTTPRetryableClient()
 			// Do not time out a download since it could be an expensive
-			// operation depending on the speed of downloading.
+			// operation depending on the download speed and size of the pull.
 			httpClient.Timeout = 0
 			defer utility.PutHTTPClient(httpClient)
 			opts := pail.S3Options{
