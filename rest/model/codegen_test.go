@@ -32,3 +32,36 @@ func TestWords(t *testing.T) {
 	s := "thisIsAFieldName"
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
 }
+
+func TestCreateConversionMethods(t *testing.T) {
+	fields := ExtractedFields{
+		"AnotherString": ExtractedField{OutputFieldName: "One", Nullable: true},
+		"StringPtr":     ExtractedField{OutputFieldName: "Two", Nullable: false},
+		"Int":           ExtractedField{OutputFieldName: "Three", Nullable: false},
+		"IntPtr":        ExtractedField{OutputFieldName: "Four", Nullable: true},
+	}
+	generated, err := CreateConversionMethods("github.com/evergreen-ci/evergreen/rest/model", "TestStruct", fields)
+	assert.NoError(t, err)
+	expected := `package model
+
+import "github.com/evergreen-ci/evergreen/rest/model"
+
+func (m *APITestStruct) BuildFromService(t model.TestStruct) error {
+	m.Four = intPtrToIntPtr(t.IntPtr)
+	m.One = stringToStringPtr(t.AnotherString)
+	m.Three = intToInt(t.Int)
+	m.Two = stringPtrToString(t.StringPtr)
+	return nil
+}
+
+func (m *APITestStruct) ToService() (model.TestStruct, error) {
+	out := model.TestStruct{}
+	out.AnotherString = stringToStringPtr(m.One)
+	out.Int = intToInt(m.Three)
+	out.IntPtr = intPtrToIntPtr(m.Four)
+	out.StringPtr = stringPtrToString(m.Two)
+	return out, nil
+}
+`
+	assert.Equal(t, expected, string(generated))
+}
