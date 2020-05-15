@@ -302,7 +302,7 @@ type largeWriteCloser struct {
 	dryRun         bool
 	verbose        bool
 	partNumber     int64
-	maxSize        int
+	minSize        int
 	svc            *s3.S3
 	ctx            context.Context
 	buffer         []byte
@@ -465,13 +465,13 @@ func (w *largeWriteCloser) Write(p []byte) (int, error) {
 	if w.isClosed {
 		return 0, errors.New("writer already closed")
 	}
-	if len(w.buffer)+len(p) > w.maxSize {
+	w.buffer = append(w.buffer, p...)
+	if len(w.buffer) > w.minSize {
 		err := w.flush()
 		if err != nil {
 			return 0, err
 		}
 	}
-	w.buffer = append(w.buffer, p...)
 	return len(p), nil
 }
 
@@ -587,7 +587,7 @@ func (s *s3BucketLarge) Writer(ctx context.Context, key string) (io.WriteCloser,
 	})
 
 	writer := &largeWriteCloser{
-		maxSize:     s.minPartSize,
+		minSize:     s.minPartSize,
 		name:        s.name,
 		svc:         s.svc,
 		ctx:         ctx,

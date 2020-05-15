@@ -131,7 +131,7 @@ imports:
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
-    version: a03af0d0a6184f872ec5ddd73631cb00f0ec3675
+    version: 53fb54f623858257f28f738a0d3edc7e70424c9f
   - name: github.com/mongodb/jasper
     version: 5fb1ab4916bb2cce94a003fc0277d62dccd9cc90
   - name: go.mongodb.org/mongo-driver
