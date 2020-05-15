@@ -518,7 +518,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
-		OOMKiller:       tc.getOomTrackerInfo(),
+		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
 		Logs:            tc.logs,
 	}

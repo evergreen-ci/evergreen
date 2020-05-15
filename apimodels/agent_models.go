@@ -42,13 +42,13 @@ type TaskEndDetail struct {
 	TimedOut        bool           `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType     string         `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration time.Duration  `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
-	OOMKiller       OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
+	OOMTracker      OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Logs            *TaskLogs      `bson:"-" json:"logs,omitempty"`
 }
 
 type OOMTrackerInfo struct {
 	Detected bool  `bson:"detected" json:"detected"`
-	PIDS     []int `bson:"pids" json:"pids"`
+	Pids     []int `bson:"pids" json:"pids"`
 }
 
 type TaskLogs struct {

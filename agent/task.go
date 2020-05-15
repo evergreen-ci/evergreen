@@ -256,7 +256,7 @@ func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
 	detected, pids := tc.oomTracker.Report()
 	return apimodels.OOMTrackerInfo{
 		Detected: detected,
-		PIDS:     pids,
+		Pids:     pids,
 	}
 }
 

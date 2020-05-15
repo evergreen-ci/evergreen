@@ -408,8 +408,8 @@ func (s *AgentSuite) TestOOMTracker() {
 	_, err := s.a.runTask(ctx, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMKiller.Detected)
-	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMKiller.PIDS)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
 func (s *AgentSuite) TestWaitCompleteSuccess() {
