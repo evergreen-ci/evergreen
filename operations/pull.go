@@ -62,13 +62,14 @@ func Pull() cli.Command {
 
 			httpClient := utility.GetDefaultHTTPRetryableClient()
 			defer utility.PutHTTPClient(httpClient)
-			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, pail.S3Options{
+			opts := pail.S3Options{
 				Name:        creds.Bucket,
 				Credentials: pail.CreateAWSCredentials(creds.Key, creds.Secret, ""),
 				Region:      endpoints.UsEast1RegionID,
 				Permissions: pail.S3PermissionsBucketOwnerRead,
 				Verbose:     true,
-			})
+			}
+			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, opts)
 			if err != nil {
 				return errors.Wrap(err, "error setting up S3 bucket")
 			}
