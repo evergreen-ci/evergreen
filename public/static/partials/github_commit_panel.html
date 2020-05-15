@@ -11,6 +11,9 @@
       </span>
       <span class="muted">
         [[ commit.author ? 'authored' : 'Created' ]] at [[(commit.ingest_time || commit.create_time) | convertDateToUserTimezone:timezone:"MMM D, YYYY h:mm:ss a"]]
+        <div ng-show="commit.git_tags.length > 0" ng-repeat="tag in commit.git_tags">
+          Tag [[tag.Tag]] pushed by [[tag.Pusher]]
+        </div>
       </span>
     </div>
   </div>

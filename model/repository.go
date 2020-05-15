@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -51,6 +52,16 @@ type Revision struct {
 type GitTag struct {
 	Tag    string
 	Pusher string
+}
+
+type GitTags []GitTag
+
+func (tags GitTags) String() string {
+	tagNames := []string{}
+	for _, t := range tags {
+		tagNames = append(tagNames, t.Tag)
+	}
+	return strings.Join(tagNames, ", ")
 }
 
 // FindRepository gets the repository object of a project.

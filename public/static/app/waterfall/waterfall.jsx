@@ -12,6 +12,13 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
+function gitTagsMessage(git_tags) {
+  if (!git_tags || git_tags === "") {
+    return "";
+  }
+  return "Git Tags: " + git_tags + "";
+}
+
 function generateURLParameters(params) {
  var ret = [];
  for (var p in params) {
@@ -616,7 +623,8 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
-  var message = version.messages[0];
+  var tags = gitTagsMessage(version.git_tags[0]);
+
   if (version.upstream_data) {
     var upstreamData = version.upstream_data[0];
     var upstreamLink = "/" + upstreamData.trigger_type + "/" + upstreamData.trigger_id;
@@ -650,6 +658,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
             <div className="row">
               <strong>{author}</strong> - <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
               {button}
+              <div>{tags}</div>
             </div>
           </div>
         </div>
@@ -680,7 +689,6 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
 
   var versionStr = (version.messages.length > 1) ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr;
-
   var popovers = (
     <Popover id="popover-positioned-bottom" title="">
       {
@@ -689,6 +697,7 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
             author={version.authors[i]}
             commit={version.revisions[i]}
             message={version.messages[i]}
+            gitTags={version.git_tags[i]}
             versionId={version.ids[i]}
             key={id} userTz={userTz}
             createTime={version.create_times[i]}
@@ -706,10 +715,10 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
     </div>
   )
 };
-function RolledUpVersionSummary ({author, commit, message, versionId, createTime, userTz, jiraHost}) {
+function RolledUpVersionSummary ({author, commit, message, gitTags, versionId, createTime, userTz, jiraHost}) {
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A' );
-  commit =  commit.substring(0,10);
-
+  gitTags = gitTagsMessage(gitTags);
+  commit = commit.substring(0,10);
   return (
     <div className="rolled-up-version-summary">
       <span className="version-header-time">{formatted_time}</span>
@@ -717,6 +726,7 @@ function RolledUpVersionSummary ({author, commit, message, versionId, createTime
       <a href={"/version/" + versionId}>{commit}</a> - <strong>{author}</strong>
       <br />
       <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
+      <div>{gitTags}</div>
       <br />
     </div>
   );

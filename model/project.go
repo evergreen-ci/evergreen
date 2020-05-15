@@ -1502,6 +1502,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 			VersionCreateTimeKey,
 			VersionTriggerIDKey,
 			VersionTriggerTypeKey,
+			VersionGitTagsKey,
 		).Sort([]string{"-" + VersionCreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {

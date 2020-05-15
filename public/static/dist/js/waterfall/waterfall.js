@@ -24,6 +24,13 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
+function gitTagsMessage(git_tags) {
+  if (!git_tags || git_tags === "") {
+    return "";
+  }
+  return "Git Tags: " + git_tags + "";
+}
+
 function generateURLParameters(params) {
   var ret = [];
   for (var p in params) {
@@ -763,7 +770,8 @@ function ActiveVersionHeader(_ref5) {
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0, 5);
-  var message = version.messages[0];
+  var tags = gitTagsMessage(version.git_tags[0]);
+
   if (version.upstream_data) {
     var upstreamData = version.upstream_data[0];
     var upstreamLink = "/" + upstreamData.trigger_type + "/" + upstreamData.trigger_id;
@@ -829,7 +837,12 @@ function ActiveVersionHeader(_ref5) {
             { jiraHost: jiraHost },
             message
           ),
-          button
+          button,
+          React.createElement(
+            "div",
+            null,
+            tags
+          )
         )
       )
     )
@@ -885,7 +898,6 @@ function RolledUpVersionHeader(_ref6) {
 
   var versionStr = version.messages.length > 1 ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr;
-
   var popovers = React.createElement(
     Popover,
     { id: "popover-positioned-bottom", title: "" },
@@ -894,6 +906,7 @@ function RolledUpVersionHeader(_ref6) {
         author: version.authors[i],
         commit: version.revisions[i],
         message: version.messages[i],
+        gitTags: version.git_tags[i],
         versionId: version.ids[i],
         key: id, userTz: userTz,
         createTime: version.create_times[i],
@@ -921,14 +934,15 @@ function RolledUpVersionSummary(_ref7) {
   var author = _ref7.author,
       commit = _ref7.commit,
       message = _ref7.message,
+      gitTags = _ref7.gitTags,
       versionId = _ref7.versionId,
       createTime = _ref7.createTime,
       userTz = _ref7.userTz,
       jiraHost = _ref7.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
+  gitTags = gitTagsMessage(gitTags);
   commit = commit.substring(0, 10);
-
   return React.createElement(
     "div",
     { className: "rolled-up-version-summary" },
@@ -954,6 +968,11 @@ function RolledUpVersionSummary(_ref7) {
       JiraLink,
       { jiraHost: jiraHost },
       message
+    ),
+    React.createElement(
+      "div",
+      null,
+      gitTags
     ),
     React.createElement("br", null)
   );

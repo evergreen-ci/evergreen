@@ -127,7 +127,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if baseVersion == nil {
-			grip.Warningln("Could not find version for base commmit of patch build: ", projCtx.Version.Id)
+			grip.Warningln("Could not find version for base commit of patch build: ", projCtx.Version.Id)
 		}
 		baseId := ""
 		if baseVersion != nil {
