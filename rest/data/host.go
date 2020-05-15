@@ -108,6 +108,7 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		InstanceType:         options.InstanceType,
 		NoExpiration:         options.NoExpiration,
 		IsVirtualWorkstation: options.IsVirtualWorkstation,
+		IsCluster:            options.IsCluster,
 		HomeVolumeSize:       options.HomeVolumeSize,
 		HomeVolumeID:         options.HomeVolumeID,
 		Region:               options.Region,

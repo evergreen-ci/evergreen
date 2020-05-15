@@ -75,6 +75,7 @@ type hostCacheItem struct {
 	inserted             time.Time
 	owner                string
 	isVirtualWorkstation bool
+	isCluster            bool
 	isRunning            bool
 }
 

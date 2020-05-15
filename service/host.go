@@ -318,7 +318,7 @@ func (uis *UIServer) getHostFromCache(hostID string) (*hostCacheItem, error) {
 			return nil, nil
 		}
 
-		h = hostCacheItem{dnsName: hDb.Host, owner: hDb.StartedBy, isVirtualWorkstation: hDb.IsVirtualWorkstation, isRunning: hDb.Status == evergreen.HostRunning, inserted: time.Now()}
+		h = hostCacheItem{dnsName: hDb.Host, owner: hDb.StartedBy, isVirtualWorkstation: hDb.IsVirtualWorkstation, isCluster: hDb.IsCluster, isRunning: hDb.Status == evergreen.HostRunning, inserted: time.Now()}
 		uis.hostCache[hostID] = h
 	}
 

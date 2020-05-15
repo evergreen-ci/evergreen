@@ -150,6 +150,7 @@ type Host struct {
 	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 
 	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
+	IsCluster            bool `bson:"is_cluster" json:"is_cluster"`
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`

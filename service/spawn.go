@@ -122,7 +122,7 @@ func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Requ
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.ProviderSettingsListKey))
+	distros, err := distro.Find(distro.BySpawnAllowed().WithFields(distro.IdKey, distro.IsVirtualWorkstationKey, distro.IsClusterKey, distro.ProviderSettingsListKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return
@@ -134,6 +134,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 		distroList = append(distroList, map[string]interface{}{
 			"name":                        d.Id,
 			"virtual_workstation_allowed": d.IsVirtualWorkstation,
+			"is_cluster":                  d.IsCluster,
 			"regions":                     regions,
 		})
 	}
@@ -175,6 +176,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData             string     `json:"userdata"`
 		UseTaskConfig        bool       `json:"use_task_config"`
 		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+		IsCluster            bool       `json:"is_cluster"`
 		NoExpiration         bool       `json:"no_expiration"`
 		HomeVolumeSize       int        `json:"home_volume_size"`
 		HomeVolumeID         string     `json:"home_volume_id"`
@@ -213,6 +215,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		InstanceTags:         putParams.InstanceTags,
 		InstanceType:         putParams.InstanceType,
 		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
+		IsCluster:            putParams.IsCluster,
 		NoExpiration:         putParams.NoExpiration,
 		HomeVolumeSize:       putParams.HomeVolumeSize,
 		HomeVolumeID:         putParams.HomeVolumeID,

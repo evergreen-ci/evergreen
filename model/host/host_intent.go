@@ -29,6 +29,7 @@ type CreateOptions struct {
 	InstanceType          string
 	NoExpiration          bool
 	IsVirtualWorkstation  bool
+	IsCluster             bool
 	HomeVolumeSize        int
 	HomeVolumeID          string
 }
@@ -63,6 +64,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		InstanceTags:          options.InstanceTags,
 		InstanceType:          options.InstanceType,
 		IsVirtualWorkstation:  options.IsVirtualWorkstation,
+		IsCluster:             options.IsCluster,
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
 		NoExpiration:          options.NoExpiration,
