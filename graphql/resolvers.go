@@ -18,14 +18,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -1069,45 +1066,15 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 
 func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
 	usr := route.MustHaveUser(ctx)
-	adminSettings, err := evergreen.GetConfig()
-	if err != nil {
-		return false, errors.Wrap(err, "Error retrieving Evergreen settings")
-	}
-	changedSettings, err := restModel.ApplyUserChanges(usr.Settings, *userSettings)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("problem applying user settings: %s", err))
-	}
-	userSettingsInterface, err := changedSettings.ToService()
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error parsing user settings: %s", err))
-	}
-	UserSettings, ok := userSettingsInterface.(user.UserSettings)
-	if !ok {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to parse settings object: %s", err))
-	}
 
-	if len(UserSettings.GithubUser.LastKnownAs) == 0 {
-		UserSettings.GithubUser = user.GithubUser{}
-	} else if usr.Settings.GithubUser.LastKnownAs != UserSettings.GithubUser.LastKnownAs {
-		var token string
-		var ghUser *github.User
-		token, err = adminSettings.GetGithubOauthToken()
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving Github token: %s", err))
-		}
-		ghUser, err = thirdparty.GetGithubUser(ctx, token, UserSettings.GithubUser.LastKnownAs)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching user from Github: %s", err))
-		}
-
-		UserSettings.GithubUser.LastKnownAs = *ghUser.Login
-		UserSettings.GithubUser.UID = int(*ghUser.ID)
+	updatedUserSettings, err := restModel.UpdateUserSettings(ctx, usr, *userSettings)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
 	}
-	err = r.sc.UpdateSettings(usr, UserSettings)
+	err = r.sc.UpdateSettings(usr, *updatedUserSettings)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
 	}
-
 	return true, nil
 }
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
