@@ -313,8 +313,8 @@ var (
 	AllStatuses = "*"
 )
 
-// Abortable returns true if the task can be aborted.
-func IsAbortable(t Task) bool {
+// IsAbortable returns true if the task can be aborted.
+func (t *Task) IsAbortable() bool {
 	return t.Status == evergreen.TaskStarted ||
 		t.Status == evergreen.TaskDispatched
 }
