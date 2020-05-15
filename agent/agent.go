@@ -69,6 +69,7 @@ type taskContext struct {
 	timeout        timeoutInfo
 	project        *model.Project
 	taskModel      *task.Task
+	oomTracker     jasper.OOMTracker
 	sync.RWMutex
 }
 
@@ -275,6 +276,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskGroup:     nextTask.TaskGroup,
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
+		oomTracker:    jasper.NewOOMTracker(),
 	}
 }
 
@@ -425,6 +427,10 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
+	if err := tc.runOomTrackerCheck(ctx); err != nil {
+		tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
+	}
+
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
@@ -512,6 +518,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
+		OOMKiller:       tc.getOomTrackerInfo(),
 		Status:          status,
 		Logs:            tc.logs,
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -118,6 +119,12 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	a.killProcs(ctx, tc, false)
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
+		complete <- evergreen.TaskFailed
+		return
+	}
+
+	if err = tc.oomTracker.Clear(innerCtx); err != nil {
+		tc.logger.Execution().Errorf("error clearing system messages: %s", err)
 		complete <- evergreen.TaskFailed
 		return
 	}
@@ -240,6 +247,24 @@ func (tc *taskContext) hadTimedOut() bool {
 	defer tc.RUnlock()
 
 	return tc.timedOut()
+}
+
+func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	detected, pids := tc.oomTracker.Report()
+	return apimodels.OOMTrackerInfo{
+		Detected: detected,
+		PIDS:     pids,
+	}
+}
+
+func (tc *taskContext) runOomTrackerCheck(ctx context.Context) error {
+	tc.Lock()
+	defer tc.Unlock()
+
+	return tc.oomTracker.Check(ctx)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {

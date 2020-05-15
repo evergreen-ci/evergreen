@@ -62,6 +62,7 @@ func (s *AgentSuite) SetupTest() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
+		oomTracker:    &jasper.OomTrackerMock{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
@@ -395,6 +396,22 @@ func (s *AgentSuite) TestAbort() {
 	}
 }
 
+func (s *AgentSuite) TestOOMTracker() {
+	pids := []int{1, 2, 3}
+	s.tc.oomTracker = &jasper.OomTrackerMock{
+		WasOOMKilled: true,
+		Pids:         pids,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := s.a.runTask(ctx, s.tc)
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMKiller.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMKiller.PIDS)
+}
+
 func (s *AgentSuite) TestWaitCompleteSuccess() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
@@ -478,6 +495,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 				},
 			},
 		},
+		oomTracker: jasper.NewMockOOMTracker(),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
