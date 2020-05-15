@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -43,16 +42,15 @@ func TestS3PushParseParams(t *testing.T) {
 func TestS3PushExecute(t *testing.T) {
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *s3Push, *client.Mock, client.LoggerProducer, *model.TaskConfig){
 		"PushesTaskDirectoryToS3": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3-push")
+			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpDir))
 			}()
-			tmpFile, err := ioutil.TempFile(tmpDir, "s3-push-file")
+			workDir := filepath.Join(tmpDir, "work_dir")
+			require.NoError(t, os.MkdirAll(workDir, 0777))
+			tmpFile, err := ioutil.TempFile(workDir, "file")
 			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-			}()
 			fileContent := []byte("foobar")
 			_, err = tmpFile.Write(fileContent)
 			assert.NoError(t, tmpFile.Close())
@@ -60,50 +58,53 @@ func TestS3PushExecute(t *testing.T) {
 			conf.WorkDir = tmpDir
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
-			require.NoError(t, err)
-			require.True(t, iter.Next(ctx))
-			item := iter.Item()
-			require.NotNil(t, item)
-			assert.Equal(t, filepath.Base(tmpFile.Name()), filepath.Base(item.Name()))
-			// Fix Windows file path separators
-			localPath := strings.Replace(filepath.Dir(item.Name()), "\\", "/", -1)
-			assert.Equal(t, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName), localPath)
-			r, err := item.Get(ctx)
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, r.Close())
-			}()
-			pulledContent, err := ioutil.ReadAll(r)
-			require.NoError(t, err)
-			assert.Equal(t, pulledContent, fileContent)
 
-			assert.False(t, iter.Next(ctx))
+			pullDir := filepath.Join(tmpDir, "pull_dir")
+			require.NoError(t, os.MkdirAll(pullDir, 0777))
+
+			s3Path := filepath.ToSlash(filepath.Join(conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName), filepath.Base(workDir)))
+			require.NoError(t, c.bucket.Pull(ctx, pail.SyncOptions{
+				Local:  pullDir,
+				Remote: filepath.Join(s3Path),
+			}))
+
+			pulledContent, err := ioutil.ReadFile(filepath.Join(pullDir, filepath.Base(tmpFile.Name())))
+			require.NoError(t, err)
+			assert.Equal(t, fileContent, pulledContent)
 		},
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3-push")
+			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpDir))
 			}()
-			tmpFile, err := ioutil.TempFile(tmpDir, "s3-push-file")
+			workDir := filepath.Join(tmpDir, "work_dir")
+			require.NoError(t, os.MkdirAll(workDir, 0777))
+			tmpFile, err := ioutil.TempFile(workDir, "file")
 			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-			}()
 			_, err = tmpFile.Write([]byte("foobar"))
 			assert.NoError(t, tmpFile.Close())
 			require.NoError(t, err)
-			conf.WorkDir = tmpDir
+			conf.WorkDir = workDir
 
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
-			iter, err := c.bucket.List(ctx, conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName))
+
+			pullDir := filepath.Join(tmpDir, "pull_dir")
+			require.NoError(t, os.MkdirAll(pullDir, 0777))
+
+			s3Path := conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName)
+			require.NoError(t, c.bucket.Pull(ctx, pail.SyncOptions{
+				Local:  pullDir,
+				Remote: s3Path,
+			}))
+
+			files, err := ioutil.ReadDir(pullDir)
 			require.NoError(t, err)
-			assert.False(t, iter.Next(ctx))
+			assert.Empty(t, files)
 		},
 		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3-push")
+			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpDir))

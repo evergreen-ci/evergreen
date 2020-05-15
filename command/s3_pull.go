@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -25,7 +24,7 @@ type s3Base struct {
 	ExcludeFilter string `mapstructure:"exclude" plugin:"expand"`
 	MaxRetries    uint   `mapstructure:"max_retries"`
 
-	bucket pail.Bucket
+	bucket pail.SyncBucket
 }
 
 func (c *s3Base) ParseParams(params map[string]interface{}) error {
@@ -36,7 +35,7 @@ func (c *s3Base) expandParams(conf *model.TaskConfig) error {
 	return errors.WithStack(util.ExpandValues(c, conf.Expansions))
 }
 
-func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, parallelOpts pail.ParallelBucketOptions) error {
+func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig) error {
 	if c.bucket != nil {
 		return nil
 	}
@@ -52,11 +51,10 @@ func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig, paral
 		MaxRetries:  int(c.MaxRetries),
 		Permissions: pail.S3PermissionsPrivate,
 	}
-	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, opts)
+	bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(client, opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create bucket")
 	}
-	bucket = pail.NewParallelSyncBucket(parallelOpts, bucket)
 	c.bucket = bucket
 
 	return nil
@@ -111,34 +109,24 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	}
 
 	httpClient := utility.GetDefaultHTTPRetryableClient()
+	// Do not time out a download since it could be an expensive operation
+	// depending on the download speed and the size of the pull.
+	httpClient.Timeout = 0
 	defer utility.PutHTTPClient(httpClient)
 
-	if err := c.createBucket(httpClient, conf, pail.ParallelBucketOptions{
-		Workers:      runtime.NumCPU(),
-		DeleteOnSync: c.DeleteOnSync,
-	}); err != nil {
+	if err := c.createBucket(httpClient, conf); err != nil {
 		return errors.Wrap(err, "could not set up S3 task bucket")
-	}
-	if err := c.bucket.Check(ctx); err != nil {
-		return errors.Wrap(err, "could not find S3 task bucket")
 	}
 
 	remotePath := conf.Task.S3Path(c.FromBuildVariant, c.Task)
 
 	// Verify that the contents exist before pulling, otherwise pull may no-op.
-	iter, err := c.bucket.List(ctx, remotePath)
-	if err != nil {
-		return errors.Wrap(err, "error checking for existence of remote task directory contents")
-	}
-	if !iter.Next(ctx) {
-		return errors.Errorf("remote task directory contents could not be found")
-	}
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		fmt.Sprintf("the working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'",
 			c.WorkingDir, conf.WorkDir))
 
-	if err = createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
+	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
 		return errors.Wrap(err, "problem making working directory")
 	}
 	wd, err := conf.GetWorkingDirectory(c.WorkingDir)

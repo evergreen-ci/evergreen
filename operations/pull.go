@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"os"
-	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/pail"
@@ -62,29 +61,20 @@ func Pull() cli.Command {
 			}
 
 			httpClient := utility.GetDefaultHTTPRetryableClient()
+			// Do not time out a download since it could be an expensive
+			// operation depending on the download speed and size of the pull.
+			httpClient.Timeout = 0
 			defer utility.PutHTTPClient(httpClient)
-			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, pail.S3Options{
+			opts := pail.S3Options{
 				Name:        creds.Bucket,
 				Credentials: pail.CreateAWSCredentials(creds.Key, creds.Secret, ""),
 				Region:      endpoints.UsEast1RegionID,
 				Permissions: pail.S3PermissionsBucketOwnerRead,
 				Verbose:     true,
-			})
+			}
+			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, opts)
 			if err != nil {
 				return errors.Wrap(err, "error setting up S3 bucket")
-			}
-			bucket = pail.NewParallelSyncBucket(pail.ParallelBucketOptions{
-				Workers: runtime.NumCPU(),
-			}, bucket)
-
-			// Verify that the contents exist before pulling, otherwise pull may
-			// no-op.
-			iter, err := bucket.List(ctx, remotePath)
-			if err != nil {
-				return errors.Wrap(err, "error checking for existence of remote task directory contents")
-			}
-			if !iter.Next(ctx) {
-				return errors.Errorf("remote task directory contents could not be found")
 			}
 
 			if err = os.MkdirAll(workingDir, 0755); err != nil {

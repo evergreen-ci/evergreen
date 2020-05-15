@@ -57,11 +57,7 @@ type Bucket interface {
 	Upload(context.Context, string, string) error
 	Download(context.Context, string, string) error
 
-	// Sync methods: these methods are the recursive, efficient
-	// copy methods of files from s3 to the local file
-	// system.
-	Push(context.Context, SyncOptions) error
-	Pull(context.Context, SyncOptions) error
+	SyncBucket
 
 	// Copy does a special copy operation that does not require
 	// downloading a file. Note that CopyOptions.DestinationBucket must
@@ -86,6 +82,16 @@ type Bucket interface {
 	// List provides a way to iterator over the contents of a
 	// bucket (for a given prefix.)
 	List(context.Context, string) (BucketIterator, error)
+}
+
+// SyncBucket defines an interface to access a remote blob store and synchronize
+// the local file system tree with the remote store.
+type SyncBucket interface {
+	// Sync methods: these methods are the recursive, efficient
+	// copy methods of files from s3 to the local file
+	// system.
+	Push(context.Context, SyncOptions) error
+	Pull(context.Context, SyncOptions) error
 }
 
 // SyncOptions describes the arguments to the sync operations (Push and Pull).

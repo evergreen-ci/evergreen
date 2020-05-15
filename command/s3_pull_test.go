@@ -50,7 +50,7 @@ func TestS3PullExecute(t *testing.T) {
 		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
-			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
+			tmpFile, err := ioutil.TempFile(taskDir, "file")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
@@ -60,7 +60,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			require.NoError(t, err)
 
-			c.WorkingDir, err = ioutil.TempDir("", "s3-pull-output")
+			c.WorkingDir, err = ioutil.TempDir("", "pull_dir")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(c.WorkingDir))
@@ -74,7 +74,7 @@ func TestS3PullExecute(t *testing.T) {
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
-			tmpFile, err := ioutil.TempFile(taskDir, "s3-pull-file")
+			tmpFile, err := ioutil.TempFile(taskDir, "file")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tmpFile.Name()))
@@ -83,7 +83,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			require.NoError(t, err)
 
-			c.WorkingDir, err = ioutil.TempDir("", "s3-pull-output")
+			c.WorkingDir, err = ioutil.TempDir("", "pull_dir")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(c.WorkingDir))
