@@ -2532,8 +2532,9 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
-	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 
+	// didn't log because not all tasks are finished
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
