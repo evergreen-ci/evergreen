@@ -809,7 +809,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	cmd := client.CreateCommand(ctx).Sudo(true)
 	// umount if it's already mounted
 	if device.MountPoint != "" {
-		cmd.Append(fmt.Sprintf("umount -f %s", device.Name))
+		cmd.Append(fmt.Sprintf("umount -f /dev/%s", device.Name))
 	}
 	// format if the volume doesn't have a filesystem
 	if device.FSType == "" {
