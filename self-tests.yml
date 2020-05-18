@@ -44,7 +44,9 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -66,7 +68,9 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: run-make
         vars:
@@ -77,7 +81,9 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
@@ -92,7 +98,9 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -106,7 +114,9 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -122,7 +132,9 @@ variables:
           exec_timeout_secs: 900
           timeout_secs: 900
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-mongodb
       - func: run-make
         vars: { target: "set-var" }
@@ -149,7 +161,9 @@ variables:
           exec_timeout_secs: 900
           timeout_secs: 900
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: run-make
         vars: { target: "cli" }
       - command: s3.put
@@ -187,7 +201,9 @@ variables:
     name: generate-lint
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -217,16 +233,6 @@ functions:
       directory: gopath/src/github.com/evergreen-ci/evergreen
       token: ${github_token}
       shallow_clone: true
-  go-get-tools:
-    command: subprocess.exec
-    type: setup
-    params:
-      directory: gopath/src/github.com/evergreen-ci/evergreen
-      binary: ${gobin}
-      args: [get, -u, golang.org/x/tools/imports]
-      env:
-        GOPATH: ${workdir}/gopath
-        GOROOT: ${goroot}
   run-make:
     command: subprocess.exec
     params:
@@ -512,7 +518,9 @@ tasks:
   - name: docker-cleanup
     commands:
       - func: get-project
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup_docker
       - func: run-make
@@ -529,7 +537,9 @@ tasks:
           directory: gopath/src/github.com/evergreen-ci/evergreen
           token: ${github_token}
           shallow_clone: false
-      - func: go-get-tools
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
