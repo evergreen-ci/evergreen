@@ -770,8 +770,12 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		// attach to the host
 		attachment := host.VolumeAttachment{VolumeID: volume.ID, IsHome: true}
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
-			// another job has already attached the volume
-			if !strings.Contains(err.Error(), "IncorrectState") {
+			attachment, attachmentInfoErr := cloudMgr.GetVolumeAttachment(ctx, volume.ID)
+			if attachmentInfoErr != nil {
+				return errors.Wrapf(attachmentInfoErr, "can't query cloud provider for volume attachments for '%s'", volume.ID)
+			}
+			// if the volume isn't attached to this host then we have a problem
+			if !(attachment != nil && attachment.HostID == h.Id) {
 				return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
 			}
 		}

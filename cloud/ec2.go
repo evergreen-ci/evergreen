@@ -1328,6 +1328,45 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
 }
 
+func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	volumeInfo, err := m.client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: aws.StringSlice([]string{volumeID}),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "error describing volume '%s'", volumeID)
+	}
+
+	if volumeInfo == nil || len(volumeInfo.Volumes) == 0 || volumeInfo.Volumes[0] == nil {
+		return nil, errors.Errorf("no volume '%s' found in ec2", volumeID)
+	}
+
+	// no attachments found
+	if len(volumeInfo.Volumes[0].Attachments) == 0 {
+		return nil, nil
+	}
+
+	ec2Attachment := volumeInfo.Volumes[0].Attachments[0]
+	if ec2Attachment == nil ||
+		ec2Attachment.VolumeId == nil ||
+		ec2Attachment.Device == nil ||
+		ec2Attachment.InstanceId == nil {
+		return nil, errors.New("aws returned an invalid volume attachment")
+	}
+
+	attachment := &host.VolumeAttachment{
+		VolumeID:   *ec2Attachment.VolumeId,
+		DeviceName: *ec2Attachment.Device,
+		HostID:     *ec2Attachment.InstanceId,
+	}
+
+	return attachment, nil
+}
+
 func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Volume, newExpiration time.Time) error {
 	if err := volume.SetExpiration(newExpiration); err != nil {
 		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)

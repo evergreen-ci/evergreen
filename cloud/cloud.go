@@ -75,6 +75,9 @@ type Manager interface {
 	// ModifyVolume modifies an existing volume.
 	ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error
 
+	// GetVolumeAttachment gets a volume's attachement
+	GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error)
+
 	// CheckInstanceType determines if the given instance type is available in the current region.
 	CheckInstanceType(context.Context, string) error
 

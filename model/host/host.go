@@ -195,6 +195,7 @@ type VolumeAttachment struct {
 	VolumeID   string `bson:"volume_id" json:"volume_id"`
 	DeviceName string `bson:"device_name" json:"device_name"`
 	IsHome     bool   `bson:"is_home" json:"is_home"`
+	HostID     string `bson:"host_id" json:"host_id"`
 }
 
 // DockerOptions contains options for starting a container
