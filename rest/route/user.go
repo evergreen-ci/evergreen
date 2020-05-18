@@ -10,11 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -48,48 +46,13 @@ func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	adminSettings, err := evergreen.GetConfig()
+
+	userSettings, err := model.UpdateUserSettings(ctx, u, h.settings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving Evergreen settings"))
-	}
-	changedSettings, err := model.ApplyUserChanges(u.Settings, h.settings)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem applying user settings"))
-	}
-	userSettingsInterface, err := changedSettings.ToService()
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error parsing user settings"))
-	}
-	userSettings, ok := userSettingsInterface.(user.UserSettings)
-	if !ok {
-		return gimlet.MakeJSONErrorResponder(errors.New("Unable to parse settings object"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	if len(userSettings.GithubUser.LastKnownAs) == 0 {
-		userSettings.GithubUser = user.GithubUser{}
-	} else if u.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
-		var token string
-		var ghUser *github.User
-		token, err = adminSettings.GetGithubOauthToken()
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving Github token"))
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		ghUser, err = thirdparty.GetGithubUser(ctx, token, userSettings.GithubUser.LastKnownAs)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error fetching user from Github"))
-		}
-
-		userSettings.GithubUser.LastKnownAs = *ghUser.Login
-		userSettings.GithubUser.UID = int(*ghUser.ID)
-	} else {
-		userSettings.GithubUser.UID = u.Settings.GithubUser.UID
-	}
-
-	if err = h.sc.UpdateSettings(u, userSettings); err != nil {
+	if err = h.sc.UpdateSettings(u, *userSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
 	}
 

@@ -144,6 +144,7 @@ type ComplexityRoot struct {
 		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
 		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
+		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
 	}
 
 	Notifications struct {
@@ -410,6 +411,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
+	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -935,6 +937,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UnscheduleTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.updateUserSettings":
+		if e.complexity.Mutation.UpdateUserSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUserSettings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateUserSettings(childComplexity, args["userSettings"].(*model.APIUserSettings)), true
 
 	case "Notifications.buildBreak":
 		if e.complexity.Notifications.BuildBreak == nil {
@@ -2248,6 +2262,7 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  updateUserSettings(userSettings: UserSettingsInput): Boolean!
 }
 
 enum TaskSortCategory {
@@ -2305,6 +2320,13 @@ input SubscriptionInput {
   trigger_data: StringMap!
 }
 
+input UserSettingsInput {
+  timezone: String
+  region: String
+  githubUser: GithubUserInput
+  slackUsername: String
+  notifications: NotificationsInput
+}
 input SelectorInput {
   type: String!
   data: String!
@@ -2614,9 +2636,20 @@ type UserSettings {
   notifications: Notifications
 }
 
+input GithubUserInput {
+  lastKnownAs: String
+}
 type GithubUser {
   uid: Int
   lastKnownAs: String
+}
+input NotificationsInput {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
 }
 type Notifications {
   buildBreak: String
@@ -2886,6 +2919,20 @@ func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Conte
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUserSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.APIUserSettings
+	if tmp, ok := rawArgs["userSettings"]; ok {
+		arg0, err = ec.unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userSettings"] = arg0
 	return args, nil
 }
 
@@ -5179,6 +5226,47 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateUserSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateUserSettings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateUserSettings(rctx, args["userSettings"].(*model.APIUserSettings))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
@@ -11746,6 +11834,72 @@ func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj i
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, obj interface{}) (model.APIGithubUser, error) {
+	var it model.APIGithubUser
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "lastKnownAs":
+			var err error
+			it.LastKnownAs, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context, obj interface{}) (model.APINotificationPreferences, error) {
+	var it model.APINotificationPreferences
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "buildBreak":
+			var err error
+			it.BuildBreak, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchFinish":
+			var err error
+			it.PatchFinish, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchFirstFailure":
+			var err error
+			it.PatchFirstFailure, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spawnHostExpiration":
+			var err error
+			it.SpawnHostExpiration, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spawnHostOutcome":
+			var err error
+			it.SpawnHostOutcome, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "commitQueue":
+			var err error
+			it.CommitQueue, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, obj interface{}) (PatchReconfigure, error) {
 	var it PatchReconfigure
 	var asMap = obj.(map[string]interface{})
@@ -11869,6 +12023,48 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 		case "trigger_data":
 			var err error
 			it.TriggerData, err = ec.unmarshalNStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context, obj interface{}) (model.APIUserSettings, error) {
+	var it model.APIUserSettings
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "timezone":
+			var err error
+			it.Timezone, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "region":
+			var err error
+			it.Region, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "githubUser":
+			var err error
+			it.GithubUser, err = ec.unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "slackUsername":
+			var err error
+			it.SlackUsername, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "notifications":
+			var err error
+			it.Notifications, err = ec.unmarshalONotificationsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -12430,6 +12626,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removePatchFromCommitQueue":
 			out.Values[i] = ec._Mutation_removePatchFromCommitQueue(ctx, field)
+		case "updateUserSettings":
+			out.Values[i] = ec._Mutation_updateUserSettings(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15769,6 +15970,18 @@ func (ec *executionContext) marshalOGithubUser2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._GithubUser(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOGithubUserInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx context.Context, v interface{}) (model.APIGithubUser, error) {
+	return ec.unmarshalInputGithubUserInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx context.Context, v interface{}) (*model.APIGithubUser, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOGithubUserInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
 	return graphql.UnmarshalInt(v)
 }
@@ -15849,6 +16062,18 @@ func (ec *executionContext) marshalONotifications2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._Notifications(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalONotificationsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx context.Context, v interface{}) (model.APINotificationPreferences, error) {
+	return ec.unmarshalInputNotificationsInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalONotificationsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx context.Context, v interface{}) (*model.APINotificationPreferences, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalONotificationsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
@@ -16163,6 +16388,18 @@ func (ec *executionContext) marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._UserSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUserSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, v interface{}) (model.APIUserSettings, error) {
+	return ec.unmarshalInputUserSettingsInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, v interface{}) (*model.APIUserSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOUserSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {

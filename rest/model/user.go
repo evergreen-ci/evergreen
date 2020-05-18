@@ -1,11 +1,15 @@
 package model
 
 import (
+	"context"
 	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -303,4 +307,45 @@ func (a *APIUser) BuildFromService(h interface{}) error {
 
 func (a *APIUser) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for APIUser")
+}
+
+// UpdateUserSettings Returns an updated version of the user settings struct
+func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
+	adminSettings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error retrieving Evergreen settings")
+	}
+	changedSettings, err := ApplyUserChanges(usr.Settings, userSettings)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem applying user settings")
+	}
+	userSettingsInterface, err := changedSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error parsing user settings")
+	}
+	updatedUserSettings, ok := userSettingsInterface.(user.UserSettings)
+	if !ok {
+		return nil, errors.New("Unable to parse settings object")
+	}
+
+	if len(updatedUserSettings.GithubUser.LastKnownAs) == 0 {
+		updatedUserSettings.GithubUser = user.GithubUser{}
+	} else if usr.Settings.GithubUser.LastKnownAs != updatedUserSettings.GithubUser.LastKnownAs {
+		var token string
+		var ghUser *github.User
+		token, err = adminSettings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error retrieving Github token")
+		}
+		ghUser, err = thirdparty.GetGithubUser(ctx, token, updatedUserSettings.GithubUser.LastKnownAs)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error fetching user from Github")
+		}
+		updatedUserSettings.GithubUser.LastKnownAs = *ghUser.Login
+		updatedUserSettings.GithubUser.UID = int(*ghUser.ID)
+	} else {
+		updatedUserSettings.GithubUser.UID = usr.Settings.GithubUser.UID
+	}
+
+	return &updatedUserSettings, nil
 }

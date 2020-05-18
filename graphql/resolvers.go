@@ -1064,6 +1064,19 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
+func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
+	usr := route.MustHaveUser(ctx)
+
+	updatedUserSettings, err := restModel.UpdateUserSettings(ctx, usr, *userSettings)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
+	}
+	err = r.sc.UpdateSettings(usr, *updatedUserSettings)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
+	}
+	return true, nil
+}
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	displayName := usr.DisplayName()

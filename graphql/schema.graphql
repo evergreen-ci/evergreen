@@ -53,6 +53,7 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  updateUserSettings(userSettings: UserSettingsInput): Boolean!
 }
 
 enum TaskSortCategory {
@@ -110,6 +111,13 @@ input SubscriptionInput {
   trigger_data: StringMap!
 }
 
+input UserSettingsInput {
+  timezone: String
+  region: String
+  githubUser: GithubUserInput
+  slackUsername: String
+  notifications: NotificationsInput
+}
 input SelectorInput {
   type: String!
   data: String!
@@ -419,9 +427,20 @@ type UserSettings {
   notifications: Notifications
 }
 
+input GithubUserInput {
+  lastKnownAs: String
+}
 type GithubUser {
   uid: Int
   lastKnownAs: String
+}
+input NotificationsInput {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
 }
 type Notifications {
   buildBreak: String
