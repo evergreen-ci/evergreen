@@ -962,11 +962,13 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 		ProjectID string          `json:"project_id"`
 		Message   string          `json:"message"`
 		Active    bool            `json:"activate"`
+		IsAdHoc   bool            `json:"is_adhoc"`
 		Config    json.RawMessage `json:"config"`
 	}{
 		ProjectID: project,
 		Message:   message,
 		Active:    active,
+		IsAdHoc:   true,
 		Config:    config,
 	}
 	resp, err := c.request(ctx, info, body)

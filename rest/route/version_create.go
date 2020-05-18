@@ -22,6 +22,7 @@ type versionCreateHandler struct {
 	ProjectID string          `json:"project_id"`
 	Message   string          `json:"message"`
 	Active    bool            `json:"activate"`
+	IsAdHoc   bool            `json:"is_adhoc"`
 	Config    json.RawMessage `json:"config"`
 
 	sc data.Connector
@@ -46,6 +47,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	metadata := model.VersionMetadata{
 		Message: h.Message,
+		IsAdHoc: h.IsAdHoc,
 		User:    u,
 	}
 	projectInfo := &model.ProjectInfo{}
@@ -56,6 +58,10 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "unable to unmarshal yaml config").Error(),
 		})
+	}
+	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(err)
 	}
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
 	if err != nil {

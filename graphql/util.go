@@ -110,7 +110,7 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 	if version == nil {
 		return nil, fmt.Errorf("No version found for ID %s", patchID)
 	}
-	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(version.Identifier, version.Revision))
+	baseVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(version.Identifier, version.Revision))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
 	}

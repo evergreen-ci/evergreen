@@ -121,7 +121,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var baseVersion *model.Version
-		baseVersion, err = model.VersionFindOne(model.VersionBaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(projCtx.Version.Identifier, projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

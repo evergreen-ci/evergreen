@@ -154,11 +154,12 @@ func VersionByProjectId(projectId string) db.Q {
 		})
 }
 
+// Use all version requester types
 func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
 		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
+			"$in": evergreen.VersionRequesterTypes,
 		},
 	}
 	if !includeTriggered {
@@ -169,8 +170,7 @@ func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	return db.Query(q)
 }
 
-// ByProjectId finds all versions within a project, ordered by most recently created to oldest.
-// The requester controls if it should search patch or non-patch versions.
+// ByProjectId finds all mainline versions within a project, ordered by most recently created to oldest.
 func VersionByMostRecentSystemRequester(projectId string) db.Q {
 	return db.Query(
 		bson.M{
@@ -225,18 +225,6 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 			},
 		},
 	)
-}
-
-// BaseVersionFromPatch finds the base version for a patch version.
-func VersionBaseVersionFromPatch(projectId, revision string) db.Q {
-	return db.Query(
-		bson.M{
-			VersionIdentifierKey: projectId,
-			VersionRevisionKey:   revision,
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-		})
 }
 
 func VersionsByRequesterOrdered(project, requester string, limit, startOrder int) db.Q {

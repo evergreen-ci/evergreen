@@ -89,7 +89,7 @@ func FetchCells(current model.Version, depth int) (Grid, error) {
 		// as far as depth versions.
 		{"$match": bson.M{
 			build.RequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
+				"$in": evergreen.VersionRequesterTypes,
 			},
 			build.RevisionOrderNumberKey: bson.M{
 				"$lte": current.RevisionOrderNumber,

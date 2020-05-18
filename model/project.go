@@ -675,6 +675,8 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
 		} else if v.Requester == evergreen.AdHocRequester {
 			rev = v.Id
+		} else if v.Requester == evergreen.GitTagRequester {
+			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
 		}
 		for _, t := range bv.Tasks {
 			if tg := p.FindTaskGroup(t.Name); tg != nil {

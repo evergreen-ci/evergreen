@@ -327,6 +327,13 @@ var (
 		TriggerRequester,
 	}
 
+	// all types that can request versions to be on the waterfall
+	VersionRequesterTypes = []string{
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		GitTagRequester,
+	}
+
 	ProviderEc2Type = []string{
 		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
@@ -347,6 +354,7 @@ const (
 	// version requester types
 	PatchVersionRequester       = "patch_request"
 	GithubPRRequester           = "github_pull_request"
+	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test"
