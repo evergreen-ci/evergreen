@@ -319,7 +319,20 @@ type SpawnHostUsage struct {
 }
 
 const (
-	MaxLCTInterval             = 5 * time.Minute
+	// MaxLCTInterval is the maximum amount of time that can elapse before the
+	// agent is considered dead. Once it has been successfully started (e.g.
+	// once an agent has been deployed from the server), the agent must
+	// regularly contact the server to ensure it is still alive.
+	MaxLCTInterval = 5 * time.Minute
+	// MaxUncommunicativeInterval is the maximum amount of time that can elapse
+	// before the agent monitor is considered dead. When the host is
+	// provisioning, the agent must contact the app server within this duration
+	// for the agent monitor to be alive (i.e. the agent monitor has
+	// successfully started its job of starting and managing the agent). After
+	// initial contact, the agent must regularly contact the server so that this
+	// duration does not elapse. Otherwise, the agent monitor is considered dead
+	// (because it has failed to keep an agent alive that can contact the
+	// server).
 	MaxUncommunicativeInterval = 3 * MaxLCTInterval
 
 	// provisioningCutoff is the threshold before a host is considered stuck in
@@ -1086,7 +1099,10 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
-	if h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
+	if h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
+		return true
+	}
+	if !h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxUncommunicativeInterval)) {
 		return true
 	}
 
@@ -1456,9 +1472,9 @@ func FindHostsToTerminate() ([]Host, error) {
 					{"$or": []bson.M{
 						{
 							// Host is a user data host and either has not run a
-							// task yet (i.e. failed to provision in a
-							// reasonable amount of time) or has not
-							// communicated recently (unreachable).
+							// task yet or has not started its agent monitor -
+							// both are indicators that the host failed to start
+							// the agent in a reasonable amount of time.
 							"$or": []bson.M{
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},

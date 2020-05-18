@@ -101,7 +101,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	// An atomic update on the needs new agent monitor field will cause
 	// concurrent jobs to fail early here. Updating the last communicated time
 	// prevents PopulateAgentMonitorDeployJobs from immediately running unless
-	// MaxLCTInterval passes.
+	// MaxUncommunicativeInterval passes.
 	if err = j.host.SetNeedsNewAgentMonitorAtomically(false); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "needs new agent monitor flag is already false, not deploying new agent monitor",
@@ -340,10 +340,10 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 		m["reason"] = "flagged for new agent monitor"
 	} else if j.host.LastCommunicationTime.IsZero() {
 		m["reason"] = "new host"
-	} else if sinceLCT > host.MaxLCTInterval {
+	} else if sinceLCT > host.MaxUncommunicativeInterval {
 		m["reason"] = "host has exceeded last communication threshold"
-		m["threshold"] = host.MaxLCTInterval
-		m["threshold_span"] = host.MaxLCTInterval.String()
+		m["threshold"] = host.MaxUncommunicativeInterval
+		m["threshold_span"] = host.MaxUncommunicativeInterval.String()
 		m["last_communication_at"] = sinceLCT
 		m["last_communication_at_time"] = sinceLCT.String()
 	}

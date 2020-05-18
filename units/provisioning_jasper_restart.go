@@ -25,6 +25,11 @@ const (
 	jasperRestartJobName    = "jasper-restart"
 	expirationCutoff        = 7 * 24 * time.Hour // 1 week
 	jasperRestartRetryLimit = 10
+
+	// maxHostReprovisioningJobTime is the maximum amount of time a
+	// reprovisioning job (i.e. a job that modifies how the host is provisioned
+	// after initial provisioning is complete) can run.
+	maxHostReprovisioningJobTime = 5 * time.Minute
 )
 
 func init() {
@@ -57,7 +62,7 @@ func makeJasperRestartJob() *jasperRestartJob {
 		},
 	}
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		MaxTime: host.MaxLCTInterval,
+		MaxTime: maxHostReprovisioningJobTime,
 	})
 	j.SetDependency(dependency.NewAlways())
 	return j

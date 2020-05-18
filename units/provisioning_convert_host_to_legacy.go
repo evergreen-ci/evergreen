@@ -45,7 +45,7 @@ func makeConvertHostToLegacyProvisioningJob() *convertHostToLegacyProvisioningJo
 		},
 	}
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		MaxTime: host.MaxLCTInterval,
+		MaxTime: maxHostReprovisioningJobTime,
 	})
 	j.SetDependency(dependency.NewAlways())
 	return j
