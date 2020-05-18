@@ -29,6 +29,7 @@ type CreateOptions struct {
 	InstanceType          string
 	NoExpiration          bool
 	IsVirtualWorkstation  bool
+	IsCluster             bool
 	HomeVolumeSize        int
 	HomeVolumeID          string
 }

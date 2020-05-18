@@ -547,6 +547,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'setup_as_sudo': $scope.activeDistro.setup_as_sudo,
         'clone_method': $scope.activeDistro.clone_method,
         'is_virtual_workstation': $scope.activeDistro.is_virtual_workstation,
+        'is_cluster': $scope.activeDistro.is_cluster,
         'disable_shallow_clone': $scope.activeDistro.disable_shallow_clone,
         'disabled': $scope.activeDistro.disabled,
       };

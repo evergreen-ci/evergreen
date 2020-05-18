@@ -40,6 +40,7 @@ type HostRequestOptions struct {
 	InstanceType         string     `json:"instance_type"`
 	NoExpiration         bool       `json:"no_expiration"`
 	IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
+	IsCluster            bool       `json:"is_cluster"`
 	HomeVolumeSize       int        `json:"home_volume_size"`
 	HomeVolumeID         string     `json:"home_volume_id"`
 }

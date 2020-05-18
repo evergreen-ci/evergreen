@@ -403,6 +403,7 @@ type APIDistro struct {
 	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
 	IcecreamSettings      APIIcecreamSettings      `json:"icecream_settings"`
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
+	IsCluster             bool                     `json:"is_cluster"`
 	Note                  *string                  `json:"note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 }
@@ -493,6 +494,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
+	apiDistro.IsCluster = d.IsCluster
 
 	return nil
 }
@@ -606,6 +608,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.IcecreamSettings = icecreamSettings
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
+	d.IsCluster = apiDistro.IsCluster
 
 	return &d, nil
 }

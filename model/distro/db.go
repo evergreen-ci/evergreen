@@ -35,6 +35,7 @@ var (
 	UseLegacyAgentKey        = bsonutil.MustHaveTag(Distro{}, "UseLegacyAgent")
 	ValidProjectsKey         = bsonutil.MustHaveTag(Distro{}, "ValidProjects")
 	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
+	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
 	IcecreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IcecreamSettings")
 )
 

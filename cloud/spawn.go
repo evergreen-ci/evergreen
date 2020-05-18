@@ -36,6 +36,7 @@ type SpawnOptions struct {
 	Region               string
 	NoExpiration         bool
 	IsVirtualWorkstation bool
+	IsCluster            bool
 	HomeVolumeSize       int
 	HomeVolumeID         string
 }
@@ -182,6 +183,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		InstanceType:         so.InstanceType,
 		NoExpiration:         so.NoExpiration,
 		IsVirtualWorkstation: so.IsVirtualWorkstation,
+		IsCluster:            so.IsCluster,
 		HomeVolumeSize:       so.HomeVolumeSize,
 		HomeVolumeID:         so.HomeVolumeID,
 		Region:               so.Region,
