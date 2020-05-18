@@ -396,17 +396,22 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         // Divide aliases into three categories (patch, github, and commit queue aliases)
         $scope.settingsFormData.github_aliases = $scope.aliases.filter(
           function (d) {
-            return d.alias == '__github'
+            return d.alias === '__github';
           }
         )
         $scope.settingsFormData.commit_queue_aliases = $scope.aliases.filter(
           function (d) {
-            return d.alias == '__commit_queue'
+            return d.alias === '__commit_queue';
           }
+        )
+        $scope.settingsFormData.git_tag_aliases = $scope.aliases.filter(
+            function (d) {
+              return d.alias === '__git_tag';
+            }
         )
         $scope.settingsFormData.patch_aliases = $scope.aliases.filter(
           function (d) {
-            return d.alias !== '__github' && d.alias !== '__commit_queue'
+            return d.alias !== '__github' && d.alias !== '__commit_queue' && d.alias !== '__git_tag';
           }
         )
 
@@ -543,13 +548,13 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.addGithubAlias = function () {
     if (!$scope.validPatchDefinition($scope.github_alias)) {
-      $scope.invalidPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
+      $scope.invalidGithubPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.github_alias)
-    item["alias"] = "__github"
+    var item = Object.assign({}, $scope.github_alias);
+    item.alias = "__github";
     $scope.settingsFormData.github_aliases = $scope.settingsFormData.github_aliases.concat([item]);
-    delete $scope.github_alias
+    delete $scope.github_alias;
     $scope.invalidGitHubPatchDefinitionMessage = "";
   };
 
@@ -558,22 +563,34 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.invalidCommitQueuePatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.commit_queue_alias);
-    item["alias"] = "__commit_queue";
+    var item = Object.assign({}, $scope.commit_queue_alias);
+    item.alias = "__commit_queue";
     $scope.settingsFormData.commit_queue_aliases = $scope.settingsFormData.commit_queue_aliases.concat([item]);
     delete $scope.commit_queue_alias;
     $scope.invalidCommitQueuePatchDefinitionMessage = "";
-
   };
+
+  $scope.addGitTagAlias = function() {
+    if (!$scope.validGitTagVersionDefinition($scope.git_tag_alias)) {
+      $scope.invalidGitTagAliasMessage = "An alias must have a git tag alias, variant regex, and exactly one of task regex or tag";
+      return;
+    }
+    var item = Object.assign({}, $scope.git_tag_alias);
+    item.alias = "__git_tag";
+    $scope.settingsFormData.git_tag_aliases = $scope.settingsFormData.git_tag_aliases.concat([item]);
+    delete $scope.git_tag_alias;
+    $scope.invalidGitTagAliasMessage = "";
+  }
 
   $scope.addPatchAlias = function () {
     if (!$scope.validPatchAlias($scope.patch_alias)) {
       $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, exactly one of variant regex or tag, and exactly one of task regex or tag"
       return
     }
-    item = Object.assign({}, $scope.patch_alias)
+    var item = Object.assign({}, $scope.patch_alias)
     $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
-    delete $scope.patch_alias
+    delete $scope.patch_alias;
+    $scope.invalidPatchAliasMessage = "";
   };
 
   $scope.addWorkstationCommand = function() {
@@ -608,6 +625,14 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.commit_queue_aliases[i]["_id"]])
     }
     $scope.settingsFormData.commit_queue_aliases.splice(i, 1);
+    $scope.isDirty = true;
+  };
+
+  $scope.removeGitTagAlias = function (i) {
+    if ($scope.settingsFormData.git_tag_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.git_tag_aliases[i]["_id"]]);
+    }
+    $scope.settingsFormData.git_tag_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
@@ -781,6 +806,25 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     return true;
   }
 
+  $scope.patchDefinitionPopulated = function(alias) {
+    return alias && (alias.variant || alias.task || !_.isEmpty(alias.variant_tags) || !_.isEmpty(alias.tags));
+  }
+
+  $scope.aliasRemotePathPopulated = function(alias) {
+    return Boolean(alias.remote_path);
+  }
+
+  $scope.validGitTagVersionDefinition = function (alias) {
+    if (!alias || !alias.git_tag) {
+      return false;
+    }
+    // must have ONLY yaml file defined, or a valid patch definition
+    if (Boolean(alias.remote_path)) {
+      return !$scope.patchDefinitionPopulated(alias);
+    }
+    return $scope.validPatchDefinition(alias);
+  }
+
   $scope.validPatchDefinition = function (alias) {
     // (variant XOR variant_tags) AND (task XOR tags)
     return alias && (Boolean(alias.variant) != !_.isEmpty(alias.variant_tags)) && (Boolean(alias.task) != !_.isEmpty(alias.tags))
@@ -788,7 +832,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.validPatchAlias = function (alias) {
     // Same as GitHub alias, but with alias required
-    return $scope.validPatchDefinition(alias) && alias.alias
+    return $scope.validPatchDefinition(alias) && alias.alias;
   }
 
   $scope.validWorkstationCommand = function(obj) {
