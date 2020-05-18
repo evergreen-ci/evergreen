@@ -23,7 +23,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
 
 			info := j.TimeInfo()
-			assert.Equal(t, host.MaxLCTInterval, info.MaxTime)
+			assert.Equal(t, maxHostReprovisioningJobTime, info.MaxTime)
 
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
 			require.True(t, ok)
