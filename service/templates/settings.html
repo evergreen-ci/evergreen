@@ -57,7 +57,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
           <div class="row">
             <div class="col-lg-3">
               <div ng-repeat="bin in binaries">
-                <a ng-href="[[bin.url]]"> [[bin.display_name]]</a>
+                <a ng-href="[[bin.url]]" ng-if="[[bin.display_name]]">[[bin.display_name]]</a>
               </div>
             </div>
             <div class="col-lg-9">
