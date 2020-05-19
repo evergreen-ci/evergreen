@@ -1097,12 +1097,12 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
-	patch, err := r.sc.FindPatchById(*obj.Version)
+	version, err := r.sc.FindVersionById(*obj.Version)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving patch %s: %s", *obj.Version, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
 	}
 	patchMetadata := PatchMetadata{
-		Author: *patch.Author,
+		Author: version.Author,
 	}
 	return &patchMetadata, nil
 }
