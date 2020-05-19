@@ -616,7 +616,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		CachedDistros: []*distro.Distro{
 			{
 				Id:      "fedora8",
-				Arch:    distro.ArchLinuxAmd64,
+				Arch:    evergreen.ArchLinuxAmd64,
 				WorkDir: "/data/mci",
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					MaximumHosts: 30,

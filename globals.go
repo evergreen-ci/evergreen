@@ -421,6 +421,18 @@ const (
 	defaultLockTimeoutMinutes                    = 10 // should match value in amboy.LockTimeout
 )
 
+// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+const (
+	ArchDarwinAmd64  = "darwin_amd64"
+	ArchLinux386     = "linux_386"
+	ArchLinuxPpc64le = "linux_ppc64le"
+	ArchLinuxS390x   = "linux_s390x"
+	ArchLinuxArm64   = "linux_arm64"
+	ArchLinuxAmd64   = "linux_amd64"
+	ArchWindows386   = "windows_386"
+	ArchWindowsAmd64 = "windows_amd64"
+)
+
 // NameTimeFormat is the format in which to log times like instance start time.
 const NameTimeFormat = "20060102150405"
 
@@ -532,6 +544,18 @@ var (
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
+
+	// Map from valid architectures to display names
+	ValidArchDisplayNames = map[string]string{
+		ArchWindowsAmd64: "Windows 64-bit",
+		ArchLinuxPpc64le: "Linux PowerPC 64-bit",
+		ArchLinuxS390x:   "Linux zSeries",
+		ArchLinuxArm64:   "Linux ARM 64-bit",
+		ArchWindows386:   "Windows 32-bit",
+		ArchDarwinAmd64:  "OSX 64-bit",
+		ArchLinuxAmd64:   "Linux 64-bit",
+		ArchLinux386:     "Linux 32-bit",
+	}
 )
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

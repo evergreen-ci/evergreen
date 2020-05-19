@@ -44,7 +44,7 @@ func TestMakeUserData(t *testing.T) {
 			assert.NotEmpty(t, userData)
 		},
 		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			userData, err := makeUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestMakeUserData(t *testing.T) {
 		"ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			h.Distro.BootstrapSettings.ServiceUser = "user"
-			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			customUserData := "<powershell>\necho foo\n</powershell>"
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestMakeUserData(t *testing.T) {
 			assert.NotNil(t, creds)
 		},
 		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-			h.Distro.Arch = distro.ArchWindowsAmd64
+			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			customUserData := "<powershell>\necho foo\n</powershell>\n<persist>true</persist>"
 			userData, err := makeUserData(ctx, env, h, customUserData, true)
@@ -158,7 +158,7 @@ func TestMakeUserData(t *testing.T) {
 			h := &host.Host{
 				Id: "host_id",
 				Distro: distro.Distro{
-					Arch: distro.ArchLinuxAmd64,
+					Arch: evergreen.ArchLinuxAmd64,
 					BootstrapSettings: distro.BootstrapSettings{
 						Method:                distro.BootstrapMethodUserData,
 						JasperCredentialsPath: "/bar",
@@ -207,7 +207,7 @@ func TestMakeUserData(t *testing.T) {
 //             assert.NotEmpty(t, userData)
 //         },
 //         "PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.Arch = distro.ArchWindowsAmd64
+//             h.Distro.Arch = evergreen.ArchWindowsAmd64
 //             h.Distro.BootstrapSettings.ServiceUser = "user"
 //             userData, err := bootstrapUserData(ctx, env, h, "", false)
 //             require.NoError(t, err)
@@ -262,7 +262,7 @@ func TestMakeUserData(t *testing.T) {
 //         "ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
 //             h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 //             h.Distro.BootstrapSettings.ServiceUser = "user"
-//             h.Distro.Arch = distro.ArchWindowsAmd64
+//             h.Distro.Arch = evergreen.ArchWindowsAmd64
 //             customUserData := "<powershell>echo foo</powershell>"
 //             userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
 //             require.NoError(t, err)
@@ -293,7 +293,7 @@ func TestMakeUserData(t *testing.T) {
 //             assert.NotNil(t, creds)
 //         },
 //         "MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.Arch = distro.ArchWindowsAmd64
+//             h.Distro.Arch = evergreen.ArchWindowsAmd64
 //             h.Distro.BootstrapSettings.ServiceUser = "user"
 //             customUserData := "echo foo"
 //             userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
@@ -319,7 +319,7 @@ func TestMakeUserData(t *testing.T) {
 //             h := &host.Host{
 //                 Id: "host_id",
 //                 Distro: distro.Distro{
-//                     Arch: distro.ArchLinuxAmd64,
+//                     Arch: evergreen.ArchLinuxAmd64,
 //                     BootstrapSettings: distro.BootstrapSettings{
 //                         Method:                distro.BootstrapMethodUserData,
 //                         JasperCredentialsPath: "/bar",
@@ -475,7 +475,7 @@ func TestUserDataMerge(t *testing.T) {
 func TestEnsureWindowsUserDataScriptPersists(t *testing.T) {
 	t.Run("NoopsForNonWindowsHosts", func(t *testing.T) {
 		h := &host.Host{
-			Distro: distro.Distro{Arch: distro.ArchLinuxAmd64},
+			Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64},
 		}
 		in := &userData{
 			Options: userdata.Options{
@@ -543,7 +543,7 @@ func TestEnsureWindowsUserDataScriptPersists(t *testing.T) {
 		} {
 			t.Run(testName, func(t *testing.T) {
 				h := &host.Host{
-					Distro: distro.Distro{Arch: distro.ArchWindowsAmd64},
+					Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64},
 				}
 				testCase(t, h)
 			})
