@@ -43,7 +43,7 @@ goarch := $(shell $(gobin) env GOARCH)
 
 clientBuildDir := clients
 
-clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
+clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 clientSource := cmd/evergreen/evergreen.go
