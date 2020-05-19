@@ -240,6 +240,10 @@ func (m *gceManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeMo
 	return errors.New("can't modify volume with gce provider")
 }
 
+func (m *gceManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+	return nil, errors.New("can't get volume attachment with gce provider")
+}
+
 func (m *gceManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with gce provider")
 }

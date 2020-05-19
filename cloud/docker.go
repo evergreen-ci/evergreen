@@ -242,6 +242,10 @@ func (m *dockerManager) ModifyVolume(context.Context, *host.Volume, *model.Volum
 	return errors.New("can't modify volume with docker provider")
 }
 
+func (m *dockerManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+	return nil, errors.New("can't get volume attachment with docker provider")
+}
+
 func (m *dockerManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with docker provider")
 }
