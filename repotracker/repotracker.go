@@ -208,7 +208,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		grip.Infof("Processing revision %s in project %s", revision, ref.Identifier)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem looking up version for project",
 			"runner":   RunnerName,

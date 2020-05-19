@@ -61,7 +61,7 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version,
 }
 
 func (vc *DBVersionConnector) FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
-	return model.VersionFindOne(model.VersionByProjectIdAndRevision(projectId, revision))
+	return model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
 }
 
 func (vc *DBVersionConnector) AddGitTagToVersion(versionId string, gitTag model.GitTag) error {

@@ -325,12 +325,6 @@ var (
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,
-	}
-
-	// all types that can request versions to be on the waterfall
-	VersionRequesterTypes = []string{
-		RepotrackerVersionRequester,
-		TriggerRequester,
 		GitTagRequester,
 	}
 

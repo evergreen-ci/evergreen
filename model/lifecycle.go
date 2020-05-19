@@ -979,7 +979,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(VersionByProjectIdAndRevision(projectId, v.Revision))
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(projectId, v.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		}

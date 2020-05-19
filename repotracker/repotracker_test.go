@@ -117,9 +117,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			require.NoError(t, err, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
-			versionOne, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			require.NoError(t, err, "Error retrieving first stored version %s", versionOne.Id)
-			versionTwo, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
+			versionTwo, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
 			require.NoError(t, err, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
@@ -145,7 +145,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			versionOne, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 

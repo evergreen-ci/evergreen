@@ -85,14 +85,17 @@ func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int)
 	return v, nil
 }
 
-// ByProjectIdAndRevision finds non-patch versions for the given project and revision.
-func VersionByProjectIdAndRevision(projectId, revision string) db.Q {
+// BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.
+func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
 			VersionRevisionKey:   revision,
 			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
+				"$in": []string{
+					evergreen.RepotrackerVersionRequester,
+					evergreen.TriggerRequester,
+				},
 			},
 		})
 }
@@ -159,7 +162,7 @@ func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
 		VersionRequesterKey: bson.M{
-			"$in": evergreen.VersionRequesterTypes,
+			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 	}
 	if !includeTriggered {

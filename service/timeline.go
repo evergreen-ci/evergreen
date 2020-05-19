@@ -151,7 +151,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			versionIds = append(versionIds, patch.Version)
 		}
 		var baseVersion *model.Version
-		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(patch.Project, patch.Githash))
+		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patch.Project, patch.Githash))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
