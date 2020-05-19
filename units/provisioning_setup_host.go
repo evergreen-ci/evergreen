@@ -775,7 +775,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				return errors.Wrapf(attachmentInfoErr, "can't query cloud provider for volume attachments for '%s'", volume.ID)
 			}
 			// if the volume isn't attached to this host then we have a problem
-			if !(attachment != nil && attachment.HostID == h.Id) {
+			if attachment == nil || attachment.HostID != h.Id {
 				return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
 			}
 		}
