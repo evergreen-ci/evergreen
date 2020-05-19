@@ -63,9 +63,10 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 }
 
 type APIClientBinary struct {
-	Arch *string `json:"arch"`
-	OS   *string `json:"os"`
-	URL  *string `json:"url"`
+	Arch        *string `json:"arch"`
+	OS          *string `json:"os"`
+	URL         *string `json:"url"`
+	DisplayName *string `json:"display_name"`
 }
 
 func (a *APIClientBinary) BuildFromService(h interface{}) error {
@@ -76,6 +77,7 @@ func (a *APIClientBinary) BuildFromService(h interface{}) error {
 	a.Arch = ToStringPtr(b.Arch)
 	a.OS = ToStringPtr(b.OS)
 	a.URL = ToStringPtr(b.URL)
+	a.DisplayName = ToStringPtr(b.DisplayName)
 	return nil
 }
 
@@ -84,5 +86,6 @@ func (a *APIClientBinary) ToService() (interface{}, error) {
 	b.Arch = FromStringPtr(a.Arch)
 	b.OS = FromStringPtr(a.OS)
 	b.URL = FromStringPtr(a.URL)
+	b.DisplayName = FromStringPtr(a.DisplayName)
 	return b, nil
 }
