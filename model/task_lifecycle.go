@@ -1108,6 +1108,7 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	var timeTaken time.Duration
 	var statusTask task.Task
+	wasFinished := t.IsFinished()
 	// display task already has a finished status
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
@@ -1144,7 +1145,7 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
-	if !evergreen.IsFailedTaskStatus(statusTask.Status) && (hasFinishedTasks && hasUnfinishedTasks) {
+	if statusTask.Status != evergreen.TaskSystemFailed && (hasFinishedTasks && hasUnfinishedTasks) {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		statusTask.Status = evergreen.TaskStarted
@@ -1178,7 +1179,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.Status = statusTask.Status
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken
-	if t.IsFinished() && !hasUnfinishedTasks {
+	if !wasFinished && t.IsFinished() {
 		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
 	}
 	return nil
