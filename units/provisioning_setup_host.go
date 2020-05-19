@@ -74,7 +74,6 @@ func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j.SetPriority(1)
 
 	j.SetID(fmt.Sprintf("%s.%s.attempt-%d", setupHostJobName, j.HostID, h.ProvisionAttempts))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
 	return j
 }
 
