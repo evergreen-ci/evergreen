@@ -207,9 +207,9 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-	// for patches activate all builds, otherwise activate ones that are not setting batchtime
+	// for patches and versions triggered by users, activate all builds. Otherwise activate ones that are not setting batchtime
 	var variantsToActivate []string
-	if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester {
+	if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester && v.Requester != evergreen.GitTagRequester {
 		variantsToActivate = g.findVariantsToActivate()
 	}
 	newTVPairs := TaskVariantPairs{}

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -207,7 +208,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		grip.Infof("Processing revision %s in project %s", revision, ref.Identifier)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem looking up version for project",
 			"runner":   RunnerName,
@@ -697,6 +698,15 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 			}
 			v.RevisionOrderNumber = num
 		}
+	} else if metadata.GitTag.Tag != "" {
+		if !utility.StringSliceContains(ref.GitTagAuthorizedUsers, metadata.GitTag.Pusher) {
+			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
+				metadata.GitTag.Pusher, ref.Identifier)
+		}
+		v.Id = mgobson.NewObjectId().Hex()
+		v.Requester = evergreen.GitTagRequester
+		v.CreateTime = time.Now()
+		v.TriggeredByGitTag = metadata.GitTag
 	} else {
 		v.Id = makeVersionId(ref.String(), metadata.Revision.Revision)
 	}

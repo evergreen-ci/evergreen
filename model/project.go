@@ -675,6 +675,8 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
 		} else if v.Requester == evergreen.AdHocRequester {
 			rev = v.Id
+		} else if v.Requester == evergreen.GitTagRequester {
+			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
 		}
 		for _, t := range bv.Tasks {
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
@@ -1488,7 +1490,6 @@ func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []Pl
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
 func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, error) {
-
 	// fetch the versions from the db
 	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(

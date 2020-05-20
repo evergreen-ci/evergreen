@@ -334,7 +334,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.VersionByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
+	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)

@@ -16,6 +16,7 @@ var (
 	patchOrigin   = "patch"
 	triggerOrigin = "trigger"
 	triggerAdHoc  = "ad_hoc"
+	gitTagOrigin  = "git_tag"
 )
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
@@ -85,6 +86,8 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		origin = triggerOrigin
 	case evergreen.AdHocRequester:
 		origin = triggerAdHoc
+	case evergreen.GitTagRequester:
+		origin = gitTagOrigin
 	}
 	apiBuild.Origin = ToStringPtr(origin)
 	apiBuild.TaskCache = []APITaskCache{}

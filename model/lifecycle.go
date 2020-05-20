@@ -550,6 +550,8 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.DefinitionID)
 	} else if args.Version.Requester == evergreen.AdHocRequester {
 		rev = args.Version.Id
+	} else if args.Version.Requester == evergreen.GitTagRequester {
+		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.Version.TriggeredByGitTag.Tag)
 	}
 
 	// create a new build id
@@ -977,7 +979,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(VersionBaseVersionFromPatch(projectId, v.Revision))
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(projectId, v.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		}

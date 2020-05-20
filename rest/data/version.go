@@ -61,7 +61,7 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version,
 }
 
 func (vc *DBVersionConnector) FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
-	return model.VersionFindOne(model.VersionByProjectIdAndRevision(projectId, revision))
+	return model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
 }
 
 func (vc *DBVersionConnector) AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
@@ -319,23 +319,6 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 
 func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, active bool) (*model.Version, error) {
-	if projectInfo.Ref == nil {
-		ref, err := model.FindOneProjectRef(projectInfo.Ref.Identifier)
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    "error finding project",
-			}
-		}
-		if ref == nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("project %s does not exist", projectInfo.Ref.Identifier),
-			}
-		}
-		projectInfo.Ref = ref
-	}
-
 	newVersion, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

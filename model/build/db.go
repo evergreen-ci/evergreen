@@ -97,7 +97,7 @@ func ByProjectAndVariant(project, variant, requester string, statuses []string) 
 }
 
 // ByRevisionAndVariant creates a query that returns the non-patch build for
-// a revision + buildvariant combionation.
+// a revision + buildvariant combination.
 func ByRevisionAndVariant(revision, variant string) db.Q {
 	return db.Query(bson.M{
 		RevisionKey: revision,

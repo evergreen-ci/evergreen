@@ -325,6 +325,7 @@ var (
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,
+		GitTagRequester,
 	}
 
 	ProviderEc2Type = []string{
@@ -347,6 +348,7 @@ const (
 	// version requester types
 	PatchVersionRequester       = "patch_request"
 	GithubPRRequester           = "github_pull_request"
+	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test"

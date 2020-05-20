@@ -14,7 +14,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 	project := vars["project_id"]
 	revision := vars["revision"]
 
-	version, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(project, revision))
+	version, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(project, revision))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting version for project %v with revision %v: %v",
 			project, revision, err), http.StatusInternalServerError)
