@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -66,6 +68,30 @@ func (s *createHostSuite) TestParamDefaults() {
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 	s.True(s.cmd.CreateHost.Background)
 	s.Equal(apimodels.DefaultContainerWaitTimeoutSecs, s.cmd.CreateHost.ContainerWaitTimeoutSecs)
+}
+
+func (s *createHostSuite) TestParseFromFile() {
+	//file for testing parsing from a json file
+	tmpdir, err := ioutil.TempDir("", "evergreen.command.host_create.test")
+	s.Require().NoError(err)
+
+	path := filepath.Join(tmpdir, "example.json")
+	fileContent := map[string]interface{}{
+		"distro":    "myDistro",
+		"scope":     "task",
+		"subnet_id": "${subnet_id}",
+	}
+
+	s.NoError(utility.WriteJSONFile(path, fileContent))
+	_, err = os.Stat(path)
+	s.Require().False(os.IsNotExist(err))
+	s.params = map[string]interface{}{
+		"file": path,
+	}
+
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.Require().NoError(os.RemoveAll(tmpdir))
 }
 
 func (s *createHostSuite) TestParamValidation() {
