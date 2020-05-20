@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -781,15 +782,8 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		}
 	}
 
-	// run the distro's mount script
-	var err error
-	for i := 0; i < mountRetryLimit; i++ {
-		if err = errors.Wrap(mountLinuxVolume(ctx, env, h), "can't mount volume"); err == nil {
-			return nil
-		}
-		time.Sleep(mountSleepDuration)
-	}
-	return err
+	// run the appropriate mount script
+	return errors.Wrap(mountLinuxVolume(ctx, env, h), "can't mount volume")
 }
 
 func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {
@@ -805,34 +799,30 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	device, err := getMostRecentlyAddedDevice(ctx, env, h)
-	if err != nil {
-		return errors.Wrap(err, "can't get device info")
+	// spin wait for the volume to come up on the instance
+	var device blockDevice
+	for i := 0; i < mountRetryLimit; i++ {
+		device, err = getMostRecentlyAddedDevice(ctx, env, h)
+		if err == nil {
+			break
+		}
+		time.Sleep(mountSleepDuration)
 	}
 
-	cmd := client.CreateCommand(ctx).Sudo(true)
-	// umount if it's already mounted
+	// we've done this already
 	if device.MountPoint != "" {
-		cmd.Append(fmt.Sprintf("umount -f /dev/%s", device.Name))
-	}
-	// format if the volume doesn't have a filesystem
-	if device.FSType == "" {
-		cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, device.Name))
-	}
-	cmd.Append(fmt.Sprintf("mkdir -p /%s", evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("mount /dev/%s /%s", device.Name, evergreen.HomeVolumeDir))
-	cmd.Append(fmt.Sprintf("chown -R %s:%s /%s", h.User, h.User, evergreen.HomeVolumeDir))
-	// add symlink if it wasn't created yet
-	symlinkExists, err := symlinkExists(ctx, client, h)
-	if err != nil {
-		return errors.Wrapf(err, "can't verify if symlink exists for host '%s'", h.Id)
-	}
-	if !symlinkExists {
-		cmd.Append(fmt.Sprintf("ln -s /%s %s", evergreen.HomeVolumeDir, h.Distro.HomeDir()))
+		return nil
 	}
 
-	if err = cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "problem running mount commands")
+	// this is a fresh volume
+	if device.FSType == "" {
+		if err = prepareVolume(ctx, client, h, device); err != nil {
+			return errors.Wrap(err, "can't prepare new volume")
+		}
+	} else {
+		if err = client.CreateCommand(ctx).Append(fmt.Sprintf("mount /dev/%s %s", device.Name, h.Distro.HomeDir())).Run(ctx); err != nil {
+			return errors.Wrap(err, "problem running mount commands")
+		}
 	}
 
 	// write to /etc/fstab so the volume is mounted on restart
@@ -841,7 +831,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	if err != nil {
 		return errors.Wrap(err, "can't refresh device info")
 	}
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s /%s auto noatime 0 0\n", device.UUID, evergreen.HomeVolumeDir))).Append("tee --append /etc/fstab").Run(ctx)
+	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s %s auto noatime 0 0\n", device.UUID, h.Distro.HomeDir()))).Append("tee --append /etc/fstab").Run(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem appending to fstab")
 	}
@@ -849,20 +839,13 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	return nil
 }
 
-func symlinkExists(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
-	cmd := client.CreateCommand(ctx).Append(fmt.Sprintf("ls %s/%s", h.Distro.HomeDir(), evergreen.HomeVolumeDir)).Background(true)
-	if err := cmd.Run(ctx); err != nil {
-		return false, errors.Wrap(err, "can't run umount command")
-	}
-	exitCode, err := cmd.Wait(ctx)
-	if err != nil {
-		if exitCode != 0 {
-			return false, nil
-		}
-		return false, errors.Wrap(err, "problem waiting for ls command")
-	}
-
-	return true, nil
+func prepareVolume(ctx context.Context, client remote.Manager, h *host.Host, device blockDevice) error {
+	cmd := client.CreateCommand(ctx)
+	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, device.Name))
+	cmd.Append(fmt.Sprintf(fmt.Sprintf("mount /dev/%s /mnt", device.Name)))
+	cmd.Append(fmt.Sprintf(fmt.Sprintf("rsync -a %s/ /mnt", h.Distro.HomeDir())))
+	cmd.Append(fmt.Sprintf(fmt.Sprintf("mount --move /mnt %s", h.Distro.HomeDir())))
+	return errors.Wrap(cmd.Run(ctx), "can't run prepare commands")
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
@@ -894,20 +877,29 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	if err != nil {
 		return blockDevice{}, errors.Wrap(err, "can't run lsblk")
 	}
-	return parseLsblkOutput(strings.Join(lsblkOutput, "\n"))
+
+	devices, err := parseLsblkOutput(strings.Join(lsblkOutput, "\n"))
+	if err != nil {
+		return blockDevice{}, errors.Wrap(err, "can't parse lsblk output")
+	}
+	if len(devices) == 0 {
+		return blockDevice{}, errors.New("output contained no devices")
+	}
+
+	if !utility.StringSliceContains([]string{"", h.Distro.HomeDir()}, devices[len(devices)-1].MountPoint) {
+		return blockDevice{}, errors.Wrap(err, "device hasn't been attached yet")
+	}
+
+	return devices[len(devices)-1], nil
 }
 
-func parseLsblkOutput(lsblkOutput string) (blockDevice, error) {
+func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 	devices := struct {
 		BlockDevices []blockDevice `json:"blockdevices"`
 	}{}
 	if err := json.Unmarshal([]byte(lsblkOutput), &devices); err != nil {
-		return blockDevice{}, errors.Wrapf(err, "can't parse lsblk output '%s'", lsblkOutput)
+		return nil, errors.Wrapf(err, "can't parse lsblk output '%s'", lsblkOutput)
 	}
 
-	if len(devices.BlockDevices) == 0 {
-		return blockDevice{}, errors.New("output contained no devices")
-	}
-
-	return devices.BlockDevices[len(devices.BlockDevices)-1], nil
+	return devices.BlockDevices, nil
 }
