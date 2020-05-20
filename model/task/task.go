@@ -951,19 +951,19 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
 	switch t.ResultStatus() {
-	case evergreen.TaskFailed:
-		return 10
-	case evergreen.TaskTestTimedOut:
-		return 20
-	case evergreen.TaskSystemFailed:
-		return 30
-	case evergreen.TaskSystemTimedOut:
-		return 40
-	case evergreen.TaskSystemUnresponse:
-		return 50
-	case evergreen.TaskSetupFailed:
-		return 60
 	case evergreen.TaskStarted:
+		return 10
+	case evergreen.TaskFailed:
+		return 20
+	case evergreen.TaskTestTimedOut:
+		return 30
+	case evergreen.TaskSystemFailed:
+		return 40
+	case evergreen.TaskSystemTimedOut:
+		return 50
+	case evergreen.TaskSystemUnresponse:
+		return 60
+	case evergreen.TaskSetupFailed:
 		return 70
 	case evergreen.TaskUndispatched:
 		return 80

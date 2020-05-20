@@ -2527,7 +2527,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	}
 	assert.NoError(task2.Insert())
 
-	// test that updating the status + activated from execution tasks works
+	// test that updating the status + activated from execution tasks shows started
 	assert.NoError(UpdateDisplayTask(&dt))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
