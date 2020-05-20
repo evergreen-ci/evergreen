@@ -578,11 +578,15 @@ func IsSystemActivator(caller string) bool {
 }
 
 func IsPatchRequester(requester string) bool {
-	return requester == PatchVersionRequester || requester == GithubPRRequester || requester == MergeTestRequester
+	return requester == PatchVersionRequester || IsGitHubPatchRequester(requester)
 }
 
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
+}
+
+func IsGitTagRequester(requester string) bool {
+	return requester == GitTagRequester
 }
 
 // Permissions-related constants

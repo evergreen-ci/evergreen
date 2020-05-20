@@ -84,11 +84,12 @@ type BuildVariantTaskUnit struct {
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
-	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly *bool                 `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+	Patchable  *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly  *bool                 `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly *bool                 `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Priority   int64                 `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn  []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Requires   []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
 
 	// the distros that the task can be run on
 	Distros []string `yaml:"distros,omitempty" bson:"distros"`
@@ -152,6 +153,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = pt.PatchOnly
 	}
+	if bvt.GitTagOnly == nil {
+		bvt.GitTagOnly = pt.GitTagOnly
+	}
 	// TODO these are copied but unused until EVG-578 is completed
 	if bvt.ExecTimeoutSecs == 0 {
 		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -183,12 +187,21 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 	return nil
 }
 
+func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
+	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
+		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
+		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
+}
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
-	return (bvt.Patchable != nil && !*bvt.Patchable) || bvt.Name == evergreen.PushStage
+	return util.IsPtrSetToFalse(bvt.Patchable) || bvt.Name == evergreen.PushStage
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
-	return bvt.PatchOnly != nil && *bvt.PatchOnly
+	return util.IsPtrSetToTrue(bvt.PatchOnly)
+}
+
+func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
+	return util.IsPtrSetToTrue(bvt.GitTagOnly)
 }
 
 type BuildVariant struct {
@@ -477,9 +490,10 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Patchable *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Patchable  *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly  *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Stepback   *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 type LoggerConfig struct {
@@ -1270,7 +1284,7 @@ func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			if t.Patchable != nil && !(*t.Patchable) {
+			if util.IsPtrSetToFalse(t.Patchable) || util.IsPtrSetToTrue(t.GitTagOnly) {
 				continue
 			}
 			tasks = append(tasks, t.Name)

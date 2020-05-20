@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -2775,10 +2776,8 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 }
 
 func TestDependencyMustRun(t *testing.T) {
-	falsePrimitive := false
-	falsePtr := &falsePrimitive
-	truePrimitive := true
-	truePtr := &truePrimitive
+	falsePtr := util.FalsePtr()
+	truePtr := util.TruePtr()
 	for testName, testCase := range map[string]struct {
 		source                model.TVPair
 		target                model.TVPair
@@ -3135,6 +3134,68 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "C", Variant: "rhel"}: {},
+			},
+			expectDependencyFound: true,
+		},
+		"DependencySkipsGitTagsIfSourceRequiresPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    true,
+				requireOnNonPatches: false,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					PatchOnly: truePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					GitTagOnly: truePtr,
+				},
+			},
+			expectDependencyFound: false,
+		},
+		"DependencySkipsGitTagsIfSourceRequiresNonPatches": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					GitTagOnly: truePtr,
+				},
+			},
+			expectDependencyFound: false,
+		},
+		"DependencyIncludesGitTags": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: false,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					GitTagOnly: truePtr,
+				},
 			},
 			expectDependencyFound: true,
 		},

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -372,13 +373,12 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 
-	pTrue := true
 	d1 := Distro{
 		Id: "distro1",
 		PlannerSettings: PlannerSettings{
 			Version:                   evergreen.PlannerVersionTunable,
 			TargetTime:                98765000000000,
-			GroupVersions:             &pTrue,
+			GroupVersions:             util.TruePtr(),
 			PatchFactor:               25,
 			PatchTimeInQueueFactor:    0,
 			CommitQueueFactor:         0,

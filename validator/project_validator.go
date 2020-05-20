@@ -1330,7 +1330,7 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTVdependsOnTV checks that the task in the given build variant has a
+// validateTVDependsOnTV checks that the task in the given build variant has a
 // dependency on the task in the given build variant.
 func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit) error {
 	if source == target {
@@ -1350,10 +1350,11 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 			source.TaskName, source.Variant)
 	}
 
+	// patches and mainline builds shouldn't depend on anything that's git tag only
 	depReqs := dependencyRequirements{
 		lastDepNeedsSuccess: true,
-		requireOnPatches:    !sourceTask.SkipOnPatchBuild(),
-		requireOnNonPatches: !sourceTask.SkipOnNonPatchBuild(),
+		requireOnPatches:    !sourceTask.SkipOnPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
+		requireOnNonPatches: !sourceTask.SkipOnNonPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
 	}
 	depFound, err := dependencyMustRun(target, source, depReqs, allTVs, visited, tvToTaskUnit)
 	if err != nil {
@@ -1378,9 +1379,10 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 }
 
 type dependencyRequirements struct {
-	lastDepNeedsSuccess bool
-	requireOnPatches    bool
-	requireOnNonPatches bool
+	lastDepNeedsSuccess   bool
+	requireOnPatches      bool
+	requireOnNonPatches   bool
+	requireOnGitTagBuilds bool
 }
 
 // dependencyMustRun checks whether or not the current task in a build
@@ -1400,12 +1402,13 @@ func dependencyMustRun(target model.TVPair, current model.TVPair, depReqs depend
 	taskUnit := tvToTaskUnit[current]
 	// Even if current depends on target according to the dependency graph, if
 	// the current task will not run in the same cases as the source (e.g. the
-	// source task runs on patches but current task does not), the dependency is
+	// source task runs on patches but current task does not, or if the current task
+	// is only available to git tag builds), the dependency is
 	// not reachable from this branch.
-	if depReqs.requireOnPatches && taskUnit.SkipOnPatchBuild() {
+	if depReqs.requireOnPatches && (taskUnit.SkipOnPatchBuild() || taskUnit.SkipOnNonGitTagBuild()) {
 		return false, nil
 	}
-	if depReqs.requireOnNonPatches && taskUnit.SkipOnNonPatchBuild() {
+	if depReqs.requireOnNonPatches && (taskUnit.SkipOnNonPatchBuild() || taskUnit.SkipOnNonGitTagBuild()) {
 		return false, nil
 	}
 

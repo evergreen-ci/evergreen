@@ -1275,6 +1275,47 @@ buildvariants:
 	assert.Nil(proj.BuildVariants[2].Tasks[0].PatchOnly)
 }
 
+func TestGitTagOnlyTasks(t *testing.T) {
+	yml := `
+tasks:
+- name: task_1
+  git_tag_only: true
+- name: task_2
+buildvariants:
+- name: bv_1
+  tasks:
+  - name: task_1
+  - name: task_2
+    git_tag_only: false
+- name: bv_2
+  tasks:
+  - name: task_1
+    git_tag_only: false
+  - name: task_2
+    git_tag_only: true
+- name: bv_3
+  tasks:
+  - name: task_2
+`
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.Len(t, proj.BuildVariants, 3)
+
+	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
+	assert.Nil(t, proj.BuildVariants[0].Tasks[0].GitTagOnly)
+	assert.False(t, *proj.BuildVariants[0].Tasks[1].GitTagOnly)
+
+	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
+	assert.False(t, *proj.BuildVariants[1].Tasks[0].GitTagOnly)
+	assert.True(t, *proj.BuildVariants[1].Tasks[1].GitTagOnly)
+
+	assert.Len(t, proj.BuildVariants[2].Tasks, 1)
+	assert.Nil(t, proj.BuildVariants[2].Tasks[0].GitTagOnly)
+}
+
 func TestLoggerConfig(t *testing.T) {
 	assert := assert.New(t)
 	yml := `

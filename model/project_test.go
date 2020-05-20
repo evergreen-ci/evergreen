@@ -1613,3 +1613,71 @@ func checkEqualVTs(t *testing.T, expected []patch.VariantTasks, actual []patch.V
 		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
 	}
 }
+
+func TestSkipOnPatch(t *testing.T) {
+	falseTmp := false
+	bvt := BuildVariantTaskUnit{Patchable: &falseTmp}
+
+	b := &build.Build{Requester: evergreen.RepotrackerVersionRequester}
+	assert.False(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+	assert.False(t, bvt.SkipOnRequester(b.Requester))
+
+	b.Requester = evergreen.PatchVersionRequester
+	assert.True(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+	assert.True(t, bvt.SkipOnRequester(b.Requester))
+
+	b.Requester = evergreen.GithubPRRequester
+	assert.True(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+	assert.True(t, bvt.SkipOnRequester(b.Requester))
+
+	b.Requester = evergreen.MergeTestRequester
+	assert.True(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+	assert.True(t, bvt.SkipOnRequester(b.Requester))
+
+	bvt.Patchable = nil
+	assert.False(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+	assert.False(t, bvt.SkipOnRequester(b.Requester))
+}
+
+func TestSkipOnNonPatch(t *testing.T) {
+	boolTmp := true
+	bvt := BuildVariantTaskUnit{PatchOnly: &boolTmp}
+	b := &build.Build{Requester: evergreen.RepotrackerVersionRequester}
+	assert.True(t, !b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
+	assert.True(t, bvt.SkipOnRequester(b.Requester))
+
+	b.Requester = evergreen.PatchVersionRequester
+	assert.False(t, !b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
+	assert.False(t, bvt.SkipOnRequester(b.Requester))
+
+	b.Requester = evergreen.GithubPRRequester
+	assert.False(t, !b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
+	assert.False(t, bvt.SkipOnRequester(b.Requester))
+
+	bvt.PatchOnly = nil
+	assert.False(t, !b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
+	assert.False(t, b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+
+	assert.False(t, bvt.SkipOnRequester(b.Requester))
+}
+
+func TestSkipOnNonGitTagBuild(t *testing.T) {
+	boolTmp := true
+	bvt := BuildVariantTaskUnit{GitTagOnly: &boolTmp}
+	r := evergreen.GitTagRequester
+	assert.False(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
+	assert.False(t, !evergreen.IsGitTagRequester(r) && !bvt.SkipOnNonGitTagBuild())
+	assert.False(t, bvt.SkipOnRequester(r))
+
+	r = evergreen.PatchVersionRequester
+	assert.True(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
+	assert.True(t, bvt.SkipOnRequester(r))
+
+	r = evergreen.GithubPRRequester
+	assert.True(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
+	assert.True(t, bvt.SkipOnRequester(r))
+
+	bvt.GitTagOnly = nil
+	assert.False(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
+	assert.False(t, bvt.SkipOnRequester(r))
+}
