@@ -35,31 +35,28 @@ func TestWords(t *testing.T) {
 
 func TestCreateConversionMethods(t *testing.T) {
 	fields := ExtractedFields{
-		"AnotherString": ExtractedField{OutputFieldName: "One", Nullable: true},
-		"StringPtr":     ExtractedField{OutputFieldName: "Two", Nullable: false},
-		"Int":           ExtractedField{OutputFieldName: "Three", Nullable: false},
-		"IntPtr":        ExtractedField{OutputFieldName: "Four", Nullable: true},
+		"Author":          ExtractedField{OutputFieldName: "One", Nullable: true},
+		"AuthorEmail":     ExtractedField{OutputFieldName: "Two", Nullable: false},
+		"AuthorGithubUID": ExtractedField{OutputFieldName: "Three", Nullable: false},
 	}
-	generated, err := CreateConversionMethods("github.com/evergreen-ci/evergreen/rest/model", "TestStruct", fields)
+	generated, err := CreateConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields)
 	assert.NoError(t, err)
 	expected := `package model
 
-import "github.com/evergreen-ci/evergreen/rest/model"
+import "github.com/evergreen-ci/evergreen/model"
 
-func (m *APITestStruct) BuildFromService(t model.TestStruct) error {
-	m.Four = intPtrToIntPtr(t.IntPtr)
-	m.One = stringToStringPtr(t.AnotherString)
-	m.Three = intToInt(t.Int)
-	m.Two = stringPtrToString(t.StringPtr)
+func (m *APIRevision) BuildFromService(t model.Revision) error {
+	m.One = stringToStringPtr(t.Author)
+	m.Three = intToInt(t.AuthorGithubUID)
+	m.Two = stringToString(t.AuthorEmail)
 	return nil
 }
 
-func (m *APITestStruct) ToService() (model.TestStruct, error) {
-	out := model.TestStruct{}
-	out.AnotherString = stringToStringPtr(m.One)
-	out.Int = intToInt(m.Three)
-	out.IntPtr = intPtrToIntPtr(m.Four)
-	out.StringPtr = stringPtrToString(m.Two)
+func (m *APIRevision) ToService() (model.Revision, error) {
+	out := model.Revision{}
+	out.Author = stringToStringPtr(m.One)
+	out.AuthorEmail = stringToString(m.Two)
+	out.AuthorGithubUID = intToInt(m.Three)
 	return out, nil
 }
 `

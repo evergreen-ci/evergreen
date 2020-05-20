@@ -20,11 +20,3 @@ func (m *MockModel) ToService() (interface{}, error) {
 func (m *MockModel) BuildFromService(in interface{}) error {
 	return nil
 }
-
-type TestStruct struct {
-	String        string
-	StringPtr     *string
-	Int           int
-	IntPtr        *int
-	AnotherString string
-}
