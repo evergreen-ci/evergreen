@@ -819,10 +819,10 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		if err = prepareVolume(ctx, client, h, device); err != nil {
 			return errors.Wrap(err, "can't prepare new volume")
 		}
-	} else {
-		if err = client.CreateCommand(ctx).Append(fmt.Sprintf("mount /dev/%s %s", device.Name, h.Distro.HomeDir())).Run(ctx); err != nil {
-			return errors.Wrap(err, "problem running mount commands")
-		}
+	}
+
+	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("mount /dev/%s %s", device.Name, h.Distro.HomeDir())).Run(ctx); err != nil {
+		return errors.Wrap(err, "problem running mount commands")
 	}
 
 	// write to /etc/fstab so the volume is mounted on restart
@@ -840,12 +840,14 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 }
 
 func prepareVolume(ctx context.Context, client remote.Manager, h *host.Host, device blockDevice) error {
-	cmd := client.CreateCommand(ctx)
+	cmd := client.CreateCommand(ctx).Sudo(true)
 	cmd.Append(fmt.Sprintf("%s /dev/%s", h.Distro.HomeVolumeSettings.FormatCommand, device.Name))
-	cmd.Append(fmt.Sprintf(fmt.Sprintf("mount /dev/%s /mnt", device.Name)))
-	cmd.Append(fmt.Sprintf(fmt.Sprintf("rsync -a %s/ /mnt", h.Distro.HomeDir())))
-	cmd.Append(fmt.Sprintf(fmt.Sprintf("mount --move /mnt %s", h.Distro.HomeDir())))
-	return errors.Wrap(cmd.Run(ctx), "can't run prepare commands")
+	cmd.Append("mkdir -p /mnt")
+	cmd.Append(fmt.Sprintf("mount /dev/%s /mnt", device.Name))
+	cmd.Append(fmt.Sprintf("rsync -a %s/ /mnt", h.Distro.HomeDir()))
+	cmd.Append("umount /mnt")
+
+	return errors.Wrap(cmd.Run(ctx), "error with volume initialization")
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
@@ -887,7 +889,7 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	}
 
 	if !utility.StringSliceContains([]string{"", h.Distro.HomeDir()}, devices[len(devices)-1].MountPoint) {
-		return blockDevice{}, errors.Wrap(err, "device hasn't been attached yet")
+		return blockDevice{}, errors.New("device hasn't been attached yet")
 	}
 
 	return devices[len(devices)-1], nil
