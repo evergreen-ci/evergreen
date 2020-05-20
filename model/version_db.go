@@ -157,7 +157,6 @@ func VersionByProjectId(projectId string) db.Q {
 		})
 }
 
-// Use all version requester types
 func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
