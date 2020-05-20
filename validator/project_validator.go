@@ -1379,10 +1379,9 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 }
 
 type dependencyRequirements struct {
-	lastDepNeedsSuccess   bool
-	requireOnPatches      bool
-	requireOnNonPatches   bool
-	requireOnGitTagBuilds bool
+	lastDepNeedsSuccess bool
+	requireOnPatches    bool
+	requireOnNonPatches bool
 }
 
 // dependencyMustRun checks whether or not the current task in a build
