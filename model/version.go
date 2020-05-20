@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -118,6 +118,24 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
+}
+
+func VersionExistsForCommitQueueItem(cq *commitqueue.CommitQueue, issue, patchType string) (bool, error) {
+	versionID := issue
+	if patchType == commitqueue.PRPatchType {
+		head, valid := cq.Next()
+		// versions are created for PR items at the top of the queue only
+		if !valid || head.Issue != issue {
+			return false, nil
+		}
+		versionID = head.Version
+	}
+
+	v, err := VersionFindOneId(versionID)
+	if err != nil {
+		return false, errors.Wrapf(err, "error finding version '%s'", versionID)
+	}
+	return v != nil, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build

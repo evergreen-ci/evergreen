@@ -210,7 +210,7 @@ func SetupEnv(env evergreen.Environment) error {
 	return nil
 }
 
-func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool) (bool, error) {
+func RemoveCommitQueueItemForVersion(projectId, patchType, version string) (bool, error) {
 	cq, err := FindOneId(projectId)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
@@ -219,22 +219,36 @@ func RemoveCommitQueueItem(projectId, patchType, item string, versionExists bool
 		return false, errors.Errorf("no commit queue found for '%s'", projectId)
 	}
 
+	issue := version
+	if patchType == PRPatchType {
+		head, valid := cq.Next()
+		// version is populated for PR items at the top of the queue only,
+		// so if the version for the item at the top of the queue doesn't match
+		// then the version is not here
+		if !valid || head.Version != version {
+			return false, nil
+		}
+		issue = head.Issue
+	}
+
+	return cq.RemoveItemAndPreventMerge(issue, patchType, true)
+}
+
+func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versionExists bool) (bool, error) {
 	head, valid := cq.Next()
 	if !valid {
 		return false, nil
 	}
-
-	removed, err := cq.Remove(item)
+	removed, err := cq.Remove(issue)
 	if err != nil {
-		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, projectId)
+		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", issue, cq.ProjectID)
 	}
 
-	if removed && head.Issue == item {
-		if err = preventMergeForItem(patchType, versionExists, head); err != nil {
-			return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, projectId)
-		}
+	if !removed || head.Issue != issue {
+		return removed, nil
 	}
-	return removed, nil
+	return removed, errors.Wrapf(preventMergeForItem(patchType, versionExists, head),
+		"can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
 }
 
 func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem) error {

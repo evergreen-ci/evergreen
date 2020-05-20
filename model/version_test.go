@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLastKnownGoodConfig(t *testing.T) {
@@ -119,4 +119,44 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
 	assert.NoError(err)
 	assert.Equal(v2.Id, mostRecent.Id)
+}
+
+func TestVersionExistsForCommitQueueIssue(t *testing.T) {
+	assert.NoError(t, db.Clear(VersionCollection))
+	v1 := Version{Id: "version-1234"}
+	assert.NoError(t, v1.Insert())
+
+	for testName, testCase := range map[string]struct {
+		cq        *commitqueue.CommitQueue
+		patchType string
+	}{
+		"CLIQueue": {
+			cq: &commitqueue.CommitQueue{
+				Queue: []commitqueue.CommitQueueItem{
+					{Issue: "version-1234"},
+					{Issue: "patch-2345"},
+				},
+			},
+			patchType: commitqueue.CLIPatchType,
+		},
+		"PRQueue": {
+			cq: &commitqueue.CommitQueue{
+				Queue: []commitqueue.CommitQueueItem{
+					{Issue: "1234", Version: "version-1234"},
+					{Issue: "2345"},
+				},
+			},
+			patchType: commitqueue.PRPatchType,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			exists, err := VersionExistsForCommitQueueItem(testCase.cq, testCase.cq.Queue[0].Issue, testCase.patchType)
+			assert.NoError(t, err)
+			assert.True(t, exists)
+
+			exists, err = VersionExistsForCommitQueueItem(testCase.cq, testCase.cq.Queue[1].Issue, testCase.patchType)
+			assert.NoError(t, err)
+			assert.False(t, exists)
+		})
+	}
 }
