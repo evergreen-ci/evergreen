@@ -799,14 +799,10 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		}))
 	}()
 
-	// spin wait for the volume to come up on the instance
-	var device blockDevice
-	for i := 0; i < mountRetryLimit; i++ {
-		device, err = getMostRecentlyAddedDevice(ctx, env, h)
-		if err == nil {
-			break
-		}
-		time.Sleep(mountSleepDuration)
+	// wait for the volume to come up on the instance
+	device, err := waitForDevice(ctx, env, h)
+	if err != nil {
+		return errors.Wrap(err, "can't get device")
 	}
 
 	// we've done this already
@@ -848,6 +844,23 @@ func prepareVolume(ctx context.Context, client remote.Manager, h *host.Host, dev
 	cmd.Append("umount /mnt")
 
 	return errors.Wrap(cmd.Run(ctx), "error with volume initialization")
+}
+
+func waitForDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
+	var device blockDevice
+	var err error
+	for i := 0; i < mountRetryLimit; i++ {
+		device, err = getMostRecentlyAddedDevice(ctx, env, h)
+		if err == nil {
+			break
+		}
+		time.Sleep(mountSleepDuration)
+	}
+	if err != nil {
+		return device, errors.Wrap(err, "device didn't come up in time")
+	}
+
+	return device, nil
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
