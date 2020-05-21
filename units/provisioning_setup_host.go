@@ -822,8 +822,6 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "problem running mount commands")
 	}
 
-	// write to /etc/fstab so the volume is mounted on restart
-	// use the UUID which is constant over the life of the filesystem
 	entryInFstab, err := findMnt(ctx, client, h)
 	if err != nil {
 		return errors.Wrap(err, "problem verifying mount")
@@ -833,6 +831,8 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		if err != nil {
 			return errors.Wrap(err, "can't refresh device info")
 		}
+		// write to /etc/fstab so the volume is mounted on restart
+		// use the UUID which is constant over the life of the filesystem
 		cmd := client.CreateCommand(ctx).Sudo(true).Append("tee --append /etc/fstab")
 		cmd.SetInputBytes([]byte(fmt.Sprintf("UUID=%s %s auto noatime 0 0\n", device.UUID, h.Distro.HomeDir())))
 		err = cmd.Run(ctx)
