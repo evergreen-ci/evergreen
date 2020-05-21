@@ -805,7 +805,8 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "can't get device")
 	}
 
-	// we've done this already
+	// the device is aleady mounted on ~
+	// nothing left to do
 	if device.MountPoint != "" {
 		return nil
 	}
@@ -823,13 +824,21 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 
 	// write to /etc/fstab so the volume is mounted on restart
 	// use the UUID which is constant over the life of the filesystem
-	device, err = getMostRecentlyAddedDevice(ctx, env, h)
+	entryInFstab, err := findMnt(ctx, client, h)
 	if err != nil {
-		return errors.Wrap(err, "can't refresh device info")
+		return errors.Wrap(err, "problem verifying mount")
 	}
-	err = client.CreateCommand(ctx).Sudo(true).SetInputBytes([]byte(fmt.Sprintf("UUID=%s %s auto noatime 0 0\n", device.UUID, h.Distro.HomeDir()))).Append("tee --append /etc/fstab").Run(ctx)
-	if err != nil {
-		return errors.Wrap(err, "problem appending to fstab")
+	if !entryInFstab {
+		device, err = getMostRecentlyAddedDevice(ctx, env, h)
+		if err != nil {
+			return errors.Wrap(err, "can't refresh device info")
+		}
+		cmd := client.CreateCommand(ctx).Sudo(true).Append("tee --append /etc/fstab")
+		cmd.SetInputBytes([]byte(fmt.Sprintf("UUID=%s %s auto noatime 0 0\n", device.UUID, h.Distro.HomeDir())))
+		err = cmd.Run(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem appending to fstab")
+		}
 	}
 
 	return nil
@@ -876,6 +885,23 @@ func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host
 		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
 	}
 	return nil
+}
+
+func findMnt(ctx context.Context, client remote.Manager, h *host.Host) (bool, error) {
+	cmd := client.CreateCommand(ctx).Background(true)
+	cmd.Append(fmt.Sprintf("findmnt --fstab --target %s", h.Distro.HomeDir()))
+	if err := cmd.Run(ctx); err != nil {
+		return false, errors.Wrap(err, "can't run findmnt command")
+	}
+	exitCode, err := cmd.Wait(ctx)
+	if err != nil {
+		if exitCode != 0 {
+			return false, nil
+		}
+		return false, errors.Wrap(err, "problem waiting for findmnt command")
+	}
+
+	return true, nil
 }
 
 type blockDevice struct {
