@@ -1350,11 +1350,14 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 			source.TaskName, source.Variant)
 	}
 
-	// patches and mainline builds shouldn't depend on anything that's git tag only
+	// patches and mainline builds shouldn't depend on anything that's git tag only,
+	// while something that could run in a git tag build can't depend on something that's patchOnly.
+	// requireOnNonGitTag is just requireOnPatches & requireOnNonPatches so we don't consider this case.
 	depReqs := dependencyRequirements{
 		lastDepNeedsSuccess: true,
 		requireOnPatches:    !sourceTask.SkipOnPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
 		requireOnNonPatches: !sourceTask.SkipOnNonPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
+		requireOnGitTag:     !sourceTask.SkipOnNonPatchBuild(),
 	}
 	depFound, err := dependencyMustRun(target, source, depReqs, allTVs, visited, tvToTaskUnit)
 	if err != nil {
@@ -1372,6 +1375,8 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 			errMsg += " for patches"
 		} else if depReqs.requireOnNonPatches {
 			errMsg += " for non-patches"
+		} else if depReqs.requireOnGitTag {
+			errMsg += " for git-tag builds"
 		}
 		return errors.Errorf(errMsg, source.TaskName, source.Variant, target.TaskName, target.Variant)
 	}
@@ -1382,6 +1387,7 @@ type dependencyRequirements struct {
 	lastDepNeedsSuccess bool
 	requireOnPatches    bool
 	requireOnNonPatches bool
+	requireOnGitTag     bool
 }
 
 // dependencyMustRun checks whether or not the current task in a build
@@ -1408,6 +1414,9 @@ func dependencyMustRun(target model.TVPair, current model.TVPair, depReqs depend
 		return false, nil
 	}
 	if depReqs.requireOnNonPatches && (taskUnit.SkipOnNonPatchBuild() || taskUnit.SkipOnNonGitTagBuild()) {
+		return false, nil
+	}
+	if depReqs.requireOnGitTag && (taskUnit.SkipOnNonPatchBuild()) {
 		return false, nil
 	}
 
