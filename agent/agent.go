@@ -427,13 +427,17 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
-	if err := tc.runOomTrackerCheck(ctx); err != nil {
-		tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
-	}
-
 	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
+	}
+
+	oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
+	defer oomCancel()
+	if status == evergreen.TaskFailed {
+		if err := tc.oomTracker.Check(oomCtx); err != nil {
+			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
+		}
 	}
 
 	return status

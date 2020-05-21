@@ -250,21 +250,11 @@ func (tc *taskContext) hadTimedOut() bool {
 }
 
 func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
-	tc.RLock()
-	defer tc.RUnlock()
-
 	detected, pids := tc.oomTracker.Report()
 	return apimodels.OOMTrackerInfo{
 		Detected: detected,
 		Pids:     pids,
 	}
-}
-
-func (tc *taskContext) runOomTrackerCheck(ctx context.Context) error {
-	tc.Lock()
-	defer tc.Unlock()
-
-	return tc.oomTracker.Check(ctx)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {
