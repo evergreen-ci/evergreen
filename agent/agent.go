@@ -439,6 +439,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		if err := tc.oomTracker.Check(oomCtx); err != nil {
 			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
 		}
+		tc.logger.Execution().Debug("OOM tracker finished checking system logs")
 	}
 
 	return status
