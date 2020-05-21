@@ -759,6 +759,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				AvailabilityZone: h.Zone,
 				CreatedBy:        h.StartedBy,
 				Type:             evergreen.DefaultEBSType,
+				HomeVolume:       true,
 			})
 			if err != nil {
 				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)

@@ -104,7 +104,7 @@
                 New Volume
               </a>
             </li>
-            <li role="presentation" ng-repeat="volume in $parent.volumes | filter:{status:'free'}">
+            <li role="presentation" ng-repeat="volume in $parent.volumes | filter:{status:'free', home_volume: true}">
               <a role="menuitem" ng-click="setHomeVolume(volume)">
                 [[ concatName(volume.volume_id, volume.display_name) ]]
               </a>
