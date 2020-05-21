@@ -74,14 +74,20 @@ func (s *createHostSuite) TestParseFromFile() {
 	//file for testing parsing from a json file
 	tmpdir, err := ioutil.TempDir("", "evergreen.command.host_create.test")
 	s.Require().NoError(err)
-
+	ebsDevice := []map[string]interface{}{
+		map[string]interface{}{
+			"device_name": "myDevice",
+			"ebs_size":    1,
+		},
+	}
 	path := filepath.Join(tmpdir, "example.json")
 	fileContent := map[string]interface{}{
-		"distro":    "myDistro",
-		"scope":     "task",
-		"subnet_id": "${subnet_id}",
+		"distro":           "myDistro",
+		"scope":            "task",
+		"subnet_id":        "${subnet_id}",
+		"ebs_block_device": ebsDevice,
 	}
-
+	//parse from JSON file
 	s.NoError(utility.WriteJSONFile(path, fileContent))
 	_, err = os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
@@ -91,6 +97,27 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.True(s.cmd.CreateHost.Background)
+	s.Equal("myDistro", s.cmd.CreateHost.Distro)
+	s.Equal("task", s.cmd.CreateHost.Scope)
+	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+
+	//parse from YAML file
+	path = filepath.Join(tmpdir, "example.yml")
+	s.NoError(utility.WriteYAMLFile(path, fileContent))
+	_, err = os.Stat(path)
+	s.Require().False(os.IsNotExist(err))
+	s.params = map[string]interface{}{
+		"file": path,
+	}
+
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.True(s.cmd.CreateHost.Background)
+	s.Equal("myDistro", s.cmd.CreateHost.Distro)
+	s.Equal("task", s.cmd.CreateHost.Scope)
+	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+
 	s.Require().NoError(os.RemoveAll(tmpdir))
 }
 

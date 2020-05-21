@@ -34,9 +34,9 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	}
 
 	// if a filename is defined, get the params from the file
-	if params["file"] != nil {
+	if _, ok := params["file"]; ok {
 		fileName := fmt.Sprintf("%v", params["file"])
-		return errors.Wrapf(utility.ReadJSONFile(fileName, &c.CreateHost),
+		return errors.Wrapf(utility.ReadYAMLFile(fileName, &c.CreateHost),
 			"error reading JSON from file '%s'", fileName)
 	}
 
