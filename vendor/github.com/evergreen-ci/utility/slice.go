@@ -1,6 +1,9 @@
 package utility
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // StringSliceContains determines if a string is in a slice
 func StringSliceContains(slice []string, item string) bool {
@@ -101,4 +104,18 @@ func GetSetDifference(a, b []string) []string {
 	}
 
 	return d
+}
+
+// IndexOf returns the first occurence of a string in a sorted array
+func IndexOf(a []string, toFind string) int {
+	i := sort.Search(len(a), func(index int) bool {
+		return strings.Compare(a[index], toFind) >= 0
+	})
+	if i < 0 || i >= len(a) {
+		return -1
+	}
+	if a[i] == toFind {
+		return i
+	}
+	return -1
 }

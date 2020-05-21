@@ -303,7 +303,7 @@ retryLoop:
 			filesList = []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
-				filesList, err = util.BuildFileList(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), s3pc.LocalFilesIncludeFilter...)
+				filesList, err = utility.BuildFileList(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
 					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -47,7 +48,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "error expanding params")
 	}
 
-	if c.Files, err = util.BuildFileList(conf.WorkDir, c.Files...); err != nil {
+	if c.Files, err = utility.BuildFileList(conf.WorkDir, c.Files...); err != nil {
 		return errors.Wrap(err, "problem building wildcard paths")
 	}
 
