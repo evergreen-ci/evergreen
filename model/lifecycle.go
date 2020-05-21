@@ -632,6 +632,8 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			IsGroup:          true,
 			GroupName:        in.Name,
 			Patchable:        in.Patchable,
+			PatchOnly:        in.PatchOnly,
+			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
 			Requires:         in.Requires,
@@ -696,8 +698,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
 			task.Populate(taskSpec)
-			if skipTask := b.IsPatchBuild() && task.SkipOnPatchBuild() ||
-				!b.IsPatchBuild() && task.SkipOnNonPatchBuild(); skipTask {
+			if task.SkipOnRequester(b.Requester) {
 				continue
 			}
 			if createAll || utility.StringSliceContains(taskNames, task.Name) {
@@ -706,8 +707,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		} else if _, ok := tgMap[task.Name]; ok {
 			tasksFromVariant := CreateTasksFromGroup(task, project)
 			for _, taskFromVariant := range tasksFromVariant {
-				if skipTask := b.IsPatchBuild() && taskFromVariant.SkipOnPatchBuild() ||
-					!b.IsPatchBuild() && taskFromVariant.SkipOnNonPatchBuild(); skipTask {
+				if taskFromVariant.SkipOnRequester(b.Requester) {
 					continue
 				}
 				if createAll || utility.StringSliceContains(taskNames, taskFromVariant.Name) {

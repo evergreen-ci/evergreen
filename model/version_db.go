@@ -157,7 +157,6 @@ func VersionByProjectId(projectId string) db.Q {
 		})
 }
 
-// Use all version requester types
 func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	q := bson.M{
 		VersionIdentifierKey: projectID,
@@ -173,7 +172,8 @@ func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	return db.Query(q)
 }
 
-// ByProjectId finds all mainline versions within a project, ordered by most recently created to oldest.
+// VersionByMostRecentSystemRequester finds all mainline versions within a project,
+// ordered by most recently created to oldest.
 func VersionByMostRecentSystemRequester(projectId string) db.Q {
 	return db.Query(
 		bson.M{

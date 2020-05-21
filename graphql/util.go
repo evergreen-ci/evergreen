@@ -19,6 +19,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -269,8 +270,8 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable
-		if !(task.Patchable != nil && !*task.Patchable) {
+		// add a task name to the list if it's patchable and not restricted to git tags
+		if !util.IsPtrSetToFalse(task.Patchable) && !util.IsPtrSetToTrue(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
