@@ -21,10 +21,11 @@ func TestGetMostRecentlyAddedDevice(t *testing.T) {
 	]
 }`
 
-	device, err := parseLsblkOutput(lsblkOutput)
+	devices, err := parseLsblkOutput(lsblkOutput)
 	assert.NoError(t, err)
-	assert.Equal(t, "nvme1n1", device.Name)
-	assert.Equal(t, "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", device.UUID)
-	assert.Equal(t, "xfs", device.FSType)
-	assert.Equal(t, "/user_home", device.MountPoint)
+	assert.Len(t, devices, 5)
+	assert.Equal(t, "nvme1n1", devices[len(devices)-1].Name)
+	assert.Equal(t, "fee4e1cc-1b86-4cee-8dd3-96f52f5b3ecb", devices[len(devices)-1].UUID)
+	assert.Equal(t, "xfs", devices[len(devices)-1].FSType)
+	assert.Equal(t, "/user_home", devices[len(devices)-1].MountPoint)
 }
