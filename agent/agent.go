@@ -433,7 +433,6 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 	}
 
 	if tc.project.OomTracker && status == evergreen.TaskFailed {
-		tc.logger.Execution().Info("OOM tracker checking system logs")
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
 		defer oomCancel()
