@@ -383,6 +383,9 @@ tasks:
       - func: setup-mongodb
       - func: run-make
         vars:
+          target: build
+      - func: run-make
+        vars:
           target: "coverage-html"
           make_args: "-k"
           tz: "America/New_York"
