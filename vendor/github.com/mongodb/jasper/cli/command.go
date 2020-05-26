@@ -20,7 +20,7 @@ import (
 
 // RunCMD provides a simple user-centered command-line interface for
 // running commands on a remote instance.
-func RunCMD() cli.Command {
+func RunCMD() cli.Command { //nolint: gocognit
 	const (
 		commandFlagName = "command"
 		envFlagName     = "env"
@@ -99,7 +99,11 @@ func RunCMD() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			logger := jasper.NewInMemoryLogger(1000)
+			inMemoryCap := 1000
+			logger, err := jasper.NewInMemoryLogger(inMemoryCap)
+			if err != nil {
+				return errors.Wrap(err, "problem creating new in memory logger")
+			}
 
 			return withConnection(ctx, c, func(client remote.Manager) error {
 				cmd := client.CreateCommand(ctx).Sudo(useSudo).ID(cmdID).SetTags(tags)
@@ -139,7 +143,7 @@ func RunCMD() cli.Command {
 				}
 
 				if wait {
-					exitCode, err := printLogs(ctx, client, cmd, logger)
+					exitCode, err := printLogs(ctx, client, cmd, inMemoryCap)
 					grip.Error(err)
 					os.Exit(exitCode)
 				} else {
@@ -160,7 +164,7 @@ func RunCMD() cli.Command {
 
 // printLogs prints the logs outputted from a process until the process
 // terminates.
-func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, logger options.Logger) (int, error) {
+func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, inMemoryCap int) (int, error) {
 	const logPollInterval = 100 * time.Millisecond
 	logDone := make(chan struct{})
 
@@ -180,7 +184,7 @@ func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, 
 					grip.Notice("log fetching canceled")
 					return
 				case <-timer.C:
-					logLines, err := client.GetLogStream(ctx, id, logger.Options.InMemoryCap)
+					logLines, err := client.GetLogStream(ctx, id, inMemoryCap)
 					if err != nil {
 						grip.Error(message.WrapError(err, "problem polling for log lines, aborting log streaming"))
 						return

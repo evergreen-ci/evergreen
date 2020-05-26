@@ -8,83 +8,80 @@ import (
 	"syscall"
 
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh"
+	cryptossh "golang.org/x/crypto/ssh"
 )
 
-// execSSH runs processes on a remote machine via SSH.
-type execSSH struct {
-	session   *ssh.Session
-	client    *ssh.Client
-	args      []string
-	dir       string
-	env       []string
-	exited    bool
-	exitErr   error
-	closeConn context.CancelFunc
+// ssh runs processes on a remote machine via SSH.
+type ssh struct {
+	session *cryptossh.Session
+	client  *cryptossh.Client
+	args    []string
+	dir     string
+	env     []string
+	exited  bool
+	exitErr error
+	ctx     context.Context
 }
 
-// MakeSSH returns an Executor that creates processes over SSH. Callers are
-// expected to clean up resources by either cancelling the context or explicitly
-// calling Close.
-func MakeSSH(ctx context.Context, client *ssh.Client, session *ssh.Session, args []string) Executor {
-	ctx, cancel := context.WithCancel(ctx)
-	e := &execSSH{session: session, client: client, args: args}
-	e.closeConn = cancel
-	go func() {
-		<-ctx.Done()
-		if err := e.session.Close(); err != nil && err != io.EOF {
-			grip.Warning(errors.Wrap(err, "error closing SSH session"))
-		}
-		if err := e.client.Close(); err != nil && err != io.EOF {
-			grip.Warning(errors.Wrap(err, "error closing SSH client"))
-		}
-	}()
-	return e
+// NewSSH returns an Executor that creates processes over SSH. Callers are
+// expected to clean up resources by explicitly calling Close.
+func NewSSH(ctx context.Context, client *cryptossh.Client, session *cryptossh.Session, args []string) Executor {
+	return &ssh{
+		ctx:     ctx,
+		session: session,
+		client:  client,
+		args:    args,
+	}
 }
 
 // Args returns the arguments to the process.
-func (e *execSSH) Args() []string {
+func (e *ssh) Args() []string {
 	return e.args
 }
 
 // SetEnv sets the process environment.
-func (e *execSSH) SetEnv(env []string) {
+func (e *ssh) SetEnv(env []string) {
 	e.env = env
 }
 
 // Env returns the process environment.
-func (e *execSSH) Env() []string {
+func (e *ssh) Env() []string {
 	return e.env
 }
 
 // SetDir sets the process working directory.
-func (e *execSSH) SetDir(dir string) {
+func (e *ssh) SetDir(dir string) {
 	e.dir = dir
 }
 
 // Dir returns the process working directory.
-func (e *execSSH) Dir() string {
+func (e *ssh) Dir() string {
 	return e.dir
 }
 
 // SetStdin sets the process standard input.
-func (e *execSSH) SetStdin(stdin io.Reader) {
+func (e *ssh) SetStdin(stdin io.Reader) {
 	e.session.Stdin = stdin
 }
 
 // SetStdout sets the process standard output.
-func (e *execSSH) SetStdout(stdout io.Writer) {
+func (e *ssh) SetStdout(stdout io.Writer) {
 	e.session.Stdout = stdout
 }
 
+// Stdout returns the standard output of the process.
+func (e *ssh) Stdout() io.Writer { return e.session.Stdout }
+
 // SetStderr sets the process standard error.
-func (e *execSSH) SetStderr(stderr io.Writer) {
+func (e *ssh) SetStderr(stderr io.Writer) {
 	e.session.Stderr = stderr
 }
 
+// Stderr returns the standard error of the process.
+func (e *ssh) Stderr() io.Writer { return e.session.Stderr }
+
 // Start begins running the process.
-func (e *execSSH) Start() error {
+func (e *ssh) Start() error {
 	args := []string{}
 	for _, entry := range e.env {
 		args = append(args, fmt.Sprintf("export %s", entry))
@@ -97,7 +94,7 @@ func (e *execSSH) Start() error {
 }
 
 // Wait returns the result of waiting for the remote process to finish.
-func (e *execSSH) Wait() error {
+func (e *ssh) Wait() error {
 	catcher := grip.NewBasicCatcher()
 	e.exitErr = e.session.Wait()
 	catcher.Add(e.exitErr)
@@ -106,26 +103,26 @@ func (e *execSSH) Wait() error {
 }
 
 // Signal sends a signal to the remote process.
-func (e *execSSH) Signal(sig syscall.Signal) error {
+func (e *ssh) Signal(sig syscall.Signal) error {
 	return e.session.Signal(syscallToSSHSignal(sig))
 }
 
-// PID is not implemented.
-func (e *execSSH) PID() int {
-	// TODO: there is no simple way of retrieving the PID of the remote process.
+// PID is not implemented since there is no simple way to get the remote
+// process's PID.
+func (e *ssh) PID() int {
 	return -1
 }
 
 // ExitCode returns the exit code of the process, or -1 if the process is not
 // finished.
-func (e *execSSH) ExitCode() int {
+func (e *ssh) ExitCode() int {
 	if !e.exited {
 		return -1
 	}
 	if e.exitErr == nil {
 		return 0
 	}
-	sshExitErr, ok := e.exitErr.(*ssh.ExitError)
+	sshExitErr, ok := e.exitErr.(*cryptossh.ExitError)
 	if !ok {
 		return -1
 	}
@@ -133,7 +130,7 @@ func (e *execSSH) ExitCode() int {
 }
 
 // Success returns whether or not the process ran successfully.
-func (e *execSSH) Success() bool {
+func (e *ssh) Success() bool {
 	if !e.exited {
 		return false
 	}
@@ -141,75 +138,85 @@ func (e *execSSH) Success() bool {
 }
 
 // SignalInfo returns information about signals the process has received.
-func (e *execSSH) SignalInfo() (sig syscall.Signal, signaled bool) {
+func (e *ssh) SignalInfo() (sig syscall.Signal, signaled bool) {
 	if e.exitErr == nil {
 		return syscall.Signal(-1), false
 	}
-	sshExitErr, ok := e.exitErr.(*ssh.ExitError)
+	sshExitErr, ok := e.exitErr.(*cryptossh.ExitError)
 	if !ok {
 		return syscall.Signal(-1), false
 	}
-	sshSig := ssh.Signal(sshExitErr.Waitmsg.Signal())
+	sshSig := cryptossh.Signal(sshExitErr.Waitmsg.Signal())
 	return sshToSyscallSignal(sshSig), sshSig != ""
 }
 
-// Close closes the SSH connection.
-func (e *execSSH) Close() {
-	e.closeConn()
+// Close closes the SSH connection resources.
+func (e *ssh) Close() error {
+	catcher := grip.NewBasicCatcher()
+	if err := e.session.Close(); err != nil && err != io.EOF {
+		catcher.Wrap(err, "error closing SSH session")
+	}
+	if err := e.client.Close(); err != nil && err != io.EOF {
+		catcher.Wrap(err, "error closing SSH client")
+	}
+	return catcher.Resolve()
 }
 
-// syscallToSSHSignal converts a syscall.Signal to its equivalent ssh.Signal
-func syscallToSSHSignal(sig syscall.Signal) ssh.Signal {
+// syscallToSSHSignal converts a syscall.Signal to its equivalent
+// cryptossh.Signal.
+func syscallToSSHSignal(sig syscall.Signal) cryptossh.Signal {
 	switch sig {
 	case syscall.SIGABRT:
-		return ssh.SIGABRT
+		return cryptossh.SIGABRT
 	case syscall.SIGALRM:
-		return ssh.SIGALRM
+		return cryptossh.SIGALRM
 	case syscall.SIGFPE:
-		return ssh.SIGFPE
+		return cryptossh.SIGFPE
 	case syscall.SIGHUP:
-		return ssh.SIGHUP
+		return cryptossh.SIGHUP
 	case syscall.SIGILL:
-		return ssh.SIGILL
+		return cryptossh.SIGILL
 	case syscall.SIGINT:
-		return ssh.SIGINT
+		return cryptossh.SIGINT
 	case syscall.SIGKILL:
-		return ssh.SIGKILL
+		return cryptossh.SIGKILL
 	case syscall.SIGPIPE:
-		return ssh.SIGPIPE
+		return cryptossh.SIGPIPE
 	case syscall.SIGQUIT:
-		return ssh.SIGQUIT
+		return cryptossh.SIGQUIT
 	case syscall.SIGSEGV:
-		return ssh.SIGSEGV
+		return cryptossh.SIGSEGV
 	case syscall.SIGTERM:
-		return ssh.SIGTERM
+		return cryptossh.SIGTERM
 	}
-	return ssh.Signal("")
+	return cryptossh.Signal("")
 }
 
-func sshToSyscallSignal(sig ssh.Signal) syscall.Signal {
+// sshToSyscallSignal converts a cryptossh.Signal to its equivalent
+// syscall.Signal.
+func sshToSyscallSignal(sig cryptossh.Signal) syscall.Signal {
 	switch sig {
-	case ssh.SIGABRT:
+	case cryptossh.SIGABRT:
 		return syscall.SIGABRT
-	case ssh.SIGALRM:
+	case cryptossh.SIGALRM:
 		return syscall.SIGALRM
-	case ssh.SIGFPE:
+	case cryptossh.SIGFPE:
 		return syscall.SIGFPE
-	case ssh.SIGHUP:
+	case cryptossh.SIGHUP:
 		return syscall.SIGHUP
-	case ssh.SIGILL:
+	case cryptossh.SIGILL:
 		return syscall.SIGILL
-	case ssh.SIGINT:
+	case cryptossh.SIGINT:
 		return syscall.SIGINT
-	case ssh.SIGKILL:
+	case cryptossh.SIGKILL:
 		return syscall.SIGKILL
-	case ssh.SIGPIPE:
+	case cryptossh.SIGPIPE:
 		return syscall.SIGPIPE
-	case ssh.SIGQUIT:
+	case cryptossh.SIGQUIT:
 		return syscall.SIGQUIT
-	case ssh.SIGSEGV:
+	case cryptossh.SIGSEGV:
 		return syscall.SIGSEGV
-	case ssh.SIGTERM:
+	case cryptossh.SIGTERM:
 		return syscall.SIGTERM
 	}
 	return syscall.Signal(-1)

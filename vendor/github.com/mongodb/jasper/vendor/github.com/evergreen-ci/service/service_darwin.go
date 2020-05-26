@@ -160,12 +160,14 @@ func (s *darwinLaunchdService) Install() error {
 
 		KeepAlive, RunAtLoad bool
 		SessionCreate        bool
+		ProcessType          string
 	}{
 		Config:        s.Config,
 		Path:          path,
 		KeepAlive:     s.Option.bool(optionKeepAlive, optionKeepAliveDefault),
 		RunAtLoad:     s.Option.bool(optionRunAtLoad, optionRunAtLoadDefault),
 		SessionCreate: s.Option.bool(optionSessionCreate, optionSessionCreateDefault),
+		ProcessType:   s.Option.string(optionProcessType, ""),
 	}
 
 	return s.template().Execute(f, to)
@@ -279,6 +281,7 @@ var launchdConfig = `<?xml version='1.0' encoding='UTF-8'?>
 <string>{{$value}}</string>
 {{end}}</dict>
 {{end}}
+{{if .ProcessType}}<key>ProcessType</key><string>{{html .ProcessType}}</string>{{end}}
 <key>SessionCreate</key><{{bool .SessionCreate}}/>
 <key>KeepAlive</key><{{bool .KeepAlive}}/>
 <key>RunAtLoad</key><{{bool .RunAtLoad}}/>

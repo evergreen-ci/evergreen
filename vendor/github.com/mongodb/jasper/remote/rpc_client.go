@@ -5,10 +5,13 @@ import (
 	"io"
 	"net"
 	"syscall"
+	"time"
 
 	"github.com/evergreen-ci/certdepot"
+	"github.com/golang/protobuf/ptypes"
 	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	internal "github.com/mongodb/jasper/remote/internal"
@@ -86,7 +89,11 @@ func (c *rpcClient) ID() string {
 }
 
 func (c *rpcClient) CreateProcess(ctx context.Context, opts *options.Create) (jasper.Process, error) {
-	proc, err := c.client.Create(ctx, internal.ConvertCreateOptions(opts))
+	convertedOpts, err := internal.ConvertCreateOptions(opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting create options")
+	}
+	proc, err := c.client.Create(ctx, convertedOpts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -99,7 +106,11 @@ func (c *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
 }
 
 func (c *rpcClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
-	seid, err := c.client.ScriptingHarnessCreate(ctx, internal.ConvertScriptingOptions(opts))
+	seOpts, err := internal.ConvertScriptingOptions(opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid scripting options")
+	}
+	seid, err := c.client.ScriptingHarnessCreate(ctx, seOpts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -189,11 +200,11 @@ func (c *rpcClient) Close(ctx context.Context) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (c *rpcClient) Status(ctx context.Context) (string, bool, error) {
@@ -213,11 +224,11 @@ func (c *rpcClient) ConfigureCache(ctx context.Context, opts options.Cache) erro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (c *rpcClient) DownloadFile(ctx context.Context, opts options.Download) error {
@@ -225,11 +236,12 @@ func (c *rpcClient) DownloadFile(ctx context.Context, opts options.Download) err
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if resp.Success {
-		return nil
+
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (c *rpcClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
@@ -237,11 +249,11 @@ func (c *rpcClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDow
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (c *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
@@ -268,11 +280,11 @@ func (c *rpcClient) SignalEvent(ctx context.Context, name string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (c *rpcClient) WriteFile(ctx context.Context, jopts options.WriteFile) error {
@@ -305,6 +317,91 @@ func (c *rpcClient) WriteFile(ctx context.Context, jopts options.WriteFile) erro
 	return nil
 }
 
+func (c *rpcClient) SendMessages(ctx context.Context, lp options.LoggingPayload) error {
+	resp, err := c.client.SendMessages(ctx, internal.ConvertLoggingPayload(lp))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if !resp.Success {
+		return errors.New(resp.Text)
+	}
+
+	return nil
+}
+
+func (c *rpcClient) LoggingCache(ctx context.Context) jasper.LoggingCache {
+	return &rpcLoggingCache{ctx: ctx, client: c.client}
+}
+
+type rpcLoggingCache struct {
+	client internal.JasperProcessManagerClient
+	ctx    context.Context
+}
+
+func (lc *rpcLoggingCache) Create(id string, opts *options.Output) (*options.CachedLogger, error) {
+	args, err := internal.ConvertLoggingCreateArgs(id, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting create args")
+	}
+	resp, err := lc.client.LoggingCacheCreate(lc.ctx, args)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	out, err := resp.Export()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return out, nil
+}
+
+func (lc *rpcLoggingCache) Put(id string, opts *options.CachedLogger) error {
+	return errors.New("operation not supported for remote managers")
+}
+
+func (lc *rpcLoggingCache) Get(id string) *options.CachedLogger {
+	resp, err := lc.client.LoggingCacheGet(lc.ctx, &internal.LoggingCacheArgs{Name: id})
+	if err != nil {
+		return nil
+	}
+	if !resp.Outcome.Success {
+		return nil
+	}
+
+	out, err := resp.Export()
+	if err != nil {
+		return nil
+	}
+
+	return out
+}
+
+func (lc *rpcLoggingCache) Remove(id string) {
+	_, _ = lc.client.LoggingCacheRemove(lc.ctx, &internal.LoggingCacheArgs{Name: id})
+}
+
+func (lc *rpcLoggingCache) Prune(ts time.Time) {
+	pbts, err := ptypes.TimestampProto(ts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not convert prune timestamp to equivalent protobuf RPC timestamp",
+		}))
+		return
+	}
+	_, _ = lc.client.LoggingCachePrune(lc.ctx, pbts)
+}
+
+func (lc *rpcLoggingCache) Len() int {
+	resp, err := lc.client.LoggingCacheLen(lc.ctx, &empty.Empty{})
+	if err != nil {
+		return 0
+	}
+
+	return int(resp.Size)
+}
+
 type rpcProcess struct {
 	client internal.JasperProcessManagerClient
 	info   *internal.ProcessInfo
@@ -314,7 +411,12 @@ func (p *rpcProcess) ID() string { return p.info.Id }
 
 func (p *rpcProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	if p.info.Complete {
-		return p.info.Export()
+		exportedInfo, err := p.info.Export()
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not convert info for process",
+			"process": p.ID(),
+		}))
+		return exportedInfo
 	}
 
 	info, err := p.client.Get(ctx, &internal.JasperProcessID{Value: p.info.Id})
@@ -323,7 +425,13 @@ func (p *rpcProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	}
 	p.info = info
 
-	return info.Export()
+	exportedInfo, err := p.info.Export()
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "could not convert info for process",
+		"process": p.ID(),
+	}))
+
+	return exportedInfo
 }
 func (p *rpcProcess) Running(ctx context.Context) bool {
 	if p.info.Complete {
@@ -363,11 +471,11 @@ func (p *rpcProcess) Signal(ctx context.Context, sig syscall.Signal) error {
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (p *rpcProcess) Wait(ctx context.Context) (int, error) {
@@ -409,11 +517,11 @@ func (p *rpcProcess) RegisterSignalTriggerID(ctx context.Context, sigID jasper.S
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (p *rpcProcess) Tag(tag string) {
@@ -449,11 +557,11 @@ func (s *rpcScripting) Run(ctx context.Context, args []string) error {
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (s *rpcScripting) Setup(ctx context.Context) error {
@@ -462,11 +570,11 @@ func (s *rpcScripting) Setup(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (s *rpcScripting) RunScript(ctx context.Context, script string) error {
@@ -475,11 +583,11 @@ func (s *rpcScripting) RunScript(ctx context.Context, script string) error {
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
 
 func (s *rpcScripting) Build(ctx context.Context, dir string, args []string) (string, error) {
@@ -502,10 +610,10 @@ func (s *rpcScripting) Test(ctx context.Context, dir string, args ...scripting.T
 	}
 
 	if !resp.Outcome.Success {
-		err = errors.New(resp.Outcome.Text)
+		return nil, errors.New(resp.Outcome.Text)
 	}
 
-	return resp.Export(), err
+	return resp.Export()
 }
 
 func (s *rpcScripting) Cleanup(ctx context.Context) error {
@@ -514,9 +622,9 @@ func (s *rpcScripting) Cleanup(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	if resp.Success {
-		return nil
+	if !resp.Success {
+		return errors.New(resp.Text)
 	}
 
-	return errors.New(resp.Text)
+	return nil
 }
