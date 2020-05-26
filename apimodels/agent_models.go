@@ -126,7 +126,7 @@ type CreateHost struct {
 	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
 	Spot            bool        `mapstructure:"spot" json:"spot" yaml:"spot"`
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"-" yaml:"-" plugin:"expand"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-" yaml:"script" plugin:"expand"`
 	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
 	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" yaml:"aws_access_key_id" plugin:"expand"`
 	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" yaml:"aws_secret_access_key" plugin:"expand"`
