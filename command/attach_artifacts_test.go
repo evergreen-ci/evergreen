@@ -86,7 +86,7 @@ func (s *ArtifactsSuite) TestParseErrorsIfTypesDoNotMatch() {
 	}))
 }
 
-func (s *ArtifactsSuite) TestParseErrorIfNothingIs() {
+func (s *ArtifactsSuite) TestParseErrorIfNothingIsSet() {
 	s.Len(s.cmd.Files, 0)
 	s.Error(s.cmd.ParseParams(map[string]interface{}{}))
 }

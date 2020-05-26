@@ -86,7 +86,7 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue string) (bool, error) {
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't find projectRef for '%s'", id)
@@ -94,16 +94,18 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 	if projectRef == nil {
 		return false, errors.Errorf("can't find project ref for '%s'", id)
 	}
-
-	v, err := model.VersionFindOneId(item)
+	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
-		return false, errors.Wrap(err, "error querying for version")
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
-	versionExists := false
-	if v != nil {
-		versionExists = true
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", id)
 	}
-	return commitqueue.RemoveCommitQueueItem(id, projectRef.CommitQueue.PatchType, item, versionExists)
+	versionExists, err := model.VersionExistsForCommitQueueItem(cq, issue, projectRef.CommitQueue.PatchType)
+	if err != nil {
+		return false, errors.Wrapf(err, "error verifying if version exists for issue '%s'", issue)
+	}
+	return cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, versionExists)
 }
 
 func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {

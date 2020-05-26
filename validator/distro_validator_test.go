@@ -584,7 +584,7 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 			s.Method = distro.BootstrapMethodSSH
 			s.Communication = distro.CommunicationMethodSSH
 			s.ServiceUser = ""
-			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+			assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchWindowsAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 		},
 		"FormattedEnvironmentVariables": func(t *testing.T, s distro.BootstrapSettings) {
 			s.Method = distro.BootstrapMethodUserData
@@ -612,28 +612,28 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 					s.ResourceLimits.NumProcesses = 2
 					s.ResourceLimits.LockedMemoryKB = 3
 					s.ResourceLimits.VirtualMemoryKB = 4
-					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 				},
 				"ZeroValues": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = 0
 					s.ResourceLimits.NumProcesses = 0
 					s.ResourceLimits.LockedMemoryKB = 0
 					s.ResourceLimits.VirtualMemoryKB = 0
-					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 				},
 				"UnlimitedResources": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = -1
 					s.ResourceLimits.NumProcesses = -1
 					s.ResourceLimits.LockedMemoryKB = -1
 					s.ResourceLimits.VirtualMemoryKB = -1
-					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 				},
 				"InvalidResourceLimits": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = -50
 					s.ResourceLimits.NumProcesses = -50
 					s.ResourceLimits.LockedMemoryKB = -50
 					s.ResourceLimits.VirtualMemoryKB = -50
-					assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: distro.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
+					assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 				},
 			} {
 				t.Run(resourceTestName, func(t *testing.T) {

@@ -37,7 +37,8 @@ func (s *CommitQueueSuite) SetupTest() {
 		Repo:       "evergreen",
 		Branch:     "master",
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			Enabled:   true,
+			PatchType: commitqueue.CLIPatchType,
 		},
 	}
 	s.Require().NoError(s.projectRef.Insert())

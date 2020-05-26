@@ -56,7 +56,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return err
 	}
 
-	c.Files, err = util.BuildFileList(filepath.Join(conf.WorkDir, c.Prefix), c.Files...)
+	c.Files, err = utility.BuildFileList(filepath.Join(conf.WorkDir, c.Prefix), c.Files...)
 	if err != nil {
 		err = errors.Wrap(err, "problem building wildcard paths")
 		logger.Task().Error(err)

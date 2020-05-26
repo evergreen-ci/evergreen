@@ -135,6 +135,10 @@ func (m *staticManager) ModifyVolume(context.Context, *host.Volume, *model.Volum
 	return errors.New("can't modify volume with static provider")
 }
 
+func (m *staticManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+	return nil, errors.New("can't get volume attachment with static provider")
+}
+
 func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with static provider")
 }

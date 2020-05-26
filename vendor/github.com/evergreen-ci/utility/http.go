@@ -101,6 +101,7 @@ type HTTPRetryConfiguration struct {
 	Methods         []string
 	Statuses        []int
 	Errors          []error
+	ErrorStrings    []string
 }
 
 // NewDefaultHTTPRetryConf constructs a HTTPRetryConfiguration object
@@ -154,6 +155,17 @@ func GetHTTPRetryableClient(conf HTTPRetryConfiguration) *http.Client {
 		statusRetries = append(statusRetries, rehttp.RetryIsErr(func(err error) bool {
 			for _, errToCheck := range conf.Errors {
 				if err == errToCheck {
+					return true
+				}
+			}
+			return false
+		}))
+	}
+
+	if len(conf.ErrorStrings) > 0 {
+		statusRetries = append(statusRetries, rehttp.RetryIsErr(func(err error) bool {
+			for _, errToCheck := range conf.ErrorStrings {
+				if err.Error() == errToCheck {
 					return true
 				}
 			}

@@ -431,6 +431,21 @@ func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volum
 	return nil
 }
 
+func (mockMgr *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
+	l := mockMgr.mutex
+	l.Lock()
+	defer l.Unlock()
+
+	for id, instance := range mockMgr.Instances {
+		for _, device := range instance.BlockDevices {
+			if device == volumeID {
+				return &host.VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
 func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if len(hosts) != 1 {
 		return nil, errors.New("expecting 1 hosts")

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -581,13 +582,29 @@ func TestIncludePatchDependencies(t *testing.T) {
 		p := &Project{
 			Tasks: []ProjectTask{
 				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
-				{Name: "2", Patchable: new(bool)},
+				{Name: "2", Patchable: util.FalsePtr()},
 			},
 			BuildVariants: []BuildVariant{
 				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
 			},
 		}
 		Convey("the non-patchable task should not be added", func() {
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
+
+			So(len(pairs), ShouldEqual, 0)
+		})
+	})
+	Convey("With a project task config that requires a git-tag-only task", t, func() {
+		p := &Project{
+			Tasks: []ProjectTask{
+				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
+				{Name: "2", GitTagOnly: util.TruePtr()},
+			},
+			BuildVariants: []BuildVariant{
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
+			},
+		}
+		Convey("the git-tag-only task should not be added", func() {
 			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
 
 			So(len(pairs), ShouldEqual, 0)

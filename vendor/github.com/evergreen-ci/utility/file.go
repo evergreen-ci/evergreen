@@ -2,10 +2,13 @@ package utility
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-git-ignore"
 )
 
 // FileExists provides a clearer interface for checking if a file
@@ -52,4 +55,47 @@ func WriteRawFile(path string, data []byte) error {
 // file.
 func WriteFile(path string, data string) error {
 	return errors.WithStack(WriteRawFile(path, []byte(data)))
+}
+
+// fileListBuilder contains the information for building a list of files in the given directory.
+// It adds the files to include in the fileNames array and uses the ignorer to determine if a given
+// file matches and should be added.
+type fileListBuilder struct {
+	fileNames []string
+	ignorer   *ignore.GitIgnore
+	prefix    string
+}
+
+func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return errors.Wrapf(err, "Error received by walkFunc for path %s", path)
+	}
+	path = strings.TrimPrefix(path, fb.prefix)
+	path = strings.TrimLeft(path, string(os.PathSeparator))
+	if !info.IsDir() && fb.ignorer.MatchesPath(path) {
+		fb.fileNames = append(fb.fileNames, path)
+	}
+	return nil
+}
+
+// BuildFileList returns a list of files that match the given list of expressions
+// rooted at the given startPath. The expressions correspond to gitignore ignore
+// expressions: anything that would be matched - and therefore ignored by git - is included
+// in the returned list of file paths. BuildFileList does not follow symlinks as
+// it uses filpath.Walk, which does not follow symlinks.
+func BuildFileList(startPath string, expressions ...string) ([]string, error) {
+	ignorer, err := ignore.CompileIgnoreLines(expressions...)
+	if err != nil {
+		return nil, err
+	}
+	fb := &fileListBuilder{
+		fileNames: []string{},
+		ignorer:   ignorer,
+		prefix:    startPath,
+	}
+	err = filepath.Walk(startPath, fb.walkFunc)
+	if err != nil {
+		return nil, err
+	}
+	return fb.fileNames, nil
 }

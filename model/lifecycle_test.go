@@ -1755,46 +1755,6 @@ func resetTaskData() error {
 	return nil
 }
 
-func TestSkipOnPatch(t *testing.T) {
-	assert := assert.New(t)
-	falseTmp := false
-	bvt := BuildVariantTaskUnit{Patchable: &falseTmp}
-
-	b := &build.Build{Requester: evergreen.RepotrackerVersionRequester}
-	assert.False(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-
-	b.Requester = evergreen.PatchVersionRequester
-	assert.True(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-
-	b.Requester = evergreen.GithubPRRequester
-	assert.True(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-
-	b.Requester = evergreen.MergeTestRequester
-	assert.True(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-
-	bvt.Patchable = nil
-	assert.False(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-}
-
-func TestSkipOnNonPatch(t *testing.T) {
-	assert := assert.New(t)
-	boolTmp := true
-	bvt := BuildVariantTaskUnit{PatchOnly: &boolTmp}
-	b := &build.Build{Requester: evergreen.RepotrackerVersionRequester}
-	assert.True(!b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
-
-	b.Requester = evergreen.PatchVersionRequester
-	assert.False(!b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
-
-	b.Requester = evergreen.GithubPRRequester
-	assert.False(!b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
-	bvt.PatchOnly = nil
-	assert.False(!b.IsPatchBuild() && bvt.SkipOnNonPatchBuild())
-
-	b.Requester = evergreen.GithubPRRequester
-	assert.False(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-}
-
 func TestCreateTasksFromGroup(t *testing.T) {
 	assert := assert.New(t)
 	in := BuildVariantTaskUnit{

@@ -227,16 +227,6 @@ const (
 	DockerImageBuildTypeImport = "import"
 	DockerImageBuildTypePull   = "pull"
 
-	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
-	ArchDarwinAmd64  = "darwin_amd64"
-	ArchLinux386     = "linux_386"
-	ArchLinuxPpc64le = "linux_ppc64le"
-	ArchLinuxS390x   = "linux_s390x"
-	ArchLinuxArm64   = "linux_arm64"
-	ArchLinuxAmd64   = "linux_amd64"
-	ArchWindows386   = "windows_386"
-	ArchWindowsAmd64 = "windows_amd64"
-
 	// Bootstrapping mechanisms
 	// BootstrapMethodNone is for internal use only.
 	BootstrapMethodNone               = "none"
@@ -253,18 +243,6 @@ const (
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
 )
-
-// validArches includes all recognized architectures.
-var validArches = []string{
-	ArchDarwinAmd64,
-	ArchLinux386,
-	ArchLinuxPpc64le,
-	ArchLinuxS390x,
-	ArchLinuxArm64,
-	ArchLinuxAmd64,
-	ArchWindows386,
-	ArchWindowsAmd64,
-}
 
 // validBootstrapMethods includes all recognized bootstrap methods.
 var validBootstrapMethods = []string{
@@ -455,7 +433,7 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
-	if d.Arch == ArchDarwinAmd64 {
+	if d.Arch == evergreen.ArchDarwinAmd64 {
 		return filepath.Join("/Users", d.User)
 	}
 	return filepath.Join("/home", d.User)
@@ -547,7 +525,7 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
-	if !utility.StringSliceContains(validArches, arch) {
+	if _, ok := evergreen.ValidArchDisplayNames[arch]; !ok {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil

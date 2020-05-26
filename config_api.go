@@ -8,9 +8,10 @@ import (
 )
 
 type ClientBinary struct {
-	Arch string `yaml:"arch" json:"arch"`
-	OS   string `yaml:"os" json:"os"`
-	URL  string `yaml:"url" json:"url"`
+	Arch        string `yaml:"arch" json:"arch"`
+	OS          string `yaml:"os" json:"os"`
+	URL         string `yaml:"url" json:"url"`
+	DisplayName string `yaml:"display_name" json:"display_name"`
 }
 
 type ClientConfig struct {

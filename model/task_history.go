@@ -670,7 +670,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 		revisionOrderNumberClause := bson.M{}
 		if testHistoryParameters.BeforeRevision != "" {
-			v, err := VersionFindOne(VersionByProjectIdAndRevision(testHistoryParameters.Project,
+			v, err := VersionFindOne(BaseVersionByProjectIdAndRevision(testHistoryParameters.Project,
 				testHistoryParameters.BeforeRevision).WithFields(VersionRevisionOrderNumberKey))
 			if err != nil {
 				return nil, err
@@ -682,7 +682,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		}
 
 		if testHistoryParameters.AfterRevision != "" {
-			v, err := VersionFindOne(VersionByProjectIdAndRevision(testHistoryParameters.Project,
+			v, err := VersionFindOne(BaseVersionByProjectIdAndRevision(testHistoryParameters.Project,
 				testHistoryParameters.AfterRevision).WithFields(VersionRevisionOrderNumberKey))
 			if err != nil {
 				return nil, err
@@ -931,7 +931,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 	}
 	revisionOrderNumberClause := bson.M{}
 	if params.BeforeRevision != "" {
-		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
+		v, err := VersionFindOne(BaseVersionByProjectIdAndRevision(params.Project,
 			params.BeforeRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -943,7 +943,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 	}
 
 	if params.AfterRevision != "" {
-		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
+		v, err := VersionFindOne(BaseVersionByProjectIdAndRevision(params.Project,
 			params.AfterRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
 			return nil, errors.WithStack(err)

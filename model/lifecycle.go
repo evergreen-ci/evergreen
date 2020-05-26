@@ -550,6 +550,8 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.DefinitionID)
 	} else if args.Version.Requester == evergreen.AdHocRequester {
 		rev = args.Version.Id
+	} else if args.Version.Requester == evergreen.GitTagRequester {
+		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.Version.TriggeredByGitTag.Tag)
 	}
 
 	// create a new build id
@@ -630,6 +632,8 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			IsGroup:          true,
 			GroupName:        in.Name,
 			Patchable:        in.Patchable,
+			PatchOnly:        in.PatchOnly,
+			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
 			Requires:         in.Requires,
@@ -694,8 +698,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
 			task.Populate(taskSpec)
-			if skipTask := b.IsPatchBuild() && task.SkipOnPatchBuild() ||
-				!b.IsPatchBuild() && task.SkipOnNonPatchBuild(); skipTask {
+			if task.SkipOnRequester(b.Requester) {
 				continue
 			}
 			if createAll || utility.StringSliceContains(taskNames, task.Name) {
@@ -704,8 +707,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		} else if _, ok := tgMap[task.Name]; ok {
 			tasksFromVariant := CreateTasksFromGroup(task, project)
 			for _, taskFromVariant := range tasksFromVariant {
-				if skipTask := b.IsPatchBuild() && taskFromVariant.SkipOnPatchBuild() ||
-					!b.IsPatchBuild() && taskFromVariant.SkipOnNonPatchBuild(); skipTask {
+				if taskFromVariant.SkipOnRequester(b.Requester) {
 					continue
 				}
 				if createAll || utility.StringSliceContains(taskNames, taskFromVariant.Name) {
@@ -977,7 +979,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(VersionBaseVersionFromPatch(projectId, v.Revision))
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(projectId, v.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		}

@@ -78,14 +78,16 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		CreateDistro bool
-		DistroIds    []string
-		Keys         map[string]string
+		CreateDistro     bool
+		DistroIds        []string
+		Keys             map[string]string
+		ArchDisplayNames map[string]string
 		ViewData
 		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
 		ContainerPoolIds     []string
-	}{createDistro, distroIds, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
+	}{createDistro, distroIds, uis.Settings.Keys, evergreen.ValidArchDisplayNames,
+		uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

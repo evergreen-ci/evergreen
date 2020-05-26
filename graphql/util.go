@@ -19,6 +19,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -110,7 +111,7 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 	if version == nil {
 		return nil, fmt.Errorf("No version found for ID %s", patchID)
 	}
-	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(version.Identifier, version.Revision))
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(version.Identifier, version.Revision))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting base version from version %s: %s", version.Id, err.Error())
 	}
@@ -269,8 +270,8 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable
-		if !(task.Patchable != nil && !*task.Patchable) {
+		// add a task name to the list if it's patchable and not restricted to git tags
+		if !util.IsPtrSetToFalse(task.Patchable) && !util.IsPtrSetToTrue(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -431,8 +432,8 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				}
 				proj = projRef
 			}
-			_, err := commitqueue.RemoveCommitQueueItem(proj.Identifier,
-				proj.CommitQueue.PatchType, version.Id, true)
+			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Identifier,
+				proj.CommitQueue.PatchType, version.Id)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}

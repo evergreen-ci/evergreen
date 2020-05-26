@@ -346,7 +346,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectId := vars["project_id"]
 	revision := vars["revision"]
 
-	srcVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(projectId, revision))
+	srcVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound

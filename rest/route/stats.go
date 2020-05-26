@@ -23,6 +23,7 @@ const (
 	statsAPIRequesterMainline = "mainline"
 	statsAPIRequesterPatch    = "patch"
 	statsAPIRequesterTrigger  = "trigger"
+	statsAPIRequesterGitTag   = "git_tag"
 	statsAPIRequesterAdhoc    = "adhoc"
 
 	// Sort API values
@@ -190,6 +191,8 @@ func (sh *StatsHandler) readRequesters(requesters []string) ([]string, error) {
 			requesterValues = append(requesterValues, evergreen.PatchRequesters...)
 		case statsAPIRequesterTrigger:
 			requesterValues = append(requesterValues, evergreen.TriggerRequester)
+		case statsAPIRequesterGitTag:
+			requesterValues = append(requesterValues, evergreen.GitTagRequester)
 		case statsAPIRequesterAdhoc:
 			requesterValues = append(requesterValues, evergreen.AdHocRequester)
 		default:

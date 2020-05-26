@@ -212,6 +212,10 @@ func (m *vsphereManager) ModifyVolume(context.Context, *host.Volume, *model.Volu
 	return errors.New("can't modify volume with vsphere provider")
 }
 
+func (m *vsphereManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+	return nil, errors.New("can't get volume attachment with vsphere provider")
+}
+
 func (m *vsphereManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with vsphere provider")
 }

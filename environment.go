@@ -930,12 +930,13 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 
 		parts := strings.Split(path, string(filepath.Separator))
 		buildInfo := strings.Split(parts[len(parts)-2], "_")
-
+		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
 		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
 			URL: fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory,
 				strings.Join(parts[len(parts)-2:], "/")),
-			OS:   buildInfo[0],
-			Arch: buildInfo[1],
+			OS:          buildInfo[0],
+			Arch:        buildInfo[1],
+			DisplayName: displayName,
 		})
 
 		return nil

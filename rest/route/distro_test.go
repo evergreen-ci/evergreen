@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -256,7 +257,6 @@ func TestDistroByIDSuite(t *testing.T) {
 }
 
 func (s *DistroByIDSuite) SetupSuite() {
-	pTrue := true
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
@@ -276,7 +276,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				PlannerSettings: distro.PlannerSettings{
 					Version:       evergreen.PlannerVersionTunable,
 					TargetTime:    80000000000,
-					GroupVersions: &pTrue,
+					GroupVersions: util.TruePtr(),
 					PatchFactor:   7,
 				},
 				BootstrapSettings: distro.BootstrapSettings{
@@ -616,7 +616,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		CachedDistros: []*distro.Distro{
 			{
 				Id:      "fedora8",
-				Arch:    distro.ArchLinuxAmd64,
+				Arch:    evergreen.ArchLinuxAmd64,
 				WorkDir: "/data/mci",
 				HostAllocatorSettings: distro.HostAllocatorSettings{
 					MaximumHosts: 30,

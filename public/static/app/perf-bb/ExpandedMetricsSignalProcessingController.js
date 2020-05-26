@@ -1,5 +1,5 @@
 mciModule.controller('ExpandedMetricsSignalProcessingController', function(
-  $scope, CHANGE_POINTS_GRID, CedarClient, $routeParams
+  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams
 ) {
   $scope.page = 0;
   $scope.pageSize = 10;
@@ -9,19 +9,19 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
   $scope.prevPage = () => {
     if ($scope.page > 0) {
       $scope.page--;
-      getPoints($scope, CedarClient)
+      getPoints($scope, PerformanceAnalysisAndTriageClient)
     }
   };
 
   $scope.nextPage = () => {
     if ($scope.page + 1 < $scope.totalPages) {
       $scope.page++;
-      getPoints($scope, CedarClient)
+      getPoints($scope, PerformanceAnalysisAndTriageClient)
     }
   };
 
   setupGrid($scope, CHANGE_POINTS_GRID);
-  getPoints($scope, CedarClient);
+  getPoints($scope, PerformanceAnalysisAndTriageClient);
 });
 
 function handleResponse(result, $scope) {
@@ -30,24 +30,24 @@ function handleResponse(result, $scope) {
     for (cp of version.change_points) {
       $scope.gridOptions.data.push({
         version: version.version_id,
-        variant: cp.variant,
-        task: cp.task,
-        test: cp.test,
-        measurement: cp.measurement,
+        variant: cp.time_series_info.variant,
+        task: cp.time_series_info.task,
+        test: cp.time_series_info.test,
+        measurement: cp.time_series_info.measurement,
         percent_change: cp.percent_change.toFixed(2),
         triage_status: cp.triage.triage_status,
-        thread_level: cp.arguments["thread_level"],
+        thread_level: cp.time_series_info.thread_level,
       })
     }
   }
   $scope.isLoading = false;
 }
 
-function getPoints($scope, CedarClient) {
+function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.gridOptions.data = [];
   $scope.isLoading = true;
   $scope.errorMessage = null;
-  CedarClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize)
+  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
         $scope.errorMessage = err.data.message;

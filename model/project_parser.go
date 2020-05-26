@@ -82,6 +82,7 @@ type parserTaskGroup struct {
 	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly            *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
@@ -113,6 +114,7 @@ type parserTask struct {
 	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
@@ -360,6 +362,7 @@ type parserBVTaskUnit struct {
 	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
 	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	Requires         taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
@@ -628,6 +631,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Tags:            pt.Tags,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
+			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
@@ -842,6 +846,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				Name:             name,
 				Patchable:        pt.Patchable,
 				PatchOnly:        pt.PatchOnly,
+				GitTagOnly:       pt.GitTagOnly,
 				Priority:         pt.Priority,
 				ExecTimeoutSecs:  pt.ExecTimeoutSecs,
 				Stepback:         pt.Stepback,

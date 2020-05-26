@@ -265,7 +265,7 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 }
 
 func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
-	baseVersion, err := model.VersionFindOne(model.VersionBaseVersionFromPatch(*obj.ProjectId, *obj.Githash).Project(bson.M{model.VersionIdentifierKey: 1}))
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.ProjectId, *obj.Githash).Project(bson.M{model.VersionIdentifierKey: 1}))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -946,7 +946,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItem(t.Project, p.CommitQueue.PatchType, t.Version, true)
+		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}

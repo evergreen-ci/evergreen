@@ -61,7 +61,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		return false // task not found in project--skip it.
 	}
 
-	if patchable := bvt.Patchable; patchable != nil && !*patchable {
+	if bvt.SkipOnPatchBuild() || bvt.SkipOnNonGitTagBuild() {
 		di.included[pair] = false
 		return false // task cannot be patched, so skip it
 	}

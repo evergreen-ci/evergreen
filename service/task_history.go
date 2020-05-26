@@ -100,7 +100,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(project.Identifier, revision))
+		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

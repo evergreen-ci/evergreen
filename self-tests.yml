@@ -376,8 +376,14 @@ tasks:
           directory: gopath/src/github.com/evergreen-ci/evergreen
           token: ${github_token}
           shallow_clone: false
+      - func: run-make
+        vars:
+          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: build
       - func: run-make
         vars:
           target: "coverage-html"
@@ -410,9 +416,23 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-rest-client
-  - <<: *run-go-test-suite-with-mongodb
+  - name: test-rest-model
     tags: ["db", "test"]
-    name: test-rest-model
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars:
+          target: build
+      - func: run-make
+        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-command

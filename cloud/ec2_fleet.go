@@ -346,6 +346,10 @@ func (m *ec2FleetManager) ModifyVolume(context.Context, *host.Volume, *model.Vol
 	return errors.New("can't modify volume with ec2 fleet provider")
 }
 
+func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
+	return nil, errors.New("can't get volume attachment with ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return "", errors.Wrap(err, "error creating client")

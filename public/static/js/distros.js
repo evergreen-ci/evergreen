@@ -1,6 +1,6 @@
 mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location, $anchorScroll, $filter, mciDistroRestService) {
 
-  $scope.createDistro = $window.canCreateDistro
+  $scope.createDistro = $window.canCreateDistro;
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
@@ -70,32 +70,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'display': 'VMware vSphere'
   }];
 
-  $scope.architectures = [{
-    'id': 'windows_amd64',
-    'display': 'Windows 64-bit'
-  }, {
-    'id': 'linux_ppc64le',
-    'display': 'Linux PowerPC 64-bit'
-  }, {
-    'id': 'linux_s390x',
-    'display': 'Linux zSeries'
-  }, {
-    'id': 'linux_arm64',
-    'display': 'Linux ARM 64-bit'
-  }, {
-    'id': 'windows_386',
-    'display': 'Windows 32-bit'
-  }, {
-    'id': 'darwin_amd64',
-    'display': 'OSX 64-bit'
-  }, {
-    'id': 'linux_amd64',
-    'display': 'Linux 64-bit'
-  }, {
-    'id': 'linux_386',
-    'display': 'Linux 32-bit'
-  }];
-
   $scope.bootstrapMethods = [{
     'id': 'legacy-ssh',
     'display': 'Legacy SSH'
@@ -130,8 +104,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   }]
 
   $scope.ids = [];
-
   $scope.keys = [];
+  $scope.architectures = [];
 
   $scope.modalOpen = false;
 
@@ -284,6 +258,16 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         name: keys[i],
         location: $window.keys[keys[i]],
       });
+    }
+
+    if ($window.architectures != null) {
+      keys = Object.keys($window.architectures);
+      for (var i = 0; i < keys.length; i++) {
+        $scope.architectures.push({
+          'id': keys[i],
+          'display': $window.architectures[keys[i]],
+        })
+      };
     }
   };
 
