@@ -536,5 +536,8 @@ func getAllTaskStatuses(tasks []task.Task) []string {
 	for key := range statusesMap {
 		statusesArr = append(statusesArr, key)
 	}
+	sort.SliceStable(statusesArr, func(i, j int) bool {
+		return statusesArr[i] < statusesArr[j]
+	})
 	return statusesArr
 }
