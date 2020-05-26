@@ -60,7 +60,7 @@ func ReadJSONFile(path string, target interface{}) error {
 		return errors.Wrapf(err, "invalid file: %s", path)
 	}
 
-	return errors.Wrapf(ReadJSON(file, target), "problem reading json from '%s'", path)
+	return errors.Wrapf(ReadYAML(file, target), "problem reading json from '%s'", path)
 }
 
 // PrintJSON marshals the data to a pretty-printed (indented) string
