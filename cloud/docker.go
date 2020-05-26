@@ -142,9 +142,13 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 		if client.IsErrConnectionFailed(err) {
 			return StatusTerminated, nil
 		}
-		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
+		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%s'", h.Id)
 	}
-
+	if h.DockerOptions.PublishPorts && container.State.Running {
+		if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
+			return toEvgStatus(container.State), errors.Wrapf(err, "error saving ports to host '%s", h.Id)
+		}
+	}
 	return toEvgStatus(container.State), nil
 }
 

@@ -52,7 +52,20 @@ func (dc *DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, e
 	hosts := []host.Host{}
 	hosts = append(hosts, hostsSpawnedByBuild...)
 	hosts = append(hosts, hostsSpawnedByTask...)
-
+	for _, h := range hosts {
+		if h.IsContainer() && h.Status == evergreen.HostRunning {
+			p, err := h.GetParent()
+			if err != nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    fmt.Sprintf("error getting parent for container '%s'", h.Id)}
+			}
+			if p != nil {
+				h.Host = p.Host
+				h.IP = p.IP
+			}
+		}
+	}
 	return hosts, nil
 }
 
@@ -196,6 +209,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	options.DockerOptions = host.DockerOptions{
 		Image:            createHost.Image,
 		Command:          createHost.Command,
+		PublishPorts:     createHost.PublishPorts,
 		RegistryName:     createHost.Registry.Name,
 		RegistryUsername: createHost.Registry.Username,
 		RegistryPassword: createHost.Registry.Password,

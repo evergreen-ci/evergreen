@@ -129,6 +129,7 @@ type CreateHost struct {
 	// docker-related settings
 	Image                    string            `mapstructure:"image" json:"image" plugin:"expand"`
 	Command                  string            `mapstructure:"command" json:"command" plugin:"expand"`
+	PublishPorts             bool              `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports" plugin:"publish_ports"`
 	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" plugin:"expand"`
 	Background               bool              `mapstructure:"background" json:"background"` // default is true
 	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs"`
