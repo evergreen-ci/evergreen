@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/template"
 	gogotypes "github.com/gogo/protobuf/types"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -197,7 +197,7 @@ func validateHealthCheck(hc *api.HealthConfig) error {
 		if err != nil {
 			return err
 		}
-		if interval != 0 && interval < time.Duration(minimumDuration) {
+		if interval != 0 && interval < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: Interval in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
@@ -207,7 +207,7 @@ func validateHealthCheck(hc *api.HealthConfig) error {
 		if err != nil {
 			return err
 		}
-		if timeout != 0 && timeout < time.Duration(minimumDuration) {
+		if timeout != 0 && timeout < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: Timeout in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
@@ -217,7 +217,7 @@ func validateHealthCheck(hc *api.HealthConfig) error {
 		if err != nil {
 			return err
 		}
-		if sp != 0 && sp < time.Duration(minimumDuration) {
+		if sp != 0 && sp < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: StartPeriod in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
@@ -392,6 +392,21 @@ func validateConfigRefsSpec(spec api.TaskSpec) error {
 		return nil
 	}
 
+	// check if we're using a config as a CredentialSpec -- if so, we need to
+	// verify
+	var (
+		credSpecConfig      string
+		credSpecConfigFound bool
+	)
+	if p := container.Privileges; p != nil {
+		if cs := p.CredentialSpec; cs != nil {
+			// if there is no config in the credspec, then this will just be
+			// assigned to emptystring anyway, so we don't need to check
+			// existence.
+			credSpecConfig = cs.GetConfig()
+		}
+	}
+
 	// Keep a map to track all the targets that will be exposed
 	// The string returned is only used for logging. It could as well be struct{}{}
 	existingTargets := make(map[string]string)
@@ -421,6 +436,20 @@ func validateConfigRefsSpec(spec api.TaskSpec) error {
 
 			existingTargets[fileName] = configRef.ConfigName
 		}
+
+		if configRef.GetRuntime() != nil {
+			if configRef.ConfigID == credSpecConfig {
+				credSpecConfigFound = true
+			}
+		}
+	}
+
+	if credSpecConfig != "" && !credSpecConfigFound {
+		return status.Errorf(
+			codes.InvalidArgument,
+			"CredentialSpec references config '%s', but that config isn't in config references with RuntimeTarget",
+			credSpecConfig,
+		)
 	}
 
 	return nil
@@ -680,13 +709,17 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 
 		return store.CreateService(tx, service)
 	})
-	if err != nil {
+	switch err {
+	case store.ErrNameConflict:
+		// Enhance the name-confict error to include the service name. The original
+		// `ErrNameConflict` error-message is included for backward-compatibility
+		// with older consumers of the API performing string-matching.
+		return nil, status.Errorf(codes.AlreadyExists, "%s: service %s already exists", err.Error(), request.Spec.Annotations.Name)
+	case nil:
+		return &api.CreateServiceResponse{Service: service}, nil
+	default:
 		return nil, err
 	}
-
-	return &api.CreateServiceResponse{
-		Service: service,
-	}, nil
 }
 
 // GetService returns a Service given a ServiceID.
@@ -896,7 +929,12 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 		}
 	})
 	if err != nil {
-		return nil, err
+		switch err {
+		case store.ErrInvalidFindBy:
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		default:
+			return nil, err
+		}
 	}
 
 	if request.Filters != nil {

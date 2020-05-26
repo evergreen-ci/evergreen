@@ -237,6 +237,12 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/crypto/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/oauth2/
+	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/

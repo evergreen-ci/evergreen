@@ -60,15 +60,19 @@ func (d *driver) CreateNetwork(nid string, option map[string]interface{}, nInfo 
 		// empty parent and --internal are handled the same. Set here to update k/v
 		config.Internal = true
 	}
-	err = d.createNetwork(config)
+	foundExisting, err := d.createNetwork(config)
 	if err != nil {
 		return err
+	}
+
+	if foundExisting {
+		return types.InternalMaskableErrorf("restoring existing network %s", config.ID)
 	}
 	// update persistent db, rollback on fail
 	err = d.storeUpdate(config)
 	if err != nil {
 		d.deleteNetwork(config.ID)
-		logrus.Debugf("encoutered an error rolling back a network create for %s : %v", config.ID, err)
+		logrus.Debugf("encountered an error rolling back a network create for %s : %v", config.ID, err)
 		return err
 	}
 
@@ -76,12 +80,18 @@ func (d *driver) CreateNetwork(nid string, option map[string]interface{}, nInfo 
 }
 
 // createNetwork is used by new network callbacks and persistent network cache
-func (d *driver) createNetwork(config *configuration) error {
+func (d *driver) createNetwork(config *configuration) (bool, error) {
+	foundExisting := false
 	networkList := d.getNetworks()
 	for _, nw := range networkList {
 		if config.Parent == nw.config.Parent {
-			return fmt.Errorf("network %s is already using parent interface %s",
-				getDummyName(stringid.TruncateID(nw.config.ID)), config.Parent)
+			if config.ID != nw.config.ID {
+				return false, fmt.Errorf("network %s is already using parent interface %s",
+					getDummyName(stringid.TruncateID(nw.config.ID)), config.Parent)
+			}
+			logrus.Debugf("Create Network for the same ID %s\n", config.ID)
+			foundExisting = true
+			break
 		}
 	}
 	if !parentExists(config.Parent) {
@@ -89,10 +99,11 @@ func (d *driver) createNetwork(config *configuration) error {
 		if config.Internal {
 			err := createDummyLink(config.Parent, getDummyName(stringid.TruncateID(config.ID)))
 			if err != nil {
-				return err
+				return false, err
 			}
 			config.CreatedSlaveLink = true
-			// notify the user in logs they have limited comunicatins
+
+			// notify the user in logs they have limited communications
 			if config.Parent == getDummyName(stringid.TruncateID(config.ID)) {
 				logrus.Debugf("Empty -o parent= and --internal flags limit communications to other containers inside of network: %s",
 					config.Parent)
@@ -102,22 +113,24 @@ func (d *driver) createNetwork(config *configuration) error {
 			//  a valid example is 'eth0.10' for a parent iface 'eth0' with a vlan id '10'
 			err := createVlanLink(config.Parent)
 			if err != nil {
-				return err
+				return false, err
 			}
 			// if driver created the networks slave link, record it for future deletion
 			config.CreatedSlaveLink = true
 		}
 	}
-	n := &network{
-		id:        config.ID,
-		driver:    d,
-		endpoints: endpointTable{},
-		config:    config,
+	if !foundExisting {
+		n := &network{
+			id:        config.ID,
+			driver:    d,
+			endpoints: endpointTable{},
+			config:    config,
+		}
+		// add the network
+		d.addNetwork(n)
 	}
-	// add the *network
-	d.addNetwork(n)
 
-	return nil
+	return foundExisting, nil
 }
 
 // DeleteNetwork the network for the specified driver type
@@ -156,7 +169,7 @@ func (d *driver) DeleteNetwork(nid string) error {
 		}
 
 		if err := d.storeDelete(ep); err != nil {
-			logrus.Warnf("Failed to remove ipvlan endpoint %s from store: %v", ep.id[0:7], err)
+			logrus.Warnf("Failed to remove ipvlan endpoint %.7s from store: %v", ep.id, err)
 		}
 	}
 	// delete the *network
@@ -182,10 +195,12 @@ func parseNetworkOptions(id string, option options.Generic) (*configuration, err
 		}
 	}
 	// setting the parent to "" will trigger an isolated network dummy parent link
-	if _, ok := option[netlabel.Internal]; ok {
-		config.Internal = true
-		// empty --parent= and --internal are handled the same.
-		config.Parent = ""
+	if val, ok := option[netlabel.Internal]; ok {
+		if internal, ok := val.(bool); ok && internal {
+			config.Internal = true
+			// empty --parent= and --internal are handled the same.
+			config.Parent = ""
+		}
 	}
 	return config, nil
 }

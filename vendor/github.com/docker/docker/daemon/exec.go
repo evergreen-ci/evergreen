@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"time"
 
@@ -217,12 +218,23 @@ func (d *Daemon) ContainerExecStart(ctx context.Context, name string, stdin io.R
 		ec.StreamConfig.NewNopInputPipe()
 	}
 
-	p := &specs.Process{
-		Args:     append([]string{ec.Entrypoint}, ec.Args...),
-		Env:      ec.Env,
-		Terminal: ec.Tty,
-		Cwd:      ec.WorkingDir,
+	p := &specs.Process{}
+	if runtime.GOOS != "windows" {
+		container, err := d.containerdCli.LoadContainer(ctx, ec.ContainerID)
+		if err != nil {
+			return err
+		}
+		spec, err := container.Spec(ctx)
+		if err != nil {
+			return err
+		}
+		p = spec.Process
 	}
+	p.Args = append([]string{ec.Entrypoint}, ec.Args...)
+	p.Env = ec.Env
+	p.Cwd = ec.WorkingDir
+	p.Terminal = ec.Tty
+
 	if p.Cwd == "" {
 		p.Cwd = "/"
 	}
@@ -249,6 +261,9 @@ func (d *Daemon) ContainerExecStart(ctx context.Context, name string, stdin io.R
 	ec.Lock()
 	c.ExecCommands.Lock()
 	systemPid, err := d.containerd.Exec(ctx, c.ID, ec.ID, p, cStdin != nil, ec.InitializeStdio)
+	// the exec context should be ready, or error happened.
+	// close the chan to notify readiness
+	close(ec.Started)
 	if err != nil {
 		c.ExecCommands.Unlock()
 		ec.Unlock()
