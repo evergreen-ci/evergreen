@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -29,8 +30,16 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 
 	// background default is true
 	if _, ok := params["background"]; !ok {
-		params["background"] = true
+		c.CreateHost.Background = true
 	}
+
+	// if a filename is defined, get the params from the file
+	if _, ok := params["file"]; ok {
+		fileName := fmt.Sprintf("%v", params["file"])
+		return errors.Wrapf(utility.ReadYAMLFile(fileName, &c.CreateHost),
+			"error reading from file '%s'", fileName)
+	}
+
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c.CreateHost,
