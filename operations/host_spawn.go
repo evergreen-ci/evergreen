@@ -316,7 +316,7 @@ func hostConfigure() cli.Command {
 						return errors.Wrap(err, "problem finding home directory")
 					}
 
-					directory = filepath.Join(userHome, directory)
+					directory = filepath.Join(userHome, evergreen.HomeVolumeDir, directory)
 				}
 			}
 
