@@ -171,7 +171,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
                 $scope.hosts[i].id = host.id;
                 $scope.hosts[i].host = host.host;
                 $scope.hosts[i].start_time = host.start_time;
-                $scope.hosts[i].home_volume_id = host.home_volume_id;
+                if ($scope.hosts[i].home_volume_id !== host.home_volume_id) {
+                    $scope.addNewVolumes();
+                    $scope.hosts[i].home_volume_id = host.home_volume_id;
+                }
                 if ($scope.hosts[i].instance_type === undefined || $scope.hosts[i].instance_type === "") {
                   $scope.hosts[i].instance_type = host.instance_type;
                 }
@@ -220,6 +223,28 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
         }
       );
     };
+
+    $scope.addNewVolumes = function () {
+        mciSpawnRestService.getVolumes(
+            {
+                success: function (resp) {
+                    var volumes = resp.data;
+                    _.each(volumes, function (volume) {
+                        var foundVolume = false;
+                        for (var i = 0; i < $scope.volumes.length; i++) {
+                            if ($scope.volumes[i].id === volume.id) {
+                                foundVolume = true;
+                                break;
+                            }
+                        }
+                        if (!foundVolume) {
+                            $scope.volumes.push(volume);
+                        }
+                    });
+                },
+            },
+        )
+    }
 
     $scope.computeHostExpirationTimes = function (host) {
       if (!host.isTerminated && new Date(host.expiration_time) > new Date("0001-01-01T00:00:00Z")) {
