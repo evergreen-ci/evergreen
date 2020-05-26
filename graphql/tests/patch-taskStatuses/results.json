@@ -5,12 +5,7 @@
       "result": {
         "data": {
           "patch": {
-            "baseTaskStatuses": [
-              "success",
-              "failed",
-              "setup-failed",
-              "undispatched"
-            ]
+            "baseTaskStatuses": ["success", "failed"]
           }
         }
       }
@@ -20,7 +15,12 @@
       "result": {
         "data": {
           "patch": {
-            "taskStatuses": ["success", "failed"]
+            "taskStatuses": [
+              "success",
+              "setup-failed",
+              "failed",
+              "undispatched"
+            ]
           }
         }
       }
