@@ -37,7 +37,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	if _, ok := params["file"]; ok {
 		fileName := fmt.Sprintf("%v", params["file"])
 		return errors.Wrapf(utility.ReadYAMLFile(fileName, &c.CreateHost),
-			"error reading JSON from file '%s'", fileName)
+			"error reading from file '%s'", fileName)
 	}
 
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{

@@ -101,6 +101,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//parse from YAML file
 	path = filepath.Join(tmpdir, "example.yml")
@@ -117,6 +118,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
+	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	s.Require().NoError(os.RemoveAll(tmpdir))
 }
