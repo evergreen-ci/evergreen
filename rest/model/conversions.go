@@ -42,8 +42,8 @@ func intPtrToInt(in *int) int {
 	return *in
 }
 
-func intPtrToIntPtr(in int) *int {
-	return &in
+func intPtrToIntPtr(in *int) *int {
+	return in
 }
 
 func conversionFn(in types.Type, outIsPtr bool) (string, error) {

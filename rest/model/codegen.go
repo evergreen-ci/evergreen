@@ -198,6 +198,9 @@ func CreateConversionMethods(packageName, structName string, fields ExtractedFie
 		return nil, errors.Wrapf(err, "unable to resolve package '%s'", packageName)
 	}
 	scope := pkg.Scope()
+	if scope == nil {
+		return nil, errors.Errorf("unable to parse symbols in package '%s'", packageName)
+	}
 	obj := scope.Lookup(structName)
 	if obj == nil {
 		return nil, errors.Errorf("struct '%s' not found in package '%s'", structName, packageName)
