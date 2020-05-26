@@ -2,6 +2,9 @@ package model
 
 import (
 	"bytes"
+	"fmt"
+	"go/importer"
+	"go/types"
 	"io/ioutil"
 	"regexp"
 	"sort"
@@ -16,9 +19,12 @@ import (
 )
 
 const (
-	fileTemplate   = "templates/file.gotmpl"
-	structTemplate = "templates/struct.gotmpl"
-	fieldTemplate  = "templates/field.gotmpl"
+	fileTemplatePath           = "templates/file.gotmpl"
+	structTemplatePath         = "templates/struct.gotmpl"
+	fieldTemplatePath          = "templates/field.gotmpl"
+	serviceMethodsTemplatePath = "templates/service_methods.gotmpl"
+	bfsConvertTemplatePath     = "templates/buildfromservice_conversion.gotmpl"
+	tsConvertTemplatePath      = "templates/toservice_conversion.gotmpl"
 )
 
 type fileInfo struct {
@@ -38,19 +44,39 @@ type fieldInfo struct {
 	JsonTag string
 }
 
+type ExtractedField struct {
+	OutputFieldName string
+	Nullable        bool
+}
+
+type ExtractedFields map[string]ExtractedField
+
+type conversionLine struct {
+	RestField          string
+	TypeConversionFunc string
+	ModelField         string
+}
+
+type modelConversionInfo struct {
+	RestType       string
+	ModelType      string
+	BfsConversions string
+	TsConversions  string
+}
+
 func SchemaToGo(schema string) ([]byte, error) {
 	source := ast.Source{
 		Input: schema,
 	}
-	fileTemplate, err := getFileTmpl()
+	fileTemplate, err := getTemplate(fileTemplatePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading file template")
 	}
-	structTemplate, err := getStructTmpl()
+	structTemplate, err := getTemplate(structTemplatePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading struct template")
 	}
-	fieldTemplate, err := getFieldTmpl()
+	fieldTemplate, err := getTemplate(fieldTemplatePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading field template")
 	}
@@ -98,28 +124,17 @@ func SchemaToGo(schema string) ([]byte, error) {
 	return formatted, catcher.Resolve()
 }
 
-func getStructTmpl() (*template.Template, error) {
-	f, err := ioutil.ReadFile(structTemplate)
+func getTemplate(filepath string) (*template.Template, error) {
+	f, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
-	return template.New("struct").Parse(string(f))
-}
-
-func getFileTmpl() (*template.Template, error) {
-	f, err := ioutil.ReadFile(fileTemplate)
-	if err != nil {
-		return nil, err
-	}
-	return template.New("file").Parse(string(f))
-}
-
-func getFieldTmpl() (*template.Template, error) {
-	f, err := ioutil.ReadFile(fieldTemplate)
-	if err != nil {
-		return nil, err
-	}
-	return template.New("field").Parse(string(f))
+	return template.New(filepath).Funcs(template.FuncMap{
+		"shortenpackage": func(pkg string) string {
+			split := strings.Split(pkg, "/")
+			return split[len(split)-1]
+		},
+	}).Parse(string(f))
 }
 
 func nameAndTag(fieldName string) (string, string) {
@@ -175,4 +190,93 @@ func goimports(source string) ([]byte, error) {
 	return imports.Process("", []byte(source), &imports.Options{
 		AllErrors: true, Comments: true, TabIndent: true, TabWidth: 8,
 	})
+}
+
+func CreateConversionMethods(packageName, structName string, fields ExtractedFields) ([]byte, error) {
+	pkg, err := importer.Default().Import(packageName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to resolve package '%s'", packageName)
+	}
+	scope := pkg.Scope()
+	if scope == nil {
+		return nil, errors.Errorf("unable to parse symbols in package '%s'", packageName)
+	}
+	obj := scope.Lookup(structName)
+	if obj == nil {
+		return nil, errors.Errorf("struct '%s' not found in package '%s'", structName, packageName)
+	}
+	structVal, isStruct := obj.Type().Underlying().(*types.Struct)
+	if !isStruct {
+		return nil, errors.Errorf("identifier '%s' exists in package '%s' but is not a struct", structName, packageName)
+	}
+
+	code, err := generateServiceConversions(structVal, packageName, structName, fields)
+	if err != nil {
+		return nil, err
+	}
+
+	return goimports(code)
+}
+
+func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields ExtractedFields) (string, error) {
+	serviceTemplate, err := getTemplate(serviceMethodsTemplatePath)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting service methods template")
+	}
+	bfsConvertTemplate, err := getTemplate(bfsConvertTemplatePath)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting BuildFromService conversion template")
+	}
+	tsConvertTemplate, err := getTemplate(tsConvertTemplatePath)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting ToService conversion template")
+	}
+	bfsCode := []string{}
+	tsCode := []string{}
+	for i := 0; i < structVal.NumFields(); i++ {
+		field := structVal.Field(i)
+		fieldName := field.Name()
+		if fieldInfo, shouldExtract := fields[fieldName]; shouldExtract {
+			// generate the BuildFromService code
+			converter, err := conversionFn(field.Type(), fieldInfo.Nullable)
+			if err != nil {
+				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
+			}
+			data := conversionLine{
+				ModelField:         fieldName,
+				RestField:          fieldInfo.OutputFieldName,
+				TypeConversionFunc: converter,
+			}
+			lineData, err := output(bfsConvertTemplate, data)
+			if err != nil {
+				return "", errors.Wrap(err, "error generating BuildFromService code")
+			}
+			bfsCode = append(bfsCode, lineData)
+
+			// generate the ToService code
+			converter, err = conversionFn(field.Type(), fieldInfo.Nullable) // TODO: this is wrong, figure out how to reverse
+			if err != nil {
+				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
+			}
+			data = conversionLine{
+				ModelField:         fieldName,
+				RestField:          fieldInfo.OutputFieldName,
+				TypeConversionFunc: converter,
+			}
+			lineData, err = output(tsConvertTemplate, data)
+			if err != nil {
+				return "", errors.Wrap(err, "error generating ToService code")
+			}
+			tsCode = append(tsCode, lineData)
+		}
+		sort.Strings(bfsCode)
+		sort.Strings(tsCode)
+	}
+	data := modelConversionInfo{
+		ModelType:      fmt.Sprintf("%s.%s", packageName, structName),
+		RestType:       fmt.Sprintf("API%s", structName),
+		BfsConversions: strings.Join(bfsCode, "\n"),
+		TsConversions:  strings.Join(tsCode, "\n"),
+	}
+	return output(serviceTemplate, data)
 }
