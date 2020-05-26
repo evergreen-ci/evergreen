@@ -6,23 +6,21 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     let controller;
     let $scope;
     let CHANGE_POINTS_GRID;
-    let CedarClient;
+    let PerformanceAnalysisAndTriageClient;
     let $routeParams;
     let $httpBackend;
-    let CEDAR_API;
-    let CEDAR_APP_URL;
+    let PERFORMANCE_ANALYSIS_AND_TRIAGE_API;
 
     beforeEach(function () {
       module('MCI');
-      inject(function (_$controller_, _CedarClient_, _$window_, _CHANGE_POINTS_GRID_, _$routeParams_, _$httpBackend_, _CEDAR_API_, _CEDAR_APP_URL_) {
+      inject(function (_$controller_, _PerformanceAnalysisAndTriageClient_, _$window_, _CHANGE_POINTS_GRID_, _$routeParams_, _$httpBackend_, _PERFORMANCE_ANALYSIS_AND_TRIAGE_API_, _CEDAR_APP_URL_) {
         $scope = {};
         CHANGE_POINTS_GRID = _CHANGE_POINTS_GRID_;
-        CedarClient = _CedarClient_;
+        PerformanceAnalysisAndTriageClient = _PerformanceAnalysisAndTriageClient_;
         $routeParams = _$routeParams_;
         $routeParams.projectId = 'some-project';
         $httpBackend = _$httpBackend_;
-        CEDAR_API = _CEDAR_API_;
-        CEDAR_APP_URL = _CEDAR_APP_URL_;
+        PERFORMANCE_ANALYSIS_AND_TRIAGE_API = _PERFORMANCE_ANALYSIS_AND_TRIAGE_API_;
         controller = _$controller_;
       })
     });
@@ -31,52 +29,53 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       controller('ExpandedMetricsSignalProcessingController', {
         '$scope': $scope,
         '$routeParams': $routeParams,
-        'CedarClient': CedarClient,
+        'PerformanceAnalysisAndTriageClient': PerformanceAnalysisAndTriageClient,
         'CHANGE_POINTS_GRID': CHANGE_POINTS_GRID
       });
     }
 
     it('should be refresh the data when a new page is loaded', () => {
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 0, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511);
       makeController();
       $httpBackend.flush();
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 1, 10, 511, {
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 1, 10, 511, {
         'versions': Array(10).fill(
           {
             'version_id': 'another_version',
             'change_points': [
               {
-                'perf_result_id': '7a8a54244e0bf868bf1d1edd2f388614aecb16bd',
-                'project': 'sys-perf',
-                'task': 'another_task',
-                'test': 'another_test',
-                'variant': 'another_variant',
-                'arguments': {
-                  "thread_level": 5,
+                "time_series_info": {
+                  "project": "sys-perf",
+                  "variant": "another_variant",
+                  "task": "another_task",
+                  "test": "another_test",
+                  "measurement": "another_measurement",
+                  "thread_level": 5
                 },
-                'index': 2,
-                'measurement': 'another_measurement',
-                'calculated_on': '2020-04-26T22:09:45.438Z',
-                'algorithm': {
-                  'name': 'e_divisive_means',
-                  'version': 0,
-                  'options': [
+                "cedar_perf_result_id": "7a8a54244e0bf868bf1d1edd2f388614aecb16bd",
+                "version": "another_version",
+                "order": 22151,
+                "algorithm": {
+                  "name": "e_divisive_means",
+                  "version": 0,
+                  "options": [
                     {
-                      'name': 'pvalue',
-                      'value': 0.05
+                      "name": "pvalue",
+                      "value": 0.05
                     },
                     {
-                      'name': 'permutations',
-                      'value': 100
+                      "name": "permutations",
+                      "value": 100
                     }
                   ]
                 },
-                'triage': {
+                "triage": {
                   'triaged_on': '0001-01-01T00:00:00Z',
                   'triage_status': 'triaged'
                 },
-                'percent_change': 12.3248234827374
-              }],
+                "percent_change": 12.3248234827374,
+                "calculated_on": "2020-05-04T20:21:12.037000"
+              }]
           }),
         'page': 1,
         'page_size': 10,
@@ -102,10 +101,10 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     });
 
     it('should be able to go to the previous page', () => {
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 0, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511);
       makeController();
       $httpBackend.flush();
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 510, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 510, 10, 511);
       $scope.page = 511;
       $scope.prevPage();
       $httpBackend.flush();
@@ -127,10 +126,10 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     });
 
     it('should be able to go to the next page', () => {
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 0, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511);
       makeController();
       $httpBackend.flush();
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 1, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 1, 10, 511);
       $scope.nextPage();
       $httpBackend.flush();
       expect($scope.page).toEqual(1);
@@ -151,7 +150,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     });
 
     it('should get the first page on load', () => {
-      expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API, 0, 10, 511);
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511);
       makeController();
       $httpBackend.flush();
       expect($scope.page).toEqual(0);
@@ -240,43 +239,44 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
   });
 });
 
-function expectGetPage($httpBackend, CEDAR_APP_URL, CEDAR_API,  page, pageSize, totalPages, newData) {
-  $httpBackend.expectGET(`${CEDAR_APP_URL + CEDAR_API.BASE + CEDAR_API.CHANGE_POINTS_BY_VERSION}?page=${page}&pageSize=${pageSize}`).respond(200, JSON.stringify(newData || {
+function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, pageSize, totalPages, newData) {
+  $httpBackend.expectGET(`${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?page=${page}&pageSize=${pageSize}`).respond(200, JSON.stringify(newData || {
     'versions': Array(10).fill(
       {
         'version_id': 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',
         'change_points': [
           {
-            'perf_result_id': '7a8a54244e0bf868bf1d1edd2f388614aecb16bd',
-            'project': 'sys-perf',
-            'task': 'large_scale_model',
-            'test': 'HotCollectionDeleter.Delete.2.2',
-            'variant': 'linux-standalone',
-            'arguments': {
+            "time_series_info": {
+              "project": "sys-perf",
+              "variant": "linux-standalone",
+              "task": "large_scale_model",
+              "test": "HotCollectionDeleter.Delete.2.2",
+              "measurement": "AverageSize",
               "thread_level": 0
             },
-            'index': 2,
-            'measurement': 'AverageSize',
-            'calculated_on': '2020-04-26T22:09:45.438Z',
-            'algorithm': {
-              'name': 'e_divisive_means',
-              'version': 0,
-              'options': [
+            "cedar_perf_result_id": "7a8a54244e0bf868bf1d1edd2f388614aecb16bd",
+            "version": "sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867",
+            "order": 22151,
+            "algorithm": {
+              "name": "e_divisive_means",
+              "version": 0,
+              "options": [
                 {
-                  'name': 'pvalue',
-                  'value': 0.05
+                  "name": "pvalue",
+                  "value": 0.05
                 },
                 {
-                  'name': 'permutations',
-                  'value': 100
+                  "name": "permutations",
+                  "value": 100
                 }
               ]
             },
-            'triage': {
+            "triage": {
               'triaged_on': '0001-01-01T00:00:00Z',
               'triage_status': 'untriaged'
             },
-            'percent_change': 50.3248234827374
+            "percent_change": 50.3248234827374,
+            "calculated_on": "2020-05-04T20:21:12.037000"
           }],
       }),
     'page': page,

@@ -11,7 +11,7 @@ mciModule.factory('ApiUtil', function($http) {
         return $http.get(
           // Interpolate endpoint template with params
           realBase + _.template(apiEndpoint)(endpointTplParams),
-          {params: httpParams}
+          {params: httpParams, withCredentials: true}
         )
       }
     }
