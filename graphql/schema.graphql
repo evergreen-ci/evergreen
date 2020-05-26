@@ -195,6 +195,8 @@ type Patch {
   project: PatchProject
   builds: [Build!]!
   commitQueuePosition: Int
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
 }
 
 type Build {
