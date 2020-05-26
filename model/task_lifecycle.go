@@ -1109,7 +1109,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	var timeTaken time.Duration
 	var statusTask task.Task
 	wasFinished := t.IsFinished()
-	// display task already has a finished status
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
@@ -1126,7 +1125,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		}
-		// tasks that either are running or should run
 		if execTask.IsDispatchable() {
 			hasUnstartedTasks = true
 		}
