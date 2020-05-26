@@ -157,7 +157,6 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 	TeardownScriptName            = "teardown.sh"
-	HomeVolumeDir                 = "user_home"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 
