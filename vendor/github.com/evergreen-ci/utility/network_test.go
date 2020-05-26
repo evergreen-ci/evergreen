@@ -14,7 +14,6 @@ func TestNetworkFinder(t *testing.T) {
 	require.NotZero(t, addr)
 
 	assert.True(t, !strings.HasPrefix(addr, "127"))
-	assert.True(t, !strings.HasPrefix(addr, "192.168"))
 	assert.True(t, !strings.HasPrefix(addr, "172.16"))
 	assert.True(t, len(addr) <= 15)
 }
