@@ -20,6 +20,7 @@ type Manager interface {
 	CompleteJobsByType(context.Context, StatusFilter, string) error
 	CompleteJob(context.Context, string) error
 	CompleteJobs(context.Context, StatusFilter) error
+	CompleteJobsByPrefix(context.Context, StatusFilter, string) error
 }
 
 // StatusFilter defines a number of dimensions with which to filter
