@@ -155,13 +155,15 @@ func (m *dockerManager) SetPortMappings(ctx context.Context, h *host.Host, paren
 		}
 		return errors.Wrapf(err, "Failed to get container information for host '%s'", h.Id)
 	}
-	if container.State.Running && container.NetworkSettings != nil {
-		if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
-			return errors.Wrapf(err, "error saving ports to host '%s", h.Id)
-		}
-		return nil
+	if !container.State.Running {
+		return errors.Errorf("host '%s' is not running", h.Id)
+
 	}
-	return errors.Wrapf(err, "unable to set port mappings for host '%s'", h.Id)
+
+	if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
+		return errors.Wrapf(err, "error saving ports to host '%s", h.Id)
+	}
+	return nil
 }
 
 // GetDNSName does nothing, returning an empty string and no error.
