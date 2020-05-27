@@ -315,6 +315,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                         </div>
                       </td>
                     </tr>
+                    <tr ng-show="task.task_end_details.oom_killer.detected">
+                      <td class="icon"><i class="fa fa-exclamation"></i></td>
+                      <td>Out of Memory Kill detected (PIDs: [[ task.task_end_details.oom_killer.pids.join(", ") ]])</td>
+                    </tr>
                   </table>
                 </div>
               </div>
