@@ -864,10 +864,10 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return false, "", nil
 	}
 
-	// using MaxInt64 because we can assume the in-mem buffer size is small
+	// using MaxInt32 because we can assume the in-mem buffer size is small
 	// enough and want to get ALL logs in the buffer with one call to
 	// GetLogsStream.
-	logStream, err := client.GetLogStream(ctx, processID, math.MaxInt64)
+	logStream, err := client.GetLogStream(ctx, processID, math.MaxInt32)
 	if err != nil {
 		return true, "", errors.Wrap(err, "can't get output of process")
 	}
