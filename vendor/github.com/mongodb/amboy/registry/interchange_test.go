@@ -40,12 +40,6 @@ func TestJobInterchangeSuiteBSON(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestJobInterchangeSuiteYAML(t *testing.T) {
-	s := new(JobInterchangeSuite)
-	s.format = amboy.YAML
-	suite.Run(t, s)
-}
-
 func (s *JobInterchangeSuite) SetupTest() {
 	s.job = NewTestJob("interchange-test")
 }
@@ -71,9 +65,6 @@ func (s *JobInterchangeSuite) TestRoundTripHighLevel() {
 func (s *JobInterchangeSuite) TestRoundTripLowLevel() {
 	i, err := MakeJobInterchange(s.job, s.format)
 	s.NoError(err)
-
-	i.Job.job = nil
-	i.Dependency.Dependency.dep = nil
 
 	j2, err := i.Resolve(s.format)
 	if s.NoError(err) {

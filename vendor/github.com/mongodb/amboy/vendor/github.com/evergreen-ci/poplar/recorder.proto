@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package poplar;
+option go_package = "internal";
+
+import "poplar.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+message EventSendTime {
+  string name = 1;
+  google.protobuf.Timestamp time = 2;
+}
+
+message EventSendInt {
+  string name = 1;
+  int64 value = 2;
+}
+
+message EventSendBool {
+  string name = 1;
+  bool value = 2;
+}
+
+message EventSendDuration {
+  string name = 1;
+  google.protobuf.Duration duration = 2;
+}
+
+service PoplarMetricsRecorder {
+  // Create builds a new recorder instance which creates a local file,
+  // while the close recorder method flushes the contents of that
+  // recorder and closes the file.
+  rpc CreateRecorder(CreateOptions) returns (PoplarResponse);
+  rpc CloseRecorder(PoplarID) returns (PoplarResponse);
+
+  // Event Lifecycle methods
+  rpc BeginEvent(PoplarID) returns (PoplarResponse);
+  rpc ResetEvent(PoplarID) returns (PoplarResponse);
+  rpc EndEvent(EventSendDuration) returns (PoplarResponse);
+  rpc SetID(EventSendInt) returns (PoplarResponse);
+
+  // Timers
+  rpc SetTime(EventSendTime) returns (PoplarResponse);
+  rpc SetDuration(EventSendDuration) returns (PoplarResponse);
+  rpc SetTotalDuration(EventSendDuration) returns (PoplarResponse);
+
+  // Guages
+  rpc SetState(EventSendInt) returns (PoplarResponse);
+  rpc SetWorkers(EventSendInt) returns (PoplarResponse);
+  rpc SetFailed(EventSendBool) returns (PoplarResponse);
+
+  // Counters
+  rpc IncOps(EventSendInt) returns (PoplarResponse);
+  rpc IncSize(EventSendInt) returns (PoplarResponse);
+  rpc IncError(EventSendInt) returns (PoplarResponse);
+  rpc IncIterations(EventSendInt) returns (PoplarResponse);
+}

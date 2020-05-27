@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -553,7 +554,54 @@ func (m *queueManager) CompleteJobs(ctx context.Context, f StatusFilter) error {
 
 		switch f {
 		case Stale:
-			if stat.InProgress && time.Since(stat.ModificationTime) > m.queue.Info().LockTimeout {
+			if !stat.InProgress || time.Since(stat.ModificationTime) < m.queue.Info().LockTimeout {
+				continue
+			}
+		case InProgress:
+			if !stat.InProgress {
+				continue
+			}
+		case Pending:
+			if stat.InProgress {
+				continue
+			}
+		case All:
+			// pass
+		default:
+			// futureproofing...
+			continue
+		}
+
+		job, ok := m.queue.Get(ctx, stat.ID)
+		if !ok {
+			continue
+		}
+
+		m.queue.Complete(ctx, job)
+	}
+
+	return nil
+}
+
+func (m *queueManager) CompleteJobsByPrefix(ctx context.Context, f StatusFilter, prefix string) error {
+	if err := f.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+	if f == Completed {
+		return errors.New("invalid specification of completed job type")
+	}
+
+	for stat := range m.queue.JobStats(ctx) {
+		if stat.Completed {
+			continue
+		}
+		if !strings.HasPrefix(stat.ID, prefix) {
+			continue
+		}
+
+		switch f {
+		case Stale:
+			if !stat.InProgress || time.Since(stat.ModificationTime) < m.queue.Info().LockTimeout {
 				continue
 			}
 		case InProgress:

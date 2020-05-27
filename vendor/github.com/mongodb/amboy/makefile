@@ -6,6 +6,7 @@ orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
+
  # start environment setup
 gobin := ${GO_BIN_PATH}
 ifeq (,$(gobin))
@@ -25,11 +26,20 @@ goEnv := GOPATH=$(gopath) GOCACHE=$(gocache) $(if ${GO_BIN_PATH},PATH="$(shell d
 lintDeps := $(buildDir)/.lintSetup $(buildDir)/run-linter $(buildDir)/golangci-lint
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
-$(buildDir)/golangci-lint:$(buildDir)
+$(buildDir)/golangci-lint:
+	@mkdir -p $(buildDir)
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
 $(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup $(buildDir)
 	@$(goEnv) $(gobin) build -o $@ $<
 # end lint setup targets
+
+
+# benchmark setup targets
+benchmarks:$(buildDir)/run-benchmarks $(buildDir) .FORCE
+	$(goEnv) ./$(buildDir)/run-benchmarks $(run-benchmark)
+$(buildDir)/run-benchmarks:cmd/run-benchmarks/run-benchmarks.go $(buildDir)
+	$(goEnv) $(gobin) build -o $@ $<
+# end benchmark setup targets
 
 
 ######################################################################
@@ -40,33 +50,45 @@ $(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup $(build
 ##
 ######################################################################
 
+_compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
+coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
+coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 
 # start dependency installation tools
 #   implementation details for being able to lazily install dependencies
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
-raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 # end dependency installation tools
 
 
 # userfacing targets for basic build and development operations
-lint:$(buildDir)/output.lint
-build:$(deps) $(gopath)/src/$(projectPath)
-	$(goEnv) $(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
-build-race:$(gopath)/src/$(projectPath)
-	$(goEnv) $(gobin) build -race $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
-test:$(testOutput)
-race:$(raceOutput)
-coverage:$(coverageOutput)
-coverage-html:$(coverageHtmlOutput)
+lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+test:$(foreach target,$(packages),$(buildDir)/output.$(target).test)
+coverage:$(buildDir) $(coverageOutput)
+coverage-html:$(buildDir) $(coverageHtmlOutput)
+compile $(buildDir):
+	@mkdir -p $(buildDir)
+	$(goEnv) $(gobin) build $(_compilePackages)
+compile-base:
+	$(goEnv) $(gobin) build  ./
+# convenience targets for runing tests and coverage tasks on a
+# specific package.
+test-%:$(buildDir)/output.%.test
+	
+coverage-%:$(buildDir)/output.%.coverage
+	
+html-coverage-%:$(buildDir)/output.%.coverage.html
+	
+lint-%:$(buildDir)/output.%.lint
+	
+# end convienence targets
 phony := lint build build-race race test coverage coverage-html
-.PRECIOUS:$(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS:$(testOutput) $(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/test.$(target))
-.PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-# end front-ends
+# end front-end
 
 
 # implementation details for building the binary and creating a
@@ -76,21 +98,6 @@ $(gopath)/src/$(orgPath):
 $(gopath)/src/$(projectPath):$(gopath)/src/$(orgPath)
 	@[ -L $@ ] || ln -s $(shell pwd) $@
 # end main build
-
-
-# convenience targets for runing tests and coverage tasks on a
-# specific package.
-race-%:$(buildDir)/output.%.race
-	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
-test-%:$(buildDir)/output.%.test
-	@grep -s -q -e "^PASS" $<
-coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-lint-%:$(buildDir)/output.%.lint
-	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
 
 
 
@@ -108,33 +115,34 @@ endif
 ifneq (,$(RUN_COUNT))
 testArgs += -test.count='$(RUN_COUNT)'
 endif
-ifeq (,DISABLE_COVERAGE)
-testArgs += -covermode=count
+ifneq (,$(RACE_DETECTOR))
+testArgs += -race
+endif
+ifneq (,$(DISABLE_COVERAGE))
+testArgs += -cover
+endif
+ifneq (,$(SKIP_LONG))
+testArgs += -short
 endif
 #    implementation for package coverage and test running,mongodb to produce
 #    and save test output.
 $(buildDir)/:
 	@mkdir -p $@
-$(buildDir)/output.%.test:$(buildDir)/ .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./$(subst -,/,$*) | tee $@
-$(buildDir)/output.%.race:$(buildDir)/ .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -race ./$(subst -,/,$*) | tee  $@
-#  targets to run any tests in the top-level package
-$(buildDir)/output.$(name).test:$(buildDir)/
-	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
-$(buildDir)/output.$(name).race:$(buildDir)/
-	$(goEnv) $(gobin) test $(testArgs) -race ./ | tee $@
+$(buildDir)/output.%.test:.FORCE
+	@mkdir -p $(buildDir)/
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
+	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
+	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
+$(buildDir)/output.%.coverage:.FORCE
+	@mkdir -p $(buildDir)/
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter .FORCE
+	@mkdir -p $(buildDir)/
 	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$(packages)'
-#  targets to process and generate coverage reports
-$(buildDir)/output.%.coverage:$(buildDir)/output.%.test .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile=$@ | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
-	$(goEnv) $(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 
@@ -145,6 +153,9 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail/vendor/github.com/aws/aws-sdk-go/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/amboy/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
 	rm -rf vendor/gopkg.in/mgo.v2/harness/

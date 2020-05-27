@@ -367,6 +367,37 @@ func (s *ManagerSuite) TestCompleteJobsByTypeValidFilter() {
 	s.Equal(3, jobCount)
 }
 
+func (s *ManagerSuite) TestCompleteJobsByPrefixInvalidFilter() {
+	s.Error(s.manager.CompleteJobsByType(s.ctx, "invalid", "prefix"))
+	s.Error(s.manager.CompleteJobsByType(s.ctx, Completed, "prefix"))
+}
+
+func (s *ManagerSuite) TestCompleteJobsByPrefixValidFilter() {
+	j1 := job.NewShellJob("ls", "")
+	s.Require().NoError(s.queue.Put(s.ctx, j1))
+	j2 := newTestJob("pre-one")
+	s.Require().NoError(s.queue.Put(s.ctx, j2))
+	j3 := newTestJob("pre-two")
+	s.Require().NoError(s.queue.Put(s.ctx, j3))
+
+	s.Require().NoError(s.manager.CompleteJobsByPrefix(s.ctx, Pending, "pre"))
+	jobCount := 0
+	for jobStats := range s.queue.JobStats(s.ctx) {
+		if jobStats.ID == "pre-one" || jobStats.ID == "pre-two" {
+			s.True(jobStats.Completed)
+			_, ok := s.manager.(*dbQueueManager)
+			if ok {
+				s.Equal(3, jobStats.ModificationCount)
+			}
+		} else {
+			s.False(jobStats.Completed)
+			s.Equal(0, jobStats.ModificationCount)
+		}
+		jobCount++
+	}
+	s.Equal(3, jobCount)
+}
+
 type testJob struct {
 	job.Base
 }

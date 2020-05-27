@@ -178,32 +178,6 @@ tasks:
     name: test-management
     tags: ["test"]
 
-  # run the suites with the race detector (one variant only)
-  - <<: *run-go-test-suite
-    name: race-dependency
-    tags: ["race"]
-  - <<: *run-go-test-suite
-    name: race-job
-    tags: ["race"]
-  - <<: *run-go-test-suite
-    name: race-rest
-    tags: ["race"]
-  - <<: *run-go-test-suite
-    name: race-logger
-    tags: ["race"]
-  - <<: *run-go-test-suite
-    name: race-registry
-    tags: ["race"]
-  - <<: *run-go-test-suite
-    name: race-pool
-    tags: ["race"]
-  - <<: *run-go-test-suite-with-mongodb
-    name: race-queue
-    tags: ["race"]
-  - <<: *run-go-test-suite-with-mongodb
-    name: race-management
-    tags: ["race"]
-
 post:
   - command: gotest.parse_files
     type: setup
@@ -251,13 +225,13 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     expansions:
-      build_env: "GOROOT=/opt/golang/go1.12 GO_BIN_PATH=/opt/golang/go1.12/bin/go DISABLE_COVERAGE=1"
+      build_env: "GOROOT=/opt/golang/go1.12 GO_BIN_PATH=/opt/golang/go1.12/bin/go DISABLE_COVERAGE=true RACE_DETECTOR=true"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       test_timeout: 15m
     run_on:
       - archlinux-build
     tasks:
-      - ".race"
+      - ".test"
 
   - name: report
     display_name: Reporting
@@ -305,8 +279,6 @@ buildvariants:
       - windows-64-vs2015-test
       - windows-64-vs2013-compile
       - windows-64-vs2013-test
-      - windows-64-vs2010-compile
-      - windows-64-vs2010-test
     expansions:
       test_timeout: 15m
       build_env: "GOROOT=c:/golang/go1.12 DISABLE_COVERAGE=yes PATH=/cygdrive/c/golang/go1.12/bin:$PATH"
