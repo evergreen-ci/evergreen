@@ -47,18 +47,31 @@ func (s *basicService) Run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "problem listening on %s", s.addr)
 	}
-	defer l.Close()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			grip.Warning(message.WrapError(l.Close(), message.Fields{
+				"message": "error occurred while closing service",
+				"context": "mrpc service",
+			}))
+		}
+	}()
 
 	grip.Infof("listening for connections on %s", s.addr)
 
 	for {
 		if ctx.Err() != nil {
-			return errors.New("service terminated by canceled context")
+			grip.Info(message.Fields{
+				"message": "service shut down because context is done",
+				"context": "mrpc service",
+			})
+			return nil
 		}
 
 		conn, err := l.Accept()
 		if err != nil {
-			grip.Warning(message.WrapError(err, "problem accepting connection"))
+			grip.WarningWhen(ctx.Err() == nil, message.WrapError(err, "problem accepting connection"))
 			continue
 		}
 

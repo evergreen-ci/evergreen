@@ -1,6 +1,7 @@
 package taskreaper
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -31,7 +31,7 @@ type TaskReaper struct {
 	// taskHistory is the number of tasks to keep
 	taskHistory int64
 
-	// List of slot tubles to be inspected for task history cleanup.
+	// List of slot tuples to be inspected for task history cleanup.
 	dirty map[orchestrator.SlotTuple]struct{}
 
 	// List of tasks collected for cleanup, which includes two kinds of tasks
@@ -40,6 +40,12 @@ type TaskReaper struct {
 	cleanup  []string
 	stopChan chan struct{}
 	doneChan chan struct{}
+
+	// tickSignal is a channel that, if non-nil and available, will be written
+	// to to signal that a tick has occurred. its sole purpose is for testing
+	// code, to verify that take cleanup attempts are happening when they
+	// should be.
+	tickSignal chan struct{}
 }
 
 // New creates a new TaskReaper.
@@ -55,7 +61,7 @@ func New(store *store.MemoryStore) *TaskReaper {
 // Run is the TaskReaper's watch loop which collects candidates for cleanup.
 // Task history is mainly used in task restarts but is also available for administrative purposes.
 // Note that the task history is stored per-slot-per-service for replicated services
-// and per-node-per-service for global services. History does not apply to serviceless
+// and per-node-per-service for global services. History does not apply to serviceless tasks
 // since they are not attached to a service. In addition, the TaskReaper watch loop is also
 // responsible for cleaning up tasks associated with slots that were removed as part of
 // service scale down or service removal.
@@ -115,7 +121,34 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 
 	// Clean up when we hit TaskHistoryRetentionLimit or when the timer expires,
 	// whichever happens first.
+	//
+	// Specifically, the way this should work:
+	// - Create a timer and immediately stop it. We don't want to fire the
+	//   cleanup routine yet, because we just did a cleanup as part of the
+	//   initialization above.
+	// - Launch into an event loop
+	// - When we receive an event, handle the event as needed
+	// - After receiving the event:
+	//   - If minimum batch size (maxDirty) is exceeded with dirty + cleanup,
+	//     then immediately launch into the cleanup routine
+	//   - Otherwise, if the timer is stopped, start it (reset).
+	// - If the timer expires and the timer channel is signaled, then Stop the
+	//   timer (so that it will be ready to be started again as needed), and
+	//   execute the cleanup routine (tick)
 	timer := time.NewTimer(reaperBatchingInterval)
+	timer.Stop()
+
+	// If stop is somehow called AFTER the timer has expired, there will be a
+	// value in the timer.C channel. If there is such a value, we should drain
+	// it out. This select statement allows us to drain that value if it's
+	// present, or continue straight through otherwise.
+	select {
+	case <-timer.C:
+	default:
+	}
+
+	// keep track with a boolean of whether the timer is currently stopped
+	isTimerStopped := true
 
 	// Watch for:
 	// 1. EventCreateTask for cleaning slots, which is the best time to cleanup that node/slot.
@@ -153,23 +186,60 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 			}
 
 			if len(tr.dirty)+len(tr.cleanup) > maxDirty {
+				// stop the timer, so we don't fire it. if we get another event
+				// after we do this cleaning, we will reset the timer then
 				timer.Stop()
+				// if the timer had fired, drain out the value.
+				select {
+				case <-timer.C:
+				default:
+				}
+				isTimerStopped = true
 				tr.tick()
-			} else {
+			} else if isTimerStopped {
 				timer.Reset(reaperBatchingInterval)
+				isTimerStopped = false
 			}
 		case <-timer.C:
-			timer.Stop()
+			// we can safely ignore draining off of the timer channel, because
+			// we already know that the timer has expired.
+			isTimerStopped = true
 			tr.tick()
 		case <-tr.stopChan:
+			// even though this doesn't really matter in this context, it's
+			// good hygiene to drain the value.
 			timer.Stop()
+			select {
+			case <-timer.C:
+			default:
+			}
 			return
 		}
 	}
 }
 
+// taskInTerminalState returns true if task is in a terminal state.
+func taskInTerminalState(task *api.Task) bool {
+	return task.Status.State > api.TaskStateRunning
+}
+
+// taskWillNeverRun returns true if task will never reach running state.
+func taskWillNeverRun(task *api.Task) bool {
+	return task.Status.State < api.TaskStateAssigned && task.DesiredState > api.TaskStateRunning
+}
+
 // tick performs task history cleanup.
 func (tr *TaskReaper) tick() {
+	// this signals that a tick has occurred. it exists solely for testing.
+	if tr.tickSignal != nil {
+		// try writing to this channel, but if it's full, fall straight through
+		// and ignore it.
+		select {
+		case tr.tickSignal <- struct{}{}:
+		default:
+		}
+	}
+
 	if len(tr.dirty) == 0 && len(tr.cleanup) == 0 {
 		return
 	}
@@ -184,10 +254,24 @@ func (tr *TaskReaper) tick() {
 	}
 
 	// Check history of dirty tasks for cleanup.
+	// Note: Clean out the dirty set at the end of this tick iteration
+	// in all but one scenarios (documented below).
+	// When tick() finishes, the tasks in the slot were either cleaned up,
+	// or it was skipped because it didn't meet the criteria for cleaning.
+	// Either way, we can discard the dirty set because future events on
+	// that slot will cause the task to be readded to the dirty set
+	// at that point.
+	//
+	// The only case when we keep the slot dirty is when there are more
+	// than one running tasks present for a given slot.
+	// In that case, we need to keep the slot dirty to allow it to be
+	// cleaned when tick() is called next and one or more the tasks
+	// in that slot have stopped running.
 	tr.store.View(func(tx store.ReadTx) {
 		for dirty := range tr.dirty {
 			service := store.GetService(tx, dirty.ServiceID)
 			if service == nil {
+				delete(tr.dirty, dirty)
 				continue
 			}
 
@@ -211,6 +295,7 @@ func (tr *TaskReaper) tick() {
 
 			// Negative value for TaskHistoryRetentionLimit is an indication to never clean up task history.
 			if taskHistory < 0 {
+				delete(tr.dirty, dirty)
 				continue
 			}
 
@@ -240,6 +325,7 @@ func (tr *TaskReaper) tick() {
 			}
 
 			if int64(len(historicTasks)) <= taskHistory {
+				delete(tr.dirty, dirty)
 				continue
 			}
 
@@ -251,25 +337,29 @@ func (tr *TaskReaper) tick() {
 
 			runningTasks := 0
 			for _, t := range historicTasks {
-				// Skip tasks which are desired to be running but the current state
-				// is less than or equal to running.
-				// This check is important to ignore tasks which are running or need to be running,
-				// but to delete tasks which are either past running,
-				// or have not reached running but need to be shutdown (because of a service update, for example).
-				if t.DesiredState == api.TaskStateRunning && t.Status.State <= api.TaskStateRunning {
-					// Don't delete running tasks
+				// Historical tasks can be considered for cleanup if:
+				// 1. The task has reached a terminal state i.e. actual state beyond TaskStateRunning.
+				// 2. The task has not yet become running and desired state is a terminal state i.e.
+				// actual state not yet TaskStateAssigned and desired state beyond TaskStateRunning.
+				if taskInTerminalState(t) || taskWillNeverRun(t) {
+					deleteTasks[t.ID] = struct{}{}
+
+					taskHistory++
+					if int64(len(historicTasks)) <= taskHistory {
+						break
+					}
+				} else {
+					// all other tasks are counted as running.
 					runningTasks++
-					continue
-				}
-
-				deleteTasks[t.ID] = struct{}{}
-
-				taskHistory++
-				if int64(len(historicTasks)) <= taskHistory {
-					break
 				}
 			}
 
+			// The only case when we keep the slot dirty at the end of tick()
+			// is when there are more than one running tasks present
+			// for a given slot.
+			// In that case, we keep the slot dirty to allow it to be
+			// cleaned when tick() is called next and one or more of
+			// the tasks in that slot have stopped running.
 			if runningTasks <= 1 {
 				delete(tr.dirty, dirty)
 			}

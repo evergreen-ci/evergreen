@@ -48,10 +48,7 @@ func AddFileToDirectory(dir string, fileName string, fileContents string) error 
 	return file.Close()
 }
 
-// GetDirectoryOfFile returns the directory of the file where this
-// function is called from.
-func GetDirectoryOfFile() string {
-	_, file, _, _ := runtime.Caller(1)
-
-	return filepath.Dir(file)
+func BuildDirectory() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(filepath.Dir(file)), "build")
 }

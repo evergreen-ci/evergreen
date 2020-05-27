@@ -33,7 +33,7 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 	id := uuid.New().String()
 	opts.AddEnvVar(EnvironID, id)
 
-	cmd, deadline, err := opts.Resolve(ctx)
+	exec, deadline, err := opts.Resolve(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building command from options")
 	}
@@ -56,7 +56,7 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 		return nil, errors.Wrap(catcher.Resolve(), "problem registering options close trigger")
 	}
 
-	if err = cmd.Start(); err != nil {
+	if err = exec.Start(); err != nil {
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(opts.Close(), "problem closing options")
 		catcher.Add(err)
@@ -65,7 +65,7 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 
 	p.info = ProcessInfo{
 		ID:        id,
-		PID:       cmd.PID(),
+		PID:       exec.PID(),
 		Options:   *opts,
 		IsRunning: true,
 		StartAt:   time.Now(),
@@ -76,7 +76,7 @@ func newBlockingProcess(ctx context.Context, opts *options.Create) (Process, err
 		p.info.Host, _ = os.Hostname()
 	}
 
-	go p.reactor(ctx, deadline, cmd)
+	go p.reactor(ctx, deadline, exec)
 
 	return p, nil
 }
@@ -114,13 +114,13 @@ func (p *blockingProcess) getErr() error {
 	return p.err
 }
 
-func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd executor.Executor) {
-	defer cmd.Close()
+func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, exec executor.Executor) {
+	defer exec.Close()
 
 	signal := make(chan error)
 	go func() {
 		defer close(signal)
-		signal <- cmd.Wait()
+		signal <- exec.Wait()
 	}()
 	defer close(p.complete)
 
@@ -139,16 +139,17 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd e
 				info.Complete = true
 				info.IsRunning = false
 
-				info.Successful = cmd.Success()
-				if sig, signaled := cmd.SignalInfo(); signaled {
+				info.Successful = exec.Success()
+				if sig, signaled := exec.SignalInfo(); signaled {
 					info.ExitCode = int(sig)
 					if !deadline.IsZero() {
 						info.Timeout = sig == syscall.SIGKILL && finishTime.After(deadline)
 					}
 				} else {
-					info.ExitCode = cmd.ExitCode()
+					exitCode := exec.ExitCode()
+					info.ExitCode = exitCode
 					if runtime.GOOS == "windows" && !deadline.IsZero() {
-						info.Timeout = cmd.ExitCode() == 1 && finishTime.After(deadline)
+						info.Timeout = exitCode == 1 && finishTime.After(deadline)
 					}
 				}
 			}()
@@ -176,7 +177,7 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd e
 			return
 		case op := <-p.ops:
 			if op != nil {
-				op(cmd)
+				op(exec)
 			}
 		}
 	}
@@ -189,7 +190,7 @@ func (p *blockingProcess) Info(ctx context.Context) ProcessInfo {
 	}
 
 	out := make(chan ProcessInfo)
-	operation := func(cmd executor.Executor) {
+	operation := func(exec executor.Executor) {
 		out <- p.getInfo()
 		close(out)
 	}
@@ -217,15 +218,15 @@ func (p *blockingProcess) Running(ctx context.Context) bool {
 	}
 
 	out := make(chan bool)
-	operation := func(cmd executor.Executor) {
+	operation := func(exec executor.Executor) {
 		defer close(out)
 
-		if cmd == nil {
+		if exec == nil {
 			out <- false
 			return
 		}
 
-		if cmd.PID() <= 0 {
+		if exec.PID() <= 0 {
 			out <- false
 			return
 		}
@@ -260,17 +261,17 @@ func (p *blockingProcess) Signal(ctx context.Context, sig syscall.Signal) error 
 	}
 
 	out := make(chan error)
-	operation := func(cmd executor.Executor) {
+	operation := func(exec executor.Executor) {
 		defer close(out)
 
-		if cmd == nil {
+		if exec == nil {
 			out <- errors.New("cannot signal nil process")
 			return
 		}
 
 		if skipSignal := p.signalTriggers.Run(p.getInfo(), sig); !skipSignal {
 			sig = makeCompatible(sig)
-			out <- errors.Wrapf(cmd.Signal(sig), "problem sending signal '%s' to '%s'",
+			out <- errors.Wrapf(exec.Signal(sig), "problem sending signal '%s' to '%s'",
 				sig, p.id)
 		} else {
 			out <- nil
@@ -342,7 +343,7 @@ func (p *blockingProcess) Wait(ctx context.Context) (int, error) {
 	}
 
 	out := make(chan error)
-	waiter := func(cmd executor.Executor) {
+	waiter := func(exec executor.Executor) {
 		if !p.hasCompleteInfo() {
 			return
 		}

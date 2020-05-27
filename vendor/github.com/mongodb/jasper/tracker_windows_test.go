@@ -122,7 +122,7 @@ func TestWindowsProcessTracker(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, tracker)
 
-			testCase(ctx, t, tracker, testutil.YesCreateOpts(testutil.TestTimeout))
+			testCase(ctx, t, tracker, testutil.SleepCreateOpts(1))
 		})
 	}
 }

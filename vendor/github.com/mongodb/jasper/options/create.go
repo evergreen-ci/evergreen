@@ -37,22 +37,32 @@ const (
 // execution configuration, post-execution triggers, and output configuration.
 // It is not safe for concurrent access.
 type Create struct {
-	Args             []string          `bson:"args" json:"args" yaml:"args"`
-	Environment      map[string]string `bson:"env,omitempty" json:"env,omitempty" yaml:"env,omitempty"`
-	OverrideEnviron  bool              `bson:"override_env,omitempty" json:"override_env,omitempty" yaml:"override_env,omitempty"`
-	Synchronized     bool              `bson:"synchronized" json:"synchronized" yaml:"synchronized"`
-	Implementation   string            `bson:"implementation" json:"implementation" yaml:"implementation"`
-	WorkingDirectory string            `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
-	Output           Output            `bson:"output" json:"output" yaml:"output"`
-	Remote           *Remote           `bson:"remote,omitempty" json:"remote,omitempty" yaml:"remote,omitempty"`
+	Args        []string          `bson:"args" json:"args" yaml:"args"`
+	Environment map[string]string `bson:"env,omitempty" json:"env,omitempty" yaml:"env,omitempty"`
+	// OverrideEnviron sets the process environment to match the currently
+	// executing process's environment. This is ignored if Remote or Docker
+	// options are specified.
+	OverrideEnviron bool `bson:"override_env,omitempty" json:"override_env,omitempty" yaml:"override_env,omitempty"`
+	// Synchronized specifies whether the process should be thread-safe or not.
+	// This is not guaranteed to be respected for managed processes.
+	Synchronized bool `bson:"synchronized" json:"synchronized" yaml:"synchronized"`
+	// Implementation specifies the local process implementation to use. This
+	// is not guaranteed to be respected for managed processes.
+	Implementation   string `bson:"implementation,omitempty" json:"implementation,omitempty" yaml:"implementation,omitempty"`
+	WorkingDirectory string `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
+	Output           Output `bson:"output" json:"output" yaml:"output"`
+	// Remote specifies options for creating processes over SSH.
+	Remote *Remote `bson:"remote,omitempty" json:"remote,omitempty" yaml:"remote,omitempty"`
+	// Docker specifies options for creating processes in Docker containers.
+	Docker *Docker `bson:"docker,omitempty" json:"docker,omitempty" yaml:"docker,omitempty"`
 	// TimeoutSecs takes precedence over Timeout. On remote interfaces,
 	// TimeoutSecs should be set instead of Timeout.
 	TimeoutSecs int           `bson:"timeout_secs,omitempty" json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
-	Timeout     time.Duration `bson:"timeout" json:"-" yaml:"-"`
-	Tags        []string      `bson:"tags" json:"tags,omitempty" yaml:"tags"`
-	OnSuccess   []*Create     `bson:"on_success" json:"on_success,omitempty" yaml:"on_success"`
-	OnFailure   []*Create     `bson:"on_failure" json:"on_failure,omitempty" yaml:"on_failure"`
-	OnTimeout   []*Create     `bson:"on_timeout" json:"on_timeout,omitempty" yaml:"on_timeout"`
+	Timeout     time.Duration `bson:"timeout,omitempty" json:"-" yaml:"-"`
+	Tags        []string      `bson:"tags,omitempty" json:"tags,omitempty" yaml:"tags,omitempty"`
+	OnSuccess   []*Create     `bson:"on_success,omitempty" json:"on_success,omitempty" yaml:"on_success"`
+	OnFailure   []*Create     `bson:"on_failure,omitempty" json:"on_failure,omitempty" yaml:"on_failure"`
+	OnTimeout   []*Create     `bson:"on_timeout,omitempty" json:"on_timeout,omitempty" yaml:"on_timeout"`
 	// StandardInputBytes takes precedence over StandardInput. On remote
 	// interfaces, StandardInputBytes should be set instead of StandardInput.
 	StandardInput      io.Reader `bson:"-" json:"-" yaml:"-"`
@@ -85,45 +95,51 @@ func MakeCreation(cmdStr string) (*Create, error) {
 
 // Validate ensures that Create is valid for non-remote interfaces.
 func (opts *Create) Validate() error {
-	if len(opts.Args) == 0 {
-		return errors.New("invalid command, must specify at least one argument")
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(len(opts.Args) == 0, "invalid process, must specify at least one argument")
+
+	catcher.NewWhen(opts.Timeout < 0, "when specifying a timeout, it must be non-negative")
+	catcher.NewWhen(opts.Timeout > 0 && opts.Timeout < time.Second, "when specifying a timeout, it must be greater than one second")
+	catcher.NewWhen(opts.TimeoutSecs < 0, "when specifying timeout in seconds, it must be non-negative")
+
+	if opts.Timeout > 0 && opts.TimeoutSecs > 0 {
+		catcher.ErrorfWhen(time.Duration(opts.TimeoutSecs)*time.Second != opts.Timeout,
+			"cannot specify different timeout (in nanos) (%s) and timeout seconds (%d)",
+			opts.Timeout, opts.TimeoutSecs)
 	}
 
-	if opts.Timeout > 0 && opts.Timeout < time.Second {
-		return errors.New("when specifying a timeout, it must be greater than one second")
-	}
+	catcher.Wrap(opts.Output.Validate(), "invalid output options")
 
-	if opts.Timeout != 0 && opts.TimeoutSecs != 0 {
-		if time.Duration(opts.TimeoutSecs)*time.Second != opts.Timeout {
-			return errors.Errorf("cannot specify timeout (nanos) [%s] and timeout_secs [%d]",
-				opts.Timeout, opts.Timeout)
+	if opts.WorkingDirectory != "" && opts.isLocal() {
+		info, err := os.Stat(opts.WorkingDirectory)
+
+		if os.IsNotExist(err) {
+			catcher.Errorf("cannot not use %s as working directory because it does not exist", opts.WorkingDirectory)
+		} else if !info.IsDir() {
+			catcher.Errorf("cannot not use %s as working directory because it is not a directory", opts.WorkingDirectory)
 		}
 	}
 
-	if opts.TimeoutSecs > 0 && opts.Timeout == 0 {
-		opts.Timeout = time.Duration(opts.TimeoutSecs) * time.Second
-	} else if opts.Timeout != 0 {
-		opts.TimeoutSecs = int(opts.Timeout.Seconds())
+	catcher.NewWhen(opts.Docker != nil && opts.Remote != nil, "cannot specify both Docker and SSH options")
+	if opts.Remote != nil {
+		catcher.Wrap(opts.Remote.Validate(), "invalid SSH options")
+	}
+	if opts.Docker != nil {
+		catcher.Wrap(opts.Docker.Validate(), "invalid Docker options")
+	}
+
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	if opts.Implementation == "" {
 		opts.Implementation = ProcessImplementationBasic
 	}
 
-	if err := opts.Output.Validate(); err != nil {
-		return errors.Wrap(err, "cannot create command with invalid output")
-	}
-
-	if opts.WorkingDirectory != "" && opts.Remote == nil {
-		info, err := os.Stat(opts.WorkingDirectory)
-
-		if os.IsNotExist(err) {
-			return errors.Errorf("could not use non-extant %s as working directory", opts.WorkingDirectory)
-		}
-
-		if !info.IsDir() {
-			return errors.Errorf("could not use file as working directory")
-		}
+	if opts.TimeoutSecs != 0 && opts.Timeout == 0 {
+		opts.Timeout = time.Duration(opts.TimeoutSecs) * time.Second
+	} else if opts.Timeout != 0 {
+		opts.TimeoutSecs = int(opts.Timeout.Seconds())
 	}
 
 	if len(opts.StandardInputBytes) != 0 {
@@ -131,6 +147,12 @@ func (opts *Create) Validate() error {
 	}
 
 	return nil
+}
+
+// isLocal returns whether or not the process to be created will be a local
+// process.
+func (opts *Create) isLocal() bool {
+	return opts.Remote == nil && opts.Docker == nil
 }
 
 // Hash returns the canonical hash implementation for the create
@@ -163,7 +185,7 @@ func (opts *Create) Hash() hash.Hash {
 // Resolve creates the command object according to the create options. It
 // returns the resolved command and the deadline when the command will be
 // terminated by timeout. If there is no deadline, it returns the zero time.
-func (opts *Create) Resolve(ctx context.Context) (executor.Executor, time.Time, error) {
+func (opts *Create) Resolve(ctx context.Context) (exe executor.Executor, t time.Time, resolveErr error) {
 	if ctx.Err() != nil {
 		return nil, time.Time{}, errors.New("cannot resolve command with canceled context")
 	}
@@ -176,32 +198,37 @@ func (opts *Create) Resolve(ctx context.Context) (executor.Executor, time.Time, 
 	var cancel context.CancelFunc = func() {}
 	if opts.Timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer func() {
+			if resolveErr != nil {
+				cancel()
+			}
+		}()
+
 		deadline, _ = ctx.Deadline()
-		opts.closers = append(opts.closers, func() error { cancel(); return nil })
-	}
-
-	var cmd executor.Executor
-	if opts.Remote == nil {
-		cmd = executor.NewLocal(ctx, opts.Args)
-	} else if opts.Remote.UseSSHLibrary {
-		// The client and session will be closed by the SSH executor.
-		client, session, err := opts.Remote.Resolve()
-		if err != nil {
+		opts.closers = append(opts.closers, func() error {
 			cancel()
-			return nil, time.Time{}, errors.Wrap(err, "could not create SSH connection")
-		}
-		cmd = executor.MakeSSH(ctx, client, session, opts.Args)
-	} else {
-		cmd = executor.NewSSHBinary(ctx, append(opts.Remote.Args, opts.Remote.String()), opts.Args)
+			return nil
+		})
 	}
 
-	if opts.WorkingDirectory == "" && opts.Remote == nil {
+	cmd, err := opts.resolveExecutor(ctx)
+	if err != nil {
+		return nil, time.Time{}, errors.Wrap(err, "could not resolve process executor")
+	}
+	defer func() {
+		if resolveErr != nil {
+			grip.Error(errors.Wrap(cmd.Close(), "problem closing process executor"))
+		}
+	}()
+
+	if opts.WorkingDirectory == "" && opts.isLocal() {
 		opts.WorkingDirectory, _ = os.Getwd()
 	}
+
 	cmd.SetDir(opts.WorkingDirectory)
 
 	var env []string
-	if !opts.OverrideEnviron && opts.Remote == nil {
+	if !opts.OverrideEnviron && opts.isLocal() {
 		env = os.Environ()
 	}
 	for key, value := range opts.Environment {
@@ -211,14 +238,12 @@ func (opts *Create) Resolve(ctx context.Context) (executor.Executor, time.Time, 
 
 	stdout, err := opts.Output.GetOutput()
 	if err != nil {
-		cancel()
 		return nil, time.Time{}, errors.WithStack(err)
 	}
 	cmd.SetStdout(stdout)
 
 	stderr, err := opts.Output.GetError()
 	if err != nil {
-		cancel()
 		return nil, time.Time{}, errors.WithStack(err)
 	}
 	cmd.SetStderr(stderr)
@@ -229,10 +254,34 @@ func (opts *Create) Resolve(ctx context.Context) (executor.Executor, time.Time, 
 
 	// Senders require Close() or else command output is not guaranteed to log.
 	opts.closers = append(opts.closers, func() error {
-		return errors.WithStack(opts.Output.Close())
+		return errors.Wrap(opts.Output.Close(), "problem closing output")
 	})
 
 	return cmd, deadline, nil
+}
+
+func (opts *Create) resolveExecutor(ctx context.Context) (executor.Executor, error) {
+	if opts.Remote != nil {
+		if opts.Remote.UseSSHLibrary {
+			client, session, err := opts.Remote.Resolve()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not resolve SSH client and session")
+			}
+			return executor.NewSSH(ctx, client, session, opts.Args), nil
+		}
+
+		return executor.NewSSHBinary(ctx, opts.Remote.String(), opts.Remote.Args, opts.Args), nil
+	}
+
+	if opts.Docker != nil {
+		client, err := opts.Docker.Resolve()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not resolve Docker options")
+		}
+		return executor.NewDocker(ctx, client, opts.Docker.Platform, opts.Docker.Image, opts.Args), nil
+	}
+
+	return executor.NewLocal(ctx, opts.Args), nil
 }
 
 // ResolveEnvironment returns the (Create).Environment as a slice of environment
@@ -321,6 +370,14 @@ func (opts *Create) Copy() *Create {
 	if opts.StandardInputBytes != nil {
 		optsCopy.StandardInputBytes = make([]byte, len(opts.StandardInputBytes))
 		_ = copy(optsCopy.StandardInputBytes, opts.StandardInputBytes)
+	}
+
+	if opts.Remote != nil {
+		optsCopy.Remote = opts.Remote.Copy()
+	}
+
+	if opts.Docker != nil {
+		optsCopy.Docker = opts.Docker.Copy()
 	}
 
 	optsCopy.Output = *opts.Output.Copy()

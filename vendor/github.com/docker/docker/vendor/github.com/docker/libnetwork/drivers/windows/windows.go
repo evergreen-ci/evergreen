@@ -25,6 +25,7 @@ import (
 	"github.com/docker/libnetwork/discoverapi"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/netlabel"
+	"github.com/docker/libnetwork/portmapper"
 	"github.com/docker/libnetwork/types"
 	"github.com/sirupsen/logrus"
 )
@@ -88,11 +89,12 @@ type hnsEndpoint struct {
 }
 
 type hnsNetwork struct {
-	id        string
-	created   bool
-	config    *networkConfiguration
-	endpoints map[string]*hnsEndpoint // key: endpoint id
-	driver    *driver                 // The network's driver
+	id         string
+	created    bool
+	config     *networkConfiguration
+	endpoints  map[string]*hnsEndpoint // key: endpoint id
+	driver     *driver                 // The network's driver
+	portMapper *portmapper.PortMapper
 	sync.Mutex
 }
 
@@ -109,7 +111,10 @@ const (
 
 // IsBuiltinLocalDriver validates if network-type is a builtin local-scoped driver
 func IsBuiltinLocalDriver(networkType string) bool {
-	if "l2bridge" == networkType || "l2tunnel" == networkType || "nat" == networkType || "ics" == networkType || "transparent" == networkType {
+	if "l2bridge" == networkType || "l2tunnel" == networkType ||
+		"nat" == networkType || "ics" == networkType ||
+		"transparent" == networkType || "internal" == networkType ||
+		"private" == networkType {
 		return true
 	}
 
@@ -250,19 +255,20 @@ func (d *driver) DecodeTableEntry(tablename string, key string, value []byte) (s
 	return "", nil
 }
 
-func (d *driver) createNetwork(config *networkConfiguration) error {
+func (d *driver) createNetwork(config *networkConfiguration) *hnsNetwork {
 	network := &hnsNetwork{
-		id:        config.ID,
-		endpoints: make(map[string]*hnsEndpoint),
-		config:    config,
-		driver:    d,
+		id:         config.ID,
+		endpoints:  make(map[string]*hnsEndpoint),
+		config:     config,
+		driver:     d,
+		portMapper: portmapper.New(""),
 	}
 
 	d.Lock()
 	d.networks[config.ID] = network
 	d.Unlock()
 
-	return nil
+	return network
 }
 
 // Create a new network
@@ -287,11 +293,7 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 		return err
 	}
 
-	err = d.createNetwork(config)
-
-	if err != nil {
-		return err
-	}
+	n := d.createNetwork(config)
 
 	// A non blank hnsid indicates that the network was discovered
 	// from HNS. No need to call HNS if this network was discovered
@@ -365,6 +367,36 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 
 		config.HnsID = hnsresponse.Id
 		genData[HNSID] = config.HnsID
+		n.created = true
+
+		defer func() {
+			if err != nil {
+				d.DeleteNetwork(n.id)
+			}
+		}()
+
+		hnsIPv4Data := make([]driverapi.IPAMData, len(hnsresponse.Subnets))
+
+		for i, subnet := range hnsresponse.Subnets {
+			var gwIP, subnetIP *net.IPNet
+
+			//The gateway returned from HNS is an IPAddress.
+			//We need to convert it to an IPNet to use as the Gateway of driverapi.IPAMData struct
+			gwCIDR := subnet.GatewayAddress + "/32"
+			_, gwIP, err = net.ParseCIDR(gwCIDR)
+			if err != nil {
+				return err
+			}
+
+			hnsIPv4Data[i].Gateway = gwIP
+			_, subnetIP, err = net.ParseCIDR(subnet.AddressPrefix)
+			if err != nil {
+				return err
+			}
+			hnsIPv4Data[i].Pool = subnetIP
+		}
+
+		nInfo.UpdateIpamConfig(hnsIPv4Data)
 
 	} else {
 		// Delete any stale HNS endpoints for this network.
@@ -381,13 +413,10 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 		} else {
 			logrus.Warnf("Error listing HNS endpoints for network %s", config.HnsID)
 		}
+
+		n.created = true
 	}
 
-	n, err := d.getNetwork(id)
-	if err != nil {
-		return err
-	}
-	n.created = true
 	return d.storeUpdate(config)
 }
 
@@ -415,7 +444,7 @@ func (d *driver) DeleteNetwork(nid string) error {
 	// delele endpoints belong to this network
 	for _, ep := range n.endpoints {
 		if err := d.storeDelete(ep); err != nil {
-			logrus.Warnf("Failed to remove bridge endpoint %s from store: %v", ep.id[0:7], err)
+			logrus.Warnf("Failed to remove bridge endpoint %.7s from store: %v", ep.id, err)
 		}
 	}
 
@@ -430,7 +459,7 @@ func convertQosPolicies(qosPolicies []types.QosPolicy) ([]json.RawMessage, error
 	// understood by the HCS.
 	for _, elem := range qosPolicies {
 		encodedPolicy, err := json.Marshal(hcsshim.QosPolicy{
-			Type: "QOS",
+			Type:                            "QOS",
 			MaximumOutgoingBandwidthInBytes: elem.MaxEgressBandwidth,
 		})
 
@@ -459,7 +488,7 @@ func ConvertPortBindings(portBindings []types.PortBinding) ([]json.RawMessage, e
 			return nil, fmt.Errorf("Windows does not support more than one host port in NAT settings")
 		}
 
-		if len(elem.HostIP) != 0 {
+		if len(elem.HostIP) != 0 && !elem.HostIP.IsUnspecified() {
 			return nil, fmt.Errorf("Windows does not support host IP addresses in NAT settings")
 		}
 
@@ -610,7 +639,27 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 		endpointStruct.MacAddress = strings.Replace(macAddress.String(), ":", "-", -1)
 	}
 
-	endpointStruct.Policies, err = ConvertPortBindings(epConnectivity.PortBindings)
+	portMapping := epConnectivity.PortBindings
+
+	if n.config.Type == "l2bridge" || n.config.Type == "l2tunnel" {
+		ip := net.IPv4(0, 0, 0, 0)
+		if ifInfo.Address() != nil {
+			ip = ifInfo.Address().IP
+		}
+
+		portMapping, err = AllocatePorts(n.portMapper, portMapping, ip)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if err != nil {
+				ReleasePorts(n.portMapper, portMapping)
+			}
+		}()
+	}
+
+	endpointStruct.Policies, err = ConvertPortBindings(portMapping)
 	if err != nil {
 		return err
 	}
@@ -704,7 +753,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 	}
 
 	if err = d.storeUpdate(endpoint); err != nil {
-		logrus.Errorf("Failed to save endpoint %s to store: %v", endpoint.id[0:7], err)
+		logrus.Errorf("Failed to save endpoint %.7s to store: %v", endpoint.id, err)
 	}
 
 	return nil
@@ -721,6 +770,10 @@ func (d *driver) DeleteEndpoint(nid, eid string) error {
 		return err
 	}
 
+	if n.config.Type == "l2bridge" || n.config.Type == "l2tunnel" {
+		ReleasePorts(n.portMapper, ep.portMapping)
+	}
+
 	n.Lock()
 	delete(n.endpoints, eid)
 	n.Unlock()
@@ -731,7 +784,7 @@ func (d *driver) DeleteEndpoint(nid, eid string) error {
 	}
 
 	if err := d.storeDelete(ep); err != nil {
-		logrus.Warnf("Failed to remove bridge endpoint %s from store: %v", ep.id[0:7], err)
+		logrus.Warnf("Failed to remove bridge endpoint %.7s from store: %v", ep.id, err)
 	}
 	return nil
 }

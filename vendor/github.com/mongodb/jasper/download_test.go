@@ -53,7 +53,7 @@ func TestSetupDownloadMongoDBReleasesWithInvalidArtifactsFeed(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 	defer cancel()
 
-	dir, err := ioutil.TempDir("build", "out")
+	dir, err := ioutil.TempDir(testutil.BuildDirectory(), "out")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -68,7 +68,7 @@ func TestSetupDownloadMongoDBReleasesWithInvalidArtifactsFeed(t *testing.T) {
 }
 
 func TestCreateValidDownloadJobs(t *testing.T) {
-	dir, err := ioutil.TempDir("build", "out")
+	dir, err := ioutil.TempDir(testutil.BuildDirectory(), "out")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -116,11 +116,11 @@ func TestProcessDownloadJobs(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testutil.LongTestTimeout)
 	defer cancel()
 
-	downloadDir, err := ioutil.TempDir("build", "download_test")
+	downloadDir, err := ioutil.TempDir(testutil.BuildDirectory(), "download_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(downloadDir)
 
-	fileServerDir, err := ioutil.TempDir("build", "download_test_server")
+	fileServerDir, err := ioutil.TempDir(testutil.BuildDirectory(), "download_test_server")
 	require.NoError(t, err)
 	defer os.RemoveAll(fileServerDir)
 
@@ -168,7 +168,7 @@ func TestAddMongoDBFilesToCacheWithInvalidPath(t *testing.T) {
 	_, err := os.Stat(fileName)
 	require.True(t, os.IsNotExist(err))
 
-	absPath, err := filepath.Abs("build")
+	absPath, err := filepath.Abs(testutil.BuildDirectory())
 	require.NoError(t, err)
 
 	err = addMongoDBFilesToCache(lru.NewCache(), absPath)(fileName)
@@ -215,13 +215,13 @@ func TestDoExtract(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			file, err := ioutil.TempFile("build", "out.txt")
+			file, err := ioutil.TempFile(testutil.BuildDirectory(), "out.txt")
 			require.NoError(t, err)
 			defer os.Remove(file.Name())
-			archiveFile, err := ioutil.TempFile("build", "out"+testCase.fileExtension)
+			archiveFile, err := ioutil.TempFile(testutil.BuildDirectory(), "out"+testCase.fileExtension)
 			require.NoError(t, err)
 			defer os.Remove(archiveFile.Name())
-			extractDir, err := ioutil.TempDir("build", "out")
+			extractDir, err := ioutil.TempDir(testutil.BuildDirectory(), "out")
 			require.NoError(t, err)
 			defer os.RemoveAll(extractDir)
 
@@ -253,7 +253,7 @@ func TestDoExtract(t *testing.T) {
 }
 
 func TestDoExtractUnarchivedFile(t *testing.T) {
-	file, err := ioutil.TempFile("build", "out.txt")
+	file, err := ioutil.TempFile(testutil.BuildDirectory(), "out.txt")
 	require.NoError(t, err)
 	defer os.Remove(file.Name())
 

@@ -31,7 +31,7 @@ type CmdExec struct {
 	Silent           bool   `json:"silent"`
 	ContinueOnError  bool   `json:"continue_on_err"`
 	SystemLog        bool   `json:"system_log"`
-	CombineOuutput   bool   `json:"redirect_standard_error_to_output"`
+	CombineOutput    bool   `json:"redirect_standard_error_to_output"`
 	IgnoreStdError   bool   `json:"ignore_standard_error"`
 	IgnoreStdOut     bool   `json:"ignore_standard_out"`
 	KeepEmptyArgs    bool   `json:"keep_empty_args"`
@@ -57,7 +57,7 @@ type CmdExecShell struct {
 	Silent           bool   `json:"silent"`
 	ContinueOnError  bool   `json:"continue_on_err"`
 	SystemLog        bool   `json:"system_log"`
-	CombineOuutput   bool   `json:"redirect_standard_error_to_output"`
+	CombineOutput    bool   `json:"redirect_standard_error_to_output"`
 	IgnoreStdError   bool   `json:"ignore_standard_error"`
 	IgnoreStdOut     bool   `json:"ignore_standard_out"`
 	WorkingDirectory string `json:"working_dir"`
@@ -73,6 +73,55 @@ func (c CmdExecShell) Resolve() *CommandDefinition {
 	}
 }
 func shellExecFactory() Command { return CmdExecShell{} }
+
+type ScriptingTestOptions struct {
+	Name        string   `json:"name"`
+	Args        []string `json:"args"`
+	Pattern     string   `json:"pattern"`
+	TimeoutSecs int      `json:"timeout_secs"`
+	Count       int      `json:"count"`
+}
+
+type CmdSubprocessScripting struct {
+	Harness                       string                `json:"harness"`
+	Command                       string                `json:"command"`
+	Args                          []string              `json:"args"`
+	TestDir                       string                `json:"test_dir"`
+	TestOptions                   *ScriptingTestOptions `json:"test_options"`
+	Script                        string                `json:"script"`
+	Path                          []string              `json:"add_to_path"`
+	Env                           map[string]string     `json:"env"`
+	CacheDurationSeconds          int                   `json:"cache_duration_secs"`
+	CleanupHarness                bool                  `json:"cleanup_harness"`
+	LockFile                      string                `json:"lock_file"`
+	Packages                      []string              `json:"packages"`
+	HarnessPath                   string                `json:"harness_path"`
+	HostPath                      string                `json:"host_path"`
+	AddExpansionsToEnv            bool                  `json:"add_expansions_to_env"`
+	IncludeExpansionsInEnv        []string              `json:"include_expansions_in_env"`
+	Silent                        bool                  `json:"silent"`
+	SystemLog                     bool                  `json:"system_log"`
+	WorkingDir                    string                `json:"working_dir"`
+	IgnoreStandardOutput          bool                  `json:"ignore_standard_out"`
+	IgnoreStandardError           bool                  `json:"ignore_standard_error"`
+	RedirectStandardErrorToOutput bool                  `json:"redirect_standard_error_to_output"`
+	ContinueOnError               bool                  `json:"continue_on_err"`
+}
+
+func (c CmdSubprocessScripting) Name() string { return "subprocess.scripting" }
+
+func (c CmdSubprocessScripting) Validate() error {
+	return nil
+}
+
+func (c CmdSubprocessScripting) Resolve() *CommandDefinition {
+	return &CommandDefinition{
+		CommandName: c.Name(),
+		Params:      exportCmd(c),
+	}
+}
+
+func subprocessScriptingFactory() Command { return CmdSubprocessScripting{} }
 
 type CmdS3Put struct {
 	Optional               bool     `json:"optional"`
@@ -155,6 +204,36 @@ func (c CmdS3Copy) Resolve() *CommandDefinition {
 	}
 }
 func s3CopyFactory() Command { return CmdS3Copy{} }
+
+type CmdS3Push struct {
+	ExcludeFilter string `json:"exclude"`
+	MaxRetries    int    `json:"max_retries"`
+}
+
+func (c CmdS3Push) Name() string    { return "s3.push" }
+func (c CmdS3Push) Validate() error { return nil }
+func (c CmdS3Push) Resolve() *CommandDefinition {
+	return &CommandDefinition{
+		CommandName: c.Name(),
+		Params:      exportCmd(c),
+	}
+}
+func s3PushFactory() Command { return CmdS3Push{} }
+
+type CmdS3Pull struct {
+	ExcludeFilter string `json:"exclude"`
+	MaxRetries    int    `json:"max_retries"`
+}
+
+func (c CmdS3Pull) Name() string    { return "s3.pull" }
+func (c CmdS3Pull) Validate() error { return nil }
+func (c CmdS3Pull) Resolve() *CommandDefinition {
+	return &CommandDefinition{
+		CommandName: c.Name(),
+		Params:      exportCmd(c),
+	}
+}
+func s3PullFactory() Command { return CmdS3Pull{} }
 
 type CmdGetProject struct {
 	Token     string            `json:"token"`

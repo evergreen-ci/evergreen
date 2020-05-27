@@ -3,11 +3,9 @@ package options
 import (
 	"bytes"
 	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,44 +123,81 @@ func TestOutputOptions(t *testing.T) {
 			opts.SendErrorToOutput = true
 			assert.Error(t, opts.Validate())
 		},
-		"ValidateFailsForInvalidLogFormat": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormat("foo")}}}
-			assert.Error(t, opts.Validate())
-		},
-		"ValidateFailsForInvalidLogTypes": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogType(""), Options: Log{Format: LogFormatPlain}}}
-			assert.Error(t, opts.Validate())
-		},
 		"SuppressOutputWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogDefault,
+						Format: RawLoggerConfigFormatBSON,
+					},
+				},
+			}
 			opts.SuppressOutput = true
 			assert.NoError(t, opts.Validate())
 		},
 		"SuppressErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogDefault,
+						Format: RawLoggerConfigFormatBSON,
+					},
+				},
+			}
 			opts.SuppressError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"SuppressOutputAndErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogDefault,
+						Format: RawLoggerConfigFormatBSON,
+					},
+				},
+			}
 			opts.SuppressOutput = true
 			opts.SuppressError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"RedirectOutputWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogDefault,
+						Format: RawLoggerConfigFormatBSON,
+					},
+				},
+			}
 			opts.SendOutputToError = true
 			assert.NoError(t, opts.Validate())
 		},
 		"RedirectErrorWithLogger": func(t *testing.T, opts Output) {
-			opts.Loggers = []Logger{{Type: LogDefault, Options: Log{Format: LogFormatPlain}}}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogDefault,
+						Format: RawLoggerConfigFormatBSON,
+					},
+				},
+			}
 			opts.SendErrorToOutput = true
 			assert.NoError(t, opts.Validate())
 		},
 		"GetOutputWithStdoutAndLogger": func(t *testing.T, opts Output) {
 			opts.Output = stdout
-			logger := Logger{Type: LogInMemory, Options: Log{Format: LogFormatPlain, InMemoryCap: 100}}
-			opts.Loggers = []Logger{logger}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogInMemory,
+						Format: RawLoggerConfigFormatBSON,
+					},
+					producer: &InMemoryLoggerOptions{
+						InMemoryCap: 100,
+						Base:        BaseOptions{Format: LogFormatPlain},
+					},
+				},
+			}
 			out, err := opts.GetOutput()
 			require.NoError(t, err)
 
@@ -173,7 +208,9 @@ func TestOutputOptions(t *testing.T) {
 
 			assert.Equal(t, msg, stdout.String())
 
-			sender, ok := opts.Loggers[0].sender.(*send.InMemorySender)
+			safeSender, ok := opts.Loggers[0].sender.(*SafeSender)
+			require.True(t, ok)
+			sender, ok := safeSender.Sender.(*send.InMemorySender)
 			require.True(t, ok)
 
 			logOut, err := sender.GetString()
@@ -183,8 +220,18 @@ func TestOutputOptions(t *testing.T) {
 		},
 		"GetErrorWithErrorAndLogger": func(t *testing.T, opts Output) {
 			opts.Error = stderr
-			logger := Logger{Type: LogInMemory, Options: Log{Format: LogFormatPlain, InMemoryCap: 100}}
-			opts.Loggers = []Logger{logger}
+			opts.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogInMemory,
+						Format: RawLoggerConfigFormatJSON,
+					},
+					producer: &InMemoryLoggerOptions{
+						InMemoryCap: 100,
+						Base:        BaseOptions{Format: LogFormatPlain},
+					},
+				},
+			}
 			errOut, err := opts.GetError()
 			require.NoError(t, err)
 
@@ -195,7 +242,9 @@ func TestOutputOptions(t *testing.T) {
 
 			assert.Equal(t, msg, stderr.String())
 
-			sender, ok := opts.Loggers[0].sender.(*send.InMemorySender)
+			safeSender, ok := opts.Loggers[0].sender.(*SafeSender)
+			require.True(t, ok)
+			sender, ok := safeSender.Sender.(*send.InMemorySender)
 			require.True(t, ok)
 
 			logErr, err := sender.GetString()
@@ -233,151 +282,4 @@ func TestOutputIntegrationTableTest(t *testing.T) {
 		assert.NoError(t, opt.Validate(), "%d: %+v", idx, opt)
 	}
 
-}
-
-func TestLoggers(t *testing.T) {
-	type testCase func(*testing.T, Logger)
-	cases := map[string]testCase{
-		"InvalidLogTypeFails": func(t *testing.T, l Logger) {
-			l.Type = LogType("")
-			assert.Error(t, l.Validate())
-		},
-		"ValidLogTypePasses": func(t *testing.T, l Logger) {
-			assert.NoError(t, l.Validate())
-		},
-		"ConfigureFailsForInvalidLogType": func(t *testing.T, l Logger) {
-			l.Type = LogType("foo")
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigurePassesWithLogDefault": func(t *testing.T, l Logger) {
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigurePassesWithLogInherit": func(t *testing.T, l Logger) {
-			l.Type = LogInherit
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigureFailsWithoutPopulatedSplunkOptions": func(t *testing.T, l Logger) {
-			l.Type = LogSplunk
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigurePassesWithPopulatedSplunkOptions": func(t *testing.T, l Logger) {
-			l.Type = LogSplunk
-			l.Options.SplunkOptions = send.SplunkConnectionInfo{ServerURL: "foo", Token: "bar"}
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigureFailsWithoutLocalInBuildloggerOptions": func(t *testing.T, l Logger) {
-			l.Type = LogBuildloggerV2
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureFailsWithoutSetNameInBuildloggerOptions": func(t *testing.T, l Logger) {
-			l.Type = LogBuildloggerV2
-			l.Options.BuildloggerOptions = send.BuildloggerConfig{Local: send.MakeNative()}
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureFailsWithoutPopulatedSumologicOptions": func(t *testing.T, l Logger) {
-			l.Type = LogSumologic
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureFailsWithInvalidSumologicOptions": func(t *testing.T, l Logger) {
-			l.Type = LogSumologic
-			l.Options.SumoEndpoint = "foo"
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureLogFilePasses": func(t *testing.T, l Logger) {
-			file, err := ioutil.TempFile("", "foo.txt")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, file.Close())
-				grip.Warning(os.RemoveAll(file.Name()))
-			}()
-
-			l.Type = LogFile
-			l.Options.FileName = file.Name()
-
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigureFailsWithoutCapacity": func(t *testing.T, l Logger) {
-			l.Type = LogInMemory
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigurePassesWithCapacity": func(t *testing.T, l Logger) {
-			l.Type = LogInMemory
-			l.Options.InMemoryCap = 10
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigurePassesWithBuffering": func(t *testing.T, l Logger) {
-			l.Options.BufferOptions.Buffered = true
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigureFailsWithNegativeBufferDuration": func(t *testing.T, l Logger) {
-			l.Options.BufferOptions.Buffered = true
-			l.Options.BufferOptions.Duration = -1
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureFailsWithNegativeBufferSize": func(t *testing.T, l Logger) {
-			l.Options.BufferOptions.Buffered = true
-			l.Options.BufferOptions.MaxSize = -1
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigureFailsWithInvalidLogFormat": func(t *testing.T, l Logger) {
-			l.Options.Format = LogFormat("foo")
-			sender, err := l.Configure()
-			assert.Error(t, err)
-			assert.Nil(t, sender)
-		},
-		"ConfigurePassesWithLogFormatDefault": func(t *testing.T, l Logger) {
-			l.Options.Format = LogFormatDefault
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigurePassesWithLogFormatJSON": func(t *testing.T, l Logger) {
-			l.Options.Format = LogFormatJSON
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		"ConfigurePassesWithLogFormatPlain": func(t *testing.T, l Logger) {
-			l.Options.Format = LogFormatPlain
-			sender, err := l.Configure()
-			assert.NoError(t, err)
-			assert.NotNil(t, sender)
-		},
-		// "": func(t *testing.T, l LogType, opts Log) {},
-	}
-	for name, test := range cases {
-		t.Run(name, func(t *testing.T) {
-			test(t, Logger{Type: LogDefault, Options: Log{Format: LogFormatPlain}})
-		})
-	}
 }
