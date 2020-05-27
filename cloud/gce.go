@@ -181,6 +181,10 @@ func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (Cl
 	return gceToEvgStatus(instance.Status), nil
 }
 
+func (m *gceManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with gce provider")
+}
+
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {

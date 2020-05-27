@@ -404,6 +404,10 @@ func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
 
+func (h *Host) NeedsPortBindings() bool {
+	return h.DockerOptions.PublishPorts && h.PortBindings == nil
+}
+
 func IsIntentHostId(id string) bool {
 	return strings.HasPrefix(id, "evg-")
 }

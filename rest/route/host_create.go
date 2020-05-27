@@ -98,7 +98,7 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := h.sc.ListHostsForTask(h.taskID)
+	hosts, err := h.sc.ListHostsForTask(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
