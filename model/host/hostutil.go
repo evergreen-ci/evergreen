@@ -1105,9 +1105,11 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
-		// We have to do this because the evergreen config file is already baked
-		// into the AMI and owned by the privileged user.
-		h.changeOwnerCommand(h.spawnHostConfigFile()),
+		// We have to do this because on most of the distro (but not all of
+		// them), the evergreen config file is already baked into the AMI and
+		// owned by the privileged user. This is allowed to fail since some
+		// distros don't have the evergreen config file.
+		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(h.spawnHostConfigFile())),
 		// Note: this will likely fail if the configuration file content
 		// contains quotes.
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
