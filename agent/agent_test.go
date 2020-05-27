@@ -385,7 +385,7 @@ func (s *AgentSuite) TestAbort() {
 	}
 	s.Require().NoError(s.tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
-		for toFind, _ := range shouldFind {
+		for toFind := range shouldFind {
 			if strings.Contains(m.Message, toFind) {
 				shouldFind[toFind] = true
 			}
@@ -422,6 +422,7 @@ func (s *AgentSuite) TestWaitCompleteSuccess() {
 	defer cancel()
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	s.tc.project = &model.Project{}
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
 	s.False(s.tc.hadTimedOut())
@@ -437,6 +438,7 @@ func (s *AgentSuite) TestWaitCompleteFailure() {
 	defer cancel()
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	s.tc.project = &model.Project{}
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
@@ -449,6 +451,7 @@ func (s *AgentSuite) TestWaitExecTimeout() {
 	cancel()
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	s.tc.project = &model.Project{}
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
@@ -464,7 +467,7 @@ func (s *AgentSuite) TestWaitHeartbeatTimeout() {
 	defer cancel()
 	innerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
+	s.tc.project = &model.Project{}
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskUndispatched, status)
 	s.False(s.tc.hadTimedOut())
@@ -496,6 +499,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 			},
 		},
 		oomTracker: jasper.NewMockOOMTracker(),
+		project:    &model.Project{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
