@@ -190,7 +190,7 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
 	return getAllTaskStatuses(tasks), nil
 }
@@ -198,7 +198,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	baseTasks, err := getVersionBaseTasks(r.sc, *obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base task statuses: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
 	}
 	return getAllTaskStatuses(baseTasks), nil
 }
