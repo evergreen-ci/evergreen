@@ -21,12 +21,7 @@ func (t *Task) ResultStatus() string {
 		} else {
 			status = evergreen.TaskUnstarted
 		}
-	} else if t.Status == evergreen.TaskStarted {
-		status = evergreen.TaskStarted
-	} else if t.Status == evergreen.TaskSucceeded {
-		status = evergreen.TaskSucceeded
 	} else if t.Status == evergreen.TaskFailed {
-		status = evergreen.TaskFailed
 		if t.Details.Type == evergreen.CommandTypeSystem {
 			status = evergreen.TaskSystemFailed
 			if t.Details.TimedOut {
