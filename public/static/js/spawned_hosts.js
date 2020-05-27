@@ -194,18 +194,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           success: function (resp) {
             var volumes = resp.data;
             _.each(volumes, function (volume) {
-              $scope.computeVolumeExpirationTimes(volume);
-              if (volume.display_name == "") {
-                volume.display_name = volume.volume_id;
-              }
-              volume.originalDisplayName = volume.display_name;
-              if (volume.host_id) {
-                volume.status = "mounted";
-              } else {
-                volume.status = "free";
-              }
-
-              if ($location.search()["id"] == volume.volume_id) {
+              $scope.initialVolumeSetup(volume);
+              if ($location.search()["id"] === volume.volume_id) {
                 $scope.setSelectedVolume(volume)
               }
             });
@@ -230,14 +220,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
                 success: function (resp) {
                     var volumes = resp.data;
                     _.each(volumes, function (volume) {
-                        var foundVolume = false;
-                        for (var i = 0; i < $scope.volumes.length; i++) {
-                            if ($scope.volumes[i].id === volume.id) {
-                                foundVolume = true;
-                                break;
-                            }
-                        }
-                        if (!foundVolume) {
+                        var volumeExists = $scope.volumes.some(v => v.id === volume.id);
+                        if (!volumeExists) {
+                            $scope.initialVolumeSetup(volume);
                             $scope.volumes.push(volume);
                         }
                     });
@@ -275,6 +260,19 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       volume.original_expiration = new Date(volume.expiration);
       volume.current_expiration = new Date(volume.expiration);
       volume.original_no_expiration = volume.no_expiration;
+    }
+
+    $scope.initialVolumeSetup = function (volume) {
+        $scope.computeVolumeExpirationTimes(volume);
+        if (volume.display_name === "") {
+            volume.display_name = volume.volume_id;
+        }
+        volume.originalDisplayName = volume.display_name;
+        if (volume.host_id) {
+            volume.status = "mounted";
+        } else {
+            volume.status = "free";
+        }
     }
 
     $scope.computeUptime = function (host) {
