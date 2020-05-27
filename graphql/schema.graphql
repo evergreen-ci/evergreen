@@ -36,6 +36,7 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  userConfig: UserConfig
 }
 
 type Mutation {
@@ -449,6 +450,12 @@ type Notifications {
   spawnHostExpiration: String
   spawnHostOutcome: String
   commitQueue: String
+}
+type UserConfig {
+  user: String!
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
 }
 scalar Time
 scalar Duration
