@@ -43,7 +43,7 @@ func TestScriptingHarness(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close(ctx)
 
-	tmpdir, err := ioutil.TempDir(filepath.Join(testutil.GetDirectoryOfFile(), "..", "build"), "scripting_tests")
+	tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpdir))
@@ -119,10 +119,10 @@ func TestScriptingHarness(t *testing.T) {
 			Name:      "Python3",
 			Supported: isInPath("python3") && !evgTaskContains("ubuntu"),
 			DefaultOptions: &options.ScriptingPython{
-				VirtualEnvPath:        filepath.Join(tmpdir, "python3"),
-				LegacyPython:          false,
-				HostPythonInterpreter: "python3",
-				Output:                output,
+				VirtualEnvPath:    filepath.Join(tmpdir, "python3"),
+				LegacyPython:      false,
+				InterpreterBinary: "python3",
+				Output:            output,
 			},
 			Tests: []seTest{
 				{
@@ -159,11 +159,11 @@ func TestScriptingHarness(t *testing.T) {
 			Name:      "Python2",
 			Supported: isInPath("python") && !evgTaskContains("windows"),
 			DefaultOptions: &options.ScriptingPython{
-				VirtualEnvPath:        filepath.Join(tmpdir, "python2"),
-				LegacyPython:          true,
-				HostPythonInterpreter: "python",
-				Packages:              []string{"wheel"},
-				Output:                output,
+				VirtualEnvPath:    filepath.Join(tmpdir, "python2"),
+				LegacyPython:      true,
+				InterpreterBinary: "python",
+				Packages:          []string{"wheel"},
+				Output:            output,
 			},
 			Tests: []seTest{
 				{
@@ -270,7 +270,7 @@ func TestScriptingHarness(t *testing.T) {
 						defer func() {
 							assert.NoError(t, os.Remove(tmpFile))
 						}()
-						_, err := se.Build(ctx, testutil.GetDirectoryOfFile(), []string{
+						_, err := se.Build(ctx, testutil.BuildDirectory(), []string{
 							"-o", filepath.Join(tmpdir, "fake_script"),
 							tmpFile,
 						})

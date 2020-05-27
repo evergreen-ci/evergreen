@@ -2,6 +2,7 @@ package restart
 
 import (
 	"container/list"
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
-	"golang.org/x/net/context"
 )
 
 const defaultOldTaskTimeout = time.Minute
@@ -194,10 +194,18 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 // restart policy.
 func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
 	// TODO(aluzzardi): This function should not depend on `service`.
-	condition := orchestrator.RestartCondition(t)
-
-	if condition != api.RestartOnAny &&
-		(condition != api.RestartOnFailure || t.Status.State == api.TaskStateCompleted) {
+	// There are 3 possible restart policies.
+	switch orchestrator.RestartCondition(t) {
+	case api.RestartOnAny:
+		// we will be restarting, we just need to do a few more checks
+	case api.RestartOnFailure:
+		// we won't restart if the task is in TaskStateCompleted, as this is a
+		// not a failed state -- it indicates that the task exited with 0
+		if t.Status.State == api.TaskStateCompleted {
+			return false
+		}
+	case api.RestartOnNone:
+		// RestartOnNone means we just don't restart, ever
 		return false
 	}
 
@@ -508,20 +516,13 @@ func (r *Supervisor) Cancel(taskID string) {
 	<-delay.doneCh
 }
 
-// CancelAll aborts all pending restarts and waits for any instances of
-// StartNow that have already triggered to complete.
+// CancelAll aborts all pending restarts
 func (r *Supervisor) CancelAll() {
-	var cancelled []delayedStart
-
 	r.mu.Lock()
 	for _, delay := range r.delays {
 		delay.cancel()
 	}
 	r.mu.Unlock()
-
-	for _, delay := range cancelled {
-		<-delay.doneCh
-	}
 }
 
 // ClearServiceHistory forgets restart history related to a given service ID.

@@ -72,12 +72,12 @@ type rpcDaemon struct {
 	Port          int
 	CredsFilePath string
 	Manager       jasper.Manager
-	Logger        *options.Logger
+	Logger        *options.LoggerConfig
 
 	exit chan struct{}
 }
 
-func newRPCDaemon(host string, port int, manager jasper.Manager, credsFilePath string, logger *options.Logger) *rpcDaemon {
+func newRPCDaemon(host string, port int, manager jasper.Manager, credsFilePath string, logger *options.LoggerConfig) *rpcDaemon {
 	return &rpcDaemon{
 		Host:          host,
 		Port:          port,

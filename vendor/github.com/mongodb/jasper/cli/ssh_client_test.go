@@ -493,7 +493,7 @@ func TestSSHClient(t *testing.T) {
 				makeOutcomeResponse(nil),
 			)
 
-			opts := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			opts := options.WriteFile{Path: filepath.Join(testutil.BuildDirectory(), "write_file"), Content: []byte("foo")}
 			require.NoError(t, client.WriteFile(ctx, opts))
 		},
 		"WriteFileFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
@@ -503,17 +503,17 @@ func TestSSHClient(t *testing.T) {
 				nil,
 				invalidResponse(),
 			)
-			opts := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			opts := options.WriteFile{Path: filepath.Join(testutil.BuildDirectory(), "write_file"), Content: []byte("foo")}
 			assert.Error(t, client.WriteFile(ctx, opts))
 		},
 		"WriteFileFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			opts := options.WriteFile{Path: filepath.Join(buildDir(t), "write_file"), Content: []byte("foo")}
+			opts := options.WriteFile{Path: filepath.Join(testutil.BuildDirectory(), "write_file"), Content: []byte("foo")}
 			assert.Error(t, client.WriteFile(ctx, opts))
 		},
 		"ScriptingReturnsFromCache": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			opts := &options.ScriptingPython{
-				VirtualEnvPath: "build",
+				VirtualEnvPath: testutil.BuildDirectory(),
 				Packages:       []string{"pymongo"},
 			}
 			env, err := scripting.NewHarness(baseManager, opts)

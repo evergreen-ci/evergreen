@@ -73,3 +73,13 @@ func getPidFromLog(line string) (int, bool) {
 	}
 	return pid, true
 }
+
+type OomTrackerMock struct {
+	WasOOMKilled bool
+	Pids         []int
+}
+
+func NewMockOOMTracker() OOMTracker                   { return &OomTrackerMock{} }
+func (o *OomTrackerMock) Check(context.Context) error { return nil }
+func (o *OomTrackerMock) Clear(context.Context) error { return nil }
+func (o *OomTrackerMock) Report() (bool, []int)       { return o.WasOOMKilled, o.Pids }

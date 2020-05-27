@@ -89,12 +89,12 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 						t.Skip("Evergreen makes its own job object, so these will not pass in Evergreen tests ",
 							"(although they will pass if locally run).")
 					}
-					tctx, cancel := context.WithTimeout(ctx, testutil.LongTestTimeout)
+					tctx, cancel := context.WithTimeout(ctx, testutil.TestTimeout)
 					defer cancel()
 					manager := makeManager(tctx, t)
 					tracker, ok := manager.tracker.(*windowsProcessTracker)
 					require.True(t, ok)
-					testCase(tctx, t, manager, tracker, testutil.YesCreateOpts(0))
+					testCase(tctx, t, manager, tracker, testutil.SleepCreateOpts(1))
 				})
 			}
 		})

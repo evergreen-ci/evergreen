@@ -79,7 +79,7 @@ func TestWriteOutputInvalidInput(t *testing.T) {
 func TestWriteOutputInvalidOutput(t *testing.T) {
 	input := bytes.NewBufferString(`{"foo":"bar"}`)
 
-	output, err := ioutil.TempFile(buildDir(t), "write_output.txt")
+	output, err := ioutil.TempFile(testutil.BuildDirectory(), "write_output.txt")
 	require.NoError(t, err)
 	defer os.RemoveAll(output.Name())
 	require.NoError(t, output.Close())

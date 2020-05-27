@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -785,13 +786,17 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 
 	inMemoryLoggerExists := false
 	for _, logger := range opts.Output.Loggers {
-		if logger.Type == options.LogInMemory {
+		if logger.Type() == options.LogInMemory {
 			inMemoryLoggerExists = true
 			break
 		}
 	}
 	if !inMemoryLoggerExists {
-		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(OutputBufferSize))
+		logger, loggerErr := jasper.NewInMemoryLogger(OutputBufferSize)
+		if err != nil {
+			return nil, errors.Wrap(loggerErr, "problem creating a new in-memroy logger")
+		}
+		opts.Output.Loggers = append(opts.Output.Loggers, logger)
 	}
 
 	proc, err := client.CreateProcess(ctx, opts)
@@ -859,20 +864,10 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return false, "", nil
 	}
 
-	bufferSize := 0
-	if len(info.Options.Output.Loggers) > 0 {
-		for _, logger := range info.Options.Output.Loggers {
-			if logger.Type == options.LogInMemory {
-				bufferSize = logger.Options.InMemoryCap
-				break
-			}
-		}
-	}
-	if bufferSize == 0 {
-		return true, "", nil
-	}
-
-	logStream, err := client.GetLogStream(ctx, processID, bufferSize)
+	// using MaxInt32 because we can assume the in-mem buffer size is small
+	// enough and want to get ALL logs in the buffer with one call to
+	// GetLogsStream.
+	logStream, err := client.GetLogStream(ctx, processID, math.MaxInt32)
 	if err != nil {
 		return true, "", errors.Wrap(err, "can't get output of process")
 	}
@@ -1110,9 +1105,11 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
-		// We have to do this because the evergreen config file is already baked
-		// into the AMI and owned by the privileged user.
-		h.changeOwnerCommand(h.spawnHostConfigFile()),
+		// We have to do this because on most of the distro (but not all of
+		// them), the evergreen config file is already baked into the AMI and
+		// owned by the privileged user. This is allowed to fail since some
+		// distros don't have the evergreen config file.
+		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(h.spawnHostConfigFile())),
 		// Note: this will likely fail if the configuration file content
 		// contains quotes.
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),

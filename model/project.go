@@ -35,6 +35,7 @@ type Project struct {
 	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback"`
 	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	OomTracker        bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
 	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`

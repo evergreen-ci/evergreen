@@ -2,6 +2,7 @@ package ca
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -31,10 +32,10 @@ import (
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -352,7 +353,8 @@ func (rca *RootCA) getKEKUpdate(ctx context.Context, leafCert *x509.Certificate,
 		defer cancel()
 		response, err := client.GetUnlockKey(ctx, &api.GetUnlockKeyRequest{})
 		if err != nil {
-			if grpc.Code(err) == codes.Unimplemented { // if the server does not support keks, return as if no encryption key was specified
+			s, _ := status.FromError(err)
+			if s.Code() == codes.Unimplemented { // if the server does not support keks, return as if no encryption key was specified
 				conn.Close(true)
 				return &KEKData{}, nil
 			}
@@ -838,8 +840,9 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 		stateCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		statusResponse, err := caClient.NodeCertificateStatus(stateCtx, statusRequest)
+		s, _ := status.FromError(err)
 		switch {
-		case err != nil && grpc.Code(err) != codes.DeadlineExceeded:
+		case err != nil && s.Code() != codes.DeadlineExceeded:
 			conn.Close(false)
 			// Because IssueNodeCertificate succeeded, if this call failed likely it is due to an issue with this
 			// particular connection, so we need to get another.  We should try a remote connection - the local node

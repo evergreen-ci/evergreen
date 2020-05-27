@@ -1,9 +1,9 @@
 package raft
 
 import (
+	"context"
+	"net"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
@@ -15,11 +15,15 @@ import (
 
 // dial returns a grpc client connection
 func dial(addr string, protocol string, creds credentials.TransportCredentials, timeout time.Duration) (*grpc.ClientConn, error) {
+	// gRPC dialer connects to proxy first. Provide a custom dialer here avoid that.
 	grpcOptions := []grpc.DialOption{
 		grpc.WithBackoffMaxDelay(2 * time.Second),
 		grpc.WithTransportCredentials(creds),
 		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout("tcp", addr, timeout)
+		}),
 	}
 
 	if timeout != 0 {

@@ -12,23 +12,23 @@ import (
 
 // RemoteConfig represents the arguments to connect to a remote host.
 type RemoteConfig struct {
-	Host string
-	User string
+	Host string `bson:"host" json:"host"`
+	User string `bson:"user" json:"user"`
 
 	// Args to the SSH binary. Only used by if UseSSHLibrary is false.
-	Args []string
+	Args []string `bson:"args,omitempty" json:"args,omitempty"`
 
 	// Determines whether to use the SSH binary or the SSH library.
-	UseSSHLibrary bool
+	UseSSHLibrary bool `bson:"use_ssh_library,omitempty" json:"use_ssh_library,omitempty"`
 
 	// The following apply only if UseSSHLibrary is true.
-	Port          int
-	Key           string
-	KeyFile       string
-	KeyPassphrase string
-	Password      string
+	Port          int    `bson:"port,omitempty" json:"port,omitempty"`
+	Key           string `bson:"key,omitempty" json:"key,omitempty"`
+	KeyFile       string `bson:"key_file,omitempty" json:"key_file,omitempty"`
+	KeyPassphrase string `bson:"key_passphrase,omitempty" json:"key_passphrase,omitempty"`
+	Password      string `bson:"password,omitempty" json:"password,omitempty"`
 	// Connection timeout
-	Timeout time.Duration
+	Timeout time.Duration `bson:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
 // Remote represents options to SSH into a remote machine.
@@ -37,9 +37,24 @@ type Remote struct {
 	Proxy *Proxy
 }
 
+// Copy returns a copy of the options for only the exported fields.
+func (opts *Remote) Copy() *Remote {
+	optsCopy := *opts
+	if opts.Proxy != nil {
+		optsCopy.Proxy = opts.Proxy.Copy()
+	}
+	return &optsCopy
+}
+
 // Proxy represents the remote configuration to access a remote proxy machine.
 type Proxy struct {
 	RemoteConfig
+}
+
+// Copy returns a copy of the options for only the exported fields.
+func (opts *Proxy) Copy() *Proxy {
+	optsCopy := *opts
+	return &optsCopy
 }
 
 const defaultSSHPort = 22

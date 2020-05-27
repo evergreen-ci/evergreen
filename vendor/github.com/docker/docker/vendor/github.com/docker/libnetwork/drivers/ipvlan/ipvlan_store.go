@@ -55,7 +55,14 @@ func (d *driver) initStore(option map[string]interface{}) error {
 			return types.InternalErrorf("ipvlan driver failed to initialize data store: %v", err)
 		}
 
-		return d.populateNetworks()
+		err = d.populateNetworks()
+		if err != nil {
+			return err
+		}
+		err = d.populateEndpoints()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -73,7 +80,7 @@ func (d *driver) populateNetworks() error {
 	}
 	for _, kvo := range kvol {
 		config := kvo.(*configuration)
-		if err = d.createNetwork(config); err != nil {
+		if _, err = d.createNetwork(config); err != nil {
 			logrus.Warnf("could not create ipvlan network for id %s from persistent state", config.ID)
 		}
 	}
@@ -95,15 +102,15 @@ func (d *driver) populateEndpoints() error {
 		ep := kvo.(*endpoint)
 		n, ok := d.networks[ep.nid]
 		if !ok {
-			logrus.Debugf("Network (%s) not found for restored ipvlan endpoint (%s)", ep.nid[0:7], ep.id[0:7])
-			logrus.Debugf("Deleting stale ipvlan endpoint (%s) from store", ep.id[0:7])
+			logrus.Debugf("Network (%.7s) not found for restored ipvlan endpoint (%.7s)", ep.nid, ep.id)
+			logrus.Debugf("Deleting stale ipvlan endpoint (%.7s) from store", ep.id)
 			if err := d.storeDelete(ep); err != nil {
-				logrus.Debugf("Failed to delete stale ipvlan endpoint (%s) from store", ep.id[0:7])
+				logrus.Debugf("Failed to delete stale ipvlan endpoint (%.7s) from store", ep.id)
 			}
 			continue
 		}
 		n.endpoints[ep.id] = ep
-		logrus.Debugf("Endpoint (%s) restored to network (%s)", ep.id[0:7], ep.nid[0:7])
+		logrus.Debugf("Endpoint (%.7s) restored to network (%.7s)", ep.id, ep.nid)
 	}
 
 	return nil

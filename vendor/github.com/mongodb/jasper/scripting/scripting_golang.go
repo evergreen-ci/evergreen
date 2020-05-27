@@ -38,14 +38,14 @@ func (e *golangEnvironment) Setup(ctx context.Context) error {
 		AddEnv("GOROOT", e.opts.Goroot)
 
 	for _, pkg := range e.opts.Packages {
-		if e.opts.WithUpdate {
+		if e.opts.UpdatePackages {
 			cmd.AppendArgs(gobin, "get", "-u", pkg)
 		} else {
 			cmd.AppendArgs(gobin, "get", pkg)
 		}
 	}
 
-	cmd.SetHook(func(res error) error {
+	cmd.PostHook(func(res error) error {
 		if res == nil {
 			e.isConfigured = true
 		}
@@ -63,14 +63,17 @@ func (e *golangEnvironment) Run(ctx context.Context, args []string) error {
 		SetOutputOptions(e.opts.Output).
 		Add(append([]string{e.opts.Interpreter(), "run"}, args...))
 
-	if e.opts.Context != "" {
-		cmd.Directory(e.opts.Context)
+	if e.opts.Directory != "" {
+		cmd.Directory(e.opts.Directory)
 	}
 
 	return cmd.Run(ctx)
 }
 
 func (e *golangEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {
+	if e.opts.Directory != "" && !strings.HasPrefix(dir, e.opts.Directory) {
+		dir = filepath.Join(e.opts.Directory, dir)
+	}
 	err := e.manager.CreateCommand(ctx).
 		Directory(dir).
 		Environment(e.opts.Environment).
@@ -98,8 +101,8 @@ func (e *golangEnvironment) Build(ctx context.Context, dir string, args []string
 func (e *golangEnvironment) RunScript(ctx context.Context, script string) error {
 	scriptChecksum := fmt.Sprintf("%x", sha1.Sum([]byte(script)))
 	path := strings.Join([]string{e.manager.ID(), scriptChecksum}, "_") + ".go"
-	if e.opts.Context != "" {
-		path = filepath.Join(e.opts.Context, path)
+	if e.opts.Directory != "" {
+		path = filepath.Join(e.opts.Directory, path)
 	} else {
 		path = filepath.Join(e.opts.Gopath, "tmp", path)
 
@@ -109,9 +112,8 @@ func (e *golangEnvironment) RunScript(ctx context.Context, script string) error 
 		Path:    path,
 		Content: []byte(script),
 	}
-
 	if err := e.manager.WriteFile(ctx, wo); err != nil {
-		return errors.Wrap(err, "problem writing file")
+		return errors.Wrap(err, "problem writing script file")
 	}
 
 	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).
@@ -130,6 +132,10 @@ func (e *golangEnvironment) Cleanup(ctx context.Context) error {
 }
 
 func (e *golangEnvironment) Test(ctx context.Context, dir string, tests ...TestOptions) ([]TestResult, error) {
+	if e.opts.Directory != "" && !strings.HasPrefix(dir, e.opts.Directory) {
+		dir = filepath.Join(e.opts.Directory, dir)
+	}
+
 	out := make([]TestResult, len(tests))
 
 	catcher := grip.NewBasicCatcher()

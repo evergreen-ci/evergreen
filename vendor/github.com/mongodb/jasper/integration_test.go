@@ -79,7 +79,7 @@ func setupMongods(numProcs int, mongodPath string) ([]options.Create, []string, 
 		procName := "mongod"
 		port := testutil.GetPortNumber()
 
-		dbPath, err := ioutil.TempDir("build", procName)
+		dbPath, err := ioutil.TempDir(testutil.BuildDirectory(), procName)
 		if err != nil {
 			return nil, nil, err
 		}

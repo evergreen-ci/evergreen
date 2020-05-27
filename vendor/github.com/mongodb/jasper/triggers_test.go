@@ -159,7 +159,8 @@ func TestDefaultTrigger(t *testing.T) {
 
 			testcase(ctx, t, &synchronizedProcessManager{
 				manager: &basicProcessManager{
-					procs: map[string]Process{},
+					loggers: NewLoggingCache(),
+					procs:   map[string]Process{},
 				},
 			})
 		})

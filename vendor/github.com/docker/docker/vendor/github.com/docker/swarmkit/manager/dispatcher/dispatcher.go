@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -21,10 +22,8 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/transport"
 )
 
 const (
@@ -239,7 +238,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if err == nil && len(clusters) == 1 {
+			if len(clusters) == 1 {
 				heartbeatPeriod, err := gogotypes.DurationFromProto(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
 				if err == nil && heartbeatPeriod > 0 {
 					d.config.HeartbeatPeriod = heartbeatPeriod
@@ -294,9 +293,16 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			publishManagers(ev.([]*api.Peer))
 		case <-d.processUpdatesTrigger:
 			d.processUpdates(ctx)
+			batchTimer.Stop()
+			// drain the timer, if it has already expired
+			select {
+			case <-batchTimer.C:
+			default:
+			}
 			batchTimer.Reset(maxBatchInterval)
 		case <-batchTimer.C:
 			d.processUpdates(ctx)
+			// batch timer has already expired, so no need to drain
 			batchTimer.Reset(maxBatchInterval)
 		case v := <-configWatcher:
 			cluster := v.(api.EventUpdateCluster)
@@ -336,6 +342,39 @@ func (d *Dispatcher) Stop() error {
 	d.cancel()
 	d.mu.Unlock()
 
+	d.processUpdatesLock.Lock()
+	// when we called d.cancel(), there may be routines, servicing RPC calls to
+	// the (*Dispatcher).Session endpoint, currently waiting at
+	// d.processUpdatesCond.Wait() inside of (*Dispatcher).markNodeReady().
+	//
+	// these routines are typically woken by a call to
+	// d.processUpdatesCond.Broadcast() at the end of
+	// (*Dispatcher).processUpdates() as part of the main Run loop. However,
+	// when d.cancel() is called, the main Run loop is stopped, and there are
+	// no more opportunties for processUpdates to be called. Any calls to
+	// Session would be stuck waiting on a call to Broadcast that will never
+	// come.
+	//
+	// Further, because the rpcRW write lock cannot be obtained until every RPC
+	// has exited and released its read lock, then Stop would be stuck forever.
+	//
+	// To avoid this case, we acquire the processUpdatesLock (so that no new
+	// waits can start) and then do a Broadcast to wake all of the waiting
+	// routines. Further, if any routines are waiting in markNodeReady to
+	// acquire this lock, but not yet waiting, those routines will check the
+	// context cancelation, see the context is canceled, and exit before doing
+	// the Wait.
+	//
+	// This call to Broadcast must occur here. If we called Broadcast before
+	// context cancelation, then some new routines could enter the wait. If we
+	// call Broadcast after attempting to acquire the rpcRW lock, we will be
+	// deadlocked. If we do this Broadcast without obtaining this lock (as is
+	// done in the processUpdates method), then it would be possible for that
+	// broadcast to come after the context cancelation check in markNodeReady,
+	// but before the call to Wait.
+	d.processUpdatesCond.Broadcast()
+	d.processUpdatesLock.Unlock()
+
 	// The active nodes list can be cleaned out only when all
 	// existing RPCs have finished.
 	// RPCs that start after rpcRW.Unlock() should find the context
@@ -344,13 +383,6 @@ func (d *Dispatcher) Stop() error {
 	d.nodes.Clean()
 	d.downNodes.Clean()
 	d.rpcRW.Unlock()
-
-	d.processUpdatesLock.Lock()
-	// In case there are any waiters. There is no chance of any starting
-	// after this point, because they check if the context is canceled
-	// before waiting.
-	d.processUpdatesCond.Broadcast()
-	d.processUpdatesLock.Unlock()
 
 	d.clusterUpdateQueue.Close()
 
@@ -417,7 +449,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 
 				expireFunc := func() {
 					log := log.WithField("node", nodeID)
-					log.Info(`heartbeat expiration for node %s in state "unknown"`, nodeID)
+					log.Infof(`heartbeat expiration for node %s in state "unknown"`, nodeID)
 					if err := d.markNodeNotReady(nodeID, api.NodeStatus_DOWN, `heartbeat failure for node in "unknown" state`); err != nil {
 						log.WithError(err).Error(`failed deregistering node after heartbeat expiration for node in "unknown" state`)
 					}
@@ -538,7 +570,7 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 	}
 
 	expireFunc := func() {
-		log.G(ctx).Debug("heartbeat expiration for worker %s, setting worker status to NodeStatus_DOWN ", nodeID)
+		log.G(ctx).Debugf("heartbeat expiration for worker %s, setting worker status to NodeStatus_DOWN ", nodeID)
 		if err := d.markNodeNotReady(nodeID, api.NodeStatus_DOWN, "heartbeat failure"); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed deregistering node after heartbeat expiration")
 		}
@@ -1058,14 +1090,10 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 				task.Status.State = api.TaskStateOrphaned
 			}
 
-			if err := batch.Update(func(tx store.Tx) error {
-				err := store.UpdateTask(tx, task)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}); err != nil {
+			err := batch.Update(func(tx store.Tx) error {
+				return store.UpdateTask(tx, task)
+			})
+			if err != nil {
 				return err
 			}
 
@@ -1146,11 +1174,8 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	// Its OK to call isRunning() here instead of isRunningLocked()
-	// because of the rpcRW readlock above.
-	// TODO(anshul) other uses of isRunningLocked() can probably
-	// also be removed.
-	if !d.isRunning() {
+	// TODO(anshul) Explore if its possible to check context here without locking.
+	if _, err := d.isRunningLocked(); err != nil {
 		return nil, status.Errorf(codes.Aborted, "dispatcher is stopped")
 	}
 
@@ -1268,16 +1293,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 
 	// disconnectNode is a helper forcibly shutdown connection
 	disconnectNode := func() error {
-		// force disconnect by shutting down the stream.
-		transportStream, ok := transport.StreamFromContext(stream.Context())
-		if ok {
-			// if we have the transport stream, we can signal a disconnect
-			// in the client.
-			if err := transportStream.ServerTransport().Close(); err != nil {
-				log.WithError(err).Error("session end")
-			}
-		}
-
 		log.Infof("dispatcher session dropped, marking node %s down", nodeID)
 		if err := d.markNodeNotReady(nodeID, api.NodeStatus_DISCONNECTED, "node is currently trying to find new manager"); err != nil {
 			log.WithError(err).Error("failed to remove node")

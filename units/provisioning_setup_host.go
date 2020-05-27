@@ -906,10 +906,11 @@ func findMnt(ctx context.Context, client remote.Manager, h *host.Host) (bool, er
 }
 
 type blockDevice struct {
-	Name       string `json:"name"`
-	FSType     string `json:"fstype"`
-	UUID       string `json:"uuid"`
-	MountPoint string `json:"mountpoint"`
+	Name       string        `json:"name"`
+	FSType     string        `json:"fstype"`
+	UUID       string        `json:"uuid"`
+	MountPoint string        `json:"mountpoint"`
+	Children   []blockDevice `json:"children"`
 }
 
 func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
@@ -928,11 +929,12 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 		return blockDevice{}, errors.New("output contained no devices")
 	}
 
-	if !utility.StringSliceContains([]string{"", h.Distro.HomeDir()}, devices[len(devices)-1].MountPoint) {
+	lastDevice := devices[len(devices)-1]
+	if len(lastDevice.Children) != 0 || !utility.StringSliceContains([]string{"", h.Distro.HomeDir()}, lastDevice.MountPoint) {
 		return blockDevice{}, errors.New("device hasn't been attached yet")
 	}
 
-	return devices[len(devices)-1], nil
+	return lastDevice, nil
 }
 
 func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {

@@ -36,13 +36,19 @@ type HeartbeatResponse struct {
 // TaskEndDetail contains data sent from the agent to the
 // API server after each task run.
 type TaskEndDetail struct {
-	Status          string        `bson:"status,omitempty" json:"status,omitempty"`
-	Type            string        `bson:"type,omitempty" json:"type,omitempty"`
-	Description     string        `bson:"desc,omitempty" json:"desc,omitempty"`
-	TimedOut        bool          `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	TimeoutType     string        `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
-	TimeoutDuration time.Duration `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
-	Logs            *TaskLogs     `bson:"-" json:"logs,omitempty"`
+	Status          string         `bson:"status,omitempty" json:"status,omitempty"`
+	Type            string         `bson:"type,omitempty" json:"type,omitempty"`
+	Description     string         `bson:"desc,omitempty" json:"desc,omitempty"`
+	TimedOut        bool           `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	TimeoutType     string         `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
+	TimeoutDuration time.Duration  `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
+	OOMTracker      OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
+	Logs            *TaskLogs      `bson:"-" json:"logs,omitempty"`
+}
+
+type OOMTrackerInfo struct {
+	Detected bool  `bson:"detected" json:"detected"`
+	Pids     []int `bson:"pids" json:"pids"`
 }
 
 type TaskLogs struct {
@@ -103,52 +109,52 @@ type EndTaskResponse struct {
 
 type CreateHost struct {
 	// agent-controlled settings
-	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
-	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" plugin:"expand"`
-	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
-	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
-	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
-	Retries             int    `mapstructure:"retries" json:"retries"`
+	CloudProvider       string `mapstructure:"provider" json:"provider" yaml:"provider" plugin:"expand"`
+	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" yaml:"num_hosts" plugin:"expand"`
+	Scope               string `mapstructure:"scope" json:"scope" yaml:"scope" plugin:"expand"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs" yaml:"timeout_setup_secs"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs" yaml:"timeout_teardown_secs"`
+	Retries             int    `mapstructure:"retries" json:"retries" yaml:"retries"`
 
 	// EC2-related settings
-	AMI             string      `mapstructure:"ami" json:"ami" plugin:"expand"`
-	Distro          string      `mapstructure:"distro" json:"distro" plugin:"expand"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
-	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
-	IPv6            bool        `mapstructure:"ipv6" json:"ipv6"`
-	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
-	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
-	Spot            bool        `mapstructure:"spot" json:"spot"`
-	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
-	UserdataCommand string      `json:"userdata_command" plugin:"expand"`
-	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" plugin:"expand"`
-	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" plugin:"expand"`
-	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
+	AMI             string      `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
+	Distro          string      `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
+	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" yaml:"instance_type" plugin:"expand"`
+	IPv6            bool        `mapstructure:"ipv6" json:"ipv6" yaml:"ipv6"`
+	Region          string      `mapstructure:"region" json:"region" yaml:"region" plugin:"expand"`
+	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" yaml:"security_group_ids" plugin:"expand"`
+	Spot            bool        `mapstructure:"spot" json:"spot" yaml:"spot"`
+	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" yaml:"subnet_id" plugin:"expand"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-" yaml:"-" plugin:"expand"`
+	UserdataCommand string      `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
+	AWSKeyID        string      `mapstructure:"aws_access_key_id" json:"aws_access_key_id" yaml:"aws_access_key_id" plugin:"expand"`
+	AWSSecret       string      `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" yaml:"aws_secret_access_key" plugin:"expand"`
+	KeyName         string      `mapstructure:"key_name" json:"key_name" yaml:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image                    string            `mapstructure:"image" json:"image" plugin:"expand"`
-	Command                  string            `mapstructure:"command" json:"command" plugin:"expand"`
-	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" plugin:"expand"`
-	Background               bool              `mapstructure:"background" json:"background"` // default is true
-	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs"`
-	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
-	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" plugin:"environment_vars"`
+	Image                    string            `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
+	Command                  string            `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
+	Registry                 RegistrySettings  `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
+	Background               bool              `mapstructure:"background" json:"background" yaml:"background"` // default is true
+	ContainerWaitTimeoutSecs int               `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
+	PollFrequency            int               `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
+	StdoutFile               string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
+	StderrFile               string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
+	EnvironmentVars          map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"environment_vars"`
 }
 
 type EbsDevice struct {
-	DeviceName string `mapstructure:"device_name" json:"device_name"`
-	IOPS       int    `mapstructure:"ebs_iops" json:"ebs_iops"`
-	SizeGiB    int    `mapstructure:"ebs_size" json:"ebs_size"`
-	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id"`
+	DeviceName string `mapstructure:"device_name" json:"device_name" yaml:"device_name"`
+	IOPS       int    `mapstructure:"ebs_iops" json:"ebs_iops" yaml:"ebs_iops"`
+	SizeGiB    int    `mapstructure:"ebs_size" json:"ebs_size" yaml:"ebs_size"`
+	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id" yaml:"ebs_snapshot_id"`
 }
 
 type RegistrySettings struct {
-	Name     string `mapstructure:"registry_name" json:"registry_name"`
-	Username string `mapstructure:"registry_username" json:"registry_username"`
-	Password string `mapstructure:"registry_password" json:"registry_password"`
+	Name     string `mapstructure:"registry_name" json:"registry_name" yaml:"registry_name"`
+	Username string `mapstructure:"registry_username" json:"registry_username" yaml:"registry_username"`
+	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
 func (ch *CreateHost) ValidateDocker() error {

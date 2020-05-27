@@ -1,3 +1,19 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package typeurl
 
 import (
@@ -62,7 +78,10 @@ func Is(any *types.Any, v interface{}) bool {
 	return any.TypeUrl == url
 }
 
-// MarshalAny marshals the value v into an any with the correct TypeUrl
+// MarshalAny marshals the value v into an any with the correct TypeUrl.
+// If the provided object is already a proto.Any message, then it will be
+// returned verbatim. If it is of type proto.Message, it will be marshaled as a
+// protocol buffer. Otherwise, the object will be marshaled to json.
 func MarshalAny(v interface{}) (*types.Any, error) {
 	var marshal func(v interface{}) ([]byte, error)
 	switch t := v.(type) {

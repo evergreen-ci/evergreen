@@ -16,7 +16,7 @@
 
 package metadata
 
-import "github.com/boltdb/bolt"
+import bolt "go.etcd.io/bbolt"
 
 type migration struct {
 	schema  string
@@ -39,6 +39,16 @@ var migrations = []migration{
 		schema:  "v1",
 		version: 1,
 		migrate: addChildLinks,
+	},
+	{
+		schema:  "v1",
+		version: 2,
+		migrate: migrateIngests,
+	},
+	{
+		schema:  "v1",
+		version: 3,
+		migrate: noOpMigration,
 	},
 }
 
@@ -97,5 +107,62 @@ func addChildLinks(tx *bolt.Tx) error {
 		}
 	}
 
+	return nil
+}
+
+// migrateIngests moves ingests from the key/value ingest bucket
+// to a structured ingest bucket for storing additional state about
+// an ingest.
+func migrateIngests(tx *bolt.Tx) error {
+	v1bkt := tx.Bucket(bucketKeyVersion)
+	if v1bkt == nil {
+		return nil
+	}
+
+	// iterate through each namespace
+	v1c := v1bkt.Cursor()
+
+	for k, v := v1c.First(); k != nil; k, v = v1c.Next() {
+		if v != nil {
+			continue
+		}
+		bkt := v1bkt.Bucket(k).Bucket(bucketKeyObjectContent)
+		if bkt == nil {
+			continue
+		}
+
+		dbkt := bkt.Bucket(deprecatedBucketKeyObjectIngest)
+		if dbkt == nil {
+			continue
+		}
+
+		// Create new ingests bucket
+		nbkt, err := bkt.CreateBucketIfNotExists(bucketKeyObjectIngests)
+		if err != nil {
+			return err
+		}
+
+		if err := dbkt.ForEach(func(ref, bref []byte) error {
+			ibkt, err := nbkt.CreateBucketIfNotExists(ref)
+			if err != nil {
+				return err
+			}
+			return ibkt.Put(bucketKeyRef, bref)
+		}); err != nil {
+			return err
+		}
+
+		if err := bkt.DeleteBucket(deprecatedBucketKeyObjectIngest); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// noOpMigration was for a database change from boltdb/bolt which is no
+// longer being supported, to go.etcd.io/bbolt which is the currently
+// maintained repo for boltdb.
+func noOpMigration(tx *bolt.Tx) error {
 	return nil
 }
