@@ -691,6 +691,18 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	} else {
 		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
 	}
+
+	grip.Info(message.Fields{
+		"message":   "fetching task data",
+		"task_id":   j.host.ProvisionOptions.TaskId,
+		"task_sync": j.host.ProvisionOptions.TaskSync,
+		"host_id":   j.host.Id,
+		"cmd":       cmd,
+		"job":       j.ID(),
+		"bootstrap": j.host.Distro.BootstrapSettings.Method,
+	})
+	now := time.Now()
+
 	var output string
 	var err error
 	fetchTimeout := 15 * time.Minute
@@ -709,13 +721,14 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":   "problem fetching task data",
-		"task_id":   j.host.ProvisionOptions.TaskId,
-		"task_sync": j.host.ProvisionOptions.TaskSync,
-		"host_id":   j.host.Id,
-		"cmd":       cmd,
-		"job":       j.ID(),
-		"logs":      output,
+		"message":       "problem fetching task data",
+		"task_id":       j.host.ProvisionOptions.TaskId,
+		"task_sync":     j.host.ProvisionOptions.TaskSync,
+		"host_id":       j.host.Id,
+		"cmd":           cmd,
+		"job":           j.ID(),
+		"logs":          output,
+		"duration_secs": time.Since(now).Seconds(),
 	}))
 
 	return errors.Wrap(err, "could not fetch remote task data")
