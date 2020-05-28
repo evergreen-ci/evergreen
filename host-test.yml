@@ -1,0 +1,5 @@
+distro: rhel76-small
+region: us-east-1
+key: key
+tag: a=b
+script: testUserData.sh
