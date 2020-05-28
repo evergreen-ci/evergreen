@@ -69,7 +69,6 @@ type taskContext struct {
 	timeout        timeoutInfo
 	project        *model.Project
 	taskModel      *task.Task
-	oomTracker     jasper.OOMTracker
 	sync.RWMutex
 }
 
@@ -276,7 +275,6 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskGroup:     nextTask.TaskGroup,
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
-		oomTracker:    jasper.NewOOMTracker(),
 	}
 }
 
@@ -432,20 +430,6 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.project.OomTracker && status == evergreen.TaskFailed {
-		startTime := time.Now()
-		oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
-		defer oomCancel()
-		if err := tc.oomTracker.Check(oomCtx); err != nil {
-			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
-		}
-		durationString := fmt.Sprintf("found no OOM kill in %.2f seconds", time.Now().Sub(startTime).Seconds())
-		if found, _ := tc.oomTracker.Report(); found {
-			durationString = fmt.Sprintf("found an OOM kill in %.2f seconds", time.Now().Sub(startTime).Seconds())
-		}
-		tc.logger.Execution().Debug(durationString)
-	}
-
 	return status
 }
 
@@ -528,7 +512,6 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
-		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
 		Logs:            tc.logs,
 	}

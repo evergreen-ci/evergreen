@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestDiscoveryOptsErrors(t *testing.T) {

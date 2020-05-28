@@ -47,5 +47,7 @@ func unlock(ref string) {
 	locksMu.Lock()
 	defer locksMu.Unlock()
 
-	delete(locks, ref)
+	if _, ok := locks[ref]; ok {
+		delete(locks, ref)
+	}
 }

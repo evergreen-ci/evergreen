@@ -29,10 +29,7 @@ const (
 // Allocator provides per address space ipv4/ipv6 book keeping
 type Allocator struct {
 	// Predefined pools for default address spaces
-	// Separate from the addrSpace because they should not be serialized
-	predefined             map[string][]*net.IPNet
-	predefinedStartIndices map[string]int
-	// The (potentially serialized) address spaces
+	predefined map[string][]*net.IPNet
 	addrSpaces map[string]*addrSpace
 	// stores        []datastore.Datastore
 	// Allocated addresses in each address space's subnet
@@ -45,14 +42,10 @@ func NewAllocator(lcDs, glDs datastore.DataStore) (*Allocator, error) {
 	a := &Allocator{}
 
 	// Load predefined subnet pools
-
 	a.predefined = map[string][]*net.IPNet{
-		localAddressSpace:  ipamutils.GetLocalScopeDefaultNetworks(),
-		globalAddressSpace: ipamutils.GetGlobalScopeDefaultNetworks(),
+		localAddressSpace:  ipamutils.PredefinedBroadNetworks,
+		globalAddressSpace: ipamutils.PredefinedGranularNetworks,
 	}
-
-	// Initialize asIndices map
-	a.predefinedStartIndices = make(map[string]int)
 
 	// Initialize bitseq map
 	a.addresses = make(map[SubnetKey]*bitseq.Handle)
@@ -204,10 +197,6 @@ func (a *Allocator) GetDefaultAddressSpaces() (string, string, error) {
 }
 
 // RequestPool returns an address pool along with its unique id.
-// addressSpace must be a valid address space name and must not be the empty string.
-// If pool is the empty string then the default predefined pool for addressSpace will be used, otherwise pool must be a valid IP address and length in CIDR notation.
-// If subPool is not empty, it must be a valid IP address and length in CIDR notation which is a sub-range of pool.
-// subPool must be empty if pool is empty.
 func (a *Allocator) RequestPool(addressSpace, pool, subPool string, options map[string]string, v6 bool) (string, *net.IPNet, map[string]string, error) {
 	logrus.Debugf("RequestPool(%s, %s, %s, %v, %t)", addressSpace, pool, subPool, options, v6)
 
@@ -288,8 +277,8 @@ retry:
 	return remove()
 }
 
-// Given the address space, returns the local or global PoolConfig based on whether the
-// address space is local or global. AddressSpace locality is registered with IPAM out of band.
+// Given the address space, returns the local or global PoolConfig based on the
+// address space is local or global. AddressSpace locality is being registered with IPAM out of band.
 func (a *Allocator) getAddrSpace(as string) (*addrSpace, error) {
 	a.Lock()
 	defer a.Unlock()
@@ -300,8 +289,6 @@ func (a *Allocator) getAddrSpace(as string) (*addrSpace, error) {
 	return aSpace, nil
 }
 
-// parsePoolRequest parses and validates a request to create a new pool under addressSpace and returns
-// a SubnetKey, network and range describing the request.
 func (a *Allocator) parsePoolRequest(addressSpace, pool, subPool string, v6 bool) (*SubnetKey, *net.IPNet, *AddressRange, error) {
 	var (
 		nw  *net.IPNet
@@ -387,24 +374,11 @@ func (a *Allocator) retrieveBitmask(k SubnetKey, n *net.IPNet) (*bitseq.Handle, 
 func (a *Allocator) getPredefineds(as string) []*net.IPNet {
 	a.Lock()
 	defer a.Unlock()
-
-	p := a.predefined[as]
-	i := a.predefinedStartIndices[as]
-	// defensive in case the list changed since last update
-	if i >= len(p) {
-		i = 0
+	l := make([]*net.IPNet, 0, len(a.predefined[as]))
+	for _, pool := range a.predefined[as] {
+		l = append(l, pool)
 	}
-	return append(p[i:], p[:i]...)
-}
-
-func (a *Allocator) updateStartIndex(as string, amt int) {
-	a.Lock()
-	i := a.predefinedStartIndices[as] + amt
-	if i < 0 || i >= len(a.predefined[as]) {
-		i = 0
-	}
-	a.predefinedStartIndices[as] = i
-	a.Unlock()
+	return l
 }
 
 func (a *Allocator) getPredefinedPool(as string, ipV6 bool) (*net.IPNet, error) {
@@ -415,7 +389,7 @@ func (a *Allocator) getPredefinedPool(as string, ipV6 bool) (*net.IPNet, error) 
 	}
 
 	if as != localAddressSpace && as != globalAddressSpace {
-		return nil, types.NotImplementedErrorf("no default pool available for non-default address spaces")
+		return nil, types.NotImplementedErrorf("no default pool availbale for non-default addresss spaces")
 	}
 
 	aSpace, err := a.getAddrSpace(as)
@@ -423,26 +397,21 @@ func (a *Allocator) getPredefinedPool(as string, ipV6 bool) (*net.IPNet, error) 
 		return nil, err
 	}
 
-	predefined := a.getPredefineds(as)
-
-	aSpace.Lock()
-	for i, nw := range predefined {
+	for _, nw := range a.getPredefineds(as) {
 		if v != getAddressVersion(nw.IP) {
 			continue
 		}
-		// Checks whether pool has already been allocated
+		aSpace.Lock()
 		if _, ok := aSpace.subnets[SubnetKey{AddressSpace: as, Subnet: nw.String()}]; ok {
+			aSpace.Unlock()
 			continue
 		}
-		// Shouldn't be necessary, but check prevents IP collisions should
-		// predefined pools overlap for any reason.
 		if !aSpace.contains(as, nw) {
 			aSpace.Unlock()
-			a.updateStartIndex(as, i+1)
 			return nw, nil
 		}
+		aSpace.Unlock()
 	}
-	aSpace.Unlock()
 
 	return nil, types.NotFoundErrorf("could not find an available, non-overlapping IPv%d address pool among the defaults to assign to the network", v)
 }

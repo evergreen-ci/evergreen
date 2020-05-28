@@ -12,7 +12,6 @@ import (
 
 	"strconv"
 
-	"github.com/docker/libnetwork/drivers/overlay/overlayutils"
 	"github.com/docker/libnetwork/iptables"
 	"github.com/docker/libnetwork/ns"
 	"github.com/docker/libnetwork/types"
@@ -79,7 +78,7 @@ func (e *encrMap) String() string {
 }
 
 func (d *driver) checkEncryption(nid string, rIP net.IP, vxlanID uint32, isLocal, add bool) error {
-	logrus.Debugf("checkEncryption(%.7s, %v, %d, %t)", nid, rIP, vxlanID, isLocal)
+	logrus.Debugf("checkEncryption(%s, %v, %d, %t)", nid[0:7], rIP, vxlanID, isLocal)
 
 	n := d.network(nid)
 	if n == nil || !n.secure {
@@ -102,7 +101,7 @@ func (d *driver) checkEncryption(nid string, rIP net.IP, vxlanID uint32, isLocal
 			}
 			return false
 		}); err != nil {
-			logrus.Warnf("Failed to retrieve list of participating nodes in overlay network %.5s: %v", nid, err)
+			logrus.Warnf("Failed to retrieve list of participating nodes in overlay network %s: %v", nid[0:5], err)
 		}
 	default:
 		if len(d.network(nid).endpoints) > 0 {
@@ -201,7 +200,7 @@ func removeEncryption(localIP, remoteIP net.IP, em *encrMap) error {
 
 func programMangle(vni uint32, add bool) (err error) {
 	var (
-		p      = strconv.FormatUint(uint64(overlayutils.VXLANUDPPort()), 10)
+		p      = strconv.FormatUint(uint64(vxlanPort), 10)
 		c      = fmt.Sprintf("0>>22&0x3C@12&0xFFFFFF00=%d", int(vni)<<8)
 		m      = strconv.FormatUint(uint64(r), 10)
 		chain  = "OUTPUT"
@@ -228,7 +227,7 @@ func programMangle(vni uint32, add bool) (err error) {
 
 func programInput(vni uint32, add bool) (err error) {
 	var (
-		port       = strconv.FormatUint(uint64(overlayutils.VXLANUDPPort()), 10)
+		port       = strconv.FormatUint(uint64(vxlanPort), 10)
 		vniMatch   = fmt.Sprintf("0>>22&0x3C@12&0xFFFFFF00=%d", int(vni)<<8)
 		plainVxlan = []string{"-p", "udp", "--dport", port, "-m", "u32", "--u32", vniMatch, "-j"}
 		ipsecVxlan = append([]string{"-m", "policy", "--dir", "in", "--pol", "ipsec"}, plainVxlan...)
@@ -602,7 +601,7 @@ func (n *network) maxMTU() int {
 	mtu -= vxlanEncap
 	if n.secure {
 		// In case of encryption account for the
-		// esp packet expansion and padding
+		// esp packet espansion and padding
 		mtu -= pktExpansion
 		mtu -= (mtu % 4)
 	}

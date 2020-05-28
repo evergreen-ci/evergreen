@@ -2,7 +2,7 @@ name := jasper
 buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
-packages := $(name) cli remote remote-internal options mock testutil internal-executor buildsystem-generator
+packages := $(name) cli remote remote-internal options mock testutil internal-executor
 lintPackages := $(packages) mock testutil
 testPackages := $(packages) mock
 projectPath := github.com/mongodb/jasper
@@ -26,8 +26,7 @@ endif
 goEnv := GOPATH=$(gopath) GOCACHE=$(gocache)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
 # end environment setup
 
-compile $(buildDir):
-	@mkdir -p $(buildDir)
+compile build:
 	$(goEnv) $(gobin) build $(_compilePackages)
 compile-base:
 	$(goEnv) $(gobin) build  ./
@@ -44,27 +43,17 @@ lint-%:$(buildDir)/output.%.lint
 	
 # end convienence targets
 
-# start lint setup targets
-lintDeps := $(buildDir)/.lintSetup $(buildDir)/run-linter $(buildDir)/golangci-lint
-$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@touch $@
-$(buildDir)/golangci-lint:$(buildDir)
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
+# start linting configuration
+$(buildDir)/.lintSetup:$(lintDeps) $(buildDir)
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/c87c37210f99021721d039a9176fabd25d326843/install.sh | sh -s -- -b $(buildDir) v1.21.0 >/dev/null 2>&1
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup $(buildDir)
 	@$(goEnv) $(gobin) build -o $@ $<
-# end lint setup targets
+# end lint configuration
 
 # benchmark setup targets
 $(buildDir)/run-benchmarks:cmd/run-benchmarks/run_benchmarks.go $(buildDir)
 	$(goEnv) $(gobin) build -o $@ $<
 # end benchmark setup targets
-
-# cli targets
-cli: $(name)
-$(name): $(buildDir)/$(name)
-$(buildDir)/$(name): cmd/$(name)/$(name).go
-	@$(goEnv) $(gobin) build -o $@ $<
-# end cli targets
 
 # start test and coverage artifacts
 #    This varable includes everything that the tests actually need to
@@ -102,19 +91,6 @@ $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 #  targets to process and generate coverage reports
 # end test and coverage artifacts
 
-# Docker-related
-docker_image := $(DOCKER_IMAGE)
-ifeq ($(docker_image),)
-	docker_image := "ubuntu"
-endif
-
-docker-setup:
-	docker pull $(docker_image)
-
-docker-cleanup:
-	docker rm -f $(docker ps -a -q)
-	docker rmi -f $(docker_image)
-# end Docker
 
 # user-facing targets for basic build and development operations
 $(buildDir)/:
@@ -130,8 +106,8 @@ benchmarks:$(buildDir)/run-benchmarks $(buildDir) .FORCE
 	$(goEnv) ./$(buildDir)/run-benchmarks $(run-benchmark)
 coverage:$(buildDir) $(coverageOutput)
 coverage-html:$(buildDir) $(coverageHtmlOutput)
-phony += build lint $(buildDir) test coverage coverage-html docker-setup docker-cleanup $(buildDir)/$(name)
-.PHONY: $(phony) .FORCE
+phony += lint $(buildDir) test coverage coverage-html
+.PHONY: $(phony) .FORCE build
 .PRECIOUS:$(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
@@ -140,20 +116,17 @@ phony += build lint $(buildDir) test coverage coverage-html docker-setup docker-
 .FORCE:
 
 clean:
-	rm -rf $(lintDeps) *.pb.go 
+	rm -rf *.pb.go
 
 clean-results:
 	rm -rf $(buildDir)/output.*
 
 vendor-clean:
-	rm -rf vendor/github.com/evergreen-ci/utility/parsing.go
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/uuid/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/urfave/cli/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/pkg/errors/
@@ -177,10 +150,10 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/montanaflynn/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
-	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/grip/buildscripts/
 	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/stretchr/testify/
@@ -190,12 +163,23 @@ vendor-clean:
 	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/satori/go.uuid/
 	rm -rf vendor/github.com/tychoish/lru/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/tychoish/lru/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mholt/archiver/rar.go
 	rm -rf vendor/github.com/mholt/archiver/tarbz2.go
 	rm -rf vendor/github.com/mholt/archiver/tarlz4.go
 	rm -rf vendor/github.com/mholt/archiver/tarsz.go
 	rm -rf vendor/github.com/mholt/archiver/tarxz.go
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/evergreen-ci/aviation/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/github.com/golang/protobuf/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/google.golang.org/grpc/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/evergreen-ci/timber/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn/stats/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/pkg/errors/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr/testify/
@@ -210,28 +194,15 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
-	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/mongo-go-driver/mongo/
-	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
-	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/golang.org/x/text/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/google.golang.org/genproto/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/google.golang.org/grpc/
-	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/gopkg.in/yaml.v2/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/containerd/cgroups/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/coreos/go-systemd/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/godbus/dbus/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/gogo/protobuf/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/google/shlex/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/google/uuid/
-	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/crypto/
-	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
-	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/sys/
-	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/text/
-	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/genproto/
-	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/grpc/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/mongo-go-driver/mongo/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*testdata*" | xargs rm -rf
 	find vendor/ -type d -empty | xargs rm -rf
 	find vendor/ -type d -name '.git' | xargs rm -rf

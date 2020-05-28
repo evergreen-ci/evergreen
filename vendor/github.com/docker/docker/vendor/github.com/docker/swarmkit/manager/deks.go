@@ -10,10 +10,6 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 )
 
-// This module contains the data structures and control flow to manage rotating the raft
-// DEK and also for interacting with KeyReadWriter to maintain the raft DEK information in
-// the PEM headers fo the TLS key for the node.
-
 const (
 	// the raft DEK (data encryption key) is stored in the TLS key as a header
 	// these are the header values
@@ -22,26 +18,13 @@ const (
 	pemHeaderRaftDEKNeedsRotation = "raft-dek-needs-rotation"
 )
 
-// RaftDEKData contains all the data stored in TLS pem headers.
+// RaftDEKData contains all the data stored in TLS pem headers
 type RaftDEKData struct {
-
-	// EncryptionKeys contain the current and pending raft DEKs
 	raft.EncryptionKeys
-
-	// NeedsRotation indicates whether another rotation needs to be happen after
-	// the current one.
 	NeedsRotation bool
-
-	// The FIPS boolean is not serialized, but is internal state which indicates how
-	// the raft DEK headers should be encrypted (e.g. using FIPS compliant algorithms)
-	FIPS bool
 }
 
-// RaftDEKData should implement the PEMKeyHeaders interface
-var _ ca.PEMKeyHeaders = RaftDEKData{}
-
-// UnmarshalHeaders loads the current state of the DEKs into a new RaftDEKData object (which is returned) given the
-// current TLS headers and the current KEK.
+// UnmarshalHeaders loads the state of the DEK manager given the current TLS headers
 func (r RaftDEKData) UnmarshalHeaders(headers map[string]string, kekData ca.KEKData) (ca.PEMKeyHeaders, error) {
 	var (
 		currentDEK, pendingDEK []byte
@@ -49,13 +32,13 @@ func (r RaftDEKData) UnmarshalHeaders(headers map[string]string, kekData ca.KEKD
 	)
 
 	if currentDEKStr, ok := headers[pemHeaderRaftDEK]; ok {
-		currentDEK, err = decodePEMHeaderValue(currentDEKStr, kekData.KEK, r.FIPS)
+		currentDEK, err = decodePEMHeaderValue(currentDEKStr, kekData.KEK)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if pendingDEKStr, ok := headers[pemHeaderRaftPendingDEK]; ok {
-		pendingDEK, err = decodePEMHeaderValue(pendingDEKStr, kekData.KEK, r.FIPS)
+		pendingDEK, err = decodePEMHeaderValue(pendingDEKStr, kekData.KEK)
 		if err != nil {
 			return nil, err
 		}
@@ -72,12 +55,10 @@ func (r RaftDEKData) UnmarshalHeaders(headers map[string]string, kekData ca.KEKD
 			CurrentDEK: currentDEK,
 			PendingDEK: pendingDEK,
 		},
-		FIPS: r.FIPS,
 	}, nil
 }
 
-// MarshalHeaders returns new PEM headers given the current KEK - it uses the current KEK to
-// serialize/encrypt the current DEK state that is maintained in the current RaftDEKData object.
+// MarshalHeaders returns new headers given the current KEK
 func (r RaftDEKData) MarshalHeaders(kekData ca.KEKData) (map[string]string, error) {
 	headers := make(map[string]string)
 	for headerKey, contents := range map[string][]byte{
@@ -85,7 +66,7 @@ func (r RaftDEKData) MarshalHeaders(kekData ca.KEKData) (map[string]string, erro
 		pemHeaderRaftPendingDEK: r.PendingDEK,
 	} {
 		if contents != nil {
-			dekStr, err := encodePEMHeaderValue(contents, kekData.KEK, r.FIPS)
+			dekStr, err := encodePEMHeaderValue(contents, kekData.KEK)
 			if err != nil {
 				return nil, err
 			}
@@ -101,13 +82,12 @@ func (r RaftDEKData) MarshalHeaders(kekData ca.KEKData) (map[string]string, erro
 	return headers, nil
 }
 
-// UpdateKEK sets NeedRotation to true if we go from unlocked to locked.
+// UpdateKEK optionally sets NeedRotation to true if we go from unlocked to locked
 func (r RaftDEKData) UpdateKEK(oldKEK, candidateKEK ca.KEKData) ca.PEMKeyHeaders {
 	if _, unlockedToLocked, err := compareKEKs(oldKEK, candidateKEK); err == nil && unlockedToLocked {
 		return RaftDEKData{
 			EncryptionKeys: r.EncryptionKeys,
 			NeedsRotation:  true,
-			FIPS:           r.FIPS,
 		}
 	}
 	return r
@@ -128,12 +108,10 @@ func compareKEKs(oldKEK, candidateKEK ca.KEKData) (bool, bool, error) {
 	}
 }
 
-// RaftDEKManager manages the raft DEK keys by interacting with KeyReadWriter, calling the necessary functions
-// to update the TLS headers when the raft DEK needs to change, or to re-encrypt everything when the KEK changes.
+// RaftDEKManager manages the raft DEK keys using TLS headers
 type RaftDEKManager struct {
 	kw         ca.KeyWriter
 	rotationCh chan struct{}
-	FIPS       bool
 }
 
 var errNoUpdateNeeded = fmt.Errorf("don't need to rotate or update")
@@ -144,7 +122,7 @@ var errNotUsingRaftDEKData = fmt.Errorf("RaftDEKManager can no longer store and 
 
 // NewRaftDEKManager returns a RaftDEKManager that uses the current key writer
 // and header manager
-func NewRaftDEKManager(kw ca.KeyWriter, fips bool) (*RaftDEKManager, error) {
+func NewRaftDEKManager(kw ca.KeyWriter) (*RaftDEKManager, error) {
 	// If there is no current DEK, generate one and write it to disk
 	err := kw.ViewAndUpdateHeaders(func(h ca.PEMKeyHeaders) (ca.PEMKeyHeaders, error) {
 		dekData, ok := h.(RaftDEKData)
@@ -154,7 +132,6 @@ func NewRaftDEKManager(kw ca.KeyWriter, fips bool) (*RaftDEKManager, error) {
 				EncryptionKeys: raft.EncryptionKeys{
 					CurrentDEK: encryption.GenerateSecretKey(),
 				},
-				FIPS: fips,
 			}, nil
 		}
 		return nil, errNoUpdateNeeded
@@ -164,7 +141,6 @@ func NewRaftDEKManager(kw ca.KeyWriter, fips bool) (*RaftDEKManager, error) {
 	}
 	return &RaftDEKManager{
 		kw:         kw,
-		FIPS:       fips,
 		rotationCh: make(chan struct{}, 1),
 	}, nil
 }
@@ -180,9 +156,8 @@ func (r *RaftDEKManager) NeedsRotation() bool {
 }
 
 // GetKeys returns the current set of DEKs.  If NeedsRotation is true, and there
-// is no existing PendingDEK, it will try to create one.  If it successfully creates
-// and writes a PendingDEK, it sets NeedRotation to false.  If there are any errors
-// doing so, just return the original set of keys.
+// is no existing PendingDEK, it will try to create one.  If there are any errors
+// doing so, just return the original.
 func (r *RaftDEKManager) GetKeys() raft.EncryptionKeys {
 	var newKeys, originalKeys raft.EncryptionKeys
 	err := r.kw.ViewAndUpdateHeaders(func(h ca.PEMKeyHeaders) (ca.PEMKeyHeaders, error) {
@@ -198,10 +173,7 @@ func (r *RaftDEKManager) GetKeys() raft.EncryptionKeys {
 			CurrentDEK: data.CurrentDEK,
 			PendingDEK: encryption.GenerateSecretKey(),
 		}
-		return RaftDEKData{
-			EncryptionKeys: newKeys,
-			FIPS:           data.FIPS,
-		}, nil
+		return RaftDEKData{EncryptionKeys: newKeys}, nil
 	})
 	if err != nil {
 		return originalKeys
@@ -230,7 +202,6 @@ func (r *RaftDEKManager) UpdateKeys(newKeys raft.EncryptionKeys) error {
 		return RaftDEKData{
 			EncryptionKeys: newKeys,
 			NeedsRotation:  data.NeedsRotation,
-			FIPS:           data.FIPS,
 		}, nil
 	})
 }
@@ -269,10 +240,10 @@ func (r *RaftDEKManager) MaybeUpdateKEK(candidateKEK ca.KEKData) (bool, bool, er
 	return updated, unlockedToLocked, err
 }
 
-func decodePEMHeaderValue(headerValue string, kek []byte, fips bool) ([]byte, error) {
+func decodePEMHeaderValue(headerValue string, kek []byte) ([]byte, error) {
 	var decrypter encryption.Decrypter = encryption.NoopCrypter
 	if kek != nil {
-		_, decrypter = encryption.Defaults(kek, fips)
+		_, decrypter = encryption.Defaults(kek, false)
 	}
 	valueBytes, err := base64.StdEncoding.DecodeString(headerValue)
 	if err != nil {
@@ -285,10 +256,10 @@ func decodePEMHeaderValue(headerValue string, kek []byte, fips bool) ([]byte, er
 	return result, nil
 }
 
-func encodePEMHeaderValue(headerValue []byte, kek []byte, fips bool) (string, error) {
+func encodePEMHeaderValue(headerValue []byte, kek []byte) (string, error) {
 	var encrypter encryption.Encrypter = encryption.NoopCrypter
 	if kek != nil {
-		encrypter, _ = encryption.Defaults(kek, fips)
+		encrypter, _ = encryption.Defaults(kek, false)
 	}
 	encrypted, err := encryption.Encrypt(headerValue, encrypter)
 	if err != nil {

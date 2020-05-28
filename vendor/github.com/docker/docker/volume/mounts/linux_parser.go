@@ -82,10 +82,7 @@ func (p *linuxParser) validateMountConfigImpl(mnt *mount.Mount, validateBindSour
 		}
 
 		if validateBindSourceExists {
-			exists, _, err := currentFileInfoProvider.fileInfo(mnt.Source)
-			if err != nil {
-				return &errMountConfig{mnt, err}
-			}
+			exists, _, _ := currentFileInfoProvider.fileInfo(mnt.Source)
 			if !exists {
 				return &errMountConfig{mnt, errBindSourceDoesNotExist(mnt.Source)}
 			}
@@ -100,9 +97,6 @@ func (p *linuxParser) validateMountConfigImpl(mnt *mount.Mount, validateBindSour
 			return &errMountConfig{mnt, fmt.Errorf("must not set ReadOnly mode when using anonymous volumes")}
 		}
 	case mount.TypeTmpfs:
-		if mnt.BindOptions != nil {
-			return &errMountConfig{mnt, errExtraField("BindOptions")}
-		}
 		if len(mnt.Source) != 0 {
 			return &errMountConfig{mnt, errExtraField("Source")}
 		}
@@ -298,7 +292,7 @@ func (p *linuxParser) parseMountSpec(cfg mount.Mount, validateBindSourceExists b
 	switch cfg.Type {
 	case mount.TypeVolume:
 		if cfg.Source == "" {
-			mp.Name = stringid.GenerateRandomID()
+			mp.Name = stringid.GenerateNonCryptoID()
 		} else {
 			mp.Name = cfg.Source
 		}

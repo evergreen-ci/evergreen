@@ -9,20 +9,20 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/versions"
 	"github.com/docker/docker/integration/internal/container"
+	"github.com/docker/docker/internal/test/request"
 	req "github.com/docker/docker/internal/test/request"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/poll"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/poll"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func TestResize(t *testing.T) {
-	skip.If(t, testEnv.OSType == "windows", "FIXME")
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client)
+	cID := container.Run(t, ctx, client)
 
 	poll.WaitOn(t, container.IsInState(ctx, client, cID, "running"), poll.WithDelay(100*time.Millisecond))
 
@@ -35,12 +35,11 @@ func TestResize(t *testing.T) {
 
 func TestResizeWithInvalidSize(t *testing.T) {
 	skip.If(t, versions.LessThan(testEnv.DaemonAPIVersion(), "1.32"), "broken in earlier versions")
-	skip.If(t, testEnv.OSType == "windows", "FIXME")
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client)
+	cID := container.Run(t, ctx, client)
 
 	poll.WaitOn(t, container.IsInState(ctx, client, cID, "running"), poll.WithDelay(100*time.Millisecond))
 
@@ -52,10 +51,10 @@ func TestResizeWithInvalidSize(t *testing.T) {
 
 func TestResizeWhenContainerNotStarted(t *testing.T) {
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client, container.WithCmd("echo"))
+	cID := container.Run(t, ctx, client, container.WithCmd("echo"))
 
 	poll.WaitOn(t, container.IsInState(ctx, client, cID, "exited"), poll.WithDelay(100*time.Millisecond))
 

@@ -56,7 +56,7 @@ func (he headerError) Error() string {
 const (
 	// Type '0' indicates a regular file.
 	TypeReg  = '0'
-	TypeRegA = '\x00' // Deprecated: Use TypeReg instead.
+	TypeRegA = '\x00' // For legacy support; use TypeReg instead
 
 	// Type '1' to '6' are header-only flags and may not have a data body.
 	TypeLink    = '1' // Hard link
@@ -138,10 +138,7 @@ var basicKeys = map[string]bool{
 // should do so by creating a new Header and copying the fields
 // that they are interested in preserving.
 type Header struct {
-	// Typeflag is the type of header entry.
-	// The zero value is automatically promoted to either TypeReg or TypeDir
-	// depending on the presence of a trailing slash in Name.
-	Typeflag byte
+	Typeflag byte // Type of header entry (should be TypeReg for most files)
 
 	Name     string // Name of file entry
 	Linkname string // Target name of link (valid for TypeLink or TypeSymlink)
@@ -187,7 +184,7 @@ type Header struct {
 	// The key and value should be non-empty UTF-8 strings.
 	//
 	// When Writer.WriteHeader is called, PAX records derived from the
-	// other fields in Header take precedence over PAXRecords.
+	// the other fields in Header take precedence over PAXRecords.
 	PAXRecords map[string]string
 
 	// Format specifies the format of the tar header.

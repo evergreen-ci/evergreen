@@ -17,9 +17,6 @@ import (
 	"github.com/docker/go-connections/sockets"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/sirupsen/logrus"
-
-	"github.com/docker/docker/pkg/homedir"
-	"github.com/docker/docker/rootless"
 )
 
 var (
@@ -35,19 +32,7 @@ func newTLSConfig(hostname string, isSecure bool) (*tls.Config, error) {
 	tlsConfig.InsecureSkipVerify = !isSecure
 
 	if isSecure && CertsDir != "" {
-		certsDir := CertsDir
-
-		if rootless.RunningWithRootlessKit() {
-			configHome, err := homedir.GetConfigHome()
-			if err != nil {
-				return nil, err
-			}
-
-			certsDir = filepath.Join(configHome, "docker/certs.d")
-		}
-
-		hostDir := filepath.Join(certsDir, cleanPath(hostname))
-
+		hostDir := filepath.Join(CertsDir, cleanPath(hostname))
 		logrus.Debugf("hostDir: %s", hostDir)
 		if err := ReadCertsDirectory(tlsConfig, hostDir); err != nil {
 			return nil, err
@@ -160,7 +145,7 @@ func trustedLocation(req *http.Request) bool {
 // addRequiredHeadersToRedirectedRequests adds the necessary redirection headers
 // for redirected requests
 func addRequiredHeadersToRedirectedRequests(req *http.Request, via []*http.Request) error {
-	if len(via) != 0 && via[0] != nil {
+	if via != nil && via[0] != nil {
 		if trustedLocation(req) && trustedLocation(via[0]) {
 			req.Header = via[0].Header
 			return nil

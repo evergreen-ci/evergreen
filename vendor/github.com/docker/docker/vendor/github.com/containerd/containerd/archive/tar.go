@@ -17,7 +17,6 @@
 package archive
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
 	"io"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/continuity/fs"
+	"github.com/dmcgowan/go-tar"
 	"github.com/pkg/errors"
 )
 
@@ -100,7 +100,7 @@ const (
 	// readdir calls to this directory do not follow to lower layers.
 	whiteoutOpaqueDir = whiteoutMetaPrefix + ".opq"
 
-	paxSchilyXattr = "SCHILY.xattr."
+	paxSchilyXattr = "SCHILY.xattrs."
 )
 
 // Apply applies a tar stream of an OCI style diff tar.
@@ -113,9 +113,6 @@ func Apply(ctx context.Context, root string, r io.Reader, opts ...ApplyOpt) (int
 		if err := opt(&options); err != nil {
 			return 0, errors.Wrap(err, "failed to apply option")
 		}
-	}
-	if options.Filter == nil {
-		options.Filter = all
 	}
 
 	return apply(ctx, root, tar.NewReader(r), options)
@@ -158,14 +155,6 @@ func applyNaive(ctx context.Context, root string, tr *tar.Reader, options ApplyO
 		// Normalize name, for safety and for a simple is-root check
 		hdr.Name = filepath.Clean(hdr.Name)
 
-		accept, err := options.Filter(hdr)
-		if err != nil {
-			return 0, err
-		}
-		if !accept {
-			continue
-		}
-
 		if skipFile(hdr) {
 			log.G(ctx).Warnf("file %q ignored: archive may not be supported on system", hdr.Name)
 			continue
@@ -194,7 +183,7 @@ func applyNaive(ctx context.Context, root string, tr *tar.Reader, options ApplyO
 				parentPath = filepath.Dir(path)
 			}
 			if _, err := os.Lstat(parentPath); err != nil && os.IsNotExist(err) {
-				err = mkdirAll(parentPath, 0755)
+				err = mkdirAll(parentPath, 0700)
 				if err != nil {
 					return 0, err
 				}
@@ -210,7 +199,7 @@ func applyNaive(ctx context.Context, root string, tr *tar.Reader, options ApplyO
 				basename := filepath.Base(hdr.Name)
 				aufsHardlinks[basename] = hdr
 				if aufsTempdir == "" {
-					if aufsTempdir, err = ioutil.TempDir(os.Getenv("XDG_RUNTIME_DIR"), "dockerplnk"); err != nil {
+					if aufsTempdir, err = ioutil.TempDir("", "dockerplnk"); err != nil {
 						return 0, err
 					}
 					defer os.RemoveAll(aufsTempdir)
@@ -295,7 +284,7 @@ func applyNaive(ctx context.Context, root string, tr *tar.Reader, options ApplyO
 			linkBasename := filepath.Base(hdr.Linkname)
 			srcHdr = aufsHardlinks[linkBasename]
 			if srcHdr == nil {
-				return 0, fmt.Errorf("invalid aufs hardlink")
+				return 0, fmt.Errorf("Invalid aufs hardlink")
 			}
 			p, err := fs.RootPath(aufsTempdir, linkBasename)
 			if err != nil {
@@ -377,11 +366,10 @@ func createTarFile(ctx context.Context, path, extractDir string, hdr *tar.Header
 		}
 
 	case tar.TypeLink:
-		targetPath, err := hardlinkRootPath(extractDir, hdr.Linkname)
+		targetPath, err := fs.RootPath(extractDir, hdr.Linkname)
 		if err != nil {
 			return err
 		}
-
 		if err := os.Link(targetPath, path); err != nil {
 			return err
 		}
@@ -477,10 +465,7 @@ func (cw *changeWriter) HandleChange(k fs.ChangeKind, p string, f os.FileInfo, e
 			source = filepath.Join(cw.source, p)
 		)
 
-		switch {
-		case f.Mode()&os.ModeSocket != 0:
-			return nil // ignore sockets
-		case f.Mode()&os.ModeSymlink != 0:
+		if f.Mode()&os.ModeSymlink != 0 {
 			if link, err = os.Readlink(source); err != nil {
 				return err
 			}
@@ -659,28 +644,4 @@ func copyBuffered(ctx context.Context, dst io.Writer, src io.Reader) (written in
 	}
 	return written, err
 
-}
-
-// hardlinkRootPath returns target linkname, evaluating and bounding any
-// symlink to the parent directory.
-//
-// NOTE: Allow hardlink to the softlink, not the real one. For example,
-//
-//	touch /tmp/zzz
-//	ln -s /tmp/zzz /tmp/xxx
-//	ln /tmp/xxx /tmp/yyy
-//
-// /tmp/yyy should be softlink which be same of /tmp/xxx, not /tmp/zzz.
-func hardlinkRootPath(root, linkname string) (string, error) {
-	ppath, base := filepath.Split(linkname)
-	ppath, err := fs.RootPath(root, ppath)
-	if err != nil {
-		return "", err
-	}
-
-	targetPath := filepath.Join(ppath, base)
-	if !strings.HasPrefix(targetPath, root) {
-		targetPath = root
-	}
-	return targetPath, nil
 }

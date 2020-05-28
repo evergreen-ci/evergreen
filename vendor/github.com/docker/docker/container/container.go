@@ -22,9 +22,7 @@ import (
 	"github.com/docker/docker/daemon/exec"
 	"github.com/docker/docker/daemon/logger"
 	"github.com/docker/docker/daemon/logger/jsonfilelog"
-	"github.com/docker/docker/daemon/logger/local"
 	"github.com/docker/docker/daemon/network"
-	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/containerfs"
@@ -256,7 +254,7 @@ func (container *Container) WriteHostConfig() (*containertypes.HostConfig, error
 }
 
 // SetupWorkingDirectory sets up the container's working directory as set in container.Config.WorkingDir
-func (container *Container) SetupWorkingDirectory(rootIdentity idtools.Identity) error {
+func (container *Container) SetupWorkingDirectory(rootIDs idtools.IDPair) error {
 	// TODO @jhowardmsft, @gupta-ak LCOW Support. This will need revisiting.
 	// We will need to do remote filesystem operations here.
 	if container.OS != runtime.GOOS {
@@ -273,7 +271,7 @@ func (container *Container) SetupWorkingDirectory(rootIdentity idtools.Identity)
 		return err
 	}
 
-	if err := idtools.MkdirAllAndChownNew(pth, 0755, rootIdentity); err != nil {
+	if err := idtools.MkdirAllAndChownNew(pth, 0755, rootIDs); err != nil {
 		pthInfo, err2 := os.Stat(pth)
 		if err2 == nil && pthInfo != nil && !pthInfo.IsDir() {
 			return errors.Errorf("Cannot mkdir: %s is not a directory", container.Config.WorkingDir)
@@ -377,27 +375,13 @@ func (container *Container) StartLogger() (logger.Logger, error) {
 	}
 
 	// Set logging file for "json-logger"
-	// TODO(@cpuguy83): Setup here based on log driver is a little weird.
-	switch cfg.Type {
-	case jsonfilelog.Name:
+	if cfg.Type == jsonfilelog.Name {
 		info.LogPath, err = container.GetRootResourcePath(fmt.Sprintf("%s-json.log", container.ID))
 		if err != nil {
 			return nil, err
 		}
 
 		container.LogPath = info.LogPath
-	case local.Name:
-		// Do not set container.LogPath for the local driver
-		// This would expose the value to the API, which should not be done as it means
-		// that the log file implementation would become a stable API that cannot change.
-		logDir, err := container.GetRootResourcePath("local-logs")
-		if err != nil {
-			return nil, err
-		}
-		if err := os.MkdirAll(logDir, 0700); err != nil {
-			return nil, errdefs.System(errors.Wrap(err, "error creating local logs dir"))
-		}
-		info.LogPath = filepath.Join(logDir, "container.log")
 	}
 
 	l, err := initDriver(info)
@@ -730,7 +714,7 @@ func (i *rio) Close() error {
 }
 
 func (i *rio) Wait() {
-	i.sc.Wait(context.Background())
+	i.sc.Wait()
 
 	i.IO.Wait()
 }

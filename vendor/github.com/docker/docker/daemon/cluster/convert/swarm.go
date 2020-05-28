@@ -40,9 +40,6 @@ func SwarmFromGRPC(c swarmapi.Cluster) types.Swarm {
 				TrustRoot: string(c.RootCA.CACert),
 			},
 			RootRotationInProgress: c.RootCA.RootRotation != nil,
-			DefaultAddrPool:        c.DefaultAddressPool,
-			SubnetSize:             c.SubnetSize,
-			DataPathPort:           c.VXLANUDPPort,
 		},
 		JoinTokens: types.JoinTokens{
 			Worker:  c.RootCA.JoinTokens.Worker,

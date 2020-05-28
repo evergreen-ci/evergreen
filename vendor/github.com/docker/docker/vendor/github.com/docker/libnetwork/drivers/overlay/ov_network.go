@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/docker/libnetwork/datastore"
@@ -26,7 +27,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netlink/nl"
 	"github.com/vishvananda/netns"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 type networkTable map[string]*network
 
 type subnet struct {
-	sboxInit  bool
+	once      *sync.Once
 	vxlanName string
 	brName    string
 	vni       uint32
@@ -63,7 +63,7 @@ type network struct {
 	endpoints endpointTable
 	driver    *driver
 	joinCnt   int
-	sboxInit  bool
+	once      *sync.Once
 	initEpoch int
 	initErr   error
 	subnets   []*subnet
@@ -97,18 +97,18 @@ func setDefaultVlan() {
 	}
 
 	// make sure the sysfs mount doesn't propagate back
-	if err = unix.Unshare(unix.CLONE_NEWNS); err != nil {
+	if err = syscall.Unshare(syscall.CLONE_NEWNS); err != nil {
 		logrus.Errorf("unshare failed, %v", err)
 		os.Exit(1)
 	}
 
-	flag := unix.MS_PRIVATE | unix.MS_REC
-	if err = unix.Mount("", "/", "", uintptr(flag), ""); err != nil {
+	flag := syscall.MS_PRIVATE | syscall.MS_REC
+	if err = syscall.Mount("", "/", "", uintptr(flag), ""); err != nil {
 		logrus.Errorf("root mount failed, %v", err)
 		os.Exit(1)
 	}
 
-	if err = unix.Mount("sysfs", "/sys", "sysfs", 0, ""); err != nil {
+	if err = syscall.Mount("sysfs", "/sys", "sysfs", 0, ""); err != nil {
 		logrus.Errorf("mounting sysfs failed, %v", err)
 		os.Exit(1)
 	}
@@ -150,6 +150,7 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 		id:        id,
 		driver:    d,
 		endpoints: endpointTable{},
+		once:      &sync.Once{},
 		subnets:   []*subnet{},
 	}
 
@@ -192,6 +193,7 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 		s := &subnet{
 			subnetIP: ipd.Pool,
 			gwIP:     ipd.Gateway,
+			once:     &sync.Once{},
 		}
 
 		if len(vnis) != 0 {
@@ -242,15 +244,7 @@ func (d *driver) DeleteNetwork(nid string) error {
 	}
 
 	d.Lock()
-	// Only perform a peer flush operation (if required) AFTER unlocking
-	// the driver lock to avoid deadlocking w/ the peerDB.
-	var doPeerFlush bool
-	defer func() {
-		d.Unlock()
-		if doPeerFlush {
-			d.peerFlush(nid)
-		}
-	}()
+	defer d.Unlock()
 
 	// This is similar to d.network(), but we need to keep holding the lock
 	// until we are done removing this network.
@@ -272,11 +266,11 @@ func (d *driver) DeleteNetwork(nid string) error {
 		}
 
 		if err := d.deleteEndpointFromStore(ep); err != nil {
-			logrus.Warnf("Failed to delete overlay endpoint %.7s from local store: %v", ep.id, err)
+			logrus.Warnf("Failed to delete overlay endpoint %s from local store: %v", ep.id[0:7], err)
 		}
 	}
-
-	doPeerFlush = true
+	// flush the peerDB entries
+	d.peerFlush(nid)
 	delete(d.networks, nid)
 
 	vnis, err := n.releaseVxlanID()
@@ -302,54 +296,29 @@ func (d *driver) RevokeExternalConnectivity(nid, eid string) error {
 	return nil
 }
 
-func (n *network) joinSandbox(s *subnet, restore bool, incJoinCount bool) error {
+func (n *network) incEndpointCount() {
+	n.Lock()
+	defer n.Unlock()
+	n.joinCnt++
+}
+
+func (n *network) joinSandbox(restore bool) error {
 	// If there is a race between two go routines here only one will win
 	// the other will wait.
-	networkOnce.Do(networkOnceInit)
-
-	n.Lock()
-	// If non-restore initialization occurred and was successful then
-	// tell the peerDB to initialize the sandbox with all the peers
-	// previously received from networkdb.  But only do this after
-	// unlocking the network.  Otherwise we could deadlock with
-	// on the peerDB channel while peerDB is waiting for the network lock.
-	var doInitPeerDB bool
-	defer func() {
-		n.Unlock()
-		if doInitPeerDB {
-			n.driver.initSandboxPeerDB(n.id)
-		}
-	}()
-
-	if !n.sboxInit {
+	n.once.Do(func() {
+		// save the error status of initSandbox in n.initErr so that
+		// all the racing go routines are able to know the status.
 		n.initErr = n.initSandbox(restore)
-		doInitPeerDB = n.initErr == nil && !restore
-		// If there was an error, we cannot recover it
-		n.sboxInit = true
-	}
+	})
 
-	if n.initErr != nil {
-		return fmt.Errorf("network sandbox join failed: %v", n.initErr)
-	}
+	return n.initErr
+}
 
-	subnetErr := s.initErr
-	if !s.sboxInit {
-		subnetErr = n.initSubnetSandbox(s, restore)
-		// We can recover from these errors, but not on restore
-		if restore || subnetErr == nil {
-			s.initErr = subnetErr
-			s.sboxInit = true
-		}
-	}
-	if subnetErr != nil {
-		return fmt.Errorf("subnet sandbox join failed for %q: %v", s.subnetIP.String(), subnetErr)
-	}
-
-	if incJoinCount {
-		n.joinCnt++
-	}
-
-	return nil
+func (n *network) joinSubnetSandbox(s *subnet, restore bool) error {
+	s.once.Do(func() {
+		s.initErr = n.initSubnetSandbox(s, restore)
+	})
+	return s.initErr
 }
 
 func (n *network) leaveSandbox() {
@@ -360,14 +329,15 @@ func (n *network) leaveSandbox() {
 		return
 	}
 
-	n.destroySandbox()
-
-	n.sboxInit = false
-	n.initErr = nil
+	// We are about to destroy sandbox since the container is leaving the network
+	// Reinitialize the once variable so that we will be able to trigger one time
+	// sandbox initialization(again) when another container joins subsequently.
+	n.once = &sync.Once{}
 	for _, s := range n.subnets {
-		s.sboxInit = false
-		s.initErr = nil
+		s.once = &sync.Once{}
 	}
+
+	n.destroySandbox()
 }
 
 // to be called while holding network lock
@@ -427,7 +397,7 @@ func populateVNITbl() {
 			}
 			defer ns.Close()
 
-			nlh, err := netlink.NewHandleAt(ns, unix.NETLINK_ROUTE)
+			nlh, err := netlink.NewHandleAt(ns, syscall.NETLINK_ROUTE)
 			if err != nil {
 				logrus.Errorf("Could not open netlink handle during vni population for ns %s: %v", path, err)
 				return nil
@@ -500,7 +470,7 @@ func (n *network) generateVxlanName(s *subnet) string {
 		id = n.id[:5]
 	}
 
-	return fmt.Sprintf("vx-%06x-%v", s.vni, id)
+	return "vx-" + fmt.Sprintf("%06x", n.vxlanID(s)) + "-" + id
 }
 
 func (n *network) generateBridgeName(s *subnet) string {
@@ -513,7 +483,7 @@ func (n *network) generateBridgeName(s *subnet) string {
 }
 
 func (n *network) getBridgeNamePrefix(s *subnet) string {
-	return fmt.Sprintf("ov-%06x", s.vni)
+	return "ov-" + fmt.Sprintf("%06x", n.vxlanID(s))
 }
 
 func checkOverlap(nw *net.IPNet) error {
@@ -535,7 +505,7 @@ func checkOverlap(nw *net.IPNet) error {
 }
 
 func (n *network) restoreSubnetSandbox(s *subnet, brName, vxlanName string) error {
-	sbox := n.sbox
+	sbox := n.sandbox()
 
 	// restore overlay osl sandbox
 	Ifaces := make(map[string][]osl.IfaceOption)
@@ -564,7 +534,7 @@ func (n *network) setupSubnetSandbox(s *subnet, brName, vxlanName string) error 
 			deleteInterfaceBySubnet(n.getBridgeNamePrefix(s), s)
 		}
 		// Try to delete the vxlan interface by vni if already present
-		deleteVxlanByVNI("", s.vni)
+		deleteVxlanByVNI("", n.vxlanID(s))
 
 		if err := checkOverlap(s.subnetIP); err != nil {
 			return err
@@ -578,24 +548,24 @@ func (n *network) setupSubnetSandbox(s *subnet, brName, vxlanName string) error 
 		// it must a stale namespace from previous
 		// life. Destroy it completely and reclaim resourced.
 		networkMu.Lock()
-		path, ok := vniTbl[s.vni]
+		path, ok := vniTbl[n.vxlanID(s)]
 		networkMu.Unlock()
 
 		if ok {
-			deleteVxlanByVNI(path, s.vni)
-			if err := unix.Unmount(path, unix.MNT_FORCE); err != nil {
+			deleteVxlanByVNI(path, n.vxlanID(s))
+			if err := syscall.Unmount(path, syscall.MNT_FORCE); err != nil {
 				logrus.Errorf("unmount of %s failed: %v", path, err)
 			}
 			os.Remove(path)
 
 			networkMu.Lock()
-			delete(vniTbl, s.vni)
+			delete(vniTbl, n.vxlanID(s))
 			networkMu.Unlock()
 		}
 	}
 
 	// create a bridge and vxlan device for this subnet and move it to the sandbox
-	sbox := n.sbox
+	sbox := n.sandbox()
 
 	if err := sbox.AddInterface(brName, "br",
 		sbox.InterfaceOptions().Address(s.gwIP),
@@ -603,30 +573,13 @@ func (n *network) setupSubnetSandbox(s *subnet, brName, vxlanName string) error 
 		return fmt.Errorf("bridge creation in sandbox failed for subnet %q: %v", s.subnetIP.String(), err)
 	}
 
-	err := createVxlan(vxlanName, s.vni, n.maxMTU())
+	err := createVxlan(vxlanName, n.vxlanID(s), n.maxMTU())
 	if err != nil {
 		return err
 	}
 
 	if err := sbox.AddInterface(vxlanName, "vxlan",
 		sbox.InterfaceOptions().Master(brName)); err != nil {
-		// If adding vxlan device to the overlay namespace fails, remove the bridge interface we
-		// already added to the namespace. This allows the caller to try the setup again.
-		for _, iface := range sbox.Info().Interfaces() {
-			if iface.SrcName() == brName {
-				if ierr := iface.Remove(); ierr != nil {
-					logrus.Errorf("removing bridge failed from ov ns %v failed, %v", n.sbox.Key(), ierr)
-				}
-			}
-		}
-
-		// Also, delete the vxlan interface. Since a global vni id is associated
-		// with the vxlan interface, an orphaned vxlan interface will result in
-		// failure of vxlan device creation if the vni is assigned to some other
-		// network.
-		if deleteErr := deleteInterface(vxlanName); deleteErr != nil {
-			logrus.Warnf("could not delete vxlan interface, %s, error %v, after config error, %v", vxlanName, deleteErr, err)
-		}
 		return fmt.Errorf("vxlan interface creation failed for subnet %q: %v", s.subnetIP.String(), err)
 	}
 
@@ -658,7 +611,6 @@ func (n *network) setupSubnetSandbox(s *subnet, brName, vxlanName string) error 
 	return nil
 }
 
-// Must be called with the network lock
 func (n *network) initSubnetSandbox(s *subnet, restore bool) error {
 	brName := n.generateBridgeName(s)
 	vxlanName := n.generateVxlanName(s)
@@ -673,8 +625,10 @@ func (n *network) initSubnetSandbox(s *subnet, restore bool) error {
 		}
 	}
 
+	n.Lock()
 	s.vxlanName = vxlanName
 	s.brName = brName
+	n.Unlock()
 
 	return nil
 }
@@ -693,7 +647,7 @@ func (n *network) cleanupStaleSandboxes() {
 			if strings.Contains(n.id, pattern) {
 				// Delete all vnis
 				deleteVxlanByVNI(path, 0)
-				unix.Unmount(path, unix.MNT_DETACH)
+				syscall.Unmount(path, syscall.MNT_DETACH)
 				os.Remove(path)
 
 				// Now that we have destroyed this
@@ -715,7 +669,11 @@ func (n *network) cleanupStaleSandboxes() {
 }
 
 func (n *network) initSandbox(restore bool) error {
+	n.Lock()
 	n.initEpoch++
+	n.Unlock()
+
+	networkOnce.Do(networkOnceInit)
 
 	if !restore {
 		if hostMode {
@@ -745,7 +703,12 @@ func (n *network) initSandbox(restore bool) error {
 	}
 
 	// this is needed to let the peerAdd configure the sandbox
-	n.sbox = sbox
+	n.setSandbox(sbox)
+
+	if !restore {
+		// Initialize the sandbox with all the peers previously received from networkdb
+		n.driver.initSandboxPeerDB(n.id)
+	}
 
 	// If we are in swarm mode, we don't need anymore the watchMiss routine.
 	// This will save 1 thread and 1 netlink socket per network
@@ -755,15 +718,15 @@ func (n *network) initSandbox(restore bool) error {
 
 	var nlSock *nl.NetlinkSocket
 	sbox.InvokeFunc(func() {
-		nlSock, err = nl.Subscribe(unix.NETLINK_ROUTE, unix.RTNLGRP_NEIGH)
+		nlSock, err = nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_NEIGH)
 		if err != nil {
 			return
 		}
 		// set the receive timeout to not remain stuck on the RecvFrom if the fd gets closed
-		tv := unix.NsecToTimeval(soTimeout.Nanoseconds())
+		tv := syscall.NsecToTimeval(soTimeout.Nanoseconds())
 		err = nlSock.SetReceiveTimeout(&tv)
 	})
-	n.nlSocket = nlSock
+	n.setNetlinkSocket(nlSock)
 
 	if err == nil {
 		go n.watchMiss(nlSock, key)
@@ -803,7 +766,7 @@ func (n *network) watchMiss(nlSock *nl.NetlinkSocket, nsPath string) {
 				return
 			}
 			// When the receive timeout expires the receive will return EAGAIN
-			if err == unix.EAGAIN {
+			if err == syscall.EAGAIN {
 				// we continue here to avoid spam for timeouts
 				continue
 			}
@@ -812,7 +775,7 @@ func (n *network) watchMiss(nlSock *nl.NetlinkSocket, nsPath string) {
 		}
 
 		for _, msg := range msgs {
-			if msg.Header.Type != unix.RTM_GETNEIGH && msg.Header.Type != unix.RTM_NEWNEIGH {
+			if msg.Header.Type != syscall.RTM_GETNEIGH && msg.Header.Type != syscall.RTM_NEWNEIGH {
 				continue
 			}
 
@@ -865,6 +828,7 @@ func (d *driver) restoreNetworkFromStore(nid string) *network {
 	if n != nil {
 		n.driver = d
 		n.endpoints = endpointTable{}
+		n.once = &sync.Once{}
 		d.networks[nid] = n
 	}
 	return n
@@ -872,11 +836,11 @@ func (d *driver) restoreNetworkFromStore(nid string) *network {
 
 func (d *driver) network(nid string) *network {
 	d.Lock()
+	defer d.Unlock()
 	n, ok := d.networks[nid]
 	if !ok {
 		n = d.restoreNetworkFromStore(nid)
 	}
-	d.Unlock()
 
 	return n
 }
@@ -897,12 +861,26 @@ func (d *driver) getNetworkFromStore(nid string) *network {
 func (n *network) sandbox() osl.Sandbox {
 	n.Lock()
 	defer n.Unlock()
+
 	return n.sbox
+}
+
+func (n *network) setSandbox(sbox osl.Sandbox) {
+	n.Lock()
+	n.sbox = sbox
+	n.Unlock()
+}
+
+func (n *network) setNetlinkSocket(nlSk *nl.NetlinkSocket) {
+	n.Lock()
+	n.nlSocket = nlSk
+	n.Unlock()
 }
 
 func (n *network) vxlanID(s *subnet) uint32 {
 	n.Lock()
 	defer n.Unlock()
+
 	return s.vni
 }
 
@@ -1011,6 +989,7 @@ func (n *network) SetValue(value []byte) error {
 				subnetIP: subnetIP,
 				gwIP:     gwIP,
 				vni:      vni,
+				once:     &sync.Once{},
 			}
 			n.subnets = append(n.subnets, s)
 		} else {
@@ -1036,10 +1015,7 @@ func (n *network) writeToStore() error {
 }
 
 func (n *network) releaseVxlanID() ([]uint32, error) {
-	n.Lock()
-	nSubnets := len(n.subnets)
-	n.Unlock()
-	if nSubnets == 0 {
+	if len(n.subnets) == 0 {
 		return nil, nil
 	}
 
@@ -1055,17 +1031,14 @@ func (n *network) releaseVxlanID() ([]uint32, error) {
 		}
 	}
 	var vnis []uint32
-	n.Lock()
 	for _, s := range n.subnets {
 		if n.driver.vxlanIdm != nil {
-			vnis = append(vnis, s.vni)
+			vni := n.vxlanID(s)
+			vnis = append(vnis, vni)
+			n.driver.vxlanIdm.Release(uint64(vni))
 		}
-		s.vni = 0
-	}
-	n.Unlock()
 
-	for _, vni := range vnis {
-		n.driver.vxlanIdm.Release(uint64(vni))
+		n.setVxlanID(s, 0)
 	}
 
 	return vnis, nil
@@ -1073,7 +1046,7 @@ func (n *network) releaseVxlanID() ([]uint32, error) {
 
 func (n *network) obtainVxlanID(s *subnet) error {
 	//return if the subnet already has a vxlan id assigned
-	if n.vxlanID(s) != 0 {
+	if s.vni != 0 {
 		return nil
 	}
 
@@ -1086,7 +1059,7 @@ func (n *network) obtainVxlanID(s *subnet) error {
 			return fmt.Errorf("getting network %q from datastore failed %v", n.id, err)
 		}
 
-		if n.vxlanID(s) == 0 {
+		if s.vni == 0 {
 			vxlanID, err := n.driver.vxlanIdm.GetID(true)
 			if err != nil {
 				return fmt.Errorf("failed to allocate vxlan id: %v", err)

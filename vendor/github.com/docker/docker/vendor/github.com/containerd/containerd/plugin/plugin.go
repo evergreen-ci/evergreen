@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/containerd/ttrpc"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -43,7 +42,10 @@ var (
 
 // IsSkipPlugin returns true if the error is skipping the plugin
 func IsSkipPlugin(err error) bool {
-	return errors.Cause(err) == ErrSkipPlugin
+	if errors.Cause(err) == ErrSkipPlugin {
+		return true
+	}
+	return false
 }
 
 // Type is the type of the plugin
@@ -52,14 +54,10 @@ type Type string
 func (t Type) String() string { return string(t) }
 
 const (
-	// InternalPlugin implements an internal plugin to containerd
-	InternalPlugin Type = "io.containerd.internal.v1"
+	// AllPlugins declares that the plugin should be initialized after all others.
+	AllPlugins Type = "*"
 	// RuntimePlugin implements a runtime
 	RuntimePlugin Type = "io.containerd.runtime.v1"
-	// RuntimePluginV2 implements a runtime v2
-	RuntimePluginV2 Type = "io.containerd.runtime.v2"
-	// ServicePlugin implements a internal service
-	ServicePlugin Type = "io.containerd.service.v1"
 	// GRPCPlugin implements a grpc service
 	GRPCPlugin Type = "io.containerd.grpc.v1"
 	// SnapshotPlugin implements a snapshotter
@@ -76,15 +74,6 @@ const (
 	GCPlugin Type = "io.containerd.gc.v1"
 )
 
-const (
-	// RuntimeLinuxV1 is the legacy linux runtime
-	RuntimeLinuxV1 = "io.containerd.runtime.v1.linux"
-	// RuntimeRuncV1 is the runc runtime that supports a single container
-	RuntimeRuncV1 = "io.containerd.runc.v1"
-	// RuntimeRuncV2 is the runc runtime that supports multiple containers per shim
-	RuntimeRuncV2 = "io.containerd.runc.v2"
-)
-
 // Registration contains information for registering a plugin
 type Registration struct {
 	// Type of the plugin
@@ -98,7 +87,7 @@ type Registration struct {
 
 	// InitFn is called when initializing a plugin. The registration and
 	// context are passed in. The init function may modify the registration to
-	// add exports, capabilities and platform support declarations.
+	// add exports, capabilites and platform support declarations.
 	InitFn func(*InitContext) (interface{}, error)
 }
 
@@ -122,16 +111,6 @@ func (r *Registration) URI() string {
 // Service allows GRPC services to be registered with the underlying server
 type Service interface {
 	Register(*grpc.Server) error
-}
-
-// TTRPCService allows TTRPC services to be registered with the underlying server
-type TTRPCService interface {
-	RegisterTTRPC(*ttrpc.Server) error
-}
-
-// TCPService allows GRPC services to be registered with the underlying tcp server
-type TCPService interface {
-	RegisterTCP(*grpc.Server) error
 }
 
 var register = struct {

@@ -4,9 +4,43 @@ import (
 	"errors"
 	"testing"
 
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
+
+func TestParseArgs(t *testing.T) {
+	// equivalent of `docker ps -f 'created=today' -f 'image.name=ubuntu*' -f 'image.name=*untu'`
+	flagArgs := []string{
+		"created=today",
+		"image.name=ubuntu*",
+		"image.name=*untu",
+	}
+	var (
+		args = NewArgs()
+		err  error
+	)
+
+	for i := range flagArgs {
+		args, err = ParseFlag(flagArgs[i], args)
+		assert.NilError(t, err)
+	}
+	assert.Check(t, is.Len(args.Get("created"), 1))
+	assert.Check(t, is.Len(args.Get("image.name"), 2))
+}
+
+func TestParseArgsEdgeCase(t *testing.T) {
+	var args Args
+	args, err := ParseFlag("", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args.Len() != 0 {
+		t.Fatalf("Expected an empty Args (map), got %v", args)
+	}
+	if args, err = ParseFlag("anything", args); err == nil || err != ErrBadFormat {
+		t.Fatalf("Expected ErrBadFormat, got %v", err)
+	}
+}
 
 func TestToJSON(t *testing.T) {
 	fields := map[string]map[string]bool{
@@ -313,6 +347,17 @@ func TestContains(t *testing.T) {
 	}
 }
 
+func TestInclude(t *testing.T) {
+	f := NewArgs()
+	if f.Include("status") {
+		t.Fatal("Expected to not include a status key, got true")
+	}
+	f.Add("status", "running")
+	if !f.Include("status") {
+		t.Fatal("Expected to include a status key, got false")
+	}
+}
+
 func TestValidate(t *testing.T) {
 	f := NewArgs()
 	f.Add("status", "running")
@@ -375,12 +420,4 @@ func TestFuzzyMatch(t *testing.T) {
 			t.Fatalf("Expected %v, got %v: %s", match, got, source)
 		}
 	}
-}
-
-func TestClone(t *testing.T) {
-	f := NewArgs()
-	f.Add("foo", "bar")
-	f2 := f.Clone()
-	f2.Add("baz", "qux")
-	assert.Check(t, is.Len(f.Get("baz"), 0))
 }

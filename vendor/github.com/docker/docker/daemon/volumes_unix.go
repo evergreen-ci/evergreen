@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/docker/docker/pkg/mount"
@@ -48,7 +47,7 @@ func (daemon *Daemon) setupMounts(c *container.Container) ([]container.Mount, er
 			return nil
 		}
 
-		path, err := m.Setup(c.MountLabel, daemon.idMapping.RootPair(), checkfunc)
+		path, err := m.Setup(c.MountLabel, daemon.idMappings.RootPair(), checkfunc)
 		if err != nil {
 			return nil, err
 		}
@@ -58,9 +57,6 @@ func (daemon *Daemon) setupMounts(c *container.Container) ([]container.Mount, er
 				Destination: m.Destination,
 				Writable:    m.RW,
 				Propagation: string(m.Propagation),
-			}
-			if m.Spec.Type == mounttypes.TypeBind && m.Spec.BindOptions != nil {
-				mnt.NonRecursive = m.Spec.BindOptions.NonRecursive
 			}
 			if m.Volume != nil {
 				attributes := map[string]string{
@@ -81,7 +77,7 @@ func (daemon *Daemon) setupMounts(c *container.Container) ([]container.Mount, er
 	// if we are going to mount any of the network files from container
 	// metadata, the ownership must be set properly for potential container
 	// remapped root (user namespaces)
-	rootIDs := daemon.idMapping.RootPair()
+	rootIDs := daemon.idMappings.RootPair()
 	for _, mount := range netMounts {
 		// we should only modify ownership of network files within our own container
 		// metadata repository. If the user specifies a mount path external, it is
@@ -133,13 +129,13 @@ func (daemon *Daemon) mountVolumes(container *container.Container) error {
 			return err
 		}
 
-		bindMode := "rbind"
-		if m.NonRecursive {
-			bindMode = "bind"
-		}
-		writeMode := "ro"
+		opts := "rbind,ro"
 		if m.Writable {
-			writeMode = "rw"
+			opts = "rbind,rw"
+		}
+
+		if err := mount.Mount(m.Source, dest, bindMountType, opts); err != nil {
+			return err
 		}
 
 		// mountVolumes() seems to be called for temporary mounts
@@ -150,9 +146,8 @@ func (daemon *Daemon) mountVolumes(container *container.Container) error {
 		// then these unmounts will propagate and unmount original
 		// mount as well. So make all these mounts rprivate.
 		// Do not use propagation property of volume as that should
-		// apply only when mounting happens inside the container.
-		opts := strings.Join([]string{bindMode, writeMode, "rprivate"}, ",")
-		if err := mount.Mount(m.Source, dest, "", opts); err != nil {
+		// apply only when mounting happen inside the container.
+		if err := mount.MakeRPrivate(dest); err != nil {
 			return err
 		}
 	}

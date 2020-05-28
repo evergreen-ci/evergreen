@@ -2,7 +2,6 @@ package jasper
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,15 +50,15 @@ func TestGetInMemoryLogStream(t *testing.T) {
 					assert.Nil(t, logs)
 				},
 				"SucceedsWithInMemoryLogger": func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string) {
-					loggerProducer := &options.InMemoryLoggerOptions{
-						InMemoryCap: 100,
-						Base: options.BaseOptions{
-							Format: options.LogFormatPlain,
+					opts.Output.Loggers = []options.Logger{
+						{
+							Type: options.LogInMemory,
+							Options: options.Log{
+								Format:      options.LogFormatPlain,
+								InMemoryCap: 100,
+							},
 						},
 					}
-					config := &options.LoggerConfig{}
-					config.Set(loggerProducer)
-					opts.Output.Loggers = []*options.LoggerConfig{config}
 					proc, err := makeProc(ctx, opts)
 					require.NoError(t, err)
 
@@ -70,22 +69,23 @@ func TestGetInMemoryLogStream(t *testing.T) {
 					assert.NoError(t, err)
 					assert.Contains(t, logs, output)
 				},
-				"MultipleInMemoryLoggersReturnLogsFromOnlyOne": func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string) {
-					config1 := &options.LoggerConfig{}
-					config1.Set(&options.InMemoryLoggerOptions{
-						InMemoryCap: 100,
-						Base: options.BaseOptions{
-							Format: options.LogFormatPlain,
+				"MultipleInMemoryoptions.LoggersReturnsLogsFromOnlyOne": func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string) {
+					opts.Output.Loggers = []options.Logger{
+						{
+							Type: options.LogInMemory,
+							Options: options.Log{
+								Format:      options.LogFormatPlain,
+								InMemoryCap: 100,
+							},
 						},
-					})
-					config2 := &options.LoggerConfig{}
-					config2.Set(&options.InMemoryLoggerOptions{
-						InMemoryCap: 100,
-						Base: options.BaseOptions{
-							Format: options.LogFormatPlain,
+						{
+							Type: options.LogInMemory,
+							Options: options.Log{
+								Format:      options.LogFormatPlain,
+								InMemoryCap: 100,
+							},
 						},
-					})
-					opts.Output.Loggers = []*options.LoggerConfig{config1, config2}
+					}
 					proc, err := makeProc(ctx, opts)
 					require.NoError(t, err)
 
@@ -104,13 +104,14 @@ func TestGetInMemoryLogStream(t *testing.T) {
 					}
 					assert.Equal(t, 1, outputCount)
 				},
+				// "SuccessiveCallsReturnLogs": func(ctx context.Context, t *testing.T, opts *options.Create, output string) {},
 				// "": func(ctx context.Context, t *testing.T, opts *options.Create, output string) {},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					tctx, tcancel := context.WithTimeout(ctx, testutil.ProcessTestTimeout)
 					defer tcancel()
 
-					output := t.Name() + " " + filepath.Join(procType, testName)
+					output := "foo"
 					opts := &options.Create{Args: []string{"echo", output}}
 					testCase(tctx, t, opts, makeProc, output)
 				})

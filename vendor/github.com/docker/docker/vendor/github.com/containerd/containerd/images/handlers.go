@@ -19,14 +19,12 @@ package images
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/platforms"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/semaphore"
 )
 
 var (
@@ -109,30 +107,19 @@ func Walk(ctx context.Context, handler Handler, descs ...ocispec.Descriptor) err
 // handler may return `ErrSkipDesc` to signal to the dispatcher to not traverse
 // any children.
 //
-// A concurrency limiter can be passed in to limit the number of concurrent
-// handlers running. When limiter is nil, there is no limit.
-//
 // Typically, this function will be used with `FetchHandler`, often composed
 // with other handlers.
 //
 // If any handler returns an error, the dispatch session will be canceled.
-func Dispatch(ctx context.Context, handler Handler, limiter *semaphore.Weighted, descs ...ocispec.Descriptor) error {
+func Dispatch(ctx context.Context, handler Handler, descs ...ocispec.Descriptor) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, desc := range descs {
 		desc := desc
 
-		if limiter != nil {
-			if err := limiter.Acquire(ctx, 1); err != nil {
-				return err
-			}
-		}
 		eg.Go(func() error {
 			desc := desc
 
 			children, err := handler.Handle(ctx, desc)
-			if limiter != nil {
-				limiter.Release(1)
-			}
 			if err != nil {
 				if errors.Cause(err) == ErrSkipDesc {
 					return nil // don't traverse the children.
@@ -141,7 +128,7 @@ func Dispatch(ctx context.Context, handler Handler, limiter *semaphore.Weighted,
 			}
 
 			if len(children) > 0 {
-				return Dispatch(ctx, handler, limiter, children...)
+				return Dispatch(ctx, handler, children...)
 			}
 
 			return nil
@@ -195,9 +182,9 @@ func SetChildrenLabels(manager content.Manager, f HandlerFunc) HandlerFunc {
 	}
 }
 
-// FilterPlatforms is a handler wrapper which limits the descriptors returned
-// based on matching the specified platform matcher.
-func FilterPlatforms(f HandlerFunc, m platforms.Matcher) HandlerFunc {
+// FilterPlatform is a handler wrapper which limits the descriptors returned
+// by a handler to a single platform.
+func FilterPlatform(platform string, f HandlerFunc) HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		children, err := f(ctx, desc)
 		if err != nil {
@@ -205,51 +192,31 @@ func FilterPlatforms(f HandlerFunc, m platforms.Matcher) HandlerFunc {
 		}
 
 		var descs []ocispec.Descriptor
+		if platform != "" && isMultiPlatform(desc.MediaType) {
+			matcher, err := platforms.Parse(platform)
+			if err != nil {
+				return nil, err
+			}
 
-		if m == nil {
-			descs = children
-		} else {
 			for _, d := range children {
-				if d.Platform == nil || m.Match(*d.Platform) {
+				if d.Platform == nil || matcher.Match(*d.Platform) {
 					descs = append(descs, d)
 				}
 			}
+		} else {
+			descs = children
 		}
 
 		return descs, nil
 	}
+
 }
 
-// LimitManifests is a handler wrapper which filters the manifest descriptors
-// returned using the provided platform.
-// The results will be ordered according to the comparison operator and
-// use the ordering in the manifests for equal matches.
-// A limit of 0 or less is considered no limit.
-func LimitManifests(f HandlerFunc, m platforms.MatchComparer, n int) HandlerFunc {
-	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		children, err := f(ctx, desc)
-		if err != nil {
-			return children, err
-		}
-
-		switch desc.MediaType {
-		case ocispec.MediaTypeImageIndex, MediaTypeDockerSchema2ManifestList:
-			sort.SliceStable(children, func(i, j int) bool {
-				if children[i].Platform == nil {
-					return false
-				}
-				if children[j].Platform == nil {
-					return true
-				}
-				return m.Less(*children[i].Platform, *children[j].Platform)
-			})
-
-			if n > 0 && len(children) > n {
-				children = children[:n]
-			}
-		default:
-			// only limit manifests from an index
-		}
-		return children, nil
+func isMultiPlatform(mediaType string) bool {
+	switch mediaType {
+	case MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
+		return true
+	default:
+		return false
 	}
 }

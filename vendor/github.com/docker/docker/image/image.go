@@ -144,7 +144,7 @@ type ChildConfig struct {
 }
 
 // NewChildImage creates a new Image as a child of this image.
-func NewChildImage(img *Image, child ChildConfig, os string) *Image {
+func NewChildImage(img *Image, child ChildConfig, platform string) *Image {
 	isEmptyLayer := layer.IsEmpty(child.DiffID)
 	var rootFS *RootFS
 	if img.RootFS != nil {
@@ -167,7 +167,7 @@ func NewChildImage(img *Image, child ChildConfig, os string) *Image {
 			DockerVersion:   dockerversion.Version,
 			Config:          child.Config,
 			Architecture:    img.BaseImgArch(),
-			OS:              os,
+			OS:              platform,
 			Container:       child.ContainerID,
 			ContainerConfig: *child.ContainerConfig,
 			Author:          child.Author,

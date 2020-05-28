@@ -1,12 +1,13 @@
 package update
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
@@ -501,10 +502,7 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 				return fmt.Errorf("task %s not found while trying to shut it down", original.ID)
 			}
 			if t.DesiredState > api.TaskStateRunning {
-				return fmt.Errorf(
-					"task %s was already shut down when reached by updater (state: %v)",
-					original.ID, t.DesiredState,
-				)
+				return fmt.Errorf("task %s was already shut down when reached by updater", original.ID)
 			}
 			t.DesiredState = api.TaskStateShutdown
 			return store.UpdateTask(tx, t)

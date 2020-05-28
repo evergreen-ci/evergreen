@@ -1,7 +1,6 @@
 package stream // import "github.com/docker/docker/container/stream"
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,12 +24,11 @@ import (
 // copied and delivered to all StdoutPipe and StderrPipe consumers, using
 // a kind of "broadcaster".
 type Config struct {
-	wg        sync.WaitGroup
+	sync.WaitGroup
 	stdout    *broadcaster.Unbuffered
 	stderr    *broadcaster.Unbuffered
 	stdin     io.ReadCloser
 	stdinPipe io.WriteCloser
-	dio       *cio.DirectIO
 }
 
 // NewConfig creates a stream config and initializes
@@ -117,15 +115,14 @@ func (c *Config) CloseStreams() error {
 
 // CopyToPipe connects streamconfig with a libcontainerd.IOPipe
 func (c *Config) CopyToPipe(iop *cio.DirectIO) {
-	c.dio = iop
 	copyFunc := func(w io.Writer, r io.ReadCloser) {
-		c.wg.Add(1)
+		c.Add(1)
 		go func() {
 			if _, err := pools.Copy(w, r); err != nil {
 				logrus.Errorf("stream copy error: %v", err)
 			}
 			r.Close()
-			c.wg.Done()
+			c.Done()
 		}()
 	}
 
@@ -144,26 +141,6 @@ func (c *Config) CopyToPipe(iop *cio.DirectIO) {
 					logrus.Warnf("failed to close stdin: %v", err)
 				}
 			}()
-		}
-	}
-}
-
-// Wait for the stream to close
-// Wait supports timeouts via the context to unblock and forcefully
-// close the io streams
-func (c *Config) Wait(ctx context.Context) {
-	done := make(chan struct{}, 1)
-	go func() {
-		c.wg.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-ctx.Done():
-		if c.dio != nil {
-			c.dio.Cancel()
-			c.dio.Wait()
-			c.dio.Close()
 		}
 	}
 }

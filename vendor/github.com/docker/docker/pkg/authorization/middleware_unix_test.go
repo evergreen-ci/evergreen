@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/plugingetter"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestMiddlewareWrapHandler(t *testing.T) {

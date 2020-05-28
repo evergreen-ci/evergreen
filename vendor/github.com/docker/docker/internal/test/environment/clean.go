@@ -9,8 +9,18 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/internal/test"
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
+
+type testingT interface {
+	assert.TestingT
+	logT
+	Fatalf(string, ...interface{})
+}
+
+type logT interface {
+	Logf(string, ...interface{})
+}
 
 // Clean the environment, preserving protected objects (images, containers, ...)
 // and removing everything else. It's meant to run after any tests so that they don't

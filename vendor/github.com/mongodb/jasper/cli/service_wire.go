@@ -66,12 +66,12 @@ type wireDaemon struct {
 	Host    string
 	Port    int
 	Manager jasper.Manager
-	Logger  *options.LoggerConfig
+	Logger  *options.Logger
 
 	exit chan struct{}
 }
 
-func newWireDaemon(host string, port int, manager jasper.Manager, logger *options.LoggerConfig) *wireDaemon {
+func newWireDaemon(host string, port int, manager jasper.Manager, logger *options.Logger) *wireDaemon {
 	return &wireDaemon{
 		Host:    host,
 		Port:    port,

@@ -22,7 +22,6 @@ package archive
 type ApplyOptions struct {
 	ParentLayerPaths        []string // Parent layer paths used for Windows layer apply
 	IsWindowsContainerLayer bool     // True if the tar stream to be applied is a Windows Container Layer
-	Filter                  Filter   // Filter tar headers
 }
 
 // WithParentLayers adds parent layers to the apply process this is required

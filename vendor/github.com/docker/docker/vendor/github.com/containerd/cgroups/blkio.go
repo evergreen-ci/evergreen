@@ -26,33 +26,17 @@ import (
 	"strconv"
 	"strings"
 
-	v1 "github.com/containerd/cgroups/stats/v1"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
-// NewBlkio returns a Blkio controller given the root folder of cgroups.
-// It may optionally accept other configuration options, such as ProcRoot(path)
-func NewBlkio(root string, options ...func(controller *blkioController)) *blkioController {
-	ctrl := &blkioController{
-		root:     filepath.Join(root, string(Blkio)),
-		procRoot: "/proc",
-	}
-	for _, opt := range options {
-		opt(ctrl)
-	}
-	return ctrl
-}
-
-// ProcRoot overrides the default location of the "/proc" filesystem
-func ProcRoot(path string) func(controller *blkioController) {
-	return func(c *blkioController) {
-		c.procRoot = path
+func NewBlkio(root string) *blkioController {
+	return &blkioController{
+		root: filepath.Join(root, string(Blkio)),
 	}
 }
 
 type blkioController struct {
-	root     string
-	procRoot string
+	root string
 }
 
 func (b *blkioController) Name() Name {
@@ -88,8 +72,8 @@ func (b *blkioController) Update(path string, resources *specs.LinuxResources) e
 	return b.Create(path, resources)
 }
 
-func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
-	stats.Blkio = &v1.BlkIOStat{}
+func (b *blkioController) Stat(path string, stats *Metrics) error {
+	stats.Blkio = &BlkIOStat{}
 	settings := []blkioStatSettings{
 		{
 			name:  "throttle.io_serviced",
@@ -102,7 +86,6 @@ func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
 	}
 	// Try to read CFQ stats available on all CFQ enabled kernels first
 	if _, err := os.Lstat(filepath.Join(b.Path(path), fmt.Sprintf("blkio.io_serviced_recursive"))); err == nil {
-		settings = []blkioStatSettings{}
 		settings = append(settings,
 			blkioStatSettings{
 				name:  "sectors_recursive",
@@ -138,7 +121,7 @@ func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
 			},
 		)
 	}
-	f, err := os.Open(filepath.Join(b.procRoot, "diskstats"))
+	f, err := os.Open("/proc/diskstats")
 	if err != nil {
 		return err
 	}
@@ -157,7 +140,7 @@ func (b *blkioController) Stat(path string, stats *v1.Metrics) error {
 	return nil
 }
 
-func (b *blkioController) readEntry(devices map[deviceKey]string, path, name string, entry *[]*v1.BlkIOEntry) error {
+func (b *blkioController) readEntry(devices map[deviceKey]string, path, name string, entry *[]*BlkIOEntry) error {
 	f, err := os.Open(filepath.Join(b.Path(path), fmt.Sprintf("blkio.%s", name)))
 	if err != nil {
 		return err
@@ -196,7 +179,7 @@ func (b *blkioController) readEntry(devices map[deviceKey]string, path, name str
 		if err != nil {
 			return err
 		}
-		*entry = append(*entry, &v1.BlkIOEntry{
+		*entry = append(*entry, &BlkIOEntry{
 			Device: devices[deviceKey{major, minor}],
 			Major:  major,
 			Minor:  minor,
@@ -208,41 +191,30 @@ func (b *blkioController) readEntry(devices map[deviceKey]string, path, name str
 }
 
 func createBlkioSettings(blkio *specs.LinuxBlockIO) []blkioSettings {
-	settings := []blkioSettings{}
-
-	if blkio.Weight != nil {
-		settings = append(settings,
-			blkioSettings{
-				name:   "weight",
-				value:  blkio.Weight,
-				format: uintf,
-			})
-	}
-	if blkio.LeafWeight != nil {
-		settings = append(settings,
-			blkioSettings{
-				name:   "leaf_weight",
-				value:  blkio.LeafWeight,
-				format: uintf,
-			})
+	settings := []blkioSettings{
+		{
+			name:   "weight",
+			value:  blkio.Weight,
+			format: uintf,
+		},
+		{
+			name:   "leaf_weight",
+			value:  blkio.LeafWeight,
+			format: uintf,
+		},
 	}
 	for _, wd := range blkio.WeightDevice {
-		if wd.Weight != nil {
-			settings = append(settings,
-				blkioSettings{
-					name:   "weight_device",
-					value:  wd,
-					format: weightdev,
-				})
-		}
-		if wd.LeafWeight != nil {
-			settings = append(settings,
-				blkioSettings{
-					name:   "leaf_weight_device",
-					value:  wd,
-					format: weightleafdev,
-				})
-		}
+		settings = append(settings,
+			blkioSettings{
+				name:   "weight_device",
+				value:  wd,
+				format: weightdev,
+			},
+			blkioSettings{
+				name:   "leaf_weight_device",
+				value:  wd,
+				format: weightleafdev,
+			})
 	}
 	for _, t := range []struct {
 		name string
@@ -284,7 +256,7 @@ type blkioSettings struct {
 
 type blkioStatSettings struct {
 	name  string
-	entry *[]*v1.BlkIOEntry
+	entry *[]*BlkIOEntry
 }
 
 func uintf(v interface{}) []byte {
@@ -293,12 +265,12 @@ func uintf(v interface{}) []byte {
 
 func weightdev(v interface{}) []byte {
 	wd := v.(specs.LinuxWeightDevice)
-	return []byte(fmt.Sprintf("%d:%d %d", wd.Major, wd.Minor, *wd.Weight))
+	return []byte(fmt.Sprintf("%d:%d %d", wd.Major, wd.Minor, wd.Weight))
 }
 
 func weightleafdev(v interface{}) []byte {
 	wd := v.(specs.LinuxWeightDevice)
-	return []byte(fmt.Sprintf("%d:%d %d", wd.Major, wd.Minor, *wd.LeafWeight))
+	return []byte(fmt.Sprintf("%d:%d %d", wd.Major, wd.Minor, wd.LeafWeight))
 }
 
 func throttleddev(v interface{}) []byte {

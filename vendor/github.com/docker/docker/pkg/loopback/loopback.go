@@ -37,8 +37,7 @@ func FindLoopDeviceFor(file *os.File) *os.File {
 		return nil
 	}
 	targetInode := stat.Ino
-	// the type is 32bit on mips
-	targetDevice := uint64(stat.Dev) // nolint: unconvert
+	targetDevice := stat.Dev
 
 	for i := 0; true; i++ {
 		path := fmt.Sprintf("/dev/loop%d", i)

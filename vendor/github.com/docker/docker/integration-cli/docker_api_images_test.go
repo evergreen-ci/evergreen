@@ -4,24 +4,21 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
-	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/integration-cli/checker"
 	"github.com/docker/docker/integration-cli/cli"
 	"github.com/docker/docker/integration-cli/cli/build"
 	"github.com/docker/docker/internal/test/request"
-	"github.com/docker/docker/pkg/parsers/kernel"
-	"gotest.tools/assert"
+	"github.com/go-check/check"
 )
 
-func (s *DockerSuite) TestAPIImagesFilter(c *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	assert.NilError(c, err)
+func (s *DockerSuite) TestAPIImagesFilter(c *check.C) {
+	cli, err := client.NewEnvClient()
+	c.Assert(err, checker.IsNil)
 	defer cli.Close()
 
 	name := "utest:tag1"
@@ -38,58 +35,49 @@ func (s *DockerSuite) TestAPIImagesFilter(c *testing.T) {
 			Filters: filters,
 		}
 		images, err := cli.ImageList(context.Background(), options)
-		assert.NilError(c, err)
+		c.Assert(err, checker.IsNil)
 
 		return images
 	}
 
 	//incorrect number of matches returned
 	images := getImages("utest*/*")
-	assert.Equal(c, len(images[0].RepoTags), 2)
+	c.Assert(images[0].RepoTags, checker.HasLen, 2)
 
 	images = getImages("utest")
-	assert.Equal(c, len(images[0].RepoTags), 1)
+	c.Assert(images[0].RepoTags, checker.HasLen, 1)
 
 	images = getImages("utest*")
-	assert.Equal(c, len(images[0].RepoTags), 1)
+	c.Assert(images[0].RepoTags, checker.HasLen, 1)
 
 	images = getImages("*5000*/*")
-	assert.Equal(c, len(images[0].RepoTags), 1)
+	c.Assert(images[0].RepoTags, checker.HasLen, 1)
 }
 
-func (s *DockerSuite) TestAPIImagesSaveAndLoad(c *testing.T) {
-	if runtime.GOOS == "windows" {
-		v, err := kernel.GetKernelVersion()
-		assert.NilError(c, err)
-		build, _ := strconv.Atoi(strings.Split(strings.SplitN(v.String(), " ", 3)[2][1:], ".")[0])
-		if build <= 16299 {
-			c.Skip("Temporarily disabled on RS3 and older because they are too slow. See #39909")
-		}
-	}
-
+func (s *DockerSuite) TestAPIImagesSaveAndLoad(c *check.C) {
 	testRequires(c, Network)
 	buildImageSuccessfully(c, "saveandload", build.WithDockerfile("FROM busybox\nENV FOO bar"))
 	id := getIDByName(c, "saveandload")
 
 	res, body, err := request.Get("/images/" + id + "/get")
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer body.Close()
-	assert.Equal(c, res.StatusCode, http.StatusOK)
+	c.Assert(res.StatusCode, checker.Equals, http.StatusOK)
 
 	dockerCmd(c, "rmi", id)
 
 	res, loadBody, err := request.Post("/images/load", request.RawContent(body), request.ContentType("application/x-tar"))
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer loadBody.Close()
-	assert.Equal(c, res.StatusCode, http.StatusOK)
+	c.Assert(res.StatusCode, checker.Equals, http.StatusOK)
 
 	inspectOut := cli.InspectCmd(c, id, cli.Format(".Id")).Combined()
-	assert.Equal(c, strings.TrimSpace(inspectOut), id, "load did not work properly")
+	c.Assert(strings.TrimSpace(string(inspectOut)), checker.Equals, id, check.Commentf("load did not work properly"))
 }
 
-func (s *DockerSuite) TestAPIImagesDelete(c *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	assert.NilError(c, err)
+func (s *DockerSuite) TestAPIImagesDelete(c *check.C) {
+	cli, err := client.NewEnvClient()
+	c.Assert(err, checker.IsNil)
 	defer cli.Close()
 
 	if testEnv.OSType != "windows" {
@@ -102,18 +90,18 @@ func (s *DockerSuite) TestAPIImagesDelete(c *testing.T) {
 	dockerCmd(c, "tag", name, "test:tag1")
 
 	_, err = cli.ImageRemove(context.Background(), id, types.ImageRemoveOptions{})
-	assert.ErrorContains(c, err, "unable to delete")
+	c.Assert(err.Error(), checker.Contains, "unable to delete")
 
 	_, err = cli.ImageRemove(context.Background(), "test:noexist", types.ImageRemoveOptions{})
-	assert.ErrorContains(c, err, "No such image")
+	c.Assert(err.Error(), checker.Contains, "No such image")
 
 	_, err = cli.ImageRemove(context.Background(), "test:tag1", types.ImageRemoveOptions{})
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 }
 
-func (s *DockerSuite) TestAPIImagesHistory(c *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	assert.NilError(c, err)
+func (s *DockerSuite) TestAPIImagesHistory(c *check.C) {
+	cli, err := client.NewEnvClient()
+	c.Assert(err, checker.IsNil)
 	defer cli.Close()
 
 	if testEnv.OSType != "windows" {
@@ -124,9 +112,9 @@ func (s *DockerSuite) TestAPIImagesHistory(c *testing.T) {
 	id := getIDByName(c, name)
 
 	historydata, err := cli.ImageHistory(context.Background(), id)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 
-	assert.Assert(c, len(historydata) != 0)
+	c.Assert(historydata, checker.Not(checker.HasLen), 0)
 	var found bool
 	for _, tag := range historydata[0].Tags {
 		if tag == "test-api-images-history:latest" {
@@ -134,20 +122,11 @@ func (s *DockerSuite) TestAPIImagesHistory(c *testing.T) {
 			break
 		}
 	}
-	assert.Assert(c, found)
+	c.Assert(found, checker.True)
 }
 
-func (s *DockerSuite) TestAPIImagesImportBadSrc(c *testing.T) {
-	if runtime.GOOS == "windows" {
-		v, err := kernel.GetKernelVersion()
-		assert.NilError(c, err)
-		build, _ := strconv.Atoi(strings.Split(strings.SplitN(v.String(), " ", 3)[2][1:], ".")[0])
-		if build == 16299 {
-			c.Skip("Temporarily disabled on RS3 builds")
-		}
-	}
-
-	testRequires(c, Network, testEnv.IsLocalDaemon)
+func (s *DockerSuite) TestAPIImagesImportBadSrc(c *check.C) {
+	testRequires(c, Network, SameHostDaemon)
 
 	server := httptest.NewServer(http.NewServeMux())
 	defer server.Close()
@@ -164,45 +143,45 @@ func (s *DockerSuite) TestAPIImagesImportBadSrc(c *testing.T) {
 
 	for _, te := range tt {
 		res, _, err := request.Post(strings.Join([]string{"/images/create?fromSrc=", te.fromSrc}, ""), request.JSON)
-		assert.NilError(c, err)
-		assert.Equal(c, res.StatusCode, te.statusExp)
-		assert.Equal(c, res.Header.Get("Content-Type"), "application/json")
+		c.Assert(err, check.IsNil)
+		c.Assert(res.StatusCode, checker.Equals, te.statusExp)
+		c.Assert(res.Header.Get("Content-Type"), checker.Equals, "application/json")
 	}
 
 }
 
 // #14846
-func (s *DockerSuite) TestAPIImagesSearchJSONContentType(c *testing.T) {
+func (s *DockerSuite) TestAPIImagesSearchJSONContentType(c *check.C) {
 	testRequires(c, Network)
 
 	res, b, err := request.Get("/images/search?term=test", request.JSON)
-	assert.NilError(c, err)
+	c.Assert(err, check.IsNil)
 	b.Close()
-	assert.Equal(c, res.StatusCode, http.StatusOK)
-	assert.Equal(c, res.Header.Get("Content-Type"), "application/json")
+	c.Assert(res.StatusCode, checker.Equals, http.StatusOK)
+	c.Assert(res.Header.Get("Content-Type"), checker.Equals, "application/json")
 }
 
 // Test case for 30027: image size reported as -1 in v1.12 client against v1.13 daemon.
 // This test checks to make sure both v1.12 and v1.13 client against v1.13 daemon get correct `Size` after the fix.
-func (s *DockerSuite) TestAPIImagesSizeCompatibility(c *testing.T) {
+func (s *DockerSuite) TestAPIImagesSizeCompatibility(c *check.C) {
 	apiclient := testEnv.APIClient()
 	defer apiclient.Close()
 
 	images, err := apiclient.ImageList(context.Background(), types.ImageListOptions{})
-	assert.NilError(c, err)
-	assert.Assert(c, len(images) != 0)
+	c.Assert(err, checker.IsNil)
+	c.Assert(len(images), checker.Not(checker.Equals), 0)
 	for _, image := range images {
-		assert.Assert(c, image.Size != int64(-1))
+		c.Assert(image.Size, checker.Not(checker.Equals), int64(-1))
 	}
 
 	apiclient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("v1.24"))
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer apiclient.Close()
 
 	v124Images, err := apiclient.ImageList(context.Background(), types.ImageListOptions{})
-	assert.NilError(c, err)
-	assert.Assert(c, len(v124Images) != 0)
+	c.Assert(err, checker.IsNil)
+	c.Assert(len(v124Images), checker.Not(checker.Equals), 0)
 	for _, image := range v124Images {
-		assert.Assert(c, image.Size != int64(-1))
+		c.Assert(image.Size, checker.Not(checker.Equals), int64(-1))
 	}
 }

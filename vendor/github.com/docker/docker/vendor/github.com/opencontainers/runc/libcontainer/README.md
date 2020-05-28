@@ -148,7 +148,6 @@ config := &configs.Config{
 		{Type: configs.NEWPID},
 		{Type: configs.NEWUSER},
 		{Type: configs.NEWNET},
-		{Type: configs.NEWCGROUP},
 	}),
 	Cgroups: &configs.Cgroup{
 		Name:   "test-container",
@@ -261,7 +260,6 @@ process := &libcontainer.Process{
 	Stdin:  os.Stdin,
 	Stdout: os.Stdout,
 	Stderr: os.Stderr,
-	Init:   true,
 }
 
 err := container.Run(process)
@@ -325,7 +323,6 @@ generated when building libcontainer with docker.
 
 ## Copyright and license
 
-Code and documentation copyright 2014 Docker, inc.
-The code and documentation are released under the [Apache 2.0 license](../LICENSE).
-The documentation is also released under Creative Commons Attribution 4.0 International License.
-You may obtain a copy of the license, titled CC-BY-4.0, at http://creativecommons.org/licenses/by/4.0/.
+Code and documentation copyright 2014 Docker, inc. Code released under the Apache 2.0 license.
+Docs released under Creative commons.
+

@@ -47,9 +47,6 @@ type cgroupMemInfo struct {
 
 	// Whether kernel memory limit is supported or not
 	KernelMemory bool
-
-	// Whether kernel memory TCP limit is supported or not
-	KernelMemoryTCP bool
 }
 
 type cgroupCPUInfo struct {
@@ -120,19 +117,11 @@ func (c cgroupCpusetInfo) IsCpusetMemsAvailable(provided string) (bool, error) {
 }
 
 func isCpusetListAvailable(provided, available string) (bool, error) {
-	parsedAvailable, err := parsers.ParseUintList(available)
+	parsedProvided, err := parsers.ParseUintList(provided)
 	if err != nil {
 		return false, err
 	}
-	// 8192 is the normal maximum number of CPUs in Linux, so accept numbers up to this
-	// or more if we actually have more CPUs.
-	max := 8192
-	for m := range parsedAvailable {
-		if m > max {
-			max = m
-		}
-	}
-	parsedProvided, err := parsers.ParseUintListMaximum(provided, max)
+	parsedAvailable, err := parsers.ParseUintList(available)
 	if err != nil {
 		return false, err
 	}

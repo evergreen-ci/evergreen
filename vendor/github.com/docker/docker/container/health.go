@@ -22,7 +22,7 @@ func (s *Health) String() string {
 	case types.Starting:
 		return "health: starting"
 	default: // Healthy and Unhealthy are clear on their own
-		return status
+		return s.Health.Status
 	}
 }
 

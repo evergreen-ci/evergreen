@@ -24,7 +24,6 @@ import (
 	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/system"
 	"github.com/docker/docker/pkg/urlutil"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
 
@@ -64,7 +63,6 @@ type copyInstruction struct {
 	dest                    string
 	chownStr                string
 	allowLocalDecompression bool
-	preserveOwnership       bool
 }
 
 // copier reads a raw COPY or ADD command, fetches remote sources using a downloader,
@@ -74,7 +72,7 @@ type copier struct {
 	source      builder.Source
 	pathCache   pathCache
 	download    sourceDownloader
-	platform    *specs.Platform
+	platform    string
 	// for cleanup. TODO: having copier.cleanup() is error prone and hard to
 	// follow. Code calling performCopy should manage the lifecycle of its params.
 	// Copier should take override source as input, not imageMount.
@@ -83,28 +81,13 @@ type copier struct {
 }
 
 func copierFromDispatchRequest(req dispatchRequest, download sourceDownloader, imageSource *imageMount) copier {
-	platform := req.builder.platform
-	if platform == nil {
-		// May be nil if not explicitly set in API/dockerfile
-		platform = &specs.Platform{}
-	}
-	if platform.OS == "" {
-		// Default to the dispatch requests operating system if not explicit in API/dockerfile
-		platform.OS = req.state.operatingSystem
-	}
-	if platform.OS == "" {
-		// This is a failsafe just in case. Shouldn't be hit.
-		platform.OS = runtime.GOOS
-	}
-
 	return copier{
 		source:      req.source,
 		pathCache:   req.builder.pathCache,
 		download:    download,
 		imageSource: imageSource,
-		platform:    platform,
+		platform:    req.builder.options.Platform,
 	}
-
 }
 
 func (o *copier) createCopyInstruction(args []string, cmdName string) (copyInstruction, error) {
@@ -112,14 +95,8 @@ func (o *copier) createCopyInstruction(args []string, cmdName string) (copyInstr
 	last := len(args) - 1
 
 	// Work in platform-specific filepath semantics
-	// TODO: This OS switch for paths is NOT correct and should not be supported.
-	// Maintained for backwards compatibility
-	pathOS := runtime.GOOS
-	if o.platform != nil {
-		pathOS = o.platform.OS
-	}
-	inst.dest = fromSlash(args[last], pathOS)
-	separator := string(separator(pathOS))
+	inst.dest = fromSlash(args[last], o.platform)
+	separator := string(separator(o.platform))
 	infos, err := o.getCopyInfosForSourcePaths(args[0:last], inst.dest)
 	if err != nil {
 		return inst, errors.Wrapf(err, "%s failed", cmdName)
@@ -467,7 +444,7 @@ func downloadSource(output io.Writer, stdout io.Writer, srcURL string) (remote b
 
 type copyFileOptions struct {
 	decompress bool
-	identity   *idtools.Identity
+	chownPair  idtools.IDPair
 	archiver   Archiver
 }
 
@@ -497,7 +474,7 @@ func performCopyForInfo(dest copyInfo, source copyInfo, options copyFileOptions)
 		return errors.Wrapf(err, "source path not found")
 	}
 	if src.IsDir() {
-		return copyDirectory(archiver, srcEndpoint, destEndpoint, options.identity)
+		return copyDirectory(archiver, srcEndpoint, destEndpoint, options.chownPair)
 	}
 	if options.decompress && isArchivePath(source.root, srcPath) && !source.noDecompress {
 		return archiver.UntarPath(srcPath, destPath)
@@ -515,7 +492,7 @@ func performCopyForInfo(dest copyInfo, source copyInfo, options copyFileOptions)
 		destPath = dest.root.Join(destPath, source.root.Base(source.path))
 		destEndpoint = &copyEndpoint{driver: dest.root, path: destPath}
 	}
-	return copyFile(archiver, srcEndpoint, destEndpoint, options.identity)
+	return copyFile(archiver, srcEndpoint, destEndpoint, options.chownPair)
 }
 
 func isArchivePath(driver containerfs.ContainerFS, path string) bool {
@@ -533,7 +510,7 @@ func isArchivePath(driver containerfs.ContainerFS, path string) bool {
 	return err == nil
 }
 
-func copyDirectory(archiver Archiver, source, dest *copyEndpoint, identity *idtools.Identity) error {
+func copyDirectory(archiver Archiver, source, dest *copyEndpoint, chownPair idtools.IDPair) error {
 	destExists, err := isExistingDirectory(dest)
 	if err != nil {
 		return errors.Wrapf(err, "failed to query destination path")
@@ -542,42 +519,28 @@ func copyDirectory(archiver Archiver, source, dest *copyEndpoint, identity *idto
 	if err := archiver.CopyWithTar(source.path, dest.path); err != nil {
 		return errors.Wrapf(err, "failed to copy directory")
 	}
-	if identity != nil {
-		// TODO: @gupta-ak. Investigate how LCOW permission mappings will work.
-		return fixPermissions(source.path, dest.path, *identity, !destExists)
-	}
-	return nil
+	// TODO: @gupta-ak. Investigate how LCOW permission mappings will work.
+	return fixPermissions(source.path, dest.path, chownPair, !destExists)
 }
 
-func copyFile(archiver Archiver, source, dest *copyEndpoint, identity *idtools.Identity) error {
+func copyFile(archiver Archiver, source, dest *copyEndpoint, chownPair idtools.IDPair) error {
 	if runtime.GOOS == "windows" && dest.driver.OS() == "linux" {
 		// LCOW
 		if err := dest.driver.MkdirAll(dest.driver.Dir(dest.path), 0755); err != nil {
 			return errors.Wrapf(err, "failed to create new directory")
 		}
 	} else {
-		// Normal containers
-		if identity == nil {
-			// Use system.MkdirAll here, which is a custom version of os.MkdirAll
-			// modified for use on Windows to handle volume GUID paths (\\?\{dae8d3ac-b9a1-11e9-88eb-e8554b2ba1db}\path\)
-			if err := system.MkdirAll(filepath.Dir(dest.path), 0755, ""); err != nil {
-				return err
-			}
-		} else {
-			if err := idtools.MkdirAllAndChownNew(filepath.Dir(dest.path), 0755, *identity); err != nil {
-				return errors.Wrapf(err, "failed to create new directory")
-			}
+		if err := idtools.MkdirAllAndChownNew(filepath.Dir(dest.path), 0755, chownPair); err != nil {
+			// Normal containers
+			return errors.Wrapf(err, "failed to create new directory")
 		}
 	}
 
 	if err := archiver.CopyFileWithTar(source.path, dest.path); err != nil {
 		return errors.Wrapf(err, "failed to copy file")
 	}
-	if identity != nil {
-		// TODO: @gupta-ak. Investigate how LCOW permission mappings will work.
-		return fixPermissions(source.path, dest.path, *identity, false)
-	}
-	return nil
+	// TODO: @gupta-ak. Investigate how LCOW permission mappings will work.
+	return fixPermissions(source.path, dest.path, chownPair, false)
 }
 
 func endsInSlash(driver containerfs.Driver, path string) bool {

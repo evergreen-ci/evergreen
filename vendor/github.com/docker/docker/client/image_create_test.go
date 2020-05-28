@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestImageCreateError(t *testing.T) {
@@ -20,9 +19,6 @@ func TestImageCreateError(t *testing.T) {
 	_, err := client.ImageCreate(context.Background(), "reference", types.ImageCreateOptions{})
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

@@ -7,14 +7,11 @@ import (
 
 	"github.com/docker/docker/daemon/graphdriver"
 	"github.com/docker/docker/daemon/graphdriver/quota"
-	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/containerfs"
 	"github.com/docker/docker/pkg/idtools"
-	"github.com/docker/docker/pkg/parsers"
 	"github.com/docker/docker/pkg/system"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/selinux/go-selinux/label"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -30,24 +27,15 @@ func init() {
 // This sets the home directory for the driver and returns NaiveDiffDriver.
 func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (graphdriver.Driver, error) {
 	d := &Driver{
-		home:      home,
-		idMapping: idtools.NewIDMappingsFromMaps(uidMaps, gidMaps),
+		home:       home,
+		idMappings: idtools.NewIDMappingsFromMaps(uidMaps, gidMaps),
 	}
-
-	if err := d.parseOptions(options); err != nil {
-		return nil, err
-	}
-
-	rootIDs := d.idMapping.RootPair()
+	rootIDs := d.idMappings.RootPair()
 	if err := idtools.MkdirAllAndChown(home, 0700, rootIDs); err != nil {
 		return nil, err
 	}
 
 	setupDriverQuota(d)
-
-	if size := d.getQuotaOpt(); !d.quotaSupported() && size > 0 {
-		return nil, quota.ErrQuotaNotSupported
-	}
 
 	return graphdriver.NewNaiveDiffDriver(d, uidMaps, gidMaps), nil
 }
@@ -58,8 +46,8 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 // Driver must be wrapped in NaiveDiffDriver to be used as a graphdriver.Driver
 type Driver struct {
 	driverQuota
-	home      string
-	idMapping *idtools.IdentityMapping
+	home       string
+	idMappings *idtools.IDMappings
 }
 
 func (d *Driver) String() string {
@@ -81,32 +69,11 @@ func (d *Driver) Cleanup() error {
 	return nil
 }
 
-func (d *Driver) parseOptions(options []string) error {
-	for _, option := range options {
-		key, val, err := parsers.ParseKeyValueOpt(option)
-		if err != nil {
-			return errdefs.InvalidParameter(err)
-		}
-		switch key {
-		case "size":
-			size, err := units.RAMInBytes(val)
-			if err != nil {
-				return errdefs.InvalidParameter(err)
-			}
-			if err = d.setQuotaOpt(uint64(size)); err != nil {
-				return errdefs.InvalidParameter(errors.Wrap(err, "failed to set option size for vfs"))
-			}
-		default:
-			return errdefs.InvalidParameter(errors.Errorf("unknown option %s for vfs", key))
-		}
-	}
-	return nil
-}
-
 // CreateReadWrite creates a layer that is writable for use as a container
 // file system.
 func (d *Driver) CreateReadWrite(id, parent string, opts *graphdriver.CreateOpts) error {
-	quotaSize := d.getQuotaOpt()
+	var err error
+	var size int64
 
 	if opts != nil {
 		for key, val := range opts.StorageOpt {
@@ -115,18 +82,16 @@ func (d *Driver) CreateReadWrite(id, parent string, opts *graphdriver.CreateOpts
 				if !d.quotaSupported() {
 					return quota.ErrQuotaNotSupported
 				}
-				size, err := units.RAMInBytes(val)
-				if err != nil {
-					return errdefs.InvalidParameter(err)
+				if size, err = units.RAMInBytes(val); err != nil {
+					return err
 				}
-				quotaSize = uint64(size)
 			default:
-				return errdefs.InvalidParameter(errors.Errorf("Storage opt %s not supported", key))
+				return fmt.Errorf("Storage opt %s not supported", key)
 			}
 		}
 	}
 
-	return d.create(id, parent, quotaSize)
+	return d.create(id, parent, uint64(size))
 }
 
 // Create prepares the filesystem for the VFS driver and copies the directory for the given id under the parent.
@@ -140,7 +105,7 @@ func (d *Driver) Create(id, parent string, opts *graphdriver.CreateOpts) error {
 
 func (d *Driver) create(id, parent string, size uint64) error {
 	dir := d.dir(id)
-	rootIDs := d.idMapping.RootPair()
+	rootIDs := d.idMappings.RootPair()
 	if err := idtools.MkdirAllAndChown(filepath.Dir(dir), 0700, rootIDs); err != nil {
 		return err
 	}

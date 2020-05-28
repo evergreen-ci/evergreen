@@ -33,11 +33,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/filters"
 	"github.com/containerd/containerd/log"
-	"github.com/sirupsen/logrus"
-
-	"github.com/containerd/continuity"
 	digest "github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
 
@@ -123,15 +119,15 @@ func (s *store) info(dgst digest.Digest, fi os.FileInfo, labels map[string]strin
 }
 
 // ReaderAt returns an io.ReaderAt for the blob.
-func (s *store) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
-	p := s.blobPath(desc.Digest)
+func (s *store) ReaderAt(ctx context.Context, dgst digest.Digest) (content.ReaderAt, error) {
+	p := s.blobPath(dgst)
 	fi, err := os.Stat(p)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
 
-		return nil, errors.Wrapf(errdefs.ErrNotFound, "blob %s expected at %s", desc.Digest, p)
+		return nil, errors.Wrapf(errdefs.ErrNotFound, "blob %s expected at %s", dgst, p)
 	}
 
 	fp, err := os.Open(p)
@@ -140,7 +136,7 @@ func (s *store) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.
 			return nil, err
 		}
 
-		return nil, errors.Wrapf(errdefs.ErrNotFound, "blob %s expected at %s", desc.Digest, p)
+		return nil, errors.Wrapf(errdefs.ErrNotFound, "blob %s expected at %s", dgst, p)
 	}
 
 	return sizeReaderAt{size: fi.Size(), fp: fp}, nil
@@ -325,40 +321,6 @@ func (s *store) ListStatuses(ctx context.Context, fs ...string) ([]content.Statu
 	return active, nil
 }
 
-// WalkStatusRefs is used to walk all status references
-// Failed status reads will be logged and ignored, if
-// this function is called while references are being altered,
-// these error messages may be produced.
-func (s *store) WalkStatusRefs(ctx context.Context, fn func(string) error) error {
-	fp, err := os.Open(filepath.Join(s.root, "ingest"))
-	if err != nil {
-		return err
-	}
-
-	defer fp.Close()
-
-	fis, err := fp.Readdir(-1)
-	if err != nil {
-		return err
-	}
-
-	for _, fi := range fis {
-		rf := filepath.Join(s.root, "ingest", fi.Name(), "ref")
-
-		ref, err := readFileString(rf)
-		if err != nil {
-			log.G(ctx).WithError(err).WithField("path", rf).Error("failed to read ingest ref")
-			continue
-		}
-
-		if err := fn(ref); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // status works like stat above except uses the path to the ingest.
 func (s *store) status(ingestPath string) (content.Status, error) {
 	dp := filepath.Join(ingestPath, "data")
@@ -438,22 +400,11 @@ func (s *store) total(ingestPath string) int64 {
 // ref at a time.
 //
 // The argument `ref` is used to uniquely identify a long-lived writer transaction.
-func (s *store) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
-	var wOpts content.WriterOpts
-	for _, opt := range opts {
-		if err := opt(&wOpts); err != nil {
-			return nil, err
-		}
-	}
-	// TODO(AkihiroSuda): we could create a random string or one calculated based on the context
-	// https://github.com/containerd/containerd/issues/2129#issuecomment-380255019
-	if wOpts.Ref == "" {
-		return nil, errors.Wrap(errdefs.ErrInvalidArgument, "ref must not be empty")
-	}
+func (s *store) Writer(ctx context.Context, ref string, total int64, expected digest.Digest) (content.Writer, error) {
 	var lockErr error
 	for count := uint64(0); count < 10; count++ {
 		time.Sleep(time.Millisecond * time.Duration(rand.Intn(1<<count)))
-		if err := tryLock(wOpts.Ref); err != nil {
+		if err := tryLock(ref); err != nil {
 			if !errdefs.IsUnavailable(err) {
 				return nil, err
 			}
@@ -469,42 +420,13 @@ func (s *store) Writer(ctx context.Context, opts ...content.WriterOpt) (content.
 		return nil, lockErr
 	}
 
-	w, err := s.writer(ctx, wOpts.Ref, wOpts.Desc.Size, wOpts.Desc.Digest)
+	w, err := s.writer(ctx, ref, total, expected)
 	if err != nil {
-		unlock(wOpts.Ref)
+		unlock(ref)
 		return nil, err
 	}
 
 	return w, nil // lock is now held by w.
-}
-
-func (s *store) resumeStatus(ref string, total int64, digester digest.Digester) (content.Status, error) {
-	path, _, data := s.ingestPaths(ref)
-	status, err := s.status(path)
-	if err != nil {
-		return status, errors.Wrap(err, "failed reading status of resume write")
-	}
-	if ref != status.Ref {
-		// NOTE(stevvooe): This is fairly catastrophic. Either we have some
-		// layout corruption or a hash collision for the ref key.
-		return status, errors.Wrapf(err, "ref key does not match: %v != %v", ref, status.Ref)
-	}
-
-	if total > 0 && status.Total > 0 && total != status.Total {
-		return status, errors.Errorf("provided total differs from status: %v != %v", total, status.Total)
-	}
-
-	// TODO(stevvooe): slow slow slow!!, send to goroutine or use resumable hashes
-	fp, err := os.Open(data)
-	if err != nil {
-		return status, err
-	}
-
-	p := bufPool.Get().(*[]byte)
-	status.Offset, err = io.CopyBuffer(digester.Hash(), fp, *p)
-	bufPool.Put(p)
-	fp.Close()
-	return status, err
 }
 
 // writer provides the main implementation of the Writer method. The caller
@@ -528,25 +450,46 @@ func (s *store) writer(ctx context.Context, ref string, total int64, expected di
 		updatedAt time.Time
 	)
 
-	foundValidIngest := false
 	// ensure that the ingest path has been created.
 	if err := os.Mkdir(path, 0755); err != nil {
 		if !os.IsExist(err) {
 			return nil, err
 		}
-		status, err := s.resumeStatus(ref, total, digester)
-		if err == nil {
-			foundValidIngest = true
-			updatedAt = status.UpdatedAt
-			startedAt = status.StartedAt
-			total = status.Total
-			offset = status.Offset
-		} else {
-			logrus.Infof("failed to resume the status from path %s: %s. will recreate them", path, err.Error())
-		}
-	}
 
-	if !foundValidIngest {
+		status, err := s.status(path)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed reading status of resume write")
+		}
+
+		if ref != status.Ref {
+			// NOTE(stevvooe): This is fairly catastrophic. Either we have some
+			// layout corruption or a hash collision for the ref key.
+			return nil, errors.Wrapf(err, "ref key does not match: %v != %v", ref, status.Ref)
+		}
+
+		if total > 0 && status.Total > 0 && total != status.Total {
+			return nil, errors.Errorf("provided total differs from status: %v != %v", total, status.Total)
+		}
+
+		// TODO(stevvooe): slow slow slow!!, send to goroutine or use resumable hashes
+		fp, err := os.Open(data)
+		if err != nil {
+			return nil, err
+		}
+		defer fp.Close()
+
+		p := bufPool.Get().(*[]byte)
+		defer bufPool.Put(p)
+
+		offset, err = io.CopyBuffer(digester.Hash(), fp, *p)
+		if err != nil {
+			return nil, err
+		}
+
+		updatedAt = status.UpdatedAt
+		startedAt = status.StartedAt
+		total = status.Total
+	} else {
 		startedAt = time.Now()
 		updatedAt = startedAt
 
@@ -556,11 +499,11 @@ func (s *store) writer(ctx context.Context, ref string, total int64, expected di
 			return nil, err
 		}
 
-		if err := writeTimestampFile(filepath.Join(path, "startedat"), startedAt); err != nil {
+		if writeTimestampFile(filepath.Join(path, "startedat"), startedAt); err != nil {
 			return nil, err
 		}
 
-		if err := writeTimestampFile(filepath.Join(path, "updatedat"), startedAt); err != nil {
+		if writeTimestampFile(filepath.Join(path, "updatedat"), startedAt); err != nil {
 			return nil, err
 		}
 
@@ -662,5 +605,5 @@ func writeTimestampFile(p string, t time.Time) error {
 		return err
 	}
 
-	return continuity.AtomicWriteFile(p, b, 0666)
+	return ioutil.WriteFile(p, b, 0666)
 }

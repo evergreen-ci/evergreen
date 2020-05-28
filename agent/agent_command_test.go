@@ -23,7 +23,6 @@ type CommandSuite struct {
 	a                *Agent
 	mockCommunicator *client.Mock
 	tmpDirName       string
-	tc               *taskContext
 }
 
 func TestCommandSuite(t *testing.T) {
@@ -47,14 +46,6 @@ func (s *CommandSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
-
-	s.tc = &taskContext{
-		task: client.TaskData{
-			Secret: "mock_task_secret",
-		},
-		taskModel:  &task.Task{},
-		oomTracker: &jasper.OomTrackerMock{},
-	}
 }
 
 func (s *CommandSuite) TearDownTest() {
@@ -74,15 +65,21 @@ func (s *CommandSuite) TestShellExec() {
 	defer cancel()
 
 	taskID := "shellexec"
-	s.tc.task.ID = taskID
-	s.tc.runGroupSetup = true
-
-	s.NoError(s.a.startLogging(ctx, s.tc))
-	defer s.a.removeTaskDirectory(s.tc)
-	_, err = s.a.runTask(ctx, s.tc)
+	taskSecret := "mock_task_secret"
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		runGroupSetup: true,
+		taskModel:     &task.Task{},
+	}
+	s.NoError(s.a.startLogging(ctx, tc))
+	defer s.a.removeTaskDirectory(tc)
+	_, err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
-	s.Require().NoError(s.tc.logger.Close())
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -110,7 +107,7 @@ func (s *CommandSuite) TestShellExec() {
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
-	s.Equal(s.tc.task.Secret, taskData.Secret)
+	s.Equal(taskSecret, taskData.Secret)
 }
 
 func (s *CommandSuite) TestS3Copy() {
@@ -118,13 +115,20 @@ func (s *CommandSuite) TestS3Copy() {
 	defer cancel()
 
 	taskID := "s3copy"
-	s.tc.task.ID = taskID
-	s.NoError(s.a.startLogging(ctx, s.tc))
-	defer s.a.removeTaskDirectory(s.tc)
-	_, err := s.a.runTask(ctx, s.tc)
+	taskSecret := "mock_task_secret"
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		taskModel: &task.Task{},
+	}
+	s.NoError(s.a.startLogging(ctx, tc))
+	defer s.a.removeTaskDirectory(tc)
+	_, err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
-	s.Require().NoError(s.tc.logger.Close())
+	s.Require().NoError(tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()
 	s.Len(messages, 1)
 	foundSuccessLogMessage := false
@@ -146,7 +150,7 @@ func (s *CommandSuite) TestS3Copy() {
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
-	s.Equal(s.tc.task.Secret, taskData.Secret)
+	s.Equal(taskSecret, taskData.Secret)
 }
 
 func TestEndTaskSyncCommands(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewCache constructs a threadsafe HarnessCache instance.
+// NewCache constructs a threadsafe HarnessCache instances.
 func NewCache() HarnessCache { return &cacheImpl{cache: make(map[string]Harness)} }
 
 type cacheImpl struct {

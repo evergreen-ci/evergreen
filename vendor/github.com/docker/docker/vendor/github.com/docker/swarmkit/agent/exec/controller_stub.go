@@ -1,11 +1,10 @@
 package exec
 
 import (
-	"context"
+	"github.com/docker/swarmkit/api"
+	"golang.org/x/net/context"
 	"runtime"
 	"strings"
-
-	"github.com/docker/swarmkit/api"
 )
 
 // StubController implements the Controller interface,

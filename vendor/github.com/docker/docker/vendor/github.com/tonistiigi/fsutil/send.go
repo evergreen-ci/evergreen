@@ -1,13 +1,13 @@
 package fsutil
 
 import (
-	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tonistiigi/fsutil/types"
+	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,10 +23,11 @@ type Stream interface {
 	Context() context.Context
 }
 
-func Send(ctx context.Context, conn Stream, fs FS, progressCb func(int, bool)) error {
+func Send(ctx context.Context, conn Stream, root string, opt *WalkOpt, progressCb func(int, bool)) error {
 	s := &sender{
 		conn:         &syncStream{Stream: conn},
-		fs:           fs,
+		root:         root,
+		opt:          opt,
 		files:        make(map[uint32]string),
 		progressCb:   progressCb,
 		sendpipeline: make(chan *sendHandle, 128),
@@ -41,7 +42,8 @@ type sendHandle struct {
 
 type sender struct {
 	conn            Stream
-	fs              FS
+	opt             *WalkOpt
+	root            string
 	files           map[uint32]string
 	mu              sync.RWMutex
 	progressCb      func(int, bool)
@@ -57,7 +59,7 @@ func (s *sender) run(ctx context.Context) error {
 	g.Go(func() error {
 		err := s.walk(ctx)
 		if err != nil {
-			s.conn.SendMsg(&types.Packet{Type: types.PACKET_ERR, Data: []byte(err.Error())})
+			s.conn.SendMsg(&Packet{Type: PACKET_ERR, Data: []byte(err.Error())})
 		}
 		return err
 	})
@@ -87,19 +89,19 @@ func (s *sender) run(ctx context.Context) error {
 				return ctx.Err()
 			default:
 			}
-			var p types.Packet
+			var p Packet
 			if err := s.conn.RecvMsg(&p); err != nil {
 				return err
 			}
 			switch p.Type {
-			case types.PACKET_ERR:
+			case PACKET_ERR:
 				return errors.Errorf("error from receiver: %s", p.Data)
-			case types.PACKET_REQ:
+			case PACKET_REQ:
 				if err := s.queue(p.ID); err != nil {
 					return err
 				}
-			case types.PACKET_FIN:
-				return s.conn.SendMsg(&types.Packet{Type: types.PACKET_FIN})
+			case PACKET_FIN:
+				return s.conn.SendMsg(&Packet{Type: PACKET_FIN})
 			}
 		}
 	})
@@ -128,7 +130,7 @@ func (s *sender) queue(id uint32) error {
 }
 
 func (s *sender) sendFile(h *sendHandle) error {
-	f, err := s.fs.Open(h.path)
+	f, err := os.Open(filepath.Join(s.root, h.path))
 	if err == nil {
 		defer f.Close()
 		buf := bufPool.Get().([]byte)
@@ -137,22 +139,22 @@ func (s *sender) sendFile(h *sendHandle) error {
 			return err
 		}
 	}
-	return s.conn.SendMsg(&types.Packet{ID: h.id, Type: types.PACKET_DATA})
+	return s.conn.SendMsg(&Packet{ID: h.id, Type: PACKET_DATA})
 }
 
 func (s *sender) walk(ctx context.Context) error {
 	var i uint32 = 0
-	err := s.fs.Walk(ctx, func(path string, fi os.FileInfo, err error) error {
+	err := Walk(ctx, s.root, s.opt, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		stat, ok := fi.Sys().(*types.Stat)
+		stat, ok := fi.Sys().(*Stat)
 		if !ok {
 			return errors.Wrapf(err, "invalid fileinfo without stat info: %s", path)
 		}
 
-		p := &types.Packet{
-			Type: types.PACKET_STAT,
+		p := &Packet{
+			Type: PACKET_STAT,
 			Stat: stat,
 		}
 		if fileCanRequestData(os.FileMode(stat.Mode)) {
@@ -167,7 +169,7 @@ func (s *sender) walk(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return errors.Wrapf(s.conn.SendMsg(&types.Packet{Type: types.PACKET_STAT}), "failed to send last stat")
+	return errors.Wrapf(s.conn.SendMsg(&Packet{Type: PACKET_STAT}), "failed to send last stat")
 }
 
 func fileCanRequestData(m os.FileMode) bool {
@@ -185,7 +187,7 @@ func (fs *fileSender) Write(dt []byte) (int, error) {
 	if len(dt) == 0 {
 		return 0, nil
 	}
-	p := &types.Packet{Type: types.PACKET_DATA, ID: fs.id, Data: dt}
+	p := &Packet{Type: PACKET_DATA, ID: fs.id, Data: dt}
 	if err := fs.sender.conn.SendMsg(p); err != nil {
 		return 0, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/docker/pkg/system"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/pkg/errors"
@@ -22,9 +23,6 @@ type parseRequest struct {
 	flags      *BFlags
 	original   string
 }
-
-var parseRunPreHooks []func(*RunCommand, parseRequest) error
-var parseRunPostHooks []func(*RunCommand, parseRequest) error
 
 func nodeArgs(node *parser.Node) []string {
 	result := []string{}
@@ -139,8 +137,7 @@ func (e *parseError) Error() string {
 	return fmt.Sprintf("Dockerfile parse error line %d: %v", e.node.StartLine, e.inner.Error())
 }
 
-// Parse a Dockerfile into a collection of buildable stages.
-// metaArgs is a collection of ARG instructions that occur before the first FROM.
+// Parse a docker file into a collection of buildable stages
 func Parse(ast *parser.Node) (stages []Stage, metaArgs []ArgCommand, err error) {
 	for _, n := range ast.Children {
 		cmd, err := ParseInstruction(n)
@@ -279,14 +276,13 @@ func parseFrom(req parseRequest) (*Stage, error) {
 	if err := req.flags.Parse(); err != nil {
 		return nil, err
 	}
-
 	code := strings.TrimSpace(req.original)
 	return &Stage{
 		BaseName:   req.args[0],
 		Name:       stageName,
 		SourceCode: code,
 		Commands:   []Command{},
-		Platform:   flPlatform.Value,
+		Platform:   *system.ParsePlatform(flPlatform.Value),
 	}, nil
 
 }
@@ -359,28 +355,15 @@ func parseShellDependentCommand(req parseRequest, emptyAsNil bool) ShellDependan
 }
 
 func parseRun(req parseRequest) (*RunCommand, error) {
-	cmd := &RunCommand{}
-
-	for _, fn := range parseRunPreHooks {
-		if err := fn(cmd, req); err != nil {
-			return nil, err
-		}
-	}
 
 	if err := req.flags.Parse(); err != nil {
 		return nil, err
 	}
+	return &RunCommand{
+		ShellDependantCmdLine: parseShellDependentCommand(req, false),
+		withNameAndCode:       newWithNameAndCode(req),
+	}, nil
 
-	cmd.ShellDependantCmdLine = parseShellDependentCommand(req, false)
-	cmd.withNameAndCode = newWithNameAndCode(req)
-
-	for _, fn := range parseRunPostHooks {
-		if err := fn(cmd, req); err != nil {
-			return nil, err
-		}
-	}
-
-	return cmd, nil
 }
 
 func parseCmd(req parseRequest) (*CmdCommand, error) {
@@ -581,7 +564,10 @@ func parseArg(req parseRequest) (*ArgCommand, error) {
 		return nil, errExactlyOneArgument("ARG")
 	}
 
-	kvpo := KeyValuePairOptional{}
+	var (
+		name     string
+		newValue *string
+	)
 
 	arg := req.args[0]
 	// 'arg' can just be a name or name-value pair. Note that this is different
@@ -595,15 +581,16 @@ func parseArg(req parseRequest) (*ArgCommand, error) {
 			return nil, errBlankCommandNames("ARG")
 		}
 
-		kvpo.Key = parts[0]
-		kvpo.Value = &parts[1]
+		name = parts[0]
+		newValue = &parts[1]
 	} else {
-		kvpo.Key = arg
+		name = arg
 	}
 
 	return &ArgCommand{
-		KeyValuePairOptional: kvpo,
-		withNameAndCode:      newWithNameAndCode(req),
+		Key:             name,
+		Value:           newValue,
+		withNameAndCode: newWithNameAndCode(req),
 	}, nil
 }
 

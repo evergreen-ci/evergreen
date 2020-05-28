@@ -20,15 +20,13 @@ import (
 	"context"
 
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/typeurl"
 	"github.com/gogo/protobuf/types"
 	"github.com/opencontainers/image-spec/identity"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 )
 
@@ -79,23 +77,6 @@ func WithContainerLabels(labels map[string]string) NewContainerOpts {
 	}
 }
 
-// WithImageStopSignal sets a well-known containerd label (StopSignalLabel)
-// on the container for storing the stop signal specified in the OCI image
-// config
-func WithImageStopSignal(image Image, defaultSignal string) NewContainerOpts {
-	return func(ctx context.Context, _ *Client, c *containers.Container) error {
-		if c.Labels == nil {
-			c.Labels = make(map[string]string)
-		}
-		stopSignal, err := GetOCIStopSignal(ctx, image, defaultSignal)
-		if err != nil {
-			return err
-		}
-		c.Labels[StopSignalLabel] = stopSignal
-		return nil
-	}
-}
-
 // WithSnapshotter sets the provided snapshotter for use by the container
 //
 // This option must appear before other snapshotter options to have an effect.
@@ -109,7 +90,7 @@ func WithSnapshotter(name string) NewContainerOpts {
 // WithSnapshot uses an existing root filesystem for the container
 func WithSnapshot(id string) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
-		setSnapshotterIfEmpty(ctx, client, c)
+		setSnapshotterIfEmpty(c)
 		// check that the snapshot exists, if not, fail on creation
 		if _, err := client.SnapshotService(c.Snapshotter).Mounts(ctx, id); err != nil {
 			return err
@@ -121,15 +102,15 @@ func WithSnapshot(id string) NewContainerOpts {
 
 // WithNewSnapshot allocates a new snapshot to be used by the container as the
 // root filesystem in read-write mode
-func WithNewSnapshot(id string, i Image, opts ...snapshots.Opt) NewContainerOpts {
+func WithNewSnapshot(id string, i Image) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
 		diffIDs, err := i.(*image).i.RootFS(ctx, client.ContentStore(), platforms.Default())
 		if err != nil {
 			return err
 		}
-		setSnapshotterIfEmpty(ctx, client, c)
+		setSnapshotterIfEmpty(c)
 		parent := identity.ChainID(diffIDs).String()
-		if _, err := client.SnapshotService(c.Snapshotter).Prepare(ctx, id, parent, opts...); err != nil {
+		if _, err := client.SnapshotService(c.Snapshotter).Prepare(ctx, id, parent); err != nil {
 			return err
 		}
 		c.SnapshotKey = id
@@ -151,15 +132,15 @@ func WithSnapshotCleanup(ctx context.Context, client *Client, c containers.Conta
 
 // WithNewSnapshotView allocates a new snapshot to be used by the container as the
 // root filesystem in read-only mode
-func WithNewSnapshotView(id string, i Image, opts ...snapshots.Opt) NewContainerOpts {
+func WithNewSnapshotView(id string, i Image) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
 		diffIDs, err := i.(*image).i.RootFS(ctx, client.ContentStore(), platforms.Default())
 		if err != nil {
 			return err
 		}
-		setSnapshotterIfEmpty(ctx, client, c)
+		setSnapshotterIfEmpty(c)
 		parent := identity.ChainID(diffIDs).String()
-		if _, err := client.SnapshotService(c.Snapshotter).View(ctx, id, parent, opts...); err != nil {
+		if _, err := client.SnapshotService(c.Snapshotter).View(ctx, id, parent); err != nil {
 			return err
 		}
 		c.SnapshotKey = id
@@ -168,18 +149,9 @@ func WithNewSnapshotView(id string, i Image, opts ...snapshots.Opt) NewContainer
 	}
 }
 
-func setSnapshotterIfEmpty(ctx context.Context, client *Client, c *containers.Container) {
+func setSnapshotterIfEmpty(c *containers.Container) {
 	if c.Snapshotter == "" {
-		defaultSnapshotter := DefaultSnapshotter
-		namespaceService := client.NamespaceService()
-		if ns, err := namespaces.NamespaceRequired(ctx); err == nil {
-			if labels, err := namespaceService.Labels(ctx, ns); err == nil {
-				if snapshotLabel, ok := labels[defaults.DefaultSnapshotterNSLabel]; ok {
-					defaultSnapshotter = snapshotLabel
-				}
-			}
-		}
-		c.Snapshotter = defaultSnapshotter
+		c.Snapshotter = DefaultSnapshotter
 	}
 }
 
@@ -224,12 +196,13 @@ func WithNewSpec(opts ...oci.SpecOpts) NewContainerOpts {
 }
 
 // WithSpec sets the provided spec on the container
-func WithSpec(s *oci.Spec, opts ...oci.SpecOpts) NewContainerOpts {
+func WithSpec(s *specs.Spec, opts ...oci.SpecOpts) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
-		if err := oci.ApplyOpts(ctx, client, c, s, opts...); err != nil {
-			return err
+		for _, o := range opts {
+			if err := o(ctx, client, c, s); err != nil {
+				return err
+			}
 		}
-
 		var err error
 		c.Spec, err = typeurl.MarshalAny(s)
 		return err

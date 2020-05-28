@@ -3,47 +3,17 @@
 package main
 
 import (
-	"path/filepath"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/daemon/config"
 	"github.com/docker/docker/opts"
-	"github.com/docker/docker/pkg/homedir"
 	"github.com/spf13/pflag"
 )
 
-func getDefaultPidFile() (string, error) {
-	if !honorXDG {
-		return "/var/run/docker.pid", nil
-	}
-	runtimeDir, err := homedir.GetRuntimeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(runtimeDir, "docker.pid"), nil
-}
-
-func getDefaultDataRoot() (string, error) {
-	if !honorXDG {
-		return "/var/lib/docker", nil
-	}
-	dataHome, err := homedir.GetDataHome()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dataHome, "docker"), nil
-}
-
-func getDefaultExecRoot() (string, error) {
-	if !honorXDG {
-		return "/var/run/docker", nil
-	}
-	runtimeDir, err := homedir.GetRuntimeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(runtimeDir, "docker"), nil
-}
+var (
+	defaultPidFile  = "/var/run/docker.pid"
+	defaultDataRoot = "/var/lib/docker"
+	defaultExecRoot = "/var/run/docker"
+)
 
 // installUnixConfigFlags adds command-line options to the top-level flag parser for
 // the current process that are common across Unix platforms.

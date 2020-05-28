@@ -17,9 +17,8 @@
 package containerd
 
 import (
-	"context"
-
 	"github.com/containerd/containerd/namespaces"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"strings"
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
@@ -28,18 +27,10 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
-	for _, arg := range remoteOpts.Args {
-		if strings.HasPrefix(arg, "-v") {
-			return nil, errors.New("cannot use verbose arguments in non-interactive SSH client")
-		}
-	}
-	// We have to run SSH without output, because it will prevent the JSON
+	// We have to suppress logs from SSH, because it will prevent the JSON
 	// output from the Jasper CLI from being parsed correctly (e.g. adding a
 	// host to the known hosts file generates a warning).
-	remoteOpts.Args = append(remoteOpts.Args,
-		"-T",
-		"-o", "LogLevel=QUIET",
-	)
+	remoteOpts.Args = append([]string{"-o", "LogLevel=QUIET"}, remoteOpts.Args...)
 
 	if err := clientOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating client options")
@@ -93,6 +84,7 @@ func (c *sshClient) CreateProcess(ctx context.Context, opts *options.Create) (ja
 // CLI. Users should not use (*jasper.Command).SetRunFunc().
 func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
 	return c.manager.CreateCommand(ctx).SetRunFunc(func(opts options.Command) error {
+		opts.Remote = &options.Remote{}
 		output, err := c.runManagerCommand(ctx, CreateCommand, &opts)
 		if err != nil {
 			return errors.Wrap(err, "could not run command from given input")
@@ -287,15 +279,6 @@ func (c *sshClient) SignalEvent(ctx context.Context, name string) error {
 	}
 
 	return nil
-}
-
-func (c *sshClient) LoggingCache(ctx context.Context) jasper.LoggingCache {
-	return c.manager.LoggingCache(ctx)
-}
-
-// TODO: implement
-func (c *sshClient) SendMessages(_ context.Context, _ options.LoggingPayload) error {
-	return errors.New("message sending is not supported")
 }
 
 func (c *sshClient) runManagerCommand(ctx context.Context, managerSubcommand string, subcommandInput interface{}) ([]byte, error) {

@@ -42,12 +42,8 @@ type CreateOpts struct {
 	IO IO
 	// Checkpoint digest to restore container state
 	Checkpoint string
-	// RuntimeOptions for the runtime
-	RuntimeOptions *types.Any
-	// TaskOptions received for the task
-	TaskOptions *types.Any
-	// Runtime to use
-	Runtime string
+	// Options for the runtime and container
+	Options *types.Any
 }
 
 // Exit information for a process
@@ -57,9 +53,9 @@ type Exit struct {
 	Timestamp time.Time
 }
 
-// PlatformRuntime is responsible for the creation and management of
-// tasks and processes for a platform.
-type PlatformRuntime interface {
+// Runtime is responsible for the creation of containers for a certain platform,
+// arch, or custom usage.
+type Runtime interface {
 	// ID of the runtime
 	ID() string
 	// Create creates a task with the provided id and options.
@@ -68,9 +64,7 @@ type PlatformRuntime interface {
 	Get(context.Context, string) (Task, error)
 	// Tasks returns all the current tasks for the runtime.
 	// Any container runs at most one task at a time.
-	Tasks(context.Context, bool) ([]Task, error)
-	// Add adds a task into runtime.
-	Add(context.Context, Task) error
-	// Delete remove a task.
-	Delete(context.Context, string)
+	Tasks(context.Context) ([]Task, error)
+	// Delete removes the task in the runtime.
+	Delete(context.Context, Task) (*Exit, error)
 }

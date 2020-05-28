@@ -18,20 +18,20 @@ package schema1
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
@@ -43,10 +43,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	manifestSizeLimit            = 8e6 // 8MB
-	labelDockerSchema1EmptyLayer = "containerd.io/docker.schema1.empty-layer"
-)
+const manifestSizeLimit = 8e6 // 8MB
 
 type blobState struct {
 	diffID digest.Digest
@@ -215,27 +212,16 @@ func (c *Converter) Convert(ctx context.Context, opts ...ConvertOpt) (ocispec.De
 	}
 
 	ref := remotes.MakeRefKey(ctx, desc)
-	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(mb), desc, content.WithLabels(labels)); err != nil {
+	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(mb), desc.Size, desc.Digest, content.WithLabels(labels)); err != nil {
 		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write config")
 	}
 
 	ref = remotes.MakeRefKey(ctx, config)
-	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(b), config); err != nil {
+	if err := content.WriteBlob(ctx, c.contentStore, ref, bytes.NewReader(b), config.Size, config.Digest); err != nil {
 		return ocispec.Descriptor{}, errors.Wrap(err, "failed to write config")
 	}
 
 	return desc, nil
-}
-
-// ReadStripSignature reads in a schema1 manifest and returns a byte array
-// with the "signatures" field stripped
-func ReadStripSignature(schema1Blob io.Reader) ([]byte, error) {
-	b, err := ioutil.ReadAll(io.LimitReader(schema1Blob, manifestSizeLimit)) // limit to 8MB
-	if err != nil {
-		return nil, err
-	}
-
-	return stripSignature(b)
 }
 
 func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) error {
@@ -246,8 +232,13 @@ func (c *Converter) fetchManifest(ctx context.Context, desc ocispec.Descriptor) 
 		return err
 	}
 
-	b, err := ReadStripSignature(rc)
+	b, err := ioutil.ReadAll(io.LimitReader(rc, manifestSizeLimit)) // limit to 8MB
 	rc.Close()
+	if err != nil {
+		return err
+	}
+
+	b, err = stripSignature(b)
 	if err != nil {
 		return err
 	}
@@ -265,46 +256,50 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 	log.G(ctx).Debug("fetch blob")
 
 	var (
-		ref            = remotes.MakeRefKey(ctx, desc)
-		calc           = newBlobStateCalculator()
-		compressMethod = compression.Gzip
+		ref   = remotes.MakeRefKey(ctx, desc)
+		calc  = newBlobStateCalculator()
+		retry = 16
+		size  = desc.Size
 	)
 
 	// size may be unknown, set to zero for content ingest
-	ingestDesc := desc
-	if ingestDesc.Size == -1 {
-		ingestDesc.Size = 0
+	if size == -1 {
+		size = 0
 	}
 
-	cw, err := content.OpenWriter(ctx, c.contentStore, content.WithRef(ref), content.WithDescriptor(ingestDesc))
+tryit:
+	cw, err := c.contentStore.Writer(ctx, ref, size, desc.Digest)
 	if err != nil {
-		if !errdefs.IsAlreadyExists(err) {
+		if errdefs.IsUnavailable(err) {
+			select {
+			case <-time.After(time.Millisecond * time.Duration(rand.Intn(retry))):
+				if retry < 2048 {
+					retry = retry << 1
+				}
+				goto tryit
+			case <-ctx.Done():
+				return err
+			}
+		} else if !errdefs.IsAlreadyExists(err) {
 			return err
 		}
 
-		reuse, err := c.reuseLabelBlobState(ctx, desc)
-		if err != nil {
-			return err
-		}
+		// TODO: Check if blob -> diff id mapping already exists
+		// TODO: Check if blob empty label exists
 
-		if reuse {
-			return nil
-		}
-
-		ra, err := c.contentStore.ReaderAt(ctx, desc)
+		ra, err := c.contentStore.ReaderAt(ctx, desc.Digest)
 		if err != nil {
 			return err
 		}
 		defer ra.Close()
 
-		r, err := compression.DecompressStream(content.NewReader(ra))
+		gr, err := gzip.NewReader(content.NewReader(ra))
 		if err != nil {
 			return err
 		}
+		defer gr.Close()
 
-		compressMethod = r.GetCompression()
-		_, err = io.Copy(calc, r)
-		r.Close()
+		_, err = io.Copy(calc, gr)
 		if err != nil {
 			return err
 		}
@@ -321,14 +316,13 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 		pr, pw := io.Pipe()
 
 		eg.Go(func() error {
-			r, err := compression.DecompressStream(pr)
+			gr, err := gzip.NewReader(pr)
 			if err != nil {
 				return err
 			}
+			defer gr.Close()
 
-			compressMethod = r.GetCompression()
-			_, err = io.Copy(calc, r)
-			r.Close()
+			_, err = io.Copy(calc, gr)
 			pr.CloseWithError(err)
 			return err
 		})
@@ -336,7 +330,7 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 		eg.Go(func() error {
 			defer pw.Close()
 
-			return content.Copy(ctx, cw, io.TeeReader(rc, pw), ingestDesc.Size, ingestDesc.Digest)
+			return content.Copy(ctx, cw, io.TeeReader(rc, pw), size, desc.Digest)
 		})
 
 		if err := eg.Wait(); err != nil {
@@ -352,24 +346,7 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 		desc.Size = info.Size
 	}
 
-	if compressMethod == compression.Uncompressed {
-		log.G(ctx).WithField("id", desc.Digest).Debugf("changed media type for uncompressed schema1 layer blob")
-		desc.MediaType = images.MediaTypeDockerSchema2Layer
-	}
-
 	state := calc.State()
-
-	cinfo := content.Info{
-		Digest: desc.Digest,
-		Labels: map[string]string{
-			"containerd.io/uncompressed": state.diffID.String(),
-			labelDockerSchema1EmptyLayer: strconv.FormatBool(state.empty),
-		},
-	}
-
-	if _, err := c.contentStore.Update(ctx, cinfo, "labels.containerd.io/uncompressed", fmt.Sprintf("labels.%s", labelDockerSchema1EmptyLayer)); err != nil {
-		return errors.Wrap(err, "failed to update uncompressed label")
-	}
 
 	c.mu.Lock()
 	c.blobMap[desc.Digest] = state
@@ -378,52 +355,6 @@ func (c *Converter) fetchBlob(ctx context.Context, desc ocispec.Descriptor) erro
 
 	return nil
 }
-
-func (c *Converter) reuseLabelBlobState(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
-	cinfo, err := c.contentStore.Info(ctx, desc.Digest)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get blob info")
-	}
-	desc.Size = cinfo.Size
-
-	diffID, ok := cinfo.Labels["containerd.io/uncompressed"]
-	if !ok {
-		return false, nil
-	}
-
-	emptyVal, ok := cinfo.Labels[labelDockerSchema1EmptyLayer]
-	if !ok {
-		return false, nil
-	}
-
-	isEmpty, err := strconv.ParseBool(emptyVal)
-	if err != nil {
-		log.G(ctx).WithField("id", desc.Digest).Warnf("failed to parse bool from label %s: %v", labelDockerSchema1EmptyLayer, isEmpty)
-		return false, nil
-	}
-
-	bState := blobState{empty: isEmpty}
-
-	if bState.diffID, err = digest.Parse(diffID); err != nil {
-		log.G(ctx).WithField("id", desc.Digest).Warnf("failed to parse digest from label containerd.io/uncompressed: %v", diffID)
-		return false, nil
-	}
-
-	// NOTE: there is no need to read header to get compression method
-	// because there are only two kinds of methods.
-	if bState.diffID == desc.Digest {
-		desc.MediaType = images.MediaTypeDockerSchema2Layer
-	} else {
-		desc.MediaType = images.MediaTypeDockerSchema2LayerGzip
-	}
-
-	c.mu.Lock()
-	c.blobMap[desc.Digest] = bState
-	c.layerBlobs[bState.diffID] = desc
-	c.mu.Unlock()
-	return true, nil
-}
-
 func (c *Converter) schema1ManifestHistory() ([]ocispec.History, []digest.Digest, error) {
 	if c.pulledManifest == nil {
 		return nil, nil, errors.New("missing schema 1 manifest for conversion")

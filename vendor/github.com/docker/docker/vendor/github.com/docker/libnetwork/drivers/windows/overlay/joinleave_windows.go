@@ -95,10 +95,7 @@ func (d *driver) EventNotify(etype driverapi.EventType, nid, tableName, key stri
 		return
 	}
 
-	err = d.peerAdd(nid, eid, addr.IP, addr.Mask, mac, vtep, true)
-	if err != nil {
-		logrus.Errorf("peerAdd failed (%v) for ip %s with mac %s", err, addr.IP.String(), mac.String())
-	}
+	d.peerAdd(nid, eid, addr.IP, addr.Mask, mac, vtep, true)
 }
 
 func (d *driver) DecodeTableEntry(tablename string, key string, value []byte) (string, map[string]string) {

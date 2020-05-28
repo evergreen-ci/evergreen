@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/server/router"
 	"github.com/docker/docker/api/server/router/debug"
 	"github.com/docker/docker/dockerversion"
-	"github.com/docker/docker/errdefs"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -130,8 +129,8 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 
 		// use intermediate variable to prevent "should not use basic type
 		// string as key in context.WithValue" golint errors
-		ctx := context.WithValue(r.Context(), dockerversion.UAStringKey{}, r.Header.Get("User-Agent"))
-		r = r.WithContext(ctx)
+		var ki interface{} = dockerversion.UAStringKey
+		ctx := context.WithValue(context.Background(), ki, r.Header.Get("User-Agent"))
 		handlerFunc := s.handlerWithGlobalMiddlewares(handler)
 
 		vars := mux.Vars(r)
@@ -140,7 +139,7 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 		}
 
 		if err := handlerFunc(ctx, w, r, vars); err != nil {
-			statusCode := errdefs.GetHTTPErrorStatusCode(err)
+			statusCode := httputils.GetHTTPErrorStatusCode(err)
 			if statusCode >= 500 {
 				logrus.Errorf("Handler for %s %s returned error: %v", r.Method, r.URL.Path, err)
 			}
@@ -150,7 +149,7 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 }
 
 // InitRouter initializes the list of routers for the server.
-// This method also enables the Go profiler.
+// This method also enables the Go profiler if enableProfiler is true.
 func (s *Server) InitRouter(routers ...router.Router) {
 	s.routers = append(s.routers, routers...)
 
@@ -193,7 +192,6 @@ func (s *Server) createMux() *mux.Router {
 	notFoundHandler := httputils.MakeErrorHandler(pageNotFoundError{})
 	m.HandleFunc(versionMatcher+"/{path:.*}", notFoundHandler)
 	m.NotFoundHandler = notFoundHandler
-	m.MethodNotAllowedHandler = notFoundHandler
 
 	return m
 }

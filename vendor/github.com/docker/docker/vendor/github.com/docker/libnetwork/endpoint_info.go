@@ -49,9 +49,6 @@ type InterfaceInfo interface {
 
 	// LinkLocalAddresses returns the list of link-local (IPv4/IPv6) addresses assigned to the endpoint.
 	LinkLocalAddresses() []*net.IPNet
-
-	// SrcName returns the name of the interface w/in the container
-	SrcName() string
 }
 
 type endpointInterface struct {
@@ -273,10 +270,6 @@ func (epi *endpointInterface) AddressIPv6() *net.IPNet {
 
 func (epi *endpointInterface) LinkLocalAddresses() []*net.IPNet {
 	return epi.llAddrs
-}
-
-func (epi *endpointInterface) SrcName() string {
-	return epi.srcName
 }
 
 func (epi *endpointInterface) SetNames(srcName string, dstPrefix string) error {

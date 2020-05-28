@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/docker/docker/pkg/system"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func init() {

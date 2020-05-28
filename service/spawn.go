@@ -635,6 +635,10 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' does not exist", *updateParams.HostID))
 			return
 		}
+		if vol.AvailabilityZone != h.Zone {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("host and volume must have same availability zone"))
+			return
+		}
 
 		if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID))

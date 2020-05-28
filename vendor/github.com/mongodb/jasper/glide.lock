@@ -8,7 +8,7 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/mongodb/grip
-    version: ae76e68cb2ba6041c76c4abcd013b00cd52bacee
+    version: 505d1051058d81836ddb3cb839ba06009588a14e
   - name: github.com/evergreen-ci/gimlet
     version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
   - name: github.com/tychoish/bond
@@ -25,34 +25,30 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
   - name: github.com/urfave/cli
     version: 693af58b4d51b8fcc7f9d89576da170765980581
+  - name: github.com/evergreen-ci/service
+    version: 6a120a364c348396879d3e3a27df7dce23c9c89a
   - name: github.com/cheynewallace/tabby
     version: b7224f6123093cc04ce961170a360e1d22e214a5
   - name: github.com/evergreen-ci/aviation
     version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
-  - name: github.com/evergreen-ci/birch
-    version: 5b054047680765b089c1e6f77d0896803d1fd73d
   - name: github.com/evergreen-ci/certdepot
     version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
   - name: github.com/evergreen-ci/mrpc
-    version: 0ac1b2e0d9f957ae72f731726aedd310932baece
+    version: 81a9a1863205a153bc1662255d724adb0b4f5739
+  - name: github.com/evergreen-ci/birch
+    version: 5b054047680765b089c1e6f77d0896803d1fd73d
+  - name: github.com/evergreen-ci/timber
+    version: 9a33c650233106e021bcb51bfc87de1910a8b6fc
   - name: github.com/evergreen-ci/poplar
     version: 3043bd036e01aa6abbad6af0df031a8315308ff9
-  - name: github.com/evergreen-ci/utility
-    version: 3fa5718f9200847b0982978361090cb94bb6f0fd
-  - name: github.com/evergreen-ci/service
-    version: d9382e39d76857e2fe92a379d89f3c86fe507c4d
-  - name: github.com/evergreen-ci/shrub
-    version: 36937cebcd32cbde53477fc167acd6f60bdd1aea
 
-  # cgroup/docker requirements
+  # cgroup requirements
   - name: github.com/containerd/cgroups
     version: dbea6f2bd41658b84b00417ceefa416b979cbf10
   - name: github.com/opencontainers/runtime-spec
     version: ad53dcdc39f1f7f7472b10aa0a45648fe4865496
   - name: github.com/docker/go-units
     version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
-  - name: github.com/docker/docker
-    version: aa6a9891b09cce3d9004121294301a30d45d998d
   - name: github.com/coreos/go-systemd
     version: 95778dfbb74eb7e4dbaf43bf7d71809650ef8076
   - name: github.com/godbus/dbus
@@ -76,14 +72,8 @@ imports:
   - name: github.com/golang/protobuf
     version: c823c79ea1570fb5ff454033735a8e68575d1d0f
 
-  # vendoring because many dependencies use it
+  # vendoring mongo-go-driver and mgo.v2 because many dependencies use it
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
   - name: gopkg.in/mgo.v2
     version: a6b53ec6cb22a3699387a57a161566f9402ee85b
-  - name: github.com/PuerkitoBio/rehttp
-    version: 3acc8749c14f0a6368ee715d142dddf24c72d632
-  - name: golang.org/x/oauth2
-    version: bf48bf16ab8d622ce64ec6ce98d2c98f916b6303
-  - name: gopkg.in/yaml.v2
-    version: 53403b58ad1b561927d19068c655246f2db79d48

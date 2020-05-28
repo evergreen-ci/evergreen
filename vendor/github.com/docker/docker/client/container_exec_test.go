@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestContainerExecCreateError(t *testing.T) {
@@ -21,9 +20,6 @@ func TestContainerExecCreateError(t *testing.T) {
 	_, err := client.ContainerExecCreate(context.Background(), "container_id", types.ExecConfig{})
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 
@@ -80,9 +76,6 @@ func TestContainerExecStartError(t *testing.T) {
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
 	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
-	}
 }
 
 func TestContainerExecStart(t *testing.T) {
@@ -126,9 +119,6 @@ func TestContainerExecInspectError(t *testing.T) {
 	_, err := client.ContainerExecInspect(context.Background(), "nothing")
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

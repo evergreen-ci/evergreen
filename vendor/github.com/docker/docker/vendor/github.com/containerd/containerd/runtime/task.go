@@ -46,16 +46,14 @@ type Process interface {
 	Start(context.Context) error
 	// Wait for the process to exit
 	Wait(context.Context) (*Exit, error)
-	// Delete deletes the process
-	Delete(context.Context) (*Exit, error)
 }
 
 // Task is the runtime object for an executing container
 type Task interface {
 	Process
 
-	// Namespace that the task exists in
-	Namespace() string
+	// Information of the container
+	Info() TaskInfo
 	// Pause pauses the container process
 	Pause(context.Context) error
 	// Resume unpauses the container process
@@ -66,12 +64,14 @@ type Task interface {
 	Pids(context.Context) ([]ProcessInfo, error)
 	// Checkpoint checkpoints a container to an image with live system data
 	Checkpoint(context.Context, string, *types.Any) error
+	// DeleteProcess deletes a specific exec process via its id
+	DeleteProcess(context.Context, string) (*Exit, error)
 	// Update sets the provided resources to a running task
 	Update(context.Context, *types.Any) error
 	// Process returns a process within the task for the provided id
 	Process(context.Context, string) (Process, error)
-	// Stats returns runtime specific metrics for a task
-	Stats(context.Context) (*types.Any, error)
+	// Metrics returns runtime specific metrics for a task
+	Metrics(context.Context) (interface{}, error)
 }
 
 // ExecOpts provides additional options for additional processes running in a task

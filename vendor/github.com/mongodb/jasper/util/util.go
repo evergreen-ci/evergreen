@@ -2,10 +2,7 @@ package util
 
 import (
 	"bytes"
-	"io"
 	"sync"
-
-	"github.com/mongodb/grip/send"
 )
 
 // CloseFunc is a function used to close a service or close the client
@@ -37,15 +34,3 @@ func (b *LocalBuffer) String() string {
 }
 
 func (b *LocalBuffer) Close() error { return nil }
-
-func ConvertWriter(wr io.Writer, err error) send.Sender {
-	if err != nil {
-		return nil
-	}
-
-	if wr == nil {
-		return nil
-	}
-
-	return send.WrapWriter(wr)
-}

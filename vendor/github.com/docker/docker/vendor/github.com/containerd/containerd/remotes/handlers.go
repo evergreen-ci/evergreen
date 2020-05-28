@@ -20,8 +20,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
@@ -82,14 +84,38 @@ func FetchHandler(ingester content.Ingester, fetcher Fetcher) images.HandlerFunc
 func fetch(ctx context.Context, ingester content.Ingester, fetcher Fetcher, desc ocispec.Descriptor) error {
 	log.G(ctx).Debug("fetch")
 
-	cw, err := content.OpenWriter(ctx, ingester, content.WithRef(MakeRefKey(ctx, desc)), content.WithDescriptor(desc))
-	if err != nil {
-		if errdefs.IsAlreadyExists(err) {
-			return nil
+	var (
+		ref   = MakeRefKey(ctx, desc)
+		cw    content.Writer
+		err   error
+		retry = 16
+	)
+	for {
+		cw, err = ingester.Writer(ctx, ref, desc.Size, desc.Digest)
+		if err != nil {
+			if errdefs.IsAlreadyExists(err) {
+				return nil
+			} else if !errdefs.IsUnavailable(err) {
+				return err
+			}
+
+			// TODO: On first time locked is encountered, get status
+			// of writer and abort if not updated recently.
+
+			select {
+			case <-time.After(time.Millisecond * time.Duration(rand.Intn(retry))):
+				if retry < 2048 {
+					retry = retry << 1
+				}
+				continue
+			case <-ctx.Done():
+				// Propagate lock error
+				return err
+			}
 		}
-		return err
+		defer cw.Close()
+		break
 	}
-	defer cw.Close()
 
 	ws, err := cw.Status()
 	if err != nil {
@@ -142,7 +168,7 @@ func push(ctx context.Context, provider content.Provider, pusher Pusher, desc oc
 	}
 	defer cw.Close()
 
-	ra, err := provider.ReaderAt(ctx, desc)
+	ra, err := provider.ReaderAt(ctx, desc.Digest)
 	if err != nil {
 		return err
 	}
@@ -156,7 +182,7 @@ func push(ctx context.Context, provider content.Provider, pusher Pusher, desc oc
 //
 // Base handlers can be provided which will be called before any push specific
 // handlers.
-func PushContent(ctx context.Context, pusher Pusher, desc ocispec.Descriptor, provider content.Provider, platform platforms.MatchComparer, wrapper func(h images.Handler) images.Handler) error {
+func PushContent(ctx context.Context, pusher Pusher, desc ocispec.Descriptor, provider content.Provider, baseHandlers ...images.Handler) error {
 	var m sync.Mutex
 	manifestStack := []ocispec.Descriptor{}
 
@@ -175,16 +201,13 @@ func PushContent(ctx context.Context, pusher Pusher, desc ocispec.Descriptor, pr
 
 	pushHandler := PushHandler(pusher, provider)
 
-	var handler images.Handler = images.Handlers(
-		images.FilterPlatforms(images.ChildrenHandler(provider), platform),
+	handlers := append(baseHandlers,
+		images.FilterPlatform(platforms.Default(), images.ChildrenHandler(provider)),
 		filterHandler,
 		pushHandler,
 	)
-	if wrapper != nil {
-		handler = wrapper(handler)
-	}
 
-	if err := images.Dispatch(ctx, handler, nil, desc); err != nil {
+	if err := images.Dispatch(ctx, images.Handlers(handlers...), desc); err != nil {
 		return err
 	}
 
@@ -205,39 +228,4 @@ func PushContent(ctx context.Context, pusher Pusher, desc ocispec.Descriptor, pr
 	}
 
 	return nil
-}
-
-// FilterManifestByPlatformHandler allows Handler to handle non-target
-// platform's manifest and configuration data.
-func FilterManifestByPlatformHandler(f images.HandlerFunc, m platforms.Matcher) images.HandlerFunc {
-	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		children, err := f(ctx, desc)
-		if err != nil {
-			return nil, err
-		}
-
-		// no platform information
-		if desc.Platform == nil || m == nil {
-			return children, nil
-		}
-
-		var descs []ocispec.Descriptor
-		switch desc.MediaType {
-		case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest:
-			if m.Match(*desc.Platform) {
-				descs = children
-			} else {
-				for _, child := range children {
-					if child.MediaType == images.MediaTypeDockerSchema2Config ||
-						child.MediaType == ocispec.MediaTypeImageConfig {
-
-						descs = append(descs, child)
-					}
-				}
-			}
-		default:
-			descs = children
-		}
-		return descs, nil
-	}
 }

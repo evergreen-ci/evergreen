@@ -7,17 +7,18 @@ import (
 
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/integration/internal/container"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/poll"
+	"github.com/docker/docker/internal/test/request"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/poll"
 )
 
 func TestUpdateRestartPolicy(t *testing.T) {
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client, container.WithCmd("sh", "-c", "sleep 1 && false"), func(c *container.TestContainerConfig) {
+	cID := container.Run(t, ctx, client, container.WithCmd("sh", "-c", "sleep 1 && false"), func(c *container.TestContainerConfig) {
 		c.HostConfig.RestartPolicy = containertypes.RestartPolicy{
 			Name:              "on-failure",
 			MaximumRetryCount: 3,
@@ -47,10 +48,12 @@ func TestUpdateRestartPolicy(t *testing.T) {
 
 func TestUpdateRestartWithAutoRemove(t *testing.T) {
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client, container.WithAutoRemove)
+	cID := container.Run(t, ctx, client, func(c *container.TestContainerConfig) {
+		c.HostConfig.AutoRemove = true
+	})
 
 	_, err := client.ContainerUpdate(ctx, cID, containertypes.UpdateConfig{
 		RestartPolicy: containertypes.RestartPolicy{

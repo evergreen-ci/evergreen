@@ -19,7 +19,6 @@ import (
 	swarmnode "github.com/docker/swarmkit/node"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 // Init initializes new cluster from user provided request.
@@ -33,7 +32,6 @@ func (c *Cluster) Init(req types.InitRequest) (string, error) {
 			// API handlers to finish before shutting down the node.
 			c.mu.Lock()
 			if !c.nr.nodeState.IsManager() {
-				c.mu.Unlock()
 				return "", errSwarmNotManager
 			}
 			c.mu.Unlock()
@@ -94,27 +92,14 @@ func (c *Cluster) Init(req types.InitRequest) (string, error) {
 		}
 	}
 
-	//Validate Default Address Pool input
-	if err := validateDefaultAddrPool(req.DefaultAddrPool, req.SubnetSize); err != nil {
-		return "", err
-	}
-
-	port, err := getDataPathPort(req.DataPathPort)
-	if err != nil {
-		return "", err
-	}
-
 	nr, err := c.newNodeRunner(nodeStartConfig{
-		forceNewCluster:    req.ForceNewCluster,
-		autolock:           req.AutoLockManagers,
-		LocalAddr:          localAddr,
-		ListenAddr:         net.JoinHostPort(listenHost, listenPort),
-		AdvertiseAddr:      net.JoinHostPort(advertiseHost, advertisePort),
-		DataPathAddr:       dataPathAddr,
-		DefaultAddressPool: req.DefaultAddrPool,
-		SubnetSize:         req.SubnetSize,
-		availability:       req.Availability,
-		DataPathPort:       port,
+		forceNewCluster: req.ForceNewCluster,
+		autolock:        req.AutoLockManagers,
+		LocalAddr:       localAddr,
+		ListenAddr:      net.JoinHostPort(listenHost, listenPort),
+		AdvertiseAddr:   net.JoinHostPort(advertiseHost, advertisePort),
+		DataPathAddr:    dataPathAddr,
+		availability:    req.Availability,
 	})
 	if err != nil {
 		return "", err
@@ -451,10 +436,7 @@ func (c *Cluster) Info() types.Info {
 
 		info.Cluster = &swarm.ClusterInfo
 
-		if r, err := state.controlClient.ListNodes(
-			ctx, &swarmapi.ListNodesRequest{},
-			grpc.MaxCallRecvMsgSize(defaultRecvSizeForListResponse),
-		); err != nil {
+		if r, err := state.controlClient.ListNodes(ctx, &swarmapi.ListNodesRequest{}); err != nil {
 			info.Error = err.Error()
 		} else {
 			info.Nodes = len(r.Nodes)
@@ -462,20 +444,6 @@ func (c *Cluster) Info() types.Info {
 				if n.ManagerStatus != nil {
 					info.Managers = info.Managers + 1
 				}
-			}
-		}
-
-		switch info.LocalNodeState {
-		case types.LocalNodeStateInactive, types.LocalNodeStateLocked, types.LocalNodeStateError:
-			// nothing to do
-		default:
-			if info.Managers == 2 {
-				const warn string = `WARNING: Running Swarm in a two-manager configuration. This configuration provides
-         no fault tolerance, and poses a high risk to lose control over the cluster.
-         Refer to https://docs.docker.com/engine/swarm/admin_guide/ to configure the
-         Swarm for fault-tolerance.`
-
-				info.Warnings = append(info.Warnings, warn)
 			}
 		}
 	}

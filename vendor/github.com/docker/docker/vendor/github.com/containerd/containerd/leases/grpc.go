@@ -17,8 +17,7 @@
 package leases
 
 import (
-	"context"
-
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
 

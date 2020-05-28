@@ -29,8 +29,8 @@ func WithLease(ctx context.Context, lid string) context.Context {
 	return withGRPCLeaseHeader(ctx, lid)
 }
 
-// FromContext returns the lease from the context.
-func FromContext(ctx context.Context) (string, bool) {
+// Lease returns the lease from the context.
+func Lease(ctx context.Context) (string, bool) {
 	lid, ok := ctx.Value(leaseKey{}).(string)
 	if !ok {
 		return fromGRPCHeader(ctx)

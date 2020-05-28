@@ -16,19 +16,17 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/scripting"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/tychoish/lru"
 )
 
-type mdbService struct {
+type service struct {
 	mrpc.Service
-	manager      jasper.Manager
-	harnessCache scripting.HarnessCache
-	cache        *lru.Cache
-	cacheOpts    options.Cache
-	cacheMutex   sync.RWMutex
+	manager    jasper.Manager
+	cache      *lru.Cache
+	cacheOpts  options.Cache
+	cacheMutex sync.RWMutex
 }
 
 // StartMDBService wraps an existing Jasper manager in a MongoDB wire protocol
@@ -48,11 +46,10 @@ func StartMDBService(ctx context.Context, m jasper.Manager, addr net.Addr) (util
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create base service")
 	}
-	svc := &mdbService{
-		Service:      baseSvc,
-		manager:      m,
-		harnessCache: scripting.NewCache(),
-		cache:        lru.NewCache(),
+	svc := &service{
+		Service: baseSvc,
+		manager: m,
+		cache:   lru.NewCache(),
 		cacheOpts: options.Cache{
 			PruneDelay: jasper.DefaultCachePruneDelay,
 			MaxSize:    jasper.DefaultMaxCacheSize,
@@ -75,7 +72,7 @@ func StartMDBService(ctx context.Context, m jasper.Manager, addr net.Addr) (util
 	return func() error { ccancel(); return nil }, nil
 }
 
-func (s *mdbService) registerHandlers() error {
+func (s *service) registerHandlers() error {
 	for name, handler := range map[string]mrpc.HandlerFunc{
 		// Manager commands
 		ManagerIDCommand:     s.managerID,
@@ -99,24 +96,6 @@ func (s *mdbService) registerHandlers() error {
 		GetTagsCommand:                 s.processGetTags,
 		ResetTagsCommand:               s.processResetTags,
 
-		// Scripting commands
-		ScriptingGetCommand:       s.scriptingGet,
-		ScriptingCreateCommand:    s.scriptingCreate,
-		ScriptingSetupCommand:     s.scriptingSetup,
-		ScriptingCleanupCommand:   s.scriptingCleanup,
-		ScriptingRunCommand:       s.scriptingRun,
-		ScriptingRunScriptCommand: s.scriptingRunScript,
-		ScriptingBuildCommand:     s.scriptingBuild,
-		ScriptingTestCommand:      s.scriptingTest,
-
-		// Logging Commands
-		LoggingCacheSizeCommand:   s.loggingSize,
-		LoggingCacheCreateCommand: s.loggingCreate,
-		LoggingCacheDeleteCommand: s.loggingDelete,
-		LoggingCacheGetCommand:    s.loggingGet,
-		LoggingCachePruneCommand:  s.loggingPrune,
-		LoggingSendMessageCommand: s.loggingSendMessage,
-
 		// Remote client commands
 		ConfigureCacheCommand:     s.configureCache,
 		DownloadFileCommand:       s.downloadFile,
@@ -136,7 +115,7 @@ func (s *mdbService) registerHandlers() error {
 	return nil
 }
 
-func (s *mdbService) pruneCache(ctx context.Context) {
+func (s *service) pruneCache(ctx context.Context) {
 	defer func() {
 		err := recovery.HandlePanicWithError(recover(), nil, "pruning cache")
 		if ctx.Err() != nil || err == nil {
@@ -173,7 +152,7 @@ const (
 	SignalEventCommand        = "signal_event"
 )
 
-func (s *mdbService) configureCache(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) configureCache(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := configureCacheRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ConfigureCacheCommand)
@@ -198,7 +177,7 @@ func (s *mdbService) configureCache(ctx context.Context, w io.Writer, msg mongow
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, ConfigureCacheCommand)
 }
 
-func (s *mdbService) downloadFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) downloadFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := downloadFileRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadFileCommand)
@@ -219,7 +198,7 @@ func (s *mdbService) downloadFile(ctx context.Context, w io.Writer, msg mongowir
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadFileCommand)
 }
 
-func (s *mdbService) downloadMongoDB(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) downloadMongoDB(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &downloadMongoDBRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
@@ -240,7 +219,7 @@ func (s *mdbService) downloadMongoDB(ctx context.Context, w io.Writer, msg mongo
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadMongoDBCommand)
 }
 
-func (s *mdbService) getLogStream(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) getLogStream(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := getLogStreamRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
@@ -273,7 +252,7 @@ func (s *mdbService) getLogStream(ctx context.Context, w io.Writer, msg mongowir
 	shell.WriteResponse(ctx, w, resp, GetLogStreamCommand)
 }
 
-func (s *mdbService) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &getBuildloggerURLsRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetBuildloggerURLsCommand)
@@ -289,15 +268,8 @@ func (s *mdbService) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mo
 
 	urls := []string{}
 	for _, logger := range getProcInfoNoHang(ctx, proc).Options.Output.Loggers {
-		if logger.Type() == options.LogBuildloggerV2 {
-			producer := logger.Producer()
-			if producer == nil {
-				continue
-			}
-			rawProducer, ok := producer.(*options.BuildloggerV2Options)
-			if ok {
-				urls = append(urls, rawProducer.Buildlogger.GetGlobalLogURL())
-			}
+		if logger.Type == options.LogBuildloggerV2 || logger.Type == options.LogBuildloggerV3 {
+			urls = append(urls, logger.Options.BuildloggerOptions.GetGlobalLogURL())
 		}
 	}
 	if len(urls) == 0 {
@@ -313,7 +285,7 @@ func (s *mdbService) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mo
 	shell.WriteResponse(ctx, w, resp, GetBuildloggerURLsCommand)
 }
 
-func (s *mdbService) signalEvent(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) signalEvent(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &signalEventRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), SignalEventCommand)
