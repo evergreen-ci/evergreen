@@ -119,6 +119,13 @@ type TaskTestResult struct {
 	TestResults       []*model.APITest `json:"testResults"`
 }
 
+type UserConfig struct {
+	User          string `json:"user"`
+	APIKey        string `json:"api_key"`
+	APIServerHost string `json:"api_server_host"`
+	UIServerHost  string `json:"ui_server_host"`
+}
+
 type UserPatches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
