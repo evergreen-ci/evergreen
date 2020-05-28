@@ -106,6 +106,10 @@ header .pagination-fixed {
   text-overflow: ellipsis;
   display: block;
 }
+.multi-liner {
+  overflow: hidden;
+  display: block;
+}
 ol.breadcrumb {
   background: none;
   border-radius: 0;
