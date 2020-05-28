@@ -122,14 +122,14 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	s.Require().NoError(os.RemoveAll(tmpdir))
 
-	//test with both file and other params 
+	//test with both file and other params
 	s.params = map[string]interface{}{
-		"file": path,
-		"distro":    "myDistro",
+		"file":   path,
+		"distro": "myDistro",
 	}
-	
+
 	err = s.cmd.ParseParams(s.params)
-	s.Contains(err.Error(), "Programmer error: no params should be defined when using a file to parse params")
+	s.Contains(err.Error(), "no params should be defined when using a file to parse params")
 
 }
 
