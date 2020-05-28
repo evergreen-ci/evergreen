@@ -63,7 +63,7 @@ $http.get(templateUrl).success(function(template) {
   const threadLevelModeKey = "threads";
   const selectedThreadsPrefix = "selected";
   $scope.syncHash = function () {
-    $location.hash($scope.makeHash.toString());
+    $location.hash($scope.makeHash().toString());
   }
 
   $scope.makeHash = function () {
