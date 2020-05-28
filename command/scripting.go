@@ -313,22 +313,22 @@ func (c *scriptingExec) getHarnessConfig(output options.Output) (options.Scripti
 	switch c.Harness {
 	case "python3", "python":
 		return &options.ScriptingPython{
-			Output:            output,
-			Environment:       c.Env,
-			CachedDuration:    time.Duration(c.CacheDurationSeconds) * time.Second,
-			Packages:          c.Packages,
-			VirtualEnvPath:    filepath.Join(c.WorkingDir, c.HarnessPath),
-			InterpreterBinary: c.HostPath,
+			Output:                output,
+			Environment:           c.Env,
+			CachedDuration:        time.Duration(c.CacheDurationSeconds) * time.Second,
+			Packages:              c.Packages,
+			VirtualEnvPath:        filepath.Join(c.WorkingDir, c.HarnessPath),
+			HostPythonInterpreter: c.HostPath,
 		}, nil
 	case "python2":
 		return &options.ScriptingPython{
-			Output:            output,
-			LegacyPython:      true,
-			Environment:       c.Env,
-			CachedDuration:    time.Duration(c.CacheDurationSeconds) * time.Second,
-			Packages:          c.Packages,
-			VirtualEnvPath:    filepath.Join(c.WorkingDir, c.HarnessPath),
-			InterpreterBinary: c.HostPath,
+			Output:                output,
+			LegacyPython:          true,
+			Environment:           c.Env,
+			CachedDuration:        time.Duration(c.CacheDurationSeconds) * time.Second,
+			Packages:              c.Packages,
+			VirtualEnvPath:        filepath.Join(c.WorkingDir, c.HarnessPath),
+			HostPythonInterpreter: c.HostPath,
 		}, nil
 	case "roswell", "lisp":
 		return &options.ScriptingRoswell{
@@ -346,7 +346,7 @@ func (c *scriptingExec) getHarnessConfig(output options.Output) (options.Scripti
 			Packages:       c.Packages,
 			CachedDuration: time.Duration(c.CacheDurationSeconds) * time.Second,
 			Gopath:         filepath.Join(c.WorkingDir, c.HarnessPath),
-			Directory:      c.WorkingDir,
+			Context:        c.WorkingDir,
 			Goroot:         c.HostPath,
 		}, nil
 	default:

@@ -79,21 +79,19 @@ type MultiDecrypter struct {
 }
 
 // Decrypt tries to decrypt using any decrypters that match the given algorithm.
-func (m MultiDecrypter) Decrypt(r api.MaybeEncryptedRecord) ([]byte, error) {
+func (m MultiDecrypter) Decrypt(r api.MaybeEncryptedRecord) (result []byte, err error) {
 	decrypters, ok := m.decrypters[r.Algorithm]
 	if !ok {
 		return nil, fmt.Errorf("cannot decrypt record encrypted using %s",
 			api.MaybeEncryptedRecord_Algorithm_name[int32(r.Algorithm)])
 	}
-	var rerr error
 	for _, d := range decrypters {
-		result, err := d.Decrypt(r)
+		result, err = d.Decrypt(r)
 		if err == nil {
-			return result, nil
+			return
 		}
-		rerr = err
 	}
-	return nil, rerr
+	return
 }
 
 // NewMultiDecrypter returns a new MultiDecrypter given multiple Decrypters.  If any of

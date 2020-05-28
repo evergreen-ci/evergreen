@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestContainerCreateError(t *testing.T) {
@@ -22,9 +21,6 @@ func TestContainerCreateError(t *testing.T) {
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error while testing StatusInternalServerError, got %v", err)
 	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error while testing StatusInternalServerError, got %T", err)
-	}
 
 	// 404 doesn't automatically means an unknown image
 	client = &Client{
@@ -34,9 +30,6 @@ func TestContainerCreateError(t *testing.T) {
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error while testing StatusNotFound, got %v", err)
 	}
-	if err == nil || !IsErrNotFound(err) {
-		t.Fatalf("expected a Server Error while testing StatusNotFound, got %T", err)
-	}
 }
 
 func TestContainerCreateImageNotFound(t *testing.T) {
@@ -45,7 +38,7 @@ func TestContainerCreateImageNotFound(t *testing.T) {
 	}
 	_, err := client.ContainerCreate(context.Background(), &container.Config{Image: "unknown_image"}, nil, nil, "unknown")
 	if err == nil || !IsErrNotFound(err) {
-		t.Fatalf("expected an imageNotFound error, got %v, %T", err, err)
+		t.Fatalf("expected an imageNotFound error, got %v", err)
 	}
 }
 

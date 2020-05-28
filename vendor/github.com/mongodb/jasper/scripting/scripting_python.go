@@ -35,26 +35,17 @@ func (e *pythonEnvironment) Setup(ctx context.Context) error {
 	e.cachedHash = e.opts.ID()
 	venvpy := e.opts.Interpreter()
 
-	cmd := e.manager.CreateCommand(ctx).AppendArgs(e.opts.InterpreterBinary, "-m", e.venvMod(), e.opts.VirtualEnvPath).Environment(e.opts.Environment)
+	cmd := e.manager.CreateCommand(ctx).AppendArgs(e.opts.HostPythonInterpreter, "-m", e.venvMod(), e.opts.VirtualEnvPath).Environment(e.opts.Environment)
 
-	if e.opts.RequirementsPath != "" {
-		args := []string{venvpy, "-m", "pip", "install", "-r", e.opts.RequirementsPath}
-		if e.opts.UpdatePackages {
-			args = append(args, "--upgrade")
-		}
-		cmd.Add(args)
+	if e.opts.RequirementsFilePath != "" {
+		cmd.AppendArgs(venvpy, "-m", "pip", "install", "-r", e.opts.RequirementsFilePath)
 	}
 
 	for _, pkg := range e.opts.Packages {
-		args := []string{venvpy, "-m", "pip", "install"}
-		if e.opts.UpdatePackages {
-			args = append(args, "--update")
-		}
-		args = append(args, pkg)
-		cmd.Add(args)
+		cmd.AppendArgs(venvpy, "-m", "pip", "install", pkg)
 	}
 
-	cmd.PostHook(func(res error) error {
+	cmd.SetHook(func(res error) error {
 		if res == nil {
 			e.isConfigured = true
 		}
@@ -77,13 +68,13 @@ func (e *pythonEnvironment) Run(ctx context.Context, args []string) error {
 
 func (e *pythonEnvironment) RunScript(ctx context.Context, script string) error {
 	scriptChecksum := fmt.Sprintf("%x", sha1.Sum([]byte(script)))
-
 	wo := options.WriteFile{
 		Path:    filepath.Join(e.opts.VirtualEnvPath, "tmp", strings.Join([]string{e.manager.ID(), scriptChecksum}, "-")+".py"),
 		Content: []byte(script),
 	}
+
 	if err := e.manager.WriteFile(ctx, wo); err != nil {
-		return errors.Wrap(err, "problem writing script file")
+		return errors.Wrap(err, "problem writing file")
 	}
 
 	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), wo.Path).Run(ctx)

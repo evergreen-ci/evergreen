@@ -385,7 +385,7 @@ func (p *windowsParser) parseMountSpec(cfg mount.Mount, destRegex string, conver
 	switch cfg.Type {
 	case mount.TypeVolume:
 		if cfg.Source == "" {
-			mp.Name = stringid.GenerateRandomID()
+			mp.Name = stringid.GenerateNonCryptoID()
 		} else {
 			mp.Name = cfg.Source
 		}

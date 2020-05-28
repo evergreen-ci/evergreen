@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/internal/test/environment"
 	"github.com/docker/docker/pkg/authorization"
 	"github.com/docker/docker/pkg/plugins"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 var (
@@ -48,7 +48,6 @@ func TestMain(m *testing.M) {
 
 func setupTest(t *testing.T) func() {
 	skip.If(t, testEnv.IsRemoteDaemon, "cannot run daemon when remote daemon")
-	skip.If(t, testEnv.DaemonInfo.OSType == "windows")
 	environment.ProtectAll(t, testEnv)
 
 	d = daemon.New(t, daemon.WithExperimental)

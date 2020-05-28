@@ -1,11 +1,10 @@
 package orchestrator
 
 import (
-	"context"
-
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
+	"golang.org/x/net/context"
 )
 
 // IsReplicatedService checks if a service is a replicated service.
@@ -47,27 +46,22 @@ func SetServiceTasksRemove(ctx context.Context, s *store.MemoryStore, service *a
 	err = s.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
 			err := batch.Update(func(tx store.Tx) error {
-				// the task may have changed for some reason in the meantime
-				// since we read it out, so we need to get from the store again
-				// within the boundaries of a transaction
-				latestTask := store.GetTask(tx, t.ID)
-
 				// time travel is not allowed. if the current desired state is
 				// above the one we're trying to go to we can't go backwards.
 				// we have nothing to do and we should skip to the next task
-				if latestTask.DesiredState > api.TaskStateRemove {
+				if t.DesiredState > api.TaskStateRemove {
 					// log a warning, though. we shouln't be trying to rewrite
 					// a state to an earlier state
 					log.G(ctx).Warnf(
 						"cannot update task %v in desired state %v to an earlier desired state %v",
-						latestTask.ID, latestTask.DesiredState, api.TaskStateRemove,
+						t.ID, t.DesiredState, api.TaskStateRemove,
 					)
 					return nil
 				}
 				// update desired state to REMOVE
-				latestTask.DesiredState = api.TaskStateRemove
+				t.DesiredState = api.TaskStateRemove
 
-				if err := store.UpdateTask(tx, latestTask); err != nil {
+				if err := store.UpdateTask(tx, t); err != nil {
 					log.G(ctx).WithError(err).Errorf("failed transaction: update task desired state to REMOVE")
 				}
 				return nil

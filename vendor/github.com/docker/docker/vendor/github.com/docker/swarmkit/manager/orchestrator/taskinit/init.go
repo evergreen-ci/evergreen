@@ -1,7 +1,6 @@
 package taskinit
 
 import (
-	"context"
 	"sort"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/restart"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
+	"golang.org/x/net/context"
 )
 
 // InitHandler defines orchestrator's action to fix tasks at start.
@@ -80,7 +80,7 @@ func CheckTasks(ctx context.Context, s *store.MemoryStore, readTx store.ReadTx, 
 				}
 				if err == nil {
 					restartTime := timestamp.Add(restartDelay)
-					calculatedRestartDelay := time.Until(restartTime)
+					calculatedRestartDelay := restartTime.Sub(time.Now())
 					if calculatedRestartDelay < restartDelay {
 						restartDelay = calculatedRestartDelay
 					}

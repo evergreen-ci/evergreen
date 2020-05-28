@@ -37,7 +37,7 @@ func InitDockerDefault(ic ipamapi.Callback, l, g interface{}) error {
 		}
 	}
 
-	ipamutils.ConfigLocalScopeDefaultNetworks(nil)
+	ipamutils.InitNetworks(nil)
 
 	a, err := ipam.NewAllocator(localDs, globalDs)
 	if err != nil {

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestNetworkDisconnectError(t *testing.T) {
@@ -22,9 +21,6 @@ func TestNetworkDisconnectError(t *testing.T) {
 	err := client.NetworkDisconnect(context.Background(), "network_id", "container_id", false)
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

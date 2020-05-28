@@ -29,7 +29,6 @@ option go_package = "github.com/containerd/containerd/api/services/containers/v1
 service Containers {
 	rpc Get(GetContainerRequest) returns (GetContainerResponse);
 	rpc List(ListContainersRequest) returns (ListContainersResponse);
-	rpc ListStream(ListContainersRequest) returns (stream ListContainerMessage);
 	rpc Create(CreateContainerRequest) returns (CreateContainerResponse);
 	rpc Update(UpdateContainerRequest) returns (UpdateContainerResponse);
 	rpc Delete(DeleteContainerRequest) returns (google.protobuf.Empty);
@@ -156,8 +155,4 @@ message UpdateContainerResponse {
 
 message DeleteContainerRequest {
 	string id = 1;
-}
-
-message ListContainerMessage {
-	Container container = 1;
 }

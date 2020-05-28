@@ -1,19 +1,3 @@
-/*
-   Copyright The containerd Authors.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 package runc
 
 import (
@@ -37,15 +21,6 @@ import (
 // Format is the type of log formatting options avaliable
 type Format string
 
-// TopBody represents the structured data of the full ps output
-type TopResults struct {
-	// Processes running in the container, where each is process is an array of values corresponding to the headers
-	Processes [][]string `json:"Processes"`
-
-	// Headers are the names of the columns
-	Headers []string `json:"Headers"`
-}
-
 const (
 	none Format = ""
 	JSON Format = "json"
@@ -66,7 +41,6 @@ type Runc struct {
 	Setpgid       bool
 	Criu          string
 	SystemdCgroup bool
-	Rootless      *bool // nil stands for "auto"
 }
 
 // List returns all containers created inside the provided runc root directory
@@ -209,7 +183,7 @@ func (o *ExecOpts) args() (out []string, err error) {
 // Exec executres and additional process inside the container based on a full
 // OCI Process specification
 func (r *Runc) Exec(context context.Context, id string, spec specs.Process, opts *ExecOpts) error {
-	f, err := ioutil.TempFile(os.Getenv("XDG_RUNTIME_DIR"), "runc-process")
+	f, err := ioutil.TempFile("", "runc-process")
 	if err != nil {
 		return err
 	}
@@ -275,11 +249,7 @@ func (r *Runc) Run(context context.Context, id, bundle string, opts *CreateOpts)
 	if err != nil {
 		return -1, err
 	}
-	status, err := Monitor.Wait(cmd, ec)
-	if err == nil && status != 0 {
-		err = fmt.Errorf("%s did not terminate sucessfully", cmd.Args[0])
-	}
-	return status, err
+	return Monitor.Wait(cmd, ec)
 }
 
 type DeleteOpts struct {
@@ -409,20 +379,6 @@ func (r *Runc) Ps(context context.Context, id string) ([]int, error) {
 	return pids, nil
 }
 
-// Top lists all the processes inside the container returning the full ps data
-func (r *Runc) Top(context context.Context, id string, psOptions string) (*TopResults, error) {
-	data, err := cmdOutput(r.command(context, "ps", "--format", "table", id, psOptions), true)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %s", err, data)
-	}
-
-	topResults, err := ParsePSOutput(data)
-	if err != nil {
-		return nil, fmt.Errorf("%s: ", err)
-	}
-	return topResults, nil
-}
-
 type CheckpointOpts struct {
 	// ImagePath is the path for saving the criu image file
 	ImagePath string
@@ -517,11 +473,10 @@ type RestoreOpts struct {
 	CheckpointOpts
 	IO
 
-	Detach        bool
-	PidFile       string
-	NoSubreaper   bool
-	NoPivot       bool
-	ConsoleSocket ConsoleSocket
+	Detach      bool
+	PidFile     string
+	NoSubreaper bool
+	NoPivot     bool
 }
 
 func (o *RestoreOpts) args() ([]string, error) {
@@ -535,9 +490,6 @@ func (o *RestoreOpts) args() ([]string, error) {
 			return nil, err
 		}
 		out = append(out, "--pid-file", abs)
-	}
-	if o.ConsoleSocket != nil {
-		out = append(out, "--console-socket", o.ConsoleSocket.Path())
 	}
 	if o.NoPivot {
 		out = append(out, "--no-pivot")
@@ -574,11 +526,7 @@ func (r *Runc) Restore(context context.Context, id, bundle string, opts *Restore
 			}
 		}
 	}
-	status, err := Monitor.Wait(cmd, ec)
-	if err == nil && status != 0 {
-		err = fmt.Errorf("%s did not terminate sucessfully", cmd.Args[0])
-	}
-	return status, err
+	return Monitor.Wait(cmd, ec)
 }
 
 // Update updates the current container with the provided resource spec
@@ -616,8 +564,9 @@ func parseVersion(data []byte) (Version, error) {
 	var v Version
 	parts := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(parts) != 3 {
-		return v, nil
+		return v, ErrParseRuncVersion
 	}
+
 	for i, p := range []struct {
 		dest  *string
 		split string
@@ -662,10 +611,6 @@ func (r *Runc) args() (out []string) {
 	}
 	if r.SystemdCgroup {
 		out = append(out, "--systemd-cgroup")
-	}
-	if r.Rootless != nil {
-		// nil stands for "auto" (differs from explicit "false")
-		out = append(out, "--rootless="+strconv.FormatBool(*r.Rootless))
 	}
 	return out
 }

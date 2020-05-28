@@ -20,10 +20,9 @@ Testing (requires root):
 package main
 
 import (
-    "fmt"
     "net"
     "runtime"
-    "github.com/vishvananda/netns"
+    "github.com/vishvananada/netns"
 )
 
 func main() {
@@ -39,7 +38,7 @@ func main() {
     newns, _ := netns.New()
     defer newns.Close()
 
-    // Do something with the network namespace
+    // Do something with tne network namespace
     ifaces, _ := net.Interfaces()
     fmt.Printf("Interfaces: %v\n", ifaces)
 

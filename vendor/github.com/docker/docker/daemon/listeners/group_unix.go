@@ -6,15 +6,25 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/docker/docker/pkg/idtools"
+	"github.com/opencontainers/runc/libcontainer/user"
+	"github.com/pkg/errors"
 )
 
 const defaultSocketGroup = "docker"
 
 func lookupGID(name string) (int, error) {
-	group, err := idtools.LookupGroup(name)
-	if err == nil {
-		return group.Gid, nil
+	groupFile, err := user.GetGroupPath()
+	if err != nil {
+		return -1, errors.Wrap(err, "error looking up groups")
+	}
+	groups, err := user.ParseGroupFileFilter(groupFile, func(g user.Group) bool {
+		return g.Name == name || strconv.Itoa(g.Gid) == name
+	})
+	if err != nil {
+		return -1, errors.Wrapf(err, "error parsing groups for %s", name)
+	}
+	if len(groups) > 0 {
+		return groups[0].Gid, nil
 	}
 	gid, err := strconv.Atoi(name)
 	if err == nil {

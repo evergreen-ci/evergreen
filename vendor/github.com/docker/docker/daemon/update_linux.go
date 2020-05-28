@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	libcontainerdtypes "github.com/docker/docker/libcontainerd/types"
+	"github.com/docker/docker/libcontainerd"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func toContainerdResources(resources container.Resources) *libcontainerdtypes.Resources {
-	var r libcontainerdtypes.Resources
+func toContainerdResources(resources container.Resources) *libcontainerd.Resources {
+	var r libcontainerd.Resources
 
 	r.BlockIO = &specs.LinuxBlockIO{
 		Weight: &resources.BlkioWeight,
@@ -50,6 +50,5 @@ func toContainerdResources(resources container.Resources) *libcontainerdtypes.Re
 		r.Memory.Swap = &resources.MemorySwap
 	}
 
-	r.Pids = getPidsLimit(resources)
 	return &r
 }

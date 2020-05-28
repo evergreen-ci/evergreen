@@ -3,24 +3,21 @@
 package main
 
 import (
-	"fmt"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/integration-cli/checker"
 	"github.com/docker/docker/integration-cli/daemon"
-	"gotest.tools/assert"
-	"gotest.tools/poll"
+	"github.com/go-check/check"
 )
 
-func (s *DockerSwarmSuite) TestAPISwarmListNodes(c *testing.T) {
+func (s *DockerSwarmSuite) TestAPISwarmListNodes(c *check.C) {
 	d1 := s.AddDaemon(c, true, true)
 	d2 := s.AddDaemon(c, true, false)
 	d3 := s.AddDaemon(c, true, false)
 
 	nodes := d1.ListNodes(c)
-	assert.Equal(c, len(nodes), 3, fmt.Sprintf("nodes: %#v", nodes))
+	c.Assert(len(nodes), checker.Equals, 3, check.Commentf("nodes: %#v", nodes))
 
 loop0:
 	for _, n := range nodes {
@@ -33,7 +30,7 @@ loop0:
 	}
 }
 
-func (s *DockerSwarmSuite) TestAPISwarmNodeUpdate(c *testing.T) {
+func (s *DockerSwarmSuite) TestAPISwarmNodeUpdate(c *check.C) {
 	d := s.AddDaemon(c, true, true)
 
 	nodes := d.ListNodes(c)
@@ -43,17 +40,17 @@ func (s *DockerSwarmSuite) TestAPISwarmNodeUpdate(c *testing.T) {
 	})
 
 	n := d.GetNode(c, nodes[0].ID)
-	assert.Equal(c, n.Spec.Availability, swarm.NodeAvailabilityPause)
+	c.Assert(n.Spec.Availability, checker.Equals, swarm.NodeAvailabilityPause)
 }
 
-func (s *DockerSwarmSuite) TestAPISwarmNodeRemove(c *testing.T) {
+func (s *DockerSwarmSuite) TestAPISwarmNodeRemove(c *check.C) {
 	testRequires(c, Network)
 	d1 := s.AddDaemon(c, true, true)
 	d2 := s.AddDaemon(c, true, false)
 	_ = s.AddDaemon(c, true, false)
 
 	nodes := d1.ListNodes(c)
-	assert.Equal(c, len(nodes), 3, fmt.Sprintf("nodes: %#v", nodes))
+	c.Assert(len(nodes), checker.Equals, 3, check.Commentf("nodes: %#v", nodes))
 
 	// Getting the info so we can take the NodeID
 	d2Info := d2.SwarmInfo(c)
@@ -62,39 +59,39 @@ func (s *DockerSwarmSuite) TestAPISwarmNodeRemove(c *testing.T) {
 	d1.RemoveNode(c, d2Info.NodeID, true)
 
 	nodes = d1.ListNodes(c)
-	assert.Equal(c, len(nodes), 2, fmt.Sprintf("nodes: %#v", nodes))
+	c.Assert(len(nodes), checker.Equals, 2, check.Commentf("nodes: %#v", nodes))
 
 	// Restart the node that was removed
-	d2.RestartNode(c)
+	d2.Restart(c)
 
 	// Give some time for the node to rejoin
 	time.Sleep(1 * time.Second)
 
 	// Make sure the node didn't rejoin
 	nodes = d1.ListNodes(c)
-	assert.Equal(c, len(nodes), 2, fmt.Sprintf("nodes: %#v", nodes))
+	c.Assert(len(nodes), checker.Equals, 2, check.Commentf("nodes: %#v", nodes))
 }
 
-func (s *DockerSwarmSuite) TestAPISwarmNodeDrainPause(c *testing.T) {
+func (s *DockerSwarmSuite) TestAPISwarmNodeDrainPause(c *check.C) {
 	d1 := s.AddDaemon(c, true, true)
 	d2 := s.AddDaemon(c, true, false)
 
 	time.Sleep(1 * time.Second) // make sure all daemons are ready to accept tasks
 
 	// start a service, expect balanced distribution
-	instances := 2
+	instances := 8
 	id := d1.CreateService(c, simpleTestService, setInstances(instances))
 
-	poll.WaitOn(c, pollCheck(c, d1.CheckActiveContainerCount, checker.GreaterThan(0)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, d2.CheckActiveContainerCount, checker.GreaterThan(0)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals(instances)), poll.WithTimeout(defaultReconciliationTimeout))
+	waitAndAssert(c, defaultReconciliationTimeout, d1.CheckActiveContainerCount, checker.GreaterThan, 0)
+	waitAndAssert(c, defaultReconciliationTimeout, d2.CheckActiveContainerCount, checker.GreaterThan, 0)
+	waitAndAssert(c, defaultReconciliationTimeout, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals, instances)
 
 	// drain d2, all containers should move to d1
 	d1.UpdateNode(c, d2.NodeID(), func(n *swarm.Node) {
 		n.Spec.Availability = swarm.NodeAvailabilityDrain
 	})
-	poll.WaitOn(c, pollCheck(c, d1.CheckActiveContainerCount, checker.Equals(instances)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, d2.CheckActiveContainerCount, checker.Equals(0)), poll.WithTimeout(defaultReconciliationTimeout))
+	waitAndAssert(c, defaultReconciliationTimeout, d1.CheckActiveContainerCount, checker.Equals, instances)
+	waitAndAssert(c, defaultReconciliationTimeout, d2.CheckActiveContainerCount, checker.Equals, 0)
 
 	// set d2 back to active
 	d1.UpdateNode(c, d2.NodeID(), func(n *swarm.Node) {
@@ -103,15 +100,16 @@ func (s *DockerSwarmSuite) TestAPISwarmNodeDrainPause(c *testing.T) {
 
 	instances = 1
 	d1.UpdateService(c, d1.GetService(c, id), setInstances(instances))
-	poll.WaitOn(c, pollCheck(c, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals(instances)), poll.WithTimeout(defaultReconciliationTimeout*2))
 
-	instances = 2
+	waitAndAssert(c, defaultReconciliationTimeout*2, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals, instances)
+
+	instances = 8
 	d1.UpdateService(c, d1.GetService(c, id), setInstances(instances))
 
 	// drained node first so we don't get any old containers
-	poll.WaitOn(c, pollCheck(c, d2.CheckActiveContainerCount, checker.GreaterThan(0)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, d1.CheckActiveContainerCount, checker.GreaterThan(0)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals(instances)), poll.WithTimeout(defaultReconciliationTimeout*2))
+	waitAndAssert(c, defaultReconciliationTimeout, d2.CheckActiveContainerCount, checker.GreaterThan, 0)
+	waitAndAssert(c, defaultReconciliationTimeout, d1.CheckActiveContainerCount, checker.GreaterThan, 0)
+	waitAndAssert(c, defaultReconciliationTimeout*2, reducedCheck(sumAsIntegers, d1.CheckActiveContainerCount, d2.CheckActiveContainerCount), checker.Equals, instances)
 
 	d2ContainerCount := len(d2.ActiveContainers(c))
 
@@ -120,9 +118,10 @@ func (s *DockerSwarmSuite) TestAPISwarmNodeDrainPause(c *testing.T) {
 		n.Spec.Availability = swarm.NodeAvailabilityPause
 	})
 
-	instances = 4
+	instances = 14
 	d1.UpdateService(c, d1.GetService(c, id), setInstances(instances))
-	poll.WaitOn(c, pollCheck(c, d1.CheckActiveContainerCount, checker.Equals(instances-d2ContainerCount)), poll.WithTimeout(defaultReconciliationTimeout))
-	poll.WaitOn(c, pollCheck(c, d2.CheckActiveContainerCount, checker.Equals(d2ContainerCount)), poll.WithTimeout(defaultReconciliationTimeout))
+
+	waitAndAssert(c, defaultReconciliationTimeout, d1.CheckActiveContainerCount, checker.Equals, instances-d2ContainerCount)
+	waitAndAssert(c, defaultReconciliationTimeout, d2.CheckActiveContainerCount, checker.Equals, d2ContainerCount)
 
 }

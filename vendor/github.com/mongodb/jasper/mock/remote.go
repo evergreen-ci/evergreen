@@ -5,7 +5,6 @@ import (
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/scripting"
 )
 
 // RemoteClient implements the RemoteClient interface with exported fields
@@ -19,9 +18,6 @@ type RemoteClient struct {
 	FailGetLogStream       bool
 	FailGetBuildloggerURLs bool
 	FailSignalEvent        bool
-	FailCreateScripting    bool
-	FailGetScripting       bool
-	FailSendMessages       bool
 
 	// ConfigureCache input
 	CacheOptions options.Cache
@@ -41,8 +37,6 @@ type RemoteClient struct {
 	BuildloggerURLs []string
 
 	EventName string
-
-	SendMessagePayload options.LoggingPayload
 }
 
 // CloseConnection is a no-op. If FailCloseConnection is set, it returns an
@@ -124,33 +118,4 @@ func (c *RemoteClient) SignalEvent(ctx context.Context, name string) error {
 	c.EventName = name
 
 	return nil
-}
-
-// SendMessages stores the given logging payload. If FailSendMessages is set, it
-// returns an error.
-func (c *RemoteClient) SendMessages(ctx context.Context, opts options.LoggingPayload) error {
-	if c.FailSendMessages {
-		return mockFail()
-	}
-
-	c.SendMessagePayload = opts
-	return nil
-}
-
-// GetScripting returns a cached scripting environment. If FailGetScripting is
-// set, it returns an error.
-func (c *RemoteClient) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
-	if c.FailGetScripting {
-		return nil, mockFail()
-	}
-	return c.ScriptingEnv, nil
-}
-
-// CreateScripting constructs an attached scripting environment. If
-// FailCreateScripting is set, it returns an error.
-func (c *RemoteClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
-	if c.FailCreateScripting {
-		return nil, mockFail()
-	}
-	return c.ScriptingEnv, nil
 }

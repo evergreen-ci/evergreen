@@ -1,19 +1,3 @@
-/*
-   Copyright The containerd Authors.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 package fs
 
 import (
@@ -32,49 +16,14 @@ var bufferPool = &sync.Pool{
 	},
 }
 
-// XAttrErrorHandlers transform a non-nil xattr error.
-// Return nil to ignore an error.
-// xattrKey can be empty for listxattr operation.
-type XAttrErrorHandler func(dst, src, xattrKey string, err error) error
-
-type copyDirOpts struct {
-	xeh XAttrErrorHandler
-}
-
-type CopyDirOpt func(*copyDirOpts) error
-
-// WithXAttrErrorHandler allows specifying XAttrErrorHandler
-// If nil XAttrErrorHandler is specified (default), CopyDir stops
-// on a non-nil xattr error.
-func WithXAttrErrorHandler(xeh XAttrErrorHandler) CopyDirOpt {
-	return func(o *copyDirOpts) error {
-		o.xeh = xeh
-		return nil
-	}
-}
-
-// WithAllowXAttrErrors allows ignoring xattr errors.
-func WithAllowXAttrErrors() CopyDirOpt {
-	xeh := func(dst, src, xattrKey string, err error) error {
-		return nil
-	}
-	return WithXAttrErrorHandler(xeh)
-}
-
 // CopyDir copies the directory from src to dst.
 // Most efficient copy of files is attempted.
-func CopyDir(dst, src string, opts ...CopyDirOpt) error {
-	var o copyDirOpts
-	for _, opt := range opts {
-		if err := opt(&o); err != nil {
-			return err
-		}
-	}
+func CopyDir(dst, src string) error {
 	inodes := map[uint64]string{}
-	return copyDirectory(dst, src, inodes, &o)
+	return copyDirectory(dst, src, inodes)
 }
 
-func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) error {
+func copyDirectory(dst, src string, inodes map[uint64]string) error {
 	stat, err := os.Stat(src)
 	if err != nil {
 		return errors.Wrapf(err, "failed to stat %s", src)
@@ -110,7 +59,7 @@ func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) er
 
 		switch {
 		case fi.IsDir():
-			if err := copyDirectory(target, source, inodes, o); err != nil {
+			if err := copyDirectory(target, source, inodes); err != nil {
 				return err
 			}
 			continue
@@ -146,7 +95,7 @@ func copyDirectory(dst, src string, inodes map[uint64]string, o *copyDirOpts) er
 			return errors.Wrap(err, "failed to copy file info")
 		}
 
-		if err := copyXAttrs(target, source, o.xeh); err != nil {
+		if err := copyXAttrs(target, source); err != nil {
 			return errors.Wrap(err, "failed to copy xattrs")
 		}
 	}

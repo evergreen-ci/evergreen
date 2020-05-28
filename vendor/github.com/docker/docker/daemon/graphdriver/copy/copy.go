@@ -2,6 +2,14 @@
 
 package copy // import "github.com/docker/docker/daemon/graphdriver/copy"
 
+/*
+#include <linux/fs.h>
+
+#ifndef FICLONE
+#define FICLONE		_IOW(0x94, 9, int)
+#endif
+*/
+import "C"
 import (
 	"container/list"
 	"fmt"
@@ -42,7 +50,7 @@ func copyRegular(srcPath, dstPath string, fileinfo os.FileInfo, copyWithFileRang
 	defer dstFile.Close()
 
 	if *copyWithFileClone {
-		err = fiClone(srcFile, dstFile)
+		_, _, err = unix.Syscall(unix.SYS_IOCTL, dstFile.Fd(), C.FICLONE, srcFile.Fd())
 		if err == nil {
 			return nil
 		}
@@ -144,10 +152,9 @@ func DirCopy(srcDir, dstDir string, copyMode Mode, copyXattrs bool) error {
 
 		isHardlink := false
 
-		switch mode := f.Mode(); {
-		case mode.IsRegular():
-			//the type is 32bit on mips
-			id := fileID{dev: uint64(stat.Dev), ino: stat.Ino} // nolint: unconvert
+		switch f.Mode() & os.ModeType {
+		case 0: // Regular file
+			id := fileID{dev: stat.Dev, ino: stat.Ino}
 			if copyMode == Hardlink {
 				isHardlink = true
 				if err2 := os.Link(srcPath, dstPath); err2 != nil {
@@ -164,12 +171,12 @@ func DirCopy(srcDir, dstDir string, copyMode Mode, copyXattrs bool) error {
 				copiedFiles[id] = dstPath
 			}
 
-		case mode.IsDir():
+		case os.ModeDir:
 			if err := os.Mkdir(dstPath, f.Mode()); err != nil && !os.IsExist(err) {
 				return err
 			}
 
-		case mode&os.ModeSymlink != 0:
+		case os.ModeSymlink:
 			link, err := os.Readlink(srcPath)
 			if err != nil {
 				return err
@@ -179,14 +186,14 @@ func DirCopy(srcDir, dstDir string, copyMode Mode, copyXattrs bool) error {
 				return err
 			}
 
-		case mode&os.ModeNamedPipe != 0:
+		case os.ModeNamedPipe:
 			fallthrough
-		case mode&os.ModeSocket != 0:
+		case os.ModeSocket:
 			if err := unix.Mkfifo(dstPath, stat.Mode); err != nil {
 				return err
 			}
 
-		case mode&os.ModeDevice != 0:
+		case os.ModeDevice:
 			if rsystem.RunningInUserNS() {
 				// cannot create a device if running in user namespace
 				return nil
@@ -196,7 +203,7 @@ func DirCopy(srcDir, dstDir string, copyMode Mode, copyXattrs bool) error {
 			}
 
 		default:
-			return fmt.Errorf("unknown file type (%d / %s) for %s", f.Mode(), f.Mode().String(), srcPath)
+			return fmt.Errorf("unknown file type for %s", srcPath)
 		}
 
 		// Everything below is copying metadata from src to dst. All this metadata

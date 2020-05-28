@@ -13,7 +13,7 @@ import (
 )
 
 func startRESTService(ctx context.Context, client *http.Client) (*Service, int, error) {
-tryStartService:
+outerRetry:
 	for {
 		select {
 		case <-ctx.Done():
@@ -29,12 +29,12 @@ tryStartService:
 			app.SetPrefix("jasper")
 
 			if err := app.SetHost("localhost"); err != nil {
-				continue tryStartService
+				continue outerRetry
 			}
 
 			port := testutil.GetPortNumber()
 			if err := app.SetPort(port); err != nil {
-				continue tryStartService
+				continue outerRetry
 			}
 
 			go func() {
@@ -44,26 +44,37 @@ tryStartService:
 			timer := time.NewTimer(5 * time.Millisecond)
 			defer timer.Stop()
 			url := fmt.Sprintf("http://localhost:%d/jasper/v1/", port)
-			for trials := 0; trials < 10; trials++ {
-				timer.Reset(5 * time.Millisecond)
+
+			trials := 0
+		checkLoop:
+			for {
+				if trials > 10 {
+					continue outerRetry
+				}
+
 				select {
 				case <-ctx.Done():
 					return nil, -1, errors.WithStack(ctx.Err())
 				case <-timer.C:
 					req, err := http.NewRequest(http.MethodGet, url, nil)
 					if err != nil {
-						continue
+						timer.Reset(5 * time.Millisecond)
+						trials++
+						continue checkLoop
 					}
 					rctx, cancel := context.WithTimeout(ctx, time.Second)
 					defer cancel()
 					req = req.WithContext(rctx)
-
 					resp, err := client.Do(req)
 					if err != nil {
-						continue
+						timer.Reset(5 * time.Millisecond)
+						trials++
+						continue checkLoop
 					}
 					if resp.StatusCode != http.StatusOK {
-						continue
+						timer.Reset(5 * time.Millisecond)
+						trials++
+						continue checkLoop
 					}
 
 					return srv, port, nil

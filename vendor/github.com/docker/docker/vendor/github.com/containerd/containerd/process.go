@@ -30,8 +30,6 @@ import (
 
 // Process represents a system process
 type Process interface {
-	// ID of the process
-	ID() string
 	// Pid is the system specific process id
 	Pid() uint32
 	// Start starts the process executing the user's defined binary
@@ -50,15 +48,6 @@ type Process interface {
 	IO() cio.IO
 	// Status returns the executing status of the process
 	Status(context.Context) (Status, error)
-}
-
-// NewExitStatus populates an ExitStatus
-func NewExitStatus(code uint32, t time.Time, err error) *ExitStatus {
-	return &ExitStatus{
-		code:     code,
-		exitedAt: t,
-		err:      err,
-	}
 }
 
 // ExitStatus encapsulates a process' exit status.
@@ -90,7 +79,7 @@ func (s ExitStatus) ExitTime() time.Time {
 	return s.exitedAt
 }
 
-// Error returns the error, if any, that occurred while waiting for the
+// Error returns the error, if any, that occured while waiting for the
 // process.
 func (s ExitStatus) Error() error {
 	return s.err
@@ -120,11 +109,9 @@ func (p *process) Start(ctx context.Context) error {
 		ExecID:      p.id,
 	})
 	if err != nil {
-		if p.io != nil {
-			p.io.Cancel()
-			p.io.Wait()
-			p.io.Close()
-		}
+		p.io.Cancel()
+		p.io.Wait()
+		p.io.Close()
 		return errdefs.FromGRPC(err)
 	}
 	p.pid = r.Pid

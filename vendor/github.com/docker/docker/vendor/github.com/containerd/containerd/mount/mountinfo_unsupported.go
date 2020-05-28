@@ -1,4 +1,4 @@
-// +build !linux,!freebsd,!solaris,!openbsd freebsd,!cgo solaris,!cgo openbsd,!cgo
+// +build !linux,!freebsd,!solaris freebsd,!cgo solaris,!cgo
 
 /*
    Copyright The containerd Authors.

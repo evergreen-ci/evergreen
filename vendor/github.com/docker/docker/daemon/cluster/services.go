@@ -23,7 +23,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 // GetServices returns all services of a managed swarm cluster.
@@ -68,9 +67,7 @@ func (c *Cluster) GetServices(options apitypes.ServiceListOptions) ([]types.Serv
 
 	r, err := state.controlClient.ListServices(
 		ctx,
-		&swarmapi.ListServicesRequest{Filters: filters},
-		grpc.MaxCallRecvMsgSize(defaultRecvSizeForListResponse),
-	)
+		&swarmapi.ListServicesRequest{Filters: filters})
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +141,8 @@ func (c *Cluster) CreateService(s types.ServiceSpec, encodedAuth string, queryRe
 		case *swarmapi.TaskSpec_Generic:
 			switch serviceSpec.Task.GetGeneric().Kind {
 			case string(types.RuntimePlugin):
-				if !c.config.Backend.HasExperimental() {
+				info, _ := c.config.Backend.SystemInfo()
+				if !info.ExperimentalBuild {
 					return fmt.Errorf("runtime type %q only supported in experimental", types.RuntimePlugin)
 				}
 				if s.TaskTemplate.PluginSpec == nil {

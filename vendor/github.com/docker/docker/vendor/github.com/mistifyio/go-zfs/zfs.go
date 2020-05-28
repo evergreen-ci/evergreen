@@ -35,7 +35,6 @@ type Dataset struct {
 	Logicalused   uint64
 	Usedbydataset uint64
 	Quota         uint64
-	Referenced    uint64
 }
 
 // InodeType is the type of inode as reported by Diff
@@ -308,7 +307,7 @@ func (d *Dataset) SetProperty(key, val string) error {
 // A full list of available ZFS properties may be found here:
 // https://www.freebsd.org/cgi/man.cgi?zfs(8).
 func (d *Dataset) GetProperty(key string) (string, error) {
-	out, err := zfs("get", "-H", key, d.Name)
+	out, err := zfs("get", key, d.Name)
 	if err != nil {
 		return "", err
 	}

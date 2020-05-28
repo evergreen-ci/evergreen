@@ -3,17 +3,16 @@
 
 package internal
 
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
+import duration "github.com/golang/protobuf/ptypes/duration"
+import empty "github.com/golang/protobuf/ptypes/empty"
+import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+
 import (
-	context "context"
-	fmt "fmt"
-	proto "github.com/golang/protobuf/proto"
-	duration "github.com/golang/protobuf/ptypes/duration"
-	empty "github.com/golang/protobuf/ptypes/empty"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -25,7 +24,51 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
+type LogType int32
+
+const (
+	LogType_LOGUNKNOWN       LogType = 0
+	LogType_LOGBUILDLOGGERV2 LogType = 1
+	LogType_LOGBUILDLOGGERV3 LogType = 2
+	LogType_LOGDEFAULT       LogType = 3
+	LogType_LOGFILE          LogType = 4
+	LogType_LOGINHERIT       LogType = 5
+	LogType_LOGSPLUNK        LogType = 6
+	LogType_LOGSUMOLOGIC     LogType = 7
+	LogType_LOGINMEMORY      LogType = 8
+)
+
+var LogType_name = map[int32]string{
+	0: "LOGUNKNOWN",
+	1: "LOGBUILDLOGGERV2",
+	2: "LOGBUILDLOGGERV3",
+	3: "LOGDEFAULT",
+	4: "LOGFILE",
+	5: "LOGINHERIT",
+	6: "LOGSPLUNK",
+	7: "LOGSUMOLOGIC",
+	8: "LOGINMEMORY",
+}
+var LogType_value = map[string]int32{
+	"LOGUNKNOWN":       0,
+	"LOGBUILDLOGGERV2": 1,
+	"LOGBUILDLOGGERV3": 2,
+	"LOGDEFAULT":       3,
+	"LOGFILE":          4,
+	"LOGINHERIT":       5,
+	"LOGSPLUNK":        6,
+	"LOGSUMOLOGIC":     7,
+	"LOGINMEMORY":      8,
+}
+
+func (x LogType) String() string {
+	return proto.EnumName(LogType_name, int32(x))
+}
+func (LogType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{0}
+}
 
 type LogFormat int32
 
@@ -42,7 +85,6 @@ var LogFormat_name = map[int32]string{
 	2: "LOGFORMATJSON",
 	3: "LOGFORMATPLAIN",
 }
-
 var LogFormat_value = map[string]int32{
 	"LOGFORMATUNKNOWN": 0,
 	"LOGFORMATDEFAULT": 1,
@@ -53,37 +95,8 @@ var LogFormat_value = map[string]int32{
 func (x LogFormat) String() string {
 	return proto.EnumName(LogFormat_name, int32(x))
 }
-
 func (LogFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{0}
-}
-
-type RawLoggerConfigFormat int32
-
-const (
-	RawLoggerConfigFormat_RAWLOGGERCONFIGFORMATJSON    RawLoggerConfigFormat = 0
-	RawLoggerConfigFormat_RAWLOGGERCONFIGFORMATBSON    RawLoggerConfigFormat = 1
-	RawLoggerConfigFormat_RAWLOGGERCONFIGFORMATUNKNOWN RawLoggerConfigFormat = 2
-)
-
-var RawLoggerConfigFormat_name = map[int32]string{
-	0: "RAWLOGGERCONFIGFORMATJSON",
-	1: "RAWLOGGERCONFIGFORMATBSON",
-	2: "RAWLOGGERCONFIGFORMATUNKNOWN",
-}
-
-var RawLoggerConfigFormat_value = map[string]int32{
-	"RAWLOGGERCONFIGFORMATJSON":    0,
-	"RAWLOGGERCONFIGFORMATBSON":    1,
-	"RAWLOGGERCONFIGFORMATUNKNOWN": 2,
-}
-
-func (x RawLoggerConfigFormat) String() string {
-	return proto.EnumName(RawLoggerConfigFormat_name, int32(x))
-}
-
-func (RawLoggerConfigFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{1}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{1}
 }
 
 type FilterSpecifications int32
@@ -103,7 +116,6 @@ var FilterSpecifications_name = map[int32]string{
 	3: "FAILED",
 	4: "SUCCESSFUL",
 }
-
 var FilterSpecifications_value = map[string]int32{
 	"ALL":        0,
 	"RUNNING":    1,
@@ -115,9 +127,8 @@ var FilterSpecifications_value = map[string]int32{
 func (x FilterSpecifications) String() string {
 	return proto.EnumName(FilterSpecifications_name, int32(x))
 }
-
 func (FilterSpecifications) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{2}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{2}
 }
 
 type Signals int32
@@ -143,7 +154,6 @@ var Signals_name = map[int32]string{
 	6: "USER2",
 	7: "ABRT",
 }
-
 var Signals_value = map[string]int32{
 	"UNKNOWN":   0,
 	"TERMINATE": 1,
@@ -158,9 +168,8 @@ var Signals_value = map[string]int32{
 func (x Signals) String() string {
 	return proto.EnumName(Signals_name, int32(x))
 }
-
 func (Signals) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{3}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{3}
 }
 
 type ArchiveFormat int32
@@ -178,7 +187,6 @@ var ArchiveFormat_name = map[int32]string{
 	2: "ARCHIVETARGZ",
 	3: "ARCHIVEZIP",
 }
-
 var ArchiveFormat_value = map[string]int32{
 	"ARCHIVEUNKNOWN": 0,
 	"ARCHIVEAUTO":    1,
@@ -189,9 +197,8 @@ var ArchiveFormat_value = map[string]int32{
 func (x ArchiveFormat) String() string {
 	return proto.EnumName(ArchiveFormat_name, int32(x))
 }
-
 func (ArchiveFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{4}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{4}
 }
 
 type SignalTriggerID int32
@@ -205,7 +212,6 @@ var SignalTriggerID_name = map[int32]string{
 	0: "NONE",
 	1: "CLEANTERMINATION",
 }
-
 var SignalTriggerID_value = map[string]int32{
 	"NONE":             0,
 	"CLEANTERMINATION": 1,
@@ -214,1174 +220,81 @@ var SignalTriggerID_value = map[string]int32{
 func (x SignalTriggerID) String() string {
 	return proto.EnumName(SignalTriggerID_name, int32(x))
 }
-
 func (SignalTriggerID) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{5}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{5}
 }
 
-type LoggingPayloadFormat int32
-
-const (
-	LoggingPayloadFormat_FORMATUNKNONW LoggingPayloadFormat = 0
-	LoggingPayloadFormat_FORMATBSON    LoggingPayloadFormat = 1
-	LoggingPayloadFormat_FORMATJSON    LoggingPayloadFormat = 2
-	LoggingPayloadFormat_FORMATSTRING  LoggingPayloadFormat = 3
-)
-
-var LoggingPayloadFormat_name = map[int32]string{
-	0: "FORMATUNKNONW",
-	1: "FORMATBSON",
-	2: "FORMATJSON",
-	3: "FORMATSTRING",
+type Logger struct {
+	LogType              LogType     `protobuf:"varint,1,opt,name=log_type,json=logType,proto3,enum=jasper.LogType" json:"log_type,omitempty"`
+	LogOptions           *LogOptions `protobuf:"bytes,2,opt,name=log_options,json=logOptions,proto3" json:"log_options,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-var LoggingPayloadFormat_value = map[string]int32{
-	"FORMATUNKNONW": 0,
-	"FORMATBSON":    1,
-	"FORMATJSON":    2,
-	"FORMATSTRING":  3,
+func (m *Logger) Reset()         { *m = Logger{} }
+func (m *Logger) String() string { return proto.CompactTextString(m) }
+func (*Logger) ProtoMessage()    {}
+func (*Logger) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{0}
+}
+func (m *Logger) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Logger.Unmarshal(m, b)
+}
+func (m *Logger) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Logger.Marshal(b, m, deterministic)
+}
+func (dst *Logger) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Logger.Merge(dst, src)
+}
+func (m *Logger) XXX_Size() int {
+	return xxx_messageInfo_Logger.Size(m)
+}
+func (m *Logger) XXX_DiscardUnknown() {
+	xxx_messageInfo_Logger.DiscardUnknown(m)
 }
 
-func (x LoggingPayloadFormat) String() string {
-	return proto.EnumName(LoggingPayloadFormat_name, int32(x))
-}
+var xxx_messageInfo_Logger proto.InternalMessageInfo
 
-func (LoggingPayloadFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{6}
-}
-
-type LoggerConfig struct {
-	// Types that are valid to be assigned to Producer:
-	//	*LoggerConfig_Default
-	//	*LoggerConfig_File
-	//	*LoggerConfig_Inherited
-	//	*LoggerConfig_Sumo
-	//	*LoggerConfig_InMemory
-	//	*LoggerConfig_Splunk
-	//	*LoggerConfig_Buildloggerv2
-	//	*LoggerConfig_Buildloggerv3
-	//	*LoggerConfig_Raw
-	Producer             isLoggerConfig_Producer `protobuf_oneof:"producer"`
-	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
-	XXX_unrecognized     []byte                  `json:"-"`
-	XXX_sizecache        int32                   `json:"-"`
-}
-
-func (m *LoggerConfig) Reset()         { *m = LoggerConfig{} }
-func (m *LoggerConfig) String() string { return proto.CompactTextString(m) }
-func (*LoggerConfig) ProtoMessage()    {}
-func (*LoggerConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{0}
-}
-
-func (m *LoggerConfig) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggerConfig.Unmarshal(m, b)
-}
-func (m *LoggerConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggerConfig.Marshal(b, m, deterministic)
-}
-func (m *LoggerConfig) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggerConfig.Merge(m, src)
-}
-func (m *LoggerConfig) XXX_Size() int {
-	return xxx_messageInfo_LoggerConfig.Size(m)
-}
-func (m *LoggerConfig) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggerConfig.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggerConfig proto.InternalMessageInfo
-
-type isLoggerConfig_Producer interface {
-	isLoggerConfig_Producer()
-}
-
-type LoggerConfig_Default struct {
-	Default *DefaultLoggerOptions `protobuf:"bytes,1,opt,name=default,proto3,oneof"`
-}
-
-type LoggerConfig_File struct {
-	File *FileLoggerOptions `protobuf:"bytes,2,opt,name=file,proto3,oneof"`
-}
-
-type LoggerConfig_Inherited struct {
-	Inherited *InheritedLoggerOptions `protobuf:"bytes,3,opt,name=inherited,proto3,oneof"`
-}
-
-type LoggerConfig_Sumo struct {
-	Sumo *SumoLogicLoggerOptions `protobuf:"bytes,4,opt,name=sumo,proto3,oneof"`
-}
-
-type LoggerConfig_InMemory struct {
-	InMemory *InMemoryLoggerOptions `protobuf:"bytes,5,opt,name=in_memory,json=inMemory,proto3,oneof"`
-}
-
-type LoggerConfig_Splunk struct {
-	Splunk *SplunkLoggerOptions `protobuf:"bytes,6,opt,name=splunk,proto3,oneof"`
-}
-
-type LoggerConfig_Buildloggerv2 struct {
-	Buildloggerv2 *BuildloggerV2Options `protobuf:"bytes,7,opt,name=buildloggerv2,proto3,oneof"`
-}
-
-type LoggerConfig_Buildloggerv3 struct {
-	Buildloggerv3 *BuildloggerV3Options `protobuf:"bytes,8,opt,name=buildloggerv3,proto3,oneof"`
-}
-
-type LoggerConfig_Raw struct {
-	Raw *RawLoggerConfig `protobuf:"bytes,9,opt,name=raw,proto3,oneof"`
-}
-
-func (*LoggerConfig_Default) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_File) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Inherited) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Sumo) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_InMemory) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Splunk) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Buildloggerv2) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Buildloggerv3) isLoggerConfig_Producer() {}
-
-func (*LoggerConfig_Raw) isLoggerConfig_Producer() {}
-
-func (m *LoggerConfig) GetProducer() isLoggerConfig_Producer {
+func (m *Logger) GetLogType() LogType {
 	if m != nil {
-		return m.Producer
+		return m.LogType
 	}
-	return nil
+	return LogType_LOGUNKNOWN
 }
 
-func (m *LoggerConfig) GetDefault() *DefaultLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_Default); ok {
-		return x.Default
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetFile() *FileLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_File); ok {
-		return x.File
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetInherited() *InheritedLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_Inherited); ok {
-		return x.Inherited
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetSumo() *SumoLogicLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_Sumo); ok {
-		return x.Sumo
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetInMemory() *InMemoryLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_InMemory); ok {
-		return x.InMemory
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetSplunk() *SplunkLoggerOptions {
-	if x, ok := m.GetProducer().(*LoggerConfig_Splunk); ok {
-		return x.Splunk
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetBuildloggerv2() *BuildloggerV2Options {
-	if x, ok := m.GetProducer().(*LoggerConfig_Buildloggerv2); ok {
-		return x.Buildloggerv2
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetBuildloggerv3() *BuildloggerV3Options {
-	if x, ok := m.GetProducer().(*LoggerConfig_Buildloggerv3); ok {
-		return x.Buildloggerv3
-	}
-	return nil
-}
-
-func (m *LoggerConfig) GetRaw() *RawLoggerConfig {
-	if x, ok := m.GetProducer().(*LoggerConfig_Raw); ok {
-		return x.Raw
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*LoggerConfig) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*LoggerConfig_Default)(nil),
-		(*LoggerConfig_File)(nil),
-		(*LoggerConfig_Inherited)(nil),
-		(*LoggerConfig_Sumo)(nil),
-		(*LoggerConfig_InMemory)(nil),
-		(*LoggerConfig_Splunk)(nil),
-		(*LoggerConfig_Buildloggerv2)(nil),
-		(*LoggerConfig_Buildloggerv3)(nil),
-		(*LoggerConfig_Raw)(nil),
-	}
-}
-
-type LogLevel struct {
-	Threshold            int32    `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Default              int32    `protobuf:"varint,2,opt,name=default,proto3" json:"default,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *LogLevel) Reset()         { *m = LogLevel{} }
-func (m *LogLevel) String() string { return proto.CompactTextString(m) }
-func (*LogLevel) ProtoMessage()    {}
-func (*LogLevel) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{1}
-}
-
-func (m *LogLevel) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LogLevel.Unmarshal(m, b)
-}
-func (m *LogLevel) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LogLevel.Marshal(b, m, deterministic)
-}
-func (m *LogLevel) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogLevel.Merge(m, src)
-}
-func (m *LogLevel) XXX_Size() int {
-	return xxx_messageInfo_LogLevel.Size(m)
-}
-func (m *LogLevel) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogLevel.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LogLevel proto.InternalMessageInfo
-
-func (m *LogLevel) GetThreshold() int32 {
+func (m *Logger) GetLogOptions() *LogOptions {
 	if m != nil {
-		return m.Threshold
-	}
-	return 0
-}
-
-func (m *LogLevel) GetDefault() int32 {
-	if m != nil {
-		return m.Default
-	}
-	return 0
-}
-
-type BufferOptions struct {
-	Buffered             bool     `protobuf:"varint,1,opt,name=buffered,proto3" json:"buffered,omitempty"`
-	Duration             int64    `protobuf:"varint,2,opt,name=duration,proto3" json:"duration,omitempty"`
-	MaxSize              int64    `protobuf:"varint,3,opt,name=max_size,json=maxSize,proto3" json:"max_size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *BufferOptions) Reset()         { *m = BufferOptions{} }
-func (m *BufferOptions) String() string { return proto.CompactTextString(m) }
-func (*BufferOptions) ProtoMessage()    {}
-func (*BufferOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{2}
-}
-
-func (m *BufferOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BufferOptions.Unmarshal(m, b)
-}
-func (m *BufferOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BufferOptions.Marshal(b, m, deterministic)
-}
-func (m *BufferOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BufferOptions.Merge(m, src)
-}
-func (m *BufferOptions) XXX_Size() int {
-	return xxx_messageInfo_BufferOptions.Size(m)
-}
-func (m *BufferOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_BufferOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BufferOptions proto.InternalMessageInfo
-
-func (m *BufferOptions) GetBuffered() bool {
-	if m != nil {
-		return m.Buffered
-	}
-	return false
-}
-
-func (m *BufferOptions) GetDuration() int64 {
-	if m != nil {
-		return m.Duration
-	}
-	return 0
-}
-
-func (m *BufferOptions) GetMaxSize() int64 {
-	if m != nil {
-		return m.MaxSize
-	}
-	return 0
-}
-
-type BaseOptions struct {
-	Level                *LogLevel      `protobuf:"bytes,1,opt,name=level,proto3" json:"level,omitempty"`
-	Buffer               *BufferOptions `protobuf:"bytes,2,opt,name=buffer,proto3" json:"buffer,omitempty"`
-	Format               LogFormat      `protobuf:"varint,3,opt,name=format,proto3,enum=jasper.LogFormat" json:"format,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *BaseOptions) Reset()         { *m = BaseOptions{} }
-func (m *BaseOptions) String() string { return proto.CompactTextString(m) }
-func (*BaseOptions) ProtoMessage()    {}
-func (*BaseOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{3}
-}
-
-func (m *BaseOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BaseOptions.Unmarshal(m, b)
-}
-func (m *BaseOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BaseOptions.Marshal(b, m, deterministic)
-}
-func (m *BaseOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BaseOptions.Merge(m, src)
-}
-func (m *BaseOptions) XXX_Size() int {
-	return xxx_messageInfo_BaseOptions.Size(m)
-}
-func (m *BaseOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_BaseOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BaseOptions proto.InternalMessageInfo
-
-func (m *BaseOptions) GetLevel() *LogLevel {
-	if m != nil {
-		return m.Level
-	}
-	return nil
-}
-
-func (m *BaseOptions) GetBuffer() *BufferOptions {
-	if m != nil {
-		return m.Buffer
-	}
-	return nil
-}
-
-func (m *BaseOptions) GetFormat() LogFormat {
-	if m != nil {
-		return m.Format
-	}
-	return LogFormat_LOGFORMATUNKNOWN
-}
-
-type DefaultLoggerOptions struct {
-	Prefix               string       `protobuf:"bytes,1,opt,name=prefix,proto3" json:"prefix,omitempty"`
-	Base                 *BaseOptions `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *DefaultLoggerOptions) Reset()         { *m = DefaultLoggerOptions{} }
-func (m *DefaultLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*DefaultLoggerOptions) ProtoMessage()    {}
-func (*DefaultLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{4}
-}
-
-func (m *DefaultLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DefaultLoggerOptions.Unmarshal(m, b)
-}
-func (m *DefaultLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DefaultLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *DefaultLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DefaultLoggerOptions.Merge(m, src)
-}
-func (m *DefaultLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_DefaultLoggerOptions.Size(m)
-}
-func (m *DefaultLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_DefaultLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_DefaultLoggerOptions proto.InternalMessageInfo
-
-func (m *DefaultLoggerOptions) GetPrefix() string {
-	if m != nil {
-		return m.Prefix
-	}
-	return ""
-}
-
-func (m *DefaultLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type FileLoggerOptions struct {
-	Filename             string       `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Base                 *BaseOptions `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *FileLoggerOptions) Reset()         { *m = FileLoggerOptions{} }
-func (m *FileLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*FileLoggerOptions) ProtoMessage()    {}
-func (*FileLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{5}
-}
-
-func (m *FileLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_FileLoggerOptions.Unmarshal(m, b)
-}
-func (m *FileLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_FileLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *FileLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FileLoggerOptions.Merge(m, src)
-}
-func (m *FileLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_FileLoggerOptions.Size(m)
-}
-func (m *FileLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_FileLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_FileLoggerOptions proto.InternalMessageInfo
-
-func (m *FileLoggerOptions) GetFilename() string {
-	if m != nil {
-		return m.Filename
-	}
-	return ""
-}
-
-func (m *FileLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type InheritedLoggerOptions struct {
-	Base                 *BaseOptions `protobuf:"bytes,1,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *InheritedLoggerOptions) Reset()         { *m = InheritedLoggerOptions{} }
-func (m *InheritedLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*InheritedLoggerOptions) ProtoMessage()    {}
-func (*InheritedLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{6}
-}
-
-func (m *InheritedLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_InheritedLoggerOptions.Unmarshal(m, b)
-}
-func (m *InheritedLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_InheritedLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *InheritedLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_InheritedLoggerOptions.Merge(m, src)
-}
-func (m *InheritedLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_InheritedLoggerOptions.Size(m)
-}
-func (m *InheritedLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_InheritedLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_InheritedLoggerOptions proto.InternalMessageInfo
-
-func (m *InheritedLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type SumoLogicLoggerOptions struct {
-	SumoEndpoint         string       `protobuf:"bytes,1,opt,name=sumo_endpoint,json=sumoEndpoint,proto3" json:"sumo_endpoint,omitempty"`
-	Base                 *BaseOptions `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *SumoLogicLoggerOptions) Reset()         { *m = SumoLogicLoggerOptions{} }
-func (m *SumoLogicLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*SumoLogicLoggerOptions) ProtoMessage()    {}
-func (*SumoLogicLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{7}
-}
-
-func (m *SumoLogicLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SumoLogicLoggerOptions.Unmarshal(m, b)
-}
-func (m *SumoLogicLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SumoLogicLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *SumoLogicLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SumoLogicLoggerOptions.Merge(m, src)
-}
-func (m *SumoLogicLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_SumoLogicLoggerOptions.Size(m)
-}
-func (m *SumoLogicLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_SumoLogicLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SumoLogicLoggerOptions proto.InternalMessageInfo
-
-func (m *SumoLogicLoggerOptions) GetSumoEndpoint() string {
-	if m != nil {
-		return m.SumoEndpoint
-	}
-	return ""
-}
-
-func (m *SumoLogicLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type InMemoryLoggerOptions struct {
-	InMemoryCap          int64        `protobuf:"varint,1,opt,name=in_memory_cap,json=inMemoryCap,proto3" json:"in_memory_cap,omitempty"`
-	Base                 *BaseOptions `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *InMemoryLoggerOptions) Reset()         { *m = InMemoryLoggerOptions{} }
-func (m *InMemoryLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*InMemoryLoggerOptions) ProtoMessage()    {}
-func (*InMemoryLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{8}
-}
-
-func (m *InMemoryLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_InMemoryLoggerOptions.Unmarshal(m, b)
-}
-func (m *InMemoryLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_InMemoryLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *InMemoryLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_InMemoryLoggerOptions.Merge(m, src)
-}
-func (m *InMemoryLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_InMemoryLoggerOptions.Size(m)
-}
-func (m *InMemoryLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_InMemoryLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_InMemoryLoggerOptions proto.InternalMessageInfo
-
-func (m *InMemoryLoggerOptions) GetInMemoryCap() int64 {
-	if m != nil {
-		return m.InMemoryCap
-	}
-	return 0
-}
-
-func (m *InMemoryLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type SplunkInfo struct {
-	Url                  string   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Token                string   `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	Channel              string   `protobuf:"bytes,3,opt,name=channel,proto3" json:"channel,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *SplunkInfo) Reset()         { *m = SplunkInfo{} }
-func (m *SplunkInfo) String() string { return proto.CompactTextString(m) }
-func (*SplunkInfo) ProtoMessage()    {}
-func (*SplunkInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{9}
-}
-
-func (m *SplunkInfo) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SplunkInfo.Unmarshal(m, b)
-}
-func (m *SplunkInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SplunkInfo.Marshal(b, m, deterministic)
-}
-func (m *SplunkInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SplunkInfo.Merge(m, src)
-}
-func (m *SplunkInfo) XXX_Size() int {
-	return xxx_messageInfo_SplunkInfo.Size(m)
-}
-func (m *SplunkInfo) XXX_DiscardUnknown() {
-	xxx_messageInfo_SplunkInfo.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SplunkInfo proto.InternalMessageInfo
-
-func (m *SplunkInfo) GetUrl() string {
-	if m != nil {
-		return m.Url
-	}
-	return ""
-}
-
-func (m *SplunkInfo) GetToken() string {
-	if m != nil {
-		return m.Token
-	}
-	return ""
-}
-
-func (m *SplunkInfo) GetChannel() string {
-	if m != nil {
-		return m.Channel
-	}
-	return ""
-}
-
-type SplunkLoggerOptions struct {
-	Splunk               *SplunkInfo  `protobuf:"bytes,1,opt,name=splunk,proto3" json:"splunk,omitempty"`
-	Base                 *BaseOptions `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *SplunkLoggerOptions) Reset()         { *m = SplunkLoggerOptions{} }
-func (m *SplunkLoggerOptions) String() string { return proto.CompactTextString(m) }
-func (*SplunkLoggerOptions) ProtoMessage()    {}
-func (*SplunkLoggerOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{10}
-}
-
-func (m *SplunkLoggerOptions) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SplunkLoggerOptions.Unmarshal(m, b)
-}
-func (m *SplunkLoggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SplunkLoggerOptions.Marshal(b, m, deterministic)
-}
-func (m *SplunkLoggerOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SplunkLoggerOptions.Merge(m, src)
-}
-func (m *SplunkLoggerOptions) XXX_Size() int {
-	return xxx_messageInfo_SplunkLoggerOptions.Size(m)
-}
-func (m *SplunkLoggerOptions) XXX_DiscardUnknown() {
-	xxx_messageInfo_SplunkLoggerOptions.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SplunkLoggerOptions proto.InternalMessageInfo
-
-func (m *SplunkLoggerOptions) GetSplunk() *SplunkInfo {
-	if m != nil {
-		return m.Splunk
-	}
-	return nil
-}
-
-func (m *SplunkLoggerOptions) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type BuildloggerV2Info struct {
-	CreateTest           bool     `protobuf:"varint,1,opt,name=create_test,json=createTest,proto3" json:"create_test,omitempty"`
-	Url                  string   `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
-	Number               int64    `protobuf:"varint,3,opt,name=number,proto3" json:"number,omitempty"`
-	Phase                string   `protobuf:"bytes,4,opt,name=phase,proto3" json:"phase,omitempty"`
-	Builder              string   `protobuf:"bytes,5,opt,name=builder,proto3" json:"builder,omitempty"`
-	Test                 string   `protobuf:"bytes,6,opt,name=test,proto3" json:"test,omitempty"`
-	Command              string   `protobuf:"bytes,7,opt,name=command,proto3" json:"command,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *BuildloggerV2Info) Reset()         { *m = BuildloggerV2Info{} }
-func (m *BuildloggerV2Info) String() string { return proto.CompactTextString(m) }
-func (*BuildloggerV2Info) ProtoMessage()    {}
-func (*BuildloggerV2Info) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{11}
-}
-
-func (m *BuildloggerV2Info) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BuildloggerV2Info.Unmarshal(m, b)
-}
-func (m *BuildloggerV2Info) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BuildloggerV2Info.Marshal(b, m, deterministic)
-}
-func (m *BuildloggerV2Info) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildloggerV2Info.Merge(m, src)
-}
-func (m *BuildloggerV2Info) XXX_Size() int {
-	return xxx_messageInfo_BuildloggerV2Info.Size(m)
-}
-func (m *BuildloggerV2Info) XXX_DiscardUnknown() {
-	xxx_messageInfo_BuildloggerV2Info.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BuildloggerV2Info proto.InternalMessageInfo
-
-func (m *BuildloggerV2Info) GetCreateTest() bool {
-	if m != nil {
-		return m.CreateTest
-	}
-	return false
-}
-
-func (m *BuildloggerV2Info) GetUrl() string {
-	if m != nil {
-		return m.Url
-	}
-	return ""
-}
-
-func (m *BuildloggerV2Info) GetNumber() int64 {
-	if m != nil {
-		return m.Number
-	}
-	return 0
-}
-
-func (m *BuildloggerV2Info) GetPhase() string {
-	if m != nil {
-		return m.Phase
-	}
-	return ""
-}
-
-func (m *BuildloggerV2Info) GetBuilder() string {
-	if m != nil {
-		return m.Builder
-	}
-	return ""
-}
-
-func (m *BuildloggerV2Info) GetTest() string {
-	if m != nil {
-		return m.Test
-	}
-	return ""
-}
-
-func (m *BuildloggerV2Info) GetCommand() string {
-	if m != nil {
-		return m.Command
-	}
-	return ""
-}
-
-type BuildloggerV2Options struct {
-	Buildlogger          *BuildloggerV2Info `protobuf:"bytes,1,opt,name=buildlogger,proto3" json:"buildlogger,omitempty"`
-	Base                 *BaseOptions       `protobuf:"bytes,2,opt,name=base,proto3" json:"base,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
-}
-
-func (m *BuildloggerV2Options) Reset()         { *m = BuildloggerV2Options{} }
-func (m *BuildloggerV2Options) String() string { return proto.CompactTextString(m) }
-func (*BuildloggerV2Options) ProtoMessage()    {}
-func (*BuildloggerV2Options) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{12}
-}
-
-func (m *BuildloggerV2Options) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BuildloggerV2Options.Unmarshal(m, b)
-}
-func (m *BuildloggerV2Options) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BuildloggerV2Options.Marshal(b, m, deterministic)
-}
-func (m *BuildloggerV2Options) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildloggerV2Options.Merge(m, src)
-}
-func (m *BuildloggerV2Options) XXX_Size() int {
-	return xxx_messageInfo_BuildloggerV2Options.Size(m)
-}
-func (m *BuildloggerV2Options) XXX_DiscardUnknown() {
-	xxx_messageInfo_BuildloggerV2Options.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BuildloggerV2Options proto.InternalMessageInfo
-
-func (m *BuildloggerV2Options) GetBuildlogger() *BuildloggerV2Info {
-	if m != nil {
-		return m.Buildlogger
-	}
-	return nil
-}
-
-func (m *BuildloggerV2Options) GetBase() *BaseOptions {
-	if m != nil {
-		return m.Base
-	}
-	return nil
-}
-
-type BuildloggerV3Info struct {
-	Project              string            `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
-	Version              string            `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	Variant              string            `protobuf:"bytes,3,opt,name=variant,proto3" json:"variant,omitempty"`
-	TaskName             string            `protobuf:"bytes,4,opt,name=task_name,json=taskName,proto3" json:"task_name,omitempty"`
-	TaskId               string            `protobuf:"bytes,5,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Execution            int32             `protobuf:"varint,6,opt,name=execution,proto3" json:"execution,omitempty"`
-	TestName             string            `protobuf:"bytes,7,opt,name=test_name,json=testName,proto3" json:"test_name,omitempty"`
-	Trial                int32             `protobuf:"varint,8,opt,name=trial,proto3" json:"trial,omitempty"`
-	ProcessName          string            `protobuf:"bytes,9,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
-	Format               LogFormat         `protobuf:"varint,10,opt,name=format,proto3,enum=jasper.LogFormat" json:"format,omitempty"`
-	Tags                 []string          `protobuf:"bytes,11,rep,name=tags,proto3" json:"tags,omitempty"`
-	Args                 map[string]string `protobuf:"bytes,12,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Mainline             bool              `protobuf:"varint,13,opt,name=mainline,proto3" json:"mainline,omitempty"`
-	MaxBufferSize        int64             `protobuf:"varint,14,opt,name=max_buffer_size,json=maxBufferSize,proto3" json:"max_buffer_size,omitempty"`
-	FlushInterval        int64             `protobuf:"varint,15,opt,name=flush_interval,json=flushInterval,proto3" json:"flush_interval,omitempty"`
-	DisableNewLineCheck  bool              `protobuf:"varint,16,opt,name=disable_new_line_check,json=disableNewLineCheck,proto3" json:"disable_new_line_check,omitempty"`
-	RpcAddress           string            `protobuf:"bytes,17,opt,name=rpc_address,json=rpcAddress,proto3" json:"rpc_address,omitempty"`
-	Insecure             bool              `protobuf:"varint,18,opt,name=insecure,proto3" json:"insecure,omitempty"`
-	CaFile               string            `protobuf:"bytes,19,opt,name=ca_file,json=caFile,proto3" json:"ca_file,omitempty"`
-	CertFile             string            `protobuf:"bytes,20,opt,name=cert_file,json=certFile,proto3" json:"cert_file,omitempty"`
-	KeyFile              string            `protobuf:"bytes,21,opt,name=key_file,json=keyFile,proto3" json:"key_file,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
-	XXX_unrecognized     []byte            `json:"-"`
-	XXX_sizecache        int32             `json:"-"`
-}
-
-func (m *BuildloggerV3Info) Reset()         { *m = BuildloggerV3Info{} }
-func (m *BuildloggerV3Info) String() string { return proto.CompactTextString(m) }
-func (*BuildloggerV3Info) ProtoMessage()    {}
-func (*BuildloggerV3Info) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{13}
-}
-
-func (m *BuildloggerV3Info) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BuildloggerV3Info.Unmarshal(m, b)
-}
-func (m *BuildloggerV3Info) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BuildloggerV3Info.Marshal(b, m, deterministic)
-}
-func (m *BuildloggerV3Info) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildloggerV3Info.Merge(m, src)
-}
-func (m *BuildloggerV3Info) XXX_Size() int {
-	return xxx_messageInfo_BuildloggerV3Info.Size(m)
-}
-func (m *BuildloggerV3Info) XXX_DiscardUnknown() {
-	xxx_messageInfo_BuildloggerV3Info.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BuildloggerV3Info proto.InternalMessageInfo
-
-func (m *BuildloggerV3Info) GetProject() string {
-	if m != nil {
-		return m.Project
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetVersion() string {
-	if m != nil {
-		return m.Version
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetVariant() string {
-	if m != nil {
-		return m.Variant
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetTaskName() string {
-	if m != nil {
-		return m.TaskName
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetTaskId() string {
-	if m != nil {
-		return m.TaskId
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetExecution() int32 {
-	if m != nil {
-		return m.Execution
-	}
-	return 0
-}
-
-func (m *BuildloggerV3Info) GetTestName() string {
-	if m != nil {
-		return m.TestName
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetTrial() int32 {
-	if m != nil {
-		return m.Trial
-	}
-	return 0
-}
-
-func (m *BuildloggerV3Info) GetProcessName() string {
-	if m != nil {
-		return m.ProcessName
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetFormat() LogFormat {
-	if m != nil {
-		return m.Format
-	}
-	return LogFormat_LOGFORMATUNKNOWN
-}
-
-func (m *BuildloggerV3Info) GetTags() []string {
-	if m != nil {
-		return m.Tags
-	}
-	return nil
-}
-
-func (m *BuildloggerV3Info) GetArgs() map[string]string {
-	if m != nil {
-		return m.Args
-	}
-	return nil
-}
-
-func (m *BuildloggerV3Info) GetMainline() bool {
-	if m != nil {
-		return m.Mainline
-	}
-	return false
-}
-
-func (m *BuildloggerV3Info) GetMaxBufferSize() int64 {
-	if m != nil {
-		return m.MaxBufferSize
-	}
-	return 0
-}
-
-func (m *BuildloggerV3Info) GetFlushInterval() int64 {
-	if m != nil {
-		return m.FlushInterval
-	}
-	return 0
-}
-
-func (m *BuildloggerV3Info) GetDisableNewLineCheck() bool {
-	if m != nil {
-		return m.DisableNewLineCheck
-	}
-	return false
-}
-
-func (m *BuildloggerV3Info) GetRpcAddress() string {
-	if m != nil {
-		return m.RpcAddress
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetInsecure() bool {
-	if m != nil {
-		return m.Insecure
-	}
-	return false
-}
-
-func (m *BuildloggerV3Info) GetCaFile() string {
-	if m != nil {
-		return m.CaFile
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetCertFile() string {
-	if m != nil {
-		return m.CertFile
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Info) GetKeyFile() string {
-	if m != nil {
-		return m.KeyFile
-	}
-	return ""
-}
-
-type BuildloggerV3Options struct {
-	Buildloggerv3        *BuildloggerV3Info `protobuf:"bytes,1,opt,name=buildloggerv3,proto3" json:"buildloggerv3,omitempty"`
-	Name                 string             `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Level                *LogLevel          `protobuf:"bytes,3,opt,name=level,proto3" json:"level,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
-}
-
-func (m *BuildloggerV3Options) Reset()         { *m = BuildloggerV3Options{} }
-func (m *BuildloggerV3Options) String() string { return proto.CompactTextString(m) }
-func (*BuildloggerV3Options) ProtoMessage()    {}
-func (*BuildloggerV3Options) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{14}
-}
-
-func (m *BuildloggerV3Options) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BuildloggerV3Options.Unmarshal(m, b)
-}
-func (m *BuildloggerV3Options) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BuildloggerV3Options.Marshal(b, m, deterministic)
-}
-func (m *BuildloggerV3Options) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildloggerV3Options.Merge(m, src)
-}
-func (m *BuildloggerV3Options) XXX_Size() int {
-	return xxx_messageInfo_BuildloggerV3Options.Size(m)
-}
-func (m *BuildloggerV3Options) XXX_DiscardUnknown() {
-	xxx_messageInfo_BuildloggerV3Options.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BuildloggerV3Options proto.InternalMessageInfo
-
-func (m *BuildloggerV3Options) GetBuildloggerv3() *BuildloggerV3Info {
-	if m != nil {
-		return m.Buildloggerv3
-	}
-	return nil
-}
-
-func (m *BuildloggerV3Options) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *BuildloggerV3Options) GetLevel() *LogLevel {
-	if m != nil {
-		return m.Level
-	}
-	return nil
-}
-
-type RawLoggerConfig struct {
-	Format               RawLoggerConfigFormat `protobuf:"varint,1,opt,name=format,proto3,enum=jasper.RawLoggerConfigFormat" json:"format,omitempty"`
-	ConfigData           []byte                `protobuf:"bytes,2,opt,name=config_data,json=configData,proto3" json:"config_data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
-	XXX_unrecognized     []byte                `json:"-"`
-	XXX_sizecache        int32                 `json:"-"`
-}
-
-func (m *RawLoggerConfig) Reset()         { *m = RawLoggerConfig{} }
-func (m *RawLoggerConfig) String() string { return proto.CompactTextString(m) }
-func (*RawLoggerConfig) ProtoMessage()    {}
-func (*RawLoggerConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{15}
-}
-
-func (m *RawLoggerConfig) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RawLoggerConfig.Unmarshal(m, b)
-}
-func (m *RawLoggerConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RawLoggerConfig.Marshal(b, m, deterministic)
-}
-func (m *RawLoggerConfig) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RawLoggerConfig.Merge(m, src)
-}
-func (m *RawLoggerConfig) XXX_Size() int {
-	return xxx_messageInfo_RawLoggerConfig.Size(m)
-}
-func (m *RawLoggerConfig) XXX_DiscardUnknown() {
-	xxx_messageInfo_RawLoggerConfig.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RawLoggerConfig proto.InternalMessageInfo
-
-func (m *RawLoggerConfig) GetFormat() RawLoggerConfigFormat {
-	if m != nil {
-		return m.Format
-	}
-	return RawLoggerConfigFormat_RAWLOGGERCONFIGFORMATJSON
-}
-
-func (m *RawLoggerConfig) GetConfigData() []byte {
-	if m != nil {
-		return m.ConfigData
+		return m.LogOptions
 	}
 	return nil
 }
 
 type OutputOptions struct {
-	Loggers               []*LoggerConfig `protobuf:"bytes,1,rep,name=loggers,proto3" json:"loggers,omitempty"`
-	SuppressOutput        bool            `protobuf:"varint,2,opt,name=suppress_output,json=suppressOutput,proto3" json:"suppress_output,omitempty"`
-	SuppressError         bool            `protobuf:"varint,3,opt,name=suppress_error,json=suppressError,proto3" json:"suppress_error,omitempty"`
-	RedirectOutputToError bool            `protobuf:"varint,4,opt,name=redirect_output_to_error,json=redirectOutputToError,proto3" json:"redirect_output_to_error,omitempty"`
-	RedirectErrorToOutput bool            `protobuf:"varint,5,opt,name=redirect_error_to_output,json=redirectErrorToOutput,proto3" json:"redirect_error_to_output,omitempty"`
-	XXX_NoUnkeyedLiteral  struct{}        `json:"-"`
-	XXX_unrecognized      []byte          `json:"-"`
-	XXX_sizecache         int32           `json:"-"`
+	Loggers               []*Logger `protobuf:"bytes,1,rep,name=loggers,proto3" json:"loggers,omitempty"`
+	SuppressOutput        bool      `protobuf:"varint,2,opt,name=suppress_output,json=suppressOutput,proto3" json:"suppress_output,omitempty"`
+	SuppressError         bool      `protobuf:"varint,3,opt,name=suppress_error,json=suppressError,proto3" json:"suppress_error,omitempty"`
+	RedirectOutputToError bool      `protobuf:"varint,4,opt,name=redirect_output_to_error,json=redirectOutputToError,proto3" json:"redirect_output_to_error,omitempty"`
+	RedirectErrorToOutput bool      `protobuf:"varint,5,opt,name=redirect_error_to_output,json=redirectErrorToOutput,proto3" json:"redirect_error_to_output,omitempty"`
+	XXX_NoUnkeyedLiteral  struct{}  `json:"-"`
+	XXX_unrecognized      []byte    `json:"-"`
+	XXX_sizecache         int32     `json:"-"`
 }
 
 func (m *OutputOptions) Reset()         { *m = OutputOptions{} }
 func (m *OutputOptions) String() string { return proto.CompactTextString(m) }
 func (*OutputOptions) ProtoMessage()    {}
 func (*OutputOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{16}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{1}
 }
-
 func (m *OutputOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OutputOptions.Unmarshal(m, b)
 }
 func (m *OutputOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_OutputOptions.Marshal(b, m, deterministic)
 }
-func (m *OutputOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_OutputOptions.Merge(m, src)
+func (dst *OutputOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_OutputOptions.Merge(dst, src)
 }
 func (m *OutputOptions) XXX_Size() int {
 	return xxx_messageInfo_OutputOptions.Size(m)
@@ -1392,7 +305,7 @@ func (m *OutputOptions) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_OutputOptions proto.InternalMessageInfo
 
-func (m *OutputOptions) GetLoggers() []*LoggerConfig {
+func (m *OutputOptions) GetLoggers() []*Logger {
 	if m != nil {
 		return m.Loggers
 	}
@@ -1427,6 +340,348 @@ func (m *OutputOptions) GetRedirectErrorToOutput() bool {
 	return false
 }
 
+type LogOptions struct {
+	BufferOptions        *BufferOptions      `protobuf:"bytes,1,opt,name=buffer_options,json=bufferOptions,proto3" json:"buffer_options,omitempty"`
+	BuildloggerOptions   *BuildloggerOptions `protobuf:"bytes,2,opt,name=buildlogger_options,json=buildloggerOptions,proto3" json:"buildlogger_options,omitempty"`
+	DefaultPrefix        string              `protobuf:"bytes,3,opt,name=default_prefix,json=defaultPrefix,proto3" json:"default_prefix,omitempty"`
+	FileName             string              `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	Format               LogFormat           `protobuf:"varint,5,opt,name=format,proto3,enum=jasper.LogFormat" json:"format,omitempty"`
+	InMemoryCap          int64               `protobuf:"varint,6,opt,name=in_memory_cap,json=inMemoryCap,proto3" json:"in_memory_cap,omitempty"`
+	SplunkOptions        *SplunkOptions      `protobuf:"bytes,7,opt,name=splunk_options,json=splunkOptions,proto3" json:"splunk_options,omitempty"`
+	SumoEndpoint         string              `protobuf:"bytes,8,opt,name=sumo_endpoint,json=sumoEndpoint,proto3" json:"sumo_endpoint,omitempty"`
+	Level                *LogLevel           `protobuf:"bytes,9,opt,name=level,proto3" json:"level,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
+}
+
+func (m *LogOptions) Reset()         { *m = LogOptions{} }
+func (m *LogOptions) String() string { return proto.CompactTextString(m) }
+func (*LogOptions) ProtoMessage()    {}
+func (*LogOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{2}
+}
+func (m *LogOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogOptions.Unmarshal(m, b)
+}
+func (m *LogOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogOptions.Marshal(b, m, deterministic)
+}
+func (dst *LogOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogOptions.Merge(dst, src)
+}
+func (m *LogOptions) XXX_Size() int {
+	return xxx_messageInfo_LogOptions.Size(m)
+}
+func (m *LogOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogOptions proto.InternalMessageInfo
+
+func (m *LogOptions) GetBufferOptions() *BufferOptions {
+	if m != nil {
+		return m.BufferOptions
+	}
+	return nil
+}
+
+func (m *LogOptions) GetBuildloggerOptions() *BuildloggerOptions {
+	if m != nil {
+		return m.BuildloggerOptions
+	}
+	return nil
+}
+
+func (m *LogOptions) GetDefaultPrefix() string {
+	if m != nil {
+		return m.DefaultPrefix
+	}
+	return ""
+}
+
+func (m *LogOptions) GetFileName() string {
+	if m != nil {
+		return m.FileName
+	}
+	return ""
+}
+
+func (m *LogOptions) GetFormat() LogFormat {
+	if m != nil {
+		return m.Format
+	}
+	return LogFormat_LOGFORMATUNKNOWN
+}
+
+func (m *LogOptions) GetInMemoryCap() int64 {
+	if m != nil {
+		return m.InMemoryCap
+	}
+	return 0
+}
+
+func (m *LogOptions) GetSplunkOptions() *SplunkOptions {
+	if m != nil {
+		return m.SplunkOptions
+	}
+	return nil
+}
+
+func (m *LogOptions) GetSumoEndpoint() string {
+	if m != nil {
+		return m.SumoEndpoint
+	}
+	return ""
+}
+
+func (m *LogOptions) GetLevel() *LogLevel {
+	if m != nil {
+		return m.Level
+	}
+	return nil
+}
+
+type BufferOptions struct {
+	Buffered             bool     `protobuf:"varint,1,opt,name=buffered,proto3" json:"buffered,omitempty"`
+	Duration             int64    `protobuf:"varint,2,opt,name=duration,proto3" json:"duration,omitempty"`
+	MaxSize              int64    `protobuf:"varint,3,opt,name=max_size,json=maxSize,proto3" json:"max_size,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *BufferOptions) Reset()         { *m = BufferOptions{} }
+func (m *BufferOptions) String() string { return proto.CompactTextString(m) }
+func (*BufferOptions) ProtoMessage()    {}
+func (*BufferOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{3}
+}
+func (m *BufferOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BufferOptions.Unmarshal(m, b)
+}
+func (m *BufferOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BufferOptions.Marshal(b, m, deterministic)
+}
+func (dst *BufferOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BufferOptions.Merge(dst, src)
+}
+func (m *BufferOptions) XXX_Size() int {
+	return xxx_messageInfo_BufferOptions.Size(m)
+}
+func (m *BufferOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_BufferOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BufferOptions proto.InternalMessageInfo
+
+func (m *BufferOptions) GetBuffered() bool {
+	if m != nil {
+		return m.Buffered
+	}
+	return false
+}
+
+func (m *BufferOptions) GetDuration() int64 {
+	if m != nil {
+		return m.Duration
+	}
+	return 0
+}
+
+func (m *BufferOptions) GetMaxSize() int64 {
+	if m != nil {
+		return m.MaxSize
+	}
+	return 0
+}
+
+type BuildloggerOptions struct {
+	CreateTest           bool     `protobuf:"varint,1,opt,name=create_test,json=createTest,proto3" json:"create_test,omitempty"`
+	Url                  string   `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	Number               int64    `protobuf:"varint,3,opt,name=number,proto3" json:"number,omitempty"`
+	Phase                string   `protobuf:"bytes,4,opt,name=phase,proto3" json:"phase,omitempty"`
+	Builder              string   `protobuf:"bytes,5,opt,name=builder,proto3" json:"builder,omitempty"`
+	Test                 string   `protobuf:"bytes,6,opt,name=test,proto3" json:"test,omitempty"`
+	Command              string   `protobuf:"bytes,7,opt,name=command,proto3" json:"command,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *BuildloggerOptions) Reset()         { *m = BuildloggerOptions{} }
+func (m *BuildloggerOptions) String() string { return proto.CompactTextString(m) }
+func (*BuildloggerOptions) ProtoMessage()    {}
+func (*BuildloggerOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{4}
+}
+func (m *BuildloggerOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BuildloggerOptions.Unmarshal(m, b)
+}
+func (m *BuildloggerOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BuildloggerOptions.Marshal(b, m, deterministic)
+}
+func (dst *BuildloggerOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BuildloggerOptions.Merge(dst, src)
+}
+func (m *BuildloggerOptions) XXX_Size() int {
+	return xxx_messageInfo_BuildloggerOptions.Size(m)
+}
+func (m *BuildloggerOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_BuildloggerOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BuildloggerOptions proto.InternalMessageInfo
+
+func (m *BuildloggerOptions) GetCreateTest() bool {
+	if m != nil {
+		return m.CreateTest
+	}
+	return false
+}
+
+func (m *BuildloggerOptions) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+func (m *BuildloggerOptions) GetNumber() int64 {
+	if m != nil {
+		return m.Number
+	}
+	return 0
+}
+
+func (m *BuildloggerOptions) GetPhase() string {
+	if m != nil {
+		return m.Phase
+	}
+	return ""
+}
+
+func (m *BuildloggerOptions) GetBuilder() string {
+	if m != nil {
+		return m.Builder
+	}
+	return ""
+}
+
+func (m *BuildloggerOptions) GetTest() string {
+	if m != nil {
+		return m.Test
+	}
+	return ""
+}
+
+func (m *BuildloggerOptions) GetCommand() string {
+	if m != nil {
+		return m.Command
+	}
+	return ""
+}
+
+type SplunkOptions struct {
+	Url                  string   `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Token                string   `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Channel              string   `protobuf:"bytes,3,opt,name=channel,proto3" json:"channel,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SplunkOptions) Reset()         { *m = SplunkOptions{} }
+func (m *SplunkOptions) String() string { return proto.CompactTextString(m) }
+func (*SplunkOptions) ProtoMessage()    {}
+func (*SplunkOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{5}
+}
+func (m *SplunkOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SplunkOptions.Unmarshal(m, b)
+}
+func (m *SplunkOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SplunkOptions.Marshal(b, m, deterministic)
+}
+func (dst *SplunkOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SplunkOptions.Merge(dst, src)
+}
+func (m *SplunkOptions) XXX_Size() int {
+	return xxx_messageInfo_SplunkOptions.Size(m)
+}
+func (m *SplunkOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_SplunkOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SplunkOptions proto.InternalMessageInfo
+
+func (m *SplunkOptions) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+func (m *SplunkOptions) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+func (m *SplunkOptions) GetChannel() string {
+	if m != nil {
+		return m.Channel
+	}
+	return ""
+}
+
+type LogLevel struct {
+	Threshold            int32    `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Default              int32    `protobuf:"varint,2,opt,name=default,proto3" json:"default,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *LogLevel) Reset()         { *m = LogLevel{} }
+func (m *LogLevel) String() string { return proto.CompactTextString(m) }
+func (*LogLevel) ProtoMessage()    {}
+func (*LogLevel) Descriptor() ([]byte, []int) {
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{6}
+}
+func (m *LogLevel) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogLevel.Unmarshal(m, b)
+}
+func (m *LogLevel) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogLevel.Marshal(b, m, deterministic)
+}
+func (dst *LogLevel) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogLevel.Merge(dst, src)
+}
+func (m *LogLevel) XXX_Size() int {
+	return xxx_messageInfo_LogLevel.Size(m)
+}
+func (m *LogLevel) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogLevel.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogLevel proto.InternalMessageInfo
+
+func (m *LogLevel) GetThreshold() int32 {
+	if m != nil {
+		return m.Threshold
+	}
+	return 0
+}
+
+func (m *LogLevel) GetDefault() int32 {
+	if m != nil {
+		return m.Default
+	}
+	return 0
+}
+
 type CreateOptions struct {
 	Args                 []string          `protobuf:"bytes,1,rep,name=args,proto3" json:"args,omitempty"`
 	WorkingDirectory     string            `protobuf:"bytes,2,opt,name=working_directory,json=workingDirectory,proto3" json:"working_directory,omitempty"`
@@ -1448,17 +703,16 @@ func (m *CreateOptions) Reset()         { *m = CreateOptions{} }
 func (m *CreateOptions) String() string { return proto.CompactTextString(m) }
 func (*CreateOptions) ProtoMessage()    {}
 func (*CreateOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{17}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{7}
 }
-
 func (m *CreateOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateOptions.Unmarshal(m, b)
 }
 func (m *CreateOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CreateOptions.Marshal(b, m, deterministic)
 }
-func (m *CreateOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CreateOptions.Merge(m, src)
+func (dst *CreateOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateOptions.Merge(dst, src)
 }
 func (m *CreateOptions) XXX_Size() int {
 	return xxx_messageInfo_CreateOptions.Size(m)
@@ -1557,17 +811,16 @@ func (m *IDResponse) Reset()         { *m = IDResponse{} }
 func (m *IDResponse) String() string { return proto.CompactTextString(m) }
 func (*IDResponse) ProtoMessage()    {}
 func (*IDResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{18}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{8}
 }
-
 func (m *IDResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IDResponse.Unmarshal(m, b)
 }
 func (m *IDResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_IDResponse.Marshal(b, m, deterministic)
 }
-func (m *IDResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IDResponse.Merge(m, src)
+func (dst *IDResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_IDResponse.Merge(dst, src)
 }
 func (m *IDResponse) XXX_Size() int {
 	return xxx_messageInfo_IDResponse.Size(m)
@@ -1586,37 +839,34 @@ func (m *IDResponse) GetValue() string {
 }
 
 type ProcessInfo struct {
-	Id                   string               `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Pid                  int64                `protobuf:"varint,2,opt,name=pid,proto3" json:"pid,omitempty"`
-	HostId               string               `protobuf:"bytes,3,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
-	Running              bool                 `protobuf:"varint,4,opt,name=running,proto3" json:"running,omitempty"`
-	Successful           bool                 `protobuf:"varint,5,opt,name=successful,proto3" json:"successful,omitempty"`
-	Complete             bool                 `protobuf:"varint,6,opt,name=complete,proto3" json:"complete,omitempty"`
-	Timedout             bool                 `protobuf:"varint,7,opt,name=timedout,proto3" json:"timedout,omitempty"`
-	Options              *CreateOptions       `protobuf:"bytes,8,opt,name=options,proto3" json:"options,omitempty"`
-	ExitCode             int32                `protobuf:"varint,9,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
-	StartAt              *timestamp.Timestamp `protobuf:"bytes,10,opt,name=start_at,json=startAt,proto3" json:"start_at,omitempty"`
-	EndAt                *timestamp.Timestamp `protobuf:"bytes,11,opt,name=end_at,json=endAt,proto3" json:"end_at,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	Id                   string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Pid                  int64          `protobuf:"varint,2,opt,name=pid,proto3" json:"pid,omitempty"`
+	HostId               string         `protobuf:"bytes,3,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	Running              bool           `protobuf:"varint,4,opt,name=running,proto3" json:"running,omitempty"`
+	Successful           bool           `protobuf:"varint,5,opt,name=successful,proto3" json:"successful,omitempty"`
+	Complete             bool           `protobuf:"varint,6,opt,name=complete,proto3" json:"complete,omitempty"`
+	Timedout             bool           `protobuf:"varint,7,opt,name=timedout,proto3" json:"timedout,omitempty"`
+	Options              *CreateOptions `protobuf:"bytes,8,opt,name=options,proto3" json:"options,omitempty"`
+	ExitCode             int32          `protobuf:"varint,9,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
 }
 
 func (m *ProcessInfo) Reset()         { *m = ProcessInfo{} }
 func (m *ProcessInfo) String() string { return proto.CompactTextString(m) }
 func (*ProcessInfo) ProtoMessage()    {}
 func (*ProcessInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{19}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{9}
 }
-
 func (m *ProcessInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProcessInfo.Unmarshal(m, b)
 }
 func (m *ProcessInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ProcessInfo.Marshal(b, m, deterministic)
 }
-func (m *ProcessInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ProcessInfo.Merge(m, src)
+func (dst *ProcessInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProcessInfo.Merge(dst, src)
 }
 func (m *ProcessInfo) XXX_Size() int {
 	return xxx_messageInfo_ProcessInfo.Size(m)
@@ -1690,20 +940,6 @@ func (m *ProcessInfo) GetExitCode() int32 {
 	return 0
 }
 
-func (m *ProcessInfo) GetStartAt() *timestamp.Timestamp {
-	if m != nil {
-		return m.StartAt
-	}
-	return nil
-}
-
-func (m *ProcessInfo) GetEndAt() *timestamp.Timestamp {
-	if m != nil {
-		return m.EndAt
-	}
-	return nil
-}
-
 type StatusResponse struct {
 	HostId               string   `protobuf:"bytes,1,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
 	Active               bool     `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
@@ -1716,17 +952,16 @@ func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
 func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
 func (*StatusResponse) ProtoMessage()    {}
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{20}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{10}
 }
-
 func (m *StatusResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StatusResponse.Unmarshal(m, b)
 }
 func (m *StatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StatusResponse.Marshal(b, m, deterministic)
 }
-func (m *StatusResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StatusResponse.Merge(m, src)
+func (dst *StatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StatusResponse.Merge(dst, src)
 }
 func (m *StatusResponse) XXX_Size() int {
 	return xxx_messageInfo_StatusResponse.Size(m)
@@ -1762,17 +997,16 @@ func (m *Filter) Reset()         { *m = Filter{} }
 func (m *Filter) String() string { return proto.CompactTextString(m) }
 func (*Filter) ProtoMessage()    {}
 func (*Filter) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{21}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{11}
 }
-
 func (m *Filter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Filter.Unmarshal(m, b)
 }
 func (m *Filter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Filter.Marshal(b, m, deterministic)
 }
-func (m *Filter) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Filter.Merge(m, src)
+func (dst *Filter) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Filter.Merge(dst, src)
 }
 func (m *Filter) XXX_Size() int {
 	return xxx_messageInfo_Filter.Size(m)
@@ -1802,17 +1036,16 @@ func (m *SignalProcess) Reset()         { *m = SignalProcess{} }
 func (m *SignalProcess) String() string { return proto.CompactTextString(m) }
 func (*SignalProcess) ProtoMessage()    {}
 func (*SignalProcess) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{22}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{12}
 }
-
 func (m *SignalProcess) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignalProcess.Unmarshal(m, b)
 }
 func (m *SignalProcess) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SignalProcess.Marshal(b, m, deterministic)
 }
-func (m *SignalProcess) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SignalProcess.Merge(m, src)
+func (dst *SignalProcess) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignalProcess.Merge(dst, src)
 }
 func (m *SignalProcess) XXX_Size() int {
 	return xxx_messageInfo_SignalProcess.Size(m)
@@ -1848,17 +1081,16 @@ func (m *TagName) Reset()         { *m = TagName{} }
 func (m *TagName) String() string { return proto.CompactTextString(m) }
 func (*TagName) ProtoMessage()    {}
 func (*TagName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{23}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{13}
 }
-
 func (m *TagName) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TagName.Unmarshal(m, b)
 }
 func (m *TagName) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TagName.Marshal(b, m, deterministic)
 }
-func (m *TagName) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TagName.Merge(m, src)
+func (dst *TagName) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TagName.Merge(dst, src)
 }
 func (m *TagName) XXX_Size() int {
 	return xxx_messageInfo_TagName.Size(m)
@@ -1888,17 +1120,16 @@ func (m *ProcessTags) Reset()         { *m = ProcessTags{} }
 func (m *ProcessTags) String() string { return proto.CompactTextString(m) }
 func (*ProcessTags) ProtoMessage()    {}
 func (*ProcessTags) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{24}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{14}
 }
-
 func (m *ProcessTags) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ProcessTags.Unmarshal(m, b)
 }
 func (m *ProcessTags) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ProcessTags.Marshal(b, m, deterministic)
 }
-func (m *ProcessTags) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ProcessTags.Merge(m, src)
+func (dst *ProcessTags) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProcessTags.Merge(dst, src)
 }
 func (m *ProcessTags) XXX_Size() int {
 	return xxx_messageInfo_ProcessTags.Size(m)
@@ -1934,17 +1165,16 @@ func (m *JasperProcessID) Reset()         { *m = JasperProcessID{} }
 func (m *JasperProcessID) String() string { return proto.CompactTextString(m) }
 func (*JasperProcessID) ProtoMessage()    {}
 func (*JasperProcessID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{25}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{15}
 }
-
 func (m *JasperProcessID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_JasperProcessID.Unmarshal(m, b)
 }
 func (m *JasperProcessID) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_JasperProcessID.Marshal(b, m, deterministic)
 }
-func (m *JasperProcessID) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_JasperProcessID.Merge(m, src)
+func (dst *JasperProcessID) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_JasperProcessID.Merge(dst, src)
 }
 func (m *JasperProcessID) XXX_Size() int {
 	return xxx_messageInfo_JasperProcessID.Size(m)
@@ -1975,17 +1205,16 @@ func (m *OperationOutcome) Reset()         { *m = OperationOutcome{} }
 func (m *OperationOutcome) String() string { return proto.CompactTextString(m) }
 func (*OperationOutcome) ProtoMessage()    {}
 func (*OperationOutcome) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{26}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{16}
 }
-
 func (m *OperationOutcome) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OperationOutcome.Unmarshal(m, b)
 }
 func (m *OperationOutcome) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_OperationOutcome.Marshal(b, m, deterministic)
 }
-func (m *OperationOutcome) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_OperationOutcome.Merge(m, src)
+func (dst *OperationOutcome) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_OperationOutcome.Merge(dst, src)
 }
 func (m *OperationOutcome) XXX_Size() int {
 	return xxx_messageInfo_OperationOutcome.Size(m)
@@ -2031,17 +1260,16 @@ func (m *BuildOptions) Reset()         { *m = BuildOptions{} }
 func (m *BuildOptions) String() string { return proto.CompactTextString(m) }
 func (*BuildOptions) ProtoMessage()    {}
 func (*BuildOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{27}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{17}
 }
-
 func (m *BuildOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildOptions.Unmarshal(m, b)
 }
 func (m *BuildOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BuildOptions.Marshal(b, m, deterministic)
 }
-func (m *BuildOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildOptions.Merge(m, src)
+func (dst *BuildOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BuildOptions.Merge(dst, src)
 }
 func (m *BuildOptions) XXX_Size() int {
 	return xxx_messageInfo_BuildOptions.Size(m)
@@ -2093,17 +1321,16 @@ func (m *MongoDBDownloadOptions) Reset()         { *m = MongoDBDownloadOptions{}
 func (m *MongoDBDownloadOptions) String() string { return proto.CompactTextString(m) }
 func (*MongoDBDownloadOptions) ProtoMessage()    {}
 func (*MongoDBDownloadOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{28}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{18}
 }
-
 func (m *MongoDBDownloadOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MongoDBDownloadOptions.Unmarshal(m, b)
 }
 func (m *MongoDBDownloadOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_MongoDBDownloadOptions.Marshal(b, m, deterministic)
 }
-func (m *MongoDBDownloadOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MongoDBDownloadOptions.Merge(m, src)
+func (dst *MongoDBDownloadOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MongoDBDownloadOptions.Merge(dst, src)
 }
 func (m *MongoDBDownloadOptions) XXX_Size() int {
 	return xxx_messageInfo_MongoDBDownloadOptions.Size(m)
@@ -2148,17 +1375,16 @@ func (m *CacheOptions) Reset()         { *m = CacheOptions{} }
 func (m *CacheOptions) String() string { return proto.CompactTextString(m) }
 func (*CacheOptions) ProtoMessage()    {}
 func (*CacheOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{29}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{19}
 }
-
 func (m *CacheOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CacheOptions.Unmarshal(m, b)
 }
 func (m *CacheOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CacheOptions.Marshal(b, m, deterministic)
 }
-func (m *CacheOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CacheOptions.Merge(m, src)
+func (dst *CacheOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CacheOptions.Merge(dst, src)
 }
 func (m *CacheOptions) XXX_Size() int {
 	return xxx_messageInfo_CacheOptions.Size(m)
@@ -2203,17 +1429,16 @@ func (m *ArchiveOptions) Reset()         { *m = ArchiveOptions{} }
 func (m *ArchiveOptions) String() string { return proto.CompactTextString(m) }
 func (*ArchiveOptions) ProtoMessage()    {}
 func (*ArchiveOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{30}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{20}
 }
-
 func (m *ArchiveOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ArchiveOptions.Unmarshal(m, b)
 }
 func (m *ArchiveOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ArchiveOptions.Marshal(b, m, deterministic)
 }
-func (m *ArchiveOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ArchiveOptions.Merge(m, src)
+func (dst *ArchiveOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ArchiveOptions.Merge(dst, src)
 }
 func (m *ArchiveOptions) XXX_Size() int {
 	return xxx_messageInfo_ArchiveOptions.Size(m)
@@ -2258,17 +1483,16 @@ func (m *DownloadInfo) Reset()         { *m = DownloadInfo{} }
 func (m *DownloadInfo) String() string { return proto.CompactTextString(m) }
 func (*DownloadInfo) ProtoMessage()    {}
 func (*DownloadInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{31}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{21}
 }
-
 func (m *DownloadInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DownloadInfo.Unmarshal(m, b)
 }
 func (m *DownloadInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DownloadInfo.Marshal(b, m, deterministic)
 }
-func (m *DownloadInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DownloadInfo.Merge(m, src)
+func (dst *DownloadInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DownloadInfo.Merge(dst, src)
 }
 func (m *DownloadInfo) XXX_Size() int {
 	return xxx_messageInfo_DownloadInfo.Size(m)
@@ -2314,17 +1538,16 @@ func (m *WriteFileInfo) Reset()         { *m = WriteFileInfo{} }
 func (m *WriteFileInfo) String() string { return proto.CompactTextString(m) }
 func (*WriteFileInfo) ProtoMessage()    {}
 func (*WriteFileInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{32}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{22}
 }
-
 func (m *WriteFileInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_WriteFileInfo.Unmarshal(m, b)
 }
 func (m *WriteFileInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_WriteFileInfo.Marshal(b, m, deterministic)
 }
-func (m *WriteFileInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WriteFileInfo.Merge(m, src)
+func (dst *WriteFileInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WriteFileInfo.Merge(dst, src)
 }
 func (m *WriteFileInfo) XXX_Size() int {
 	return xxx_messageInfo_WriteFileInfo.Size(m)
@@ -2374,17 +1597,16 @@ func (m *BuildloggerURLs) Reset()         { *m = BuildloggerURLs{} }
 func (m *BuildloggerURLs) String() string { return proto.CompactTextString(m) }
 func (*BuildloggerURLs) ProtoMessage()    {}
 func (*BuildloggerURLs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{33}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{23}
 }
-
 func (m *BuildloggerURLs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuildloggerURLs.Unmarshal(m, b)
 }
 func (m *BuildloggerURLs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BuildloggerURLs.Marshal(b, m, deterministic)
 }
-func (m *BuildloggerURLs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuildloggerURLs.Merge(m, src)
+func (dst *BuildloggerURLs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BuildloggerURLs.Merge(dst, src)
 }
 func (m *BuildloggerURLs) XXX_Size() int {
 	return xxx_messageInfo_BuildloggerURLs.Size(m)
@@ -2414,17 +1636,16 @@ func (m *LogRequest) Reset()         { *m = LogRequest{} }
 func (m *LogRequest) String() string { return proto.CompactTextString(m) }
 func (*LogRequest) ProtoMessage()    {}
 func (*LogRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{34}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{24}
 }
-
 func (m *LogRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogRequest.Unmarshal(m, b)
 }
 func (m *LogRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogRequest.Marshal(b, m, deterministic)
 }
-func (m *LogRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogRequest.Merge(m, src)
+func (dst *LogRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogRequest.Merge(dst, src)
 }
 func (m *LogRequest) XXX_Size() int {
 	return xxx_messageInfo_LogRequest.Size(m)
@@ -2461,17 +1682,16 @@ func (m *LogStream) Reset()         { *m = LogStream{} }
 func (m *LogStream) String() string { return proto.CompactTextString(m) }
 func (*LogStream) ProtoMessage()    {}
 func (*LogStream) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{35}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{25}
 }
-
 func (m *LogStream) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogStream.Unmarshal(m, b)
 }
 func (m *LogStream) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogStream.Marshal(b, m, deterministic)
 }
-func (m *LogStream) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogStream.Merge(m, src)
+func (dst *LogStream) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogStream.Merge(dst, src)
 }
 func (m *LogStream) XXX_Size() int {
 	return xxx_messageInfo_LogStream.Size(m)
@@ -2508,17 +1728,16 @@ func (m *SignalTriggerParams) Reset()         { *m = SignalTriggerParams{} }
 func (m *SignalTriggerParams) String() string { return proto.CompactTextString(m) }
 func (*SignalTriggerParams) ProtoMessage()    {}
 func (*SignalTriggerParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{36}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{26}
 }
-
 func (m *SignalTriggerParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SignalTriggerParams.Unmarshal(m, b)
 }
 func (m *SignalTriggerParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SignalTriggerParams.Marshal(b, m, deterministic)
 }
-func (m *SignalTriggerParams) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SignalTriggerParams.Merge(m, src)
+func (dst *SignalTriggerParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignalTriggerParams.Merge(dst, src)
 }
 func (m *SignalTriggerParams) XXX_Size() int {
 	return xxx_messageInfo_SignalTriggerParams.Size(m)
@@ -2554,17 +1773,16 @@ func (m *EventName) Reset()         { *m = EventName{} }
 func (m *EventName) String() string { return proto.CompactTextString(m) }
 func (*EventName) ProtoMessage()    {}
 func (*EventName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{37}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{27}
 }
-
 func (m *EventName) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EventName.Unmarshal(m, b)
 }
 func (m *EventName) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_EventName.Marshal(b, m, deterministic)
 }
-func (m *EventName) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventName.Merge(m, src)
+func (dst *EventName) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventName.Merge(dst, src)
 }
 func (m *EventName) XXX_Size() int {
 	return xxx_messageInfo_EventName.Size(m)
@@ -2594,17 +1812,16 @@ func (m *ScriptingHarnessID) Reset()         { *m = ScriptingHarnessID{} }
 func (m *ScriptingHarnessID) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessID) ProtoMessage()    {}
 func (*ScriptingHarnessID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{38}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{28}
 }
-
 func (m *ScriptingHarnessID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessID.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessID) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessID.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessID) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessID.Merge(m, src)
+func (dst *ScriptingHarnessID) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessID.Merge(dst, src)
 }
 func (m *ScriptingHarnessID) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessID.Size(m)
@@ -2633,8 +1850,8 @@ type ScriptingOptionsGolang struct {
 	Gopath               string   `protobuf:"bytes,1,opt,name=gopath,proto3" json:"gopath,omitempty"`
 	Goroot               string   `protobuf:"bytes,2,opt,name=goroot,proto3" json:"goroot,omitempty"`
 	Packages             []string `protobuf:"bytes,3,rep,name=packages,proto3" json:"packages,omitempty"`
-	Directory            string   `protobuf:"bytes,4,opt,name=directory,proto3" json:"directory,omitempty"`
-	UpdatePackages       bool     `protobuf:"varint,5,opt,name=update_packages,json=updatePackages,proto3" json:"update_packages,omitempty"`
+	Context              string   `protobuf:"bytes,4,opt,name=context,proto3" json:"context,omitempty"`
+	WithUpdate           bool     `protobuf:"varint,5,opt,name=with_update,json=withUpdate,proto3" json:"with_update,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2644,17 +1861,16 @@ func (m *ScriptingOptionsGolang) Reset()         { *m = ScriptingOptionsGolang{}
 func (m *ScriptingOptionsGolang) String() string { return proto.CompactTextString(m) }
 func (*ScriptingOptionsGolang) ProtoMessage()    {}
 func (*ScriptingOptionsGolang) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{39}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{29}
 }
-
 func (m *ScriptingOptionsGolang) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingOptionsGolang.Unmarshal(m, b)
 }
 func (m *ScriptingOptionsGolang) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingOptionsGolang.Marshal(b, m, deterministic)
 }
-func (m *ScriptingOptionsGolang) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingOptionsGolang.Merge(m, src)
+func (dst *ScriptingOptionsGolang) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingOptionsGolang.Merge(dst, src)
 }
 func (m *ScriptingOptionsGolang) XXX_Size() int {
 	return xxx_messageInfo_ScriptingOptionsGolang.Size(m)
@@ -2686,16 +1902,16 @@ func (m *ScriptingOptionsGolang) GetPackages() []string {
 	return nil
 }
 
-func (m *ScriptingOptionsGolang) GetDirectory() string {
+func (m *ScriptingOptionsGolang) GetContext() string {
 	if m != nil {
-		return m.Directory
+		return m.Context
 	}
 	return ""
 }
 
-func (m *ScriptingOptionsGolang) GetUpdatePackages() bool {
+func (m *ScriptingOptionsGolang) GetWithUpdate() bool {
 	if m != nil {
-		return m.UpdatePackages
+		return m.WithUpdate
 	}
 	return false
 }
@@ -2703,10 +1919,10 @@ func (m *ScriptingOptionsGolang) GetUpdatePackages() bool {
 type ScriptingOptionsPython struct {
 	VirtualEnvPath       string   `protobuf:"bytes,1,opt,name=virtual_env_path,json=virtualEnvPath,proto3" json:"virtual_env_path,omitempty"`
 	RequirementsPath     string   `protobuf:"bytes,2,opt,name=requirements_path,json=requirementsPath,proto3" json:"requirements_path,omitempty"`
-	InterpreterBinary    string   `protobuf:"bytes,3,opt,name=interpreter_binary,json=interpreterBinary,proto3" json:"interpreter_binary,omitempty"`
+	HostPython           string   `protobuf:"bytes,3,opt,name=host_python,json=hostPython,proto3" json:"host_python,omitempty"`
 	Packages             []string `protobuf:"bytes,4,rep,name=packages,proto3" json:"packages,omitempty"`
 	LegacyPython         bool     `protobuf:"varint,5,opt,name=legacy_python,json=legacyPython,proto3" json:"legacy_python,omitempty"`
-	AddTestReqs          bool     `protobuf:"varint,6,opt,name=add_test_reqs,json=addTestReqs,proto3" json:"add_test_reqs,omitempty"`
+	AddTestDeps          bool     `protobuf:"varint,6,opt,name=add_test_deps,json=addTestDeps,proto3" json:"add_test_deps,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2716,17 +1932,16 @@ func (m *ScriptingOptionsPython) Reset()         { *m = ScriptingOptionsPython{}
 func (m *ScriptingOptionsPython) String() string { return proto.CompactTextString(m) }
 func (*ScriptingOptionsPython) ProtoMessage()    {}
 func (*ScriptingOptionsPython) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{40}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{30}
 }
-
 func (m *ScriptingOptionsPython) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingOptionsPython.Unmarshal(m, b)
 }
 func (m *ScriptingOptionsPython) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingOptionsPython.Marshal(b, m, deterministic)
 }
-func (m *ScriptingOptionsPython) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingOptionsPython.Merge(m, src)
+func (dst *ScriptingOptionsPython) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingOptionsPython.Merge(dst, src)
 }
 func (m *ScriptingOptionsPython) XXX_Size() int {
 	return xxx_messageInfo_ScriptingOptionsPython.Size(m)
@@ -2751,9 +1966,9 @@ func (m *ScriptingOptionsPython) GetRequirementsPath() string {
 	return ""
 }
 
-func (m *ScriptingOptionsPython) GetInterpreterBinary() string {
+func (m *ScriptingOptionsPython) GetHostPython() string {
 	if m != nil {
-		return m.InterpreterBinary
+		return m.HostPython
 	}
 	return ""
 }
@@ -2772,9 +1987,9 @@ func (m *ScriptingOptionsPython) GetLegacyPython() bool {
 	return false
 }
 
-func (m *ScriptingOptionsPython) GetAddTestReqs() bool {
+func (m *ScriptingOptionsPython) GetAddTestDeps() bool {
 	if m != nil {
-		return m.AddTestReqs
+		return m.AddTestDeps
 	}
 	return false
 }
@@ -2792,17 +2007,16 @@ func (m *ScriptingOptionsRoswell) Reset()         { *m = ScriptingOptionsRoswell
 func (m *ScriptingOptionsRoswell) String() string { return proto.CompactTextString(m) }
 func (*ScriptingOptionsRoswell) ProtoMessage()    {}
 func (*ScriptingOptionsRoswell) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{41}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{31}
 }
-
 func (m *ScriptingOptionsRoswell) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingOptionsRoswell.Unmarshal(m, b)
 }
 func (m *ScriptingOptionsRoswell) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingOptionsRoswell.Marshal(b, m, deterministic)
 }
-func (m *ScriptingOptionsRoswell) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingOptionsRoswell.Merge(m, src)
+func (dst *ScriptingOptionsRoswell) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingOptionsRoswell.Merge(dst, src)
 }
 func (m *ScriptingOptionsRoswell) XXX_Size() int {
 	return xxx_messageInfo_ScriptingOptionsRoswell.Size(m)
@@ -2852,17 +2066,16 @@ func (m *ScriptingOptions) Reset()         { *m = ScriptingOptions{} }
 func (m *ScriptingOptions) String() string { return proto.CompactTextString(m) }
 func (*ScriptingOptions) ProtoMessage()    {}
 func (*ScriptingOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{42}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{32}
 }
-
 func (m *ScriptingOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingOptions.Unmarshal(m, b)
 }
 func (m *ScriptingOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingOptions.Marshal(b, m, deterministic)
 }
-func (m *ScriptingOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingOptions.Merge(m, src)
+func (dst *ScriptingOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingOptions.Merge(dst, src)
 }
 func (m *ScriptingOptions) XXX_Size() int {
 	return xxx_messageInfo_ScriptingOptions.Size(m)
@@ -2944,13 +2157,97 @@ func (m *ScriptingOptions) GetDuration() int64 {
 	return 0
 }
 
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*ScriptingOptions) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*ScriptingOptions) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _ScriptingOptions_OneofMarshaler, _ScriptingOptions_OneofUnmarshaler, _ScriptingOptions_OneofSizer, []interface{}{
 		(*ScriptingOptions_Golang)(nil),
 		(*ScriptingOptions_Python)(nil),
 		(*ScriptingOptions_Roswell)(nil),
 	}
+}
+
+func _ScriptingOptions_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*ScriptingOptions)
+	// value
+	switch x := m.Value.(type) {
+	case *ScriptingOptions_Golang:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Golang); err != nil {
+			return err
+		}
+	case *ScriptingOptions_Python:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Python); err != nil {
+			return err
+		}
+	case *ScriptingOptions_Roswell:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Roswell); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("ScriptingOptions.Value has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _ScriptingOptions_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*ScriptingOptions)
+	switch tag {
+	case 1: // value.golang
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ScriptingOptionsGolang)
+		err := b.DecodeMessage(msg)
+		m.Value = &ScriptingOptions_Golang{msg}
+		return true, err
+	case 2: // value.python
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ScriptingOptionsPython)
+		err := b.DecodeMessage(msg)
+		m.Value = &ScriptingOptions_Python{msg}
+		return true, err
+	case 3: // value.roswell
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(ScriptingOptionsRoswell)
+		err := b.DecodeMessage(msg)
+		m.Value = &ScriptingOptions_Roswell{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _ScriptingOptions_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*ScriptingOptions)
+	// value
+	switch x := m.Value.(type) {
+	case *ScriptingOptions_Golang:
+		s := proto.Size(x.Golang)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *ScriptingOptions_Python:
+		s := proto.Size(x.Python)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *ScriptingOptions_Roswell:
+		s := proto.Size(x.Roswell)
+		n += 1 // tag and wire
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
 }
 
 type ScriptingHarnessRunArgs struct {
@@ -2965,17 +2262,16 @@ func (m *ScriptingHarnessRunArgs) Reset()         { *m = ScriptingHarnessRunArgs
 func (m *ScriptingHarnessRunArgs) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessRunArgs) ProtoMessage()    {}
 func (*ScriptingHarnessRunArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{43}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{33}
 }
-
 func (m *ScriptingHarnessRunArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessRunArgs.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessRunArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessRunArgs.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessRunArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessRunArgs.Merge(m, src)
+func (dst *ScriptingHarnessRunArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessRunArgs.Merge(dst, src)
 }
 func (m *ScriptingHarnessRunArgs) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessRunArgs.Size(m)
@@ -3013,17 +2309,16 @@ func (m *ScriptingHarnessBuildArgs) Reset()         { *m = ScriptingHarnessBuild
 func (m *ScriptingHarnessBuildArgs) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessBuildArgs) ProtoMessage()    {}
 func (*ScriptingHarnessBuildArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{44}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{34}
 }
-
 func (m *ScriptingHarnessBuildArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessBuildArgs.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessBuildArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessBuildArgs.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessBuildArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessBuildArgs.Merge(m, src)
+func (dst *ScriptingHarnessBuildArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessBuildArgs.Merge(dst, src)
 }
 func (m *ScriptingHarnessBuildArgs) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessBuildArgs.Size(m)
@@ -3067,17 +2362,16 @@ func (m *ScriptingHarnessBuildResponse) Reset()         { *m = ScriptingHarnessB
 func (m *ScriptingHarnessBuildResponse) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessBuildResponse) ProtoMessage()    {}
 func (*ScriptingHarnessBuildResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{45}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{35}
 }
-
 func (m *ScriptingHarnessBuildResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessBuildResponse.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessBuildResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessBuildResponse.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessBuildResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessBuildResponse.Merge(m, src)
+func (dst *ScriptingHarnessBuildResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessBuildResponse.Merge(dst, src)
 }
 func (m *ScriptingHarnessBuildResponse) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessBuildResponse.Size(m)
@@ -3114,17 +2408,16 @@ func (m *ScriptingHarnessRunScriptArgs) Reset()         { *m = ScriptingHarnessR
 func (m *ScriptingHarnessRunScriptArgs) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessRunScriptArgs) ProtoMessage()    {}
 func (*ScriptingHarnessRunScriptArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{46}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{36}
 }
-
 func (m *ScriptingHarnessRunScriptArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessRunScriptArgs.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessRunScriptArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessRunScriptArgs.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessRunScriptArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessRunScriptArgs.Merge(m, src)
+func (dst *ScriptingHarnessRunScriptArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessRunScriptArgs.Merge(dst, src)
 }
 func (m *ScriptingHarnessRunScriptArgs) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessRunScriptArgs.Size(m)
@@ -3162,17 +2455,16 @@ func (m *ScriptingHarnessTestArgs) Reset()         { *m = ScriptingHarnessTestAr
 func (m *ScriptingHarnessTestArgs) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessTestArgs) ProtoMessage()    {}
 func (*ScriptingHarnessTestArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{47}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{37}
 }
-
 func (m *ScriptingHarnessTestArgs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessTestArgs.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessTestArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessTestArgs.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessTestArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessTestArgs.Merge(m, src)
+func (dst *ScriptingHarnessTestArgs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessTestArgs.Merge(dst, src)
 }
 func (m *ScriptingHarnessTestArgs) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessTestArgs.Size(m)
@@ -3219,17 +2511,16 @@ func (m *ScriptingHarnessTestOptions) Reset()         { *m = ScriptingHarnessTes
 func (m *ScriptingHarnessTestOptions) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessTestOptions) ProtoMessage()    {}
 func (*ScriptingHarnessTestOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{48}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{38}
 }
-
 func (m *ScriptingHarnessTestOptions) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessTestOptions.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessTestOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessTestOptions.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessTestOptions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessTestOptions.Merge(m, src)
+func (dst *ScriptingHarnessTestOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessTestOptions.Merge(dst, src)
 }
 func (m *ScriptingHarnessTestOptions) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessTestOptions.Size(m)
@@ -3289,17 +2580,16 @@ func (m *ScriptingHarnessTestResult) Reset()         { *m = ScriptingHarnessTest
 func (m *ScriptingHarnessTestResult) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessTestResult) ProtoMessage()    {}
 func (*ScriptingHarnessTestResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{49}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{39}
 }
-
 func (m *ScriptingHarnessTestResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessTestResult.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessTestResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessTestResult.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessTestResult) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessTestResult.Merge(m, src)
+func (dst *ScriptingHarnessTestResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessTestResult.Merge(dst, src)
 }
 func (m *ScriptingHarnessTestResult) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessTestResult.Size(m)
@@ -3350,17 +2640,16 @@ func (m *ScriptingHarnessTestResponse) Reset()         { *m = ScriptingHarnessTe
 func (m *ScriptingHarnessTestResponse) String() string { return proto.CompactTextString(m) }
 func (*ScriptingHarnessTestResponse) ProtoMessage()    {}
 func (*ScriptingHarnessTestResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{50}
+	return fileDescriptor_jasper_28ae5a6dc2b680f4, []int{40}
 }
-
 func (m *ScriptingHarnessTestResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ScriptingHarnessTestResponse.Unmarshal(m, b)
 }
 func (m *ScriptingHarnessTestResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ScriptingHarnessTestResponse.Marshal(b, m, deterministic)
 }
-func (m *ScriptingHarnessTestResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ScriptingHarnessTestResponse.Merge(m, src)
+func (dst *ScriptingHarnessTestResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScriptingHarnessTestResponse.Merge(dst, src)
 }
 func (m *ScriptingHarnessTestResponse) XXX_Size() int {
 	return xxx_messageInfo_ScriptingHarnessTestResponse.Size(m)
@@ -3385,403 +2674,14 @@ func (m *ScriptingHarnessTestResponse) GetResults() []*ScriptingHarnessTestResul
 	return nil
 }
 
-type LoggingCacheCreateArgs struct {
-	Name                 string         `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Options              *OutputOptions `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *LoggingCacheCreateArgs) Reset()         { *m = LoggingCacheCreateArgs{} }
-func (m *LoggingCacheCreateArgs) String() string { return proto.CompactTextString(m) }
-func (*LoggingCacheCreateArgs) ProtoMessage()    {}
-func (*LoggingCacheCreateArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{51}
-}
-
-func (m *LoggingCacheCreateArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingCacheCreateArgs.Unmarshal(m, b)
-}
-func (m *LoggingCacheCreateArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingCacheCreateArgs.Marshal(b, m, deterministic)
-}
-func (m *LoggingCacheCreateArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingCacheCreateArgs.Merge(m, src)
-}
-func (m *LoggingCacheCreateArgs) XXX_Size() int {
-	return xxx_messageInfo_LoggingCacheCreateArgs.Size(m)
-}
-func (m *LoggingCacheCreateArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingCacheCreateArgs.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingCacheCreateArgs proto.InternalMessageInfo
-
-func (m *LoggingCacheCreateArgs) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *LoggingCacheCreateArgs) GetOptions() *OutputOptions {
-	if m != nil {
-		return m.Options
-	}
-	return nil
-}
-
-type LoggingCacheArgs struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *LoggingCacheArgs) Reset()         { *m = LoggingCacheArgs{} }
-func (m *LoggingCacheArgs) String() string { return proto.CompactTextString(m) }
-func (*LoggingCacheArgs) ProtoMessage()    {}
-func (*LoggingCacheArgs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{52}
-}
-
-func (m *LoggingCacheArgs) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingCacheArgs.Unmarshal(m, b)
-}
-func (m *LoggingCacheArgs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingCacheArgs.Marshal(b, m, deterministic)
-}
-func (m *LoggingCacheArgs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingCacheArgs.Merge(m, src)
-}
-func (m *LoggingCacheArgs) XXX_Size() int {
-	return xxx_messageInfo_LoggingCacheArgs.Size(m)
-}
-func (m *LoggingCacheArgs) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingCacheArgs.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingCacheArgs proto.InternalMessageInfo
-
-func (m *LoggingCacheArgs) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-type LoggingCacheInstance struct {
-	Outcome              *OperationOutcome    `protobuf:"bytes,1,opt,name=outcome,proto3" json:"outcome,omitempty"`
-	Id                   string               `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Manager              string               `protobuf:"bytes,3,opt,name=manager,proto3" json:"manager,omitempty"`
-	Accessed             *timestamp.Timestamp `protobuf:"bytes,4,opt,name=accessed,proto3" json:"accessed,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
-}
-
-func (m *LoggingCacheInstance) Reset()         { *m = LoggingCacheInstance{} }
-func (m *LoggingCacheInstance) String() string { return proto.CompactTextString(m) }
-func (*LoggingCacheInstance) ProtoMessage()    {}
-func (*LoggingCacheInstance) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{53}
-}
-
-func (m *LoggingCacheInstance) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingCacheInstance.Unmarshal(m, b)
-}
-func (m *LoggingCacheInstance) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingCacheInstance.Marshal(b, m, deterministic)
-}
-func (m *LoggingCacheInstance) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingCacheInstance.Merge(m, src)
-}
-func (m *LoggingCacheInstance) XXX_Size() int {
-	return xxx_messageInfo_LoggingCacheInstance.Size(m)
-}
-func (m *LoggingCacheInstance) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingCacheInstance.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingCacheInstance proto.InternalMessageInfo
-
-func (m *LoggingCacheInstance) GetOutcome() *OperationOutcome {
-	if m != nil {
-		return m.Outcome
-	}
-	return nil
-}
-
-func (m *LoggingCacheInstance) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-func (m *LoggingCacheInstance) GetManager() string {
-	if m != nil {
-		return m.Manager
-	}
-	return ""
-}
-
-func (m *LoggingCacheInstance) GetAccessed() *timestamp.Timestamp {
-	if m != nil {
-		return m.Accessed
-	}
-	return nil
-}
-
-type LoggingCacheSize struct {
-	Outcome              *OperationOutcome `protobuf:"bytes,1,opt,name=outcome,proto3" json:"outcome,omitempty"`
-	Id                   string            `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Size                 int64             `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
-	XXX_unrecognized     []byte            `json:"-"`
-	XXX_sizecache        int32             `json:"-"`
-}
-
-func (m *LoggingCacheSize) Reset()         { *m = LoggingCacheSize{} }
-func (m *LoggingCacheSize) String() string { return proto.CompactTextString(m) }
-func (*LoggingCacheSize) ProtoMessage()    {}
-func (*LoggingCacheSize) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{54}
-}
-
-func (m *LoggingCacheSize) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingCacheSize.Unmarshal(m, b)
-}
-func (m *LoggingCacheSize) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingCacheSize.Marshal(b, m, deterministic)
-}
-func (m *LoggingCacheSize) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingCacheSize.Merge(m, src)
-}
-func (m *LoggingCacheSize) XXX_Size() int {
-	return xxx_messageInfo_LoggingCacheSize.Size(m)
-}
-func (m *LoggingCacheSize) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingCacheSize.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingCacheSize proto.InternalMessageInfo
-
-func (m *LoggingCacheSize) GetOutcome() *OperationOutcome {
-	if m != nil {
-		return m.Outcome
-	}
-	return nil
-}
-
-func (m *LoggingCacheSize) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-func (m *LoggingCacheSize) GetSize() int64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-type LoggingPayloadData struct {
-	// Types that are valid to be assigned to Data:
-	//	*LoggingPayloadData_Msg
-	//	*LoggingPayloadData_Raw
-	Data                 isLoggingPayloadData_Data `protobuf_oneof:"data"`
-	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
-	XXX_unrecognized     []byte                    `json:"-"`
-	XXX_sizecache        int32                     `json:"-"`
-}
-
-func (m *LoggingPayloadData) Reset()         { *m = LoggingPayloadData{} }
-func (m *LoggingPayloadData) String() string { return proto.CompactTextString(m) }
-func (*LoggingPayloadData) ProtoMessage()    {}
-func (*LoggingPayloadData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{55}
-}
-
-func (m *LoggingPayloadData) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingPayloadData.Unmarshal(m, b)
-}
-func (m *LoggingPayloadData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingPayloadData.Marshal(b, m, deterministic)
-}
-func (m *LoggingPayloadData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingPayloadData.Merge(m, src)
-}
-func (m *LoggingPayloadData) XXX_Size() int {
-	return xxx_messageInfo_LoggingPayloadData.Size(m)
-}
-func (m *LoggingPayloadData) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingPayloadData.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingPayloadData proto.InternalMessageInfo
-
-type isLoggingPayloadData_Data interface {
-	isLoggingPayloadData_Data()
-}
-
-type LoggingPayloadData_Msg struct {
-	Msg string `protobuf:"bytes,1,opt,name=msg,proto3,oneof"`
-}
-
-type LoggingPayloadData_Raw struct {
-	Raw []byte `protobuf:"bytes,2,opt,name=raw,proto3,oneof"`
-}
-
-func (*LoggingPayloadData_Msg) isLoggingPayloadData_Data() {}
-
-func (*LoggingPayloadData_Raw) isLoggingPayloadData_Data() {}
-
-func (m *LoggingPayloadData) GetData() isLoggingPayloadData_Data {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
-func (m *LoggingPayloadData) GetMsg() string {
-	if x, ok := m.GetData().(*LoggingPayloadData_Msg); ok {
-		return x.Msg
-	}
-	return ""
-}
-
-func (m *LoggingPayloadData) GetRaw() []byte {
-	if x, ok := m.GetData().(*LoggingPayloadData_Raw); ok {
-		return x.Raw
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*LoggingPayloadData) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*LoggingPayloadData_Msg)(nil),
-		(*LoggingPayloadData_Raw)(nil),
-	}
-}
-
-type LoggingPayload struct {
-	LoggerID             string                `protobuf:"bytes,1,opt,name=LoggerID,proto3" json:"LoggerID,omitempty"`
-	Priority             int32                 `protobuf:"varint,2,opt,name=priority,proto3" json:"priority,omitempty"`
-	Format               LoggingPayloadFormat  `protobuf:"varint,3,opt,name=format,proto3,enum=jasper.LoggingPayloadFormat" json:"format,omitempty"`
-	IsMulti              bool                  `protobuf:"varint,4,opt,name=is_multi,json=isMulti,proto3" json:"is_multi,omitempty"`
-	PreferSendToError    bool                  `protobuf:"varint,5,opt,name=prefer_send_to_error,json=preferSendToError,proto3" json:"prefer_send_to_error,omitempty"`
-	AddMetadata          bool                  `protobuf:"varint,6,opt,name=add_metadata,json=addMetadata,proto3" json:"add_metadata,omitempty"`
-	Data                 []*LoggingPayloadData `protobuf:"bytes,7,rep,name=data,proto3" json:"data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
-	XXX_unrecognized     []byte                `json:"-"`
-	XXX_sizecache        int32                 `json:"-"`
-}
-
-func (m *LoggingPayload) Reset()         { *m = LoggingPayload{} }
-func (m *LoggingPayload) String() string { return proto.CompactTextString(m) }
-func (*LoggingPayload) ProtoMessage()    {}
-func (*LoggingPayload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d30110796082ce8e, []int{56}
-}
-
-func (m *LoggingPayload) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_LoggingPayload.Unmarshal(m, b)
-}
-func (m *LoggingPayload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_LoggingPayload.Marshal(b, m, deterministic)
-}
-func (m *LoggingPayload) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LoggingPayload.Merge(m, src)
-}
-func (m *LoggingPayload) XXX_Size() int {
-	return xxx_messageInfo_LoggingPayload.Size(m)
-}
-func (m *LoggingPayload) XXX_DiscardUnknown() {
-	xxx_messageInfo_LoggingPayload.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LoggingPayload proto.InternalMessageInfo
-
-func (m *LoggingPayload) GetLoggerID() string {
-	if m != nil {
-		return m.LoggerID
-	}
-	return ""
-}
-
-func (m *LoggingPayload) GetPriority() int32 {
-	if m != nil {
-		return m.Priority
-	}
-	return 0
-}
-
-func (m *LoggingPayload) GetFormat() LoggingPayloadFormat {
-	if m != nil {
-		return m.Format
-	}
-	return LoggingPayloadFormat_FORMATUNKNONW
-}
-
-func (m *LoggingPayload) GetIsMulti() bool {
-	if m != nil {
-		return m.IsMulti
-	}
-	return false
-}
-
-func (m *LoggingPayload) GetPreferSendToError() bool {
-	if m != nil {
-		return m.PreferSendToError
-	}
-	return false
-}
-
-func (m *LoggingPayload) GetAddMetadata() bool {
-	if m != nil {
-		return m.AddMetadata
-	}
-	return false
-}
-
-func (m *LoggingPayload) GetData() []*LoggingPayloadData {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
 func init() {
-	proto.RegisterEnum("jasper.LogFormat", LogFormat_name, LogFormat_value)
-	proto.RegisterEnum("jasper.RawLoggerConfigFormat", RawLoggerConfigFormat_name, RawLoggerConfigFormat_value)
-	proto.RegisterEnum("jasper.FilterSpecifications", FilterSpecifications_name, FilterSpecifications_value)
-	proto.RegisterEnum("jasper.Signals", Signals_name, Signals_value)
-	proto.RegisterEnum("jasper.ArchiveFormat", ArchiveFormat_name, ArchiveFormat_value)
-	proto.RegisterEnum("jasper.SignalTriggerID", SignalTriggerID_name, SignalTriggerID_value)
-	proto.RegisterEnum("jasper.LoggingPayloadFormat", LoggingPayloadFormat_name, LoggingPayloadFormat_value)
-	proto.RegisterType((*LoggerConfig)(nil), "jasper.LoggerConfig")
-	proto.RegisterType((*LogLevel)(nil), "jasper.LogLevel")
-	proto.RegisterType((*BufferOptions)(nil), "jasper.BufferOptions")
-	proto.RegisterType((*BaseOptions)(nil), "jasper.BaseOptions")
-	proto.RegisterType((*DefaultLoggerOptions)(nil), "jasper.DefaultLoggerOptions")
-	proto.RegisterType((*FileLoggerOptions)(nil), "jasper.FileLoggerOptions")
-	proto.RegisterType((*InheritedLoggerOptions)(nil), "jasper.InheritedLoggerOptions")
-	proto.RegisterType((*SumoLogicLoggerOptions)(nil), "jasper.SumoLogicLoggerOptions")
-	proto.RegisterType((*InMemoryLoggerOptions)(nil), "jasper.InMemoryLoggerOptions")
-	proto.RegisterType((*SplunkInfo)(nil), "jasper.SplunkInfo")
-	proto.RegisterType((*SplunkLoggerOptions)(nil), "jasper.SplunkLoggerOptions")
-	proto.RegisterType((*BuildloggerV2Info)(nil), "jasper.BuildloggerV2Info")
-	proto.RegisterType((*BuildloggerV2Options)(nil), "jasper.BuildloggerV2Options")
-	proto.RegisterType((*BuildloggerV3Info)(nil), "jasper.BuildloggerV3Info")
-	proto.RegisterMapType((map[string]string)(nil), "jasper.BuildloggerV3Info.ArgsEntry")
-	proto.RegisterType((*BuildloggerV3Options)(nil), "jasper.BuildloggerV3Options")
-	proto.RegisterType((*RawLoggerConfig)(nil), "jasper.RawLoggerConfig")
+	proto.RegisterType((*Logger)(nil), "jasper.Logger")
 	proto.RegisterType((*OutputOptions)(nil), "jasper.OutputOptions")
+	proto.RegisterType((*LogOptions)(nil), "jasper.LogOptions")
+	proto.RegisterType((*BufferOptions)(nil), "jasper.BufferOptions")
+	proto.RegisterType((*BuildloggerOptions)(nil), "jasper.BuildloggerOptions")
+	proto.RegisterType((*SplunkOptions)(nil), "jasper.SplunkOptions")
+	proto.RegisterType((*LogLevel)(nil), "jasper.LogLevel")
 	proto.RegisterType((*CreateOptions)(nil), "jasper.CreateOptions")
 	proto.RegisterMapType((map[string]string)(nil), "jasper.CreateOptions.EnvironmentEntry")
 	proto.RegisterType((*IDResponse)(nil), "jasper.IDResponse")
@@ -3818,264 +2718,12 @@ func init() {
 	proto.RegisterType((*ScriptingHarnessTestOptions)(nil), "jasper.ScriptingHarnessTestOptions")
 	proto.RegisterType((*ScriptingHarnessTestResult)(nil), "jasper.ScriptingHarnessTestResult")
 	proto.RegisterType((*ScriptingHarnessTestResponse)(nil), "jasper.ScriptingHarnessTestResponse")
-	proto.RegisterType((*LoggingCacheCreateArgs)(nil), "jasper.LoggingCacheCreateArgs")
-	proto.RegisterType((*LoggingCacheArgs)(nil), "jasper.LoggingCacheArgs")
-	proto.RegisterType((*LoggingCacheInstance)(nil), "jasper.LoggingCacheInstance")
-	proto.RegisterType((*LoggingCacheSize)(nil), "jasper.LoggingCacheSize")
-	proto.RegisterType((*LoggingPayloadData)(nil), "jasper.LoggingPayloadData")
-	proto.RegisterType((*LoggingPayload)(nil), "jasper.LoggingPayload")
-}
-
-func init() { proto.RegisterFile("jasper.proto", fileDescriptor_d30110796082ce8e) }
-
-var fileDescriptor_d30110796082ce8e = []byte{
-	// 3932 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x7a, 0x4b, 0x73, 0x23, 0x47,
-	0x72, 0x30, 0xf1, 0x20, 0x1e, 0x49, 0x82, 0x04, 0x6b, 0x38, 0x1c, 0x0c, 0x67, 0xa4, 0x19, 0xb5,
-	0x3e, 0x69, 0xa4, 0xd9, 0x10, 0x47, 0x22, 0x35, 0x9f, 0x5e, 0xbb, 0xda, 0x05, 0x09, 0x90, 0xc4,
-	0x0e, 0x08, 0x32, 0x9a, 0xa0, 0x66, 0x43, 0x6b, 0x2d, 0xa2, 0x88, 0x2e, 0x82, 0x3d, 0x6c, 0x74,
-	0xb7, 0xaa, 0xab, 0xc9, 0xe1, 0x86, 0x7d, 0x70, 0xf8, 0xe0, 0xe3, 0x3a, 0xc2, 0x67, 0xdf, 0x7c,
-	0xf1, 0xe3, 0xe2, 0x9b, 0x0f, 0xbe, 0xfa, 0xcf, 0xf8, 0xe8, 0x5f, 0xe0, 0xa8, 0x57, 0x77, 0xa3,
-	0xd9, 0x00, 0xb9, 0x63, 0x9f, 0x88, 0xcc, 0xca, 0xcc, 0xca, 0xca, 0xca, 0xcc, 0xca, 0xcc, 0x26,
-	0x2c, 0xbe, 0xc1, 0x81, 0x4f, 0xe8, 0x86, 0x4f, 0x3d, 0xe6, 0xa1, 0x92, 0x84, 0xd6, 0x1f, 0x8d,
-	0x3c, 0x6f, 0xe4, 0x90, 0x17, 0x02, 0x7b, 0x1a, 0x9e, 0xbd, 0x20, 0x63, 0x9f, 0x5d, 0x4b, 0xa2,
-	0xf5, 0x27, 0xe9, 0x45, 0x66, 0x8f, 0x49, 0xc0, 0xf0, 0xd8, 0x57, 0x04, 0xef, 0xa7, 0x09, 0xac,
-	0x90, 0x62, 0x66, 0x7b, 0xae, 0x5c, 0x37, 0xfe, 0xa9, 0x08, 0x8b, 0x5d, 0x6f, 0x34, 0x22, 0x74,
-	0xc7, 0x73, 0xcf, 0xec, 0x11, 0xfa, 0x1a, 0xca, 0x16, 0x39, 0xc3, 0xa1, 0xc3, 0x1a, 0xb9, 0xa7,
-	0xb9, 0x4f, 0x16, 0x36, 0x1f, 0x6f, 0x28, 0xb5, 0x5a, 0x12, 0x2d, 0xa9, 0x0f, 0x7d, 0x2e, 0x24,
-	0xd8, 0x9f, 0x33, 0x35, 0x39, 0x7a, 0x01, 0xc5, 0x33, 0xdb, 0x21, 0x8d, 0xbc, 0x60, 0x7b, 0xa8,
-	0xd9, 0x76, 0x6d, 0x87, 0xa4, 0x79, 0x04, 0x21, 0xfa, 0x1e, 0xaa, 0xb6, 0x7b, 0x4e, 0xa8, 0xcd,
-	0x88, 0xd5, 0x28, 0x08, 0xae, 0xf7, 0x35, 0x57, 0x47, 0x2f, 0xa4, 0x59, 0x63, 0x16, 0xf4, 0x25,
-	0x14, 0x83, 0x70, 0xec, 0x35, 0x8a, 0x93, 0xac, 0xc7, 0xe1, 0xd8, 0xeb, 0x7a, 0x23, 0x7b, 0x78,
-	0x63, 0x57, 0x4e, 0x8d, 0x7e, 0xc9, 0x77, 0x1d, 0x8c, 0xc9, 0xd8, 0xa3, 0xd7, 0x8d, 0x79, 0xc1,
-	0xfa, 0x5e, 0xbc, 0xeb, 0x81, 0xc0, 0xa7, 0x39, 0x2b, 0xb6, 0x5a, 0x40, 0x2f, 0xa1, 0x14, 0xf8,
-	0x4e, 0xe8, 0x5e, 0x34, 0x4a, 0x82, 0xf5, 0x51, 0xb4, 0xab, 0xc0, 0xa6, 0x19, 0x15, 0x31, 0x6a,
-	0x41, 0xed, 0x34, 0xb4, 0x1d, 0xcb, 0x11, 0xeb, 0x97, 0x9b, 0x8d, 0xf2, 0xa4, 0x6d, 0xb7, 0xe3,
-	0xc5, 0x1f, 0x36, 0x63, 0xf6, 0x49, 0xa6, 0xb4, 0x94, 0xad, 0x46, 0x65, 0xba, 0x94, 0xad, 0x29,
-	0x52, 0xb6, 0xd0, 0x2f, 0xa0, 0x40, 0xf1, 0x55, 0xa3, 0x2a, 0x78, 0x1f, 0x68, 0x5e, 0x13, 0x5f,
-	0x25, 0xfd, 0x60, 0x7f, 0xce, 0xe4, 0x54, 0xdb, 0x00, 0x15, 0x9f, 0x7a, 0x56, 0x38, 0x24, 0xd4,
-	0xd8, 0x86, 0x4a, 0xd7, 0x1b, 0x75, 0xc9, 0x25, 0x71, 0xd0, 0x63, 0xa8, 0xb2, 0x73, 0x4a, 0x82,
-	0x73, 0xcf, 0xb1, 0x84, 0xa3, 0xcc, 0x9b, 0x31, 0x02, 0x35, 0x62, 0x27, 0xca, 0x8b, 0x35, 0x0d,
-	0x1a, 0xa7, 0x50, 0xdb, 0x0e, 0xcf, 0xce, 0x22, 0x1b, 0xa1, 0x75, 0xa8, 0x9c, 0x0a, 0x04, 0x91,
-	0x72, 0x2a, 0x66, 0x04, 0xf3, 0x35, 0xed, 0xae, 0x42, 0x4e, 0xc1, 0x8c, 0x60, 0xf4, 0x10, 0x2a,
-	0x63, 0xfc, 0x76, 0x10, 0xd8, 0x7f, 0x24, 0xc2, 0x77, 0x0a, 0x66, 0x79, 0x8c, 0xdf, 0x1e, 0xdb,
-	0x7f, 0x24, 0xc6, 0x9f, 0x72, 0xb0, 0xb0, 0x8d, 0x03, 0xa2, 0xb7, 0xf8, 0x18, 0xe6, 0x1d, 0xae,
-	0xb4, 0x72, 0xe8, 0xba, 0x3e, 0xb2, 0x3e, 0x8c, 0x29, 0x97, 0xd1, 0x67, 0x50, 0x92, 0x5b, 0x2b,
-	0x17, 0xbe, 0x1f, 0xdb, 0x35, 0xa1, 0xb1, 0xa9, 0x88, 0xd0, 0xa7, 0x50, 0x3a, 0xf3, 0xe8, 0x18,
-	0x33, 0xb1, 0xff, 0xd2, 0xe6, 0x4a, 0x42, 0xee, 0xae, 0x58, 0x30, 0x15, 0x81, 0xf1, 0x1a, 0x56,
-	0xb3, 0xa2, 0x07, 0xad, 0x41, 0xc9, 0xa7, 0xe4, 0xcc, 0x7e, 0x2b, 0x54, 0xab, 0x9a, 0x0a, 0x42,
-	0xcf, 0xa0, 0x78, 0x8a, 0x03, 0x1d, 0x4a, 0xf7, 0x22, 0x3d, 0xe2, 0x43, 0x99, 0x82, 0xc0, 0xf8,
-	0x1d, 0xac, 0xdc, 0x88, 0x2f, 0x6e, 0x36, 0x1e, 0x5f, 0x2e, 0x1e, 0x13, 0x25, 0x37, 0x82, 0xef,
-	0x2e, 0xb9, 0x09, 0x6b, 0xd9, 0x31, 0x18, 0x89, 0xc8, 0xdd, 0x26, 0xe2, 0x0c, 0xd6, 0xb2, 0x63,
-	0x11, 0x7d, 0x08, 0x35, 0x1e, 0x8b, 0x03, 0xe2, 0x5a, 0xbe, 0x67, 0xbb, 0x4c, 0xa9, 0xb9, 0xc8,
-	0x91, 0x6d, 0x85, 0xbb, 0xbb, 0xaa, 0x16, 0xdc, 0xcf, 0x0c, 0x5c, 0x64, 0x40, 0x2d, 0x0a, 0xf5,
-	0xc1, 0x10, 0xfb, 0x62, 0x9b, 0x82, 0xb9, 0xa0, 0xa3, 0x79, 0x07, 0xfb, 0x77, 0xdf, 0xa5, 0x07,
-	0x20, 0x63, 0xbc, 0xe3, 0x9e, 0x79, 0xa8, 0x0e, 0x85, 0x90, 0x3a, 0x4a, 0x6f, 0xfe, 0x13, 0xad,
-	0xc2, 0x3c, 0xf3, 0x2e, 0x88, 0xf4, 0xd4, 0xaa, 0x29, 0x01, 0x1e, 0x09, 0xc3, 0x73, 0xec, 0xba,
-	0xc4, 0x11, 0x5e, 0x52, 0x35, 0x35, 0x68, 0xbc, 0x81, 0x7b, 0x19, 0x39, 0x03, 0x3d, 0x8f, 0x12,
-	0x8c, 0xb4, 0x2f, 0x9a, 0x4c, 0x30, 0x7c, 0xf3, 0x28, 0xab, 0xdc, 0x59, 0xf7, 0xff, 0xc8, 0xc1,
-	0xca, 0x44, 0x8a, 0x11, 0x67, 0x78, 0x02, 0x0b, 0x43, 0x4a, 0x30, 0x23, 0x03, 0x46, 0x02, 0xa6,
-	0xa2, 0x0f, 0x24, 0xaa, 0x4f, 0x02, 0xa6, 0x0f, 0x99, 0x8f, 0x0f, 0xb9, 0x06, 0x25, 0x37, 0x1c,
-	0x9f, 0x12, 0xaa, 0x62, 0x4e, 0x41, 0xfc, 0xf0, 0xfe, 0x39, 0x57, 0xa5, 0x28, 0x0f, 0x2f, 0x00,
-	0x7e, 0x78, 0x91, 0x7a, 0x08, 0x15, 0x89, 0xb6, 0x6a, 0x6a, 0x10, 0x21, 0x28, 0x8a, 0x3d, 0x4b,
-	0x02, 0x2d, 0x7e, 0x0b, 0x53, 0x79, 0xe3, 0x31, 0x76, 0x2d, 0x91, 0x1d, 0xb9, 0xa9, 0x24, 0x68,
-	0xfc, 0x25, 0xac, 0x66, 0x25, 0x48, 0xf4, 0x1d, 0x2c, 0x24, 0x52, 0x9b, 0x32, 0xd8, 0xc3, 0xcc,
-	0x9c, 0x2a, 0xec, 0x96, 0xa4, 0xbe, 0xbb, 0xf1, 0xfe, 0x6b, 0x7e, 0xd2, 0x78, 0x5b, 0xc2, 0x78,
-	0x0d, 0x28, 0xfb, 0xd4, 0x7b, 0x43, 0x86, 0xda, 0x79, 0x35, 0xc8, 0x57, 0x2e, 0x09, 0x0d, 0x74,
-	0xd2, 0xaa, 0x9a, 0x1a, 0x14, 0x2b, 0x98, 0xda, 0xd8, 0x65, 0xda, 0x19, 0x14, 0x88, 0x1e, 0x41,
-	0x95, 0xe1, 0xe0, 0x62, 0x20, 0x62, 0x56, 0xda, 0xb0, 0xc2, 0x11, 0x3d, 0x1e, 0xb3, 0x0f, 0xa0,
-	0x2c, 0x16, 0x6d, 0x4b, 0x99, 0xb1, 0xc4, 0xc1, 0x8e, 0xc5, 0x93, 0x30, 0x79, 0x4b, 0x86, 0xa1,
-	0x48, 0x90, 0x25, 0x99, 0x84, 0x23, 0x84, 0x90, 0x49, 0x02, 0x26, 0x65, 0x96, 0x95, 0x4c, 0x12,
-	0x30, 0x21, 0x93, 0x7b, 0x2b, 0xb5, 0xb1, 0x23, 0x9e, 0x90, 0x79, 0x53, 0x02, 0xe8, 0x03, 0x58,
-	0xf4, 0xa9, 0x37, 0x24, 0x41, 0x20, 0xb9, 0xaa, 0x82, 0x6b, 0x41, 0xe1, 0x04, 0x63, 0x9c, 0xf5,
-	0xe0, 0x96, 0xac, 0x27, 0x2e, 0x19, 0x8f, 0x82, 0xc6, 0xc2, 0xd3, 0x82, 0xb8, 0x64, 0x3c, 0x0a,
-	0xd0, 0x57, 0x50, 0xc4, 0x74, 0x14, 0x34, 0x16, 0x9f, 0x16, 0x3e, 0x59, 0xd8, 0xfc, 0x30, 0xf3,
-	0xe5, 0xe2, 0xf6, 0xdd, 0x68, 0xd2, 0x51, 0xd0, 0x76, 0x19, 0xbd, 0x36, 0x05, 0x03, 0x4f, 0x6a,
-	0x63, 0x6c, 0xbb, 0x8e, 0xed, 0x92, 0x46, 0x4d, 0xbe, 0x13, 0x1a, 0x46, 0x1f, 0xc3, 0x32, 0x7f,
-	0x0b, 0x64, 0x5e, 0x96, 0x4f, 0xc2, 0x92, 0x70, 0xcf, 0xda, 0x18, 0xbf, 0x95, 0xc9, 0x9b, 0x3f,
-	0x0c, 0xe8, 0x23, 0x58, 0x3a, 0x73, 0xc2, 0xe0, 0x7c, 0x60, 0xbb, 0x8c, 0xd0, 0x4b, 0xec, 0x34,
-	0x96, 0x25, 0x99, 0xc0, 0x76, 0x14, 0x12, 0x6d, 0xc1, 0x9a, 0x65, 0x07, 0xf8, 0xd4, 0x21, 0x03,
-	0x97, 0x5c, 0x0d, 0xf8, 0x16, 0x83, 0xe1, 0x39, 0x19, 0x5e, 0x34, 0xea, 0x62, 0xe3, 0x7b, 0x6a,
-	0xb5, 0x47, 0xae, 0xba, 0xb6, 0x4b, 0x76, 0xf8, 0x12, 0x0f, 0x26, 0xea, 0x0f, 0x07, 0xd8, 0xb2,
-	0x28, 0x09, 0x82, 0xc6, 0x8a, 0xb0, 0x1c, 0x50, 0x7f, 0xd8, 0x94, 0x18, 0x7e, 0x00, 0xdb, 0x0d,
-	0xc8, 0x30, 0xa4, 0xa4, 0x81, 0xe4, 0x01, 0x34, 0xcc, 0x6f, 0x78, 0x88, 0x07, 0xa2, 0x7a, 0xba,
-	0x27, 0x6f, 0x78, 0x88, 0x79, 0x5e, 0xe7, 0x77, 0x38, 0x24, 0x94, 0xc9, 0xa5, 0x55, 0x79, 0x87,
-	0x1c, 0x21, 0x16, 0x1f, 0x42, 0xe5, 0x82, 0x5c, 0xcb, 0xb5, 0xfb, 0xd2, 0x9f, 0x2e, 0xc8, 0x35,
-	0x5f, 0x5a, 0xff, 0x0a, 0xaa, 0x91, 0x01, 0x79, 0x18, 0x5f, 0x90, 0x6b, 0x9d, 0xab, 0x2e, 0xc8,
-	0x35, 0xbf, 0xfd, 0x4b, 0xec, 0x84, 0x44, 0xe7, 0x2a, 0x01, 0x7c, 0x9b, 0xff, 0x3a, 0x67, 0xfc,
-	0x7d, 0x6e, 0x32, 0xd6, 0x74, 0x19, 0x81, 0x7e, 0x9d, 0xae, 0x3d, 0x66, 0x44, 0x9b, 0xb8, 0xc1,
-	0x74, 0xd9, 0x81, 0xa0, 0x28, 0x7c, 0x4a, 0x6e, 0x29, 0x7e, 0xc7, 0x2f, 0x73, 0x61, 0xe6, 0xcb,
-	0x6c, 0xd8, 0xb0, 0x9c, 0xaa, 0x4f, 0x78, 0x21, 0xa6, 0xfc, 0x30, 0x27, 0xfc, 0xf0, 0xbd, 0x29,
-	0x85, 0x4c, 0xca, 0x27, 0x79, 0xce, 0x13, 0xf8, 0x81, 0x85, 0x19, 0x16, 0xca, 0x2c, 0x9a, 0x20,
-	0x51, 0x2d, 0xcc, 0xb0, 0xf1, 0xd7, 0x79, 0xa8, 0x1d, 0x86, 0xcc, 0x0f, 0x99, 0x3e, 0xf9, 0x06,
-	0x94, 0xe5, 0x21, 0x82, 0x46, 0x4e, 0x78, 0xed, 0x6a, 0x42, 0xcd, 0x68, 0x1f, 0x53, 0x13, 0xa1,
-	0x67, 0xb0, 0x1c, 0x84, 0xbe, 0xcf, 0x2f, 0x7d, 0xe0, 0x09, 0x49, 0x62, 0x9b, 0x8a, 0xb9, 0xa4,
-	0xd1, 0x52, 0x3e, 0x77, 0xc7, 0x88, 0x90, 0x50, 0xea, 0xc9, 0xa4, 0x5a, 0x31, 0x6b, 0x1a, 0xdb,
-	0xe6, 0x48, 0xf4, 0x15, 0x34, 0x28, 0xb1, 0x6c, 0x4a, 0x86, 0x4c, 0xc9, 0x1b, 0x30, 0x4f, 0x31,
-	0x14, 0x05, 0xc3, 0x7d, 0xbd, 0x2e, 0x05, 0xf7, 0xbd, 0x9b, 0x8c, 0x82, 0x9c, 0xf3, 0x29, 0x8d,
-	0xe6, 0x27, 0x19, 0x05, 0x43, 0xdf, 0x93, 0xfc, 0xc6, 0x7f, 0x16, 0xa1, 0xb6, 0x23, 0x9e, 0x01,
-	0x6d, 0x03, 0xa4, 0xc2, 0x36, 0x27, 0x43, 0x59, 0x44, 0xe4, 0x2f, 0x60, 0xe5, 0xca, 0xa3, 0x17,
-	0xb6, 0x3b, 0x1a, 0x48, 0x21, 0xbc, 0xa0, 0x96, 0xb7, 0x5b, 0x57, 0x0b, 0x2d, 0x8d, 0x47, 0xfb,
-	0xb0, 0x40, 0xdc, 0x4b, 0x9b, 0x7a, 0xee, 0x98, 0x88, 0xf4, 0xc7, 0x0d, 0xf9, 0xb1, 0x36, 0xe4,
-	0xc4, 0x66, 0x1b, 0xed, 0x98, 0x50, 0x66, 0x80, 0x24, 0x2b, 0xfa, 0x14, 0xea, 0xde, 0x25, 0xa1,
-	0xd4, 0xb6, 0xc8, 0x40, 0xe1, 0x95, 0x19, 0x96, 0x35, 0x5e, 0x09, 0xe0, 0x37, 0xc1, 0xfb, 0x21,
-	0x2f, 0x64, 0x83, 0x80, 0x0c, 0x3d, 0xd7, 0x0a, 0xc4, 0xb9, 0x0b, 0xe6, 0x92, 0x42, 0x1f, 0x4b,
-	0x6c, 0x94, 0xa9, 0x4a, 0x89, 0x4c, 0xf5, 0x25, 0x80, 0xe7, 0x0e, 0x82, 0x70, 0xc8, 0x53, 0x5f,
-	0xa3, 0x2c, 0x14, 0xbe, 0x9f, 0xa9, 0xb0, 0x59, 0xf5, 0xdc, 0x63, 0x49, 0xa7, 0xb8, 0xce, 0xb0,
-	0xed, 0xf0, 0x38, 0xaf, 0xdc, 0xc2, 0xb5, 0x2b, 0xe9, 0x14, 0x97, 0x52, 0xaa, 0x51, 0xbd, 0x85,
-	0xab, 0x2f, 0xe9, 0x78, 0xbd, 0xaa, 0x6e, 0x13, 0x26, 0xeb, 0xd5, 0x09, 0xff, 0x35, 0x15, 0x11,
-	0xfa, 0x1c, 0x56, 0x03, 0x86, 0x5d, 0x0b, 0x53, 0x6b, 0x60, 0xbb, 0xdc, 0x8d, 0x4e, 0xaf, 0x19,
-	0xe1, 0xe9, 0x99, 0xc7, 0x00, 0xd2, 0x6b, 0x1d, 0xbe, 0xb4, 0xcd, 0x57, 0xd6, 0xbf, 0x87, 0x7a,
-	0xfa, 0x2e, 0xfe, 0xac, 0x64, 0x62, 0x00, 0x74, 0x5a, 0x26, 0x09, 0x7c, 0xcf, 0x0d, 0x48, 0x4c,
-	0x97, 0x4b, 0xd0, 0x19, 0xff, 0x9d, 0x87, 0x85, 0x23, 0xf9, 0xbe, 0x88, 0x77, 0x75, 0x09, 0xf2,
-	0xb6, 0xa5, 0x48, 0xf2, 0xb6, 0xc5, 0xf7, 0xf3, 0x6d, 0x4b, 0x95, 0xff, 0xfc, 0x27, 0x4f, 0x96,
-	0xe7, 0x5e, 0xc0, 0xf8, 0x73, 0x28, 0x5f, 0xd1, 0x12, 0x07, 0x3b, 0xa2, 0xeb, 0xa0, 0xa1, 0xeb,
-	0xda, 0xee, 0x48, 0x39, 0x84, 0x06, 0xd1, 0xfb, 0x00, 0xea, 0x22, 0xcf, 0x42, 0x47, 0xf9, 0x7e,
-	0x02, 0xc3, 0x73, 0xf3, 0xd0, 0x1b, 0xfb, 0x0e, 0x61, 0x44, 0xbc, 0xa3, 0x15, 0x33, 0x82, 0xf9,
-	0x1a, 0xbf, 0x18, 0x8b, 0xdf, 0x4c, 0x59, 0xae, 0x69, 0x18, 0xbd, 0x80, 0xb2, 0x27, 0xad, 0xac,
-	0x5a, 0xb1, 0x29, 0x97, 0xa6, 0xa9, 0x78, 0x3e, 0x27, 0x6f, 0x6d, 0x36, 0x18, 0x7a, 0x96, 0x7c,
-	0x5d, 0xe7, 0xcd, 0x0a, 0x47, 0xec, 0x78, 0x16, 0x41, 0x2f, 0xa1, 0x12, 0x30, 0x4c, 0xd9, 0x00,
-	0xeb, 0x1b, 0x5d, 0xdf, 0x90, 0xed, 0xfb, 0x86, 0x6e, 0xdf, 0x37, 0xfa, 0xba, 0xbf, 0x37, 0xcb,
-	0x82, 0xb6, 0xc9, 0xd0, 0x17, 0x50, 0x22, 0xae, 0xc5, 0x99, 0x16, 0x6e, 0x65, 0x9a, 0x27, 0xae,
-	0xd5, 0x64, 0x46, 0x13, 0x96, 0x8e, 0x19, 0x66, 0x61, 0x10, 0x5d, 0x4e, 0xc2, 0xa8, 0xb9, 0x09,
-	0xa3, 0xae, 0x41, 0x09, 0x0f, 0x99, 0x7d, 0x49, 0x54, 0x12, 0x53, 0x90, 0xf1, 0x2d, 0x94, 0x76,
-	0x6d, 0x87, 0x11, 0x8a, 0x3e, 0x57, 0x89, 0x5d, 0xe6, 0xe1, 0xc7, 0x89, 0xbe, 0x9f, 0x11, 0x7a,
-	0xec, 0x93, 0xa1, 0x7d, 0x66, 0x0f, 0xb1, 0xaa, 0xa8, 0x38, 0xa5, 0xe1, 0x41, 0xed, 0xd8, 0x1e,
-	0xb9, 0xd8, 0x51, 0x17, 0x8f, 0x5e, 0x42, 0x55, 0xfb, 0x40, 0x4b, 0x3d, 0x2c, 0x51, 0x63, 0xfa,
-	0x5b, 0xf1, 0x27, 0x5a, 0x36, 0x63, 0x4a, 0xf4, 0x0c, 0x4a, 0x81, 0x90, 0x23, 0x74, 0x5b, 0xda,
-	0x5c, 0x8e, 0x6a, 0x65, 0x81, 0x0d, 0x4c, 0xb5, 0x6c, 0x3c, 0x81, 0x72, 0x1f, 0x8f, 0x74, 0xe1,
-	0x93, 0xe1, 0x85, 0xbf, 0x8e, 0x9c, 0xb0, 0xcf, 0x63, 0xff, 0x31, 0x54, 0xfd, 0x09, 0x7d, 0xaa,
-	0x66, 0x8c, 0x88, 0xb2, 0x45, 0x3e, 0xce, 0x16, 0xc6, 0x33, 0x58, 0x4e, 0x29, 0x3a, 0x65, 0xa7,
-	0x9f, 0xa0, 0x7e, 0xe8, 0x13, 0xd9, 0xc4, 0x1e, 0x86, 0x6c, 0xe8, 0x8d, 0x45, 0x9d, 0xac, 0xf3,
-	0x8c, 0x2c, 0xc2, 0x35, 0x28, 0xeb, 0xe4, 0xb7, 0x4c, 0x3f, 0x9a, 0xfc, 0xf7, 0xa4, 0x0f, 0x15,
-	0x26, 0x7d, 0xc8, 0x78, 0x03, 0x8b, 0xe2, 0x25, 0x4e, 0x74, 0x98, 0x0c, 0xd3, 0x11, 0xd1, 0x55,
-	0xaa, 0x82, 0x64, 0x42, 0x1f, 0x9e, 0x6b, 0xc1, 0xfc, 0x37, 0x57, 0x83, 0x58, 0xb6, 0x28, 0x26,
-	0x55, 0x79, 0xaa, 0x40, 0x7e, 0x14, 0x8b, 0x9c, 0x86, 0x3a, 0xae, 0x24, 0x60, 0xfc, 0x15, 0xac,
-	0x1d, 0x78, 0xee, 0xc8, 0x6b, 0x6d, 0xb7, 0xbc, 0x2b, 0xd7, 0xf1, 0x70, 0xb4, 0xeb, 0x16, 0x80,
-	0x78, 0xfc, 0x07, 0x9e, 0xcf, 0x02, 0x75, 0xa1, 0xab, 0x13, 0x95, 0x42, 0x94, 0xce, 0x4e, 0x15,
-	0x24, 0xce, 0xea, 0x63, 0x16, 0xa9, 0xc4, 0x7f, 0xf3, 0xe0, 0xa3, 0xc4, 0x21, 0x38, 0x20, 0x81,
-	0x78, 0x33, 0xaa, 0x66, 0x04, 0x1b, 0x21, 0x2c, 0xee, 0xe0, 0xe1, 0x39, 0x49, 0xb4, 0xbd, 0xaa,
-	0x30, 0x8b, 0x26, 0x09, 0x1a, 0x46, 0x1b, 0x70, 0xcf, 0xa7, 0xa1, 0x4b, 0x06, 0x16, 0x71, 0xf0,
-	0x75, 0xf4, 0x1a, 0xc8, 0xac, 0xb2, 0x22, 0x96, 0x5a, 0x7c, 0x45, 0x3f, 0x08, 0x33, 0xa6, 0x0b,
-	0x7f, 0x9b, 0x83, 0xa5, 0x26, 0x1d, 0x9e, 0xdb, 0x97, 0xd1, 0xce, 0xfc, 0x21, 0x3f, 0xf7, 0x42,
-	0xc7, 0x1a, 0x90, 0xb7, 0x8c, 0xe2, 0xa1, 0xee, 0xa5, 0x6a, 0x12, 0xdb, 0x96, 0x48, 0x9e, 0xaf,
-	0x55, 0xc9, 0x22, 0xdd, 0x35, 0x4a, 0x16, 0x4a, 0xdc, 0xcd, 0x52, 0x45, 0x5e, 0xd6, 0x40, 0x98,
-	0x45, 0x5e, 0x09, 0x48, 0xd4, 0x11, 0x66, 0xe7, 0x86, 0x07, 0x8b, 0xda, 0xf0, 0x53, 0x7a, 0xd2,
-	0x2c, 0x93, 0x7e, 0x03, 0x8b, 0x58, 0xee, 0x27, 0x6f, 0x47, 0x96, 0x5e, 0x6b, 0x29, 0x5d, 0xf4,
-	0xfd, 0x2c, 0xe0, 0x08, 0x0e, 0x0c, 0x1b, 0x6a, 0xaf, 0xa9, 0xcd, 0x08, 0x2f, 0x31, 0xc5, 0x8e,
-	0x5a, 0x7e, 0x2e, 0x21, 0x5f, 0xb4, 0x71, 0x2e, 0xe3, 0xaf, 0xbc, 0xac, 0xae, 0x34, 0x28, 0x52,
-	0x89, 0xef, 0x13, 0xd7, 0x52, 0x6e, 0xa4, 0x20, 0x21, 0x85, 0xd0, 0xb1, 0xd0, 0xa4, 0x66, 0x8a,
-	0xdf, 0xc6, 0x47, 0xb0, 0x9c, 0xa8, 0x28, 0x4f, 0xcc, 0xae, 0xf0, 0x8f, 0x90, 0x3a, 0x51, 0x0d,
-	0xc2, 0x7f, 0x1b, 0xaf, 0x00, 0xba, 0xde, 0xc8, 0x24, 0x3f, 0x87, 0xbc, 0x83, 0x7c, 0x16, 0xbd,
-	0x1d, 0x33, 0xf2, 0x07, 0x7f, 0x54, 0x56, 0x61, 0x7e, 0xe8, 0x85, 0x4a, 0xc3, 0x82, 0x29, 0x01,
-	0x63, 0x0b, 0xaa, 0x5d, 0x6f, 0x74, 0xcc, 0x28, 0xc1, 0x63, 0xbe, 0x9b, 0xe3, 0xc5, 0x15, 0x0f,
-	0xff, 0xcd, 0x71, 0x96, 0xe7, 0xea, 0x4c, 0x28, 0x7e, 0x1b, 0x7f, 0xca, 0xc1, 0x3d, 0x99, 0x6e,
-	0xfa, 0xd4, 0xe6, 0xba, 0x1e, 0x61, 0x8a, 0xc7, 0x22, 0xa5, 0xf9, 0x77, 0x4e, 0x69, 0x71, 0x6e,
-	0x69, 0xc2, 0x72, 0x90, 0x94, 0xd6, 0x69, 0x29, 0x67, 0x79, 0x30, 0x99, 0xdb, 0xa2, 0x65, 0x33,
-	0x4d, 0x6f, 0x7c, 0x00, 0xd5, 0xf6, 0x25, 0x71, 0xd9, 0x8c, 0x74, 0xf7, 0x2d, 0xa0, 0xe3, 0x21,
-	0xb5, 0x7d, 0x66, 0xbb, 0xa3, 0x7d, 0x4c, 0x5d, 0xb9, 0x77, 0xfa, 0xe9, 0x5d, 0x85, 0xf9, 0x80,
-	0xb0, 0xd0, 0x57, 0xe7, 0x95, 0x80, 0xf1, 0x2f, 0x39, 0x58, 0x8b, 0x98, 0x95, 0x9b, 0xec, 0x79,
-	0x0e, 0x76, 0x47, 0xfc, 0x82, 0x47, 0x5e, 0xc2, 0x21, 0x14, 0x24, 0xf1, 0xd4, 0xf3, 0x74, 0x1e,
-	0x53, 0x10, 0x8f, 0x58, 0x1f, 0x0f, 0x2f, 0xf0, 0x28, 0x8e, 0x6e, 0x0d, 0xf3, 0x14, 0x1c, 0x57,
-	0x95, 0xb2, 0x23, 0x8e, 0x11, 0xbc, 0xb2, 0x0b, 0x7d, 0x0b, 0x33, 0x32, 0x88, 0x04, 0xc8, 0x57,
-	0x7d, 0x49, 0xa2, 0x8f, 0x14, 0xd6, 0xf8, 0x9b, 0xfc, 0x4d, 0x6d, 0x8f, 0xae, 0xd9, 0xb9, 0xe7,
-	0xa2, 0x4f, 0xa0, 0x7e, 0x69, 0x53, 0x16, 0x62, 0x87, 0xd7, 0x91, 0x83, 0x84, 0xde, 0x4b, 0x0a,
-	0xdf, 0x76, 0x2f, 0x79, 0xa0, 0xf1, 0x4a, 0x97, 0x92, 0x9f, 0x43, 0x9b, 0x12, 0x5e, 0x07, 0x05,
-	0x83, 0x44, 0x4c, 0xd5, 0x93, 0x0b, 0x82, 0xf8, 0x33, 0x40, 0xa2, 0xbd, 0xf4, 0x29, 0x61, 0x84,
-	0x0e, 0x4e, 0x6d, 0x17, 0xd3, 0x6b, 0x15, 0xbd, 0x2b, 0x89, 0x95, 0x6d, 0xb1, 0x30, 0x61, 0x83,
-	0x62, 0xca, 0x06, 0x1f, 0x42, 0xcd, 0x21, 0x23, 0x3c, 0xbc, 0x1e, 0xf8, 0x42, 0x65, 0x75, 0xc6,
-	0x45, 0x89, 0x54, 0xc7, 0x30, 0xa0, 0x86, 0x2d, 0x4b, 0x8c, 0x70, 0x06, 0x94, 0xfc, 0x1c, 0xa8,
-	0x02, 0x66, 0x01, 0x5b, 0x56, 0x9f, 0x04, 0xcc, 0x24, 0x3f, 0x07, 0xc6, 0xef, 0xe1, 0x41, 0xda,
-	0x08, 0xa6, 0x17, 0x5c, 0x11, 0xc7, 0x99, 0x16, 0xc2, 0xc1, 0x75, 0xc0, 0xc8, 0x58, 0xbf, 0x71,
-	0x1a, 0x14, 0x51, 0x61, 0x07, 0xbe, 0x3a, 0x8e, 0xf8, 0x6d, 0xfc, 0x63, 0x01, 0xea, 0x69, 0xe9,
-	0xe8, 0x6b, 0x7e, 0xe5, 0xdc, 0x29, 0x94, 0xef, 0xc7, 0xd3, 0xf9, 0x4c, 0xd7, 0xd9, 0x9f, 0x33,
-	0x15, 0x3d, 0xe7, 0x54, 0xa7, 0xcd, 0xcf, 0xe6, 0x94, 0xe7, 0xe7, 0x9c, 0x92, 0x1e, 0x7d, 0x07,
-	0x65, 0x2a, 0x4f, 0xa5, 0x92, 0xda, 0x93, 0x69, 0xac, 0xea, 0xf0, 0xfb, 0x73, 0xa6, 0xe6, 0x40,
-	0xaf, 0x26, 0x1b, 0x94, 0xa2, 0xa8, 0xc1, 0x3f, 0x9d, 0x26, 0xe0, 0x96, 0x1e, 0x25, 0xae, 0xcc,
-	0xe7, 0xef, 0x52, 0x99, 0x27, 0xe7, 0xdc, 0xa5, 0xc9, 0x39, 0xf7, 0xff, 0xb6, 0x06, 0xdf, 0x2e,
-	0xab, 0x15, 0xe3, 0x57, 0x09, 0x1f, 0x50, 0x31, 0x6f, 0x86, 0x6e, 0x93, 0x77, 0x72, 0xe9, 0xc0,
-	0xd7, 0xdd, 0x5e, 0x3e, 0xee, 0xf6, 0x8c, 0x9f, 0xe0, 0x61, 0x9a, 0x5d, 0x24, 0xe8, 0x4c, 0x01,
-	0x13, 0xc1, 0x9b, 0x4f, 0x07, 0xaf, 0x16, 0x5f, 0x48, 0x88, 0x1f, 0xc1, 0x7b, 0x99, 0xe2, 0xa3,
-	0x02, 0x75, 0x13, 0xca, 0x9e, 0x2c, 0x97, 0x94, 0x47, 0x35, 0x22, 0x9b, 0xa6, 0xca, 0x29, 0x53,
-	0x13, 0x66, 0x3d, 0x7f, 0xc6, 0xde, 0xcd, 0x8d, 0xcc, 0xd0, 0x95, 0xa8, 0xcc, 0xb3, 0xac, 0x41,
-	0x29, 0x10, 0xab, 0x3a, 0x79, 0x49, 0x88, 0xd7, 0x01, 0x8d, 0xb4, 0x24, 0x1e, 0x70, 0xef, 0x60,
-	0x90, 0x5f, 0xc5, 0x6d, 0x44, 0x61, 0x72, 0x2e, 0x96, 0xb5, 0x41, 0xba, 0xa9, 0x30, 0xfe, 0x39,
-	0x07, 0x8f, 0x66, 0x10, 0x46, 0x93, 0x97, 0x5c, 0x62, 0xf2, 0x92, 0x71, 0xc5, 0x62, 0xa4, 0x89,
-	0x19, 0x23, 0x34, 0xaa, 0xff, 0x14, 0x88, 0xb6, 0xa0, 0xac, 0x9b, 0xd3, 0xa2, 0x1a, 0xfb, 0xa4,
-	0x7b, 0x8c, 0x96, 0x72, 0x58, 0x53, 0x53, 0xc6, 0x8f, 0xec, 0xbc, 0x1c, 0x31, 0xca, 0x47, 0xf6,
-	0xdf, 0x73, 0xb0, 0x9e, 0xa5, 0xac, 0x49, 0x82, 0xd0, 0x61, 0x99, 0xba, 0x26, 0xfb, 0xa2, 0xfc,
-	0xdd, 0xfb, 0xa2, 0x97, 0x89, 0xa8, 0x2a, 0xdc, 0xa6, 0x75, 0xfc, 0x61, 0xa9, 0x11, 0x3b, 0x9a,
-	0x7c, 0x76, 0x34, 0x68, 0xfc, 0x5d, 0x0e, 0x1e, 0x4f, 0x51, 0xfd, 0xdd, 0x7d, 0xf4, 0x97, 0x50,
-	0xa6, 0xe2, 0xe8, 0xf2, 0x2e, 0x16, 0x36, 0x8d, 0x59, 0x77, 0x2f, 0xad, 0x64, 0x6a, 0x16, 0xe3,
-	0x27, 0x58, 0xeb, 0x7a, 0xa3, 0x91, 0xed, 0x8e, 0x44, 0x29, 0x2c, 0xbb, 0x4e, 0xe1, 0x81, 0x59,
-	0x86, 0x4c, 0xb4, 0xab, 0xf9, 0x59, 0x79, 0x29, 0xf2, 0xac, 0x8f, 0xa1, 0x9e, 0x14, 0x3f, 0x4d,
-	0xb0, 0xf1, 0xaf, 0x39, 0x58, 0x4d, 0x12, 0x76, 0xdc, 0x80, 0x61, 0x77, 0xf8, 0x6e, 0x16, 0x91,
-	0xb1, 0x93, 0x8f, 0x62, 0xa7, 0x01, 0xe5, 0x31, 0x76, 0xf1, 0x48, 0x7d, 0x74, 0xa8, 0x9a, 0x1a,
-	0x44, 0xff, 0x1f, 0x2a, 0x58, 0xf4, 0x49, 0xc4, 0x52, 0x7e, 0x39, 0xcb, 0x31, 0x22, 0x5a, 0xe3,
-	0xcd, 0xe4, 0xb1, 0xc4, 0x6c, 0xf8, 0xff, 0x42, 0x53, 0x04, 0xc5, 0x44, 0xc7, 0x20, 0x7e, 0x1b,
-	0x2d, 0x40, 0x6a, 0xaf, 0x23, 0x7c, 0xcd, 0x4b, 0xf5, 0x16, 0x66, 0x18, 0x21, 0x28, 0x8c, 0x03,
-	0xf9, 0x36, 0x56, 0xf7, 0xe7, 0x4c, 0x0e, 0x70, 0x1c, 0xc5, 0x57, 0xb2, 0x68, 0xd6, 0x9f, 0x5f,
-	0x4b, 0x50, 0xb4, 0x30, 0xc3, 0xc6, 0x3f, 0xe4, 0x61, 0x69, 0x52, 0x0c, 0x7f, 0x34, 0xe4, 0xfc,
-	0x31, 0x6a, 0x51, 0x23, 0x58, 0x14, 0x15, 0xd4, 0xf6, 0xa8, 0xcd, 0xae, 0xd5, 0x07, 0xd8, 0x08,
-	0x46, 0x5f, 0xa6, 0x3e, 0x5b, 0x3e, 0x4e, 0x4e, 0x33, 0x63, 0xf9, 0xa9, 0x66, 0xe4, 0x21, 0x54,
-	0xec, 0x60, 0x30, 0x0e, 0x1d, 0x66, 0xeb, 0xe1, 0x8a, 0x1d, 0x1c, 0x70, 0x10, 0xbd, 0x80, 0x55,
-	0x9f, 0x12, 0x31, 0x79, 0x27, 0xae, 0x15, 0xcf, 0x26, 0x65, 0xb1, 0xb2, 0x22, 0xd7, 0x8e, 0x89,
-	0x6b, 0xe9, 0xb9, 0xe4, 0x07, 0xb0, 0xc8, 0x2b, 0x96, 0x31, 0x61, 0x58, 0x0c, 0x61, 0xe3, 0x82,
-	0xe5, 0x40, 0xa1, 0xd0, 0x86, 0x3c, 0xb7, 0x1a, 0xbb, 0xad, 0x67, 0xab, 0xc8, 0x2d, 0x69, 0x0a,
-	0xba, 0xe7, 0x7f, 0x10, 0xa5, 0xbb, 0xd4, 0x19, 0xad, 0x42, 0xbd, 0x7b, 0xb8, 0xb7, 0x7b, 0x68,
-	0x1e, 0x34, 0xfb, 0x27, 0xbd, 0x57, 0xbd, 0xc3, 0xd7, 0xbd, 0xfa, 0xdc, 0x04, 0xb6, 0xd5, 0xde,
-	0x6d, 0x9e, 0x74, 0xfb, 0xf5, 0x1c, 0x5a, 0x81, 0x5a, 0x84, 0xfd, 0xed, 0xf1, 0x61, 0xaf, 0x9e,
-	0x47, 0x08, 0x96, 0x22, 0xd4, 0x51, 0xb7, 0xd9, 0xe9, 0xd5, 0x0b, 0xcf, 0xaf, 0xe0, 0x7e, 0xe6,
-	0x5c, 0x19, 0xbd, 0x07, 0x0f, 0xcd, 0xe6, 0xeb, 0xee, 0xe1, 0xde, 0x5e, 0xdb, 0xdc, 0x39, 0xec,
-	0xed, 0x76, 0x92, 0xb2, 0xe6, 0xa6, 0x2e, 0x6f, 0xf3, 0xe5, 0x1c, 0x7a, 0x0a, 0x8f, 0x33, 0x97,
-	0xb5, 0xd6, 0xf9, 0xe7, 0xbf, 0x83, 0xd5, 0xac, 0x41, 0x0a, 0x2a, 0x43, 0xa1, 0xd9, 0xed, 0xd6,
-	0xe7, 0xd0, 0x02, 0x94, 0xcd, 0x93, 0x5e, 0xaf, 0xd3, 0xdb, 0xab, 0xe7, 0xd0, 0x12, 0x40, 0xbf,
-	0x6d, 0x1e, 0x74, 0x7a, 0xcd, 0x7e, 0xbb, 0x55, 0xcf, 0x23, 0x80, 0xd2, 0x6e, 0xb3, 0xd3, 0x6d,
-	0xb7, 0xea, 0x05, 0xbe, 0x76, 0x7c, 0xb2, 0xb3, 0xd3, 0x3e, 0x3e, 0xde, 0x3d, 0xe9, 0xd6, 0x8b,
-	0xcf, 0x09, 0x94, 0xd5, 0x98, 0x84, 0xcb, 0x88, 0xed, 0x54, 0x83, 0x6a, 0x24, 0xa3, 0x9e, 0x43,
-	0x15, 0x28, 0xbe, 0xea, 0x74, 0xbb, 0x52, 0xd8, 0x7e, 0xb3, 0xb7, 0x77, 0x72, 0x54, 0x2f, 0x70,
-	0x6c, 0xa7, 0xd7, 0xe9, 0xd7, 0x8b, 0xa8, 0x0a, 0xf3, 0x27, 0xc7, 0x6d, 0xf3, 0x8b, 0xfa, 0xbc,
-	0xfe, 0xb9, 0x59, 0x2f, 0xf1, 0xf5, 0xe6, 0xb6, 0xd9, 0xaf, 0x97, 0x9f, 0xff, 0x00, 0xb5, 0x89,
-	0xf6, 0x96, 0x9b, 0xb7, 0x69, 0xee, 0xec, 0x77, 0x7e, 0x68, 0xc7, 0x7b, 0x2e, 0xc3, 0x82, 0xc2,
-	0x35, 0x4f, 0xfa, 0x87, 0xf5, 0x1c, 0xaa, 0xc3, 0xa2, 0x42, 0xf4, 0x9b, 0xe6, 0xde, 0x8f, 0xf5,
-	0x3c, 0x57, 0x5f, 0x61, 0x7e, 0xec, 0x1c, 0xd5, 0x0b, 0xcf, 0xbf, 0x80, 0xe5, 0x54, 0x27, 0xc4,
-	0x37, 0xed, 0x1d, 0xf6, 0xda, 0xf2, 0xae, 0x77, 0xba, 0xed, 0x66, 0x4f, 0x1f, 0xa4, 0xc3, 0xad,
-	0xfd, 0xfc, 0xf7, 0x51, 0x92, 0x9a, 0xf0, 0x71, 0xee, 0x03, 0x09, 0xb3, 0xf7, 0x5e, 0xd7, 0xe7,
-	0xf8, 0x6e, 0x13, 0x17, 0x15, 0xc1, 0xca, 0x47, 0xea, 0xb0, 0x28, 0xe1, 0xe3, 0xbe, 0xc9, 0x4d,
-	0x5f, 0xd8, 0xfc, 0xb7, 0x7b, 0xb0, 0x3a, 0xd1, 0xd7, 0x1d, 0xa8, 0x24, 0xf5, 0x39, 0xe4, 0x3b,
-	0x2d, 0xb4, 0x76, 0x23, 0x31, 0xb5, 0xc7, 0x3e, 0xbb, 0x5e, 0x8f, 0x3e, 0xef, 0x26, 0x06, 0xa5,
-	0x5f, 0x42, 0x49, 0x26, 0x72, 0x94, 0x3d, 0x4e, 0x5c, 0x8f, 0x3e, 0x56, 0x26, 0x07, 0xa7, 0x9f,
-	0x41, 0xb1, 0x6b, 0x07, 0x0c, 0x2d, 0x4d, 0x0e, 0xe0, 0x32, 0x89, 0x3f, 0xcf, 0xa1, 0x17, 0x30,
-	0xbf, 0x47, 0xbd, 0xd0, 0x47, 0xd1, 0xd0, 0x4c, 0x4d, 0xc8, 0xa6, 0x31, 0x6c, 0x41, 0x61, 0x8f,
-	0x30, 0x34, 0xad, 0x89, 0xcd, 0x56, 0xea, 0x1b, 0x28, 0xc9, 0x5b, 0x8a, 0x8f, 0x32, 0x31, 0xf9,
-	0x5b, 0x9f, 0x9a, 0x65, 0xd1, 0x37, 0x30, 0xbf, 0xe3, 0x10, 0x4c, 0xa7, 0x9a, 0xee, 0x16, 0x56,
-	0x2f, 0x20, 0xef, 0xc0, 0xfa, 0x1d, 0x40, 0x1f, 0x8f, 0xf4, 0x5c, 0x32, 0x7d, 0xa6, 0x3e, 0x1e,
-	0xcd, 0x52, 0xf9, 0x7b, 0xa8, 0x9a, 0x24, 0x20, 0x4c, 0xcc, 0x10, 0xa7, 0x1a, 0x6a, 0x3a, 0xff,
-	0x57, 0x50, 0xde, 0xbb, 0x8d, 0x3b, 0x4b, 0x25, 0x74, 0x04, 0x0f, 0x4c, 0x32, 0xb2, 0x03, 0x9e,
-	0x27, 0x52, 0x41, 0xf1, 0x28, 0x73, 0x6e, 0x20, 0x87, 0x14, 0x33, 0x4d, 0x58, 0x7c, 0x8d, 0x6d,
-	0xf6, 0x8e, 0xa7, 0xe0, 0xae, 0x8c, 0xaf, 0xdc, 0x3f, 0xd3, 0x59, 0x7a, 0x89, 0x56, 0x5d, 0xd5,
-	0x3c, 0x2a, 0x0e, 0x1a, 0xd3, 0xfa, 0xb0, 0xf5, 0xf5, 0x69, 0xd5, 0x52, 0xa7, 0x85, 0x0e, 0xe0,
-	0xfe, 0x0d, 0x79, 0xe2, 0x5b, 0xed, 0x0c, 0xa6, 0x19, 0xe7, 0xca, 0x10, 0x77, 0x4c, 0x58, 0xe8,
-	0xbf, 0xa3, 0xb8, 0xc3, 0x9b, 0xfd, 0x18, 0xf7, 0x77, 0xf7, 0x9d, 0x05, 0x1e, 0xc1, 0xbd, 0x8c,
-	0xce, 0x06, 0x3d, 0x99, 0x26, 0x4c, 0x75, 0x7f, 0x33, 0x24, 0xe2, 0x9b, 0x27, 0x16, 0x4d, 0x19,
-	0xfa, 0x60, 0x9a, 0xcc, 0xa8, 0x25, 0x5c, 0xff, 0x68, 0x26, 0x49, 0x94, 0xeb, 0xfe, 0xe2, 0x66,
-	0x5b, 0x19, 0xb5, 0x63, 0xe8, 0xa3, 0x19, 0xaa, 0xc7, 0x1d, 0xdb, 0x8c, 0x03, 0xfc, 0x01, 0x56,
-	0xb3, 0xaa, 0x68, 0xf4, 0x74, 0x56, 0x8d, 0x2d, 0x64, 0xfe, 0xbf, 0x5b, 0xaa, 0x70, 0xa9, 0xbd,
-	0x19, 0x15, 0x77, 0x89, 0xf2, 0x1b, 0xbd, 0x9f, 0x2a, 0x57, 0x52, 0xa5, 0xf9, 0xfa, 0xe3, 0xac,
-	0xf5, 0xa8, 0x64, 0xee, 0xc0, 0x72, 0x12, 0xcf, 0x73, 0x6e, 0x23, 0x8b, 0xe1, 0x0e, 0xa2, 0xf6,
-	0x27, 0xd5, 0x33, 0xc9, 0xd8, 0xbb, 0x24, 0x33, 0xa4, 0x4d, 0x37, 0xe4, 0xce, 0xa4, 0x52, 0x5d,
-	0xe2, 0xde, 0x9e, 0x5b, 0x6f, 0x94, 0xd8, 0x1d, 0x58, 0x49, 0xe2, 0x8e, 0x68, 0xe8, 0x12, 0x34,
-	0xa3, 0x62, 0x9f, 0xa1, 0xcf, 0xd7, 0x50, 0x92, 0x1f, 0xb0, 0xa6, 0xaa, 0x11, 0x0d, 0xb4, 0x53,
-	0x1f, 0xba, 0x7e, 0x03, 0x4b, 0xb2, 0x80, 0x0b, 0x29, 0x11, 0x6a, 0xa0, 0xe8, 0xc3, 0x44, 0xf2,
-	0x6b, 0xc2, 0xcc, 0x2c, 0x1f, 0x8d, 0xdd, 0xc5, 0xbf, 0x61, 0x44, 0xfc, 0xc9, 0x61, 0xfc, 0x0c,
-	0xfe, 0x57, 0xb0, 0xac, 0x29, 0xd5, 0xe7, 0x93, 0xd8, 0x63, 0xb2, 0xbf, 0xa7, 0xcc, 0x10, 0xf6,
-	0x12, 0x16, 0xf7, 0x08, 0x4b, 0x8c, 0xad, 0x13, 0xd6, 0x57, 0x63, 0xf1, 0xf5, 0xe4, 0xbf, 0xe8,
-	0x28, 0xb2, 0x5d, 0x40, 0x7b, 0x84, 0xa5, 0x27, 0xec, 0x53, 0xd3, 0xf5, 0x83, 0x8c, 0xff, 0xf2,
-	0x10, 0x1c, 0xdf, 0xc2, 0x82, 0x7c, 0x57, 0xc4, 0xc4, 0x19, 0x45, 0x3b, 0x45, 0x03, 0xe8, 0xd9,
-	0xaf, 0x65, 0xf4, 0x35, 0x21, 0x2e, 0x0f, 0x26, 0x3e, 0x30, 0x4c, 0xe7, 0xfe, 0x24, 0x87, 0x7e,
-	0x03, 0x8b, 0xbc, 0xab, 0x38, 0x20, 0x41, 0x20, 0xa6, 0xa5, 0x6b, 0xd9, 0x5d, 0xc2, 0x74, 0x19,
-	0xdb, 0xf0, 0x63, 0x45, 0x0c, 0x64, 0x5d, 0xec, 0x9c, 0x96, 0x84, 0xff, 0x6c, 0xfd, 0x4f, 0x00,
-	0x00, 0x00, 0xff, 0xff, 0xd6, 0xe5, 0x53, 0x2f, 0x85, 0x2d, 0x00, 0x00,
+	proto.RegisterEnum("jasper.LogType", LogType_name, LogType_value)
+	proto.RegisterEnum("jasper.LogFormat", LogFormat_name, LogFormat_value)
+	proto.RegisterEnum("jasper.FilterSpecifications", FilterSpecifications_name, FilterSpecifications_value)
+	proto.RegisterEnum("jasper.Signals", Signals_name, Signals_value)
+	proto.RegisterEnum("jasper.ArchiveFormat", ArchiveFormat_name, ArchiveFormat_value)
+	proto.RegisterEnum("jasper.SignalTriggerID", SignalTriggerID_name, SignalTriggerID_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -4115,13 +2763,7 @@ type JasperProcessManagerClient interface {
 	ScriptingHarnessBuild(ctx context.Context, in *ScriptingHarnessBuildArgs, opts ...grpc.CallOption) (*ScriptingHarnessBuildResponse, error)
 	ScriptingHarnessRunScript(ctx context.Context, in *ScriptingHarnessRunScriptArgs, opts ...grpc.CallOption) (*OperationOutcome, error)
 	ScriptingHarnessTest(ctx context.Context, in *ScriptingHarnessTestArgs, opts ...grpc.CallOption) (*ScriptingHarnessTestResponse, error)
-	// Logging functions
-	LoggingCacheCreate(ctx context.Context, in *LoggingCacheCreateArgs, opts ...grpc.CallOption) (*LoggingCacheInstance, error)
-	LoggingCacheGet(ctx context.Context, in *LoggingCacheArgs, opts ...grpc.CallOption) (*LoggingCacheInstance, error)
-	LoggingCacheRemove(ctx context.Context, in *LoggingCacheArgs, opts ...grpc.CallOption) (*OperationOutcome, error)
-	LoggingCacheLen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*LoggingCacheSize, error)
-	LoggingCachePrune(ctx context.Context, in *timestamp.Timestamp, opts ...grpc.CallOption) (*OperationOutcome, error)
-	// Remote specific functions
+	// RPC-specific functions
 	Status(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 	ConfigureCache(ctx context.Context, in *CacheOptions, opts ...grpc.CallOption) (*OperationOutcome, error)
 	DownloadFile(ctx context.Context, in *DownloadInfo, opts ...grpc.CallOption) (*OperationOutcome, error)
@@ -4130,7 +2772,6 @@ type JasperProcessManagerClient interface {
 	GetBuildloggerURLs(ctx context.Context, in *JasperProcessID, opts ...grpc.CallOption) (*BuildloggerURLs, error)
 	SignalEvent(ctx context.Context, in *EventName, opts ...grpc.CallOption) (*OperationOutcome, error)
 	WriteFile(ctx context.Context, opts ...grpc.CallOption) (JasperProcessManager_WriteFileClient, error)
-	SendMessages(ctx context.Context, in *LoggingPayload, opts ...grpc.CallOption) (*OperationOutcome, error)
 }
 
 type jasperProcessManagerClient struct {
@@ -4385,51 +3026,6 @@ func (c *jasperProcessManagerClient) ScriptingHarnessTest(ctx context.Context, i
 	return out, nil
 }
 
-func (c *jasperProcessManagerClient) LoggingCacheCreate(ctx context.Context, in *LoggingCacheCreateArgs, opts ...grpc.CallOption) (*LoggingCacheInstance, error) {
-	out := new(LoggingCacheInstance)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/LoggingCacheCreate", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jasperProcessManagerClient) LoggingCacheGet(ctx context.Context, in *LoggingCacheArgs, opts ...grpc.CallOption) (*LoggingCacheInstance, error) {
-	out := new(LoggingCacheInstance)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/LoggingCacheGet", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jasperProcessManagerClient) LoggingCacheRemove(ctx context.Context, in *LoggingCacheArgs, opts ...grpc.CallOption) (*OperationOutcome, error) {
-	out := new(OperationOutcome)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/LoggingCacheRemove", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jasperProcessManagerClient) LoggingCacheLen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*LoggingCacheSize, error) {
-	out := new(LoggingCacheSize)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/LoggingCacheLen", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jasperProcessManagerClient) LoggingCachePrune(ctx context.Context, in *timestamp.Timestamp, opts ...grpc.CallOption) (*OperationOutcome, error) {
-	out := new(OperationOutcome)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/LoggingCachePrune", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *jasperProcessManagerClient) Status(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/Status", in, out, opts...)
@@ -4527,15 +3123,6 @@ func (x *jasperProcessManagerWriteFileClient) CloseAndRecv() (*OperationOutcome,
 	return m, nil
 }
 
-func (c *jasperProcessManagerClient) SendMessages(ctx context.Context, in *LoggingPayload, opts ...grpc.CallOption) (*OperationOutcome, error) {
-	out := new(OperationOutcome)
-	err := c.cc.Invoke(ctx, "/jasper.JasperProcessManager/SendMessages", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // JasperProcessManagerServer is the server API for JasperProcessManager service.
 type JasperProcessManagerServer interface {
 	// Manager functions
@@ -4563,13 +3150,7 @@ type JasperProcessManagerServer interface {
 	ScriptingHarnessBuild(context.Context, *ScriptingHarnessBuildArgs) (*ScriptingHarnessBuildResponse, error)
 	ScriptingHarnessRunScript(context.Context, *ScriptingHarnessRunScriptArgs) (*OperationOutcome, error)
 	ScriptingHarnessTest(context.Context, *ScriptingHarnessTestArgs) (*ScriptingHarnessTestResponse, error)
-	// Logging functions
-	LoggingCacheCreate(context.Context, *LoggingCacheCreateArgs) (*LoggingCacheInstance, error)
-	LoggingCacheGet(context.Context, *LoggingCacheArgs) (*LoggingCacheInstance, error)
-	LoggingCacheRemove(context.Context, *LoggingCacheArgs) (*OperationOutcome, error)
-	LoggingCacheLen(context.Context, *empty.Empty) (*LoggingCacheSize, error)
-	LoggingCachePrune(context.Context, *timestamp.Timestamp) (*OperationOutcome, error)
-	// Remote specific functions
+	// RPC-specific functions
 	Status(context.Context, *empty.Empty) (*StatusResponse, error)
 	ConfigureCache(context.Context, *CacheOptions) (*OperationOutcome, error)
 	DownloadFile(context.Context, *DownloadInfo) (*OperationOutcome, error)
@@ -4578,120 +3159,6 @@ type JasperProcessManagerServer interface {
 	GetBuildloggerURLs(context.Context, *JasperProcessID) (*BuildloggerURLs, error)
 	SignalEvent(context.Context, *EventName) (*OperationOutcome, error)
 	WriteFile(JasperProcessManager_WriteFileServer) error
-	SendMessages(context.Context, *LoggingPayload) (*OperationOutcome, error)
-}
-
-// UnimplementedJasperProcessManagerServer can be embedded to have forward compatible implementations.
-type UnimplementedJasperProcessManagerServer struct {
-}
-
-func (*UnimplementedJasperProcessManagerServer) ID(ctx context.Context, req *empty.Empty) (*IDResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ID not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Create(ctx context.Context, req *CreateOptions) (*ProcessInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) List(req *Filter, srv JasperProcessManager_ListServer) error {
-	return status.Errorf(codes.Unimplemented, "method List not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Group(req *TagName, srv JasperProcessManager_GroupServer) error {
-	return status.Errorf(codes.Unimplemented, "method Group not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Get(ctx context.Context, req *JasperProcessID) (*ProcessInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Signal(ctx context.Context, req *SignalProcess) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Clear(ctx context.Context, req *empty.Empty) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Clear not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Close(ctx context.Context, req *empty.Empty) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Close not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) TagProcess(ctx context.Context, req *ProcessTags) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TagProcess not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ResetTags(ctx context.Context, req *JasperProcessID) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetTags not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) GetTags(ctx context.Context, req *JasperProcessID) (*ProcessTags, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTags not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) RegisterSignalTriggerID(ctx context.Context, req *SignalTriggerParams) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterSignalTriggerID not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Wait(ctx context.Context, req *JasperProcessID) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Wait not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Respawn(ctx context.Context, req *JasperProcessID) (*ProcessInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Respawn not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessCreate(ctx context.Context, req *ScriptingOptions) (*ScriptingHarnessID, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessCreate not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessCheck(ctx context.Context, req *ScriptingHarnessID) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessCheck not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessSetup(ctx context.Context, req *ScriptingHarnessID) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessSetup not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessCleanup(ctx context.Context, req *ScriptingHarnessID) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessCleanup not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessRun(ctx context.Context, req *ScriptingHarnessRunArgs) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessRun not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessBuild(ctx context.Context, req *ScriptingHarnessBuildArgs) (*ScriptingHarnessBuildResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessBuild not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessRunScript(ctx context.Context, req *ScriptingHarnessRunScriptArgs) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessRunScript not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ScriptingHarnessTest(ctx context.Context, req *ScriptingHarnessTestArgs) (*ScriptingHarnessTestResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScriptingHarnessTest not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) LoggingCacheCreate(ctx context.Context, req *LoggingCacheCreateArgs) (*LoggingCacheInstance, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoggingCacheCreate not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) LoggingCacheGet(ctx context.Context, req *LoggingCacheArgs) (*LoggingCacheInstance, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoggingCacheGet not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) LoggingCacheRemove(ctx context.Context, req *LoggingCacheArgs) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoggingCacheRemove not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) LoggingCacheLen(ctx context.Context, req *empty.Empty) (*LoggingCacheSize, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoggingCacheLen not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) LoggingCachePrune(ctx context.Context, req *timestamp.Timestamp) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoggingCachePrune not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) Status(ctx context.Context, req *empty.Empty) (*StatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) ConfigureCache(ctx context.Context, req *CacheOptions) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ConfigureCache not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) DownloadFile(ctx context.Context, req *DownloadInfo) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) DownloadMongoDB(ctx context.Context, req *MongoDBDownloadOptions) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadMongoDB not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) GetLogStream(ctx context.Context, req *LogRequest) (*LogStream, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLogStream not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) GetBuildloggerURLs(ctx context.Context, req *JasperProcessID) (*BuildloggerURLs, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetBuildloggerURLs not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) SignalEvent(ctx context.Context, req *EventName) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignalEvent not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) WriteFile(srv JasperProcessManager_WriteFileServer) error {
-	return status.Errorf(codes.Unimplemented, "method WriteFile not implemented")
-}
-func (*UnimplementedJasperProcessManagerServer) SendMessages(ctx context.Context, req *LoggingPayload) (*OperationOutcome, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendMessages not implemented")
 }
 
 func RegisterJasperProcessManagerServer(s *grpc.Server, srv JasperProcessManagerServer) {
@@ -5100,96 +3567,6 @@ func _JasperProcessManager_ScriptingHarnessTest_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JasperProcessManager_LoggingCacheCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoggingCacheCreateArgs)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).LoggingCacheCreate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/LoggingCacheCreate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).LoggingCacheCreate(ctx, req.(*LoggingCacheCreateArgs))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JasperProcessManager_LoggingCacheGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoggingCacheArgs)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).LoggingCacheGet(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/LoggingCacheGet",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).LoggingCacheGet(ctx, req.(*LoggingCacheArgs))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JasperProcessManager_LoggingCacheRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoggingCacheArgs)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).LoggingCacheRemove(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/LoggingCacheRemove",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).LoggingCacheRemove(ctx, req.(*LoggingCacheArgs))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JasperProcessManager_LoggingCacheLen_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).LoggingCacheLen(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/LoggingCacheLen",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).LoggingCacheLen(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JasperProcessManager_LoggingCachePrune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(timestamp.Timestamp)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).LoggingCachePrune(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/LoggingCachePrune",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).LoggingCachePrune(ctx, req.(*timestamp.Timestamp))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _JasperProcessManager_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -5342,24 +3719,6 @@ func (x *jasperProcessManagerWriteFileServer) Recv() (*WriteFileInfo, error) {
 	return m, nil
 }
 
-func _JasperProcessManager_SendMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoggingPayload)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JasperProcessManagerServer).SendMessages(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/jasper.JasperProcessManager/SendMessages",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JasperProcessManagerServer).SendMessages(ctx, req.(*LoggingPayload))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _JasperProcessManager_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "jasper.JasperProcessManager",
 	HandlerType: (*JasperProcessManagerServer)(nil),
@@ -5445,26 +3804,6 @@ var _JasperProcessManager_serviceDesc = grpc.ServiceDesc{
 			Handler:    _JasperProcessManager_ScriptingHarnessTest_Handler,
 		},
 		{
-			MethodName: "LoggingCacheCreate",
-			Handler:    _JasperProcessManager_LoggingCacheCreate_Handler,
-		},
-		{
-			MethodName: "LoggingCacheGet",
-			Handler:    _JasperProcessManager_LoggingCacheGet_Handler,
-		},
-		{
-			MethodName: "LoggingCacheRemove",
-			Handler:    _JasperProcessManager_LoggingCacheRemove_Handler,
-		},
-		{
-			MethodName: "LoggingCacheLen",
-			Handler:    _JasperProcessManager_LoggingCacheLen_Handler,
-		},
-		{
-			MethodName: "LoggingCachePrune",
-			Handler:    _JasperProcessManager_LoggingCachePrune_Handler,
-		},
-		{
 			MethodName: "Status",
 			Handler:    _JasperProcessManager_Status_Handler,
 		},
@@ -5492,10 +3831,6 @@ var _JasperProcessManager_serviceDesc = grpc.ServiceDesc{
 			MethodName: "SignalEvent",
 			Handler:    _JasperProcessManager_SignalEvent_Handler,
 		},
-		{
-			MethodName: "SendMessages",
-			Handler:    _JasperProcessManager_SendMessages_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -5515,4 +3850,199 @@ var _JasperProcessManager_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Metadata: "jasper.proto",
+}
+
+func init() { proto.RegisterFile("jasper.proto", fileDescriptor_jasper_28ae5a6dc2b680f4) }
+
+var fileDescriptor_jasper_28ae5a6dc2b680f4 = []byte{
+	// 3017 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x39, 0x4d, 0x73, 0x1b, 0xc7,
+	0xb1, 0x02, 0x41, 0x7c, 0x35, 0x08, 0x72, 0x35, 0xa2, 0x29, 0x98, 0xd2, 0xb3, 0xe4, 0xf5, 0x93,
+	0x45, 0xeb, 0x95, 0x25, 0x9b, 0xb2, 0xcb, 0xb6, 0xfc, 0xf1, 0x1e, 0x48, 0x80, 0x10, 0x2c, 0x10,
+	0xe0, 0x5b, 0x80, 0x76, 0xe2, 0xc4, 0x46, 0x0d, 0xb1, 0x43, 0x70, 0xad, 0xc5, 0xce, 0x7a, 0x76,
+	0x96, 0x12, 0x5d, 0x95, 0x73, 0x72, 0x4b, 0xfe, 0x41, 0x2e, 0x3e, 0xe5, 0x9e, 0xaa, 0x5c, 0x72,
+	0xcc, 0x4f, 0x4a, 0x2e, 0xb9, 0xa4, 0xe6, 0x6b, 0xb1, 0x00, 0x01, 0xd0, 0x51, 0x4e, 0xd8, 0xee,
+	0xe9, 0xee, 0xe9, 0xe9, 0xaf, 0xe9, 0x69, 0xc0, 0xda, 0xf7, 0x38, 0x0a, 0x09, 0x7b, 0x18, 0x32,
+	0xca, 0x29, 0xca, 0x2b, 0x68, 0xfb, 0xd6, 0x88, 0xd2, 0x91, 0x4f, 0x1e, 0x49, 0xec, 0x49, 0x7c,
+	0xfa, 0x88, 0x8c, 0x43, 0x7e, 0xa1, 0x88, 0xb6, 0xef, 0xcc, 0x2e, 0x72, 0x6f, 0x4c, 0x22, 0x8e,
+	0xc7, 0xa1, 0x26, 0x78, 0x63, 0x96, 0xc0, 0x8d, 0x19, 0xe6, 0x1e, 0x0d, 0xd4, 0xba, 0xed, 0x41,
+	0xbe, 0x4d, 0x47, 0x23, 0xc2, 0xd0, 0x03, 0x28, 0xfa, 0x74, 0x34, 0xe0, 0x17, 0x21, 0xa9, 0x66,
+	0xee, 0x66, 0x76, 0xd6, 0x77, 0x37, 0x1e, 0x6a, 0x85, 0xda, 0x74, 0xd4, 0xbf, 0x08, 0x89, 0x53,
+	0xf0, 0xd5, 0x07, 0x7a, 0x0c, 0x65, 0x41, 0x4b, 0x43, 0x21, 0x29, 0xaa, 0xae, 0xdc, 0xcd, 0xec,
+	0x94, 0x77, 0x51, 0x8a, 0xbc, 0xab, 0x56, 0x1c, 0xf0, 0x93, 0x6f, 0xfb, 0x9f, 0x19, 0xa8, 0x74,
+	0x63, 0x1e, 0xc6, 0x5c, 0x63, 0xd0, 0x0e, 0x08, 0x89, 0x23, 0xc2, 0xa2, 0x6a, 0xe6, 0x6e, 0x76,
+	0xa7, 0xbc, 0xbb, 0x9e, 0x12, 0x31, 0x22, 0xcc, 0x31, 0xcb, 0xe8, 0x3e, 0x6c, 0x44, 0x71, 0x18,
+	0x32, 0x12, 0x45, 0x03, 0x2a, 0x65, 0xc8, 0x4d, 0x8b, 0xce, 0xba, 0x41, 0x2b, 0xc9, 0xe8, 0x1e,
+	0x24, 0x98, 0x01, 0x61, 0x8c, 0xb2, 0x6a, 0x56, 0xd2, 0x55, 0x0c, 0xb6, 0x21, 0x90, 0xe8, 0x23,
+	0xa8, 0x32, 0xe2, 0x7a, 0x8c, 0x0c, 0xb9, 0x96, 0x37, 0xe0, 0x54, 0x33, 0xac, 0x4a, 0x86, 0xd7,
+	0xcc, 0xba, 0x12, 0xdc, 0xa7, 0x97, 0x19, 0x25, 0xb9, 0xe0, 0xd3, 0x1a, 0xe5, 0xa6, 0x19, 0x25,
+	0x43, 0x9f, 0x2a, 0x7e, 0xfb, 0xcf, 0x59, 0x80, 0x89, 0x61, 0xd0, 0x67, 0xb0, 0x7e, 0x12, 0x9f,
+	0x9e, 0x12, 0x96, 0x18, 0x31, 0x23, 0x8d, 0xf8, 0x9a, 0xb1, 0xc0, 0x9e, 0x5c, 0x35, 0x76, 0xac,
+	0x9c, 0xa4, 0x41, 0xf4, 0x0c, 0x6e, 0x9c, 0xc4, 0x9e, 0xef, 0x2a, 0xf3, 0xcc, 0xf8, 0x61, 0x7b,
+	0x22, 0x22, 0x21, 0x31, 0x72, 0xd0, 0xc9, 0x25, 0x9c, 0x30, 0x99, 0x4b, 0x4e, 0x71, 0xec, 0xf3,
+	0x41, 0xc8, 0xc8, 0xa9, 0xf7, 0x52, 0x9a, 0xac, 0xe4, 0x54, 0x34, 0xf6, 0x48, 0x22, 0xd1, 0x2d,
+	0x28, 0x9d, 0x7a, 0x3e, 0x19, 0x04, 0x78, 0x4c, 0xa4, 0x8d, 0x4a, 0x4e, 0x51, 0x20, 0x3a, 0x78,
+	0x4c, 0xd0, 0x3b, 0x90, 0x3f, 0xa5, 0x6c, 0x8c, 0x95, 0x11, 0xd6, 0x77, 0xaf, 0xa7, 0x1c, 0x79,
+	0x20, 0x17, 0x1c, 0x4d, 0x80, 0x6c, 0xa8, 0x78, 0xc1, 0x60, 0x4c, 0xc6, 0x94, 0x5d, 0x0c, 0x86,
+	0x38, 0xac, 0xe6, 0xef, 0x66, 0x76, 0xb2, 0x4e, 0xd9, 0x0b, 0x0e, 0x25, 0x6e, 0x1f, 0x87, 0xc2,
+	0x3a, 0x51, 0xe8, 0xc7, 0xc1, 0xf3, 0xe4, 0x68, 0x85, 0x69, 0xeb, 0xf4, 0xe4, 0x6a, 0x62, 0x9d,
+	0x28, 0x0d, 0xa2, 0xb7, 0xa0, 0x12, 0xc5, 0x63, 0x3a, 0x20, 0x81, 0x1b, 0x52, 0x2f, 0xe0, 0xd5,
+	0xa2, 0xd4, 0x76, 0x4d, 0x20, 0x1b, 0x1a, 0x87, 0xde, 0x86, 0x9c, 0x4f, 0xce, 0x89, 0x5f, 0x2d,
+	0x49, 0xc9, 0x56, 0x4a, 0xe1, 0xb6, 0xc0, 0x3b, 0x6a, 0xd9, 0x3e, 0x81, 0xca, 0x94, 0x2b, 0xd0,
+	0x36, 0x14, 0x95, 0x33, 0x88, 0x2b, 0x7d, 0x56, 0x74, 0x12, 0x58, 0xac, 0x99, 0xfc, 0x92, 0xce,
+	0xc8, 0x3a, 0x09, 0x8c, 0x5e, 0x87, 0xe2, 0x18, 0xbf, 0x1c, 0x44, 0xde, 0x8f, 0x44, 0x1a, 0x38,
+	0xeb, 0x14, 0xc6, 0xf8, 0x65, 0xcf, 0xfb, 0x91, 0xd8, 0x7f, 0xcd, 0x00, 0xba, 0xec, 0x2c, 0x74,
+	0x07, 0xca, 0x43, 0x46, 0x30, 0x27, 0x03, 0x4e, 0x22, 0xae, 0x37, 0x03, 0x85, 0xea, 0x93, 0x88,
+	0x23, 0x0b, 0xb2, 0x31, 0xf3, 0xe5, 0x4e, 0x25, 0x47, 0x7c, 0xa2, 0x2d, 0xc8, 0x07, 0xf1, 0xf8,
+	0x84, 0x30, 0xbd, 0x85, 0x86, 0xd0, 0x26, 0xe4, 0xc2, 0x33, 0x1c, 0x19, 0xc7, 0x29, 0x00, 0x55,
+	0xa1, 0x20, 0xe3, 0x81, 0x30, 0xe9, 0xb6, 0x92, 0x63, 0x40, 0x84, 0x60, 0x55, 0xee, 0x99, 0x97,
+	0x68, 0xf9, 0x2d, 0xa8, 0x87, 0x74, 0x3c, 0xc6, 0x81, 0x2b, 0xbd, 0x51, 0x72, 0x0c, 0x68, 0xff,
+	0x3f, 0x54, 0xa6, 0x1c, 0x62, 0x14, 0xcb, 0x4c, 0x14, 0xdb, 0x84, 0x1c, 0xa7, 0xcf, 0x49, 0xa0,
+	0x95, 0x55, 0x80, 0x14, 0x79, 0x86, 0x83, 0x80, 0xf8, 0x3a, 0xe6, 0x0c, 0x68, 0xef, 0x41, 0xd1,
+	0x78, 0x02, 0xdd, 0x86, 0x12, 0x3f, 0x63, 0x24, 0x3a, 0xa3, 0xbe, 0x32, 0x79, 0xce, 0x99, 0x20,
+	0x84, 0x0c, 0x1d, 0xa8, 0x52, 0x76, 0xce, 0x31, 0xa0, 0xfd, 0xb7, 0x55, 0xa8, 0xec, 0x4b, 0x6b,
+	0x19, 0xbd, 0x10, 0xac, 0x62, 0x36, 0x52, 0xd5, 0xa6, 0xe4, 0xc8, 0x6f, 0xf4, 0x3f, 0x70, 0xfd,
+	0x05, 0x65, 0xcf, 0xbd, 0x60, 0x34, 0x50, 0x79, 0x4b, 0xd9, 0x85, 0xd6, 0xd2, 0xd2, 0x0b, 0x75,
+	0x83, 0x47, 0x4f, 0xa1, 0x4c, 0x82, 0x73, 0x8f, 0xd1, 0x60, 0x4c, 0x02, 0x5e, 0xcd, 0xca, 0xaa,
+	0xf5, 0xb6, 0x89, 0x9d, 0xa9, 0xcd, 0x1e, 0x36, 0x26, 0x84, 0x8d, 0x80, 0xb3, 0x0b, 0x27, 0xcd,
+	0x8a, 0xde, 0x01, 0x8b, 0x9e, 0x13, 0xc6, 0x3c, 0x97, 0x0c, 0x34, 0x5e, 0x57, 0x9e, 0x0d, 0x83,
+	0xd7, 0x02, 0x44, 0xf1, 0x13, 0x65, 0x9d, 0xc6, 0x7c, 0x10, 0x91, 0x21, 0x0d, 0xdc, 0x48, 0xba,
+	0x2b, 0xeb, 0xac, 0x6b, 0x74, 0x4f, 0x61, 0xa5, 0xd7, 0xf0, 0x28, 0xaa, 0xe6, 0xd5, 0xf1, 0xc4,
+	0x37, 0xfa, 0x00, 0x80, 0x06, 0x83, 0x28, 0x1e, 0x0e, 0x49, 0x24, 0xd2, 0x28, 0x9b, 0x4e, 0xa3,
+	0x29, 0x85, 0x9d, 0x12, 0x0d, 0x7a, 0x8a, 0x4e, 0x73, 0x9d, 0x62, 0xcf, 0x8f, 0x19, 0xa9, 0x16,
+	0xaf, 0xe0, 0x3a, 0x50, 0x74, 0x9a, 0x4b, 0x2b, 0x55, 0x2d, 0x5d, 0xc1, 0xd5, 0x57, 0x74, 0xe8,
+	0x5d, 0xc8, 0xeb, 0x02, 0x0a, 0xd3, 0x49, 0x3e, 0x75, 0x59, 0x38, 0x9a, 0x08, 0xbd, 0x07, 0x9b,
+	0x11, 0xc7, 0x81, 0x8b, 0x99, 0x3b, 0xf0, 0x02, 0x51, 0xb9, 0x4f, 0x2e, 0x38, 0x89, 0xaa, 0xe5,
+	0xbb, 0x99, 0x9d, 0x35, 0x07, 0x99, 0xb5, 0x96, 0x58, 0xda, 0x13, 0x2b, 0xdb, 0x5f, 0x80, 0x35,
+	0xeb, 0x0b, 0x11, 0xa1, 0xcf, 0xc9, 0x85, 0x89, 0xd0, 0xe7, 0xe4, 0x42, 0x44, 0xe8, 0x39, 0xf6,
+	0x63, 0x62, 0x22, 0x54, 0x02, 0x4f, 0x56, 0x3e, 0xce, 0xd8, 0x36, 0x40, 0xab, 0xee, 0x90, 0x28,
+	0xa4, 0x41, 0x44, 0x26, 0x74, 0x99, 0x14, 0x9d, 0xfd, 0xbb, 0x15, 0x28, 0x1f, 0x31, 0x2a, 0x8c,
+	0xd7, 0x0a, 0x4e, 0x29, 0x5a, 0x87, 0x15, 0xcf, 0xd5, 0x24, 0x2b, 0x9e, 0x2b, 0xf6, 0x0b, 0x3d,
+	0x57, 0x17, 0x05, 0xf1, 0x89, 0x6e, 0x42, 0xe1, 0x8c, 0x46, 0x7c, 0xe0, 0xb9, 0x3a, 0xf6, 0xf3,
+	0x02, 0x6c, 0xc9, 0x80, 0x66, 0x71, 0x10, 0x78, 0xc1, 0x48, 0x07, 0x84, 0x01, 0xd1, 0x1b, 0x00,
+	0xda, 0x91, 0xa7, 0xb1, 0xaf, 0xaf, 0x9b, 0x14, 0x46, 0x94, 0x9f, 0x21, 0x1d, 0x87, 0x3e, 0xe1,
+	0x44, 0x66, 0x6e, 0xd1, 0x49, 0x60, 0xb1, 0x26, 0x1c, 0xe3, 0x0a, 0xcf, 0x14, 0xd4, 0x9a, 0x81,
+	0xd1, 0x23, 0x28, 0x98, 0x3a, 0x5b, 0x9c, 0x76, 0xc1, 0xb4, 0xd3, 0x0c, 0x95, 0xb8, 0x0b, 0xc8,
+	0x4b, 0x8f, 0x0f, 0x86, 0xd4, 0x25, 0xb2, 0x80, 0xe6, 0x9c, 0xa2, 0x40, 0xec, 0x53, 0x97, 0xd8,
+	0x35, 0x58, 0xef, 0x71, 0xcc, 0xe3, 0x28, 0x31, 0x59, 0xea, 0xa8, 0x99, 0xa9, 0xa3, 0x6e, 0x41,
+	0x1e, 0x0f, 0xb9, 0x77, 0x4e, 0xf4, 0x6d, 0xae, 0x21, 0xfb, 0x09, 0xe4, 0x0f, 0x3c, 0x9f, 0x13,
+	0x86, 0xde, 0x83, 0x55, 0x79, 0xe1, 0xa8, 0x8e, 0xe4, 0xb6, 0xd1, 0x4b, 0xad, 0xf6, 0x42, 0x32,
+	0xf4, 0x4e, 0xbd, 0x21, 0x56, 0xea, 0x49, 0x4a, 0x9b, 0x42, 0xa5, 0xe7, 0x8d, 0x02, 0xec, 0x6b,
+	0x77, 0xa0, 0x0f, 0xa1, 0x64, 0x3c, 0x53, 0xd7, 0xb7, 0xec, 0x4d, 0x23, 0xe7, 0x4b, 0xf9, 0x93,
+	0x2c, 0x3b, 0x13, 0x4a, 0x74, 0x1f, 0xf2, 0x91, 0x94, 0x23, 0x75, 0x4b, 0x75, 0x43, 0x4a, 0x7a,
+	0xe4, 0xe8, 0x65, 0xfb, 0x0e, 0x14, 0xfa, 0x78, 0x24, 0xaf, 0xc1, 0xf9, 0xb1, 0xf1, 0xbf, 0x49,
+	0x68, 0xf4, 0x45, 0x46, 0xde, 0x86, 0x52, 0x38, 0xa5, 0x4f, 0xc9, 0x99, 0x20, 0x92, 0x1c, 0x5e,
+	0x99, 0xe4, 0xb0, 0x7d, 0x1f, 0x36, 0x66, 0x14, 0x5d, 0xb0, 0xd3, 0xb7, 0x60, 0x75, 0x43, 0xa2,
+	0x2e, 0x9c, 0x6e, 0xcc, 0x87, 0x74, 0x2c, 0x8b, 0xbc, 0xc9, 0x7e, 0x75, 0x83, 0x18, 0x50, 0x15,
+	0xf9, 0x97, 0x5c, 0x07, 0xbc, 0xfc, 0x9e, 0xf6, 0x6c, 0x76, 0xc6, 0xb3, 0xdf, 0xc3, 0x9a, 0xbc,
+	0xa6, 0x4c, 0x39, 0xdd, 0x82, 0x3c, 0xc7, 0x6c, 0x44, 0xb8, 0x71, 0xab, 0x82, 0x54, 0x99, 0x1d,
+	0x9e, 0x19, 0xc1, 0xe2, 0x5b, 0xa8, 0x41, 0x5c, 0x4f, 0xde, 0x8c, 0xba, 0xd4, 0x6b, 0x50, 0x1c,
+	0xc5, 0x25, 0x27, 0xb1, 0x89, 0x76, 0x05, 0xd8, 0xbf, 0x81, 0xad, 0x43, 0x1a, 0x8c, 0x68, 0x7d,
+	0xaf, 0x4e, 0x5f, 0x04, 0x3e, 0xc5, 0xc9, 0xae, 0x8f, 0x01, 0xe4, 0x35, 0x25, 0x7a, 0x03, 0xd3,
+	0x36, 0x6d, 0x4e, 0xf5, 0x3c, 0x49, 0x91, 0x39, 0xd1, 0x90, 0x3c, 0x6b, 0x88, 0x79, 0xa2, 0x92,
+	0xf8, 0x16, 0x29, 0xc1, 0x88, 0x4f, 0x70, 0x44, 0x22, 0x59, 0xc9, 0x4b, 0x4e, 0x02, 0xdb, 0x31,
+	0xac, 0xed, 0xe3, 0xe1, 0x19, 0x49, 0xdd, 0xfa, 0xae, 0x17, 0xe1, 0x13, 0x7f, 0x72, 0xeb, 0x1b,
+	0x18, 0x3d, 0x84, 0x1b, 0x21, 0x8b, 0x03, 0x32, 0x70, 0x89, 0x8f, 0x2f, 0x92, 0x1a, 0xad, 0x72,
+	0xfd, 0xba, 0x5c, 0xaa, 0x8b, 0x15, 0x53, 0xa6, 0x97, 0x74, 0x02, 0xbf, 0xcd, 0xc0, 0x7a, 0x8d,
+	0x0d, 0xcf, 0xbc, 0x73, 0x92, 0x6a, 0xcf, 0xa2, 0x33, 0x1a, 0xfb, 0xee, 0x80, 0xbc, 0xe4, 0x0c,
+	0x0f, 0x4d, 0x23, 0x50, 0x51, 0xd8, 0x86, 0x42, 0x8a, 0x2a, 0xaa, 0x3b, 0x30, 0x15, 0xae, 0x49,
+	0x0a, 0x6b, 0x71, 0x33, 0x5d, 0xd8, 0x1d, 0x28, 0x2b, 0x67, 0x0d, 0xa4, 0x59, 0x94, 0x4b, 0x40,
+	0xa1, 0x8e, 0x30, 0x3f, 0xb3, 0x29, 0xac, 0x19, 0xc3, 0xcb, 0x82, 0x76, 0xf9, 0x4a, 0x9f, 0x67,
+	0xd2, 0x4f, 0x60, 0x0d, 0xab, 0xfd, 0x94, 0x77, 0xb2, 0xd2, 0x3b, 0x5b, 0x33, 0xba, 0x18, 0xff,
+	0x94, 0x71, 0x02, 0x47, 0xb6, 0x07, 0x95, 0xaf, 0x99, 0xc7, 0xc9, 0x81, 0xe7, 0x13, 0xb9, 0xa3,
+	0x91, 0x9f, 0x49, 0xc9, 0x97, 0x3d, 0x48, 0xc0, 0xc5, 0xdd, 0xbb, 0x22, 0xeb, 0xbd, 0x01, 0x65,
+	0x29, 0x09, 0x43, 0x12, 0xb8, 0x3a, 0x8c, 0x34, 0x24, 0xa5, 0x10, 0x36, 0x96, 0x9a, 0x54, 0x1c,
+	0xf9, 0x6d, 0xdf, 0x83, 0x8d, 0x54, 0xbb, 0x75, 0xec, 0xb4, 0x65, 0x7c, 0xc4, 0xcc, 0x4f, 0x3a,
+	0x03, 0xf1, 0x6d, 0x3f, 0x93, 0x1d, 0xbb, 0x43, 0x7e, 0x88, 0x45, 0xfb, 0x73, 0x3f, 0xa9, 0xe8,
+	0x4b, 0xea, 0x87, 0x28, 0xf5, 0x9b, 0x90, 0x1b, 0xd2, 0x58, 0x6b, 0x98, 0x75, 0x14, 0x60, 0x3f,
+	0x86, 0x52, 0x9b, 0x8e, 0x7a, 0x9c, 0x11, 0x3c, 0x16, 0xbb, 0xf9, 0x74, 0xd2, 0x87, 0x88, 0x6f,
+	0x81, 0x73, 0x69, 0x60, 0x2a, 0xa1, 0xfc, 0xb6, 0x7f, 0x9f, 0x81, 0x1b, 0xaa, 0xdc, 0xf4, 0x99,
+	0x27, 0x74, 0x3d, 0xc2, 0x0c, 0x8f, 0x65, 0x49, 0x0b, 0x7f, 0x76, 0x49, 0x9b, 0xd4, 0x96, 0x1a,
+	0x6c, 0x44, 0x69, 0x69, 0xad, 0xba, 0x0e, 0x96, 0x9b, 0xd3, 0xb5, 0x2d, 0x59, 0x76, 0x66, 0xe9,
+	0xed, 0x37, 0xa1, 0xd4, 0x38, 0x27, 0x01, 0x5f, 0x52, 0xee, 0x9e, 0x00, 0xea, 0x0d, 0x99, 0x17,
+	0x72, 0x2f, 0x18, 0x3d, 0xc5, 0x2c, 0x50, 0x7b, 0xcf, 0x5e, 0x88, 0x9b, 0x90, 0x8b, 0x08, 0x8f,
+	0x43, 0x7d, 0x5e, 0x05, 0xd8, 0x7f, 0xcc, 0xc0, 0x56, 0xc2, 0xac, 0xc3, 0xa4, 0x49, 0x7d, 0x1c,
+	0x8c, 0x84, 0x83, 0x47, 0x34, 0x15, 0x10, 0x1a, 0x52, 0x78, 0x46, 0xa9, 0xa9, 0x63, 0x1a, 0x12,
+	0x19, 0x1b, 0xe2, 0xe1, 0x73, 0x3c, 0x9a, 0x64, 0xb7, 0x81, 0x93, 0x30, 0x7a, 0xc9, 0x75, 0x43,
+	0x6c, 0x40, 0x91, 0x17, 0x2f, 0x3c, 0x7e, 0x36, 0x88, 0x43, 0x17, 0x73, 0x62, 0xee, 0x58, 0x81,
+	0x3a, 0x96, 0x18, 0xfb, 0xef, 0x73, 0x34, 0x3c, 0xba, 0xe0, 0x67, 0x34, 0x40, 0x3b, 0x60, 0x9d,
+	0x7b, 0x8c, 0xc7, 0xd8, 0x17, 0x1d, 0xdd, 0x20, 0xa5, 0xeb, 0xba, 0xc6, 0x37, 0x82, 0x73, 0x91,
+	0x5c, 0xa2, 0xe7, 0x64, 0xe4, 0x87, 0xd8, 0x63, 0x44, 0x74, 0x24, 0xd1, 0x20, 0x95, 0x47, 0x56,
+	0x7a, 0x41, 0x12, 0xdf, 0x81, 0xb2, 0xbc, 0x3d, 0x43, 0xb9, 0x8b, 0x49, 0x55, 0x81, 0xd2, 0xfb,
+	0xa6, 0x4f, 0xba, 0x3a, 0x73, 0xd2, 0xb7, 0xa0, 0xe2, 0x93, 0x11, 0x1e, 0x5e, 0x18, 0x76, 0x75,
+	0xa2, 0x35, 0x85, 0xd4, 0x02, 0x6c, 0xa8, 0x60, 0xd7, 0x95, 0xaf, 0x8c, 0x81, 0x4b, 0xc2, 0x48,
+	0x37, 0x0f, 0x65, 0xec, 0xba, 0xe2, 0x9d, 0x51, 0x27, 0x61, 0x64, 0xff, 0x0a, 0x6e, 0xce, 0x1e,
+	0xdb, 0xa1, 0xd1, 0x0b, 0xe2, 0xfb, 0x8b, 0x12, 0x35, 0xba, 0x88, 0x38, 0x19, 0x9b, 0x9b, 0xcc,
+	0x80, 0x32, 0xf6, 0xbd, 0x28, 0xd4, 0xe7, 0x90, 0xdf, 0xf6, 0x4f, 0x59, 0xb0, 0x66, 0xa5, 0xa3,
+	0x8f, 0x85, 0x63, 0x85, 0xeb, 0x75, 0x84, 0xbf, 0x91, 0x04, 0xe9, 0xdc, 0x00, 0x79, 0x7a, 0xcd,
+	0xd1, 0xf4, 0x82, 0x53, 0x9f, 0x76, 0x65, 0x39, 0xa7, 0x3a, 0xbf, 0xe0, 0x54, 0xf4, 0xe8, 0x53,
+	0x28, 0x30, 0x75, 0x2a, 0x5d, 0xba, 0xee, 0x2c, 0x62, 0xd5, 0x87, 0x7f, 0x7a, 0xcd, 0x31, 0x1c,
+	0xe8, 0xd9, 0xf4, 0xe3, 0x60, 0x55, 0xf6, 0xbf, 0xef, 0x2c, 0x12, 0x70, 0xc5, 0xfb, 0x60, 0xd2,
+	0x15, 0xe7, 0x7e, 0x4e, 0x57, 0x9c, 0x7e, 0x79, 0xe6, 0xa7, 0x5f, 0x9e, 0xff, 0x69, 0xff, 0xbb,
+	0x57, 0xd0, 0x2b, 0xf6, 0xe7, 0xa9, 0x18, 0xd0, 0x99, 0xed, 0xc4, 0x41, 0x4d, 0xbc, 0xa2, 0x66,
+	0xd3, 0xdb, 0xbc, 0xb4, 0x56, 0x26, 0x2f, 0x2d, 0xfb, 0x5b, 0x78, 0x7d, 0x96, 0x5d, 0x96, 0xe1,
+	0xb9, 0x02, 0x6e, 0x43, 0x69, 0xf6, 0x39, 0x36, 0x41, 0x24, 0xe2, 0xb3, 0x29, 0xf1, 0x23, 0xf8,
+	0xaf, 0xb9, 0xe2, 0x93, 0x36, 0x74, 0x17, 0x0a, 0x54, 0x35, 0x45, 0x3a, 0xa2, 0xaa, 0x89, 0x4d,
+	0x67, 0x9a, 0x26, 0xc7, 0x10, 0xce, 0xbb, 0xe4, 0xec, 0xe6, 0xe5, 0x8d, 0x9c, 0x38, 0x50, 0xa8,
+	0xb9, 0x67, 0xd9, 0x82, 0x7c, 0x24, 0x57, 0x4d, 0x89, 0x52, 0x90, 0xb8, 0xed, 0xab, 0xb3, 0x92,
+	0x44, 0xc2, 0xbd, 0x82, 0x41, 0x3e, 0x9f, 0xb4, 0xf0, 0xea, 0x51, 0xfa, 0xd6, 0xa5, 0xb8, 0x4b,
+	0x6d, 0x30, 0xdb, 0xd0, 0xdb, 0x7f, 0xca, 0xc0, 0xad, 0x25, 0x84, 0xc2, 0x0c, 0x49, 0x1b, 0x5e,
+	0x52, 0x8d, 0xf6, 0x3c, 0x17, 0x8b, 0xb4, 0x0f, 0x31, 0xe7, 0x84, 0x25, 0x5d, 0x9e, 0x06, 0xd1,
+	0x63, 0x28, 0x98, 0x87, 0xe1, 0xaa, 0x34, 0xfe, 0xeb, 0x0f, 0xd5, 0x68, 0xf2, 0xa1, 0x19, 0x4d,
+	0x3e, 0xac, 0xeb, 0x80, 0x75, 0x0c, 0xe5, 0xe4, 0x2a, 0xcd, 0xc9, 0x4e, 0x54, 0x5f, 0xa5, 0x7f,
+	0xc9, 0xc0, 0xf6, 0x3c, 0x65, 0x1d, 0x12, 0xc5, 0x3e, 0x9f, 0xab, 0xeb, 0x87, 0x50, 0x8c, 0x38,
+	0x66, 0x7c, 0xa0, 0xfb, 0xa3, 0xf2, 0xee, 0xf6, 0xa5, 0xed, 0xfb, 0x66, 0x74, 0xea, 0x14, 0x24,
+	0x6d, 0x8d, 0x0b, 0xb6, 0x24, 0xab, 0xb2, 0x57, 0x69, 0x3d, 0x19, 0xf5, 0x54, 0x27, 0x81, 0xa6,
+	0xaf, 0x17, 0x0d, 0xda, 0x7f, 0xc8, 0xc0, 0xed, 0x05, 0xaa, 0xbf, 0x7a, 0x8c, 0x7e, 0x06, 0x05,
+	0x26, 0x8f, 0xae, 0x7c, 0x51, 0xde, 0xb5, 0x97, 0xf9, 0x5e, 0x59, 0xc9, 0x31, 0x2c, 0x0f, 0x7e,
+	0xca, 0x40, 0x41, 0x0f, 0x78, 0xd1, 0x3a, 0x40, 0xbb, 0xdb, 0x3c, 0xee, 0x3c, 0xeb, 0x74, 0xbf,
+	0xee, 0x58, 0xd7, 0xd0, 0x26, 0x58, 0xed, 0x6e, 0x73, 0xef, 0xb8, 0xd5, 0xae, 0xb7, 0xbb, 0xcd,
+	0x66, 0xc3, 0xf9, 0x6a, 0xd7, 0xca, 0xcc, 0xc1, 0x3e, 0xb6, 0x56, 0x34, 0x6f, 0xbd, 0x71, 0x50,
+	0x3b, 0x6e, 0xf7, 0xad, 0x2c, 0x2a, 0x43, 0xa1, 0xdd, 0x6d, 0x1e, 0xb4, 0xda, 0x0d, 0x6b, 0x55,
+	0x2f, 0xb6, 0x3a, 0x4f, 0x1b, 0x4e, 0xab, 0x6f, 0xe5, 0x50, 0x05, 0x4a, 0xed, 0x6e, 0xb3, 0x77,
+	0xd4, 0x3e, 0xee, 0x3c, 0xb3, 0xf2, 0xc8, 0x82, 0x35, 0x01, 0x1e, 0x1f, 0x76, 0x05, 0xd5, 0xbe,
+	0x55, 0x40, 0x1b, 0x50, 0x96, 0x0c, 0x87, 0x8d, 0xc3, 0xae, 0xf3, 0x4b, 0xab, 0xf8, 0xe0, 0x3b,
+	0xd9, 0x3f, 0xa9, 0x2e, 0x56, 0x6b, 0x70, 0xd0, 0x75, 0x0e, 0x6b, 0xfd, 0x59, 0x6d, 0x15, 0xd6,
+	0xe8, 0x91, 0x41, 0xd7, 0xa1, 0x92, 0x60, 0xbf, 0xec, 0x75, 0x3b, 0xd6, 0x0a, 0x42, 0xb0, 0x9e,
+	0xa0, 0x8e, 0xda, 0xb5, 0x56, 0xc7, 0xca, 0x3e, 0xf8, 0x05, 0x6c, 0xce, 0x7b, 0x54, 0xa2, 0x02,
+	0x64, 0x6b, 0xed, 0xb6, 0x75, 0x4d, 0x9c, 0xc7, 0x39, 0xee, 0x74, 0x5a, 0x9d, 0xa6, 0x95, 0x11,
+	0xe7, 0xe9, 0x37, 0x9c, 0xc3, 0x56, 0xa7, 0xd6, 0x6f, 0xd4, 0xad, 0x15, 0x04, 0x90, 0x3f, 0xa8,
+	0xb5, 0xda, 0x8d, 0xba, 0x95, 0x15, 0x6b, 0xbd, 0xe3, 0xfd, 0xfd, 0x46, 0xaf, 0x77, 0x70, 0xdc,
+	0xb6, 0x56, 0x1f, 0x10, 0x28, 0xe8, 0x27, 0xa3, 0x90, 0x31, 0x51, 0xb7, 0x02, 0xa5, 0x44, 0x86,
+	0x95, 0x41, 0x45, 0x58, 0x7d, 0xd6, 0x6a, 0xb7, 0x95, 0xb0, 0xa7, 0xb5, 0x4e, 0xf3, 0xf8, 0xc8,
+	0xca, 0x0a, 0x6c, 0xab, 0xd3, 0xea, 0x5b, 0xab, 0xa8, 0x04, 0xb9, 0xe3, 0x5e, 0xc3, 0x79, 0xdf,
+	0xca, 0x99, 0xcf, 0x5d, 0x2b, 0x2f, 0xd6, 0x6b, 0x7b, 0x4e, 0xdf, 0x2a, 0x3c, 0xf8, 0x0a, 0x2a,
+	0x53, 0xad, 0xbe, 0x38, 0x65, 0xcd, 0xd9, 0x7f, 0xda, 0xfa, 0xaa, 0x31, 0xd9, 0x73, 0x03, 0xca,
+	0x1a, 0x57, 0x3b, 0xee, 0x77, 0xad, 0x8c, 0xb0, 0xbc, 0x46, 0xf4, 0x6b, 0x4e, 0xf3, 0x1b, 0xe5,
+	0x47, 0x8d, 0xf9, 0xa6, 0x75, 0x64, 0x65, 0x1f, 0xbc, 0x0f, 0x1b, 0x33, 0x5d, 0xa1, 0xd8, 0xb4,
+	0xd3, 0xed, 0x34, 0x94, 0xc9, 0xf7, 0xdb, 0x8d, 0x5a, 0xc7, 0x1c, 0xa4, 0xd5, 0xed, 0x58, 0x99,
+	0xdd, 0x7f, 0x6c, 0xc0, 0xe6, 0x54, 0x1b, 0x7a, 0x88, 0x03, 0x3c, 0x92, 0xaf, 0xf9, 0x95, 0x56,
+	0x1d, 0x6d, 0x5d, 0xca, 0xa1, 0xc6, 0x38, 0xe4, 0x17, 0xdb, 0xc9, 0x1f, 0x08, 0xa9, 0x69, 0xcb,
+	0x07, 0x90, 0x57, 0x33, 0x08, 0x34, 0x7f, 0x26, 0xb1, 0x7d, 0xc3, 0xa0, 0xd3, 0xd3, 0x97, 0x77,
+	0x61, 0xb5, 0xed, 0x45, 0x1c, 0xad, 0x4f, 0xcf, 0x0b, 0xe6, 0x12, 0xbf, 0x97, 0x41, 0x8f, 0x20,
+	0xd7, 0x64, 0x34, 0x0e, 0x51, 0xf2, 0xc6, 0xd7, 0x0f, 0xfa, 0x45, 0x0c, 0x8f, 0x21, 0xdb, 0x24,
+	0x1c, 0x2d, 0xea, 0xb9, 0xe7, 0x2b, 0xf5, 0x09, 0xe4, 0x95, 0x21, 0x27, 0x47, 0x99, 0x1a, 0x54,
+	0x6c, 0x2f, 0x4c, 0x75, 0xf4, 0x09, 0xe4, 0xf6, 0x7d, 0x82, 0xd9, 0x42, 0xd3, 0x5d, 0xc1, 0x4a,
+	0x23, 0xf2, 0x0a, 0xac, 0x9f, 0x02, 0xf4, 0xf1, 0xc8, 0x8c, 0x51, 0x66, 0xcf, 0xd4, 0xc7, 0xa3,
+	0x65, 0x2a, 0x7f, 0x01, 0x25, 0x87, 0x44, 0x84, 0xcb, 0x91, 0xc7, 0x42, 0x43, 0x2d, 0xe6, 0xff,
+	0x08, 0x0a, 0xcd, 0xab, 0xb8, 0xe7, 0xa9, 0x84, 0x8e, 0xe0, 0xa6, 0x43, 0x46, 0x5e, 0x24, 0x52,
+	0x79, 0x26, 0x6e, 0x6f, 0xcd, 0x7d, 0xe6, 0xa8, 0x37, 0xd5, 0x52, 0x13, 0xae, 0x7e, 0x8d, 0x3d,
+	0xfe, 0x8a, 0xa7, 0x10, 0xa1, 0x8c, 0x5f, 0x04, 0xff, 0x66, 0xb0, 0x74, 0x52, 0xaf, 0x0c, 0x5d,
+	0xbc, 0x75, 0x1e, 0x54, 0x17, 0x35, 0x94, 0xdb, 0xdb, 0x8b, 0xca, 0x7e, 0xab, 0x8e, 0x0e, 0xe1,
+	0xb5, 0x4b, 0xf2, 0xce, 0xc8, 0xf0, 0x39, 0x5a, 0xc2, 0xb4, 0xe4, 0x5c, 0x73, 0xc4, 0xf5, 0xc4,
+	0x03, 0xee, 0x15, 0xc5, 0x75, 0x2f, 0x37, 0x96, 0x22, 0xde, 0x83, 0x57, 0x16, 0x78, 0x04, 0x37,
+	0xe6, 0xb4, 0x68, 0xe8, 0xce, 0x22, 0x61, 0xba, 0x8d, 0x5d, 0x22, 0x11, 0x5f, 0x3e, 0xb1, 0xec,
+	0x2e, 0xd1, 0x9b, 0x8b, 0x64, 0x26, 0xbd, 0xed, 0xf6, 0xbd, 0xa5, 0x24, 0x49, 0xad, 0xfb, 0xf5,
+	0xe5, 0xfe, 0x38, 0xe9, 0x2b, 0xd1, 0xbd, 0x25, 0xaa, 0x4f, 0x5a, 0xcf, 0x25, 0x07, 0xf8, 0x0e,
+	0x36, 0xe7, 0xb5, 0x03, 0xe8, 0xee, 0xb2, 0x66, 0x41, 0xca, 0xfc, 0xef, 0x2b, 0xda, 0x09, 0xa5,
+	0xfd, 0xc7, 0x90, 0x57, 0x63, 0xdf, 0x85, 0x95, 0x26, 0x19, 0x03, 0xcd, 0x8c, 0x87, 0xff, 0x0f,
+	0xd6, 0xf7, 0x69, 0x70, 0xea, 0x8d, 0x62, 0x46, 0xe4, 0xd0, 0x0d, 0x25, 0xe3, 0xbc, 0xf4, 0x0c,
+	0x6e, 0x69, 0xb1, 0x49, 0x86, 0x55, 0x07, 0x9e, 0x9f, 0xe2, 0x4f, 0x8f, 0xb0, 0x96, 0xf0, 0x3f,
+	0x83, 0x0d, 0x43, 0xa9, 0x87, 0x8e, 0x28, 0x79, 0x33, 0xce, 0x9f, 0x42, 0x2e, 0x11, 0xf6, 0x21,
+	0xac, 0x35, 0x09, 0x4f, 0x0d, 0x7b, 0x52, 0x7f, 0x2d, 0xea, 0x61, 0xd2, 0x76, 0xfa, 0xff, 0x51,
+	0x4d, 0x76, 0x00, 0xa8, 0x49, 0xf8, 0xec, 0x5c, 0x6a, 0x61, 0xd5, 0xb8, 0x39, 0xe7, 0x5f, 0x5e,
+	0xc9, 0xf1, 0x04, 0xca, 0xaa, 0xbc, 0xc9, 0x39, 0x0d, 0x4a, 0x76, 0x4a, 0xc6, 0x36, 0xcb, 0x8b,
+	0x76, 0x32, 0x83, 0x9b, 0xdc, 0x52, 0x53, 0x63, 0xb9, 0xc5, 0xdc, 0x3b, 0x99, 0x3d, 0xf8, 0xa6,
+	0xe8, 0x05, 0xa2, 0xdd, 0xc7, 0xfe, 0x49, 0x5e, 0x7a, 0xff, 0xf1, 0xbf, 0x02, 0x00, 0x00, 0xff,
+	0xff, 0x6b, 0xa0, 0xa2, 0xc5, 0xd6, 0x20, 0x00, 0x00,
 }

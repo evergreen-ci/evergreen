@@ -5,27 +5,23 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/docker/docker/api/types"
-	containertypes "github.com/docker/docker/api/types/container"
-	mounttypes "github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/versions"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/integration/internal/container"
-	"github.com/docker/docker/pkg/mount"
+	"github.com/docker/docker/internal/test/request"
 	"github.com/docker/docker/pkg/system"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/fs"
-	"gotest.tools/poll"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/fs"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func TestContainerNetworkMountsNoChown(t *testing.T) {
 	// chown only applies to Linux bind mounted volumes; must be same host to verify
-	skip.If(t, testEnv.IsRemoteDaemon)
+	skip.If(t, testEnv.DaemonInfo.OSType != "linux" || testEnv.IsRemoteDaemon())
 
 	defer setupTest(t)()
 
@@ -36,11 +32,11 @@ func TestContainerNetworkMountsNoChown(t *testing.T) {
 
 	tmpNWFileMount := tmpDir.Join("nwfile")
 
-	config := containertypes.Config{
+	config := container.Config{
 		Image: "busybox",
 	}
-	hostConfig := containertypes.HostConfig{
-		Mounts: []mounttypes.Mount{
+	hostConfig := container.HostConfig{
+		Mounts: []mount.Mount{
 			{
 				Type:   "bind",
 				Source: tmpNWFileMount,
@@ -59,7 +55,7 @@ func TestContainerNetworkMountsNoChown(t *testing.T) {
 		},
 	}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.NewEnvClient()
 	assert.NilError(t, err)
 	defer cli.Close()
 
@@ -85,10 +81,10 @@ func TestContainerNetworkMountsNoChown(t *testing.T) {
 }
 
 func TestMountDaemonRoot(t *testing.T) {
-	skip.If(t, testEnv.IsRemoteDaemon)
+	skip.If(t, testEnv.DaemonInfo.OSType != "linux" || testEnv.IsRemoteDaemon())
+	t.Parallel()
 
-	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 	info, err := client.Info(ctx)
 	if err != nil {
@@ -97,39 +93,39 @@ func TestMountDaemonRoot(t *testing.T) {
 
 	for _, test := range []struct {
 		desc        string
-		propagation mounttypes.Propagation
-		expected    mounttypes.Propagation
+		propagation mount.Propagation
+		expected    mount.Propagation
 	}{
 		{
 			desc:        "default",
 			propagation: "",
-			expected:    mounttypes.PropagationRSlave,
+			expected:    mount.PropagationRSlave,
 		},
 		{
 			desc:        "private",
-			propagation: mounttypes.PropagationPrivate,
+			propagation: mount.PropagationPrivate,
 		},
 		{
 			desc:        "rprivate",
-			propagation: mounttypes.PropagationRPrivate,
+			propagation: mount.PropagationRPrivate,
 		},
 		{
 			desc:        "slave",
-			propagation: mounttypes.PropagationSlave,
+			propagation: mount.PropagationSlave,
 		},
 		{
 			desc:        "rslave",
-			propagation: mounttypes.PropagationRSlave,
-			expected:    mounttypes.PropagationRSlave,
+			propagation: mount.PropagationRSlave,
+			expected:    mount.PropagationRSlave,
 		},
 		{
 			desc:        "shared",
-			propagation: mounttypes.PropagationShared,
+			propagation: mount.PropagationShared,
 		},
 		{
 			desc:        "rshared",
-			propagation: mounttypes.PropagationRShared,
-			expected:    mounttypes.PropagationRShared,
+			propagation: mount.PropagationRShared,
+			expected:    mount.PropagationRShared,
 		},
 	} {
 		t.Run(test.desc, func(t *testing.T) {
@@ -143,26 +139,26 @@ func TestMountDaemonRoot(t *testing.T) {
 			bindSpecRoot := info.DockerRootDir + ":" + "/foo" + propagationSpec
 			bindSpecSub := filepath.Join(info.DockerRootDir, "containers") + ":/foo" + propagationSpec
 
-			for name, hc := range map[string]*containertypes.HostConfig{
+			for name, hc := range map[string]*container.HostConfig{
 				"bind root":    {Binds: []string{bindSpecRoot}},
 				"bind subpath": {Binds: []string{bindSpecSub}},
 				"mount root": {
-					Mounts: []mounttypes.Mount{
+					Mounts: []mount.Mount{
 						{
-							Type:        mounttypes.TypeBind,
+							Type:        mount.TypeBind,
 							Source:      info.DockerRootDir,
 							Target:      "/foo",
-							BindOptions: &mounttypes.BindOptions{Propagation: test.propagation},
+							BindOptions: &mount.BindOptions{Propagation: test.propagation},
 						},
 					},
 				},
 				"mount subpath": {
-					Mounts: []mounttypes.Mount{
+					Mounts: []mount.Mount{
 						{
-							Type:        mounttypes.TypeBind,
+							Type:        mount.TypeBind,
 							Source:      filepath.Join(info.DockerRootDir, "containers"),
 							Target:      "/foo",
-							BindOptions: &mounttypes.BindOptions{Propagation: test.propagation},
+							BindOptions: &mount.BindOptions{Propagation: test.propagation},
 						},
 					},
 				},
@@ -171,7 +167,7 @@ func TestMountDaemonRoot(t *testing.T) {
 					hc := hc
 					t.Parallel()
 
-					c, err := client.ContainerCreate(ctx, &containertypes.Config{
+					c, err := client.ContainerCreate(ctx, &container.Config{
 						Image: "busybox",
 						Cmd:   []string{"true"},
 					}, hc, nil, "")
@@ -208,60 +204,5 @@ func TestMountDaemonRoot(t *testing.T) {
 				})
 			}
 		})
-	}
-}
-
-func TestContainerBindMountNonRecursive(t *testing.T) {
-	skip.If(t, testEnv.IsRemoteDaemon)
-	skip.If(t, versions.LessThan(testEnv.DaemonAPIVersion(), "1.40"), "BindOptions.NonRecursive requires API v1.40")
-
-	defer setupTest(t)()
-
-	tmpDir1 := fs.NewDir(t, "tmpdir1", fs.WithMode(0755),
-		fs.WithDir("mnt", fs.WithMode(0755)))
-	defer tmpDir1.Remove()
-	tmpDir1Mnt := filepath.Join(tmpDir1.Path(), "mnt")
-	tmpDir2 := fs.NewDir(t, "tmpdir2", fs.WithMode(0755),
-		fs.WithFile("file", "should not be visible when NonRecursive", fs.WithMode(0644)))
-	defer tmpDir2.Remove()
-
-	err := mount.Mount(tmpDir2.Path(), tmpDir1Mnt, "none", "bind,ro")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := mount.Unmount(tmpDir1Mnt); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	// implicit is recursive (NonRecursive: false)
-	implicit := mounttypes.Mount{
-		Type:     "bind",
-		Source:   tmpDir1.Path(),
-		Target:   "/foo",
-		ReadOnly: true,
-	}
-	recursive := implicit
-	recursive.BindOptions = &mounttypes.BindOptions{
-		NonRecursive: false,
-	}
-	recursiveVerifier := []string{"test", "-f", "/foo/mnt/file"}
-	nonRecursive := implicit
-	nonRecursive.BindOptions = &mounttypes.BindOptions{
-		NonRecursive: true,
-	}
-	nonRecursiveVerifier := []string{"test", "!", "-f", "/foo/mnt/file"}
-
-	ctx := context.Background()
-	client := testEnv.APIClient()
-	containers := []string{
-		container.Run(ctx, t, client, container.WithMount(implicit), container.WithCmd(recursiveVerifier...)),
-		container.Run(ctx, t, client, container.WithMount(recursive), container.WithCmd(recursiveVerifier...)),
-		container.Run(ctx, t, client, container.WithMount(nonRecursive), container.WithCmd(nonRecursiveVerifier...)),
-	}
-
-	for _, c := range containers {
-		poll.WaitOn(t, container.IsSuccessful(ctx, client, c), poll.WithDelay(100*time.Millisecond))
 	}
 }

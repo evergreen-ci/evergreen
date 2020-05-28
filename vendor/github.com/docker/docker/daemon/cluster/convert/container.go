@@ -1,6 +1,7 @@
 package convert // import "github.com/docker/docker/daemon/cluster/convert"
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 	types "github.com/docker/docker/api/types/swarm"
 	swarmapi "github.com/docker/swarmkit/api"
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,8 +35,6 @@ func containerSpecFromGRPC(c *swarmapi.ContainerSpec) *types.ContainerSpec {
 		Secrets:    secretReferencesFromGRPC(c.Secrets),
 		Configs:    configReferencesFromGRPC(c.Configs),
 		Isolation:  IsolationFromGRPC(c.Isolation),
-		Init:       initFromGRPC(c.Init),
-		Sysctls:    c.Sysctls,
 	}
 
 	if c.DNSConfig != nil {
@@ -52,7 +50,13 @@ func containerSpecFromGRPC(c *swarmapi.ContainerSpec) *types.ContainerSpec {
 		containerSpec.Privileges = &types.Privileges{}
 
 		if c.Privileges.CredentialSpec != nil {
-			containerSpec.Privileges.CredentialSpec = credentialSpecFromGRPC(c.Privileges.CredentialSpec)
+			containerSpec.Privileges.CredentialSpec = &types.CredentialSpec{}
+			switch c.Privileges.CredentialSpec.Source.(type) {
+			case *swarmapi.Privileges_CredentialSpec_File:
+				containerSpec.Privileges.CredentialSpec.File = c.Privileges.CredentialSpec.GetFile()
+			case *swarmapi.Privileges_CredentialSpec_Registry:
+				containerSpec.Privileges.CredentialSpec.Registry = c.Privileges.CredentialSpec.GetRegistry()
+			}
 		}
 
 		if c.Privileges.SELinuxContext != nil {
@@ -115,21 +119,6 @@ func containerSpecFromGRPC(c *swarmapi.ContainerSpec) *types.ContainerSpec {
 	return containerSpec
 }
 
-func initFromGRPC(v *gogotypes.BoolValue) *bool {
-	if v == nil {
-		return nil
-	}
-	value := v.GetValue()
-	return &value
-}
-
-func initToGRPC(v *bool) *gogotypes.BoolValue {
-	if v == nil {
-		return nil
-	}
-	return &gogotypes.BoolValue{Value: *v}
-}
-
 func secretReferencesToGRPC(sr []*types.SecretReference) []*swarmapi.SecretReference {
 	refs := make([]*swarmapi.SecretReference, 0, len(sr))
 	for _, s := range sr {
@@ -178,26 +167,14 @@ func secretReferencesFromGRPC(sr []*swarmapi.SecretReference) []*types.SecretRef
 	return refs
 }
 
-func configReferencesToGRPC(sr []*types.ConfigReference) ([]*swarmapi.ConfigReference, error) {
+func configReferencesToGRPC(sr []*types.ConfigReference) []*swarmapi.ConfigReference {
 	refs := make([]*swarmapi.ConfigReference, 0, len(sr))
 	for _, s := range sr {
 		ref := &swarmapi.ConfigReference{
 			ConfigID:   s.ConfigID,
 			ConfigName: s.ConfigName,
 		}
-		switch {
-		case s.Runtime == nil && s.File == nil:
-			return nil, errors.New("either File or Runtime should be set")
-		case s.Runtime != nil && s.File != nil:
-			return nil, errors.New("cannot specify both File and Runtime")
-		case s.Runtime != nil:
-			// Runtime target was added in API v1.40 and takes precedence over
-			// File target. However, File and Runtime targets are mutually exclusive,
-			// so we should never have both.
-			ref.Target = &swarmapi.ConfigReference_Runtime{
-				Runtime: &swarmapi.RuntimeTarget{},
-			}
-		case s.File != nil:
+		if s.File != nil {
 			ref.Target = &swarmapi.ConfigReference_File{
 				File: &swarmapi.FileTarget{
 					Name: s.File.Name,
@@ -211,32 +188,28 @@ func configReferencesToGRPC(sr []*types.ConfigReference) ([]*swarmapi.ConfigRefe
 		refs = append(refs, ref)
 	}
 
-	return refs, nil
+	return refs
 }
 
 func configReferencesFromGRPC(sr []*swarmapi.ConfigReference) []*types.ConfigReference {
 	refs := make([]*types.ConfigReference, 0, len(sr))
 	for _, s := range sr {
-
-		r := &types.ConfigReference{
-			ConfigID:   s.ConfigID,
-			ConfigName: s.ConfigName,
+		target := s.GetFile()
+		if target == nil {
+			// not a file target
+			logrus.Warnf("config target not a file: config=%s", s.ConfigID)
+			continue
 		}
-		if target := s.GetRuntime(); target != nil {
-			r.Runtime = &types.ConfigReferenceRuntimeTarget{}
-		} else if target := s.GetFile(); target != nil {
-			r.File = &types.ConfigReferenceFileTarget{
+		refs = append(refs, &types.ConfigReference{
+			File: &types.ConfigReferenceFileTarget{
 				Name: target.Name,
 				UID:  target.UID,
 				GID:  target.GID,
 				Mode: target.Mode,
-			}
-		} else {
-			// not a file target
-			logrus.Warnf("config target not known: config=%s", s.ConfigID)
-			continue
-		}
-		refs = append(refs, r)
+			},
+			ConfigID:   s.ConfigID,
+			ConfigName: s.ConfigName,
+		})
 	}
 
 	return refs
@@ -259,9 +232,8 @@ func containerToGRPC(c *types.ContainerSpec) (*swarmapi.ContainerSpec, error) {
 		ReadOnly:   c.ReadOnly,
 		Hosts:      c.Hosts,
 		Secrets:    secretReferencesToGRPC(c.Secrets),
+		Configs:    configReferencesToGRPC(c.Configs),
 		Isolation:  isolationToGRPC(c.Isolation),
-		Init:       initToGRPC(c.Init),
-		Sysctls:    c.Sysctls,
 	}
 
 	if c.DNSConfig != nil {
@@ -281,11 +253,22 @@ func containerToGRPC(c *types.ContainerSpec) (*swarmapi.ContainerSpec, error) {
 		containerSpec.Privileges = &swarmapi.Privileges{}
 
 		if c.Privileges.CredentialSpec != nil {
-			cs, err := credentialSpecToGRPC(c.Privileges.CredentialSpec)
-			if err != nil {
-				return nil, errors.Wrap(err, "invalid CredentialSpec")
+			containerSpec.Privileges.CredentialSpec = &swarmapi.Privileges_CredentialSpec{}
+
+			if c.Privileges.CredentialSpec.File != "" && c.Privileges.CredentialSpec.Registry != "" {
+				return nil, errors.New("cannot specify both \"file\" and \"registry\" credential specs")
 			}
-			containerSpec.Privileges.CredentialSpec = cs
+			if c.Privileges.CredentialSpec.File != "" {
+				containerSpec.Privileges.CredentialSpec.Source = &swarmapi.Privileges_CredentialSpec_File{
+					File: c.Privileges.CredentialSpec.File,
+				}
+			} else if c.Privileges.CredentialSpec.Registry != "" {
+				containerSpec.Privileges.CredentialSpec.Source = &swarmapi.Privileges_CredentialSpec_Registry{
+					Registry: c.Privileges.CredentialSpec.Registry,
+				}
+			} else {
+				return nil, errors.New("must either provide \"file\" or \"registry\" for credential spec")
+			}
 		}
 
 		if c.Privileges.SELinuxContext != nil {
@@ -297,14 +280,6 @@ func containerToGRPC(c *types.ContainerSpec) (*swarmapi.ContainerSpec, error) {
 				Level:   c.Privileges.SELinuxContext.Level,
 			}
 		}
-	}
-
-	if c.Configs != nil {
-		configs, err := configReferencesToGRPC(c.Configs)
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid Config")
-		}
-		containerSpec.Configs = configs
 	}
 
 	// Mounts
@@ -326,12 +301,6 @@ func containerToGRPC(c *types.ContainerSpec) (*swarmapi.ContainerSpec, error) {
 				mount.BindOptions = &swarmapi.Mount_BindOptions{Propagation: swarmapi.Mount_BindOptions_MountPropagation(mountPropagation)}
 			} else if string(m.BindOptions.Propagation) != "" {
 				return nil, fmt.Errorf("invalid MountPropagation: %q", m.BindOptions.Propagation)
-			}
-
-			if m.BindOptions.NonRecursive {
-				// TODO(AkihiroSuda): NonRecursive is unsupported for Swarm-mode now because of mutual vendoring
-				// across moby and swarmkit. Will be available soon after the moby PR gets merged.
-				return nil, fmt.Errorf("invalid NonRecursive: %q", m.BindOptions.Propagation)
 			}
 		}
 
@@ -363,60 +332,6 @@ func containerToGRPC(c *types.ContainerSpec) (*swarmapi.ContainerSpec, error) {
 	}
 
 	return containerSpec, nil
-}
-
-func credentialSpecFromGRPC(c *swarmapi.Privileges_CredentialSpec) *types.CredentialSpec {
-	cs := &types.CredentialSpec{}
-	switch c.Source.(type) {
-	case *swarmapi.Privileges_CredentialSpec_Config:
-		cs.Config = c.GetConfig()
-	case *swarmapi.Privileges_CredentialSpec_File:
-		cs.File = c.GetFile()
-	case *swarmapi.Privileges_CredentialSpec_Registry:
-		cs.Registry = c.GetRegistry()
-	}
-	return cs
-}
-
-func credentialSpecToGRPC(c *types.CredentialSpec) (*swarmapi.Privileges_CredentialSpec, error) {
-	var opts []string
-
-	if c.Config != "" {
-		opts = append(opts, `"config"`)
-	}
-	if c.File != "" {
-		opts = append(opts, `"file"`)
-	}
-	if c.Registry != "" {
-		opts = append(opts, `"registry"`)
-	}
-	l := len(opts)
-	switch {
-	case l == 0:
-		return nil, errors.New(`must either provide "file", "registry", or "config" for credential spec`)
-	case l == 2:
-		return nil, fmt.Errorf("cannot specify both %s and %s credential specs", opts[0], opts[1])
-	case l > 2:
-		return nil, fmt.Errorf("cannot specify both %s, and %s credential specs", strings.Join(opts[:l-1], ", "), opts[l-1])
-	}
-
-	spec := &swarmapi.Privileges_CredentialSpec{}
-	switch {
-	case c.Config != "":
-		spec.Source = &swarmapi.Privileges_CredentialSpec_Config{
-			Config: c.Config,
-		}
-	case c.File != "":
-		spec.Source = &swarmapi.Privileges_CredentialSpec_File{
-			File: c.File,
-		}
-	case c.Registry != "":
-		spec.Source = &swarmapi.Privileges_CredentialSpec_Registry{
-			Registry: c.Registry,
-		}
-	}
-
-	return spec, nil
 }
 
 func healthConfigFromGRPC(h *swarmapi.HealthConfig) *container.HealthConfig {

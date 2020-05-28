@@ -3,13 +3,12 @@ package main
 import (
 	"bytes"
 	"os/exec"
-	"strings"
-	"testing"
 
-	"gotest.tools/assert"
+	"github.com/docker/docker/integration-cli/checker"
+	"github.com/go-check/check"
 )
 
-func (s *DockerSuite) TestLoginWithoutTTY(c *testing.T) {
+func (s *DockerSuite) TestLoginWithoutTTY(c *check.C) {
 	cmd := exec.Command(dockerBinary, "login")
 
 	// Send to stdin so the process does not get the TTY
@@ -17,14 +16,14 @@ func (s *DockerSuite) TestLoginWithoutTTY(c *testing.T) {
 
 	// run the command and block until it's done
 	err := cmd.Run()
-	assert.ErrorContains(c, err, "") //"Expected non nil err when logging in & TTY not available"
+	c.Assert(err, checker.NotNil) //"Expected non nil err when logging in & TTY not available"
 }
 
-func (s *DockerRegistryAuthHtpasswdSuite) TestLoginToPrivateRegistry(c *testing.T) {
+func (s *DockerRegistryAuthHtpasswdSuite) TestLoginToPrivateRegistry(c *check.C) {
 	// wrong credentials
 	out, _, err := dockerCmdWithError("login", "-u", s.reg.Username(), "-p", "WRONGPASSWORD", privateRegistryURL)
-	assert.ErrorContains(c, err, "", out)
-	assert.Assert(c, strings.Contains(out, "401 Unauthorized"))
+	c.Assert(err, checker.NotNil, check.Commentf(out))
+	c.Assert(out, checker.Contains, "401 Unauthorized")
 
 	// now it's fine
 	dockerCmd(c, "login", "-u", s.reg.Username(), "-p", s.reg.Password(), privateRegistryURL)

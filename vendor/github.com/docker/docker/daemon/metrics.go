@@ -123,7 +123,7 @@ func (d *Daemon) cleanupMetricsPlugins() {
 
 			adapter, err := makePluginAdapter(p)
 			if err != nil {
-				logrus.WithError(err).WithField("plugin", p.Name()).Error("Error creating metrics plugin adapter")
+				logrus.WithError(err).WithField("plugin", p.Name()).Error("Error creating metrics plugin adapater")
 				return
 			}
 			if err := adapter.StopMetrics(); err != nil {
@@ -143,7 +143,7 @@ type metricsPlugin interface {
 	StopMetrics() error
 }
 
-func makePluginAdapter(p plugingetter.CompatPlugin) (metricsPlugin, error) {
+func makePluginAdapter(p plugingetter.CompatPlugin) (metricsPlugin, error) { // nolint: interfacer
 	if pc, ok := p.(plugingetter.PluginWithV1Client); ok {
 		return &metricsPluginAdapter{pc.Client(), p.Name()}, nil
 	}

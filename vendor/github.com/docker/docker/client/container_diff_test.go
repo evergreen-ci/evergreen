@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestContainerDiffError(t *testing.T) {
@@ -22,9 +21,7 @@ func TestContainerDiffError(t *testing.T) {
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
 	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
-	}
+
 }
 
 func TestContainerDiff(t *testing.T) {

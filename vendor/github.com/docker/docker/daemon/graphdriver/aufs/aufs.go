@@ -43,7 +43,7 @@ import (
 	"github.com/docker/docker/pkg/directory"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/locker"
-	"github.com/docker/docker/pkg/mount"
+	mountpk "github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/system"
 	rsystem "github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/selinux/go-selinux/label"
@@ -72,6 +72,7 @@ func init() {
 
 // Driver contains information about the filesystem mounted.
 type Driver struct {
+	sync.Mutex
 	root          string
 	uidMaps       []idtools.IDMap
 	gidMaps       []idtools.IDMap
@@ -80,7 +81,6 @@ type Driver struct {
 	pathCache     map[string]string
 	naiveDiff     graphdriver.DiffDriver
 	locker        *locker.Locker
-	mntL          sync.Mutex
 }
 
 // Init returns a new AUFS driver.
@@ -135,13 +135,13 @@ func Init(root string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		return nil, err
 	}
 	// Create the root aufs driver dir
-	if err := idtools.MkdirAllAndChown(root, 0700, idtools.Identity{UID: rootUID, GID: rootGID}); err != nil {
+	if err := idtools.MkdirAllAndChown(root, 0700, idtools.IDPair{UID: rootUID, GID: rootGID}); err != nil {
 		return nil, err
 	}
 
 	// Populate the dir structure
 	for _, p := range paths {
-		if err := idtools.MkdirAllAndChown(path.Join(root, p), 0700, idtools.Identity{UID: rootUID, GID: rootGID}); err != nil {
+		if err := idtools.MkdirAllAndChown(path.Join(root, p), 0700, idtools.IDPair{UID: rootUID, GID: rootGID}); err != nil {
 			return nil, err
 		}
 	}
@@ -289,7 +289,7 @@ func (a *Driver) createDirsFor(id string) error {
 	// The path of directories are <aufs_root_path>/mnt/<image_id>
 	// and <aufs_root_path>/diff/<image_id>
 	for _, p := range paths {
-		if err := idtools.MkdirAllAndChown(path.Join(a.rootPath(), p, id), 0755, idtools.Identity{UID: rootUID, GID: rootGID}); err != nil {
+		if err := idtools.MkdirAllAndChown(path.Join(a.rootPath(), p, id), 0755, idtools.IDPair{UID: rootUID, GID: rootGID}); err != nil {
 			return err
 		}
 	}
@@ -327,11 +327,11 @@ func (a *Driver) Remove(id string) error {
 			break
 		}
 
-		if errors.Cause(err) != unix.EBUSY {
-			return errors.Wrap(err, "aufs: unmount error")
+		if err != unix.EBUSY {
+			return errors.Wrapf(err, "aufs: unmount error: %s", mountpoint)
 		}
 		if retries >= 5 {
-			return errors.Wrap(err, "aufs: unmount error after retries")
+			return errors.Wrapf(err, "aufs: unmount error after retries: %s", mountpoint)
 		}
 		// If unmount returns EBUSY, it could be a transient error. Sleep and retry.
 		retries++
@@ -373,7 +373,7 @@ func atomicRemove(source string) error {
 	case os.IsExist(err):
 		// Got error saying the target dir already exists, maybe the source doesn't exist due to a previous (failed) remove
 		if _, e := os.Stat(source); !os.IsNotExist(e) {
-			return errors.Wrapf(err, "target rename dir %q exists but should not, this needs to be manually cleaned up", target)
+			return errors.Wrapf(err, "target rename dir '%s' exists but should not, this needs to be manually cleaned up")
 		}
 	default:
 		return errors.Wrapf(err, "error preparing atomic delete")
@@ -437,7 +437,7 @@ func (a *Driver) Put(id string) error {
 
 	err := a.unmount(m)
 	if err != nil {
-		logger.WithError(err).WithField("method", "Put()").Warn()
+		logger.Debugf("Failed to unmount %s aufs: %v", id, err)
 	}
 	return err
 }
@@ -547,6 +547,9 @@ func (a *Driver) getParentLayerPaths(id string) ([]string, error) {
 }
 
 func (a *Driver) mount(id string, target string, mountLabel string, layers []string) error {
+	a.Lock()
+	defer a.Unlock()
+
 	// If the id is mounted or we get an error return
 	if mounted, err := a.mounted(target); err != nil || mounted {
 		return err
@@ -561,6 +564,9 @@ func (a *Driver) mount(id string, target string, mountLabel string, layers []str
 }
 
 func (a *Driver) unmount(mountPath string) error {
+	a.Lock()
+	defer a.Unlock()
+
 	if mounted, err := a.mounted(mountPath); err != nil || !mounted {
 		return err
 	}
@@ -573,29 +579,32 @@ func (a *Driver) mounted(mountpoint string) (bool, error) {
 
 // Cleanup aufs and unmount all mountpoints
 func (a *Driver) Cleanup() error {
-	dir := a.mntPath()
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return errors.Wrap(err, "aufs readdir error")
-	}
-	for _, f := range files {
-		if !f.IsDir() {
-			continue
+	var dirs []string
+	if err := filepath.Walk(a.mntPath(), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
+		if !info.IsDir() {
+			return nil
+		}
+		dirs = append(dirs, path)
+		return nil
+	}); err != nil {
+		return err
+	}
 
-		m := path.Join(dir, f.Name())
-
+	for _, m := range dirs {
 		if err := a.unmount(m); err != nil {
-			logger.WithError(err).WithField("method", "Cleanup()").Warn()
+			logger.Debugf("error unmounting %s: %s", m, err)
 		}
 	}
-	return mount.RecursiveUnmount(a.root)
+	return mountpk.RecursiveUnmount(a.root)
 }
 
 func (a *Driver) aufsMount(ro []string, rw, target, mountLabel string) (err error) {
 	defer func() {
 		if err != nil {
-			mount.Unmount(target)
+			Unmount(target)
 		}
 	}()
 
@@ -623,29 +632,14 @@ func (a *Driver) aufsMount(ro []string, rw, target, mountLabel string) (err erro
 		opts += ",dirperm1"
 	}
 	data := label.FormatMountLabel(fmt.Sprintf("%s,%s", string(b[:bp]), opts), mountLabel)
-	a.mntL.Lock()
-	err = unix.Mount("none", target, "aufs", 0, data)
-	a.mntL.Unlock()
-	if err != nil {
-		err = errors.Wrap(err, "mount target="+target+" data="+data)
+	if err = mount("none", target, "aufs", 0, data); err != nil {
 		return
 	}
 
-	for index < len(ro) {
-		bp = 0
-		for ; index < len(ro); index++ {
-			layer := fmt.Sprintf("append:%s=ro+wh,", ro[index])
-			if bp+len(layer) > len(b) {
-				break
-			}
-			bp += copy(b[bp:], layer)
-		}
-		data := label.FormatMountLabel(string(b[:bp]), mountLabel)
-		a.mntL.Lock()
-		err = unix.Mount("none", target, "aufs", unix.MS_REMOUNT, data)
-		a.mntL.Unlock()
-		if err != nil {
-			err = errors.Wrap(err, "mount target="+target+" flags=MS_REMOUNT data="+data)
+	for ; index < len(ro); index++ {
+		layer := fmt.Sprintf(":%s=ro+wh", ro[index])
+		data := label.FormatMountLabel(fmt.Sprintf("append%s", layer), mountLabel)
+		if err = mount("none", target, "aufs", unix.MS_REMOUNT, data); err != nil {
 			return
 		}
 	}
@@ -672,7 +666,7 @@ func useDirperm() bool {
 		defer os.RemoveAll(union)
 
 		opts := fmt.Sprintf("br:%s,dirperm1,xino=/dev/shm/aufs.xino", base)
-		if err := unix.Mount("none", union, "aufs", 0, opts); err != nil {
+		if err := mount("none", union, "aufs", 0, opts); err != nil {
 			return
 		}
 		enableDirperm = true

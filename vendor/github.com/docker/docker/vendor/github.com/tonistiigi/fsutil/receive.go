@@ -1,13 +1,12 @@
 package fsutil
 
 import (
-	"context"
 	"io"
 	"os"
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tonistiigi/fsutil/types"
+	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -92,13 +91,7 @@ func (w *dynamicWalker) fill(ctx context.Context, pathC chan<- *currentPath) err
 			if !ok {
 				return nil
 			}
-			select {
-			case pathC <- p:
-			case <-ctx.Done():
-				w.err = ctx.Err()
-				close(w.closeCh)
-				return ctx.Err()
-			}
+			pathC <- p
 		case <-ctx.Done():
 			w.err = ctx.Err()
 			close(w.closeCh)
@@ -126,21 +119,21 @@ func (r *receiver) run(ctx context.Context) error {
 	g.Go(func() (retErr error) {
 		defer func() {
 			if retErr != nil {
-				r.conn.SendMsg(&types.Packet{Type: types.PACKET_ERR, Data: []byte(retErr.Error())})
+				r.conn.SendMsg(&Packet{Type: PACKET_ERR, Data: []byte(retErr.Error())})
 			}
 		}()
 		destWalker := emptyWalker
 		if !r.merge {
 			destWalker = GetWalkerFn(r.dest)
 		}
-		err := doubleWalkDiff(ctx, dw.HandleChange, destWalker, w.fill, r.filter)
+		err := doubleWalkDiff(ctx, dw.HandleChange, destWalker, w.fill)
 		if err != nil {
 			return err
 		}
 		if err := dw.Wait(ctx); err != nil {
 			return err
 		}
-		r.conn.SendMsg(&types.Packet{Type: types.PACKET_FIN})
+		r.conn.SendMsg(&Packet{Type: PACKET_FIN})
 		return nil
 	})
 
@@ -153,9 +146,9 @@ func (r *receiver) run(ctx context.Context) error {
 				r.progressCb(size, true)
 			}()
 		}
-		var p types.Packet
+		var p Packet
 		for {
-			p = types.Packet{Data: p.Data[:0]}
+			p = Packet{Data: p.Data[:0]}
 			if err := r.conn.RecvMsg(&p); err != nil {
 				return err
 			}
@@ -165,9 +158,9 @@ func (r *receiver) run(ctx context.Context) error {
 			}
 
 			switch p.Type {
-			case types.PACKET_ERR:
+			case PACKET_ERR:
 				return errors.Errorf("error from sender: %s", p.Data)
-			case types.PACKET_STAT:
+			case PACKET_STAT:
 				if p.Stat == nil {
 					if err := w.update(nil); err != nil {
 						return err
@@ -180,22 +173,22 @@ func (r *receiver) run(ctx context.Context) error {
 					r.mu.Unlock()
 				}
 				i++
-				cp := &currentPath{path: p.Stat.Path, stat: p.Stat}
-				if err := r.orderValidator.HandleChange(ChangeKindAdd, cp.path, &StatInfo{cp.stat}, nil); err != nil {
+				cp := &currentPath{path: p.Stat.Path, f: &StatInfo{p.Stat}}
+				if err := r.orderValidator.HandleChange(ChangeKindAdd, cp.path, cp.f, nil); err != nil {
 					return err
 				}
-				if err := r.hlValidator.HandleChange(ChangeKindAdd, cp.path, &StatInfo{cp.stat}, nil); err != nil {
+				if err := r.hlValidator.HandleChange(ChangeKindAdd, cp.path, cp.f, nil); err != nil {
 					return err
 				}
 				if err := w.update(cp); err != nil {
 					return err
 				}
-			case types.PACKET_DATA:
+			case PACKET_DATA:
 				r.muPipes.Lock()
 				pw, ok := r.pipes[p.ID]
 				r.muPipes.Unlock()
 				if !ok {
-					return errors.Errorf("invalid file request %d", p.ID)
+					return errors.Errorf("invalid file request %s", p.ID)
 				}
 				if len(p.Data) == 0 {
 					if err := pw.Close(); err != nil {
@@ -206,9 +199,9 @@ func (r *receiver) run(ctx context.Context) error {
 						return err
 					}
 				}
-			case types.PACKET_FIN:
+			case PACKET_FIN:
 				for {
-					var p types.Packet
+					var p Packet
 					if err := r.conn.RecvMsg(&p); err != nil {
 						if err == io.EOF {
 							return nil
@@ -236,7 +229,7 @@ func (r *receiver) asyncDataFunc(ctx context.Context, p string, wc io.WriteClose
 	r.muPipes.Lock()
 	r.pipes[id] = wwc
 	r.muPipes.Unlock()
-	if err := r.conn.SendMsg(&types.Packet{Type: types.PACKET_REQ, ID: id}); err != nil {
+	if err := r.conn.SendMsg(&Packet{Type: PACKET_REQ, ID: id}); err != nil {
 		return err
 	}
 	err := wwc.Wait(ctx)

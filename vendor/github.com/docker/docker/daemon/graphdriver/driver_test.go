@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 func TestIsEmptyDir(t *testing.T) {

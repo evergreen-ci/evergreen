@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/mount"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func TestEnsureRemoveAllNotExist(t *testing.T) {

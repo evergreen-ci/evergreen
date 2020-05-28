@@ -9,12 +9,11 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
-	"testing"
 
-	"gotest.tools/assert"
+	"github.com/go-check/check"
 )
 
-func (s *DockerSuite) TestClientSetsTLSServerName(c *testing.T) {
+func (s *DockerSuite) TestClientSetsTLSServerName(c *check.C) {
 	c.Skip("Flakey test")
 	// there may be more than one hit to the server for each registry request
 	var serverNameReceived []string
@@ -28,7 +27,7 @@ func (s *DockerSuite) TestClientSetsTLSServerName(c *testing.T) {
 	virtualHostServer.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
 
 	u, err := url.Parse(virtualHostServer.URL)
-	assert.NilError(c, err)
+	c.Assert(err, check.IsNil)
 	hostPort := u.Host
 	serverName = strings.Split(hostPort, ":")[0]
 
@@ -37,9 +36,9 @@ func (s *DockerSuite) TestClientSetsTLSServerName(c *testing.T) {
 	cmd.Run()
 
 	// check that the fake server was hit at least once
-	assert.Assert(c, len(serverNameReceived) > 0)
+	c.Assert(len(serverNameReceived) > 0, check.Equals, true)
 	// check that for each hit the right server name was received
 	for _, item := range serverNameReceived {
-		assert.Check(c, item == serverName)
+		c.Check(item, check.Equals, serverName)
 	}
 }

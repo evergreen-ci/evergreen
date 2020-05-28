@@ -685,7 +685,7 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 	case reflect.Map:
 		return mw.writeMap(val)
 	}
-	return &ErrUnsupportedType{T: val.Type()}
+	return &ErrUnsupportedType{val.Type()}
 }
 
 func (mw *Writer) writeMap(v reflect.Value) (err error) {

@@ -11,8 +11,7 @@ func iPtr(i int64) *int64        { return &i }
 func u32Ptr(i int64) *uint32     { u := uint32(i); return &u }
 func fmPtr(i int64) *os.FileMode { fm := os.FileMode(i); return &fm }
 
-// DefaultCapabilities returns a Linux kernel default capabilities
-func DefaultCapabilities() []string {
+func defaultCapabilities() []string {
 	return []string{
 		"CAP_CHOWN",
 		"CAP_DAC_OVERRIDE",
@@ -60,10 +59,10 @@ func DefaultLinuxSpec() specs.Spec {
 		Version: specs.Version,
 		Process: &specs.Process{
 			Capabilities: &specs.LinuxCapabilities{
-				Bounding:    DefaultCapabilities(),
-				Permitted:   DefaultCapabilities(),
-				Inheritable: DefaultCapabilities(),
-				Effective:   DefaultCapabilities(),
+				Bounding:    defaultCapabilities(),
+				Permitted:   defaultCapabilities(),
+				Inheritable: defaultCapabilities(),
+				Effective:   defaultCapabilities(),
 			},
 		},
 		Root: &specs.Root{},
@@ -115,8 +114,6 @@ func DefaultLinuxSpec() specs.Spec {
 
 	s.Linux = &specs.Linux{
 		MaskedPaths: []string{
-			"/proc/asound",
-			"/proc/acpi",
 			"/proc/kcore",
 			"/proc/keys",
 			"/proc/latency_stats",
@@ -127,6 +124,7 @@ func DefaultLinuxSpec() specs.Spec {
 			"/sys/firmware",
 		},
 		ReadonlyPaths: []string{
+			"/proc/asound",
 			"/proc/bus",
 			"/proc/fs",
 			"/proc/irq",

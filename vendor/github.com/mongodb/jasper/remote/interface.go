@@ -24,6 +24,4 @@ type Manager interface {
 
 	CreateScripting(context.Context, options.ScriptingHarness) (scripting.Harness, error)
 	GetScripting(context.Context, string) (scripting.Harness, error)
-
-	SendMessages(context.Context, options.LoggingPayload) error
 }

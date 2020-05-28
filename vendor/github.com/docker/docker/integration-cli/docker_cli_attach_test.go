@@ -8,17 +8,16 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/integration-cli/cli"
-	"gotest.tools/assert"
-	"gotest.tools/icmd"
+	"github.com/go-check/check"
+	"github.com/gotestyourself/gotestyourself/icmd"
 )
 
 const attachWait = 5 * time.Second
 
-func (s *DockerSuite) TestAttachMultipleAndRestart(c *testing.T) {
+func (s *DockerSuite) TestAttachMultipleAndRestart(c *check.C) {
 	endGroup := &sync.WaitGroup{}
 	startGroup := &sync.WaitGroup{}
 	endGroup.Add(3)
@@ -88,7 +87,7 @@ func (s *DockerSuite) TestAttachMultipleAndRestart(c *testing.T) {
 	}
 }
 
-func (s *DockerSuite) TestAttachTTYWithoutStdin(c *testing.T) {
+func (s *DockerSuite) TestAttachTTYWithoutStdin(c *check.C) {
 	// TODO @jhowardmsft. Figure out how to get this running again reliable on Windows.
 	// It works by accident at the moment. Sometimes. I've gone back to v1.13.0 and see the same.
 	// On Windows, docker run -d -ti busybox causes the container to exit immediately.
@@ -100,7 +99,7 @@ func (s *DockerSuite) TestAttachTTYWithoutStdin(c *testing.T) {
 	out, _ := dockerCmd(c, "run", "-d", "-ti", "busybox")
 
 	id := strings.TrimSpace(out)
-	assert.NilError(c, waitRun(id))
+	c.Assert(waitRun(id), check.IsNil)
 
 	done := make(chan error)
 	go func() {
@@ -127,13 +126,13 @@ func (s *DockerSuite) TestAttachTTYWithoutStdin(c *testing.T) {
 
 	select {
 	case err := <-done:
-		assert.NilError(c, err)
+		c.Assert(err, check.IsNil)
 	case <-time.After(attachWait):
 		c.Fatal("attach is running but should have failed")
 	}
 }
 
-func (s *DockerSuite) TestAttachDisconnect(c *testing.T) {
+func (s *DockerSuite) TestAttachDisconnect(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	out, _ := dockerCmd(c, "run", "-di", "busybox", "/bin/cat")
 	id := strings.TrimSpace(out)
@@ -145,28 +144,28 @@ func (s *DockerSuite) TestAttachDisconnect(c *testing.T) {
 	}
 	defer stdin.Close()
 	stdout, err := cmd.StdoutPipe()
-	assert.NilError(c, err)
+	c.Assert(err, check.IsNil)
 	defer stdout.Close()
-	assert.Assert(c, cmd.Start() == nil)
+	c.Assert(cmd.Start(), check.IsNil)
 	defer func() {
 		cmd.Process.Kill()
 		cmd.Wait()
 	}()
 
 	_, err = stdin.Write([]byte("hello\n"))
-	assert.NilError(c, err)
+	c.Assert(err, check.IsNil)
 	out, err = bufio.NewReader(stdout).ReadString('\n')
-	assert.NilError(c, err)
-	assert.Equal(c, strings.TrimSpace(out), "hello")
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.TrimSpace(out), check.Equals, "hello")
 
-	assert.Assert(c, stdin.Close() == nil)
+	c.Assert(stdin.Close(), check.IsNil)
 
 	// Expect container to still be running after stdin is closed
 	running := inspectField(c, id, "State.Running")
-	assert.Equal(c, running, "true")
+	c.Assert(running, check.Equals, "true")
 }
 
-func (s *DockerSuite) TestAttachPausedContainer(c *testing.T) {
+func (s *DockerSuite) TestAttachPausedContainer(c *check.C) {
 	testRequires(c, IsPausable)
 	runSleepingContainer(c, "-d", "--name=test")
 	dockerCmd(c, "pause", "test")

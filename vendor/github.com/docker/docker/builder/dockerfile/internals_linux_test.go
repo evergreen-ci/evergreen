@@ -5,10 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/idtools"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestChownFlagParsing(t *testing.T) {
@@ -35,7 +34,7 @@ othergrp:x:6666:
 		},
 	}
 	remapped := idtools.NewIDMappingsFromMaps(idMaps, idMaps)
-	unmapped := &idtools.IdentityMapping{}
+	unmapped := &idtools.IDMappings{}
 
 	contextDir, cleanup := createTestTempDir(t, "", "builder-chown-parse-test")
 	defer cleanup()
@@ -50,72 +49,56 @@ othergrp:x:6666:
 
 	// positive tests
 	for _, testcase := range []struct {
-		builder   *Builder
 		name      string
 		chownStr  string
-		idMapping *idtools.IdentityMapping
-		state     *dispatchState
-		expected  idtools.Identity
+		idMapping *idtools.IDMappings
+		expected  idtools.IDPair
 	}{
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UIDNoMap",
 			chownStr:  "1",
 			idMapping: unmapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 1, GID: 1},
+			expected:  idtools.IDPair{UID: 1, GID: 1},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UIDGIDNoMap",
 			chownStr:  "0:1",
 			idMapping: unmapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 0, GID: 1},
+			expected:  idtools.IDPair{UID: 0, GID: 1},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UIDWithMap",
 			chownStr:  "0",
 			idMapping: remapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 100000, GID: 100000},
+			expected:  idtools.IDPair{UID: 100000, GID: 100000},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UIDGIDWithMap",
 			chownStr:  "1:33",
 			idMapping: remapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 100001, GID: 100033},
+			expected:  idtools.IDPair{UID: 100001, GID: 100033},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UserNoMap",
 			chownStr:  "bin:5555",
 			idMapping: unmapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 1, GID: 5555},
+			expected:  idtools.IDPair{UID: 1, GID: 5555},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "GroupWithMap",
 			chownStr:  "0:unicorn",
 			idMapping: remapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 100000, GID: 101002},
+			expected:  idtools.IDPair{UID: 100000, GID: 101002},
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UserOnlyWithMap",
 			chownStr:  "unicorn",
 			idMapping: remapped,
-			state:     &dispatchState{},
-			expected:  idtools.Identity{UID: 101001, GID: 101002},
+			expected:  idtools.IDPair{UID: 101001, GID: 101002},
 		},
 	} {
 		t.Run(testcase.name, func(t *testing.T) {
-			idPair, err := parseChownFlag(testcase.builder, testcase.state, testcase.chownStr, contextDir, testcase.idMapping)
+			idPair, err := parseChownFlag(testcase.chownStr, contextDir, testcase.idMapping)
 			assert.NilError(t, err, "Failed to parse chown flag: %q", testcase.chownStr)
 			assert.Check(t, is.DeepEqual(testcase.expected, idPair), "chown flag mapping failure")
 		})
@@ -123,40 +106,32 @@ othergrp:x:6666:
 
 	// error tests
 	for _, testcase := range []struct {
-		builder   *Builder
 		name      string
 		chownStr  string
-		idMapping *idtools.IdentityMapping
-		state     *dispatchState
+		idMapping *idtools.IDMappings
 		descr     string
 	}{
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "BadChownFlagFormat",
 			chownStr:  "bob:1:555",
 			idMapping: unmapped,
-			state:     &dispatchState{},
 			descr:     "invalid chown string format: bob:1:555",
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "UserNoExist",
 			chownStr:  "bob",
 			idMapping: unmapped,
-			state:     &dispatchState{},
 			descr:     "can't find uid for user bob: no such user: bob",
 		},
 		{
-			builder:   &Builder{options: &types.ImageBuildOptions{Platform: "linux"}},
 			name:      "GroupNoExist",
 			chownStr:  "root:bob",
 			idMapping: unmapped,
-			state:     &dispatchState{},
 			descr:     "can't find gid for group bob: no such group: bob",
 		},
 	} {
 		t.Run(testcase.name, func(t *testing.T) {
-			_, err := parseChownFlag(testcase.builder, testcase.state, testcase.chownStr, contextDir, testcase.idMapping)
+			_, err := parseChownFlag(testcase.chownStr, contextDir, testcase.idMapping)
 			assert.Check(t, is.Error(err, testcase.descr), "Expected error string doesn't match")
 		})
 	}

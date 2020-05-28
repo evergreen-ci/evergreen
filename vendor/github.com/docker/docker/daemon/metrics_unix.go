@@ -51,7 +51,7 @@ func registerMetricsPluginCallback(store *plugin.Store, sockPath string) {
 
 		adapter, err := makePluginAdapter(p)
 		if err != nil {
-			logrus.WithError(err).WithField("plugin", p.Name()).Error("Error creating plugin adapter")
+			logrus.WithError(err).WithField("plugin", p.Name()).Error("Error creating plugin adapater")
 		}
 		if err := adapter.StartMetrics(); err != nil {
 			logrus.WithError(err).WithField("plugin", p.Name()).Error("Error starting metrics collector plugin")

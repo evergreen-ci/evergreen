@@ -6,14 +6,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/versions"
-	"github.com/docker/docker/errdefs"
 	gddohttputil "github.com/golang/gddo/httputil"
 )
 
@@ -39,10 +37,7 @@ func (s *containerRouter) postContainersCopy(ctx context.Context, w http.Respons
 
 	cfg := types.CopyConfig{}
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		if err == io.EOF {
-			return errdefs.InvalidParameter(errors.New("got EOF while reading request body"))
-		}
-		return errdefs.InvalidParameter(err)
+		return err
 	}
 
 	if cfg.Resource == "" {

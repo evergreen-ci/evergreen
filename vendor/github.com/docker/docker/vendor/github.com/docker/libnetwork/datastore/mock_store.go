@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	// ErrNotImplemented exported
-	ErrNotImplemented = errors.New("Functionality not implemented")
+	// ErrNotImplmented exported
+	ErrNotImplmented = errors.New("Functionality not implemented")
 )
 
 // MockData exported
@@ -65,7 +65,7 @@ func (s *MockStore) Exists(key string) (bool, error) {
 
 // List gets a range of values at "directory"
 func (s *MockStore) List(prefix string) ([]*store.KVPair, error) {
-	return nil, ErrNotImplemented
+	return nil, ErrNotImplmented
 }
 
 // DeleteTree deletes a range of values at "directory"
@@ -76,17 +76,17 @@ func (s *MockStore) DeleteTree(prefix string) error {
 
 // Watch a single key for modifications
 func (s *MockStore) Watch(key string, stopCh <-chan struct{}) (<-chan *store.KVPair, error) {
-	return nil, ErrNotImplemented
+	return nil, ErrNotImplmented
 }
 
 // WatchTree triggers a watch on a range of values at "directory"
 func (s *MockStore) WatchTree(prefix string, stopCh <-chan struct{}) (<-chan []*store.KVPair, error) {
-	return nil, ErrNotImplemented
+	return nil, ErrNotImplmented
 }
 
 // NewLock exposed
 func (s *MockStore) NewLock(key string, options *store.LockOptions) (store.Locker, error) {
-	return nil, ErrNotImplemented
+	return nil, ErrNotImplmented
 }
 
 // AtomicPut put a value at "key" if the key has not been

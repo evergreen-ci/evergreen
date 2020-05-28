@@ -36,12 +36,10 @@
 			"jhowardmsft",
 			"johnstep",
 			"justincormack",
-			"kolyshkin",
 			"mhbauer",
 			"mlaventure",
 			"runcom",
 			"stevvooe",
-			"thajeztah",
 			"tianon",
 			"tibor",
 			"tonistiigi",
@@ -49,6 +47,15 @@
 			"vdemeester",
 			"vieux",
 			"yongtang"
+		]
+
+	[Org."Docs maintainers"]
+
+	# TODO Describe the docs maintainers role.
+
+		people = [
+			"misty",
+			"thajeztah"
 		]
 
 	[Org.Curators]
@@ -70,7 +77,6 @@
 			"chanwit",
 			"fntlnz",
 			"gianarb",
-			"olljanat",
 			"programmerq",
 			"rheinwein",
 			"ripcurld",
@@ -111,7 +117,7 @@
 			# still stumble into him in our issue tracker, or on IRC.
 			"erikh",
 
-			# Evan Hazlett is the creator of the Shipyard and Interlock open source projects,
+			# Evan Hazlett is the creator of of the Shipyard and Interlock open source projects,
 			# and the author of "Orca", which became the foundation of Docker Universal Control
 			# Plane (UCP). As a maintainer, Evan helped integrating SwarmKit (secrets, tasks)
 			# into the Docker engine.
@@ -155,7 +161,7 @@
 
 			# Alexander Morozov contributed many features to Docker, worked on the premise of 
 			# what later became containerd (and worked on that too), and made a "stupid" Go
-			# vendor tool specifically for docker/docker needs: vndr (https://github.com/LK4D4/vndr).
+			# vendor tool specificaly for docker/docker needs: vndr (https://github.com/LK4D4/vndr).
 			# Not many know that Alexander is a master negotiator, being able to change course
 			# of action with a single "Nope, we're not gonna do that".
 			"lk4d4",
@@ -240,7 +246,7 @@
 
 	[people.akihirosuda]
 	Name = "Akihiro Suda"
-	Email = "akihiro.suda.cz@hco.ntt.co.jp"
+	Email = "suda.akihiro@lab.ntt.co.jp"
 	GitHub = "AkihiroSuda"
 
 	[people.aluzzardi]
@@ -358,11 +364,6 @@
 	Email = "justin.cormack@docker.com"
 	GitHub = "justincormack"
 
-	[people.kolyshkin]
-	Name = "Kir Kolyshkin"
-	Email = "kolyshkin@gmail.com"
-	GitHub = "kolyshkin"
-
 	[people.lk4d4]
 	Name = "Alexander Morozov"
 	Email = "lk4d4@docker.com"
@@ -378,6 +379,11 @@
 	Email = "mbauer@us.ibm.com"
 	GitHub = "mhbauer"
 
+	[people.misty]
+	Name = "Misty Stanley-Jones"
+	Email = "misty@docker.com"
+	GitHub = "mistyhacks"
+
 	[people.mlaventure]
 	Name = "Kenfe-Mickaël Laventure"
 	Email = "mickael.laventure@gmail.com"
@@ -392,11 +398,6 @@
 	Name = "Jana Radhakrishnan"
 	Email = "mrjana@docker.com"
 	GitHub = "mrjana"
-
-	[people.olljanat]
-	Name = "Olli Janatuinen"
-	Email = "olli.janatuinen@gmail.com"
-	GitHub = "olljanat"
 
 	[people.programmerq]
 	Name = "Jeff Anderson"

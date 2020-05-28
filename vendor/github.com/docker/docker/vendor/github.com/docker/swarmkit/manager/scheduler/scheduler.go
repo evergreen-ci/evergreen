@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"time"
 
 	"github.com/docker/swarmkit/api"
@@ -10,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -702,20 +702,9 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 	return tasksScheduled
 }
 
-// noSuitableNode checks unassigned tasks and make sure they have an existing service in the store before
-// updating the task status and adding it back to: schedulingDecisions, unassignedTasks and allTasks
 func (s *Scheduler) noSuitableNode(ctx context.Context, taskGroup map[string]*api.Task, schedulingDecisions map[string]schedulingDecision) {
 	explanation := s.pipeline.Explain()
 	for _, t := range taskGroup {
-		var service *api.Service
-		s.store.View(func(tx store.ReadTx) {
-			service = store.GetService(tx, t.ServiceID)
-		})
-		if service == nil {
-			log.G(ctx).WithField("task.id", t.ID).Debug("removing task from the scheduler")
-			continue
-		}
-
 		log.G(ctx).WithField("task.id", t.ID).Debug("no suitable node available for task")
 
 		newT := *t

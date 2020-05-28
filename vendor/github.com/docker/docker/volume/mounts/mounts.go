@@ -62,12 +62,6 @@ type MountPoint struct {
 	// Sepc is a copy of the API request that created this mount.
 	Spec mounttypes.Mount
 
-	// Some bind mounts should not be automatically created.
-	// (Some are auto-created for backwards-compatibility)
-	// This is checked on the API but setting this here prevents race conditions.
-	// where a bind dir existed during validation was removed before reaching the setup code.
-	SkipMountpointCreation bool
-
 	// Track usage of this mountpoint
 	// Specifically needed for containers which are running and calls to `docker cp`
 	// because both these actions require mounting the volumes.
@@ -95,11 +89,7 @@ func (m *MountPoint) Cleanup() error {
 // configured, or creating the source directory if supplied.
 // The, optional, checkFun parameter allows doing additional checking
 // before creating the source directory on the host.
-func (m *MountPoint) Setup(mountLabel string, rootIDs idtools.Identity, checkFun func(m *MountPoint) error) (path string, err error) {
-	if m.SkipMountpointCreation {
-		return m.Source, nil
-	}
-
+func (m *MountPoint) Setup(mountLabel string, rootIDs idtools.IDPair, checkFun func(m *MountPoint) error) (path string, err error) {
 	defer func() {
 		if err != nil || !label.RelabelNeeded(m.Mode) {
 			return
@@ -125,7 +115,7 @@ func (m *MountPoint) Setup(mountLabel string, rootIDs idtools.Identity, checkFun
 	if m.Volume != nil {
 		id := m.ID
 		if id == "" {
-			id = stringid.GenerateRandomID()
+			id = stringid.GenerateNonCryptoID()
 		}
 		path, err := m.Volume.Mount(id)
 		if err != nil {
@@ -150,7 +140,6 @@ func (m *MountPoint) Setup(mountLabel string, rootIDs idtools.Identity, checkFun
 				return "", err
 			}
 		}
-
 		// idtools.MkdirAllNewAs() produces an error if m.Source exists and is a file (not a directory)
 		// also, makes sure that if the directory is created, the correct remapped rootUID/rootGID will own it
 		if err := idtools.MkdirAllAndChownNew(m.Source, 0755, rootIDs); err != nil {

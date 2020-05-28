@@ -103,16 +103,20 @@ func newPid(pid int) (c Capabilities, err error) {
 	case linuxCapVer1:
 		p := new(capsV1)
 		p.hdr.version = capVers
-		p.hdr.pid = int32(pid)
+		p.hdr.pid = pid
 		c = p
 	case linuxCapVer2, linuxCapVer3:
 		p := new(capsV3)
 		p.hdr.version = capVers
-		p.hdr.pid = int32(pid)
+		p.hdr.pid = pid
 		c = p
 	default:
 		err = errUnknownVers
 		return
+	}
+	err = c.Load()
+	if err != nil {
+		c = nil
 	}
 	return
 }
@@ -231,10 +235,9 @@ func (c *capsV1) Apply(kind CapType) error {
 }
 
 type capsV3 struct {
-	hdr     capHeader
-	data    [2]capData
-	bounds  [2]uint32
-	ambient [2]uint32
+	hdr    capHeader
+	data   [2]capData
+	bounds [2]uint32
 }
 
 func (c *capsV3) Get(which CapType, what Cap) bool {
@@ -253,8 +256,6 @@ func (c *capsV3) Get(which CapType, what Cap) bool {
 		return (1<<uint(what))&c.data[i].inheritable != 0
 	case BOUNDING:
 		return (1<<uint(what))&c.bounds[i] != 0
-	case AMBIENT:
-		return (1<<uint(what))&c.ambient[i] != 0
 	}
 
 	return false
@@ -274,9 +275,6 @@ func (c *capsV3) getData(which CapType, dest []uint32) {
 	case BOUNDING:
 		dest[0] = c.bounds[0]
 		dest[1] = c.bounds[1]
-	case AMBIENT:
-		dest[0] = c.ambient[0]
-		dest[1] = c.ambient[1]
 	}
 }
 
@@ -315,9 +313,6 @@ func (c *capsV3) Set(which CapType, caps ...Cap) {
 		if which&BOUNDING != 0 {
 			c.bounds[i] |= 1 << uint(what)
 		}
-		if which&AMBIENT != 0 {
-			c.ambient[i] |= 1 << uint(what)
-		}
 	}
 }
 
@@ -341,9 +336,6 @@ func (c *capsV3) Unset(which CapType, caps ...Cap) {
 		if which&BOUNDING != 0 {
 			c.bounds[i] &= ^(1 << uint(what))
 		}
-		if which&AMBIENT != 0 {
-			c.ambient[i] &= ^(1 << uint(what))
-		}
 	}
 }
 
@@ -361,10 +353,6 @@ func (c *capsV3) Fill(kind CapType) {
 		c.bounds[0] = 0xffffffff
 		c.bounds[1] = 0xffffffff
 	}
-	if kind&AMBS == AMBS {
-		c.ambient[0] = 0xffffffff
-		c.ambient[1] = 0xffffffff
-	}
 }
 
 func (c *capsV3) Clear(kind CapType) {
@@ -380,10 +368,6 @@ func (c *capsV3) Clear(kind CapType) {
 	if kind&BOUNDS == BOUNDS {
 		c.bounds[0] = 0
 		c.bounds[1] = 0
-	}
-	if kind&AMBS == AMBS {
-		c.ambient[0] = 0
-		c.ambient[1] = 0
 	}
 }
 
@@ -424,11 +408,7 @@ func (c *capsV3) Load() (err error) {
 		}
 		if strings.HasPrefix(line, "CapB") {
 			fmt.Sscanf(line[4:], "nd:  %08x%08x", &c.bounds[1], &c.bounds[0])
-			continue
-		}
-		if strings.HasPrefix(line, "CapA") {
-			fmt.Sscanf(line[4:], "mb:  %08x%08x", &c.ambient[1], &c.ambient[0])
-			continue
+			break
 		}
 	}
 	f.Close()
@@ -462,25 +442,7 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	}
 
 	if kind&CAPS == CAPS {
-		err = capset(&c.hdr, &c.data[0])
-		if err != nil {
-			return
-		}
-	}
-
-	if kind&AMBS == AMBS {
-		for i := Cap(0); i <= CAP_LAST_CAP; i++ {
-			action := pr_CAP_AMBIENT_LOWER
-			if c.Get(AMBIENT, i) {
-				action = pr_CAP_AMBIENT_RAISE
-			}
-			err := prctl(pr_CAP_AMBIENT, action, uintptr(i), 0, 0)
-			// Ignore EINVAL as not supported on kernels before 4.3
-			if errno, ok := err.(syscall.Errno); ok && errno == syscall.EINVAL {
-				err = nil
-				continue
-			}
-		}
+		return capset(&c.hdr, &c.data[0])
 	}
 
 	return
@@ -488,6 +450,10 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 
 func newFile(path string) (c Capabilities, err error) {
 	c = &capsFile{path: path}
+	err = c.Load()
+	if err != nil {
+		c = nil
+	}
 	return
 }
 

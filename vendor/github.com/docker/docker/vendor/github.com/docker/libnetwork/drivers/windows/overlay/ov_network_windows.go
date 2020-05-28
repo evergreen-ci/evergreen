@@ -11,7 +11,6 @@ import (
 	"github.com/Microsoft/hcsshim"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/netlabel"
-	"github.com/docker/libnetwork/portmapper"
 	"github.com/docker/libnetwork/types"
 	"github.com/sirupsen/logrus"
 )
@@ -47,7 +46,6 @@ type network struct {
 	initErr         error
 	subnets         []*subnet
 	secure          bool
-	portMapper      *portmapper.PortMapper
 	sync.Mutex
 }
 
@@ -91,11 +89,10 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 	}
 
 	n := &network{
-		id:         id,
-		driver:     d,
-		endpoints:  endpointTable{},
-		subnets:    []*subnet{},
-		portMapper: portmapper.New(""),
+		id:        id,
+		driver:    d,
+		endpoints: endpointTable{},
+		subnets:   []*subnet{},
 	}
 
 	genData, ok := option[netlabel.GenericData].(map[string]string)

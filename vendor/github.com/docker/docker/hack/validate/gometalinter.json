@@ -18,6 +18,7 @@
     "golint",
     "gosimple",
     "ineffassign",
+    "interfacer",
     "unconvert",
     "vet"
   ],

@@ -77,7 +77,6 @@ const (
 	optionSessionCreateDefault = false
 	optionLogOutput            = "LogOutput"
 	optionLogOutputDefault     = false
-	optionProcessType          = "ProcessType"
 
 	optionRunWait      = "RunWait"
 	optionReloadSignal = "ReloadSignal"
@@ -136,7 +135,6 @@ type Config struct {
 	//    - RunAtLoad     bool   (false)
 	//    - UserService   bool   (false) - Install as a current user service.
 	//    - SessionCreate bool   (false) - Create a full user session.
-	//    - ProcessType	  string ()      - Apply resource limits depending kind type.
 	//  * POSIX
 	//    - SystemdScript string ()                 - Use custom systemd script
 	//    - UpstartScript string ()                 - Use custom upstart script

@@ -22,7 +22,6 @@ import (
 	diffapi "github.com/containerd/containerd/api/services/diff/v1"
 	"github.com/containerd/containerd/api/types"
 	"github.com/containerd/containerd/diff"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -52,7 +51,7 @@ func (r *diffRemote) Apply(ctx context.Context, diff ocispec.Descriptor, mounts 
 	}
 	resp, err := r.client.Apply(ctx, req)
 	if err != nil {
-		return ocispec.Descriptor{}, errdefs.FromGRPC(err)
+		return ocispec.Descriptor{}, err
 	}
 	return toDescriptor(resp.Applied), nil
 }
@@ -73,26 +72,24 @@ func (r *diffRemote) Compare(ctx context.Context, a, b []mount.Mount, opts ...di
 	}
 	resp, err := r.client.Diff(ctx, req)
 	if err != nil {
-		return ocispec.Descriptor{}, errdefs.FromGRPC(err)
+		return ocispec.Descriptor{}, err
 	}
 	return toDescriptor(resp.Diff), nil
 }
 
 func toDescriptor(d *types.Descriptor) ocispec.Descriptor {
 	return ocispec.Descriptor{
-		MediaType:   d.MediaType,
-		Digest:      d.Digest,
-		Size:        d.Size_,
-		Annotations: d.Annotations,
+		MediaType: d.MediaType,
+		Digest:    d.Digest,
+		Size:      d.Size_,
 	}
 }
 
 func fromDescriptor(d ocispec.Descriptor) *types.Descriptor {
 	return &types.Descriptor{
-		MediaType:   d.MediaType,
-		Digest:      d.Digest,
-		Size_:       d.Size,
-		Annotations: d.Annotations,
+		MediaType: d.MediaType,
+		Digest:    d.Digest,
+		Size_:     d.Size,
 	}
 }
 

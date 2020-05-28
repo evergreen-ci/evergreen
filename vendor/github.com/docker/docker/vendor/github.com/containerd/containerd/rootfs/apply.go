@@ -17,21 +17,20 @@
 package rootfs
 
 import (
-	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/containerd/containerd/diff"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // Layer represents the descriptors for a layer diff. These descriptions
@@ -48,27 +47,16 @@ type Layer struct {
 // Layers are applied in order they are given, making the first layer the
 // bottom-most layer in the layer chain.
 func ApplyLayers(ctx context.Context, layers []Layer, sn snapshots.Snapshotter, a diff.Applier) (digest.Digest, error) {
-	chain := make([]digest.Digest, len(layers))
-	for i, layer := range layers {
-		chain[i] = layer.Diff.Digest
-	}
-	chainID := identity.ChainID(chain)
-
-	// Just stat top layer, remaining layers will have their existence checked
-	// on prepare. Calling prepare on upper layers first guarantees that upper
-	// layers are not removed while calling stat on lower layers
-	_, err := sn.Stat(ctx, chainID.String())
-	if err != nil {
-		if !errdefs.IsNotFound(err) {
-			return "", errors.Wrapf(err, "failed to stat snapshot %s", chainID)
-		}
-
-		if err := applyLayers(ctx, layers, chain, sn, a); err != nil && !errdefs.IsAlreadyExists(err) {
+	var chain []digest.Digest
+	for _, layer := range layers {
+		if _, err := ApplyLayer(ctx, layer, chain, sn, a); err != nil {
+			// TODO: possibly wait and retry if extraction of same chain id was in progress
 			return "", err
 		}
-	}
 
-	return chainID, nil
+		chain = append(chain, layer.Diff.Digest)
+	}
+	return identity.ChainID(chain), nil
 }
 
 // ApplyLayer applies a single layer on top of the given provided layer chain,
@@ -76,90 +64,59 @@ func ApplyLayers(ctx context.Context, layers []Layer, sn snapshots.Snapshotter, 
 // is returned, if the layer already exists false is returned.
 func ApplyLayer(ctx context.Context, layer Layer, chain []digest.Digest, sn snapshots.Snapshotter, a diff.Applier, opts ...snapshots.Opt) (bool, error) {
 	var (
-		chainID = identity.ChainID(append(chain, layer.Diff.Digest)).String()
-		applied bool
-	)
-	if _, err := sn.Stat(ctx, chainID); err != nil {
-		if !errdefs.IsNotFound(err) {
-			return false, errors.Wrapf(err, "failed to stat snapshot %s", chainID)
-		}
-
-		if err := applyLayers(ctx, []Layer{layer}, append(chain, layer.Diff.Digest), sn, a, opts...); err != nil {
-			if !errdefs.IsAlreadyExists(err) {
-				return false, err
-			}
-		} else {
-			applied = true
-		}
-	}
-	return applied, nil
-}
-
-func applyLayers(ctx context.Context, layers []Layer, chain []digest.Digest, sn snapshots.Snapshotter, a diff.Applier, opts ...snapshots.Opt) error {
-	var (
-		parent  = identity.ChainID(chain[:len(chain)-1])
-		chainID = identity.ChainID(chain)
-		layer   = layers[len(layers)-1]
+		parent  = identity.ChainID(chain)
+		chainID = identity.ChainID(append(chain, layer.Diff.Digest))
 		diff    ocispec.Descriptor
-		key     string
-		mounts  []mount.Mount
-		err     error
 	)
 
-	for {
-		key = fmt.Sprintf("extract-%s %s", uniquePart(), chainID)
+	_, err := sn.Stat(ctx, chainID.String())
+	if err == nil {
+		log.G(ctx).Debugf("Extraction not needed, layer snapshot %s exists", chainID)
+		return false, nil
+	} else if !errdefs.IsNotFound(err) {
+		return false, errors.Wrapf(err, "failed to stat snapshot %s", chainID)
+	}
 
-		// Prepare snapshot with from parent, label as root
-		mounts, err = sn.Prepare(ctx, key, parent.String(), opts...)
-		if err != nil {
-			if errdefs.IsNotFound(err) && len(layers) > 1 {
-				if err := applyLayers(ctx, layers[:len(layers)-1], chain[:len(chain)-1], sn, a); err != nil {
-					if !errdefs.IsAlreadyExists(err) {
-						return err
-					}
-				}
-				// Do no try applying layers again
-				layers = nil
-				continue
-			} else if errdefs.IsAlreadyExists(err) {
-				// Try a different key
-				continue
-			}
+	key := fmt.Sprintf("extract-%s %s", uniquePart(), chainID)
 
-			// Already exists should have the caller retry
-			return errors.Wrapf(err, "failed to prepare extraction snapshot %q", key)
-
-		}
-		break
+	// Prepare snapshot with from parent, label as root
+	mounts, err := sn.Prepare(ctx, key, parent.String(), opts...)
+	if err != nil {
+		//TODO: If is snapshot exists error, retry
+		return false, errors.Wrapf(err, "failed to prepare extraction snapshot %q", key)
 	}
 	defer func() {
 		if err != nil {
-			if !errdefs.IsAlreadyExists(err) {
-				log.G(ctx).WithError(err).WithField("key", key).Infof("apply failure, attempting cleanup")
-			}
-
+			log.G(ctx).WithError(err).WithField("key", key).Infof("Apply failure, attempting cleanup")
 			if rerr := sn.Remove(ctx, key); rerr != nil {
-				log.G(ctx).WithError(rerr).WithField("key", key).Warnf("extraction snapshot removal failed")
+				log.G(ctx).WithError(rerr).Warnf("Extraction snapshot %q removal failed", key)
 			}
 		}
 	}()
 
 	diff, err = a.Apply(ctx, layer.Blob, mounts)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to extract layer %s", layer.Diff.Digest)
-		return err
+		return false, errors.Wrapf(err, "failed to extract layer %s", layer.Diff.Digest)
 	}
 	if diff.Digest != layer.Diff.Digest {
 		err = errors.Errorf("wrong diff id calculated on extraction %q", diff.Digest)
-		return err
+		return false, err
 	}
 
 	if err = sn.Commit(ctx, chainID.String(), key, opts...); err != nil {
-		err = errors.Wrapf(err, "failed to commit snapshot %s", key)
-		return err
+		if !errdefs.IsAlreadyExists(err) {
+			return false, errors.Wrapf(err, "failed to commit snapshot %s", key)
+		}
+
+		// Destination already exists, cleanup key and return without error
+		err = nil
+		if err := sn.Remove(ctx, key); err != nil {
+			return false, errors.Wrapf(err, "failed to cleanup aborted apply %s", key)
+		}
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 func uniquePart() string {

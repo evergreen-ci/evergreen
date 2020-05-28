@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
 )
 
 // secrets is a map that keeps all the currently available secrets to the agent
@@ -63,7 +62,6 @@ func (s *secrets) Reset() {
 type taskRestrictedSecretsProvider struct {
 	secrets   exec.SecretGetter
 	secretIDs map[string]struct{} // allow list of secret ids
-	taskID    string              // ID of the task the provider restricts for
 }
 
 func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, error) {
@@ -71,18 +69,7 @@ func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, erro
 		return nil, fmt.Errorf("task not authorized to access secret %s", secretID)
 	}
 
-	// First check if the secret is available with the task specific ID, which is the concatenation
-	// of the original secret ID and the task ID with a dot in between.
-	// That is the case when a secret driver has returned DoNotReuse == true for a secret value.
-	taskSpecificID := identity.CombineTwoIDs(secretID, sp.taskID)
-	secret, err := sp.secrets.Get(taskSpecificID)
-	if err != nil {
-		// Otherwise, which is the default case, the secret is retrieved by its original ID.
-		return sp.secrets.Get(secretID)
-	}
-	// For all intents and purposes, the rest of the flow should deal with the original secret ID.
-	secret.ID = secretID
-	return secret, err
+	return sp.secrets.Get(secretID)
 }
 
 // Restrict provides a getter that only allows access to the secrets
@@ -97,5 +84,5 @@ func Restrict(secrets exec.SecretGetter, t *api.Task) exec.SecretGetter {
 		}
 	}
 
-	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids, taskID: t.ID}
+	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids}
 }

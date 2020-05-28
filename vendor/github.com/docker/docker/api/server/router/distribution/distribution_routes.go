@@ -14,7 +14,6 @@ import (
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -43,10 +42,9 @@ func (s *distributionRouter) getDistributionInfo(ctx context.Context, w http.Res
 
 	image := vars["name"]
 
-	// TODO why is reference.ParseAnyReference() / reference.ParseNormalizedNamed() not using the reference.ErrTagInvalidFormat (and so on) errors?
 	ref, err := reference.ParseAnyReference(image)
 	if err != nil {
-		return errdefs.InvalidParameter(err)
+		return err
 	}
 	namedRef, ok := ref.(reference.Named)
 	if !ok {
@@ -54,7 +52,7 @@ func (s *distributionRouter) getDistributionInfo(ctx context.Context, w http.Res
 			// full image ID
 			return errors.Errorf("no manifest found for full image ID")
 		}
-		return errdefs.InvalidParameter(errors.Errorf("unknown image reference format: %s", image))
+		return errors.Errorf("unknown image reference format: %s", image)
 	}
 
 	distrepo, _, err := s.backend.GetRepository(ctx, namedRef, config)
@@ -68,7 +66,7 @@ func (s *distributionRouter) getDistributionInfo(ctx context.Context, w http.Res
 
 		taggedRef, ok := namedRef.(reference.NamedTagged)
 		if !ok {
-			return errdefs.InvalidParameter(errors.Errorf("image reference not tagged: %s", image))
+			return errors.Errorf("image reference not tagged: %s", image)
 		}
 
 		descriptor, err := distrepo.Tags(ctx).Get(ctx, taggedRef.Tag())
@@ -94,16 +92,6 @@ func (s *distributionRouter) getDistributionInfo(ctx context.Context, w http.Res
 	}
 	mnfst, err := mnfstsrvc.Get(ctx, distributionInspect.Descriptor.Digest)
 	if err != nil {
-		switch err {
-		case reference.ErrReferenceInvalidFormat,
-			reference.ErrTagInvalidFormat,
-			reference.ErrDigestInvalidFormat,
-			reference.ErrNameContainsUppercase,
-			reference.ErrNameEmpty,
-			reference.ErrNameTooLong,
-			reference.ErrNameNotCanonical:
-			return errdefs.InvalidParameter(err)
-		}
 		return err
 	}
 
