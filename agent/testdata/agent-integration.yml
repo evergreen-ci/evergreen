@@ -6,7 +6,6 @@ branch: master
 enabled: true
 batch_time: 180
 stepback: true
-oom_tracker: true
 
 functions:
   "list of commands":
