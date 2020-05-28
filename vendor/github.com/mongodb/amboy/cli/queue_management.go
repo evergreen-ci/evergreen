@@ -13,6 +13,7 @@ import (
 const (
 	jobNameFlagName      = "name"
 	jobTypeFlagName      = "type"
+	jobPrefixFlagName    = "job-prefix"
 	statusFilterFlagName = "filter"
 )
 
@@ -25,8 +26,9 @@ func queueManagement(opts *ServiceOptions) cli.Command {
 			managementReportJobIDs(opts),
 			managementReportRecentErrors(opts),
 			managementCompleteJob(opts),
-			managementCompleteJobByType(opts),
+			managementCompleteJobsByType(opts),
 			managementCompleteJobsByStatus(opts),
+			managementCompleteJobsByPrefix(opts),
 		},
 	}
 }
@@ -266,7 +268,7 @@ func managementCompleteJobsByStatus(opts *ServiceOptions) cli.Command {
 
 			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				if err := client.CompleteJobs(ctx, filter); err != nil {
-					return errors.Wrap(err, "problem marking job complete")
+					return errors.Wrap(err, "problem marking jobs complete")
 				}
 				return nil
 			})
@@ -275,7 +277,7 @@ func managementCompleteJobsByStatus(opts *ServiceOptions) cli.Command {
 
 }
 
-func managementCompleteJobByType(opts *ServiceOptions) cli.Command {
+func managementCompleteJobsByType(opts *ServiceOptions) cli.Command {
 	return cli.Command{
 		Name: "complete-jobs-by-type",
 		Flags: opts.managementReportFlags(
@@ -298,7 +300,38 @@ func managementCompleteJobByType(opts *ServiceOptions) cli.Command {
 
 			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 				if err := client.CompleteJobsByType(ctx, filter, jobType); err != nil {
-					return errors.Wrap(err, "problem marking job complete")
+					return errors.Wrap(err, "problem marking jobs complete")
+				}
+				return nil
+			})
+		},
+	}
+}
+
+func managementCompleteJobsByPrefix(opts *ServiceOptions) cli.Command {
+	return cli.Command{
+		Name: "complete-jobs-by-prefix",
+		Flags: opts.managementReportFlags(
+			cli.StringFlag{
+				Name:  jobPrefixFlagName,
+				Usage: "job prefix to filter by",
+			},
+			cli.StringFlag{
+				Name:  statusFilterFlagName,
+				Value: "in-progress",
+				Usage: "specify the process filter, can be 'all', 'completed', 'in-progress', 'pending', or 'stale'",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			prefix := c.String(jobPrefixFlagName)
+			filter := management.StatusFilter(c.String(statusFilterFlagName))
+
+			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
+				if err := client.CompleteJobsByPrefix(ctx, filter, prefix); err != nil {
+					return errors.Wrap(err, "problem marking jobs complete")
 				}
 				return nil
 			})

@@ -1,0 +1,7 @@
+package: github.com/mongodb/amboy
+import:
+- package: github.com/pkg/errors
+- package: github.com/stretchr/testify
+- package: github.com/mongodb/grip
+- package: go.mongodb.org/mongo-driver
+- package: github.com/papertrail/go-tail

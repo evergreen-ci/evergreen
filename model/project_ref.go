@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"math"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -205,6 +204,7 @@ const (
 	ProjectTriggerLevelTask  = "task"
 	ProjectTriggerLevelBuild = "build"
 	intervalPrefix           = "@every"
+	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -736,10 +736,10 @@ func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
 	}
 
 	// BatchTime is in minutes, but it is stored/used internally as
-	// nanoseconds. We need to cap this value to Int32 to prevent an
+	// nanoseconds. We need to cap this value to prevent an
 	// overflow/wrap around to negative values of time.Duration
-	if val > math.MaxInt32 {
-		return math.MaxInt32
+	if val > maxBatchTime {
+		return maxBatchTime
 	} else {
 		return val
 	}

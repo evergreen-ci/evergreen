@@ -643,3 +643,7 @@ func (db *dbQueueManager) CompleteJobs(ctx context.Context, f StatusFilter) erro
 	return db.completeJobs(ctx, bson.M{}, f)
 
 }
+
+func (db *dbQueueManager) CompleteJobsByPrefix(ctx context.Context, f StatusFilter, prefix string) error {
+	return db.completeJobs(ctx, bson.M{"_id": bson.M{"$regex": prefix}}, f)
+}

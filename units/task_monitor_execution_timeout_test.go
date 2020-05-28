@@ -131,7 +131,7 @@ func TestCleanupTask(t *testing.T) {
 					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
 					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
-					So(dt.Status, ShouldEqual, evergreen.TaskFailed)
+					So(dt.Status, ShouldEqual, evergreen.TaskStarted) // et2 is still running
 					So(dt.ResetWhenFinished, ShouldBeTrue)
 				})
 			})

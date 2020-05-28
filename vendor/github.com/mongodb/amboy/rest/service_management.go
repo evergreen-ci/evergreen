@@ -37,6 +37,7 @@ func (s *ManagementService) App() *gimlet.APIApp {
 	app.AddRoute("/jobs/mark_complete/{name}").Version(1).Post().Handler(s.MarkComplete)
 	app.AddRoute("/jobs/mark_complete_by_type/{type}/{filter}").Version(1).Post().Handler(s.MarkCompleteByType)
 	app.AddRoute("/jobs/mark_many_complete/{filter}").Version(1).Post().Handler(s.MarkManyComplete)
+	app.AddRoute("/jobs/mark_complete_by_prefix/{prefix}/{filter}").Version(1).Post().Handler(s.MarkCompleteByPrefix)
 
 	return app
 }
@@ -227,6 +228,26 @@ func (s *ManagementService) MarkManyComplete(rw http.ResponseWriter, r *http.Req
 	gimlet.WriteJSON(rw, struct {
 		Message string `json:"message"`
 	}{
-		Message: "mark jobs complete by type successful",
+		Message: "mark jobs complete by filter successful",
+	})
+}
+
+// MarkCompleteByPrefix is an http.Handlerfunc marks all jobs with the
+// specified prefix and status complete.
+func (s *ManagementService) MarkCompleteByPrefix(rw http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	prefix := vars["prefix"]
+	filter := vars["filter"]
+
+	ctx := r.Context()
+	if err := s.manager.CompleteJobsByPrefix(ctx, management.StatusFilter(filter), prefix); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
+			"problem completing jobs by prefix '%s' with filter '%s'", prefix, filter)))
+	}
+
+	gimlet.WriteJSON(rw, struct {
+		Message string `json:"message"`
+	}{
+		Message: "mark jobs complete by prefix successful",
 	})
 }

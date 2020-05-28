@@ -19,7 +19,7 @@ type JobInterchange struct {
 	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
 	Scopes     []string               `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
 	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
-	Job        *rawJob                `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
+	Job        rawJob                 `json:"job" bson:"job" yaml:"job"`
 	Dependency *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
 }
 
@@ -43,17 +43,13 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 	}
 
 	output := &JobInterchange{
-		Name:     j.ID(),
-		Type:     typeInfo.Name,
-		Version:  typeInfo.Version,
-		Priority: j.Priority(),
-		Status:   j.Status(),
-		TimeInfo: j.TimeInfo(),
-		Job: &rawJob{
-			Body: data,
-			Type: typeInfo.Name,
-			job:  j,
-		},
+		Name:       j.ID(),
+		Type:       typeInfo.Name,
+		Version:    typeInfo.Version,
+		Priority:   j.Priority(),
+		Status:     j.Status(),
+		TimeInfo:   j.TimeInfo(),
+		Job:        data,
 		Dependency: dep,
 	}
 
@@ -84,7 +80,7 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	err = convertFrom(f, j.Job.Body, job)
+	err = convertFrom(f, j.Job, job)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting job body")
 	}
@@ -98,7 +94,7 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 }
 
 // Raw returns the serialized version of the job.
-func (j *JobInterchange) Raw() []byte { return j.Job.Body }
+func (j *JobInterchange) Raw() []byte { return j.Job }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,10 +103,10 @@ func (j *JobInterchange) Raw() []byte { return j.Job.Body }
 // DependencyInterchange objects between processes, which have the
 // type information in easy to access and index-able locations.
 type DependencyInterchange struct {
-	Type       string         `json:"type" bson:"type" yaml:"type"`
-	Version    int            `json:"version" bson:"version" yaml:"version"`
-	Edges      []string       `bson:"edges" json:"edges" yaml:"edges"`
-	Dependency *rawDependency `json:"dependency" bson:"dependency" yaml:"dependency"`
+	Type       string        `json:"type" bson:"type" yaml:"type"`
+	Version    int           `json:"version" bson:"version" yaml:"version"`
+	Edges      []string      `bson:"edges" json:"edges" yaml:"edges"`
+	Dependency rawDependency `json:"dependency" bson:"dependency" yaml:"dependency"`
 }
 
 // MakeDependencyInterchange converts a dependency.Manager document to
@@ -124,14 +120,10 @@ func makeDependencyInterchange(f amboy.Format, d dependency.Manager) (*Dependenc
 	}
 
 	output := &DependencyInterchange{
-		Type:    typeInfo.Name,
-		Version: typeInfo.Version,
-		Edges:   d.Edges(),
-		Dependency: &rawDependency{
-			Body: data,
-			Type: typeInfo.Name,
-			dep:  d,
-		},
+		Type:       typeInfo.Name,
+		Version:    typeInfo.Version,
+		Edges:      d.Edges(),
+		Dependency: data,
 	}
 
 	return output, nil
@@ -157,7 +149,7 @@ func convertToDependency(f amboy.Format, d *DependencyInterchange) (dependency.M
 	// interchange object, but want to use the type information
 	// associated with the object that we produced with the
 	// factory.
-	err = convertFrom(f, d.Dependency.Body, dep)
+	err = convertFrom(f, d.Dependency, dep)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting dependency")
 	}

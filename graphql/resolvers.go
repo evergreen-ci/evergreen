@@ -187,6 +187,22 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 	return commitQueuePosition, nil
 }
 
+func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{task.StatusKey})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+	}
+	return getAllTaskStatuses(tasks), nil
+}
+
+func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
+	baseTasks, err := getVersionBaseTasks(r.sc, *obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
+	}
+	return getAllTaskStatuses(baseTasks), nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -437,11 +453,11 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if taskName != nil {
 		taskNameParam = *taskName
 	}
-	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam, []string{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
-	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
@@ -750,7 +766,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
@@ -806,6 +822,18 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	return commitQueue, nil
 }
 
+func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
+	usr := route.MustHaveUser(ctx)
+	settings := evergreen.GetEnvironment().Settings()
+	config := &UserConfig{
+		User:          usr.Username(),
+		APIKey:        usr.GetAPIKey(),
+		UIServerHost:  settings.Ui.Url,
+		APIServerHost: settings.ApiUrl + "/api",
+	}
+
+	return config, nil
+}
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {

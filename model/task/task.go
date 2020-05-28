@@ -313,8 +313,8 @@ var (
 	AllStatuses = "*"
 )
 
-// Abortable returns true if the task can be aborted.
-func IsAbortable(t Task) bool {
+// IsAbortable returns true if the task can be aborted.
+func (t *Task) IsAbortable() bool {
 	return t.Status == evergreen.TaskStarted ||
 		t.Status == evergreen.TaskDispatched
 }
@@ -951,19 +951,19 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
 	switch t.ResultStatus() {
-	case evergreen.TaskFailed:
-		return 10
-	case evergreen.TaskTestTimedOut:
-		return 20
-	case evergreen.TaskSystemFailed:
-		return 30
-	case evergreen.TaskSystemTimedOut:
-		return 40
-	case evergreen.TaskSystemUnresponse:
-		return 50
-	case evergreen.TaskSetupFailed:
-		return 60
 	case evergreen.TaskStarted:
+		return 10
+	case evergreen.TaskFailed:
+		return 20
+	case evergreen.TaskTestTimedOut:
+		return 30
+	case evergreen.TaskSystemFailed:
+		return 40
+	case evergreen.TaskSystemTimedOut:
+		return 50
+	case evergreen.TaskSystemUnresponse:
+		return 60
+	case evergreen.TaskSetupFailed:
 		return 70
 	case evergreen.TaskUndispatched:
 		return 80
@@ -2014,7 +2014,7 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int) ([]Task, int, error) {
+func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}
@@ -2041,6 +2041,13 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	query := db.Query(match).Sort(sorters)
 	if limit > 0 {
 		query = query.Limit(limit).Skip(page * limit)
+	}
+	if len(fieldsToProject) > 0 {
+		fieldKeys := bson.M{}
+		for _, field := range fieldsToProject {
+			fieldKeys[field] = 1
+		}
+		query.Project(fieldKeys)
 	}
 
 	tasks := []Task{}

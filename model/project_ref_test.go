@@ -1,7 +1,6 @@
 package model
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.DefaultLogger, "buildlogger")
 }
 
-func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
+func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	assert := assert.New(t)
 
 	projectRef := &ProjectRef{
@@ -53,13 +52,13 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 		Branch:     "master",
 		RepoKind:   "github",
 		Enabled:    true,
-		BatchTime:  math.MaxInt64,
+		BatchTime:  maxBatchTime,
 		Identifier: "ident",
 	}
 
 	emptyVariant := &BuildVariant{}
 
-	assert.Equal(projectRef.getBatchTime(emptyVariant), math.MaxInt32,
+	assert.Equal(projectRef.getBatchTime(emptyVariant), maxBatchTime,
 		"ProjectRef.getBatchTime() is not capping BatchTime to MaxInt32")
 
 	projectRef.BatchTime = 55
