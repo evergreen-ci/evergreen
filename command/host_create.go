@@ -33,13 +33,6 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 		c.CreateHost.Background = true
 	}
 
-	// if a filename is defined, get the params from the file
-	if _, ok := params["file"]; ok {
-		fileName := fmt.Sprintf("%v", params["file"])
-		return errors.Wrapf(utility.ReadYAMLFile(fileName, &c.CreateHost),
-			"error reading from file '%s'", fileName)
-	}
-
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c.CreateHost,
