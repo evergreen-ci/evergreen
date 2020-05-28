@@ -18,6 +18,7 @@ import (
 
 type createHost struct {
 	CreateHost *apimodels.CreateHost
+	File       string
 	base
 }
 
@@ -31,6 +32,11 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	// background default is true
 	if _, ok := params["background"]; !ok {
 		c.CreateHost.Background = true
+	}
+
+	if _, ok := params["file"]; ok {
+		fileName := fmt.Sprintf("%v", params["file"])
+		c.File = fileName
 	}
 
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -54,8 +60,10 @@ func (c *createHost) parseParamsFromFile(fn string, conf *model.TaskConfig) erro
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
 	// if a filename is defined, then parseParams has not parsed the parameters yet,
 	// since the file was not yet available. it therefore needs to be parsed now.
-	if c.CreateHost.File != "" {
-		c.parseParamsFromFile(c.CreateHost.File, conf)
+	if c.File != "" {
+		if err := c.parseParamsFromFile(c.File, conf); err != nil {
+			return err
+		}
 	}
 
 	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
