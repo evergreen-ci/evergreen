@@ -37,9 +37,8 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	if _, ok := params["file"]; ok {
 		fileName := fmt.Sprintf("%v", params["file"])
 		c.File = fileName
-		fmt.Println(len(params))
 		if len(params) > 1 {
-			return errors.New("Programmer error: no params should be defined when using a file to parse params")
+			return errors.New("no params should be defined when using a file to parse params")
 		}
 		return nil
 	}
