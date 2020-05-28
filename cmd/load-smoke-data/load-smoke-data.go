@@ -89,7 +89,7 @@ func getFilesFromPathAndInsert(ctx context.Context, path string, catcher grip.Ca
 	for _, fn := range files {
 		fileInfo, err := os.Stat(fn)
 		if err != nil {
-
+			catcher.Add(errors.Wrapf(err, "problem getting file info  for %s", fn))
 		}
 		switch mode := fileInfo.Mode(); {
 		case mode.IsDir():
