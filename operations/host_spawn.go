@@ -71,7 +71,7 @@ func hostCreate() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(fileFlagName, "f"),
-				Usage: "name of a file containing the span host params",
+				Usage: "name of a file containing the spawn host params",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -96,7 +96,7 @@ func hostCreate() cli.Command {
 			defer client.Close()
 
 			spawnRequest := &restModel.HostRequestOptions{}
-			tags := []host.Tag 
+			var tags []host.Tag
 			if file != "" {
 				err = utility.ReadYAMLFile(file, &spawnRequest)
 				if err != nil {
