@@ -38,6 +38,68 @@ func getFiles(root string) ([]string, error) {
 	return out, nil
 }
 
+func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db *mongo.Database, logsDb *mongo.Database) {
+	var file *os.File
+	file, err := os.Open(fn)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "problem opening file"))
+		return
+	}
+	defer file.Close()
+
+	collName := strings.Split(filepath.Base(fn), ".")[0]
+	collection := db.Collection(collName)
+	// task_logg collection belongs to the logs db
+	if collName == model.TaskLogCollection {
+		collection = logsDb.Collection(collName)
+	}
+	scanner := bufio.NewScanner(file)
+	count := 0
+	for scanner.Scan() {
+		count++
+		bytes := scanner.Bytes()
+		// if the current collection is task_logg, delete from the collection the id that
+		// is about to be inserted so we can avoid dropping the collection completely.
+		if collName == model.TaskLogCollection {
+			taskLog := model.TaskLog{}
+			if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
+				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s into TaskLog struct", count, fn))
+				continue
+			}
+			_, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id})
+			catcher.Add(err)
+		}
+		doc := bson.D{}
+		if err = bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
+			catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
+			continue
+		}
+
+		_, err := collection.InsertOne(ctx, doc)
+		catcher.Add(err)
+	}
+	catcher.Add(scanner.Err())
+	grip.Infof("imported %d documents into %s", count, collName)
+}
+
+func getFilesFromPathAndInsert(ctx context.Context, path string, catcher grip.Catcher, db *mongo.Database, logsDb *mongo.Database) {
+	files, err := getFiles(path)
+	grip.EmergencyFatal(err)
+
+	for _, fn := range files {
+		fileInfo, err := os.Stat(fn)
+		if err != nil {
+
+		}
+		switch mode := fileInfo.Mode(); {
+		case mode.IsDir():
+			getFilesFromPathAndInsert(ctx, fn, catcher, db, logsDb)
+		case mode.IsRegular():
+			insertFileDocsToDb(ctx, fn, catcher, db, logsDb)
+		}
+	}
+}
+
 func main() {
 	wd, err := os.Getwd()
 	grip.EmergencyFatal(err)
@@ -62,54 +124,9 @@ func main() {
 	grip.EmergencyFatal(db.Drop(ctx))
 
 	logsDb := client.Database(logsDbName)
-
-	var file *os.File
-	files, err := getFiles(path)
-	grip.EmergencyFatal(err)
-
 	catcher := grip.NewBasicCatcher()
-	for _, fn := range files {
-		file, err = os.Open(fn)
-		if err != nil {
-			catcher.Add(errors.Wrap(err, "problem opening file"))
-			continue
-		}
-		defer file.Close()
 
-		collName := strings.Split(filepath.Base(fn), ".")[0]
-		collection := db.Collection(collName)
-		// task_logg collection belongs to the logs db
-		if collName == model.TaskLogCollection {
-			collection = logsDb.Collection(collName)
-		}
-		scanner := bufio.NewScanner(file)
-		count := 0
-		for scanner.Scan() {
-			count++
-			bytes := scanner.Bytes()
-			// if the current collection is task_logg, delete from the collection the id that
-			// is about to be inserted so we can avoid dropping the collection completely.
-			if collName == model.TaskLogCollection {
-				taskLog := model.TaskLog{}
-				if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
-					catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s into TaskLog struct", count, fn))
-					continue
-				}
-				_, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id})
-				catcher.Add(err)
-			}
-			doc := bson.D{}
-			if err = bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
-				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
-				continue
-			}
-
-			_, err := collection.InsertOne(ctx, doc)
-			catcher.Add(err)
-		}
-		catcher.Add(scanner.Err())
-		grip.Infof("imported %d documents into %s", count, collName)
-	}
+	getFilesFromPathAndInsert(ctx, path, catcher, db, logsDb)
 
 	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())
