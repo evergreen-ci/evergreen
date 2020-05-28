@@ -102,6 +102,9 @@ type EndTaskResponse struct {
 }
 
 type CreateHost struct {
+	//option to parse params from a file
+	File string `yaml:"file"`
+	
 	// agent-controlled settings
 	CloudProvider       string `mapstructure:"provider" json:"provider" yaml:"provider" plugin:"expand"`
 	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" yaml:"num_hosts" plugin:"expand"`
