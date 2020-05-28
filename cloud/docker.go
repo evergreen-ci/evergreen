@@ -147,7 +147,7 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 	return toEvgStatus(container.State), nil
 }
 
-func (m *dockerManager) SetPortMappings(ctx context.Context, h *host.Host, parent *host.Host) error {
+func (m *dockerManager) SetPortMappings(ctx context.Context, h, parent *host.Host) error {
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		if client.IsErrConnectionFailed(err) {
