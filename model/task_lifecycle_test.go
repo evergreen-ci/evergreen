@@ -2494,6 +2494,51 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Len(events, 0)
 }
 
+func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection), "error clearing collection")
+	assert := assert.New(t)
+	dt := task.Task{
+		Id:          "dt",
+		DisplayOnly: true,
+		Status:      evergreen.TaskStarted,
+		Activated:   true,
+		ExecutionTasks: []string{
+			"task1",
+			"task2",
+		},
+	}
+	assert.NoError(dt.Insert())
+	task1 := task.Task{
+		Id:     "task1",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Status:   evergreen.TaskFailed,
+			TimedOut: true,
+		},
+		TimeTaken:  3 * time.Minute,
+		StartTime:  time.Date(2000, 0, 0, 1, 1, 1, 0, time.Local),
+		FinishTime: time.Date(2000, 0, 0, 1, 9, 1, 0, time.Local),
+	}
+	assert.NoError(task1.Insert())
+	task2 := task.Task{
+		Id:        "task2",
+		Status:    evergreen.TaskStarted,
+		StartTime: time.Date(2000, 0, 0, 0, 30, 0, 0, time.Local), // this should end up as the start time for dt1
+	}
+	assert.NoError(task2.Insert())
+
+	// test that updating the status + activated from execution tasks shows started
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err := task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+
+	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
+	assert.NoError(err)
+	assert.Len(events, 0)
+}
+
 func TestDisplayTaskDelayedRestart(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing collection")
 	assert := assert.New(t)

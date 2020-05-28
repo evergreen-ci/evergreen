@@ -33,6 +33,8 @@ imports:
   version: 7037e69a48d124757a3c61b53c8a4a24d0de2699
 - name: github.com/evergreen-ci/gimlet
   version: afeadc9b9f628ce2a9d11a7e5b25dac8a0970727
+- name: github.com/evergreen-ci/poplar
+  version: 952cf7a06a66d844a5450c6db6802faeb0f1a72e
 
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86

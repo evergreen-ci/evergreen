@@ -213,3 +213,31 @@ func (c *managementClient) CompleteJobs(ctx context.Context, f management.Status
 
 	return nil
 }
+
+// CompleteJobsByPrefix marks all jobs with the given prefix complete.
+func (c *managementClient) CompleteJobsByPrefix(ctx context.Context, f management.StatusFilter, prefix string) error {
+	path := fmt.Sprintf("/jobs/mark_complete_by_prefix/%s/%s", prefix, f)
+	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem building request")
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error processing request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var msg string
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			msg = errors.Wrap(err, "problem reading response body").Error()
+		} else {
+			msg = string(data)
+		}
+		return errors.Errorf("status code '%s' returned with message: '%s'", resp.Status, msg)
+	}
+
+	return nil
+}

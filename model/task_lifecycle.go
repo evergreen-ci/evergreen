@@ -254,7 +254,7 @@ func AbortTask(taskId, caller string) error {
 		}
 	}
 
-	if !task.IsAbortable(*t) {
+	if !t.IsAbortable() {
 		return errors.Errorf("Task '%v' is currently '%v' - cannot abort task"+
 			" in this status", t.Id, t.Status)
 	}
@@ -292,7 +292,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			}
 			canDeactivate := true
 			for _, et := range execTasks {
-				if et.IsFinished() || task.IsAbortable(et) {
+				if et.IsFinished() || et.IsAbortable() {
 					canDeactivate = false
 					break
 				}
@@ -1122,7 +1122,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		if execTask.Activated {
 			t.Activated = true
 		}
-
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		}
@@ -1144,9 +1143,9 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
-	if statusTask.Status != evergreen.TaskFailed && (hasFinishedTasks && hasUnstartedTasks) {
-		// if the display task has a mix of finished and unfinished tasks, the status
-		// will be "started"
+	if hasFinishedTasks && hasUnstartedTasks {
+		// if the display task has a mix of finished and unfinished tasks, the display task is still
+		// "started" even if there aren't currently running tasks
 		statusTask.Status = evergreen.TaskStarted
 		statusTask.Details = apimodels.TaskEndDetail{}
 	}
@@ -1157,6 +1156,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		task.TimeTakenKey: timeTaken,
 		task.DetailsKey:   statusTask.Details,
 	}
+
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
@@ -1174,7 +1174,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating display task")
 	}
-
 	t.Status = statusTask.Status
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken

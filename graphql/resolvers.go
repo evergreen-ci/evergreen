@@ -806,6 +806,18 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	return commitQueue, nil
 }
 
+func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
+	usr := route.MustHaveUser(ctx)
+	settings := evergreen.GetEnvironment().Settings()
+	config := &UserConfig{
+		User:          usr.Username(),
+		APIKey:        usr.GetAPIKey(),
+		UIServerHost:  settings.Ui.Url,
+		APIServerHost: settings.ApiUrl + "/api",
+	}
+
+	return config, nil
+}
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {

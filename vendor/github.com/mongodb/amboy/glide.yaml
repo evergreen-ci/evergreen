@@ -8,5 +8,6 @@ import:
 - package: github.com/mongodb/grip
 - package: github.com/mongodb/mongo-go-driver
 - package: github.com/evergreen-ci/gimlet
+- package: github.com/evergreen-ci/poplar
 - package: gopkg.in/mgo.v2
 - package: gopkg.in/yaml.v2
