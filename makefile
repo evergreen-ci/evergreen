@@ -237,6 +237,12 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/crypto/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/oauth2/
+	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/
@@ -303,12 +309,14 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/harness.go
 	rm -rf vendor/github.com/mongodb/jasper/cmd/run-benchmarks/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/poplar/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/gopkg.in/mgo.v2
-	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/crypto/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/certdepot
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/timber/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/birch/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/shrub/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/utility/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/golang/protobuf/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/
@@ -316,10 +324,14 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/PuerkitoBio/rehttp/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/docker/docker/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/crypto/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/genproto/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/

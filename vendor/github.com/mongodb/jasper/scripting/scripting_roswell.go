@@ -35,7 +35,7 @@ func (e *roswellEnvironment) Setup(ctx context.Context) error {
 		cmd.AppendArgs(e.opts.Interpreter(), "install", sys)
 	}
 
-	cmd.SetHook(func(res error) error {
+	cmd.PostHook(func(res error) error {
 		if res == nil {
 			e.isConfigured = true
 		}
@@ -66,7 +66,7 @@ func (e *roswellEnvironment) RunScript(ctx context.Context, script string) error
 	}
 
 	if err := e.manager.WriteFile(ctx, wo); err != nil {
-		return errors.Wrap(err, "problem writing file")
+		return errors.Wrap(err, "problem writing script file")
 	}
 
 	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).AddEnv("ROSWELL_HOME", e.opts.Path).

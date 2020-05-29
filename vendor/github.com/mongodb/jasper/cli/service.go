@@ -196,8 +196,8 @@ func validateLogLevel(flagName string) func(*cli.Context) error {
 }
 
 // makeLogger creates a splunk logger. It may return nil if the splunk flags are
-// not populated.
-func makeLogger(c *cli.Context) *options.Logger {
+// not populated or the splunk logger is not registered.
+func makeLogger(c *cli.Context) *options.LoggerConfig {
 	info := send.SplunkConnectionInfo{
 		ServerURL: c.String(splunkURLFlagName),
 		Token:     c.String(splunkTokenFlagName),
@@ -223,19 +223,24 @@ func makeLogger(c *cli.Context) *options.Logger {
 		return nil
 	}
 
-	return &options.Logger{
-		Type: options.LogSplunk,
-		Options: options.Log{
-			Format:        options.LogFormatDefault,
-			Level:         send.LevelInfo{Default: priority, Threshold: priority},
-			SplunkOptions: info,
+	logger := &options.LoggerConfig{}
+	producer := &options.SplunkLoggerOptions{
+		Splunk: info,
+		Base: options.BaseOptions{
+			Format: options.LogFormatDefault,
+			Level:  send.LevelInfo{Default: priority, Threshold: priority},
 		},
 	}
+	if err := logger.Set(producer); err != nil {
+		return nil
+	}
+
+	return logger
 }
 
 // setupLogger creates a logger and sets it as the global logging back end.
-func setupLogger(opts *options.Logger) error {
-	sender, err := opts.Configure()
+func setupLogger(opts *options.LoggerConfig) error {
+	sender, err := opts.Resolve()
 	if err != nil {
 		return errors.Wrap(err, "could not configure logging")
 	}
@@ -255,7 +260,9 @@ func buildRunCommand(c *cli.Context, serviceType string) []string {
 func serviceOptions(c *cli.Context) service.KeyValue {
 	opts := service.KeyValue{
 		// launchd-specific options
-		"RunAtLoad": true,
+		"RunAtLoad":     true,
+		"SessionCreate": true,
+		"ProcessType":   "Interactive",
 		// Windows-specific options
 		"Password": c.String(passwordFlagName),
 	}
@@ -318,7 +325,7 @@ func serviceConfig(serviceType string, c *cli.Context, args []string) *service.C
 // makeUserEnvironment sets up the environment variables for the service. It
 // attempts to reads the common user environment variables from /etc/passwd for
 // upstart and sysv.
-func makeUserEnvironment(user string, vars []string) map[string]string {
+func makeUserEnvironment(user string, vars []string) map[string]string { //nolint: gocognit
 	env := map[string]string{}
 	for _, v := range vars {
 		keyAndValue := strings.Split(v, "=")

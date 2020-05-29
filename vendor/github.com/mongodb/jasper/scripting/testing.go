@@ -14,6 +14,7 @@ const (
 	TestOutcomeTimeout = "timeout"
 )
 
+// TestOptions describe settings that modify how tests are executed.
 type TestOptions struct {
 	Name    string        `bson:"name" json:"name" yaml:"name"`
 	Args    []string      `bson:"args" json:"args" yaml:"args"`
@@ -22,7 +23,7 @@ type TestOptions struct {
 	Count   int           `bson:"count" json:"count" yaml:"count"`
 }
 
-// TestResults capture the data about the run of a specific test run.
+// TestResults capture the data about a specific test run.
 type TestResult struct {
 	Name     string        `bson:"name" json:"name" yaml:"name"`
 	StartAt  time.Time     `bson:"start_at" json:"start_at" yaml:"start_at"`

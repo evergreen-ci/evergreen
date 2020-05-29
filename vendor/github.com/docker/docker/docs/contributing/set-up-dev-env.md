@@ -93,7 +93,7 @@ can take over 15 minutes to complete.
 
 1. Open a terminal.
 
-   For [Docker Toolbox](../../toolbox/overview.md) users, use `docker-machine status your_vm_name` to make sure your VM is running. You
+   For [Docker Toolbox](https://github.com/docker/toolbox) users, use `docker-machine status your_vm_name` to make sure your VM is running. You
    may need to run `eval "$(docker-machine env your_vm_name)"` to initialize your
    shell environment. If you use Docker for Mac or Docker for Windows, you do not need
    to use Docker Machine.
@@ -130,7 +130,7 @@ can take over 15 minutes to complete.
    ```none
    Successfully built 3d872560918e
    Successfully tagged docker-dev:dry-run-test
-   docker run --rm -i --privileged -e BUILDFLAGS -e KEEPBUNDLE -e DOCKER_BUILD_GOGC -e DOCKER_BUILD_PKGS -e DOCKER_CLIENTONLY -e DOCKER_DEBUG -e DOCKER_EXPERIMENTAL -e DOCKER_GITCOMMIT -e DOCKER_GRAPHDRIVER=devicemapper -e DOCKER_INCREMENTAL_BINARY -e DOCKER_REMAP_ROOT -e DOCKER_STORAGE_OPTS -e DOCKER_USERLANDPROXY -e TESTDIRS -e TESTFLAGS -e TIMEOUT -v "home/ubuntu/repos/docker/bundles:/go/src/github.com/docker/docker/bundles" -t "docker-dev:dry-run-test" bash
+   docker run --rm -i --privileged -e BUILDFLAGS -e KEEPBUNDLE -e DOCKER_BUILD_GOGC -e DOCKER_BUILD_PKGS -e DOCKER_CLIENTONLY -e DOCKER_DEBUG -e DOCKER_EXPERIMENTAL -e DOCKER_GITCOMMIT -e DOCKER_GRAPHDRIVER=devicemapper -e DOCKER_REMAP_ROOT -e DOCKER_STORAGE_OPTS -e DOCKER_USERLANDPROXY -e TESTDIRS -e TESTFLAGS -e TIMEOUT -v "home/ubuntu/repos/docker/bundles:/go/src/github.com/docker/docker/bundles" -t "docker-dev:dry-run-test" bash
    #
    ```
 

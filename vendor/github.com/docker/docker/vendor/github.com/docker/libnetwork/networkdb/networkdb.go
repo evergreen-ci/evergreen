@@ -5,7 +5,6 @@ package networkdb
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"sync"
@@ -59,7 +58,7 @@ type NetworkDB struct {
 	// List of all peer nodes which have left
 	leftNodes map[string]*node
 
-	// A multi-dimensional map of network/node attachmemts. The
+	// A multi-dimensional map of network/node attachments. The
 	// first key is a node name and the second key is a network ID
 	// for the network that node is participating in.
 	networks map[string]map[string]*network
@@ -96,7 +95,7 @@ type NetworkDB struct {
 
 	// bootStrapIP is the list of IPs that can be used to bootstrap
 	// the gossip.
-	bootStrapIP []net.IP
+	bootStrapIP []string
 
 	// lastStatsTimestamp is the last timestamp when the stats got printed
 	lastStatsTimestamp time.Time
@@ -131,6 +130,9 @@ type network struct {
 	// Lamport time for the latest state of the entry.
 	ltime serf.LamportTime
 
+	// Gets set to true after the first bulk sync happens
+	inSync bool
+
 	// Node leave is in progress.
 	leaving bool
 
@@ -151,7 +153,7 @@ type network struct {
 	entriesNumber int
 }
 
-// Config represents the configuration of the networdb instance and
+// Config represents the configuration of the networkdb instance and
 // can be passed by the caller.
 type Config struct {
 	// NodeID is the node unique identifier of the node when is part of the cluster
@@ -268,10 +270,8 @@ func New(c *Config) (*NetworkDB, error) {
 // instances passed by the caller in the form of addr:port
 func (nDB *NetworkDB) Join(members []string) error {
 	nDB.Lock()
-	nDB.bootStrapIP = make([]net.IP, 0, len(members))
-	for _, m := range members {
-		nDB.bootStrapIP = append(nDB.bootStrapIP, net.ParseIP(m))
-	}
+	nDB.bootStrapIP = append([]string(nil), members...)
+	logrus.Infof("The new bootstrap node list is:%v", nDB.bootStrapIP)
 	nDB.Unlock()
 	return nDB.clusterJoin(members)
 }
@@ -619,6 +619,7 @@ func (nDB *NetworkDB) JoinNetwork(nid string) error {
 	}
 	nDB.addNetworkNode(nid, nDB.config.NodeID)
 	networkNodes := nDB.networkNodes[nid]
+	n = nodeNetworks[nid]
 	nDB.Unlock()
 
 	if err := nDB.sendNetworkEvent(nid, NetworkEventTypeJoin, ltime); err != nil {
@@ -629,6 +630,12 @@ func (nDB *NetworkDB) JoinNetwork(nid string) error {
 	if _, err := nDB.bulkSync(networkNodes, true); err != nil {
 		logrus.Errorf("Error bulk syncing while joining network %s: %v", nid, err)
 	}
+
+	// Mark the network as being synced
+	// note this is a best effort, we are not checking the result of the bulk sync
+	nDB.Lock()
+	n.inSync = true
+	nDB.Unlock()
 
 	return nil
 }

@@ -12,14 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type process struct {
+type mdbProcess struct {
 	info      jasper.ProcessInfo
 	doRequest func(context.Context, mongowire.Message) (mongowire.Message, error)
 }
 
-func (p *process) ID() string { return p.info.ID }
+func (p *mdbProcess) ID() string { return p.info.ID }
 
-func (p *process) Info(ctx context.Context) jasper.ProcessInfo {
+func (p *mdbProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	if p.info.Complete {
 		return p.info
 	}
@@ -46,7 +46,7 @@ func (p *process) Info(ctx context.Context) jasper.ProcessInfo {
 	return p.info
 }
 
-func (p *process) Running(ctx context.Context) bool {
+func (p *mdbProcess) Running(ctx context.Context) bool {
 	if p.info.Complete {
 		return false
 	}
@@ -69,7 +69,7 @@ func (p *process) Running(ctx context.Context) bool {
 	return resp.Running
 }
 
-func (p *process) Complete(ctx context.Context) bool {
+func (p *mdbProcess) Complete(ctx context.Context) bool {
 	if p.info.Complete {
 		return true
 	}
@@ -92,7 +92,7 @@ func (p *process) Complete(ctx context.Context) bool {
 	return resp.Complete
 }
 
-func (p *process) Signal(ctx context.Context, sig syscall.Signal) error {
+func (p *mdbProcess) Signal(ctx context.Context, sig syscall.Signal) error {
 	r := signalRequest{}
 	r.Params.ID = p.ID()
 	r.Params.Signal = int(sig)
@@ -111,7 +111,7 @@ func (p *process) Signal(ctx context.Context, sig syscall.Signal) error {
 	return errors.Wrap(resp.SuccessOrError(), "error in response")
 }
 
-func (p *process) Wait(ctx context.Context) (int, error) {
+func (p *mdbProcess) Wait(ctx context.Context) (int, error) {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, waitRequest{p.ID()})
 	if err != nil {
 		return -1, errors.Wrap(err, "could not create request")
@@ -127,7 +127,7 @@ func (p *process) Wait(ctx context.Context) (int, error) {
 	return resp.ExitCode, errors.Wrap(resp.SuccessOrError(), "error in response")
 }
 
-func (p *process) Respawn(ctx context.Context) (jasper.Process, error) {
+func (p *mdbProcess) Respawn(ctx context.Context) (jasper.Process, error) {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, respawnRequest{ID: p.ID()})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create request")
@@ -143,18 +143,18 @@ func (p *process) Respawn(ctx context.Context) (jasper.Process, error) {
 	if err := resp.SuccessOrError(); err != nil {
 		return nil, errors.Wrap(err, "error in response")
 	}
-	return &process{info: resp.Info, doRequest: p.doRequest}, nil
+	return &mdbProcess{info: resp.Info, doRequest: p.doRequest}, nil
 }
 
-func (p *process) RegisterTrigger(ctx context.Context, t jasper.ProcessTrigger) error {
+func (p *mdbProcess) RegisterTrigger(ctx context.Context, t jasper.ProcessTrigger) error {
 	return errors.New("cannot register triggers on remote processes")
 }
 
-func (p *process) RegisterSignalTrigger(ctx context.Context, t jasper.SignalTrigger) error {
+func (p *mdbProcess) RegisterSignalTrigger(ctx context.Context, t jasper.SignalTrigger) error {
 	return errors.New("cannot register signal triggers on remote processes")
 }
 
-func (p *process) RegisterSignalTriggerID(ctx context.Context, sigID jasper.SignalTriggerID) error {
+func (p *mdbProcess) RegisterSignalTriggerID(ctx context.Context, sigID jasper.SignalTriggerID) error {
 	r := registerSignalTriggerIDRequest{}
 	r.Params.ID = p.ID()
 	r.Params.SignalTriggerID = sigID
@@ -173,7 +173,7 @@ func (p *process) RegisterSignalTriggerID(ctx context.Context, sigID jasper.Sign
 	return errors.Wrap(resp.SuccessOrError(), "error in response")
 }
 
-func (p *process) Tag(tag string) {
+func (p *mdbProcess) Tag(tag string) {
 	r := tagRequest{}
 	r.Params.ID = p.ID()
 	r.Params.Tag = tag
@@ -195,7 +195,7 @@ func (p *process) Tag(tag string) {
 	grip.Warning(message.WrapErrorf(resp.SuccessOrError(), "failed to tag process %s with tag %s", p.ID(), tag))
 }
 
-func (p *process) GetTags() []string {
+func (p *mdbProcess) GetTags() []string {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, getTagsRequest{p.ID()})
 	if err != nil {
 		grip.Warningf("failed to get tags for process %s", p.ID())
@@ -214,7 +214,7 @@ func (p *process) GetTags() []string {
 	return resp.Tags
 }
 
-func (p *process) ResetTags() {
+func (p *mdbProcess) ResetTags() {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, resetTagsRequest{p.ID()})
 	if err != nil {
 		grip.Warningf("failed to reset tags for process %s", p.ID())

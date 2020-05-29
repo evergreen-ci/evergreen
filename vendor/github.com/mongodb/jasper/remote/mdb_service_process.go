@@ -26,7 +26,7 @@ const (
 	ResetTagsCommand               = "reset_tags"
 )
 
-func (s *service) processInfo(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processInfo(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := infoRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), InfoCommand)
@@ -48,7 +48,7 @@ func (s *service) processInfo(ctx context.Context, w io.Writer, msg mongowire.Me
 	shell.WriteResponse(ctx, w, resp, InfoCommand)
 }
 
-func (s *service) processRunning(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processRunning(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := runningRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), RunningCommand)
@@ -70,7 +70,7 @@ func (s *service) processRunning(ctx context.Context, w io.Writer, msg mongowire
 	shell.WriteResponse(ctx, w, resp, RunningCommand)
 }
 
-func (s *service) processComplete(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processComplete(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &completeRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), CompleteCommand)
@@ -92,7 +92,7 @@ func (s *service) processComplete(ctx context.Context, w io.Writer, msg mongowir
 	shell.WriteResponse(ctx, w, resp, CompleteCommand)
 }
 
-func (s *service) processWait(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processWait(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := waitRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), WaitCommand)
@@ -115,7 +115,7 @@ func (s *service) processWait(ctx context.Context, w io.Writer, msg mongowire.Me
 	shell.WriteResponse(ctx, w, resp, WaitCommand)
 }
 
-func (s *service) processRespawn(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processRespawn(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := respawnRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), RespawnCommand)
@@ -161,7 +161,7 @@ func (s *service) processRespawn(ctx context.Context, w io.Writer, msg mongowire
 	shell.WriteResponse(ctx, w, resp, RespawnCommand)
 }
 
-func (s *service) processSignal(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processSignal(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := signalRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), SignalCommand)
@@ -184,7 +184,7 @@ func (s *service) processSignal(ctx context.Context, w io.Writer, msg mongowire.
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, SignalCommand)
 }
 
-func (s *service) processRegisterSignalTriggerID(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processRegisterSignalTriggerID(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := registerSignalTriggerIDRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), RegisterSignalTriggerIDCommand)
@@ -213,7 +213,7 @@ func (s *service) processRegisterSignalTriggerID(ctx context.Context, w io.Write
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, RegisterSignalTriggerIDCommand)
 }
 
-func (s *service) processTag(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processTag(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := tagRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), TagCommand)
@@ -233,7 +233,7 @@ func (s *service) processTag(ctx context.Context, w io.Writer, msg mongowire.Mes
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, TagCommand)
 }
 
-func (s *service) processGetTags(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processGetTags(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &getTagsRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetTagsCommand)
@@ -255,7 +255,7 @@ func (s *service) processGetTags(ctx context.Context, w io.Writer, msg mongowire
 	shell.WriteResponse(ctx, w, resp, GetTagsCommand)
 }
 
-func (s *service) processResetTags(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *mdbService) processResetTags(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := resetTagsRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ResetTagsCommand)

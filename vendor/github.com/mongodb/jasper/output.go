@@ -12,15 +12,18 @@ import (
 // NewInMemoryLogger is a basic constructor that constructs a logger
 // configuration for plain formatted in-memory buffered logger. The
 // logger will capture up to maxSize messages.
-func NewInMemoryLogger(maxSize int) options.Logger {
-	return options.Logger{
-		Type: options.LogInMemory,
-		Options: options.Log{
-			Format:      options.LogFormatPlain,
-			InMemoryCap: maxSize,
+func NewInMemoryLogger(maxSize int) (*options.LoggerConfig, error) {
+	loggerProducer := &options.InMemoryLoggerOptions{
+		InMemoryCap: maxSize,
+		Base: options.BaseOptions{
+			Format: options.LogFormatPlain,
 		},
 	}
-
+	config := &options.LoggerConfig{}
+	if err := config.Set(loggerProducer); err != nil {
+		return nil, errors.Wrap(err, "problem setting logger producer for logger config")
+	}
+	return config, nil
 }
 
 // LogStream represents the output of reading the in-memory log buffer as a
@@ -42,15 +45,20 @@ func GetInMemoryLogStream(ctx context.Context, proc Process, count int) ([]strin
 		return nil, errors.New("cannot get output logs from nil process")
 	}
 	for _, logger := range proc.Info(ctx).Options.Output.Loggers {
-		if logger.Type != options.LogInMemory {
+		if logger.Type() != options.LogInMemory {
 			continue
 		}
 
-		sender, err := logger.Configure()
+		// This is fine because logger.sender is already set.
+		sender, err := logger.Resolve()
 		if err != nil {
 			continue
 		}
 
+		safeSender, ok := sender.(*options.SafeSender)
+		if ok {
+			sender = safeSender.GetSender()
+		}
 		inMemorySender, ok := sender.(*send.InMemorySender)
 		if !ok {
 			continue

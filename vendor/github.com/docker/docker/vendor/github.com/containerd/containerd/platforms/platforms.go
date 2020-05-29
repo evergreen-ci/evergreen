@@ -109,6 +109,7 @@ package platforms
 import (
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
@@ -122,16 +123,25 @@ var (
 
 // Matcher matches platforms specifications, provided by an image or runtime.
 type Matcher interface {
-	Spec() specs.Platform
 	Match(platform specs.Platform) bool
+}
+
+// NewMatcher returns a simple matcher based on the provided platform
+// specification. The returned matcher only looks for equality based on os,
+// architecture and variant.
+//
+// One may implement their own matcher if this doesn't provide the the required
+// functionality.
+//
+// Applications should opt to use `Match` over directly parsing specifiers.
+func NewMatcher(platform specs.Platform) Matcher {
+	return &matcher{
+		Platform: Normalize(platform),
+	}
 }
 
 type matcher struct {
 	specs.Platform
-}
-
-func (m *matcher) Spec() specs.Platform {
-	return m.Platform
 }
 
 func (m *matcher) Match(platform specs.Platform) bool {
@@ -153,19 +163,17 @@ func (m *matcher) String() string {
 // value will be matched against the known set of operating systems, then fall
 // back to the known set of architectures. The missing component will be
 // inferred based on the local environment.
-//
-// Applications should opt to use `Match` over directly parsing specifiers.
-func Parse(specifier string) (Matcher, error) {
+func Parse(specifier string) (specs.Platform, error) {
 	if strings.Contains(specifier, "*") {
 		// TODO(stevvooe): need to work out exact wildcard handling
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: wildcards not yet supported", specifier)
+		return specs.Platform{}, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: wildcards not yet supported", specifier)
 	}
 
 	parts := strings.Split(specifier, "/")
 
 	for _, part := range parts {
 		if !specifierRe.MatchString(part) {
-			return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "%q is an invalid component of %q: platform specifier component must match %q", part, specifier, specifierRe.String())
+			return specs.Platform{}, errors.Wrapf(errdefs.ErrInvalidArgument, "%q is an invalid component of %q: platform specifier component must match %q", part, specifier, specifierRe.String())
 		}
 	}
 
@@ -183,35 +191,54 @@ func Parse(specifier string) (Matcher, error) {
 			p.Architecture = runtime.GOARCH
 			if p.Architecture == "arm" {
 				// TODO(stevvooe): Resolve arm variant, if not v6 (default)
-				return nil, errors.Wrapf(errdefs.ErrNotImplemented, "arm support not fully implemented")
+				return specs.Platform{}, errors.Wrapf(errdefs.ErrNotImplemented, "arm support not fully implemented")
 			}
 
-			return &matcher{p}, nil
+			return p, nil
 		}
 
 		p.Architecture, p.Variant = normalizeArch(parts[0], "")
+		if p.Architecture == "arm" && p.Variant == "v7" {
+			p.Variant = ""
+		}
 		if isKnownArch(p.Architecture) {
 			p.OS = runtime.GOOS
-			return &matcher{p}, nil
+			return p, nil
 		}
 
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: unknown operating system or architecture", specifier)
+		return specs.Platform{}, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: unknown operating system or architecture", specifier)
 	case 2:
 		// In this case, we treat as a regular os/arch pair. We don't care
 		// about whether or not we know of the platform.
 		p.OS = normalizeOS(parts[0])
 		p.Architecture, p.Variant = normalizeArch(parts[1], "")
+		if p.Architecture == "arm" && p.Variant == "v7" {
+			p.Variant = ""
+		}
 
-		return &matcher{p}, nil
+		return p, nil
 	case 3:
 		// we have a fully specified variant, this is rare
 		p.OS = normalizeOS(parts[0])
 		p.Architecture, p.Variant = normalizeArch(parts[1], parts[2])
+		if p.Architecture == "arm64" && p.Variant == "" {
+			p.Variant = "v8"
+		}
 
-		return &matcher{p}, nil
+		return p, nil
 	}
 
-	return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: cannot parse platform specifier", specifier)
+	return specs.Platform{}, errors.Wrapf(errdefs.ErrInvalidArgument, "%q: cannot parse platform specifier", specifier)
+}
+
+// MustParse is like Parses but panics if the specifier cannot be parsed.
+// Simplifies initialization of global variables.
+func MustParse(specifier string) specs.Platform {
+	p, err := Parse(specifier)
+	if err != nil {
+		panic("platform: Parse(" + strconv.Quote(specifier) + "): " + err.Error())
+	}
+	return p
 }
 
 // Format returns a string specifier from the provided platform specification.
