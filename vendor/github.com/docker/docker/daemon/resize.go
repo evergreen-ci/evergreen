@@ -3,9 +3,8 @@ package daemon // import "github.com/docker/docker/daemon"
 import (
 	"context"
 	"fmt"
-	"time"
 
-	libcontainerdtypes "github.com/docker/docker/libcontainerd/types"
+	"github.com/docker/docker/libcontainerd"
 )
 
 // ContainerResize changes the size of the TTY of the process running
@@ -20,7 +19,7 @@ func (daemon *Daemon) ContainerResize(name string, height, width int) error {
 		return errNotRunning(container.ID)
 	}
 
-	if err = daemon.containerd.ResizeTerminal(context.Background(), container.ID, libcontainerdtypes.InitProcessName, width, height); err == nil {
+	if err = daemon.containerd.ResizeTerminal(context.Background(), container.ID, libcontainerd.InitProcessName, width, height); err == nil {
 		attributes := map[string]string{
 			"height": fmt.Sprintf("%d", height),
 			"width":  fmt.Sprintf("%d", width),
@@ -38,13 +37,5 @@ func (daemon *Daemon) ContainerExecResize(name string, height, width int) error 
 	if err != nil {
 		return err
 	}
-	// TODO: the timeout is hardcoded here, it would be more flexible to make it
-	// a parameter in resize request context, which would need API changes.
-	timeout := 10 * time.Second
-	select {
-	case <-ec.Started:
-		return daemon.containerd.ResizeTerminal(context.Background(), ec.ContainerID, ec.ID, width, height)
-	case <-time.After(timeout):
-		return fmt.Errorf("timeout waiting for exec session ready")
-	}
+	return daemon.containerd.ResizeTerminal(context.Background(), ec.ContainerID, ec.ID, width, height)
 }

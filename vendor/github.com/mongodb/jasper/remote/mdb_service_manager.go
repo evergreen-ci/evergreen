@@ -22,7 +22,7 @@ const (
 	WriteFileCommand     = "write_file"
 )
 
-func (s *mdbService) managerID(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerID(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeIDResponse(s.manager.ID()))
 	if err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.New("could not make response"), ManagerIDCommand)
@@ -31,7 +31,7 @@ func (s *mdbService) managerID(ctx context.Context, w io.Writer, msg mongowire.M
 	shell.WriteResponse(ctx, w, resp, ManagerIDCommand)
 }
 
-func (s *mdbService) managerCreateProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerCreateProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := createProcessRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), CreateProcessCommand)
@@ -74,7 +74,7 @@ func (s *mdbService) managerCreateProcess(ctx context.Context, w io.Writer, msg 
 	shell.WriteResponse(ctx, w, resp, CreateProcessCommand)
 }
 
-func (s *mdbService) managerList(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerList(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := listRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ListCommand)
@@ -100,7 +100,7 @@ func (s *mdbService) managerList(ctx context.Context, w io.Writer, msg mongowire
 	shell.WriteResponse(ctx, w, resp, ListCommand)
 }
 
-func (s *mdbService) managerGroup(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerGroup(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := groupRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GroupCommand)
@@ -127,7 +127,7 @@ func (s *mdbService) managerGroup(ctx context.Context, w io.Writer, msg mongowir
 	shell.WriteResponse(ctx, w, resp, GroupCommand)
 }
 
-func (s *mdbService) managerGetProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerGetProcess(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := getProcessRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetProcessCommand)
@@ -149,12 +149,12 @@ func (s *mdbService) managerGetProcess(ctx context.Context, w io.Writer, msg mon
 	shell.WriteResponse(ctx, w, resp, GetProcessCommand)
 }
 
-func (s *mdbService) managerClear(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerClear(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	s.manager.Clear(ctx)
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, ClearCommand)
 }
 
-func (s *mdbService) managerClose(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerClose(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	if err := s.manager.Close(ctx); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, err, CloseCommand)
 		return
@@ -162,7 +162,7 @@ func (s *mdbService) managerClose(ctx context.Context, w io.Writer, msg mongowir
 	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, CloseCommand)
 }
 
-func (s *mdbService) managerWriteFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
+func (s *service) managerWriteFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &writeFileRequest{}
 	if err := shell.MessageToRequest(msg, &req); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), WriteFileCommand)

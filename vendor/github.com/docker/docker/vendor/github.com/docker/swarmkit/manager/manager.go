@@ -1,10 +1,8 @@
 package manager
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -22,7 +20,6 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
@@ -47,6 +44,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -123,14 +121,6 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
-
-	// FIPS is a boolean stating whether the node is FIPS enabled - if this is the
-	// first node in the cluster, this setting is used to set the cluster-wide mandatory
-	// FIPS setting.
-	FIPS bool
-
-	// NetworkConfig stores network related config for the cluster
-	NetworkConfig *cnmallocator.NetworkConfig
 }
 
 // Manager is the cluster manager for Swarm.
@@ -218,7 +208,7 @@ func New(config *Config) (*Manager, error) {
 		raftCfg.HeartbeatTick = int(config.HeartbeatTick)
 	}
 
-	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter(), config.FIPS)
+	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter())
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +222,6 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 		KeyRotator:      dekRotator,
-		FIPS:            config.FIPS,
 	}
 	raftNode := raft.NewNode(newNodeOpts)
 
@@ -274,7 +263,7 @@ func New(config *Config) (*Manager, error) {
 		grpc.Creds(config.SecurityConfig.ServerTLSCreds),
 		grpc.StreamInterceptor(streamInterceptorWrapper),
 		grpc.UnaryInterceptor(unaryInterceptorWrapper),
-		grpc.MaxRecvMsgSize(transport.GRPCMaxMsgSize),
+		grpc.MaxMsgSize(transport.GRPCMaxMsgSize),
 	}
 
 	m := &Manager{
@@ -759,7 +748,6 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 					func(addr string, timeout time.Duration) (net.Conn, error) {
 						return xnet.DialTimeoutLocal(addr, timeout)
 					}),
-				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 			)
 			if err != nil {
 				logger.WithError(err).Error("failed to connect to local manager socket after locking the cluster")
@@ -930,36 +918,19 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			Key:       m.config.UnlockKey,
 		}}
 	}
+
 	s.Update(func(tx store.Tx) error {
 		// Add a default cluster object to the
 		// store. Don't check the error because
 		// we expect this to fail unless this
 		// is a brand new cluster.
-		clusterObj := defaultClusterObject(
+		err := store.CreateCluster(tx, defaultClusterObject(
 			clusterID,
 			initialCAConfig,
 			raftCfg,
 			api.EncryptionConfig{AutoLockManagers: m.config.AutoLockManagers},
 			unlockKeys,
-			rootCA,
-			m.config.FIPS,
-			nil,
-			0,
-			0)
-
-		// If defaultAddrPool is valid we update cluster object with new value
-		// If VXLANUDPPort is not 0 then we call update cluster object with new value
-		if m.config.NetworkConfig != nil {
-			if m.config.NetworkConfig.DefaultAddrPool != nil {
-				clusterObj.DefaultAddressPool = m.config.NetworkConfig.DefaultAddrPool
-				clusterObj.SubnetSize = m.config.NetworkConfig.SubnetSize
-			}
-
-			if m.config.NetworkConfig.VXLANUDPPort != 0 {
-				clusterObj.VXLANUDPPort = m.config.NetworkConfig.VXLANUDPPort
-			}
-		}
-		err := store.CreateCluster(tx, clusterObj)
+			rootCA))
 
 		if err != nil && err != store.ErrExist {
 			log.G(ctx).WithError(err).Errorf("error creating cluster object")
@@ -967,7 +938,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 		// Add Node entry for ourself, if one
 		// doesn't exist already.
-		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability, clusterObj.VXLANUDPPort))
+		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability))
 
 		if freshCluster {
 			// This is a fresh swarm cluster. Add to store now any initial
@@ -984,7 +955,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// in order to allow running services on the predefined docker
 		// networks like `bridge` and `host`.
 		for _, p := range allocator.PredefinedNetworks() {
-			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil && err != store.ErrNameConflict {
+			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != store.ErrNameConflict {
 				log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 			}
 		}
@@ -1000,33 +971,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.roleManager = newRoleManager(s, m.raftNode)
 
 	// TODO(stevvooe): Allocate a context that can be used to
-	// shutdown underlying manager processes when leadership isTestUpdaterRollback
+	// shutdown underlying manager processes when leadership is
 	// lost.
 
-	// If DefaultAddrPool is null, Read from store and check if
-	// DefaultAddrPool info is stored in cluster object
-	// If VXLANUDPPort is 0, read it from the store - cluster object
-	if m.config.NetworkConfig == nil || m.config.NetworkConfig.DefaultAddrPool == nil || m.config.NetworkConfig.VXLANUDPPort == 0 {
-		var cluster *api.Cluster
-		s.View(func(tx store.ReadTx) {
-			cluster = store.GetCluster(tx, clusterID)
-		})
-		if cluster.DefaultAddressPool != nil {
-			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
-			}
-			m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, cluster.DefaultAddressPool...)
-			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
-		}
-		if cluster.VXLANUDPPort != 0 {
-			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
-			}
-			m.config.NetworkConfig.VXLANUDPPort = cluster.VXLANUDPPort
-		}
-	}
-
-	m.allocator, err = allocator.New(s, m.config.PluginGetter, m.config.NetworkConfig)
+	m.allocator, err = allocator.New(s, m.config.PluginGetter)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to create allocator")
 		// TODO(stevvooe): It doesn't seem correct here to fail
@@ -1147,11 +1095,7 @@ func defaultClusterObject(
 	raftCfg api.RaftConfig,
 	encryptionConfig api.EncryptionConfig,
 	initialUnlockKeys []*api.EncryptionKey,
-	rootCA *ca.RootCA,
-	fips bool,
-	defaultAddressPool []string,
-	subnetSize uint32,
-	vxlanUDPPort uint32) *api.Cluster {
+	rootCA *ca.RootCA) *api.Cluster {
 	var caKey []byte
 	if rcaSigner, err := rootCA.Signer(); err == nil {
 		caKey = rcaSigner.Key
@@ -1178,20 +1122,16 @@ func defaultClusterObject(
 			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA, fips),
-				Manager: ca.GenerateJoinToken(rootCA, fips),
+				Worker:  ca.GenerateJoinToken(rootCA),
+				Manager: ca.GenerateJoinToken(rootCA),
 			},
 		},
-		UnlockKeys:         initialUnlockKeys,
-		FIPS:               fips,
-		DefaultAddressPool: defaultAddressPool,
-		SubnetSize:         subnetSize,
-		VXLANUDPPort:       vxlanUDPPort,
+		UnlockKeys: initialUnlockKeys,
 	}
 }
 
 // managerNode creates a new node with NodeRoleManager role.
-func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPort uint32) *api.Node {
+func managerNode(nodeID string, availability api.NodeSpec_Availability) *api.Node {
 	return &api.Node{
 		ID: nodeID,
 		Certificate: api.Certificate{
@@ -1206,7 +1146,6 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPor
 			Membership:   api.NodeMembershipAccepted,
 			Availability: availability,
 		},
-		VXLANUDPPort: vxlanPort,
 	}
 }
 
@@ -1224,8 +1163,12 @@ func newIngressNetwork() *api.Network {
 			},
 			DriverConfig: &api.Driver{},
 			IPAM: &api.IPAMOptions{
-				Driver:  &api.Driver{},
-				Configs: []*api.IPAMConfig{},
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet: "10.255.0.0/16",
+					},
+				},
 			},
 		},
 	}

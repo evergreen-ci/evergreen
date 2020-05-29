@@ -104,7 +104,7 @@ type containerConfiguration struct {
 	ChildEndpoints  []string
 }
 
-// connectivityConfiguration represents the user specified configuration regarding the external connectivity
+// cnnectivityConfiguration represents the user specified configuration regarding the external connectivity
 type connectivityConfiguration struct {
 	PortBindings []types.PortBinding
 	ExposedPorts []types.TransportPort
@@ -598,7 +598,7 @@ func (d *driver) checkConflict(config *networkConfiguration) error {
 		nwConfig := nw.config
 		nw.Unlock()
 		if err := nwConfig.Conflicts(config); err != nil {
-			if nwConfig.DefaultBridge {
+			if config.DefaultBridge {
 				// We encountered and identified a stale default network
 				// We must delete it as libnetwork is the source of truth
 				// The default network being created must be the only one
@@ -614,7 +614,9 @@ func (d *driver) checkConflict(config *networkConfiguration) error {
 	return nil
 }
 
-func (d *driver) createNetwork(config *networkConfiguration) (err error) {
+func (d *driver) createNetwork(config *networkConfiguration) error {
+	var err error
+
 	defer osl.InitOSContext()()
 
 	networkList := d.getNetworks()
@@ -704,8 +706,8 @@ func (d *driver) createNetwork(config *networkConfiguration) (err error) {
 		// Enable IPv6 Forwarding
 		{enableIPv6Forwarding, setupIPv6Forwarding},
 
-		// Setup Loopback Addresses Routing
-		{!d.config.EnableUserlandProxy, setupLoopbackAddressesRouting},
+		// Setup Loopback Adresses Routing
+		{!d.config.EnableUserlandProxy, setupLoopbackAdressesRouting},
 
 		// Setup IPTables.
 		{d.config.EnableIPTables, network.setupIPTables},
@@ -773,7 +775,7 @@ func (d *driver) deleteNetwork(nid string) error {
 		}
 
 		if err := d.storeDelete(ep); err != nil {
-			logrus.Warnf("Failed to remove bridge endpoint %.7s from store: %v", ep.id, err)
+			logrus.Warnf("Failed to remove bridge endpoint %s from store: %v", ep.id[0:7], err)
 		}
 	}
 
@@ -1048,7 +1050,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 	}
 
 	if err = d.storeUpdate(endpoint); err != nil {
-		return fmt.Errorf("failed to save bridge endpoint %.7s to store: %v", endpoint.id, err)
+		return fmt.Errorf("failed to save bridge endpoint %s to store: %v", endpoint.id[0:7], err)
 	}
 
 	return nil
@@ -1114,7 +1116,7 @@ func (d *driver) DeleteEndpoint(nid, eid string) error {
 	}
 
 	if err := d.storeDelete(ep); err != nil {
-		logrus.Warnf("Failed to remove bridge endpoint %.7s from store: %v", ep.id, err)
+		logrus.Warnf("Failed to remove bridge endpoint %s from store: %v", ep.id[0:7], err)
 	}
 
 	return nil
@@ -1288,7 +1290,7 @@ func (d *driver) ProgramExternalConnectivity(nid, eid string, options map[string
 	}()
 
 	if err = d.storeUpdate(endpoint); err != nil {
-		return fmt.Errorf("failed to update bridge endpoint %.7s to store: %v", endpoint.id, err)
+		return fmt.Errorf("failed to update bridge endpoint %s to store: %v", endpoint.id[0:7], err)
 	}
 
 	if !network.config.EnableICC {
@@ -1330,7 +1332,7 @@ func (d *driver) RevokeExternalConnectivity(nid, eid string) error {
 	clearEndpointConnections(d.nlh, endpoint)
 
 	if err = d.storeUpdate(endpoint); err != nil {
-		return fmt.Errorf("failed to update bridge endpoint %.7s to store: %v", endpoint.id, err)
+		return fmt.Errorf("failed to update bridge endpoint %s to store: %v", endpoint.id[0:7], err)
 	}
 
 	return nil

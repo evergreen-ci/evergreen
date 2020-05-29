@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestContainerLogsNotFoundError(t *testing.T) {
@@ -153,7 +153,7 @@ func ExampleClient_ContainerLogs_withTimeout() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	client, _ := NewClientWithOpts(FromEnv)
+	client, _ := NewEnvClient()
 	reader, err := client.ContainerLogs(ctx, "container_id", types.ContainerLogsOptions{})
 	if err != nil {
 		log.Fatal(err)

@@ -16,8 +16,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/integration/internal/container"
 	"github.com/docker/docker/integration/internal/requirement"
-	"gotest.tools/assert"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 var (
@@ -29,8 +29,8 @@ var (
 )
 
 func setupTestV2(t *testing.T) func() {
-	skip.If(t, testEnv.DaemonInfo.OSType == "windows")
-	skip.If(t, !requirement.HasHubConnectivity(t))
+	skip.IfCondition(t, testEnv.DaemonInfo.OSType != "linux")
+	skip.IfCondition(t, !requirement.HasHubConnectivity(t))
 
 	teardown := setupTest(t)
 
@@ -40,14 +40,16 @@ func setupTestV2(t *testing.T) func() {
 }
 
 func TestAuthZPluginV2AllowNonVolumeRequest(t *testing.T) {
-	skip.If(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
+	skip.IfCondition(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
 	defer setupTestV2(t)()
 
-	c := d.NewClientT(t)
+	client, err := d.NewClient()
+	assert.NilError(t, err)
+
 	ctx := context.Background()
 
 	// Install authz plugin
-	err := pluginInstallGrantAllPermissions(c, authzPluginNameWithTag)
+	err = pluginInstallGrantAllPermissions(client, authzPluginNameWithTag)
 	assert.NilError(t, err)
 	// start the daemon with the plugin and load busybox, --net=none build fails otherwise
 	// because it needs to pull busybox
@@ -55,81 +57,84 @@ func TestAuthZPluginV2AllowNonVolumeRequest(t *testing.T) {
 	d.LoadBusybox(t)
 
 	// Ensure docker run command and accompanying docker ps are successful
-	cID := container.Run(ctx, t, c)
+	cID := container.Run(t, ctx, client)
 
-	_, err = c.ContainerInspect(ctx, cID)
+	_, err = client.ContainerInspect(ctx, cID)
 	assert.NilError(t, err)
 }
 
 func TestAuthZPluginV2Disable(t *testing.T) {
-	skip.If(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
+	skip.IfCondition(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
 	defer setupTestV2(t)()
 
-	c := d.NewClientT(t)
+	client, err := d.NewClient()
+	assert.NilError(t, err)
 
 	// Install authz plugin
-	err := pluginInstallGrantAllPermissions(c, authzPluginNameWithTag)
+	err = pluginInstallGrantAllPermissions(client, authzPluginNameWithTag)
 	assert.NilError(t, err)
 
 	d.Restart(t, "--authorization-plugin="+authzPluginNameWithTag)
 	d.LoadBusybox(t)
 
-	_, err = c.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
+	_, err = client.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 
 	// disable the plugin
-	err = c.PluginDisable(context.Background(), authzPluginNameWithTag, types.PluginDisableOptions{})
+	err = client.PluginDisable(context.Background(), authzPluginNameWithTag, types.PluginDisableOptions{})
 	assert.NilError(t, err)
 
 	// now test to see if the docker api works.
-	_, err = c.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
+	_, err = client.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
 	assert.NilError(t, err)
 }
 
 func TestAuthZPluginV2RejectVolumeRequests(t *testing.T) {
-	skip.If(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
+	skip.IfCondition(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
 	defer setupTestV2(t)()
 
-	c := d.NewClientT(t)
+	client, err := d.NewClient()
+	assert.NilError(t, err)
 
 	// Install authz plugin
-	err := pluginInstallGrantAllPermissions(c, authzPluginNameWithTag)
+	err = pluginInstallGrantAllPermissions(client, authzPluginNameWithTag)
 	assert.NilError(t, err)
 
 	// restart the daemon with the plugin
 	d.Restart(t, "--authorization-plugin="+authzPluginNameWithTag)
 
-	_, err = c.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
+	_, err = client.VolumeCreate(context.Background(), volumetypes.VolumeCreateBody{Driver: "local"})
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 
-	_, err = c.VolumeList(context.Background(), filters.Args{})
+	_, err = client.VolumeList(context.Background(), filters.Args{})
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 
 	// The plugin will block the command before it can determine the volume does not exist
-	err = c.VolumeRemove(context.Background(), "test", false)
+	err = client.VolumeRemove(context.Background(), "test", false)
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 
-	_, err = c.VolumeInspect(context.Background(), "test")
+	_, err = client.VolumeInspect(context.Background(), "test")
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 
-	_, err = c.VolumesPrune(context.Background(), filters.Args{})
+	_, err = client.VolumesPrune(context.Background(), filters.Args{})
 	assert.Assert(t, err != nil)
 	assert.Assert(t, strings.Contains(err.Error(), fmt.Sprintf("Error response from daemon: plugin %s failed with error:", authzPluginNameWithTag)))
 }
 
 func TestAuthZPluginV2BadManifestFailsDaemonStart(t *testing.T) {
-	skip.If(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
+	skip.IfCondition(t, os.Getenv("DOCKER_ENGINE_GOARCH") != "amd64")
 	defer setupTestV2(t)()
 
-	c := d.NewClientT(t)
+	client, err := d.NewClient()
+	assert.NilError(t, err)
 
 	// Install authz plugin with bad manifest
-	err := pluginInstallGrantAllPermissions(c, authzPluginBadManifestName)
+	err = pluginInstallGrantAllPermissions(client, authzPluginBadManifestName)
 	assert.NilError(t, err)
 
 	// start the daemon with the plugin, it will error

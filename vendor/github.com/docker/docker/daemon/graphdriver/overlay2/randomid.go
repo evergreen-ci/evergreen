@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -46,7 +47,7 @@ func generateID(l int) string {
 			if retryOnError(err) && retries < maxretries {
 				count += n
 				retries++
-				logger.Errorf("error generating version 4 uuid, retrying: %v", err)
+				logrus.Errorf("error generating version 4 uuid, retrying: %v", err)
 				continue
 			}
 

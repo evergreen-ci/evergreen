@@ -53,7 +53,7 @@ func (pm *Manager) enable(p *v2.Plugin, c *controller, force bool) error {
 	}
 
 	rootFS := containerfs.NewLocalContainerFS(filepath.Join(pm.config.Root, p.PluginObj.ID, rootFSFileName))
-	if err := initlayer.Setup(rootFS, idtools.Identity{UID: 0, GID: 0}); err != nil {
+	if err := initlayer.Setup(rootFS, idtools.IDPair{UID: 0, GID: 0}); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -61,7 +61,7 @@ func (pm *Manager) enable(p *v2.Plugin, c *controller, force bool) error {
 	if err := pm.executor.Create(p.GetID(), *spec, stdout, stderr); err != nil {
 		if p.PluginObj.Config.PropagatedMount != "" {
 			if err := mount.Unmount(propRoot); err != nil {
-				logrus.WithField("plugin", p.Name()).WithError(err).Warn("Failed to unmount vplugin propagated mount root")
+				logrus.Warnf("Could not unmount %s: %v", propRoot, err)
 			}
 		}
 		return errors.WithStack(err)
@@ -79,7 +79,7 @@ func (pm *Manager) pluginPostStart(p *v2.Plugin, c *controller) error {
 		client, err := plugins.NewClientWithTimeout(addr.Network()+"://"+addr.String(), nil, p.Timeout())
 		if err != nil {
 			c.restart = false
-			shutdownPlugin(p, c.exitChan, pm.executor)
+			shutdownPlugin(p, c, pm.executor)
 			return errors.WithStack(err)
 		}
 
@@ -106,7 +106,7 @@ func (pm *Manager) pluginPostStart(p *v2.Plugin, c *controller) error {
 			c.restart = false
 			// While restoring plugins, we need to explicitly set the state to disabled
 			pm.config.Store.SetState(p, false)
-			shutdownPlugin(p, c.exitChan, pm.executor)
+			shutdownPlugin(p, c, pm.executor)
 			return err
 		}
 
@@ -117,15 +117,16 @@ func (pm *Manager) pluginPostStart(p *v2.Plugin, c *controller) error {
 	return pm.save(p)
 }
 
-func (pm *Manager) restore(p *v2.Plugin, c *controller) error {
+func (pm *Manager) restore(p *v2.Plugin) error {
 	stdout, stderr := makeLoggerStreams(p.GetID())
-	alive, err := pm.executor.Restore(p.GetID(), stdout, stderr)
-	if err != nil {
+	if err := pm.executor.Restore(p.GetID(), stdout, stderr); err != nil {
 		return err
 	}
 
 	if pm.config.LiveRestoreEnabled {
-		if !alive {
+		c := &controller{}
+		if isRunning, _ := pm.executor.IsRunning(p.GetID()); !isRunning {
+			// plugin is not running, so follow normal startup procedure
 			return pm.enable(p, c, true)
 		}
 
@@ -137,16 +138,10 @@ func (pm *Manager) restore(p *v2.Plugin, c *controller) error {
 		return pm.pluginPostStart(p, c)
 	}
 
-	if alive {
-		// TODO(@cpuguy83): Should we always just re-attach to the running plugin instead of doing this?
-		c.restart = false
-		shutdownPlugin(p, c.exitChan, pm.executor)
-	}
-
 	return nil
 }
 
-func shutdownPlugin(p *v2.Plugin, ec chan bool, executor Executor) {
+func shutdownPlugin(p *v2.Plugin, c *controller, executor Executor) {
 	pluginID := p.GetID()
 
 	err := executor.Signal(pluginID, int(unix.SIGTERM))
@@ -154,7 +149,7 @@ func shutdownPlugin(p *v2.Plugin, ec chan bool, executor Executor) {
 		logrus.Errorf("Sending SIGTERM to plugin failed with error: %v", err)
 	} else {
 		select {
-		case <-ec:
+		case <-c.exitChan:
 			logrus.Debug("Clean shutdown of plugin")
 		case <-time.After(time.Second * 10):
 			logrus.Debug("Force shutdown plugin")
@@ -162,7 +157,7 @@ func shutdownPlugin(p *v2.Plugin, ec chan bool, executor Executor) {
 				logrus.Errorf("Sending SIGKILL to plugin failed with error: %v", err)
 			}
 			select {
-			case <-ec:
+			case <-c.exitChan:
 				logrus.Debug("SIGKILL plugin shutdown")
 			case <-time.After(time.Second * 10):
 				logrus.Debug("Force shutdown plugin FAILED")
@@ -177,7 +172,7 @@ func (pm *Manager) disable(p *v2.Plugin, c *controller) error {
 	}
 
 	c.restart = false
-	shutdownPlugin(p, c.exitChan, pm.executor)
+	shutdownPlugin(p, c, pm.executor)
 	pm.config.Store.SetState(p, false)
 	return pm.save(p)
 }
@@ -196,7 +191,7 @@ func (pm *Manager) Shutdown() {
 		}
 		if pm.executor != nil && p.IsEnabled() {
 			c.restart = false
-			shutdownPlugin(p, c.exitChan, pm.executor)
+			shutdownPlugin(p, c, pm.executor)
 		}
 	}
 	if err := mount.RecursiveUnmount(pm.config.Root); err != nil {

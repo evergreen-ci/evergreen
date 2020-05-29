@@ -1386,14 +1386,10 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			continue
 		}
 
-		logger, err := jasper.NewInMemoryLogger(host.OutputBufferSize)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating new in-memory logger"))
-		}
 		bashPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 		opts := &options.Create{
 			Args:   []string{bashPath, "-l", "-c", hs.script},
-			Output: options.Output{Loggers: []*options.LoggerConfig{logger}},
+			Output: options.Output{Loggers: []options.Logger{jasper.NewInMemoryLogger(host.OutputBufferSize)}},
 		}
 		procID, err := h.StartJasperProcess(ctx, hs.env, opts)
 		if err != nil {

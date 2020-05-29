@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 func init() {

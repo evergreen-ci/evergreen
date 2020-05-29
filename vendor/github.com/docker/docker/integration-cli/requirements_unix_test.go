@@ -38,17 +38,6 @@ func pidsLimit() bool {
 }
 
 func kernelMemorySupport() bool {
-	// TODO remove this once kmem support in RHEL kernels is fixed. See https://github.com/opencontainers/runc/pull/1921
-	daemonV, err := kernel.ParseRelease(testEnv.DaemonInfo.KernelVersion)
-	if err != nil {
-		return false
-	}
-	requiredV := kernel.VersionInfo{Kernel: 3, Major: 10}
-	if kernel.CompareKernelVersion(*daemonV, requiredV) < 1 {
-		// On Kernel 3.10 and under, don't consider kernel memory to be supported,
-		// even if the kernel (and thus the daemon) reports it as being supported
-		return false
-	}
 	return testEnv.DaemonInfo.KernelMemory
 }
 
@@ -65,11 +54,11 @@ func swapMemorySupport() bool {
 }
 
 func memorySwappinessSupport() bool {
-	return testEnv.IsLocalDaemon() && SysInfo.MemorySwappiness
+	return SameHostDaemon() && SysInfo.MemorySwappiness
 }
 
 func blkioWeight() bool {
-	return testEnv.IsLocalDaemon() && SysInfo.BlkioWeight
+	return SameHostDaemon() && SysInfo.BlkioWeight
 }
 
 func cgroupCpuset() bool {
@@ -84,9 +73,18 @@ func bridgeNfIptables() bool {
 	return !SysInfo.BridgeNFCallIPTablesDisabled
 }
 
+func bridgeNfIP6tables() bool {
+	return !SysInfo.BridgeNFCallIP6TablesDisabled
+}
+
 func unprivilegedUsernsClone() bool {
 	content, err := ioutil.ReadFile("/proc/sys/kernel/unprivileged_userns_clone")
 	return err != nil || !strings.Contains(string(content), "0")
+}
+
+func ambientCapabilities() bool {
+	content, err := ioutil.ReadFile("/proc/self/status")
+	return err != nil || strings.Contains(string(content), "CapAmb:")
 }
 
 func overlayFSSupported() bool {
@@ -98,8 +96,22 @@ func overlayFSSupported() bool {
 	return bytes.Contains(out, []byte("overlay\n"))
 }
 
+func overlay2Supported() bool {
+	if !overlayFSSupported() {
+		return false
+	}
+
+	daemonV, err := kernel.ParseRelease(testEnv.DaemonInfo.KernelVersion)
+	if err != nil {
+		return false
+	}
+	requiredV := kernel.VersionInfo{Kernel: 4}
+	return kernel.CompareKernelVersion(*daemonV, requiredV) > -1
+
+}
+
 func init() {
-	if testEnv.IsLocalDaemon() {
+	if SameHostDaemon() {
 		SysInfo = sysinfo.New(true)
 	}
 }

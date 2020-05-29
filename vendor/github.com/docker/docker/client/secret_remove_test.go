@@ -9,9 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/docker/errdefs"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestSecretRemoveUnsupported(t *testing.T) {
@@ -32,9 +31,6 @@ func TestSecretRemoveError(t *testing.T) {
 	err := client.SecretRemove(context.Background(), "secret_id")
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

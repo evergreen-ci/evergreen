@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestServiceLogsError(t *testing.T) {
@@ -122,7 +122,7 @@ func ExampleClient_ServiceLogs_withTimeout() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	client, _ := NewClientWithOpts(FromEnv)
+	client, _ := NewEnvClient()
 	reader, err := client.ServiceLogs(ctx, "service_id", types.ContainerLogsOptions{})
 	if err != nil {
 		log.Fatal(err)

@@ -10,44 +10,45 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"testing"
 	"time"
 	"unicode"
 
-	"github.com/creack/pty"
+	"github.com/docker/docker/integration-cli/checker"
 	"github.com/docker/docker/integration-cli/cli/build"
+	"github.com/go-check/check"
+	"github.com/kr/pty"
 	"golang.org/x/sys/unix"
-	"gotest.tools/assert"
 )
 
 // #5979
-func (s *DockerSuite) TestEventsRedirectStdout(c *testing.T) {
+func (s *DockerSuite) TestEventsRedirectStdout(c *check.C) {
 	since := daemonUnixTime(c)
 	dockerCmd(c, "run", "busybox", "true")
 
 	file, err := ioutil.TempFile("", "")
-	assert.NilError(c, err, "could not create temp file")
+	c.Assert(err, checker.IsNil, check.Commentf("could not create temp file"))
 	defer os.Remove(file.Name())
 
 	command := fmt.Sprintf("%s events --since=%s --until=%s > %s", dockerBinary, since, daemonUnixTime(c), file.Name())
 	_, tty, err := pty.Open()
-	assert.NilError(c, err, "Could not open pty")
+	c.Assert(err, checker.IsNil, check.Commentf("Could not open pty"))
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Stdin = tty
 	cmd.Stdout = tty
 	cmd.Stderr = tty
-	assert.NilError(c, cmd.Run(), "run err for command %q", command)
+	c.Assert(cmd.Run(), checker.IsNil, check.Commentf("run err for command %q", command))
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		for _, ch := range scanner.Text() {
-			assert.Check(c, unicode.IsControl(ch) == false, "found control character %v", []byte(string(ch)))
+			c.Assert(unicode.IsControl(ch), checker.False, check.Commentf("found control character %v", []byte(string(ch))))
 		}
 	}
-	assert.NilError(c, scanner.Err(), "Scan err for command %q", command)
+	c.Assert(scanner.Err(), checker.IsNil, check.Commentf("Scan err for command %q", command))
+
 }
 
-func (s *DockerSuite) TestEventsOOMDisableFalse(c *testing.T) {
+func (s *DockerSuite) TestEventsOOMDisableFalse(c *check.C) {
 	testRequires(c, DaemonIsLinux, oomControl, memoryLimitSupport, swapMemorySupport, NotPpc64le)
 
 	errChan := make(chan error)
@@ -60,7 +61,7 @@ func (s *DockerSuite) TestEventsOOMDisableFalse(c *testing.T) {
 	}()
 	select {
 	case err := <-errChan:
-		assert.NilError(c, err)
+		c.Assert(err, checker.IsNil)
 	case <-time.After(30 * time.Second):
 		c.Fatal("Timeout waiting for container to die on OOM")
 	}
@@ -69,22 +70,22 @@ func (s *DockerSuite) TestEventsOOMDisableFalse(c *testing.T) {
 	events := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	nEvents := len(events)
 
-	assert.Assert(c, nEvents >= 5)
-	assert.Equal(c, parseEventAction(c, events[nEvents-5]), "create")
-	assert.Equal(c, parseEventAction(c, events[nEvents-4]), "attach")
-	assert.Equal(c, parseEventAction(c, events[nEvents-3]), "start")
-	assert.Equal(c, parseEventAction(c, events[nEvents-2]), "oom")
-	assert.Equal(c, parseEventAction(c, events[nEvents-1]), "die")
+	c.Assert(nEvents, checker.GreaterOrEqualThan, 5) //Missing expected event
+	c.Assert(parseEventAction(c, events[nEvents-5]), checker.Equals, "create")
+	c.Assert(parseEventAction(c, events[nEvents-4]), checker.Equals, "attach")
+	c.Assert(parseEventAction(c, events[nEvents-3]), checker.Equals, "start")
+	c.Assert(parseEventAction(c, events[nEvents-2]), checker.Equals, "oom")
+	c.Assert(parseEventAction(c, events[nEvents-1]), checker.Equals, "die")
 }
 
-func (s *DockerSuite) TestEventsOOMDisableTrue(c *testing.T) {
+func (s *DockerSuite) TestEventsOOMDisableTrue(c *check.C) {
 	testRequires(c, DaemonIsLinux, oomControl, memoryLimitSupport, NotArm, swapMemorySupport, NotPpc64le)
 
 	errChan := make(chan error)
 	observer, err := newEventObserver(c)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	err = observer.Start()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer observer.Stop()
 
 	go func() {
@@ -95,7 +96,7 @@ func (s *DockerSuite) TestEventsOOMDisableTrue(c *testing.T) {
 		}
 	}()
 
-	assert.NilError(c, waitRun("oomTrue"))
+	c.Assert(waitRun("oomTrue"), checker.IsNil)
 	defer dockerCmdWithResult("kill", "oomTrue")
 	containerID := inspectField(c, "oomTrue", "Id")
 
@@ -121,11 +122,11 @@ func (s *DockerSuite) TestEventsOOMDisableTrue(c *testing.T) {
 	}
 
 	status := inspectField(c, "oomTrue", "State.Status")
-	assert.Equal(c, strings.TrimSpace(status), "running", "container should be still running")
+	c.Assert(strings.TrimSpace(status), checker.Equals, "running", check.Commentf("container should be still running"))
 }
 
 // #18453
-func (s *DockerSuite) TestEventsContainerFilterByName(c *testing.T) {
+func (s *DockerSuite) TestEventsContainerFilterByName(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	cOut, _ := dockerCmd(c, "run", "--name=foo", "-d", "busybox", "top")
 	c1 := strings.TrimSpace(cOut)
@@ -134,17 +135,17 @@ func (s *DockerSuite) TestEventsContainerFilterByName(c *testing.T) {
 	c2 := strings.TrimSpace(cOut)
 	waitRun("bar")
 	out, _ := dockerCmd(c, "events", "-f", "container=foo", "--since=0", "--until", daemonUnixTime(c))
-	assert.Assert(c, strings.Contains(out, c1), out)
-	assert.Assert(c, !strings.Contains(out, c2), out)
+	c.Assert(out, checker.Contains, c1, check.Commentf(out))
+	c.Assert(out, checker.Not(checker.Contains), c2, check.Commentf(out))
 }
 
 // #18453
-func (s *DockerSuite) TestEventsContainerFilterBeforeCreate(c *testing.T) {
+func (s *DockerSuite) TestEventsContainerFilterBeforeCreate(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	buf := &bytes.Buffer{}
 	cmd := exec.Command(dockerBinary, "events", "-f", "container=foo", "--since=0")
 	cmd.Stdout = buf
-	assert.NilError(c, cmd.Start())
+	c.Assert(cmd.Start(), check.IsNil)
 	defer cmd.Wait()
 	defer cmd.Process.Kill()
 
@@ -164,7 +165,7 @@ func (s *DockerSuite) TestEventsContainerFilterBeforeCreate(c *testing.T) {
 	}
 }
 
-func (s *DockerSuite) TestVolumeEvents(c *testing.T) {
+func (s *DockerSuite) TestVolumeEvents(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	since := daemonUnixTime(c)
@@ -181,18 +182,18 @@ func (s *DockerSuite) TestVolumeEvents(c *testing.T) {
 	until := daemonUnixTime(c)
 	out, _ := dockerCmd(c, "events", "--since", since, "--until", until)
 	events := strings.Split(strings.TrimSpace(out), "\n")
-	assert.Assert(c, len(events) > 4)
+	c.Assert(len(events), checker.GreaterThan, 4)
 
 	volumeEvents := eventActionsByIDAndType(c, events, "test-event-volume-local", "volume")
-	assert.Equal(c, len(volumeEvents), 5)
-	assert.Equal(c, volumeEvents[0], "create")
-	assert.Equal(c, volumeEvents[1], "create")
-	assert.Equal(c, volumeEvents[2], "mount")
-	assert.Equal(c, volumeEvents[3], "unmount")
-	assert.Equal(c, volumeEvents[4], "destroy")
+	c.Assert(volumeEvents, checker.HasLen, 5)
+	c.Assert(volumeEvents[0], checker.Equals, "create")
+	c.Assert(volumeEvents[1], checker.Equals, "create")
+	c.Assert(volumeEvents[2], checker.Equals, "mount")
+	c.Assert(volumeEvents[3], checker.Equals, "unmount")
+	c.Assert(volumeEvents[4], checker.Equals, "destroy")
 }
 
-func (s *DockerSuite) TestNetworkEvents(c *testing.T) {
+func (s *DockerSuite) TestNetworkEvents(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	since := daemonUnixTime(c)
@@ -209,17 +210,17 @@ func (s *DockerSuite) TestNetworkEvents(c *testing.T) {
 	until := daemonUnixTime(c)
 	out, _ := dockerCmd(c, "events", "--since", since, "--until", until)
 	events := strings.Split(strings.TrimSpace(out), "\n")
-	assert.Assert(c, len(events) > 4)
+	c.Assert(len(events), checker.GreaterThan, 4)
 
 	netEvents := eventActionsByIDAndType(c, events, "test-event-network-local", "network")
-	assert.Equal(c, len(netEvents), 4)
-	assert.Equal(c, netEvents[0], "create")
-	assert.Equal(c, netEvents[1], "connect")
-	assert.Equal(c, netEvents[2], "disconnect")
-	assert.Equal(c, netEvents[3], "destroy")
+	c.Assert(netEvents, checker.HasLen, 4)
+	c.Assert(netEvents[0], checker.Equals, "create")
+	c.Assert(netEvents[1], checker.Equals, "connect")
+	c.Assert(netEvents[2], checker.Equals, "disconnect")
+	c.Assert(netEvents[3], checker.Equals, "destroy")
 }
 
-func (s *DockerSuite) TestEventsContainerWithMultiNetwork(c *testing.T) {
+func (s *DockerSuite) TestEventsContainerWithMultiNetwork(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	// Observe create/connect network actions
@@ -238,22 +239,22 @@ func (s *DockerSuite) TestEventsContainerWithMultiNetwork(c *testing.T) {
 	netEvents := strings.Split(strings.TrimSpace(out), "\n")
 
 	// received two network disconnect events
-	assert.Equal(c, len(netEvents), 2)
-	assert.Assert(c, strings.Contains(netEvents[0], "disconnect"))
-	assert.Assert(c, strings.Contains(netEvents[1], "disconnect"))
+	c.Assert(len(netEvents), checker.Equals, 2)
+	c.Assert(netEvents[0], checker.Contains, "disconnect")
+	c.Assert(netEvents[1], checker.Contains, "disconnect")
 
 	//both networks appeared in the network event output
-	assert.Assert(c, strings.Contains(out, "test-event-network-local-1"))
-	assert.Assert(c, strings.Contains(out, "test-event-network-local-2"))
+	c.Assert(out, checker.Contains, "test-event-network-local-1")
+	c.Assert(out, checker.Contains, "test-event-network-local-2")
 }
 
-func (s *DockerSuite) TestEventsStreaming(c *testing.T) {
+func (s *DockerSuite) TestEventsStreaming(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	observer, err := newEventObserver(c)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	err = observer.Start()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer observer.Stop()
 
 	out, _ := dockerCmd(c, "run", "-d", "busybox:latest", "true")
@@ -301,20 +302,20 @@ func (s *DockerSuite) TestEventsStreaming(c *testing.T) {
 	}
 }
 
-func (s *DockerSuite) TestEventsImageUntagDelete(c *testing.T) {
+func (s *DockerSuite) TestEventsImageUntagDelete(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	observer, err := newEventObserver(c)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	err = observer.Start()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer observer.Stop()
 
 	name := "testimageevents"
 	buildImageSuccessfully(c, name, build.WithDockerfile(`FROM scratch
 		MAINTAINER "docker"`))
 	imageID := getIDByName(c, name)
-	assert.NilError(c, deleteImages(name))
+	c.Assert(deleteImages(name), checker.IsNil)
 
 	testActions := map[string]chan bool{
 		"untag":  make(chan bool, 1),
@@ -340,7 +341,7 @@ func (s *DockerSuite) TestEventsImageUntagDelete(c *testing.T) {
 	}
 }
 
-func (s *DockerSuite) TestEventsFilterVolumeAndNetworkType(c *testing.T) {
+func (s *DockerSuite) TestEventsFilterVolumeAndNetworkType(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	since := daemonUnixTime(c)
@@ -350,16 +351,16 @@ func (s *DockerSuite) TestEventsFilterVolumeAndNetworkType(c *testing.T) {
 
 	out, _ := dockerCmd(c, "events", "--filter", "type=volume", "--filter", "type=network", "--since", since, "--until", daemonUnixTime(c))
 	events := strings.Split(strings.TrimSpace(out), "\n")
-	assert.Assert(c, len(events) >= 2, out)
+	c.Assert(len(events), checker.GreaterOrEqualThan, 2, check.Commentf(out))
 
 	networkActions := eventActionsByIDAndType(c, events, "test-event-network-type", "network")
 	volumeActions := eventActionsByIDAndType(c, events, "test-event-volume-type", "volume")
 
-	assert.Equal(c, volumeActions[0], "create")
-	assert.Equal(c, networkActions[0], "create")
+	c.Assert(volumeActions[0], checker.Equals, "create")
+	c.Assert(networkActions[0], checker.Equals, "create")
 }
 
-func (s *DockerSuite) TestEventsFilterVolumeID(c *testing.T) {
+func (s *DockerSuite) TestEventsFilterVolumeID(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	since := daemonUnixTime(c)
@@ -367,14 +368,13 @@ func (s *DockerSuite) TestEventsFilterVolumeID(c *testing.T) {
 	dockerCmd(c, "volume", "create", "test-event-volume-id")
 	out, _ := dockerCmd(c, "events", "--filter", "volume=test-event-volume-id", "--since", since, "--until", daemonUnixTime(c))
 	events := strings.Split(strings.TrimSpace(out), "\n")
-	assert.Equal(c, len(events), 1)
+	c.Assert(events, checker.HasLen, 1)
 
-	assert.Equal(c, len(events), 1)
-	assert.Assert(c, strings.Contains(events[0], "test-event-volume-id"))
-	assert.Assert(c, strings.Contains(events[0], "driver=local"))
+	c.Assert(events[0], checker.Contains, "test-event-volume-id")
+	c.Assert(events[0], checker.Contains, "driver=local")
 }
 
-func (s *DockerSuite) TestEventsFilterNetworkID(c *testing.T) {
+func (s *DockerSuite) TestEventsFilterNetworkID(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	since := daemonUnixTime(c)
@@ -382,17 +382,19 @@ func (s *DockerSuite) TestEventsFilterNetworkID(c *testing.T) {
 	dockerCmd(c, "network", "create", "test-event-network-local")
 	out, _ := dockerCmd(c, "events", "--filter", "network=test-event-network-local", "--since", since, "--until", daemonUnixTime(c))
 	events := strings.Split(strings.TrimSpace(out), "\n")
-	assert.Equal(c, len(events), 1)
-	assert.Assert(c, strings.Contains(events[0], "test-event-network-local"))
-	assert.Assert(c, strings.Contains(events[0], "type=bridge"))
+	c.Assert(events, checker.HasLen, 1)
+
+	c.Assert(events[0], checker.Contains, "test-event-network-local")
+	c.Assert(events[0], checker.Contains, "type=bridge")
 }
 
-func (s *DockerDaemonSuite) TestDaemonEvents(c *testing.T) {
+func (s *DockerDaemonSuite) TestDaemonEvents(c *check.C) {
+	testRequires(c, SameHostDaemon, DaemonIsLinux)
 
 	// daemon config file
 	configFilePath := "test.json"
 	configFile, err := os.Create(configFilePath)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer os.Remove(configFilePath)
 
 	daemonConfig := `{"labels":["foo=bar"]}`
@@ -402,7 +404,7 @@ func (s *DockerDaemonSuite) TestDaemonEvents(c *testing.T) {
 
 	// Get daemon ID
 	out, err := s.d.Cmd("info")
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	daemonID := ""
 	daemonName := ""
 	for _, line := range strings.Split(out, "\n") {
@@ -412,20 +414,20 @@ func (s *DockerDaemonSuite) TestDaemonEvents(c *testing.T) {
 			daemonName = strings.TrimPrefix(line, "Name: ")
 		}
 	}
-	assert.Assert(c, daemonID != "")
+	c.Assert(daemonID, checker.Not(checker.Equals), "")
 
 	configFile, err = os.Create(configFilePath)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	daemonConfig = `{"max-concurrent-downloads":1,"labels":["bar=foo"], "shutdown-timeout": 10}`
 	fmt.Fprintf(configFile, "%s", daemonConfig)
 	configFile.Close()
 
-	assert.NilError(c, s.d.Signal(unix.SIGHUP))
+	c.Assert(s.d.Signal(unix.SIGHUP), checker.IsNil)
 
 	time.Sleep(3 * time.Second)
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c))
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 
 	// only check for values known (daemon ID/name) or explicitly set above,
 	// otherwise just check for names being present.
@@ -434,7 +436,7 @@ func (s *DockerDaemonSuite) TestDaemonEvents(c *testing.T) {
 		"(allow-nondistributable-artifacts=[",
 		" cluster-advertise=, ",
 		" cluster-store=, ",
-		" cluster-store-opts=",
+		" cluster-store-opts={",
 		" debug=true, ",
 		" default-ipc-mode=",
 		" default-runtime=",
@@ -451,16 +453,17 @@ func (s *DockerDaemonSuite) TestDaemonEvents(c *testing.T) {
 	}
 
 	for _, s := range expectedSubstrings {
-		assert.Check(c, strings.Contains(out, s))
+		c.Assert(out, checker.Contains, s)
 	}
 }
 
-func (s *DockerDaemonSuite) TestDaemonEventsWithFilters(c *testing.T) {
+func (s *DockerDaemonSuite) TestDaemonEventsWithFilters(c *check.C) {
+	testRequires(c, SameHostDaemon, DaemonIsLinux)
 
 	// daemon config file
 	configFilePath := "test.json"
 	configFile, err := os.Create(configFilePath)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	defer os.Remove(configFilePath)
 
 	daemonConfig := `{"labels":["foo=bar"]}`
@@ -470,7 +473,7 @@ func (s *DockerDaemonSuite) TestDaemonEventsWithFilters(c *testing.T) {
 
 	// Get daemon ID
 	out, err := s.d.Cmd("info")
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	daemonID := ""
 	daemonName := ""
 	for _, line := range strings.Split(out, "\n") {
@@ -480,28 +483,29 @@ func (s *DockerDaemonSuite) TestDaemonEventsWithFilters(c *testing.T) {
 			daemonName = strings.TrimPrefix(line, "Name: ")
 		}
 	}
-	assert.Assert(c, daemonID != "")
-	assert.NilError(c, s.d.Signal(unix.SIGHUP))
+	c.Assert(daemonID, checker.Not(checker.Equals), "")
+
+	c.Assert(s.d.Signal(unix.SIGHUP), checker.IsNil)
 
 	time.Sleep(3 * time.Second)
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c), "--filter", fmt.Sprintf("daemon=%s", daemonID))
-	assert.NilError(c, err)
-	assert.Assert(c, strings.Contains(out, fmt.Sprintf("daemon reload %s", daemonID)))
+	c.Assert(err, checker.IsNil)
+	c.Assert(out, checker.Contains, fmt.Sprintf("daemon reload %s", daemonID))
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c), "--filter", fmt.Sprintf("daemon=%s", daemonName))
-	assert.NilError(c, err)
-	assert.Assert(c, strings.Contains(out, fmt.Sprintf("daemon reload %s", daemonID)))
+	c.Assert(err, checker.IsNil)
+	c.Assert(out, checker.Contains, fmt.Sprintf("daemon reload %s", daemonID))
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c), "--filter", "daemon=foo")
-	assert.NilError(c, err)
-	assert.Assert(c, !strings.Contains(out, fmt.Sprintf("daemon reload %s", daemonID)))
+	c.Assert(err, checker.IsNil)
+	c.Assert(out, checker.Not(checker.Contains), fmt.Sprintf("daemon reload %s", daemonID))
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c), "--filter", "type=daemon")
-	assert.NilError(c, err)
-	assert.Assert(c, strings.Contains(out, fmt.Sprintf("daemon reload %s", daemonID)))
+	c.Assert(err, checker.IsNil)
+	c.Assert(out, checker.Contains, fmt.Sprintf("daemon reload %s", daemonID))
 
 	out, err = s.d.Cmd("events", "--since=0", "--until", daemonUnixTime(c), "--filter", "type=container")
-	assert.NilError(c, err)
-	assert.Assert(c, !strings.Contains(out, fmt.Sprintf("daemon reload %s", daemonID)))
+	c.Assert(err, checker.IsNil)
+	c.Assert(out, checker.Not(checker.Contains), fmt.Sprintf("daemon reload %s", daemonID))
 }

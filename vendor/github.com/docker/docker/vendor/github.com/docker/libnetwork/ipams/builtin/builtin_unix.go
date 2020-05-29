@@ -35,7 +35,7 @@ func Init(ic ipamapi.Callback, l, g interface{}) error {
 		}
 	}
 
-	ipamutils.ConfigLocalScopeDefaultNetworks(GetDefaultIPAddressPool())
+	ipamutils.InitNetworks(GetDefaultIPAddressPool())
 
 	a, err := ipam.NewAllocator(localDs, globalDs)
 	if err != nil {

@@ -72,13 +72,11 @@ func (e ChainError) Error() string {
 }
 
 func probe() {
-	path, err := exec.LookPath("iptables")
-	if err != nil {
-		logrus.Warnf("Failed to find iptables: %v", err)
-		return
+	if out, err := exec.Command("modprobe", "-va", "nf_nat").CombinedOutput(); err != nil {
+		logrus.Warnf("Running modprobe nf_nat failed with message: `%s`, error: %v", strings.TrimSpace(string(out)), err)
 	}
-	if out, err := exec.Command(path, "--wait", "-t", "nat", "-L", "-n").CombinedOutput(); err != nil {
-		logrus.Warnf("Running iptables --wait -t nat -L -n failed with message: `%s`, error: %v", strings.TrimSpace(string(out)), err)
+	if out, err := exec.Command("modprobe", "-va", "xt_conntrack").CombinedOutput(); err != nil {
+		logrus.Warnf("Running modprobe xt_conntrack failed with message: `%s`, error: %v", strings.TrimSpace(string(out)), err)
 	}
 }
 
@@ -479,7 +477,7 @@ func raw(args ...string) ([]byte, error) {
 	return filterOutput(startTime, output, args...), err
 }
 
-// RawCombinedOutput internally calls the Raw function and returns a non nil
+// RawCombinedOutput inernally calls the Raw function and returns a non nil
 // error if Raw returned a non nil error or a non empty output
 func RawCombinedOutput(args ...string) error {
 	if output, err := Raw(args...); err != nil || len(output) != 0 {

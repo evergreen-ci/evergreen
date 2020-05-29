@@ -1,8 +1,6 @@
 package global
 
 import (
-	"context"
-
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/constraint"
@@ -11,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
 	"github.com/docker/swarmkit/manager/orchestrator/update"
 	"github.com/docker/swarmkit/manager/state/store"
+	"golang.org/x/net/context"
 )
 
 type globalService struct {
@@ -585,4 +584,12 @@ func (g *Orchestrator) SlotTuple(t *api.Task) orchestrator.SlotTuple {
 		ServiceID: t.ServiceID,
 		NodeID:    t.NodeID,
 	}
+}
+
+func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {
+	if t == nil || t.DesiredState <= api.TaskStateRunning {
+		return false
+	}
+	return restartPolicy == api.RestartOnNone ||
+		(restartPolicy == api.RestartOnFailure && t.Status.State == api.TaskStateCompleted)
 }

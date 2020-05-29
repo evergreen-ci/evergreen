@@ -2,7 +2,6 @@ package controlapi
 
 import (
 	"bytes"
-	"context"
 	"strings"
 
 	"github.com/docker/swarmkit/api"
@@ -10,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

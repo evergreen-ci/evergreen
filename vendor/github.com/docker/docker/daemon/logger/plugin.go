@@ -81,7 +81,7 @@ func makePluginCreator(name string, l logPlugin, scopePath func(s string) string
 			return nil, err
 		}
 
-		id := stringid.GenerateRandomID()
+		id := stringid.GenerateNonCryptoID()
 		a := &pluginAdapter{
 			driverName: name,
 			id:         id,

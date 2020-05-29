@@ -11,7 +11,6 @@ import (
 	containertypes "github.com/docker/docker/api/types/container"
 	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/container"
-	"github.com/docker/docker/oci"
 	"github.com/docker/docker/pkg/stringid"
 	volumeopts "github.com/docker/docker/volume/service/opts"
 	"github.com/opencontainers/selinux/go-selinux/label"
@@ -25,30 +24,18 @@ func (daemon *Daemon) createContainerOSSpecificSettings(container *container.Con
 	}
 	defer daemon.Unmount(container)
 
-	rootIDs := daemon.idMapping.RootPair()
+	rootIDs := daemon.idMappings.RootPair()
 	if err := container.SetupWorkingDirectory(rootIDs); err != nil {
 		return err
 	}
 
-	// Set the default masked and readonly paths with regard to the host config options if they are not set.
-	if hostConfig.MaskedPaths == nil && !hostConfig.Privileged {
-		hostConfig.MaskedPaths = oci.DefaultSpec().Linux.MaskedPaths // Set it to the default if nil
-		container.HostConfig.MaskedPaths = hostConfig.MaskedPaths
-	}
-	if hostConfig.ReadonlyPaths == nil && !hostConfig.Privileged {
-		hostConfig.ReadonlyPaths = oci.DefaultSpec().Linux.ReadonlyPaths // Set it to the default if nil
-		container.HostConfig.ReadonlyPaths = hostConfig.ReadonlyPaths
-	}
-
 	for spec := range config.Volumes {
-		name := stringid.GenerateRandomID()
+		name := stringid.GenerateNonCryptoID()
 		destination := filepath.Clean(spec)
 
 		// Skip volumes for which we already have something mounted on that
 		// destination because of a --volume-from.
-		if container.HasMountFor(destination) {
-			logrus.WithField("container", container.ID).WithField("destination", spec).Debug("mountpoint already exists, skipping anonymous volume")
-			// Not an error, this could easily have come from the image config.
+		if container.IsDestinationMounted(destination) {
 			continue
 		}
 		path, err := container.GetResourcePath(destination)

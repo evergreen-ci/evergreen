@@ -18,19 +18,18 @@ import (
 	"github.com/docker/docker/internal/test/request"
 	req "github.com/docker/docker/internal/test/request"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func TestEventsExecDie(t *testing.T) {
 	skip.If(t, versions.LessThan(testEnv.DaemonAPIVersion(), "1.36"), "broken in earlier versions")
-	skip.If(t, testEnv.OSType == "windows", "FIXME. Suspect may need to wait until container is running before exec")
 	defer setupTest(t)()
 	ctx := context.Background()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 
-	cID := container.Run(ctx, t, client)
+	cID := container.Run(t, ctx, client)
 
 	id, err := client.ContainerExecCreate(ctx, cID,
 		types.ExecConfig{
@@ -63,7 +62,7 @@ func TestEventsExecDie(t *testing.T) {
 		assert.Equal(t, m.Actor.Attributes["execID"], id.ID)
 		assert.Equal(t, m.Actor.Attributes["exitCode"], "0")
 	case err = <-errors:
-		assert.NilError(t, err)
+		t.Fatal(err)
 	case <-time.After(time.Second * 3):
 		t.Fatal("timeout hit")
 	}
@@ -75,15 +74,14 @@ func TestEventsExecDie(t *testing.T) {
 // backward compatibility so old `JSONMessage` could still be used.
 // This test verifies that backward compatibility maintains.
 func TestEventsBackwardsCompatible(t *testing.T) {
-	skip.If(t, testEnv.OSType == "windows", "Windows doesn't support back-compat messages")
 	defer setupTest(t)()
 	ctx := context.Background()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 
 	since := request.DaemonTime(ctx, t, client, testEnv)
 	ts := strconv.FormatInt(since.Unix(), 10)
 
-	cID := container.Create(ctx, t, client)
+	cID := container.Create(t, ctx, client)
 
 	// In case there is no events, the API should have responded immediately (not blocking),
 	// The test here makes sure the response time is less than 3 sec.
@@ -109,7 +107,7 @@ func TestEventsBackwardsCompatible(t *testing.T) {
 			if err == io.EOF {
 				break
 			}
-			assert.NilError(t, err)
+			t.Fatal(err)
 		}
 		if event.Status == "create" && event.ID == cID {
 			containerCreateEvent = &event

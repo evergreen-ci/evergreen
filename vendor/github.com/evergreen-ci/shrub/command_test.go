@@ -296,7 +296,7 @@ func TestCommandFactory(t *testing.T) {
 		assert(t, reflect.DeepEqual(factory(), factoryCmd))
 		count++
 	}
-	assert(t, count == 18, "number of registered commands did not match expected")
+	assert(t, count == 15)
 
 	cmd := GetCommand("nothere")
 	assert(t, cmd == nil)

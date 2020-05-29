@@ -9,8 +9,12 @@ validate_vendor_diff(){
 	unset IFS
 
 	if [ ${#files[@]} -gt 0 ]; then
-		# recreate vendor/
-		vndr -whitelist=^archive/tar
+		# Remove vendor/ first so  that anything not included in vendor.conf will
+		# cause the validation to fail. archive/tar is a special case, see vendor.conf
+		# for details.
+		ls -d vendor/* | grep -v vendor/archive | xargs rm -rf
+		# run vndr to recreate vendor/
+		vndr
 		# check if any files have changed
 		diffs="$(git status --porcelain -- vendor 2>/dev/null)"
 		if [ "$diffs" ]; then

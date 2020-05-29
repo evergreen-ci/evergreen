@@ -1,7 +1,6 @@
 package cnmallocator
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -86,21 +86,8 @@ type initializer struct {
 	ntype string
 }
 
-// NetworkConfig is used to store network related cluster config in the Manager.
-type NetworkConfig struct {
-	// DefaultAddrPool specifies default subnet pool for global scope networks
-	DefaultAddrPool []string
-
-	// SubnetSize specifies the subnet size of the networks created from
-	// the default subnet pool
-	SubnetSize uint32
-
-	// VXLANUDPPort specifies the UDP port number for VXLAN traffic
-	VXLANUDPPort uint32
-}
-
 // New returns a new NetworkAllocator handle
-func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocator.NetworkAllocator, error) {
+func New(pg plugingetter.PluginGetter) (networkallocator.NetworkAllocator, error) {
 	na := &cnmNetworkAllocator{
 		networks: make(map[string]*network),
 		services: make(map[string]struct{}),
@@ -119,7 +106,7 @@ func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocat
 		return nil, err
 	}
 
-	if err = initIPAMDrivers(reg, netConfig); err != nil {
+	if err = initIPAMDrivers(reg); err != nil {
 		return nil, err
 	}
 
@@ -485,7 +472,7 @@ func (na *cnmNetworkAllocator) IsAttachmentAllocated(node *api.Node, networkAtta
 		return false
 	}
 
-	if networkAttachment == nil || networkAttachment.Network == nil {
+	if networkAttachment == nil {
 		return false
 	}
 
@@ -818,7 +805,8 @@ func (na *cnmNetworkAllocator) resolveDriver(n *api.Network) (*networkDriver, er
 
 	d, drvcap := na.drvRegistry.Driver(dName)
 	if d == nil {
-		err := na.loadDriver(dName)
+		var err error
+		err = na.loadDriver(dName)
 		if err != nil {
 			return nil, err
 		}

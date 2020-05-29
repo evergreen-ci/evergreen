@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/containerfs"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/fs"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/fs"
 )
 
 func TestIsExistingDirectory(t *testing.T) {

@@ -5,42 +5,40 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
+	"github.com/docker/docker/integration-cli/checker"
+	"github.com/go-check/check"
 	"github.com/opencontainers/go-digest"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
 )
 
 // TestPullFromCentralRegistry pulls an image from the central registry and verifies that the client
 // prints all expected output.
-func (s *DockerHubPullSuite) TestPullFromCentralRegistry(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullFromCentralRegistry(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	out := s.Cmd(c, "pull", "hello-world")
 	defer deleteImages("hello-world")
 
-	assert.Assert(c, strings.Contains(out, "Using default tag: latest"), "expected the 'latest' tag to be automatically assumed")
-	assert.Assert(c, strings.Contains(out, "Pulling from library/hello-world"), "expected the 'library/' prefix to be automatically assumed")
-	assert.Assert(c, strings.Contains(out, "Downloaded newer image for hello-world:latest"))
+	c.Assert(out, checker.Contains, "Using default tag: latest", check.Commentf("expected the 'latest' tag to be automatically assumed"))
+	c.Assert(out, checker.Contains, "Pulling from library/hello-world", check.Commentf("expected the 'library/' prefix to be automatically assumed"))
+	c.Assert(out, checker.Contains, "Downloaded newer image for hello-world:latest")
 
 	matches := regexp.MustCompile(`Digest: (.+)\n`).FindAllStringSubmatch(out, -1)
-	assert.Equal(c, len(matches), 1, "expected exactly one image digest in the output")
-	assert.Equal(c, len(matches[0]), 2, "unexpected number of submatches for the digest")
+	c.Assert(len(matches), checker.Equals, 1, check.Commentf("expected exactly one image digest in the output"))
+	c.Assert(len(matches[0]), checker.Equals, 2, check.Commentf("unexpected number of submatches for the digest"))
 	_, err := digest.Parse(matches[0][1])
-	assert.NilError(c, err, "invalid digest %q in output", matches[0][1])
+	c.Check(err, checker.IsNil, check.Commentf("invalid digest %q in output", matches[0][1]))
 
 	// We should have a single entry in images.
 	img := strings.TrimSpace(s.Cmd(c, "images"))
 	splitImg := strings.Split(img, "\n")
-	assert.Equal(c, len(splitImg), 2)
-	match, _ := regexp.MatchString(`hello-world\s+latest.*?`, splitImg[1])
-	assert.Assert(c, match, "invalid output for `docker images` (expected image and tag name)")
+	c.Assert(splitImg, checker.HasLen, 2)
+	c.Assert(splitImg[1], checker.Matches, `hello-world\s+latest.*?`, check.Commentf("invalid output for `docker images` (expected image and tag name"))
 }
 
 // TestPullNonExistingImage pulls non-existing images from the central registry, with different
 // combinations of implicit tag and library prefix.
-func (s *DockerHubPullSuite) TestPullNonExistingImage(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullNonExistingImage(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	type entry struct {
@@ -99,13 +97,13 @@ func (s *DockerHubPullSuite) TestPullNonExistingImage(c *testing.T) {
 	// Process the results (out, err).
 	for record := range recordChan {
 		if len(record.option) == 0 {
-			assert.ErrorContains(c, record.err, "", "expected non-zero exit status when pulling non-existing image: %s", record.out)
-			assert.Assert(c, strings.Contains(record.out, fmt.Sprintf("pull access denied for %s, repository does not exist or may require 'docker login'", record.e.repo)), "expected image not found error messages")
+			c.Assert(record.err, checker.NotNil, check.Commentf("expected non-zero exit status when pulling non-existing image: %s", record.out))
+			c.Assert(record.out, checker.Contains, fmt.Sprintf("pull access denied for %s, repository does not exist or may require 'docker login'", record.e.repo), check.Commentf("expected image not found error messages"))
 		} else {
 			// pull -a on a nonexistent registry should fall back as well
-			assert.ErrorContains(c, record.err, "", "expected non-zero exit status when pulling non-existing image: %s", record.out)
-			assert.Assert(c, strings.Contains(record.out, fmt.Sprintf("pull access denied for %s, repository does not exist or may require 'docker login'", record.e.repo)), "expected image not found error messages")
-			assert.Assert(c, !strings.Contains(record.out, "unauthorized"), `message should not contain "unauthorized"`)
+			c.Assert(record.err, checker.NotNil, check.Commentf("expected non-zero exit status when pulling non-existing image: %s", record.out))
+			c.Assert(record.out, checker.Contains, fmt.Sprintf("pull access denied for %s, repository does not exist or may require 'docker login'", record.e.repo), check.Commentf("expected image not found error messages"))
+			c.Assert(record.out, checker.Not(checker.Contains), "unauthorized", check.Commentf(`message should not contain "unauthorized"`))
 		}
 	}
 
@@ -115,7 +113,7 @@ func (s *DockerHubPullSuite) TestPullNonExistingImage(c *testing.T) {
 // that pulling the same image with different combinations of implicit elements of the image
 // reference (tag, repository, central registry url, ...) doesn't trigger a new pull nor leads to
 // multiple images.
-func (s *DockerHubPullSuite) TestPullFromCentralRegistryImplicitRefParts(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullFromCentralRegistryImplicitRefParts(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 
 	// Pull hello-world from v2
@@ -170,7 +168,7 @@ func (s *DockerHubPullSuite) TestPullFromCentralRegistryImplicitRefParts(c *test
 			s.Cmd(c, "rmi", ref)
 			s.Cmd(c, "tag", "hello-world-backup", "hello-world")
 		}
-		assert.Assert(c, strings.Contains(out, "Image is up to date for hello-world:latest"))
+		c.Assert(out, checker.Contains, "Image is up to date for hello-world:latest")
 	}
 
 	s.Cmd(c, "rmi", "hello-world-backup")
@@ -178,33 +176,32 @@ func (s *DockerHubPullSuite) TestPullFromCentralRegistryImplicitRefParts(c *test
 	// We should have a single entry in images.
 	img := strings.TrimSpace(s.Cmd(c, "images"))
 	splitImg := strings.Split(img, "\n")
-	assert.Equal(c, len(splitImg), 2)
-	match, _ := regexp.MatchString(`hello-world\s+latest.*?`, splitImg[1])
-	assert.Assert(c, match, "invalid output for `docker images` (expected image and tag name)")
+	c.Assert(splitImg, checker.HasLen, 2)
+	c.Assert(splitImg[1], checker.Matches, `hello-world\s+latest.*?`, check.Commentf("invalid output for `docker images` (expected image and tag name"))
 }
 
 // TestPullScratchNotAllowed verifies that pulling 'scratch' is rejected.
-func (s *DockerHubPullSuite) TestPullScratchNotAllowed(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullScratchNotAllowed(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	out, err := s.CmdWithError("pull", "scratch")
-	assert.ErrorContains(c, err, "", "expected pull of scratch to fail")
-	assert.Assert(c, strings.Contains(out, "'scratch' is a reserved name"))
-	assert.Assert(c, !strings.Contains(out, "Pulling repository scratch"))
+	c.Assert(err, checker.NotNil, check.Commentf("expected pull of scratch to fail"))
+	c.Assert(out, checker.Contains, "'scratch' is a reserved name")
+	c.Assert(out, checker.Not(checker.Contains), "Pulling repository scratch")
 }
 
 // TestPullAllTagsFromCentralRegistry pulls using `all-tags` for a given image and verifies that it
 // results in more images than a naked pull.
-func (s *DockerHubPullSuite) TestPullAllTagsFromCentralRegistry(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullAllTagsFromCentralRegistry(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	s.Cmd(c, "pull", "dockercore/engine-pull-all-test-fixture")
 	outImageCmd := s.Cmd(c, "images", "dockercore/engine-pull-all-test-fixture")
 	splitOutImageCmd := strings.Split(strings.TrimSpace(outImageCmd), "\n")
-	assert.Equal(c, len(splitOutImageCmd), 2)
+	c.Assert(splitOutImageCmd, checker.HasLen, 2)
 
 	s.Cmd(c, "pull", "--all-tags=true", "dockercore/engine-pull-all-test-fixture")
 	outImageAllTagCmd := s.Cmd(c, "images", "dockercore/engine-pull-all-test-fixture")
 	linesCount := strings.Count(outImageAllTagCmd, "\n")
-	assert.Assert(c, linesCount > 2, "pulling all tags should provide more than two images, got %s", outImageAllTagCmd)
+	c.Assert(linesCount, checker.GreaterThan, 2, check.Commentf("pulling all tags should provide more than two images, got %s", outImageAllTagCmd))
 
 	// Verify that the line for 'dockercore/engine-pull-all-test-fixture:latest' is left unchanged.
 	var latestLine string
@@ -214,7 +211,7 @@ func (s *DockerHubPullSuite) TestPullAllTagsFromCentralRegistry(c *testing.T) {
 			break
 		}
 	}
-	assert.Assert(c, latestLine != "", "no entry for dockercore/engine-pull-all-test-fixture:latest found after pulling all tags")
+	c.Assert(latestLine, checker.Not(checker.Equals), "", check.Commentf("no entry for dockercore/engine-pull-all-test-fixture:latest found after pulling all tags"))
 
 	splitLatest := strings.Fields(latestLine)
 	splitCurrent := strings.Fields(splitOutImageCmd[1])
@@ -231,47 +228,47 @@ func (s *DockerHubPullSuite) TestPullAllTagsFromCentralRegistry(c *testing.T) {
 	splitCurrent[4] = ""
 	splitCurrent[5] = ""
 
-	assert.Assert(c, is.DeepEqual(splitLatest, splitCurrent), "dockercore/engine-pull-all-test-fixture:latest was changed after pulling all tags")
+	c.Assert(splitLatest, checker.DeepEquals, splitCurrent, check.Commentf("dockercore/engine-pull-all-test-fixture:latest was changed after pulling all tags"))
 }
 
 // TestPullClientDisconnect kills the client during a pull operation and verifies that the operation
 // gets cancelled.
 //
 // Ref: docker/docker#15589
-func (s *DockerHubPullSuite) TestPullClientDisconnect(c *testing.T) {
+func (s *DockerHubPullSuite) TestPullClientDisconnect(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	repoName := "hello-world:latest"
 
 	pullCmd := s.MakeCmd("pull", repoName)
 	stdout, err := pullCmd.StdoutPipe()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	err = pullCmd.Start()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 	go pullCmd.Wait()
 
 	// Cancel as soon as we get some output.
 	buf := make([]byte, 10)
 	_, err = stdout.Read(buf)
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 
 	err = pullCmd.Process.Kill()
-	assert.NilError(c, err)
+	c.Assert(err, checker.IsNil)
 
 	time.Sleep(2 * time.Second)
 	_, err = s.CmdWithError("inspect", repoName)
-	assert.ErrorContains(c, err, "", "image was pulled after client disconnected")
+	c.Assert(err, checker.NotNil, check.Commentf("image was pulled after client disconnected"))
 }
 
 // Regression test for https://github.com/docker/docker/issues/26429
-func (s *DockerSuite) TestPullLinuxImageFailsOnWindows(c *testing.T) {
+func (s *DockerSuite) TestPullLinuxImageFailsOnWindows(c *check.C) {
 	testRequires(c, DaemonIsWindows, Network)
 	_, _, err := dockerCmdWithError("pull", "ubuntu")
-	assert.ErrorContains(c, err, "no matching manifest for windows")
+	c.Assert(err.Error(), checker.Contains, "no matching manifest")
 }
 
 // Regression test for https://github.com/docker/docker/issues/28892
-func (s *DockerSuite) TestPullWindowsImageFailsOnLinux(c *testing.T) {
+func (s *DockerSuite) TestPullWindowsImageFailsOnLinux(c *check.C) {
 	testRequires(c, DaemonIsLinux, Network)
-	_, _, err := dockerCmdWithError("pull", "mcr.microsoft.com/windows/servercore:ltsc2019")
-	assert.ErrorContains(c, err, "no matching manifest for linux")
+	_, _, err := dockerCmdWithError("pull", "microsoft/nanoserver")
+	c.Assert(err.Error(), checker.Contains, "cannot be used on this platform")
 }

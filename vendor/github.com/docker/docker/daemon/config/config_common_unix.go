@@ -69,9 +69,3 @@ func (conf *Config) GetInitPath() string {
 	}
 	return DefaultInitBinary
 }
-
-// GetResolvConf returns the appropriate resolv.conf
-// Check setupResolvConf on how this is selected
-func (conf *Config) GetResolvConf() string {
-	return conf.ResolvConf
-}

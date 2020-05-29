@@ -2,14 +2,13 @@ package container
 
 import (
 	"context"
-	"runtime"
 	"testing"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 // TestContainerConfig holds container configuration struct that
@@ -22,16 +21,12 @@ type TestContainerConfig struct {
 }
 
 // Create creates a container with the specified options
-func Create(ctx context.Context, t *testing.T, client client.APIClient, ops ...func(*TestContainerConfig)) string {
+func Create(t *testing.T, ctx context.Context, client client.APIClient, ops ...func(*TestContainerConfig)) string { // nolint: golint
 	t.Helper()
-	cmd := []string{"top"}
-	if runtime.GOOS == "windows" {
-		cmd = []string{"sleep", "240"}
-	}
 	config := &TestContainerConfig{
 		Config: &container.Config{
 			Image: "busybox",
-			Cmd:   cmd,
+			Cmd:   []string{"top"},
 		},
 		HostConfig:       &container.HostConfig{},
 		NetworkingConfig: &network.NetworkingConfig{},
@@ -48,9 +43,9 @@ func Create(ctx context.Context, t *testing.T, client client.APIClient, ops ...f
 }
 
 // Run creates and start a container with the specified options
-func Run(ctx context.Context, t *testing.T, client client.APIClient, ops ...func(*TestContainerConfig)) string {
+func Run(t *testing.T, ctx context.Context, client client.APIClient, ops ...func(*TestContainerConfig)) string { // nolint: golint
 	t.Helper()
-	id := Create(ctx, t, client, ops...)
+	id := Create(t, ctx, client, ops...)
 
 	err := client.ContainerStart(ctx, id, types.ContainerStartOptions{})
 	assert.NilError(t, err)

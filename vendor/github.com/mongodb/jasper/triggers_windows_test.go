@@ -56,10 +56,10 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
+					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
-					testCase(ctx, testutil.SleepCreateOpts(1), makeProc)
+					testCase(ctx, testutil.YesCreateOpts(0), makeProc)
 				})
 			}
 		})

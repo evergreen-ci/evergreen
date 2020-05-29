@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 
+	"github.com/docker/libnetwork/iptables"
 	"github.com/docker/libnetwork/portallocator"
 	"github.com/ishidawataru/sctp"
 	"github.com/sirupsen/logrus"
@@ -30,6 +32,20 @@ var (
 	ErrSCTPAddrNoIP = errors.New("sctp address does not contain any IP address")
 )
 
+// PortMapper manages the network address translation
+type PortMapper struct {
+	chain      *iptables.ChainInfo
+	bridgeName string
+
+	// udp:ip:port
+	currentMappings map[string]*mapping
+	lock            sync.Mutex
+
+	proxyPath string
+
+	Allocator *portallocator.PortAllocator
+}
+
 // New returns a new instance of PortMapper
 func New(proxyPath string) *PortMapper {
 	return NewWithPortAllocator(portallocator.Get(), proxyPath)
@@ -42,6 +58,12 @@ func NewWithPortAllocator(allocator *portallocator.PortAllocator, proxyPath stri
 		Allocator:       allocator,
 		proxyPath:       proxyPath,
 	}
+}
+
+// SetIptablesChain sets the specified chain into portmapper
+func (pm *PortMapper) SetIptablesChain(c *iptables.ChainInfo, bridgeName string) {
+	pm.chain = c
+	pm.bridgeName = bridgeName
 }
 
 // Map maps the specified container transport address to the host's network address and transport port
@@ -115,16 +137,16 @@ func (pm *PortMapper) MapRange(container net.Addr, hostIP net.IP, hostPortStart,
 
 		m = &mapping{
 			proto:     proto,
-			host:      &sctp.SCTPAddr{IPAddrs: []net.IPAddr{{IP: hostIP}}, Port: allocatedHostPort},
+			host:      &sctp.SCTPAddr{IP: []net.IP{hostIP}, Port: allocatedHostPort},
 			container: container,
 		}
 
 		if useProxy {
 			sctpAddr := container.(*sctp.SCTPAddr)
-			if len(sctpAddr.IPAddrs) == 0 {
+			if len(sctpAddr.IP) == 0 {
 				return nil, ErrSCTPAddrNoIP
 			}
-			m.userlandProxy, err = newProxy(proto, hostIP, allocatedHostPort, sctpAddr.IPAddrs[0].IP, sctpAddr.Port, pm.proxyPath)
+			m.userlandProxy, err = newProxy(proto, hostIP, allocatedHostPort, sctpAddr.IP[0], sctpAddr.Port, pm.proxyPath)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +174,7 @@ func (pm *PortMapper) MapRange(container net.Addr, hostIP net.IP, hostPortStart,
 
 	containerIP, containerPort := getIPAndPort(m.container)
 	if hostIP.To4() != nil {
-		if err := pm.AppendForwardingTableEntry(m.proto, hostIP, allocatedHostPort, containerIP.String(), containerPort); err != nil {
+		if err := pm.forward(iptables.Append, m.proto, hostIP, allocatedHostPort, containerIP.String(), containerPort); err != nil {
 			return nil, err
 		}
 	}
@@ -161,7 +183,7 @@ func (pm *PortMapper) MapRange(container net.Addr, hostIP net.IP, hostPortStart,
 		// need to undo the iptables rules before we return
 		m.userlandProxy.Stop()
 		if hostIP.To4() != nil {
-			pm.DeleteForwardingTableEntry(m.proto, hostIP, allocatedHostPort, containerIP.String(), containerPort)
+			pm.forward(iptables.Delete, m.proto, hostIP, allocatedHostPort, containerIP.String(), containerPort)
 			if err := pm.Allocator.ReleasePort(hostIP, m.proto, allocatedHostPort); err != nil {
 				return err
 			}
@@ -200,7 +222,7 @@ func (pm *PortMapper) Unmap(host net.Addr) error {
 
 	containerIP, containerPort := getIPAndPort(data.container)
 	hostIP, hostPort := getIPAndPort(data.host)
-	if err := pm.DeleteForwardingTableEntry(data.proto, hostIP, hostPort, containerIP.String(), containerPort); err != nil {
+	if err := pm.forward(iptables.Delete, data.proto, hostIP, hostPort, containerIP.String(), containerPort); err != nil {
 		logrus.Errorf("Error on iptables delete: %s", err)
 	}
 
@@ -210,10 +232,10 @@ func (pm *PortMapper) Unmap(host net.Addr) error {
 	case *net.UDPAddr:
 		return pm.Allocator.ReleasePort(a.IP, "udp", a.Port)
 	case *sctp.SCTPAddr:
-		if len(a.IPAddrs) == 0 {
+		if len(a.IP) == 0 {
 			return ErrSCTPAddrNoIP
 		}
-		return pm.Allocator.ReleasePort(a.IPAddrs[0].IP, "sctp", a.Port)
+		return pm.Allocator.ReleasePort(a.IP[0], "sctp", a.Port)
 	}
 	return ErrUnknownBackendAddressType
 }
@@ -226,7 +248,7 @@ func (pm *PortMapper) ReMapAll() {
 	for _, data := range pm.currentMappings {
 		containerIP, containerPort := getIPAndPort(data.container)
 		hostIP, hostPort := getIPAndPort(data.host)
-		if err := pm.AppendForwardingTableEntry(data.proto, hostIP, hostPort, containerIP.String(), containerPort); err != nil {
+		if err := pm.forward(iptables.Append, data.proto, hostIP, hostPort, containerIP.String(), containerPort); err != nil {
 			logrus.Errorf("Error on iptables add: %s", err)
 		}
 	}
@@ -239,11 +261,11 @@ func getKey(a net.Addr) string {
 	case *net.UDPAddr:
 		return fmt.Sprintf("%s:%d/%s", t.IP.String(), t.Port, "udp")
 	case *sctp.SCTPAddr:
-		if len(t.IPAddrs) == 0 {
+		if len(t.IP) == 0 {
 			logrus.Error(ErrSCTPAddrNoIP)
 			return ""
 		}
-		return fmt.Sprintf("%s:%d/%s", t.IPAddrs[0].IP.String(), t.Port, "sctp")
+		return fmt.Sprintf("%s:%d/%s", t.IP[0].String(), t.Port, "sctp")
 	}
 	return ""
 }
@@ -255,11 +277,18 @@ func getIPAndPort(a net.Addr) (net.IP, int) {
 	case *net.UDPAddr:
 		return t.IP, t.Port
 	case *sctp.SCTPAddr:
-		if len(t.IPAddrs) == 0 {
+		if len(t.IP) == 0 {
 			logrus.Error(ErrSCTPAddrNoIP)
 			return nil, 0
 		}
-		return t.IPAddrs[0].IP, t.Port
+		return t.IP[0], t.Port
 	}
 	return nil, 0
+}
+
+func (pm *PortMapper) forward(action iptables.Action, proto string, sourceIP net.IP, sourcePort int, containerIP string, containerPort int) error {
+	if pm.chain == nil {
+		return nil
+	}
+	return pm.chain.Forward(action, sourceIP, sourcePort, proto, containerIP, containerPort, pm.bridgeName)
 }

@@ -13,8 +13,8 @@ import (
 	"github.com/docker/docker/volume/local"
 	"github.com/docker/docker/volume/service/opts"
 	"github.com/docker/docker/volume/testutils"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestLocalVolumeSize(t *testing.T) {
@@ -22,11 +22,11 @@ func TestLocalVolumeSize(t *testing.T) {
 
 	ds := volumedrivers.NewStore(nil)
 	dir, err := ioutil.TempDir("", t.Name())
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 	defer os.RemoveAll(dir)
 
-	l, err := local.New(dir, idtools.Identity{UID: os.Getuid(), GID: os.Getegid()})
-	assert.NilError(t, err)
+	l, err := local.New(dir, idtools.IDPair{UID: os.Getuid(), GID: os.Getegid()})
+	assert.Assert(t, err)
 	assert.Assert(t, ds.Register(l, volume.DefaultDriverName))
 	assert.Assert(t, ds.Register(testutils.NewFakeDriver("fake"), "fake"))
 
@@ -35,20 +35,20 @@ func TestLocalVolumeSize(t *testing.T) {
 
 	ctx := context.Background()
 	v1, err := service.Create(ctx, "test1", volume.DefaultDriverName, opts.WithCreateReference("foo"))
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 	v2, err := service.Create(ctx, "test2", volume.DefaultDriverName)
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 	_, err = service.Create(ctx, "test3", "fake")
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 
 	data := make([]byte, 1024)
 	err = ioutil.WriteFile(filepath.Join(v1.Mountpoint, "data"), data, 0644)
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 	err = ioutil.WriteFile(filepath.Join(v2.Mountpoint, "data"), data[:1], 0644)
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 
 	ls, err := service.LocalVolumesSize(ctx)
-	assert.NilError(t, err)
+	assert.Assert(t, err)
 	assert.Assert(t, is.Len(ls, 2))
 
 	for _, v := range ls {
@@ -63,4 +63,5 @@ func TestLocalVolumeSize(t *testing.T) {
 			t.Fatalf("got unexpected volume: %+v", v)
 		}
 	}
+	assert.Assert(t, is.Equal(ls[1].UsageData.Size, int64(len(data[:1]))))
 }

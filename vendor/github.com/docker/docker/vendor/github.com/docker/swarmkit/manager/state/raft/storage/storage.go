@@ -1,11 +1,12 @@
 package storage
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft/raftpb"

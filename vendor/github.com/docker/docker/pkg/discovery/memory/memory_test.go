@@ -3,19 +3,18 @@ package memory // import "github.com/docker/docker/pkg/discovery/memory"
 import (
 	"testing"
 
-	"github.com/docker/docker/internal/test/suite"
 	"github.com/docker/docker/pkg/discovery"
-	"gotest.tools/assert"
+	"github.com/go-check/check"
 )
 
 // Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) {
-	suite.Run(t, &discoverySuite{})
-}
+func Test(t *testing.T) { check.TestingT(t) }
 
 type discoverySuite struct{}
 
-func (s *discoverySuite) TestWatch(c *testing.T) {
+var _ = check.Suite(&discoverySuite{})
+
+func (s *discoverySuite) TestWatch(c *check.C) {
 	d := &Discovery{}
 	d.Initialize("foo", 1000, 0, nil)
 	stopCh := make(chan struct{})
@@ -31,19 +30,19 @@ func (s *discoverySuite) TestWatch(c *testing.T) {
 		&discovery.Entry{Host: "1.1.1.1", Port: "1111"},
 	}
 
-	assert.Assert(c, d.Register("1.1.1.1:1111") == nil)
-	assert.DeepEqual(c, <-ch, expected)
+	c.Assert(d.Register("1.1.1.1:1111"), check.IsNil)
+	c.Assert(<-ch, check.DeepEquals, expected)
 
 	expected = discovery.Entries{
 		&discovery.Entry{Host: "1.1.1.1", Port: "1111"},
 		&discovery.Entry{Host: "2.2.2.2", Port: "2222"},
 	}
 
-	assert.Assert(c, d.Register("2.2.2.2:2222") == nil)
-	assert.DeepEqual(c, <-ch, expected)
+	c.Assert(d.Register("2.2.2.2:2222"), check.IsNil)
+	c.Assert(<-ch, check.DeepEquals, expected)
 
 	// Stop and make sure it closes all channels.
 	close(stopCh)
-	assert.Assert(c, <-ch == nil)
-	assert.Assert(c, <-errCh == nil)
+	c.Assert(<-ch, check.IsNil)
+	c.Assert(<-errCh, check.IsNil)
 }

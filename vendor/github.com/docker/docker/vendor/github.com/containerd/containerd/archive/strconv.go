@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"archive/tar"
+	"github.com/dmcgowan/go-tar"
 )
 
 // Forked from https://github.com/golang/go/blob/master/src/archive/tar/strconv.go

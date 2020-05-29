@@ -44,14 +44,7 @@ func (daemon *Daemon) setupConfigDir(c *container.Container) (setupErr error) {
 	for _, configRef := range c.ConfigReferences {
 		// TODO (ehazlett): use type switch when more are supported
 		if configRef.File == nil {
-			// Runtime configs are not mounted into the container, but they're
-			// a valid type of config so we should not error when we encounter
-			// one.
-			if configRef.Runtime == nil {
-				logrus.Error("config target type is not a file or runtime target")
-			}
-			// However, in any case, this isn't a file config, so we have no
-			// further work to do
+			logrus.Error("config target type is not a file target")
 			continue
 		}
 
@@ -82,6 +75,10 @@ func (daemon *Daemon) setupIpcDirs(container *container.Container) error {
 // container which has a volume, regardless of where the file is inside the
 // container.
 func (daemon *Daemon) mountVolumes(container *container.Container) error {
+	return nil
+}
+
+func detachMounted(path string) error {
 	return nil
 }
 
@@ -154,12 +151,11 @@ func enableIPOnPredefinedNetwork() bool {
 	return true
 }
 
-// serviceDiscoveryOnDefaultNetwork indicates if service discovery is supported on the default network
-func serviceDiscoveryOnDefaultNetwork() bool {
+func (daemon *Daemon) isNetworkHotPluggable() bool {
 	return true
 }
 
-func (daemon *Daemon) setupPathsAndSandboxOptions(container *container.Container, sboxOptions *[]libnetwork.SandboxOption) error {
+func setupPathsAndSandboxOptions(container *container.Container, sboxOptions *[]libnetwork.SandboxOption) error {
 	return nil
 }
 

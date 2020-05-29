@@ -12,7 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/internal/test"
 	"github.com/docker/docker/pkg/archive"
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 var ensureHTTPServerOnce sync.Once

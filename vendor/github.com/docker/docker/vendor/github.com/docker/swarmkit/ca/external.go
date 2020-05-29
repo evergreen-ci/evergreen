@@ -2,7 +2,6 @@ package ca
 
 import (
 	"bytes"
-	"context"
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -22,6 +21,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 )
 

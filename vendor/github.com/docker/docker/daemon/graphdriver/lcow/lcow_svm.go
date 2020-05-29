@@ -3,7 +3,7 @@
 package lcow // import "github.com/docker/docker/daemon/graphdriver/lcow"
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/opengcs/client"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,13 +34,6 @@ type serviceVMMapItem struct {
 	refCount int        // refcount for VM
 }
 
-// attachedVHD is for reference counting SCSI disks attached to a service VM,
-// and for a counter used to generate a short path name for the container path.
-type attachedVHD struct {
-	refCount      int
-	attachCounter uint64
-}
-
 type serviceVM struct {
 	sync.Mutex                     // Serialises operations being performed in this service VM.
 	scratchAttached bool           // Has a scratch been attached?
@@ -55,9 +47,8 @@ type serviceVM struct {
 	stopStatus chan interface{}
 	stopError  error
 
-	attachCounter uint64                  // Increasing counter for each add
-	attachedVHDs  map[string]*attachedVHD // Map ref counting all the VHDS we've hot-added/hot-removed.
-	unionMounts   map[string]int          // Map ref counting all the union filesystems we mounted.
+	attachedVHDs map[string]int // Map ref counting all the VHDS we've hot-added/hot-removed.
+	unionMounts  map[string]int // Map ref counting all the union filesystems we mounted.
 }
 
 // add will add an id to the service vm map. There are three cases:
@@ -82,7 +73,7 @@ func (svmMap *serviceVMMap) add(id string) (svm *serviceVM, alreadyExists bool, 
 	newSVM := &serviceVM{
 		startStatus:  make(chan interface{}),
 		stopStatus:   make(chan interface{}),
-		attachedVHDs: make(map[string]*attachedVHD),
+		attachedVHDs: make(map[string]int),
 		unionMounts:  make(map[string]int),
 		config:       &client.Config{},
 	}
@@ -212,18 +203,15 @@ func (svm *serviceVM) hotAddVHDsAtStart(mvds ...hcsshim.MappedVirtualDisk) error
 	defer svm.Unlock()
 	for i, mvd := range mvds {
 		if _, ok := svm.attachedVHDs[mvd.HostPath]; ok {
-			svm.attachedVHDs[mvd.HostPath].refCount++
-			logrus.Debugf("lcowdriver: UVM %s: %s already present, refCount now %d", svm.config.Name, mvd.HostPath, svm.attachedVHDs[mvd.HostPath].refCount)
+			svm.attachedVHDs[mvd.HostPath]++
 			continue
 		}
 
-		svm.attachCounter++
-		shortContainerPath := remapLongToShortContainerPath(mvd.ContainerPath, svm.attachCounter, svm.config.Name)
-		if err := svm.config.HotAddVhd(mvd.HostPath, shortContainerPath, mvd.ReadOnly, !mvd.AttachOnly); err != nil {
+		if err := svm.config.HotAddVhd(mvd.HostPath, mvd.ContainerPath, mvd.ReadOnly, !mvd.AttachOnly); err != nil {
 			svm.hotRemoveVHDsNoLock(mvds[:i]...)
 			return err
 		}
-		svm.attachedVHDs[mvd.HostPath] = &attachedVHD{refCount: 1, attachCounter: svm.attachCounter}
+		svm.attachedVHDs[mvd.HostPath] = 1
 	}
 	return nil
 }
@@ -250,17 +238,15 @@ func (svm *serviceVM) hotRemoveVHDsNoLock(mvds ...hcsshim.MappedVirtualDisk) err
 			// defers the VM start to the first operation, it's possible that nothing have been hot-added
 			// when Put() is called. To avoid Put returning an error in that case, we simply continue if we
 			// don't find the vhd attached.
-			logrus.Debugf("lcowdriver: UVM %s: %s is not attached, not doing anything", svm.config.Name, mvd.HostPath)
 			continue
 		}
 
-		if svm.attachedVHDs[mvd.HostPath].refCount > 1 {
-			svm.attachedVHDs[mvd.HostPath].refCount--
-			logrus.Debugf("lcowdriver: UVM %s: %s refCount dropped to %d. not removing from UVM", svm.config.Name, mvd.HostPath, svm.attachedVHDs[mvd.HostPath].refCount)
+		if svm.attachedVHDs[mvd.HostPath] > 1 {
+			svm.attachedVHDs[mvd.HostPath]--
 			continue
 		}
 
-		// last reference to VHD, so remove from VM and map
+		// last VHD, so remove from VM and map
 		if err := svm.config.HotRemoveVhd(mvd.HostPath); err == nil {
 			delete(svm.attachedVHDs, mvd.HostPath)
 		} else {
@@ -284,19 +270,6 @@ func (svm *serviceVM) createExt4VHDX(destFile string, sizeGB uint32, cacheFile s
 	return svm.config.CreateExt4Vhdx(destFile, sizeGB, cacheFile)
 }
 
-// getShortContainerPath looks up where a SCSI disk was actually mounted
-// in a service VM when we remapped a long path name to a short name.
-func (svm *serviceVM) getShortContainerPath(mvd *hcsshim.MappedVirtualDisk) string {
-	if mvd.ContainerPath == "" {
-		return ""
-	}
-	avhd, ok := svm.attachedVHDs[mvd.HostPath]
-	if !ok {
-		return ""
-	}
-	return fmt.Sprintf("/tmp/d%d", avhd.attachCounter)
-}
-
 func (svm *serviceVM) createUnionMount(mountName string, mvds ...hcsshim.MappedVirtualDisk) (err error) {
 	if len(mvds) == 0 {
 		return fmt.Errorf("createUnionMount: error must have at least 1 layer")
@@ -315,35 +288,33 @@ func (svm *serviceVM) createUnionMount(mountName string, mvds ...hcsshim.MappedV
 
 	var lowerLayers []string
 	if mvds[0].ReadOnly {
-		lowerLayers = append(lowerLayers, svm.getShortContainerPath(&mvds[0]))
+		lowerLayers = append(lowerLayers, mvds[0].ContainerPath)
 	}
 
 	for i := 1; i < len(mvds); i++ {
-		lowerLayers = append(lowerLayers, svm.getShortContainerPath(&mvds[i]))
+		lowerLayers = append(lowerLayers, mvds[i].ContainerPath)
 	}
 
 	logrus.Debugf("Doing the overlay mount with union directory=%s", mountName)
-	errOut := &bytes.Buffer{}
-	if err = svm.runProcess(fmt.Sprintf("mkdir -p %s", mountName), nil, nil, errOut); err != nil {
-		return errors.Wrapf(err, "mkdir -p %s failed (%s)", mountName, errOut.String())
+	if err = svm.runProcess(fmt.Sprintf("mkdir -p %s", mountName), nil, nil, nil); err != nil {
+		return err
 	}
 
 	var cmd string
 	if len(mvds) == 1 {
 		// `FROM SCRATCH` case and the only layer. No overlay required.
-		cmd = fmt.Sprintf("mount %s %s", svm.getShortContainerPath(&mvds[0]), mountName)
+		cmd = fmt.Sprintf("mount %s %s", mvds[0].ContainerPath, mountName)
 	} else if mvds[0].ReadOnly {
 		// Readonly overlay
 		cmd = fmt.Sprintf("mount -t overlay overlay -olowerdir=%s %s",
 			strings.Join(lowerLayers, ","),
 			mountName)
 	} else {
-		upper := fmt.Sprintf("%s/upper", svm.getShortContainerPath(&mvds[0]))
-		work := fmt.Sprintf("%s/work", svm.getShortContainerPath(&mvds[0]))
+		upper := fmt.Sprintf("%s/upper", mvds[0].ContainerPath)
+		work := fmt.Sprintf("%s/work", mvds[0].ContainerPath)
 
-		errOut := &bytes.Buffer{}
-		if err = svm.runProcess(fmt.Sprintf("mkdir -p %s %s", upper, work), nil, nil, errOut); err != nil {
-			return errors.Wrapf(err, "mkdir -p %s failed (%s)", mountName, errOut.String())
+		if err = svm.runProcess(fmt.Sprintf("mkdir -p %s %s", upper, work), nil, nil, nil); err != nil {
+			return err
 		}
 
 		cmd = fmt.Sprintf("mount -t overlay overlay -olowerdir=%s,upperdir=%s,workdir=%s %s",
@@ -354,9 +325,8 @@ func (svm *serviceVM) createUnionMount(mountName string, mvds ...hcsshim.MappedV
 	}
 
 	logrus.Debugf("createUnionMount: Executing mount=%s", cmd)
-	errOut = &bytes.Buffer{}
-	if err = svm.runProcess(cmd, nil, nil, errOut); err != nil {
-		return errors.Wrapf(err, "%s failed (%s)", cmd, errOut.String())
+	if err = svm.runProcess(cmd, nil, nil, nil); err != nil {
+		return err
 	}
 
 	svm.unionMounts[mountName] = 1
@@ -389,15 +359,7 @@ func (svm *serviceVM) deleteUnionMount(mountName string, disks ...hcsshim.Mapped
 }
 
 func (svm *serviceVM) runProcess(command string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
-	var process hcsshim.Process
-	var err error
-	errOut := &bytes.Buffer{}
-
-	if stderr != nil {
-		process, err = svm.config.RunProcess(command, stdin, stdout, stderr)
-	} else {
-		process, err = svm.config.RunProcess(command, stdin, stdout, errOut)
-	}
+	process, err := svm.config.RunProcess(command, stdin, stdout, stderr)
 	if err != nil {
 		return err
 	}
@@ -410,12 +372,7 @@ func (svm *serviceVM) runProcess(command string, stdin io.Reader, stdout io.Writ
 	}
 
 	if exitCode != 0 {
-		// If the caller isn't explicitly capturing stderr output, then capture it here instead.
-		e := fmt.Sprintf("svm.runProcess: command %s failed with exit code %d", command, exitCode)
-		if stderr == nil {
-			e = fmt.Sprintf("%s. (%s)", e, errOut.String())
-		}
-		return fmt.Errorf(e)
+		return fmt.Errorf("svm.runProcess: command %s failed with exit code %d", command, exitCode)
 	}
 	return nil
 }

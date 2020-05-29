@@ -7,19 +7,18 @@ import (
 
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/integration/internal/container"
+	"github.com/docker/docker/internal/test/request"
 	"github.com/docker/docker/pkg/archive"
-	"gotest.tools/assert"
-	"gotest.tools/poll"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	"github.com/gotestyourself/gotestyourself/poll"
 )
 
 func TestDiff(t *testing.T) {
-	skip.If(t, testEnv.OSType == "windows", "FIXME")
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	cID := container.Run(ctx, t, client, container.WithCmd("sh", "-c", `mkdir /foo; echo xyzzy > /foo/bar`))
+	cID := container.Run(t, ctx, client, container.WithCmd("sh", "-c", `mkdir /foo; echo xyzzy > /foo/bar`))
 
 	// Wait for it to exit as cannot diff a running container on Windows, and
 	// it will take a few seconds to exit. Also there's no way in Windows to

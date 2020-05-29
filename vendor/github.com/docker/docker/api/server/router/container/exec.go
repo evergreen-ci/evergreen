@@ -3,7 +3,6 @@ package container // import "github.com/docker/docker/api/server/router/containe
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,10 +44,7 @@ func (s *containerRouter) postContainerExecCreate(ctx context.Context, w http.Re
 
 	execConfig := &types.ExecConfig{}
 	if err := json.NewDecoder(r.Body).Decode(execConfig); err != nil {
-		if err == io.EOF {
-			return errdefs.InvalidParameter(errors.New("got EOF while reading request body"))
-		}
-		return errdefs.InvalidParameter(err)
+		return err
 	}
 
 	if len(execConfig.Cmd) == 0 {
@@ -88,10 +84,7 @@ func (s *containerRouter) postContainerExecStart(ctx context.Context, w http.Res
 
 	execStartCheck := &types.ExecStartCheck{}
 	if err := json.NewDecoder(r.Body).Decode(execStartCheck); err != nil {
-		if err == io.EOF {
-			return errdefs.InvalidParameter(errors.New("got EOF while reading request body"))
-		}
-		return errdefs.InvalidParameter(err)
+		return err
 	}
 
 	if exists, err := s.backend.ExecExists(execName); !exists {

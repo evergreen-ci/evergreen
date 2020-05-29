@@ -1,25 +1,21 @@
 package fsutil
 
 import (
-	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/docker/docker/pkg/fileutils"
 	"github.com/pkg/errors"
-	"github.com/tonistiigi/fsutil/types"
+	"golang.org/x/net/context"
 )
 
 type WalkOpt struct {
 	IncludePatterns []string
 	ExcludePatterns []string
-	// FollowPaths contains symlinks that are resolved into include patterns
-	// before performing the fs walk
-	FollowPaths []string
-	Map         FilterFunc
+	Map             func(*Stat) bool
 }
 
 func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) error {
@@ -43,25 +39,8 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 		}
 	}
 
-	var includePatterns []string
-	if opt != nil && opt.IncludePatterns != nil {
-		includePatterns = make([]string, len(opt.IncludePatterns))
-		for k := range opt.IncludePatterns {
-			includePatterns[k] = filepath.Clean(opt.IncludePatterns[k])
-		}
-	}
-	if opt != nil && opt.FollowPaths != nil {
-		targets, err := FollowLinks(p, opt.FollowPaths)
-		if err != nil {
-			return err
-		}
-		if targets != nil {
-			includePatterns = append(includePatterns, targets...)
-			includePatterns = dedupePaths(includePatterns)
-		}
-	}
-
 	var lastIncludedDir string
+	var includePatternPrefixes []string
 
 	seenFiles := make(map[uint64]string)
 	return filepath.Walk(root, func(path string, fi os.FileInfo, err error) (retErr error) {
@@ -72,7 +51,7 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 			return err
 		}
 		defer func() {
-			if retErr != nil && isNotExist(retErr) {
+			if retErr != nil && os.IsNotExist(errors.Cause(retErr)) {
 				retErr = filepath.SkipDir
 			}
 		}()
@@ -87,34 +66,34 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 		}
 
 		if opt != nil {
-			if includePatterns != nil {
-				skip := false
+			if opt.IncludePatterns != nil {
+				if includePatternPrefixes == nil {
+					includePatternPrefixes = patternPrefixes(opt.IncludePatterns)
+				}
+				matched := false
 				if lastIncludedDir != "" {
 					if strings.HasPrefix(path, lastIncludedDir+string(filepath.Separator)) {
-						skip = true
+						matched = true
 					}
 				}
-
-				if !skip {
-					matched := false
-					partial := true
-					for _, p := range includePatterns {
-						if ok, p := matchPrefix(p, path); ok {
+				if !matched {
+					for _, p := range opt.IncludePatterns {
+						if m, _ := filepath.Match(p, path); m {
 							matched = true
-							if !p {
-								partial = false
-								break
-							}
+							break
 						}
 					}
-					if !matched {
-						if fi.IsDir() {
+					if matched && fi.IsDir() {
+						lastIncludedDir = path
+					}
+				}
+				if !matched {
+					if !fi.IsDir() {
+						return nil
+					} else {
+						if noPossiblePrefixMatch(path, includePatternPrefixes) {
 							return filepath.SkipDir
 						}
-						return nil
-					}
-					if !partial && fi.IsDir() {
-						lastIncludedDir = path
 					}
 				}
 			}
@@ -147,9 +126,37 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 		}
 
 	passedFilter:
-		stat, err := mkstat(origpath, path, fi, seenFiles)
-		if err != nil {
-			return err
+		path = filepath.ToSlash(path)
+
+		stat := &Stat{
+			Path:    path,
+			Mode:    uint32(fi.Mode()),
+			Size_:   fi.Size(),
+			ModTime: fi.ModTime().UnixNano(),
+		}
+
+		setUnixOpt(fi, stat, path, seenFiles)
+
+		if !fi.IsDir() {
+			if fi.Mode()&os.ModeSymlink != 0 {
+				link, err := os.Readlink(origpath)
+				if err != nil {
+					return errors.Wrapf(err, "failed to readlink %s", origpath)
+				}
+				stat.Linkname = link
+			}
+		}
+		if err := loadXattr(origpath, stat); err != nil {
+			return errors.Wrapf(err, "failed to xattr %s", path)
+		}
+
+		if runtime.GOOS == "windows" {
+			permPart := stat.Mode & uint32(os.ModePerm)
+			noPermPart := stat.Mode &^ uint32(os.ModePerm)
+			// Add the x bit: make everything +x from windows
+			permPart |= 0111
+			permPart &= 0755
+			stat.Mode = noPermPart | permPart
 		}
 
 		select {
@@ -157,7 +164,7 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 			return ctx.Err()
 		default:
 			if opt != nil && opt.Map != nil {
-				if allowed := opt.Map(stat.Path, stat); !allowed {
+				if allowed := opt.Map(stat); !allowed {
 					return nil
 				}
 			}
@@ -170,7 +177,7 @@ func Walk(ctx context.Context, p string, opt *WalkOpt, fn filepath.WalkFunc) err
 }
 
 type StatInfo struct {
-	*types.Stat
+	*Stat
 }
 
 func (s *StatInfo) Name() string {
@@ -192,39 +199,29 @@ func (s *StatInfo) Sys() interface{} {
 	return s.Stat
 }
 
-func matchPrefix(pattern, name string) (bool, bool) {
-	count := strings.Count(name, string(filepath.Separator))
-	partial := false
-	if strings.Count(pattern, string(filepath.Separator)) > count {
-		pattern = trimUntilIndex(pattern, string(filepath.Separator), count)
-		partial = true
+func patternPrefixes(patterns []string) []string {
+	pfxs := make([]string, 0, len(patterns))
+	for _, ptrn := range patterns {
+		idx := strings.IndexFunc(ptrn, func(ch rune) bool {
+			return ch == '*' || ch == '?' || ch == '[' || ch == '\\'
+		})
+		if idx == -1 {
+			idx = len(ptrn)
+		}
+		pfxs = append(pfxs, ptrn[:idx])
 	}
-	m, _ := filepath.Match(pattern, name)
-	return m, partial
+	return pfxs
 }
 
-func trimUntilIndex(str, sep string, count int) string {
-	s := str
-	i := 0
-	c := 0
-	for {
-		idx := strings.Index(s, sep)
-		s = s[idx+len(sep):]
-		i += idx + len(sep)
-		c++
-		if c > count {
-			return str[:i-len(sep)]
+func noPossiblePrefixMatch(p string, pfxs []string) bool {
+	for _, pfx := range pfxs {
+		chk := p
+		if len(pfx) < len(p) {
+			chk = p[:len(pfx)]
+		}
+		if strings.HasPrefix(pfx, chk) {
+			return false
 		}
 	}
-}
-
-func isNotExist(err error) bool {
-	err = errors.Cause(err)
-	if os.IsNotExist(err) {
-		return true
-	}
-	if pe, ok := err.(*os.PathError); ok {
-		err = pe.Err
-	}
-	return err == syscall.ENOTDIR
+	return true
 }

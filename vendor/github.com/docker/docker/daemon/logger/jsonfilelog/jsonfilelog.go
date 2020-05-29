@@ -50,7 +50,7 @@ func New(info logger.Info) (logger.Logger, error) {
 			return nil, err
 		}
 		if capval <= 0 {
-			return nil, fmt.Errorf("max-size must be a positive number")
+			return nil, fmt.Errorf("max-size should be a positive numbler")
 		}
 	}
 	var maxFiles = 1
@@ -110,7 +110,7 @@ func New(info logger.Info) (logger.Logger, error) {
 		return b, nil
 	}
 
-	writer, err := loggerutils.NewLogFile(info.LogPath, capval, maxFiles, compress, marshalFunc, decodeFunc, 0640, getTailReader)
+	writer, err := loggerutils.NewLogFile(info.LogPath, capval, maxFiles, compress, marshalFunc, decodeFunc, 0640)
 	if err != nil {
 		return nil, err
 	}
@@ -166,14 +166,13 @@ func ValidateLogOpt(cfg map[string]string) error {
 	return nil
 }
 
-// Close closes underlying file and signals all the readers
-// that the logs producer is gone.
+// Close closes underlying file and signals all readers to stop.
 func (l *JSONFileLogger) Close() error {
 	l.mu.Lock()
 	l.closed = true
 	err := l.writer.Close()
 	for r := range l.readers {
-		r.ProducerGone()
+		r.Close()
 		delete(l.readers, r)
 	}
 	l.mu.Unlock()

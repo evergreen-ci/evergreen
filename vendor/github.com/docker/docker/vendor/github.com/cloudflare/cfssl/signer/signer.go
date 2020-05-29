@@ -12,7 +12,6 @@ import (
 	"encoding/asn1"
 	"errors"
 	"math/big"
-	"net/http"
 	"strings"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
 	cferr "github.com/cloudflare/cfssl/errors"
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/info"
 )
 
@@ -55,21 +55,6 @@ type SignRequest struct {
 	Label       string      `json:"label"`
 	Serial      *big.Int    `json:"serial,omitempty"`
 	Extensions  []Extension `json:"extensions,omitempty"`
-	// If provided, NotBefore will be used without modification (except
-	// for canonicalization) as the value of the notBefore field of the
-	// certificate. In particular no backdating adjustment will be made
-	// when NotBefore is provided.
-	NotBefore time.Time
-	// If provided, NotAfter will be used without modification (except
-	// for canonicalization) as the value of the notAfter field of the
-	// certificate.
-	NotAfter time.Time
-	// If ReturnPrecert is true a certificate with the CT poison extension
-	// will be returned from the Signer instead of attempting to retrieve
-	// SCTs and populate the tbsCert with them itself. This precert can then
-	// be passed to SignFromPrecert with the SCTs in order to create a
-	// valid certificate.
-	ReturnPrecert bool
 }
 
 // appendIf appends to a if s is not an empty string.
@@ -111,11 +96,9 @@ type Signer interface {
 	Info(info.Req) (*info.Resp, error)
 	Policy() *config.Signing
 	SetDBAccessor(certdb.Accessor)
-	GetDBAccessor() certdb.Accessor
 	SetPolicy(*config.Signing)
 	SigAlgo() x509.SignatureAlgorithm
 	Sign(req SignRequest) (cert []byte, err error)
-	SetReqModifier(func(*http.Request, []byte))
 }
 
 // Profile gets the specific profile from the signer
@@ -178,7 +161,7 @@ func ParseCertificateRequest(s Signer, csrBytes []byte) (template *x509.Certific
 		return
 	}
 
-	err = csrv.CheckSignature()
+	err = helpers.CheckSignature(csrv, csrv.SignatureAlgorithm, csrv.RawTBSCertificateRequest, csrv.Signature)
 	if err != nil {
 		err = cferr.Wrap(cferr.CSRError, cferr.KeyMismatch, err)
 		return
@@ -246,17 +229,16 @@ func ComputeSKI(template *x509.Certificate) ([]byte, error) {
 // the certificate template as possible from the profiles and current
 // template. It fills in the key uses, expiration, revocation URLs
 // and SKI.
-func FillTemplate(template *x509.Certificate, defaultProfile, profile *config.SigningProfile, notBefore time.Time, notAfter time.Time) error {
+func FillTemplate(template *x509.Certificate, defaultProfile, profile *config.SigningProfile) error {
 	ski, err := ComputeSKI(template)
-	if err != nil {
-		return err
-	}
 
 	var (
 		eku             []x509.ExtKeyUsage
 		ku              x509.KeyUsage
 		backdate        time.Duration
 		expiry          time.Duration
+		notBefore       time.Time
+		notAfter        time.Time
 		crlURL, ocspURL string
 		issuerURL       = profile.IssuerURL
 	)
@@ -283,29 +265,23 @@ func FillTemplate(template *x509.Certificate, defaultProfile, profile *config.Si
 	if ocspURL = profile.OCSP; ocspURL == "" {
 		ocspURL = defaultProfile.OCSP
 	}
-
-	if notBefore.IsZero() {
-		if !profile.NotBefore.IsZero() {
-			notBefore = profile.NotBefore
-		} else {
-			if backdate = profile.Backdate; backdate == 0 {
-				backdate = -5 * time.Minute
-			} else {
-				backdate = -1 * profile.Backdate
-			}
-			notBefore = time.Now().Round(time.Minute).Add(backdate)
-		}
+	if backdate = profile.Backdate; backdate == 0 {
+		backdate = -5 * time.Minute
+	} else {
+		backdate = -1 * profile.Backdate
 	}
-	notBefore = notBefore.UTC()
 
-	if notAfter.IsZero() {
-		if !profile.NotAfter.IsZero() {
-			notAfter = profile.NotAfter
-		} else {
-			notAfter = notBefore.Add(expiry)
-		}
+	if !profile.NotBefore.IsZero() {
+		notBefore = profile.NotBefore.UTC()
+	} else {
+		notBefore = time.Now().Round(time.Minute).Add(backdate).UTC()
 	}
-	notAfter = notAfter.UTC()
+
+	if !profile.NotAfter.IsZero() {
+		notAfter = profile.NotAfter.UTC()
+	} else {
+		notAfter = notBefore.Add(expiry).UTC()
+	}
 
 	template.NotBefore = notBefore
 	template.NotAfter = notAfter

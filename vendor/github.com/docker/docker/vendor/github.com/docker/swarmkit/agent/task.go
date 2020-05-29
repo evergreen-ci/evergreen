@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
+	"golang.org/x/net/context"
 )
 
 // taskManager manages all aspects of task execution and reporting for an agent

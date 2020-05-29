@@ -1,7 +1,6 @@
 package fsutil
 
 import (
-	"context"
 	"hash"
 	"io"
 	"os"
@@ -10,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
-	"github.com/tonistiigi/fsutil/types"
+	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -26,7 +25,7 @@ type DiskWriterOpt struct {
 	Filter        FilterFunc
 }
 
-type FilterFunc func(string, *types.Stat) bool
+type FilterFunc func(*Stat) bool
 
 type DiskWriter struct {
 	opt  DiskWriterOpt
@@ -81,15 +80,11 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 		}
 	}()
 
-	destPath := filepath.Join(dw.dest, filepath.FromSlash(p))
+	p = filepath.FromSlash(p)
+
+	destPath := filepath.Join(dw.dest, p)
 
 	if kind == ChangeKindDelete {
-		if dw.filter != nil {
-			var empty types.Stat
-			if ok := dw.filter(p, &empty); !ok {
-				return nil
-			}
-		}
 		// todo: no need to validate if diff is trusted but is it always?
 		if err := os.RemoveAll(destPath); err != nil {
 			return errors.Wrapf(err, "failed to remove: %s", destPath)
@@ -102,15 +97,13 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 		return nil
 	}
 
-	stat, ok := fi.Sys().(*types.Stat)
+	stat, ok := fi.Sys().(*Stat)
 	if !ok {
 		return errors.Errorf("%s invalid change without stat information", p)
 	}
 
-	statCopy := *stat
-
 	if dw.filter != nil {
-		if ok := dw.filter(p, &statCopy); !ok {
+		if ok := dw.filter(stat); !ok {
 			return nil
 		}
 	}
@@ -129,7 +122,7 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 	}
 
 	if oldFi != nil && fi.IsDir() && oldFi.IsDir() {
-		if err := rewriteMetadata(destPath, &statCopy); err != nil {
+		if err := rewriteMetadata(destPath, stat); err != nil {
 			return errors.Wrapf(err, "error setting dir metadata for %s", destPath)
 		}
 		return nil
@@ -148,16 +141,16 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 			return errors.Wrapf(err, "failed to create dir %s", newPath)
 		}
 	case fi.Mode()&os.ModeDevice != 0 || fi.Mode()&os.ModeNamedPipe != 0:
-		if err := handleTarTypeBlockCharFifo(newPath, &statCopy); err != nil {
+		if err := handleTarTypeBlockCharFifo(newPath, stat); err != nil {
 			return errors.Wrapf(err, "failed to create device %s", newPath)
 		}
 	case fi.Mode()&os.ModeSymlink != 0:
-		if err := os.Symlink(statCopy.Linkname, newPath); err != nil {
+		if err := os.Symlink(stat.Linkname, newPath); err != nil {
 			return errors.Wrapf(err, "failed to symlink %s", newPath)
 		}
-	case statCopy.Linkname != "":
-		if err := os.Link(filepath.Join(dw.dest, statCopy.Linkname), newPath); err != nil {
-			return errors.Wrapf(err, "failed to link %s to %s", newPath, statCopy.Linkname)
+	case stat.Linkname != "":
+		if err := os.Link(filepath.Join(dw.dest, stat.Linkname), newPath); err != nil {
+			return errors.Wrapf(err, "failed to link %s to %s", newPath, stat.Linkname)
 		}
 	default:
 		isRegularFile = true
@@ -177,16 +170,11 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 		}
 	}
 
-	if err := rewriteMetadata(newPath, &statCopy); err != nil {
+	if err := rewriteMetadata(newPath, stat); err != nil {
 		return errors.Wrapf(err, "error setting metadata for %s", newPath)
 	}
 
 	if rename {
-		if oldFi.IsDir() != fi.IsDir() {
-			if err := os.RemoveAll(destPath); err != nil {
-				return errors.Wrapf(err, "failed to remove %s", destPath)
-			}
-		}
 		if err := os.Rename(newPath, destPath); err != nil {
 			return errors.Wrapf(err, "failed to rename %s to %s", newPath, destPath)
 		}
@@ -194,7 +182,7 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 
 	if isRegularFile {
 		if dw.opt.AsyncDataCb != nil {
-			dw.requestAsyncFileData(p, destPath, fi, &statCopy)
+			dw.requestAsyncFileData(p, destPath, fi)
 		}
 	} else {
 		return dw.processChange(kind, p, fi, nil)
@@ -203,7 +191,7 @@ func (dw *DiskWriter) HandleChange(kind ChangeKind, p string, fi os.FileInfo, er
 	return nil
 }
 
-func (dw *DiskWriter) requestAsyncFileData(p, dest string, fi os.FileInfo, st *types.Stat) {
+func (dw *DiskWriter) requestAsyncFileData(p, dest string, fi os.FileInfo) {
 	// todo: limit worker threads
 	dw.eg.Go(func() error {
 		if err := dw.processChange(ChangeKindAdd, p, fi, &lazyFileWriter{
@@ -211,7 +199,7 @@ func (dw *DiskWriter) requestAsyncFileData(p, dest string, fi os.FileInfo, st *t
 		}); err != nil {
 			return err
 		}
-		return chtimes(dest, st.ModTime) // TODO: parent dirs
+		return chtimes(dest, fi.ModTime().UnixNano()) // TODO: parent dirs
 	})
 }
 
@@ -253,7 +241,7 @@ type hashedWriter struct {
 }
 
 func newHashWriter(ch ContentHasher, fi os.FileInfo, w io.WriteCloser) (*hashedWriter, error) {
-	stat, ok := fi.Sys().(*types.Stat)
+	stat, ok := fi.Sys().(*Stat)
 	if !ok {
 		return nil, errors.Errorf("invalid change without stat information")
 	}
@@ -284,27 +272,14 @@ func (hw *hashedWriter) Digest() digest.Digest {
 }
 
 type lazyFileWriter struct {
-	dest     string
-	ctx      context.Context
-	f        *os.File
-	fileMode *os.FileMode
+	dest string
+	ctx  context.Context
+	f    *os.File
 }
 
 func (lfw *lazyFileWriter) Write(dt []byte) (int, error) {
 	if lfw.f == nil {
 		file, err := os.OpenFile(lfw.dest, os.O_WRONLY, 0) //todo: windows
-		if os.IsPermission(err) {
-			// retry after chmod
-			fi, er := os.Stat(lfw.dest)
-			if er == nil {
-				mode := fi.Mode()
-				lfw.fileMode = &mode
-				er = os.Chmod(lfw.dest, mode|0222)
-				if er == nil {
-					file, err = os.OpenFile(lfw.dest, os.O_WRONLY, 0)
-				}
-			}
-		}
 		if err != nil {
 			return 0, errors.Wrapf(err, "failed to open %s", lfw.dest)
 		}
@@ -314,14 +289,10 @@ func (lfw *lazyFileWriter) Write(dt []byte) (int, error) {
 }
 
 func (lfw *lazyFileWriter) Close() error {
-	var err error
 	if lfw.f != nil {
-		err = lfw.f.Close()
+		return lfw.f.Close()
 	}
-	if err == nil && lfw.fileMode != nil {
-		err = os.Chmod(lfw.dest, *lfw.fileMode)
-	}
-	return err
+	return nil
 }
 
 func mkdev(major int64, minor int64) uint32 {

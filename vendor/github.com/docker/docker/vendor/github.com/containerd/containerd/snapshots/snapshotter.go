@@ -160,13 +160,9 @@ func (u *Usage) Add(other Usage) {
 //	layerPath, tmpDir := getLayerPath(), mkTmpDir() // just a path to layer tar file.
 //
 // We start by using a Snapshotter to Prepare a new snapshot transaction, using a
-// key and descending from the empty parent "". To prevent our layer from being
-// garbage collected during unpacking, we add the `containerd.io/gc.root` label:
+// key and descending from the empty parent "":
 //
-//	noGcOpt := snapshots.WithLabels(map[string]string{
-//		"containerd.io/gc.root": time.Now().UTC().Format(time.RFC3339),
-//	})
-//	mounts, err := snapshotter.Prepare(ctx, key, "", noGcOpt)
+//	mounts, err := snapshotter.Prepare(ctx, key, "")
 // 	if err != nil { ... }
 //
 // We get back a list of mounts from Snapshotter.Prepare, with the key identifying
@@ -195,13 +191,15 @@ func (u *Usage) Add(other Usage) {
 //
 // Now that we've verified and unpacked our layer, we commit the active
 // snapshot to a name. For this example, we are just going to use the layer
-// digest, but in practice, this will probably be the ChainID. This also removes
-// the active snapshot:
+// digest, but in practice, this will probably be the ChainID:
 //
-//	if err := snapshotter.Commit(ctx, digest.String(), key, noGcOpt); err != nil { ... }
+//	if err := snapshotter.Commit(ctx, digest.String(), key); err != nil { ... }
 //
 // Now, we have a layer in the Snapshotter that can be accessed with the digest
-// provided during commit.
+// provided during commit. Once you have committed the snapshot, the active
+// snapshot can be removed with the following:
+//
+// 	snapshotter.Remove(ctx, key)
 //
 // Importing the Next Layer
 //
@@ -209,7 +207,7 @@ func (u *Usage) Add(other Usage) {
 // above except that the parent is provided as parent when calling
 // Manager.Prepare, assuming a clean, unique key identifier:
 //
-// 	mounts, err := snapshotter.Prepare(ctx, key, parentDigest, noGcOpt)
+// 	mounts, err := snapshotter.Prepare(ctx, key, parentDigest)
 //
 // We then mount, apply and commit, as we did above. The new snapshot will be
 // based on the content of the previous one.

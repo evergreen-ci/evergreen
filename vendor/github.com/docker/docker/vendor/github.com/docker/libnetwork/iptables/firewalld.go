@@ -66,7 +66,7 @@ func newConnection() (*Conn, error) {
 	return c, nil
 }
 
-// Initialize D-Bus connection.
+// Innitialize D-Bus connection.
 func (c *Conn) initConnection() error {
 	var err error
 

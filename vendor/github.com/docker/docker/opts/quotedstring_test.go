@@ -3,8 +3,8 @@ package opts // import "github.com/docker/docker/opts"
 import (
 	"testing"
 
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 func TestQuotedStringSetWithQuotes(t *testing.T) {

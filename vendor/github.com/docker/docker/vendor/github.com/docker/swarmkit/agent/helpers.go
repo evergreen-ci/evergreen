@@ -1,6 +1,6 @@
 package agent
 
-import "context"
+import "golang.org/x/net/context"
 
 // runctx blocks until the function exits, closed is closed, or the context is
 // cancelled. Call as part of go statement.

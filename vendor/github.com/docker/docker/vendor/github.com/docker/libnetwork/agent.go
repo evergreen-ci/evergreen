@@ -184,16 +184,6 @@ func (c *controller) handleKeyChange(keys []*types.EncryptionKey) error {
 		err := driver.DiscoverNew(discoverapi.EncryptionKeysUpdate, drvEnc)
 		if err != nil {
 			logrus.Warnf("Failed to update datapath keys in driver %s: %v", name, err)
-			// Attempt to reconfigure keys in case of a update failure
-			// which can arise due to a mismatch of keys
-			// if worker nodes get temporarily disconnected
-			logrus.Warnf("Reconfiguring datapath keys for  %s", name)
-			drvCfgEnc := discoverapi.DriverEncryptionConfig{}
-			drvCfgEnc.Keys, drvCfgEnc.Tags = c.getKeys(subsysIPSec)
-			err = driver.DiscoverNew(discoverapi.EncryptionKeysConfig, drvCfgEnc)
-			if err != nil {
-				logrus.Warnf("Failed to reset datapath keys in driver %s: %v", name, err)
-			}
 		}
 		return false
 	})
@@ -204,7 +194,7 @@ func (c *controller) handleKeyChange(keys []*types.EncryptionKey) error {
 func (c *controller) agentSetup(clusterProvider cluster.Provider) error {
 	agent := c.getAgent()
 
-	// If the agent is already present there is no need to try to initialize it again
+	// If the agent is already present there is no need to try to initilize it again
 	if agent != nil {
 		return nil
 	}
@@ -387,9 +377,6 @@ func (c *controller) agentClose() {
 	agent := c.agent
 	c.agent = nil
 	c.Unlock()
-
-	// when the agent is closed the cluster provider should be cleaned up
-	c.SetClusterProvider(nil)
 
 	if agent == nil {
 		return

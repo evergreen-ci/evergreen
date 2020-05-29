@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"github.com/docker/docker/errdefs"
 )
 
 func TestPluginSetError(t *testing.T) {
@@ -20,9 +18,6 @@ func TestPluginSetError(t *testing.T) {
 	err := client.PluginSet(context.Background(), "plugin_name", []string{})
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

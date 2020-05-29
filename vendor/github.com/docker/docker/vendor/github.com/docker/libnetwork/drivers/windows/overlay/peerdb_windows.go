@@ -67,7 +67,8 @@ func (d *driver) peerAdd(nid, eid string, peerIP net.IP, peerIPMask net.IPMask,
 		}
 
 		n.removeEndpointWithAddress(addr)
-		hnsresponse, err := endpointRequest("POST", "", string(configurationb))
+
+		hnsresponse, err := hcsshim.HNSEndpointRequest("POST", "", string(configurationb))
 		if err != nil {
 			return err
 		}
@@ -107,7 +108,7 @@ func (d *driver) peerDelete(nid, eid string, peerIP net.IP, peerIPMask net.IPMas
 	}
 
 	if updateDb {
-		_, err := endpointRequest("DELETE", ep.profileID, "")
+		_, err := hcsshim.HNSEndpointRequest("DELETE", ep.profileID, "")
 		if err != nil {
 			return err
 		}

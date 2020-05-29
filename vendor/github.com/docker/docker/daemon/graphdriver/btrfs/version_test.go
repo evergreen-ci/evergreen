@@ -1,4 +1,4 @@
-// +build linux
+// +build linux,!btrfs_noversion
 
 package btrfs // import "github.com/docker/docker/daemon/graphdriver/btrfs"
 

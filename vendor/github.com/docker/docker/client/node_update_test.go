@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/errdefs"
 )
 
 func TestNodeUpdateError(t *testing.T) {
@@ -21,9 +20,6 @@ func TestNodeUpdateError(t *testing.T) {
 	err := client.NodeUpdate(context.Background(), "node_id", swarm.Version{}, swarm.NodeSpec{})
 	if err == nil || err.Error() != "Error response from daemon: Server error" {
 		t.Fatalf("expected a Server Error, got %v", err)
-	}
-	if !errdefs.IsSystem(err) {
-		t.Fatalf("expected a Server Error, got %T", err)
 	}
 }
 

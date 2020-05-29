@@ -5,7 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/errdefs"
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 // Test case for 35752

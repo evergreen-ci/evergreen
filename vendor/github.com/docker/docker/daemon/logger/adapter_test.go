@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/docker/api/types/plugins/logdriver"
 	protoio "github.com/gogo/protobuf/io"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
 )
 
 // mockLoggingPlugin implements the loggingPlugin interface for testing purposes
@@ -174,7 +174,7 @@ func TestAdapterReadLogs(t *testing.T) {
 		t.Fatal("timeout waiting for message channel to close")
 
 	}
-	lw.ProducerGone()
+	lw.Close()
 
 	lw = lr.ReadLogs(ReadConfig{Follow: true})
 	for _, x := range testMsg {

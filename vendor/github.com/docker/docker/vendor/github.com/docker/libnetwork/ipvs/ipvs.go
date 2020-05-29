@@ -3,13 +3,14 @@
 package ipvs
 
 import (
-	"fmt"
 	"net"
+	"syscall"
 	"time"
+
+	"fmt"
 
 	"github.com/vishvananda/netlink/nl"
 	"github.com/vishvananda/netns"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -52,26 +53,13 @@ type SvcStats struct {
 // Destination defines an IPVS destination (real server) in its
 // entirety.
 type Destination struct {
-	Address             net.IP
-	Port                uint16
-	Weight              int
-	ConnectionFlags     uint32
-	AddressFamily       uint16
-	UpperThreshold      uint32
-	LowerThreshold      uint32
-	ActiveConnections   int
-	InactiveConnections int
-	Stats               DstStats
-}
-
-// DstStats defines IPVS destination (real server) statistics
-type DstStats SvcStats
-
-// Config defines IPVS timeout configuration
-type Config struct {
-	TimeoutTCP    time.Duration
-	TimeoutTCPFin time.Duration
-	TimeoutUDP    time.Duration
+	Address         net.IP
+	Port            uint16
+	Weight          int
+	ConnectionFlags uint32
+	AddressFamily   uint16
+	UpperThreshold  uint32
+	LowerThreshold  uint32
 }
 
 // Handle provides a namespace specific ipvs handle to program ipvs
@@ -97,16 +85,16 @@ func New(path string) (*Handle, error) {
 	}
 	defer n.Close()
 
-	sock, err := nl.GetNetlinkSocketAt(n, netns.None(), unix.NETLINK_GENERIC)
+	sock, err := nl.GetNetlinkSocketAt(n, netns.None(), syscall.NETLINK_GENERIC)
 	if err != nil {
 		return nil, err
 	}
 	// Add operation timeout to avoid deadlocks
-	tv := unix.NsecToTimeval(netlinkSendSocketTimeout.Nanoseconds())
+	tv := syscall.NsecToTimeval(netlinkSendSocketTimeout.Nanoseconds())
 	if err := sock.SetSendTimeout(&tv); err != nil {
 		return nil, err
 	}
-	tv = unix.NsecToTimeval(netlinkRecvSocketsTimeout.Nanoseconds())
+	tv = syscall.NsecToTimeval(netlinkRecvSocketsTimeout.Nanoseconds())
 	if err := sock.SetReceiveTimeout(&tv); err != nil {
 		return nil, err
 	}
@@ -193,14 +181,4 @@ func (i *Handle) GetService(s *Service) (*Service, error) {
 	}
 
 	return res[0], nil
-}
-
-// GetConfig returns the current timeout configuration
-func (i *Handle) GetConfig() (*Config, error) {
-	return i.doGetConfigCmd()
-}
-
-// SetConfig set the current timeout configuration. 0: no change
-func (i *Handle) SetConfig(c *Config) error {
-	return i.doSetConfigCmd(c)
 }

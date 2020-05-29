@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
+	"github.com/gotestyourself/gotestyourself/assert"
 )
 
 func TestJSONLogsMarshalJSONBuf(t *testing.T) {

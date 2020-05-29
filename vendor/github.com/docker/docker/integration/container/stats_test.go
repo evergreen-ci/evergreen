@@ -9,23 +9,24 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/integration/internal/container"
-	"gotest.tools/assert"
-	is "gotest.tools/assert/cmp"
-	"gotest.tools/poll"
-	"gotest.tools/skip"
+	"github.com/docker/docker/internal/test/request"
+	"github.com/gotestyourself/gotestyourself/assert"
+	is "github.com/gotestyourself/gotestyourself/assert/cmp"
+	"github.com/gotestyourself/gotestyourself/poll"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func TestStats(t *testing.T) {
 	skip.If(t, !testEnv.DaemonInfo.MemoryLimit)
 
 	defer setupTest(t)()
-	client := testEnv.APIClient()
+	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
 	info, err := client.Info(ctx)
 	assert.NilError(t, err)
 
-	cID := container.Run(ctx, t, client)
+	cID := container.Run(t, ctx, client)
 
 	poll.WaitOn(t, container.IsInState(ctx, client, cID, "running"), poll.WithDelay(100*time.Millisecond))
 

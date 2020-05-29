@@ -2,10 +2,10 @@ package daemon // import "github.com/docker/docker/daemon"
 
 import (
 	"github.com/docker/docker/api/types/container"
-	libcontainerdtypes "github.com/docker/docker/libcontainerd/types"
+	"github.com/docker/docker/libcontainerd"
 )
 
-func toContainerdResources(resources container.Resources) *libcontainerdtypes.Resources {
+func toContainerdResources(resources container.Resources) *libcontainerd.Resources {
 	// We don't support update, so do nothing
 	return nil
 }

@@ -5,16 +5,14 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"runtime"
 	"sort"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/pkg/system"
-	"gotest.tools/assert"
-	"gotest.tools/skip"
+	"github.com/gotestyourself/gotestyourself/assert"
+	"github.com/gotestyourself/gotestyourself/skip"
 )
 
 func max(x, y int) int {
@@ -25,24 +23,7 @@ func max(x, y int) int {
 }
 
 func copyDir(src, dst string) error {
-	if runtime.GOOS != "windows" {
-		return exec.Command("cp", "-a", src, dst).Run()
-	}
-
-	// Could have used xcopy src dst /E /I /H /Y /B. However, xcopy has the
-	// unfortunate side effect of not preserving timestamps of newly created
-	// directories in the target directory, so we don't get accurate changes.
-	// Use robocopy instead. Note this isn't available in microsoft/nanoserver.
-	// But it has gotchas. See https://weblogs.sqlteam.com/robv/archive/2010/02/17/61106.aspx
-	err := exec.Command("robocopy", filepath.FromSlash(src), filepath.FromSlash(dst), "/SL", "/COPYALL", "/MIR").Run()
-	if exiterr, ok := err.(*exec.ExitError); ok {
-		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-			if status.ExitStatus()&24 == 0 {
-				return nil
-			}
-		}
-	}
-	return err
+	return exec.Command("cp", "-a", src, dst).Run()
 }
 
 type FileType uint32
@@ -132,6 +113,11 @@ func TestChangeString(t *testing.T) {
 }
 
 func TestChangesWithNoChanges(t *testing.T) {
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks on Windows")
+	}
 	rwLayer, err := ioutil.TempDir("", "docker-changes-test")
 	assert.NilError(t, err)
 	defer os.RemoveAll(rwLayer)
@@ -147,6 +133,11 @@ func TestChangesWithNoChanges(t *testing.T) {
 }
 
 func TestChangesWithChanges(t *testing.T) {
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks on Windows")
+	}
 	// Mock the readonly layer
 	layer, err := ioutil.TempDir("", "docker-changes-test-layer")
 	assert.NilError(t, err)
@@ -176,20 +167,21 @@ func TestChangesWithChanges(t *testing.T) {
 	assert.NilError(t, err)
 
 	expectedChanges := []Change{
-		{filepath.FromSlash("/dir1"), ChangeModify},
-		{filepath.FromSlash("/dir1/file1-1"), ChangeModify},
-		{filepath.FromSlash("/dir1/file1-2"), ChangeDelete},
-		{filepath.FromSlash("/dir1/subfolder"), ChangeModify},
-		{filepath.FromSlash("/dir1/subfolder/newFile"), ChangeAdd},
+		{"/dir1", ChangeModify},
+		{"/dir1/file1-1", ChangeModify},
+		{"/dir1/file1-2", ChangeDelete},
+		{"/dir1/subfolder", ChangeModify},
+		{"/dir1/subfolder/newFile", ChangeAdd},
 	}
 	checkChanges(expectedChanges, changes, t)
 }
 
 // See https://github.com/docker/docker/pull/13590
 func TestChangesWithChangesGH13590(t *testing.T) {
-	// TODO Windows. Needs further investigation to identify the failure
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
 	if runtime.GOOS == "windows" {
-		t.Skip("needs more investigation")
+		t.Skip("symlinks on Windows")
 	}
 	baseLayer, err := ioutil.TempDir("", "docker-changes-test.")
 	assert.NilError(t, err)
@@ -246,6 +238,11 @@ func TestChangesWithChangesGH13590(t *testing.T) {
 
 // Create a directory, copy it, make sure we report no changes between the two
 func TestChangesDirsEmpty(t *testing.T) {
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks on Windows")
+	}
 	src, err := ioutil.TempDir("", "docker-changes-test")
 	assert.NilError(t, err)
 	defer os.RemoveAll(src)
@@ -328,6 +325,11 @@ func mutateSampleDir(t *testing.T, root string) {
 }
 
 func TestChangesDirsMutated(t *testing.T) {
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks on Windows")
+	}
 	src, err := ioutil.TempDir("", "docker-changes-test")
 	assert.NilError(t, err)
 	createSampleDir(t, src)
@@ -345,36 +347,19 @@ func TestChangesDirsMutated(t *testing.T) {
 	sort.Sort(changesByPath(changes))
 
 	expectedChanges := []Change{
-		{filepath.FromSlash("/dir1"), ChangeDelete},
-		{filepath.FromSlash("/dir2"), ChangeModify},
+		{"/dir1", ChangeDelete},
+		{"/dir2", ChangeModify},
+		{"/dirnew", ChangeAdd},
+		{"/file1", ChangeDelete},
+		{"/file2", ChangeModify},
+		{"/file3", ChangeModify},
+		{"/file4", ChangeModify},
+		{"/file5", ChangeModify},
+		{"/filenew", ChangeAdd},
+		{"/symlink1", ChangeDelete},
+		{"/symlink2", ChangeModify},
+		{"/symlinknew", ChangeAdd},
 	}
-
-	// Note there is slight difference between the Linux and Windows
-	// implementations here. Due to https://github.com/moby/moby/issues/9874,
-	// and the fix at https://github.com/moby/moby/pull/11422, Linux does not
-	// consider a change to the directory time as a change. Windows on NTFS
-	// does. See https://github.com/moby/moby/pull/37982 for more information.
-	//
-	// Note also: https://github.com/moby/moby/pull/37982#discussion_r223523114
-	// that differences are ordered in the way the test is currently written, hence
-	// this is in the middle of the list of changes rather than at the start or
-	// end. Potentially can be addressed later.
-	if runtime.GOOS == "windows" {
-		expectedChanges = append(expectedChanges, Change{filepath.FromSlash("/dir3"), ChangeModify})
-	}
-
-	expectedChanges = append(expectedChanges, []Change{
-		{filepath.FromSlash("/dirnew"), ChangeAdd},
-		{filepath.FromSlash("/file1"), ChangeDelete},
-		{filepath.FromSlash("/file2"), ChangeModify},
-		{filepath.FromSlash("/file3"), ChangeModify},
-		{filepath.FromSlash("/file4"), ChangeModify},
-		{filepath.FromSlash("/file5"), ChangeModify},
-		{filepath.FromSlash("/filenew"), ChangeAdd},
-		{filepath.FromSlash("/symlink1"), ChangeDelete},
-		{filepath.FromSlash("/symlink2"), ChangeModify},
-		{filepath.FromSlash("/symlinknew"), ChangeAdd},
-	}...)
 
 	for i := 0; i < max(len(changes), len(expectedChanges)); i++ {
 		if i >= len(expectedChanges) {
@@ -388,7 +373,7 @@ func TestChangesDirsMutated(t *testing.T) {
 				t.Fatalf("Wrong change for %s, expected %s, got %s\n", changes[i].Path, changes[i].String(), expectedChanges[i].String())
 			}
 		} else if changes[i].Path < expectedChanges[i].Path {
-			t.Fatalf("unexpected change %q %q\n", changes[i].String(), expectedChanges[i].Path)
+			t.Fatalf("unexpected change %s\n", changes[i].String())
 		} else {
 			t.Fatalf("no change for expected change %s != %s\n", expectedChanges[i].String(), changes[i].String())
 		}
@@ -396,13 +381,10 @@ func TestChangesDirsMutated(t *testing.T) {
 }
 
 func TestApplyLayer(t *testing.T) {
-	// TODO Windows. This is very close to working, but it fails with changes
-	// to \symlinknew and \symlink2. The destination has an updated
-	// Access/Modify/Change/Birth date to the source (~3/100th sec different).
-	// Needs further investigation as to why, but I currently believe this is
-	// just the way NTFS works. I don't think it's a bug in this test or archive.
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
 	if runtime.GOOS == "windows" {
-		t.Skip("needs further investigation")
+		t.Skip("symlinks on Windows")
 	}
 	src, err := ioutil.TempDir("", "docker-changes-test")
 	assert.NilError(t, err)
@@ -435,10 +417,10 @@ func TestApplyLayer(t *testing.T) {
 }
 
 func TestChangesSizeWithHardlinks(t *testing.T) {
-	// TODO Windows. Needs further investigation. Likely in ChangeSizes not
-	// coping correctly with hardlinks on Windows.
+	// TODO Windows. There may be a way of running this, but turning off for now
+	// as createSampleDir uses symlinks.
 	if runtime.GOOS == "windows" {
-		t.Skip("needs further investigation")
+		t.Skip("hardlinks on Windows")
 	}
 	srcDir, err := ioutil.TempDir("", "docker-test-srcDir")
 	assert.NilError(t, err)
@@ -499,7 +481,7 @@ func TestChangesSize(t *testing.T) {
 }
 
 func checkChanges(expectedChanges, changes []Change, t *testing.T) {
-	skip.If(t, runtime.GOOS != "windows" && os.Getuid() != 0, "skipping test that requires root")
+	skip.If(t, os.Getuid() != 0, "skipping test that requires root")
 	sort.Sort(changesByPath(expectedChanges))
 	sort.Sort(changesByPath(changes))
 	for i := 0; i < max(len(changes), len(expectedChanges)); i++ {

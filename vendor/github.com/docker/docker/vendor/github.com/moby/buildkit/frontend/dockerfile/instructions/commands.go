@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // KeyValuePair represent an arbitrary named value (useful in slice instead of map[string] string to preserve ordering)
@@ -16,20 +17,6 @@ type KeyValuePair struct {
 
 func (kvp *KeyValuePair) String() string {
 	return kvp.Key + "=" + kvp.Value
-}
-
-// KeyValuePairOptional is the same as KeyValuePair but Value is optional
-type KeyValuePairOptional struct {
-	Key   string
-	Value *string
-}
-
-func (kvpo *KeyValuePairOptional) ValueString() string {
-	v := ""
-	if kvpo.Value != nil {
-		v = *kvpo.Value
-	}
-	return v
 }
 
 // Command is implemented by every command present in a dockerfile
@@ -173,7 +160,7 @@ func (s SourcesAndDest) Dest() string {
 
 // AddCommand : ADD foo /path
 //
-// Add the file 'foo' to '/path'. Tarball and Remote URL (http, https) handling
+// Add the file 'foo' to '/path'. Tarball and Remote URL (git, http) handling
 // exist here. If you do not wish to have this automatic handling, use COPY.
 //
 type AddCommand struct {
@@ -200,11 +187,6 @@ type CopyCommand struct {
 
 // Expand variables
 func (c *CopyCommand) Expand(expander SingleWordExpander) error {
-	expandedChown, err := expander(c.Chown)
-	if err != nil {
-		return err
-	}
-	c.Chown = expandedChown
 	return expandSliceInPlace(c.SourcesAndDest, expander)
 }
 
@@ -251,7 +233,6 @@ type ShellDependantCmdLine struct {
 //
 type RunCommand struct {
 	withNameAndCode
-	withExternalData
 	ShellDependantCmdLine
 }
 
@@ -365,7 +346,8 @@ func (c *StopSignalCommand) CheckPlatform(platform string) error {
 // Dockerfile author may optionally set a default value of this variable.
 type ArgCommand struct {
 	withNameAndCode
-	KeyValuePairOptional
+	Key   string
+	Value *string
 }
 
 // Expand variables
@@ -399,7 +381,7 @@ type Stage struct {
 	Commands   []Command
 	BaseName   string
 	SourceCode string
-	Platform   string
+	Platform   specs.Platform
 }
 
 // AddCommand to the stage
@@ -433,19 +415,4 @@ func HasStage(s []Stage, name string) (int, bool) {
 		}
 	}
 	return -1, false
-}
-
-type withExternalData struct {
-	m map[interface{}]interface{}
-}
-
-func (c *withExternalData) getExternalValue(k interface{}) interface{} {
-	return c.m[k]
-}
-
-func (c *withExternalData) setExternalValue(k, v interface{}) {
-	if c.m == nil {
-		c.m = map[interface{}]interface{}{}
-	}
-	c.m[k] = v
 }

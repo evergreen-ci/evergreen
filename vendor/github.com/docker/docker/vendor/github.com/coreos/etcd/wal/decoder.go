@@ -29,9 +29,6 @@ import (
 
 const minSectorSize = 512
 
-// frameSizeBytes is frame size in bytes, including record size and padding size.
-const frameSizeBytes = 8
-
 type decoder struct {
 	mu  sync.Mutex
 	brs []*bufio.Reader
@@ -107,7 +104,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		}
 	}
 	// record decoded as valid; point last valid offset to end of record
-	d.lastValidOff += frameSizeBytes + recBytes + padBytes
+	d.lastValidOff += recBytes + padBytes + 8
 	return nil
 }
 
@@ -119,7 +116,7 @@ func decodeFrameSize(lenField int64) (recBytes int64, padBytes int64) {
 		// padding is stored in lower 3 bits of length MSB
 		padBytes = int64((uint64(lenField) >> 56) & 0x7)
 	}
-	return recBytes, padBytes
+	return
 }
 
 // isTornEntry determines whether the last entry of the WAL was partially written
@@ -129,7 +126,7 @@ func (d *decoder) isTornEntry(data []byte) bool {
 		return false
 	}
 
-	fileOff := d.lastValidOff + frameSizeBytes
+	fileOff := d.lastValidOff + 8
 	curOff := 0
 	chunks := [][]byte{}
 	// split data on sector boundaries
