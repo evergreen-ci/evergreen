@@ -16,6 +16,7 @@ import (
 func TestWindowsEvents(t *testing.T) {
 	httpClient := testutil.GetHTTPClient()
 	defer testutil.PutHTTPClient(httpClient)
+
 	for clientName, makeClient := range map[string]func(ctx context.Context, t *testing.T) Manager{
 		"RPC": func(ctx context.Context, t *testing.T) Manager {
 			manager, err := jasper.NewSynchronizedManager(false)

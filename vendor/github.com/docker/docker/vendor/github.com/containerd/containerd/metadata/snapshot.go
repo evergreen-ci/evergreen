@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/labels"
 	"github.com/containerd/containerd/log"
@@ -32,6 +31,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 )
 
 type snapshotter struct {
@@ -232,7 +232,7 @@ func overlayInfo(info, overlay snapshots.Info) snapshots.Info {
 		info.Labels = overlay.Labels
 	} else {
 		for k, v := range overlay.Labels {
-			overlay.Labels[k] = v
+			info.Labels[k] = v
 		}
 	}
 	return info
@@ -613,14 +613,23 @@ func validateSnapshot(info *snapshots.Info) error {
 	return nil
 }
 
+type cleaner interface {
+	Cleanup(ctx context.Context) error
+}
+
 func (s *snapshotter) garbageCollect(ctx context.Context) (d time.Duration, err error) {
 	s.l.Lock()
 	t1 := time.Now()
 	defer func() {
-		if err == nil {
-			d = time.Now().Sub(t1)
-		}
 		s.l.Unlock()
+		if err == nil {
+			if c, ok := s.Snapshotter.(cleaner); ok {
+				err = c.Cleanup(ctx)
+			}
+		}
+		if err == nil {
+			d = time.Since(t1)
+		}
 	}()
 
 	seen := map[string]struct{}{}

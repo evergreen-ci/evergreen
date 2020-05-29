@@ -17,6 +17,6 @@ The core API documentation is in the `godoc
 
 Until there's documentation of the REST and gRPC interfaces, you can use
 the `rest interface declaration
-<https://github.com/mongodb/jasper/blob/master/rest_service.go#L39>`_
+<https://github.com/mongodb/jasper/blob/master/remote/rest_service.go>`_
 and the `proto file
 <https://github.com/mongodb/jasper/blob/master/jasper.proto>`_.

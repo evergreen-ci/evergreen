@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/stringid"
-	"github.com/docker/libnetwork/common"
 	"github.com/docker/libnetwork/config"
 	"github.com/docker/libnetwork/datastore"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/etchosts"
+	"github.com/docker/libnetwork/internal/setmatrix"
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/libnetwork/netlabel"
 	"github.com/docker/libnetwork/netutils"
@@ -40,7 +40,7 @@ type Network interface {
 	CreateEndpoint(name string, options ...EndpointOption) (Endpoint, error)
 
 	// Delete the network.
-	Delete() error
+	Delete(options ...NetworkDeleteOption) error
 
 	// Endpoints returns the list of Endpoint(s) in this network.
 	Endpoints() []Endpoint
@@ -88,7 +88,7 @@ type NetworkInfo interface {
 type EndpointWalker func(ep Endpoint) bool
 
 // ipInfo is the reverse mapping from IP to service name to serve the PTR query.
-// extResolver is set if an externl server resolves a service name to this IP.
+// extResolver is set if an external server resolves a service name to this IP.
 // Its an indication to defer PTR queries also to that external server.
 type ipInfo struct {
 	name        string
@@ -104,9 +104,9 @@ type svcMapEntry struct {
 }
 
 type svcInfo struct {
-	svcMap     common.SetMatrix
-	svcIPv6Map common.SetMatrix
-	ipMap      common.SetMatrix
+	svcMap     setmatrix.SetMatrix
+	svcIPv6Map setmatrix.SetMatrix
+	ipMap      setmatrix.SetMatrix
 	service    map[string][]servicePorts
 }
 
@@ -199,42 +199,49 @@ func (i *IpamInfo) UnmarshalJSON(data []byte) error {
 }
 
 type network struct {
-	ctrlr          *controller
-	name           string
-	networkType    string
-	id             string
-	created        time.Time
-	scope          string // network data scope
-	labels         map[string]string
-	ipamType       string
-	ipamOptions    map[string]string
-	addrSpace      string
-	ipamV4Config   []*IpamConf
-	ipamV6Config   []*IpamConf
-	ipamV4Info     []*IpamInfo
-	ipamV6Info     []*IpamInfo
-	enableIPv6     bool
-	postIPv6       bool
-	epCnt          *endpointCnt
-	generic        options.Generic
-	dbIndex        uint64
-	dbExists       bool
-	persist        bool
-	stopWatchCh    chan struct{}
-	drvOnce        *sync.Once
-	resolverOnce   sync.Once
-	resolver       []Resolver
-	internal       bool
-	attachable     bool
-	inDelete       bool
-	ingress        bool
-	driverTables   []networkDBTable
-	dynamic        bool
-	configOnly     bool
-	configFrom     string
-	loadBalancerIP net.IP
+	ctrlr            *controller
+	name             string
+	networkType      string
+	id               string
+	created          time.Time
+	scope            string // network data scope
+	labels           map[string]string
+	ipamType         string
+	ipamOptions      map[string]string
+	addrSpace        string
+	ipamV4Config     []*IpamConf
+	ipamV6Config     []*IpamConf
+	ipamV4Info       []*IpamInfo
+	ipamV6Info       []*IpamInfo
+	enableIPv6       bool
+	postIPv6         bool
+	epCnt            *endpointCnt
+	generic          options.Generic
+	dbIndex          uint64
+	dbExists         bool
+	persist          bool
+	stopWatchCh      chan struct{}
+	drvOnce          *sync.Once
+	resolverOnce     sync.Once
+	resolver         []Resolver
+	internal         bool
+	attachable       bool
+	inDelete         bool
+	ingress          bool
+	driverTables     []networkDBTable
+	dynamic          bool
+	configOnly       bool
+	configFrom       string
+	loadBalancerIP   net.IP
+	loadBalancerMode string
 	sync.Mutex
 }
+
+const (
+	loadBalancerModeNAT     = "NAT"
+	loadBalancerModeDSR     = "DSR"
+	loadBalancerModeDefault = loadBalancerModeNAT
+)
 
 func (n *network) Name() string {
 	n.Lock()
@@ -389,11 +396,9 @@ func (n *network) validateConfiguration() error {
 					driverOptions map[string]string
 					opts          interface{}
 				)
-				switch data.(type) {
-				case map[string]interface{}:
-					opts = data.(map[string]interface{})
-				case map[string]string:
-					opts = data.(map[string]string)
+				switch t := data.(type) {
+				case map[string]interface{}, map[string]string:
+					opts = t
 				}
 				ba, err := json.Marshal(opts)
 				if err != nil {
@@ -475,6 +480,7 @@ func (n *network) CopyTo(o datastore.KVObject) error {
 	dstN.configOnly = n.configOnly
 	dstN.configFrom = n.configFrom
 	dstN.loadBalancerIP = n.loadBalancerIP
+	dstN.loadBalancerMode = n.loadBalancerMode
 
 	// copy labels
 	if dstN.labels == nil {
@@ -592,6 +598,7 @@ func (n *network) MarshalJSON() ([]byte, error) {
 	netMap["configOnly"] = n.configOnly
 	netMap["configFrom"] = n.configFrom
 	netMap["loadBalancerIP"] = n.loadBalancerIP
+	netMap["loadBalancerMode"] = n.loadBalancerMode
 	return json.Marshal(netMap)
 }
 
@@ -704,6 +711,10 @@ func (n *network) UnmarshalJSON(b []byte) (err error) {
 	}
 	if v, ok := netMap["loadBalancerIP"]; ok {
 		n.loadBalancerIP = net.ParseIP(v.(string))
+	}
+	n.loadBalancerMode = loadBalancerModeDefault
+	if v, ok := netMap["loadBalancerMode"]; ok {
+		n.loadBalancerMode = v.(string)
 	}
 	// Reconcile old networks with the recently added `--ipv6` flag
 	if !n.enableIPv6 {
@@ -875,6 +886,28 @@ func (n *network) processOptions(options ...NetworkOption) {
 	}
 }
 
+type networkDeleteParams struct {
+	rmLBEndpoint bool
+}
+
+// NetworkDeleteOption is a type for optional parameters to pass to the
+// network.Delete() function.
+type NetworkDeleteOption func(p *networkDeleteParams)
+
+// NetworkDeleteOptionRemoveLB informs a network.Delete() operation that should
+// remove the load balancer endpoint for this network.  Note that the Delete()
+// method will automatically remove a load balancing endpoint for most networks
+// when the network is otherwise empty.  However, this does not occur for some
+// networks.  In particular, networks marked as ingress (which are supposed to
+// be more permanent than other overlay networks) won't automatically remove
+// the LB endpoint on Delete().  This method allows for explicit removal of
+// such networks provided there are no other endpoints present in the network.
+// If the network still has non-LB endpoints present, Delete() will not
+// remove the LB endpoint and will return an error.
+func NetworkDeleteOptionRemoveLB(p *networkDeleteParams) {
+	p.rmLBEndpoint = true
+}
+
 func (n *network) resolveDriver(name string, load bool) (driverapi.Driver, *driverapi.Capability, error) {
 	c := n.getController()
 
@@ -938,11 +971,23 @@ func (n *network) driver(load bool) (driverapi.Driver, error) {
 	return d, nil
 }
 
-func (n *network) Delete() error {
-	return n.delete(false)
+func (n *network) Delete(options ...NetworkDeleteOption) error {
+	var params networkDeleteParams
+	for _, opt := range options {
+		opt(&params)
+	}
+	return n.delete(false, params.rmLBEndpoint)
 }
 
-func (n *network) delete(force bool) error {
+// This function gets called in 3 ways:
+//  * Delete() -- (false, false)
+//      remove if endpoint count == 0 or endpoint count == 1 and
+//      there is a load balancer IP
+//  * Delete(libnetwork.NetworkDeleteOptionRemoveLB) -- (false, true)
+//      remove load balancer and network if endpoint count == 1
+//  * controller.networkCleanup() -- (true, true)
+//      remove the network no matter what
+func (n *network) delete(force bool, rmLBEndpoint bool) error {
 	n.Lock()
 	c := n.ctrlr
 	name := n.name
@@ -957,10 +1002,32 @@ func (n *network) delete(force bool) error {
 		return &UnknownNetworkError{name: name, id: id}
 	}
 
-	if len(n.loadBalancerIP) != 0 {
-		endpoints := n.Endpoints()
-		if force || (len(endpoints) == 1 && !n.ingress) {
-			n.deleteLoadBalancerSandbox()
+	// Only remove ingress on force removal or explicit LB endpoint removal
+	if n.ingress && !force && !rmLBEndpoint {
+		return &ActiveEndpointsError{name: n.name, id: n.id}
+	}
+
+	// Check that the network is empty
+	var emptyCount uint64
+	if n.hasLoadBalancerEndpoint() {
+		emptyCount = 1
+	}
+	if !force && n.getEpCnt().EndpointCnt() > emptyCount {
+		if n.configOnly {
+			return types.ForbiddenErrorf("configuration network %q is in use", n.Name())
+		}
+		return &ActiveEndpointsError{name: n.name, id: n.id}
+	}
+
+	if n.hasLoadBalancerEndpoint() {
+		// If we got to this point, then the following must hold:
+		//  * force is true OR endpoint count == 1
+		if err := n.deleteLoadBalancerSandbox(); err != nil {
+			if !force {
+				return err
+			}
+			// continue deletion when force is true even on error
+			logrus.Warnf("Error deleting load balancer sandbox: %v", err)
 		}
 		//Reload the network from the store to update the epcnt.
 		n, err = c.getNetworkFromStore(id)
@@ -969,12 +1036,10 @@ func (n *network) delete(force bool) error {
 		}
 	}
 
-	if !force && n.getEpCnt().EndpointCnt() != 0 {
-		if n.configOnly {
-			return types.ForbiddenErrorf("configuration network %q is in use", n.Name())
-		}
-		return &ActiveEndpointsError{name: n.name, id: n.id}
-	}
+	// Up to this point, errors that we returned were recoverable.
+	// From here on, any errors leave us in an inconsistent state.
+	// This is unfortunate, but there isn't a safe way to
+	// reconstitute a load-balancer endpoint after removing it.
 
 	// Mark the network for deletion
 	n.inDelete = true
@@ -989,7 +1054,7 @@ func (n *network) delete(force bool) error {
 					t.Name(), n.Name(), err)
 			}
 		} else {
-			logrus.Warnf("Could not find configuration network %q during removal of network %q", n.configOnly, n.Name())
+			logrus.Warnf("Could not find configuration network %q during removal of network %q", n.configFrom, n.Name())
 		}
 	}
 
@@ -1022,9 +1087,6 @@ func (n *network) delete(force bool) error {
 
 	// Cleanup the service discovery for this network
 	c.cleanupServiceDiscovery(n.ID())
-
-	// Cleanup the load balancer
-	c.cleanupServiceBindings(n.ID())
 
 removeFromStore:
 	// deleteFromStore performs an atomic delete operation and the
@@ -1156,18 +1218,6 @@ func (n *network) createEndpoint(name string, options ...EndpointOption) (Endpoi
 			ep.releaseAddress()
 		}
 	}()
-	// Moving updateToSTore before calling addEndpoint so that we shall clean up VETH interfaces in case
-	// DockerD get killed between addEndpoint and updateSTore call
-	if err = n.getController().updateToStore(ep); err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			if e := n.getController().deleteFromStore(ep); e != nil {
-				logrus.Warnf("error rolling back endpoint %s from store: %v", name, e)
-			}
-		}
-	}()
 
 	if err = n.addEndpoint(ep); err != nil {
 		return nil, err
@@ -1176,6 +1226,19 @@ func (n *network) createEndpoint(name string, options ...EndpointOption) (Endpoi
 		if err != nil {
 			if e := ep.deleteEndpoint(false); e != nil {
 				logrus.Warnf("cleaning up endpoint failed %s : %v", name, e)
+			}
+		}
+	}()
+
+	// We should perform updateToStore call right after addEndpoint
+	// in order to have iface properly configured
+	if err = n.getController().updateToStore(ep); err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			if e := n.getController().deleteFromStore(ep); e != nil {
+				logrus.Warnf("error rolling back endpoint %s from store: %v", name, e)
 			}
 		}
 	}()
@@ -1301,7 +1364,7 @@ func (n *network) updateSvcRecord(ep *endpoint, localEps []*endpoint, isAdd bool
 	}
 }
 
-func addIPToName(ipMap common.SetMatrix, name, serviceID string, ip net.IP) {
+func addIPToName(ipMap setmatrix.SetMatrix, name, serviceID string, ip net.IP) {
 	reverseIP := netutils.ReverseIP(ip.String())
 	ipMap.Insert(reverseIP, ipInfo{
 		name:      name,
@@ -1309,7 +1372,7 @@ func addIPToName(ipMap common.SetMatrix, name, serviceID string, ip net.IP) {
 	})
 }
 
-func delIPToName(ipMap common.SetMatrix, name, serviceID string, ip net.IP) {
+func delIPToName(ipMap setmatrix.SetMatrix, name, serviceID string, ip net.IP) {
 	reverseIP := netutils.ReverseIP(ip.String())
 	ipMap.Remove(reverseIP, ipInfo{
 		name:      name,
@@ -1317,15 +1380,19 @@ func delIPToName(ipMap common.SetMatrix, name, serviceID string, ip net.IP) {
 	})
 }
 
-func addNameToIP(svcMap common.SetMatrix, name, serviceID string, epIP net.IP) {
-	svcMap.Insert(name, svcMapEntry{
+func addNameToIP(svcMap setmatrix.SetMatrix, name, serviceID string, epIP net.IP) {
+	// Since DNS name resolution is case-insensitive, Use the lower-case form
+	// of the name as the key into svcMap
+	lowerCaseName := strings.ToLower(name)
+	svcMap.Insert(lowerCaseName, svcMapEntry{
 		ip:        epIP.String(),
 		serviceID: serviceID,
 	})
 }
 
-func delNameToIP(svcMap common.SetMatrix, name, serviceID string, epIP net.IP) {
-	svcMap.Remove(name, svcMapEntry{
+func delNameToIP(svcMap setmatrix.SetMatrix, name, serviceID string, epIP net.IP) {
+	lowerCaseName := strings.ToLower(name)
+	svcMap.Remove(lowerCaseName, svcMapEntry{
 		ip:        epIP.String(),
 		serviceID: serviceID,
 	})
@@ -1338,7 +1405,7 @@ func (n *network) addSvcRecords(eID, name, serviceID string, epIP, epIPv6 net.IP
 		return
 	}
 
-	logrus.Debugf("%s (%s).addSvcRecords(%s, %s, %s, %t) %s sid:%s", eID, n.ID()[0:7], name, epIP, epIPv6, ipMapUpdate, method, serviceID)
+	logrus.Debugf("%s (%.7s).addSvcRecords(%s, %s, %s, %t) %s sid:%s", eID, n.ID(), name, epIP, epIPv6, ipMapUpdate, method, serviceID)
 
 	c := n.getController()
 	c.Lock()
@@ -1347,9 +1414,9 @@ func (n *network) addSvcRecords(eID, name, serviceID string, epIP, epIPv6 net.IP
 	sr, ok := c.svcRecords[n.ID()]
 	if !ok {
 		sr = svcInfo{
-			svcMap:     common.NewSetMatrix(),
-			svcIPv6Map: common.NewSetMatrix(),
-			ipMap:      common.NewSetMatrix(),
+			svcMap:     setmatrix.NewSetMatrix(),
+			svcIPv6Map: setmatrix.NewSetMatrix(),
+			ipMap:      setmatrix.NewSetMatrix(),
 		}
 		c.svcRecords[n.ID()] = sr
 	}
@@ -1374,7 +1441,7 @@ func (n *network) deleteSvcRecords(eID, name, serviceID string, epIP net.IP, epI
 		return
 	}
 
-	logrus.Debugf("%s (%s).deleteSvcRecords(%s, %s, %s, %t) %s sid:%s ", eID, n.ID()[0:7], name, epIP, epIPv6, ipMapUpdate, method, serviceID)
+	logrus.Debugf("%s (%.7s).deleteSvcRecords(%s, %s, %s, %t) %s sid:%s ", eID, n.ID(), name, epIP, epIPv6, ipMapUpdate, method, serviceID)
 
 	c := n.getController()
 	c.Lock()
@@ -1602,7 +1669,7 @@ func (n *network) ipamAllocateVersion(ipVer int, ipam ipamapi.Ipam) error {
 					return types.BadRequestErrorf("non parsable secondary ip address (%s:%s) passed for network %s", k, v, n.Name())
 				}
 				if !d.Pool.Contains(ip) {
-					return types.ForbiddenErrorf("auxilairy address: (%s:%s) must belong to the master pool: %s", k, v, d.Pool)
+					return types.ForbiddenErrorf("auxiliary address: (%s:%s) must belong to the master pool: %s", k, v, d.Pool)
 				}
 				// Attempt reservation in the container addressable pool, silent the error if address does not belong to that pool
 				if d.IPAMData.AuxAddresses[k], _, err = ipam.RequestAddress(d.PoolID, ip, nil); err != nil && err != ipamapi.ErrIPOutOfRange {
@@ -1871,9 +1938,29 @@ func (n *network) TableEventRegister(tableName string, objType driverapi.ObjectT
 	return nil
 }
 
+func (n *network) UpdateIpamConfig(ipV4Data []driverapi.IPAMData) {
+
+	ipamV4Config := make([]*IpamConf, len(ipV4Data))
+
+	for i, data := range ipV4Data {
+		ic := &IpamConf{}
+		ic.PreferredPool = data.Pool.String()
+		ic.Gateway = data.Gateway.IP.String()
+		ipamV4Config[i] = ic
+	}
+
+	n.Lock()
+	defer n.Unlock()
+	n.ipamV4Config = ipamV4Config
+}
+
 // Special drivers are ones which do not need to perform any network plumbing
 func (n *network) hasSpecialDriver() bool {
 	return n.Type() == "host" || n.Type() == "null"
+}
+
+func (n *network) hasLoadBalancerEndpoint() bool {
+	return len(n.loadBalancerIP) != 0
 }
 
 func (n *network) ResolveName(req string, ipType int) ([]net.IP, bool) {
@@ -1889,6 +1976,7 @@ func (n *network) ResolveName(req string, ipType int) ([]net.IP, bool) {
 	}
 
 	req = strings.TrimSuffix(req, ".")
+	req = strings.ToLower(req)
 	ipSet, ok := sr.svcMap.Get(req)
 
 	if ipType == types.IPv6 {
@@ -1980,7 +2068,7 @@ func (n *network) ResolveService(name string) ([]*net.SRV, []net.IP) {
 
 	logrus.Debugf("Service name To resolve: %v", name)
 
-	// There are DNS implementaions that allow SRV queries for names not in
+	// There are DNS implementations that allow SRV queries for names not in
 	// the format defined by RFC 2782. Hence specific validations checks are
 	// not done
 	parts := strings.Split(name, ".")
@@ -2055,9 +2143,22 @@ func (c *controller) getConfigNetwork(name string) (*network, error) {
 	return n.(*network), nil
 }
 
-func (n *network) createLoadBalancerSandbox() error {
-	sandboxName := n.name + "-sbox"
-	sbOptions := []SandboxOption{}
+func (n *network) lbSandboxName() string {
+	name := "lb-" + n.name
+	if n.ingress {
+		name = n.name + "-sbox"
+	}
+	return name
+}
+
+func (n *network) lbEndpointName() string {
+	return n.name + "-endpoint"
+}
+
+func (n *network) createLoadBalancerSandbox() (retErr error) {
+	sandboxName := n.lbSandboxName()
+	// Mark the sandbox to be a load balancer
+	sbOptions := []SandboxOption{OptionLoadBalancer(n.id)}
 	if n.ingress {
 		sbOptions = append(sbOptions, OptionIngress())
 	}
@@ -2066,26 +2167,30 @@ func (n *network) createLoadBalancerSandbox() error {
 		return err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			if e := n.ctrlr.SandboxDestroy(sandboxName); e != nil {
-				logrus.Warnf("could not delete sandbox %s on failure on failure (%v): %v", sandboxName, err, e)
+				logrus.Warnf("could not delete sandbox %s on failure on failure (%v): %v", sandboxName, retErr, e)
 			}
 		}
 	}()
 
-	endpointName := n.name + "-endpoint"
+	endpointName := n.lbEndpointName()
 	epOptions := []EndpointOption{
 		CreateOptionIpam(n.loadBalancerIP, nil, nil, nil),
 		CreateOptionLoadBalancer(),
+	}
+	if n.hasLoadBalancerEndpoint() && !n.ingress {
+		// Mark LB endpoints as anonymous so they don't show up in DNS
+		epOptions = append(epOptions, CreateOptionAnonymous())
 	}
 	ep, err := n.createEndpoint(endpointName, epOptions...)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			if e := ep.Delete(true); e != nil {
-				logrus.Warnf("could not delete endpoint %s on failure on failure (%v): %v", endpointName, err, e)
+				logrus.Warnf("could not delete endpoint %s on failure on failure (%v): %v", endpointName, retErr, e)
 			}
 		}
 	}()
@@ -2093,17 +2198,18 @@ func (n *network) createLoadBalancerSandbox() error {
 	if err := ep.Join(sb, nil); err != nil {
 		return err
 	}
+
 	return sb.EnableService()
 }
 
-func (n *network) deleteLoadBalancerSandbox() {
+func (n *network) deleteLoadBalancerSandbox() error {
 	n.Lock()
 	c := n.ctrlr
 	name := n.name
 	n.Unlock()
 
-	endpointName := name + "-endpoint"
-	sandboxName := name + "-sbox"
+	sandboxName := n.lbSandboxName()
+	endpointName := n.lbEndpointName()
 
 	endpoint, err := n.EndpointByName(endpointName)
 	if err != nil {
@@ -2128,6 +2234,7 @@ func (n *network) deleteLoadBalancerSandbox() {
 	}
 
 	if err := c.SandboxDestroy(sandboxName); err != nil {
-		logrus.Warnf("Failed to delete %s sandbox: %v", sandboxName, err)
+		return fmt.Errorf("Failed to delete %s sandbox: %v", sandboxName, err)
 	}
+	return nil
 }

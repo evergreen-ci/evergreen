@@ -3,6 +3,7 @@ package options
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCreateConstructor(t *testing.T) {
@@ -255,14 +257,54 @@ func TestCreate(t *testing.T) {
 			assert.NoError(t, opts.Validate())
 			assert.Equal(t, 1, opts.TimeoutSecs)
 		},
-		"ResolveFailsWithInvalidLoggingConfiguration": func(t *testing.T, opts *Create) {
-			opts.Output.Loggers = []Logger{{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
+		"ResolveFailsWithInvalidLoggerConfiguration": func(t *testing.T, opts *Create) {
+			config, err := bson.Marshal(&SumoLogicLoggerOptions{})
+			require.NoError(t, err)
+			opts.Output.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogSumoLogic,
+						Format: RawLoggerConfigFormatBSON,
+						Config: config,
+					},
+				},
+			}
+			cmd, _, err := opts.Resolve(ctx)
+			assert.Error(t, err)
+			assert.Nil(t, cmd)
+		},
+		"ResolveFailsWithMismatchingLoggerConfiguration": func(t *testing.T, opts *Create) {
+			config, err := json.Marshal(&SumoLogicLoggerOptions{
+				SumoEndpoint: "endpoint",
+			})
+			require.NoError(t, err)
+			opts.Output.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogSumoLogic,
+						Format: RawLoggerConfigFormatBSON,
+						Config: config,
+					},
+				},
+			}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
 		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *Create) {
-			opts.Output.Loggers = []Logger{{Type: LogSumologic, Options: Log{Format: LogFormatPlain}}}
+			config, err := json.Marshal(&SumoLogicLoggerOptions{
+				SumoEndpoint: "endpoint",
+			})
+			require.NoError(t, err)
+			opts.Output.Loggers = []*LoggerConfig{
+				{
+					info: loggerConfigInfo{
+						Type:   LogSumoLogic,
+						Format: RawLoggerConfigFormatJSON,
+						Config: config,
+					},
+				},
+			}
 			opts.Output.SuppressOutput = true
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
@@ -398,11 +440,14 @@ func TestFileLogging(t *testing.T) {
 
 			opts := Create{Output: testParams.outOpts}
 			for _, file := range files {
-				logger := Logger{
-					Type: LogFile,
-					Options: Log{
-						FileName: file.Name(),
-						Format:   LogFormatPlain,
+				logger := &LoggerConfig{
+					info: loggerConfigInfo{
+						Type:   LogFile,
+						Format: RawLoggerConfigFormatJSON,
+					},
+					producer: &FileLoggerOptions{
+						Filename: file.Name(),
+						Base:     BaseOptions{Format: LogFormatPlain},
 					},
 				}
 				opts.Output.Loggers = append(opts.Output.Loggers, logger)

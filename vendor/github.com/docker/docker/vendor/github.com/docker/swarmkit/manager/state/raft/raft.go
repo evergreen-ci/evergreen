@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math"
@@ -10,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/clock"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -27,10 +29,8 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/watch"
 	"github.com/gogo/protobuf/proto"
-	"github.com/pivotal-golang/clock"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -152,10 +152,14 @@ type Node struct {
 	// to stop.
 	stopped chan struct{}
 
-	raftLogger          *storage.EncryptedRaftLogger
-	keyRotator          EncryptionKeyRotator
-	rotationQueued      bool
-	clearData           bool
+	raftLogger     *storage.EncryptedRaftLogger
+	keyRotator     EncryptionKeyRotator
+	rotationQueued bool
+	clearData      bool
+
+	// waitForAppliedIndex stores the index of the last log that was written using
+	// an raft DEK during a raft DEK rotation, so that we won't finish a rotation until
+	// a snapshot covering that index has been written encrypted with the new raft DEK
 	waitForAppliedIndex uint64
 	ticksWithNoLeader   uint32
 }
@@ -192,6 +196,9 @@ type NodeOptions struct {
 	// DisableStackDump prevents Run from dumping goroutine stacks when the
 	// store becomes stuck.
 	DisableStackDump bool
+
+	// FIPS specifies whether the raft encryption should be FIPS compliant
+	FIPS bool
 }
 
 func init() {
@@ -1175,11 +1182,8 @@ func (n *Node) CanRemoveMember(id uint64) bool {
 	}
 
 	nquorum := (len(members)-1)/2 + 1
-	if nreachable < nquorum {
-		return false
-	}
 
-	return true
+	return nreachable >= nquorum
 }
 
 func (n *Node) removeMember(ctx context.Context, id uint64) error {
@@ -1584,10 +1588,7 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []api.StoreAction, 
 	defer cancel()
 	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction}, cb)
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // GetVersion returns the sequence information for the current raft round.

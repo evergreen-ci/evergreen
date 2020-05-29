@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/mongodb/jasper"
@@ -18,13 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
-
-// buildDir gets the Jasper build directory.
-func buildDir(t *testing.T) string {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	return filepath.Join(filepath.Dir(cwd), "build")
-}
 
 // mockCLIContext creates a *cli.Context on localhost with the given service
 // type and port.
@@ -66,7 +58,7 @@ func withMockStdin(t *testing.T, input string, operation func(*os.File) error) e
 	defer func() {
 		os.Stdin = stdin
 	}()
-	tmpFile, err := ioutil.TempFile(buildDir(t), "mock_stdin.txt")
+	tmpFile, err := ioutil.TempFile(testutil.BuildDirectory(), "mock_stdin.txt")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, tmpFile.Close())
@@ -87,7 +79,7 @@ func withMockStdout(t *testing.T, operation func(*os.File) error) error {
 	defer func() {
 		os.Stdout = stdout
 	}()
-	tmpFile, err := ioutil.TempFile(buildDir(t), "mock_stdout.txt")
+	tmpFile, err := ioutil.TempFile(testutil.BuildDirectory(), "mock_stdout.txt")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, tmpFile.Close())

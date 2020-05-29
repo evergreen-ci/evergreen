@@ -1,5 +1,21 @@
 // +build !windows
 
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package mount
 
 import (
@@ -23,10 +39,10 @@ func SetTempMountLocation(root string) error {
 }
 
 // CleanupTempMounts all temp mounts and remove the directories
-func CleanupTempMounts(flags int) error {
+func CleanupTempMounts(flags int) (warnings []error, err error) {
 	mounts, err := Self()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var toUnmount []string
 	for _, m := range mounts {
@@ -37,11 +53,12 @@ func CleanupTempMounts(flags int) error {
 	sort.Sort(sort.Reverse(sort.StringSlice(toUnmount)))
 	for _, path := range toUnmount {
 		if err := UnmountAll(path, flags); err != nil {
-			return err
+			warnings = append(warnings, err)
+			continue
 		}
 		if err := os.Remove(path); err != nil {
-			return err
+			warnings = append(warnings, err)
 		}
 	}
-	return nil
+	return warnings, nil
 }

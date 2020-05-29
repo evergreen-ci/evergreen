@@ -34,7 +34,7 @@ func TestRestService(t *testing.T) {
 	httpClient := testutil.GetHTTPClient()
 	defer testutil.PutHTTPClient(httpClient)
 
-	tempDir, err := ioutil.TempDir(buildDir(t), filepath.Base(t.Name()))
+	tempDir, err := ioutil.TempDir(testutil.BuildDirectory(), filepath.Base(t.Name()))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
 
@@ -449,23 +449,19 @@ func TestRestService(t *testing.T) {
 				assert.NoError(t, os.RemoveAll(file.Name()))
 			}()
 
-			fileLogger := options.Logger{
-				Type: options.LogFile,
-				Options: options.Log{
-					FileName: file.Name(),
-					Format:   options.LogFormatPlain,
-				},
-			}
+			fileLogger := &options.LoggerConfig{}
+			require.NoError(t, fileLogger.Set(&options.FileLoggerOptions{
+				Filename: file.Name(),
+				Base:     options.BaseOptions{Format: options.LogFormatPlain},
+			}))
 
-			inMemoryLogger := options.Logger{
-				Type: options.LogInMemory,
-				Options: options.Log{
-					Format:      options.LogFormatPlain,
-					InMemoryCap: 100,
-				},
-			}
+			inMemoryLogger := &options.LoggerConfig{}
+			require.NoError(t, inMemoryLogger.Set(&options.InMemoryLoggerOptions{
+				InMemoryCap: 100,
+				Base:        options.BaseOptions{Format: options.LogFormatPlain},
+			}))
 
-			opts := &options.Create{Output: options.Output{Loggers: []options.Logger{inMemoryLogger, fileLogger}}}
+			opts := &options.Create{Output: options.Output{Loggers: []*options.LoggerConfig{inMemoryLogger, fileLogger}}}
 			opts.Args = []string{"echo", "foobar"}
 			proc, err := client.CreateProcess(ctx, opts)
 			require.NoError(t, err)

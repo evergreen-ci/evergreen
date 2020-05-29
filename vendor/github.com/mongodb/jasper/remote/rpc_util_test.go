@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/mongodb/grip"
@@ -15,7 +13,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 )
 
 func makeInsecureRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manager, error) {
@@ -135,13 +132,6 @@ func newTestRPCClient(ctx context.Context, addr net.Addr, creds *certdepot.Crede
 	}()
 
 	return client, nil
-}
-
-// buildDir gets the Jasper build directory.
-func buildDir(t *testing.T) string {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	return filepath.Join(filepath.Dir(cwd), "build")
 }
 
 func createProcs(ctx context.Context, opts *options.Create, manager jasper.Manager, num int) ([]jasper.Process, error) {

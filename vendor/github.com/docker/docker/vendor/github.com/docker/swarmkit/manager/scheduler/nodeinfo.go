@@ -1,12 +1,12 @@
 package scheduler
 
 import (
+	"context"
 	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/log"
-	"golang.org/x/net/context"
 )
 
 // hostPortSpec specifies a used host port.
@@ -45,8 +45,8 @@ type NodeInfo struct {
 
 func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api.Resources) NodeInfo {
 	nodeInfo := NodeInfo{
-		Node:  n,
-		Tasks: make(map[string]*api.Task),
+		Node:                      n,
+		Tasks:                     make(map[string]*api.Task),
 		ActiveTasksCountByService: make(map[string]int),
 		AvailableResources:        availableResources.Copy(),
 		usedHostPorts:             make(map[hostPortSpec]struct{}),
