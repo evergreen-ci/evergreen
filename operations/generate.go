@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/mongodb/jasper/buildsystem/generator"
+	"github.com/mongodb/jasper/buildsystem/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -17,16 +18,19 @@ func Generate() cli.Command {
 		Usage: "Generate JSON evergreen configurations.",
 		Subcommands: []cli.Command{
 			generateGolang(),
+			generateMake(),
 		},
 	}
 }
 
+const (
+	workingDirFlagName    = "working_dir"
+	generatorFileFlagName = "generator_file"
+	controlFileFlagName   = "control_file"
+	outputFileFlagName    = "output_file"
+)
+
 func generateGolang() cli.Command {
-	const (
-		workingDirFlagName = "working_dir"
-		filesFlagName      = "files"
-		outputFileFlagName = "output_file"
-	)
 	return cli.Command{
 		Name:  "golang",
 		Usage: "Generate JSON evergreen config from golang build file(s).",
@@ -35,9 +39,13 @@ func generateGolang() cli.Command {
 				Name:  workingDirFlagName,
 				Usage: "The directory that contains the GOPATH as a subdirectory.",
 			},
-			cli.StringSliceFlag{
-				Name:  filesFlagName,
+			cli.StringFlag{
+				Name:  generatorFileFlagName,
 				Usage: "The build files necessary to generate the evergreen config.",
+			},
+			cli.StringFlag{
+				Name:  controlFileFlagName,
+				Usage: "The control file referencing all the necessary build files.",
 			},
 			cli.StringFlag{
 				Name:  outputFileFlagName,
@@ -46,11 +54,12 @@ func generateGolang() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(workingDirFlagName),
-			requireStringSliceFlag(filesFlagName),
+			requireOneFlag(generatorFileFlagName, controlFileFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			workingDir := c.String(workingDirFlagName)
-			files := c.StringSlice(filesFlagName)
+			genFile := c.String(generatorFileFlagName)
+			ctrlFile := c.String(generatorFileFlagName)
 			outputFile := c.String(outputFileFlagName)
 			var err error
 			if !filepath.IsAbs(workingDir) {
@@ -60,28 +69,116 @@ func generateGolang() cli.Command {
 				}
 			}
 
-			for _, file := range files {
-				// kim: TODO: needs MAKE-1280 merged.
-				gen, err := generator.NewGolang(file, workingDir)
+			var g *model.Golang
+			if genFile != "" {
+				g, err = model.NewGolang(genFile, workingDir)
 				if err != nil {
-					return errors.Wrapf(err, "creating generator from build file '%s'", file)
+					return errors.Wrapf(err, "creating generator from build file '%s'", genFile)
 				}
-				conf, err := gen.Generate()
+			} else if ctrlFile != "" {
+				gc, err := model.NewGolangControl(ctrlFile, workingDir)
 				if err != nil {
-					return errors.Wrapf(err, "generating evergreen config from build file '%s'", file)
+					return errors.Wrapf(err, "creating builder from control file '%s'", ctrlFile)
 				}
+				g, err = gc.Build()
+				if err != nil {
+					return errors.Wrapf(err, "creating model from control file '%s'", ctrlFile)
+				}
+			}
 
-				output, err := json.MarshalIndent(conf, "", "\t")
+			gen := generator.NewGolang(*g)
+			conf, err := gen.Generate()
+			if err != nil {
+				return errors.Wrap(err, "generating evergreen config from golang build file(s)")
+			}
+
+			output, err := json.MarshalIndent(conf, "", "\t")
+			if err != nil {
+				return errors.Wrap(err, "marshalling evergreen config as JSON")
+			}
+			if outputFile != "" {
+				if err := ioutil.WriteFile(outputFile, output, 0644); err != nil {
+					return errors.Wrapf(err, "writing JSON config to file '%s'", outputFile)
+				}
+			} else {
+				fmt.Println(string(output))
+			}
+
+			return nil
+		},
+	}
+}
+
+func generateMake() cli.Command {
+	return cli.Command{
+		Name:  "make",
+		Usage: "Generate JSON evergreen config from make build file(s).",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  workingDirFlagName,
+				Usage: "The directory containing the project and build files.",
+			},
+			cli.StringFlag{
+				Name:  generatorFileFlagName,
+				Usage: "The build files necessary to generate the evergreen config (relative to the working directory).",
+			},
+			cli.StringFlag{
+				Name:  controlFileFlagName,
+				Usage: "The control file referencing all the necessary build files (relative to the working directory).",
+			},
+			cli.StringFlag{
+				Name:  outputFileFlagName,
+				Usage: "The output file. If unspecified, the config will be written to stdout.",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(workingDirFlagName),
+			requireOneFlag(generatorFileFlagName, controlFileFlagName),
+			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName, workingDirFlagName),
+			requireRelativePath(generatorFileFlagName, workingDirFlagName),
+			requireRelativePath(controlFileFlagName, workingDirFlagName),
+		),
+		Action: func(c *cli.Context) error {
+			workingDir := c.String(workingDirFlagName)
+			genFile := c.String(generatorFileFlagName)
+			ctrlFile := c.String(controlFileFlagName)
+			outputFile := c.String(outputFileFlagName)
+
+			var m *model.Make
+			var err error
+			if genFile != "" {
+				m, err = model.NewMake(genFile, workingDir)
 				if err != nil {
-					return errors.Wrap(err, "marshalling evergreen config as JSON")
+					return errors.Wrapf(err, "creating model from build file '%s'", genFile)
 				}
-				if outputFile != "" {
-					if err := ioutil.WriteFile(outputFile, output, 0644); err != nil {
-						return errors.Wrapf(err, "writing JSON config to file '%s'", outputFile)
-					}
-				} else {
-					fmt.Println(string(output))
+			} else if ctrlFile != "" {
+				var mc *model.MakeControl
+				mc, err = model.NewMakeControl(ctrlFile, workingDir)
+				if err != nil {
+					return errors.Wrapf(err, "creating builder from control file '%s'", ctrlFile)
 				}
+				m, err = mc.Build()
+				if err != nil {
+					return errors.Wrapf(err, "creating model from control file '%s'", ctrlFile)
+				}
+			}
+
+			gen := generator.NewMake(*m)
+			conf, err := gen.Generate()
+			if err != nil {
+				return errors.Wrapf(err, "generating evergreen config from build file(s)")
+			}
+
+			output, err := json.MarshalIndent(conf, "", "\t")
+			if err != nil {
+				return errors.Wrap(err, "marshalling evergreen config as JSON")
+			}
+			if outputFile != "" {
+				if err := ioutil.WriteFile(outputFile, output, 0644); err != nil {
+					return errors.Wrapf(err, "writing JSON config to file '%s'", outputFile)
+				}
+			} else {
+				fmt.Println(string(output))
 			}
 
 			return nil
