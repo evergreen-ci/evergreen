@@ -890,6 +890,10 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	return status, nil
 }
 
+func (m *ec2Manager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with ec2 provider")
+}
+
 // TerminateInstance terminates the EC2 instance.
 func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	// terminate the instance

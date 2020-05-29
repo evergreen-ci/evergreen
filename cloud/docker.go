@@ -142,10 +142,28 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 		if client.IsErrConnectionFailed(err) {
 			return StatusTerminated, nil
 		}
-		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
+		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%s'", h.Id)
+	}
+	return toEvgStatus(container.State), nil
+}
+
+func (m *dockerManager) SetPortMappings(ctx context.Context, h, parent *host.Host) error {
+	container, err := m.client.GetContainer(ctx, parent, h.Id)
+	if err != nil {
+		if client.IsErrConnectionFailed(err) {
+			return errors.Wrapf(err, "error making connection")
+		}
+		return errors.Wrapf(err, "Failed to get container information for host '%s'", h.Id)
+	}
+	if !container.State.Running {
+		return errors.Errorf("host '%s' is not running", h.Id)
+
 	}
 
-	return toEvgStatus(container.State), nil
+	if err = h.SetPortMapping(host.GetPortMap(container.NetworkSettings.Ports)); err != nil {
+		return errors.Wrapf(err, "error saving ports to host '%s", h.Id)
+	}
+	return nil
 }
 
 // GetDNSName does nothing, returning an empty string and no error.

@@ -157,6 +157,10 @@ func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Hos
 	return osStatusToEvgStatus(server.Status), nil
 }
 
+func (m *openStackManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with openstack provider")
+}
+
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -81,7 +82,7 @@ func TestListHostsForTask(t *testing.T) {
 	require.NoError((&build.Build{Id: "build_1"}).Insert())
 
 	c := DBCreateHostConnector{}
-	found, err := c.ListHostsForTask("task_1")
+	found, err := c.ListHostsForTask(context.Background(), "task_1")
 	assert.NoError(err)
 	require.Len(found, 3)
 	assert.Equal("4.com", found[0].Host)

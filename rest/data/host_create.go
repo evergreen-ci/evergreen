@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/birch"
-
 	"github.com/docker/docker/api/types"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -32,7 +31,8 @@ import (
 type DBCreateHostConnector struct{}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (dc *DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
+func (dc *DBCreateHostConnector) ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
+	env := evergreen.GetEnvironment()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
@@ -52,7 +52,34 @@ func (dc *DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, e
 	hosts := []host.Host{}
 	hosts = append(hosts, hostsSpawnedByBuild...)
 	hosts = append(hosts, hostsSpawnedByTask...)
-
+	for idx, h := range hosts {
+		if h.IsContainer() {
+			p, err := h.GetParent()
+			if err != nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    fmt.Sprintf("error getting parent for container '%s'", h.Id)}
+			}
+			if p != nil {
+				hosts[idx].Host = p.Host
+				hosts[idx].IP = p.IP
+			}
+			// update port binding if instance status not yet called
+			if h.NeedsPortBindings() {
+				mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+				if err != nil {
+					return nil, errors.Wrap(err, "error getting manager options for host.list")
+				}
+				mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+				if err != nil {
+					return nil, errors.Wrap(err, "error getting cloud manager for host.list")
+				}
+				if err = mgr.SetPortMappings(ctx, &hosts[idx], p); err != nil {
+					return nil, errors.Wrapf(err, "error getting status for container '%s'", h.Id)
+				}
+			}
+		}
+	}
 	return hosts, nil
 }
 
@@ -196,6 +223,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	options.DockerOptions = host.DockerOptions{
 		Image:            createHost.Image,
 		Command:          createHost.Command,
+		PublishPorts:     createHost.PublishPorts,
 		RegistryName:     createHost.Registry.Name,
 		RegistryUsername: createHost.Registry.Username,
 		RegistryPassword: createHost.Registry.Password,
@@ -426,7 +454,7 @@ func (dc *MockCreateHostConnector) GetDockerStatus(ctx context.Context, containe
 }
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
+func (*MockCreateHostConnector) ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	return nil, errors.New("method not implemented")
 }
 

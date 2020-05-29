@@ -234,6 +234,10 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	return status, nil
 }
 
+func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with ec2 fleet provider")
+}
+
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
