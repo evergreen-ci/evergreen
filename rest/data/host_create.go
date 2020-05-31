@@ -189,14 +189,18 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 }
 
 func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
-	var d distro.Distro
+	var d *distro.Distro
 	var err error
 
-	if distroID := createHost.Distro; distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID))
-		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
-		}
+	d, err = distro.FindByID(createHost.Distro)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding distro '%s'", createHost.Distro)
+	}
+	if d == nil {
+		return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
+	}
+	if d.Provider != evergreen.ProviderNameDocker {
+		return nil, errors.Errorf("distro '%s' provider must be docker (provider is '%s')", d.Id, d.Provider)
 	}
 
 	// Do not provision task-spawned hosts.
@@ -237,7 +241,10 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Wrap(err, "error getting config")
 	}
 	containerPool := config.ContainerPools.GetContainerPool(d.ContainerPool)
-	containerIntents, parentIntents, err := host.MakeContainersAndParents(d, containerPool, 1, *options)
+	if containerPool == nil {
+		return nil, errors.Errorf("distro '%s' doesn't have a container pool", d.Id)
+	}
+	containerIntents, parentIntents, err := host.MakeContainersAndParents(*d, containerPool, 1, *options)
 	if err != nil {
 		return nil, errors.Wrap(err, "error generating host intent")
 	}
