@@ -98,8 +98,7 @@ func hostCreate() cli.Command {
 			spawnRequest := &restModel.HostRequestOptions{}
 			var tags []host.Tag
 			if file != "" {
-				err = utility.ReadYAMLFile(file, &spawnRequest)
-				if err != nil {
+				if err = utility.ReadYAMLFile(file, &spawnRequest); err != nil {
 					return errors.Wrapf(err, "problem reading from file '%s'", file)
 				}
 				tags, err = host.MakeHostTags([]string{spawnRequest.Tag})

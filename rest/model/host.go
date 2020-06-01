@@ -29,6 +29,7 @@ type APIHost struct {
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
+// the yaml tags are used by hostCreate() when parsing the params from a file
 type HostRequestOptions struct {
 	DistroID             string     `json:"distro" yaml:"distro"`
 	TaskID               string     `json:"task" yaml:"task"`
