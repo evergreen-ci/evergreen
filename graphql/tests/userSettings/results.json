@@ -33,24 +33,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "client-config.graphql",
-      "result": {
-        "data": {
-          "clientConfig": {
-            "clientBinaries": [
-              {
-                "os": "darwin",
-                "displayName": "OSX 64-bit",
-                "url": "http://localhost/clients/darwin_amd64/evergreen",
-                "arch": "amd64"
-              }
-            ],
-            "latestRevision": "2020-05-14"
-          }
-        }
-      }
     }
   ]
 }
