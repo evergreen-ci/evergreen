@@ -28,6 +28,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	if currentUser.Settings.UseSpruceOptions.SpruceV1 {
 		http.Redirect(w, r, fmt.Sprintf("%s/patch/%s/configure", uis.Settings.Ui.UIv2Url, projCtx.Patch.Id), http.StatusTemporaryRedirect)
+		return
 	}
 
 	var versionAsUI *uiVersion
