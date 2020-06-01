@@ -60,6 +60,18 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 	}
 
+	ClientBinary struct {
+		Arch        func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		OS          func(childComplexity int) int
+		URL         func(childComplexity int) int
+	}
+
+	ClientConfig struct {
+		ClientBinaries func(childComplexity int) int
+		LatestRevision func(childComplexity int) int
+	}
+
 	CommitQueue struct {
 		ProjectID func(childComplexity int) int
 		Queue     func(childComplexity int) int
@@ -239,6 +251,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
@@ -449,6 +462,7 @@ type QueryResolver interface {
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
+	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -530,6 +544,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
+
+	case "ClientBinary.arch":
+		if e.complexity.ClientBinary.Arch == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.Arch(childComplexity), true
+
+	case "ClientBinary.displayName":
+		if e.complexity.ClientBinary.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.DisplayName(childComplexity), true
+
+	case "ClientBinary.os":
+		if e.complexity.ClientBinary.OS == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.OS(childComplexity), true
+
+	case "ClientBinary.url":
+		if e.complexity.ClientBinary.URL == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.URL(childComplexity), true
+
+	case "ClientConfig.clientBinaries":
+		if e.complexity.ClientConfig.ClientBinaries == nil {
+			break
+		}
+
+		return e.complexity.ClientConfig.ClientBinaries(childComplexity), true
+
+	case "ClientConfig.latestRevision":
+		if e.complexity.ClientConfig.LatestRevision == nil {
+			break
+		}
+
+		return e.complexity.ClientConfig.LatestRevision(childComplexity), true
 
 	case "CommitQueue.projectId":
 		if e.complexity.CommitQueue.ProjectID == nil {
@@ -1347,6 +1403,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Projects.OtherProjects(childComplexity), true
+
+	case "Query.clientConfig":
+		if e.complexity.Query.ClientConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.ClientConfig(childComplexity), true
 
 	case "Query.commitQueue":
 		if e.complexity.Query.CommitQueue == nil {
@@ -2308,6 +2371,7 @@ var sources = []*ast.Source{
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   userConfig: UserConfig
+  clientConfig: ClientConfig
 }
 
 type Mutation {
@@ -2729,6 +2793,17 @@ type UserConfig {
   api_key: String!
   api_server_host: String!
   ui_server_host: String!
+}
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  os: String
+  url: String
+  displayName: String
 }
 scalar Time
 scalar Duration
@@ -3568,6 +3643,192 @@ func (ec *executionContext) _Build_actualMakespan(ctx context.Context, field gra
 	res := resTmp.(model.APIDuration)
 	fc.Result = res
 	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Arch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_os(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_url(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientConfig_clientBinaries(ctx context.Context, field graphql.CollectedField, obj *model.APIClientConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientBinaries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIClientBinary)
+	fc.Result = res
+	return ec.marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientConfig_latestRevision(ctx context.Context, field graphql.CollectedField, obj *model.APIClientConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LatestRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueue_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
@@ -7647,6 +7908,37 @@ func (ec *executionContext) _Query_userConfig(ctx context.Context, field graphql
 	res := resTmp.(*UserConfig)
 	fc.Result = res
 	return ec.marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_clientConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ClientConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIClientConfig)
+	fc.Result = res
+	return ec.marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -12494,6 +12786,62 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
+var clientBinaryImplementors = []string{"ClientBinary"}
+
+func (ec *executionContext) _ClientBinary(ctx context.Context, sel ast.SelectionSet, obj *model.APIClientBinary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientBinaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientBinary")
+		case "arch":
+			out.Values[i] = ec._ClientBinary_arch(ctx, field, obj)
+		case "os":
+			out.Values[i] = ec._ClientBinary_os(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._ClientBinary_url(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._ClientBinary_displayName(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var clientConfigImplementors = []string{"ClientConfig"}
+
+func (ec *executionContext) _ClientConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIClientConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientConfig")
+		case "clientBinaries":
+			out.Values[i] = ec._ClientConfig_clientBinaries(ctx, field, obj)
+		case "latestRevision":
+			out.Values[i] = ec._ClientConfig_latestRevision(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var commitQueueImplementors = []string{"CommitQueue"}
 
 func (ec *executionContext) _CommitQueue(ctx context.Context, sel ast.SelectionSet, obj *model.APICommitQueue) graphql.Marshaler {
@@ -13699,6 +14047,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_userConfig(ctx, field)
 				return res
 			})
+		case "clientConfig":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_clientConfig(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -14843,6 +15202,10 @@ func (ec *executionContext) marshalNBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 		return graphql.Null
 	}
 	return ec._Build(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
+	return ec._ClientBinary(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNCommitQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueue(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueue) graphql.Marshaler {
@@ -16233,6 +16596,57 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalOClientConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx context.Context, sel ast.SelectionSet, v model.APIClientConfig) graphql.Marshaler {
+	return ec._ClientConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIClientConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ClientConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueItemᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APICommitQueueItem) graphql.Marshaler {
