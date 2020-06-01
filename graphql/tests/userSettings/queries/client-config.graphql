@@ -1,0 +1,11 @@
+{
+  clientConfig {
+    clientBinaries {
+      os
+      displayName
+      url
+      arch
+    }
+    latestRevision
+  }
+}
