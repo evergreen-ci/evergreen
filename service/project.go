@@ -222,6 +222,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitTagAuthorizedUsers []string                       `json:"git_tag_authorized_users"`
 		TracksPushEvents      bool                           `json:"tracks_push_events"`
 		PRTestingEnabled      bool                           `json:"pr_testing_enabled"`
+		GitTagVersionsEnabled bool                           `json:"git_tag_versions_enabled"`
 		CommitQueue           restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync              restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled      bool                           `json:"patching_disabled"`
@@ -356,6 +357,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		if !aliasesDefined {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
+			return
+		}
+	}
+	// verify git tag alias parameters
+	if responseRef.GitTagVersionsEnabled {
+		aliasesDefined, err := verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
+			return
+		}
+		if !aliasesDefined {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
+			return
+		}
+		if len(responseRef.GitTagAuthorizedUsers) == 0 {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users to create git tag versions"))
 			return
 		}
 	}
