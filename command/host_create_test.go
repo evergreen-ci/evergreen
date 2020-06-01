@@ -121,6 +121,16 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	s.Require().NoError(os.RemoveAll(tmpdir))
+
+	//test with both file and other params
+	s.params = map[string]interface{}{
+		"file":   path,
+		"distro": "myDistro",
+	}
+
+	err = s.cmd.ParseParams(s.params)
+	s.Contains(err.Error(), "no params should be defined when using a file to parse params")
+
 }
 
 func (s *createHostSuite) TestParamValidation() {
