@@ -35,7 +35,7 @@ type HostRequestOptions struct {
 	TaskSync             bool       `json:"task_sync" yaml:"task_sync"`
 	Region               string     `json:"region" yaml:"region"`
 	KeyName              string     `json:"keyname" yaml:"key"`
-	UserData             string     `json:"userdata" yaml:"script"`
+	UserData             string     `json:"userdata" yaml:"userdata_file"`
 	Tag                  string     `yaml:"tag"`
 	InstanceTags         []host.Tag `json:"instance_tags" yaml:"instance_tags"`
 	InstanceType         string     `json:"instance_type" yaml:"type"`
