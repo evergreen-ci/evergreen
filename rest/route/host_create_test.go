@@ -388,8 +388,9 @@ func TestGetDockerLogs(t *testing.T) {
 		Command:       "echo hello",
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
+	require.NotNil(h)
+	assert.NotEmpty(h.ParentID)
 
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
