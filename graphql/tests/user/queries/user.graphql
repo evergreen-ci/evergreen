@@ -1,0 +1,6 @@
+{
+  user {
+    displayName
+    userId
+  }
+}

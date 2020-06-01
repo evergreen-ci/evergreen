@@ -213,6 +213,10 @@ func (j *createHostJob) selfThrottle() bool {
 	return false
 }
 
+var (
+	errIgnorableCreateHost = errors.New("host.create encountered internal error")
+)
+
 func (j *createHostJob) createHost(ctx context.Context) error {
 	var cloudManager cloud.Manager
 	var err error

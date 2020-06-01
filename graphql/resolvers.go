@@ -1120,8 +1120,10 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	displayName := usr.DisplayName()
+	userID := usr.Username()
 	user := restModel.APIUser{
 		DisplayName: &displayName,
+		UserID:      &userID,
 	}
 	return &user, nil
 }
