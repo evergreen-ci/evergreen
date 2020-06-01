@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "testuser",
+            "userId": "testuser"
+          }
+        }
+      }
+    }
+  ]
+}
