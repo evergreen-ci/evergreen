@@ -334,7 +334,7 @@ func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
-		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection, evergreen.ConfigCollection))
+		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 
 	t1 := task.Task{
 		Id:           "t1",
@@ -391,8 +391,10 @@ buildvariants:
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
-	settings := evergreen.Settings{ContainerPools: poolConfig}
-	assert.NoError(evergreen.UpdateConfig(&settings))
+	settings, err := evergreen.GetConfig()
+	assert.NoError(err)
+	settings.ContainerPools = poolConfig
+	assert.NoError(evergreen.UpdateConfig(settings))
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -421,8 +423,7 @@ buildvariants:
 	assert.NoError(pvars.Insert())
 
 	dc := DBCreateHostConnector{}
-	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
-	assert.NoError(err)
+	assert.NoError(dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
