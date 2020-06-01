@@ -838,13 +838,14 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientConfig, error) {
 	envClientConfig := evergreen.GetEnvironment().ClientConfig()
 	clientConfig := restModel.APIClientConfig{}
-	err := clientConfig.BuildFromService(envClientConfig)
+	err := clientConfig.BuildFromService(*envClientConfig)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIClientConfig from service: %s", err.Error()))
 	}
 
 	return &clientConfig, nil
 }
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
