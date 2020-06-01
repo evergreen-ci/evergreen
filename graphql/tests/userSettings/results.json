@@ -43,7 +43,7 @@
               {
                 "os": "darwin",
                 "displayName": "OSX 64-bit",
-                "url": "localhost:9090/clients/darwin_amd64/evergreen",
+                "url": "http://localhost/clients/darwin_amd64/evergreen",
                 "arch": "amd64"
               }
             ],
