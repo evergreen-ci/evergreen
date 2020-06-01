@@ -287,20 +287,24 @@ func TestMakeIntentHost(t *testing.T) {
 func TestHostCreateDocker(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := hostCreateHandler{
 		sc: &data.DBConnector{},
 	}
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	settings := evergreen.Settings{ContainerPools: poolConfig}
+	assert.NoError(evergreen.UpdateConfig(&settings))
 	parent := distro.Distro{
 		Id:       "parent-distro",
-		Provider: evergreen.ProviderNameMock,
+		Provider: evergreen.ProviderNameDockerMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 3,
 		},
+		ContainerPool: pool.Id,
 	}
 	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -308,11 +312,11 @@ func TestHostCreateDocker(t *testing.T) {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: pool,
+		ContainerPoolSettings: &pool,
 	}
 	require.NoError(parentHost.Insert())
 
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
 
 	c := apimodels.CreateHost{
@@ -332,9 +336,6 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.Equal("echo hello", h.DockerOptions.Command)
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
 
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
-	settings := evergreen.Settings{ContainerPools: poolConfig}
-	assert.NoError(evergreen.UpdateConfig(&settings))
 	assert.Equal(200, handler.Run(context.Background()).Status())
 
 	hosts, err := host.Find(db.Q{})
@@ -346,10 +347,14 @@ func TestHostCreateDocker(t *testing.T) {
 func TestGetDockerLogs(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerLogsHandler{
 		sc: &data.MockConnector{},
 	}
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	settings := evergreen.Settings{ContainerPools: poolConfig}
+	assert.NoError(evergreen.UpdateConfig(&settings))
 
 	parent := distro.Distro{
 		Id:       "parent-distro",
@@ -357,10 +362,10 @@ func TestGetDockerLogs(t *testing.T) {
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 3,
 		},
+		ContainerPool: pool.Id,
 	}
 	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -368,11 +373,11 @@ func TestGetDockerLogs(t *testing.T) {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: pool,
+		ContainerPoolSettings: &pool,
 	}
 	require.NoError(parentHost.Insert())
 
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
 
 	myTask := task.Task{
@@ -391,10 +396,6 @@ func TestGetDockerLogs(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(h)
 	assert.NotEmpty(h.ParentID)
-
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
-	settings := evergreen.Settings{ContainerPools: poolConfig}
-	assert.NoError(evergreen.UpdateConfig(&settings))
 
 	// invalid tail
 	url := fmt.Sprintf("/hosts/%s/logs/output?tail=%s", h.Id, "invalid")
@@ -451,21 +452,24 @@ func TestGetDockerLogs(t *testing.T) {
 func TestGetDockerStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerStatusHandler{
 		sc: &data.MockConnector{},
 	}
-
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	settings := evergreen.Settings{ContainerPools: poolConfig}
+	assert.NoError(evergreen.UpdateConfig(&settings))
 	parent := distro.Distro{
 		Id:       "parent-distro",
-		Provider: evergreen.ProviderNameMock,
+		Provider: evergreen.ProviderNameDockerMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 3,
 		},
+		ContainerPool: pool.Id,
 	}
 	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -473,11 +477,11 @@ func TestGetDockerStatus(t *testing.T) {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: pool,
+		ContainerPoolSettings: &pool,
 	}
 	require.NoError(parentHost.Insert())
 
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
 
 	myTask := task.Task{
@@ -493,8 +497,8 @@ func TestGetDockerStatus(t *testing.T) {
 		Command:       "echo hello",
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
 	require.NoError(err)
+	assert.NotEmpty(h.ParentID)
 
 	url := fmt.Sprintf("/hosts/%s/logs/status", h.Id)
 	options := map[string]string{"host_id": h.Id}

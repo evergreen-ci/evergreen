@@ -333,7 +333,8 @@ buildvariants:
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
+		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection, evergreen.ConfigCollection))
 
 	t1 := task.Task{
 		Id:           "t1",
@@ -380,16 +381,18 @@ buildvariants:
 	assert.NoError(h1.Insert())
 
 	parent := distro.Distro{
-		Id: "parent-distro",
-		// PoolSize: 3,
-		Provider: evergreen.ProviderNameMock,
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameDockerMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 3,
 		},
 	}
 	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	settings := evergreen.Settings{ContainerPools: poolConfig}
+	assert.NoError(evergreen.UpdateConfig(&settings))
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -397,11 +400,15 @@ buildvariants:
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: pool,
+		ContainerPoolSettings: &pool,
 	}
 	require.NoError(parentHost.Insert())
 
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDockerMock,
+		ContainerPool: pool.Id,
+	}
 	require.NoError(d.Insert())
 
 	p := model.ProjectRef{
