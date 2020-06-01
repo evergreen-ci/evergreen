@@ -260,7 +260,7 @@ func hostConfigure() cli.Command {
 				Name:  joinFlagNames(quietFlagName, "q"),
 				Usage: "suppress output",
 			},
-			cli.BoolFlag{
+			cli.StringFlag{
 				Name:  distroNameFlagName,
 				Usage: "specify the name of the current distro for spawn hosts (optional)",
 			},
