@@ -964,7 +964,12 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 			return !os.IsNotExist(err)
 		}
 
-		commandNumber := idx + 1 // to avoid logging a stale number
+		// avoid logging the final value of obj
+		commandNumber := idx + 1
+		cmdString := obj.Command
+
+		// if the directory doesn't currently exist we need to create it
+		// PreHook sets the working directory for the subsequent command
 		cmd := jasper.NewCommand().SetErrorSender(level.Error, opts.Output).
 			PreHook(func(cmd *options.Command, opts *options.Create) {
 				if dirExists() {
@@ -976,7 +981,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory":      dir,
-					"command":        obj.Command,
+					"command":        cmdString,
 					"command_number": commandNumber,
 					"op":             "setup command",
 					"project":        p.Identifier,
