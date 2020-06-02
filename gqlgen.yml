@@ -82,3 +82,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  ClientConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
+  ClientBinary:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary

@@ -322,6 +322,7 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest) error {
 	return nil
 }
 
+// handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
 func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEvent) error {
 	if err := validatePushTagEvent(event); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -449,10 +450,9 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
 	revision model.Revision, tag model.GitTag) (*model.Version, error) {
-	if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, tag.Pusher) {
+	if !pRef.GitTagVersionsEnabled || !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, tag.Pusher) {
 		return nil, nil
 	}
-
 	hasAliases, remotePath, err := gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.String(), tag.Tag)
 	if err != nil {
 		return nil, err

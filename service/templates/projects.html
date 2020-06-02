@@ -363,14 +363,14 @@ Evergreen Projects
                 <div ng-show="github_webhooks_enabled">
                   GitHub webhooks are enabled.
                 </div>
-                <div class="project-error" ng-show="!github_webhooks_enabled">
+                <div class="project-error" ng-hide="github_webhooks_enabled">
                   <div>GitHub Pull Request testing and the commit queue are disabled because webhooks are not enabled. Webhooks are enabled after saving with a repository and branch.</div>
                 </div>
             </div>
           </div>
         </div>
 
-        <div class="variables">
+        <div class="variables" ng-show="github_webhooks_enabled">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Pull Request Testing</h3> </div>
           </div>
@@ -391,7 +391,13 @@ Evergreen Projects
               </div>
           </div>
           <!-- GIT TAGS -->
-          <div class="authorized_for_git_tags"> <!-- after functionality is finished, change to ng-show="github_webhooks_enabled" -->
+          <div id="authorized_for_git_tags" class="form-group" ng-hide="true"> <!-- after functionality is finished, remove hg-hide-->
+            <div class="col-lg-6">
+              <input type="checkbox" id="git-tags-checkbox" ng-model="settingsFormData.git_tag_versions_enabled" />
+              <label for="git-tags-checkbox">Enable Triggering Versions From Git Tags</label>
+            </div>
+          </div>
+          <div ng-show="settingsFormData.git_tag_versions_enabled">
             <div class="form-group">
               <div class="col-header col-lg-4 form-control-static"> <h3> Users Authorized To Create Versions From Git Tags </h3></div>
             </div>
