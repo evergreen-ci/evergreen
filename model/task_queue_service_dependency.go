@@ -407,27 +407,15 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 
 			if !dependenciesMet {
-				satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(checkUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches), message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
-					"operation":  "satisfiable",
+					"operation":  "checkUnmarkedBlockingTasks",
 					"message":    "error checking dependencies for task",
 					"outcome":    "skip and continue",
 					"task":       item.Id,
 					"distro_id":  d.distroID,
 				}))
-				if err == nil && !satisfiable {
-					grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
-						message.Fields{
-							"dispatcher": DAGDispatcher,
-							"function":   "FindNextTask",
-							"operation":  "deactivating blocked",
-							"outcome":    "skip and continue",
-							"task":       item.Id,
-							"distro_id":  d.distroID,
-						}))
-				}
 
 				continue
 			}
@@ -539,27 +527,15 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
-			satisfiable, err := nextTaskFromDB.DependencySatisfiable(dependencyCaches)
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(checkUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches), message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
-				"operation":  "satisfiable",
+				"operation":  "checkUnmarkedBlockingTasks",
 				"message":    "error checking dependencies for task",
 				"outcome":    "skip and continue",
 				"task":       nextTaskQueueItem.Id,
 				"distro_id":  d.distroID,
 			}))
-			if err == nil && !satisfiable {
-				grip.Warning(message.WrapError(nextTaskFromDB.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"),
-					message.Fields{
-						"function":   "nextTaskGroupTask",
-						"dispatcher": DAGDispatcher,
-						"operation":  "deactivating blocked",
-						"outcome":    "skip and continue",
-						"task":       nextTaskQueueItem.Id,
-						"distro_id":  d.distroID,
-					}))
-			}
 
 			continue
 		}
@@ -573,4 +549,28 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 	}
 
 	return nil
+}
+
+func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
+	catcher := grip.NewBasicCatcher()
+
+	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
+	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))
+	if err == nil && len(blockingTasks) > 0 {
+		for _, tId := range blockingTasks {
+			tDb, err := task.FindOneId(tId)
+			catcher.Add(errors.Wrapf(err, "can't get task '%s'", tId))
+			if err == nil {
+				catcher.Add(errors.Wrapf(UpdateBlockedDependencies(tDb), "can't update blocked dependencies for '%s'", tId))
+			}
+		}
+	}
+
+	blocked, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
+	catcher.Add(errors.Wrap(err, "can't get blocked status"))
+	if err == nil && blocked {
+		catcher.Add(errors.Wrapf(t.DeactivateTask(evergreen.DefaultTaskActivator+".dispatcher"), "can't deactivate task '%s'", t.Id))
+	}
+
+	return catcher.Resolve()
 }

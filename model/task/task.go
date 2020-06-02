@@ -451,57 +451,64 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	return deps, nil
 }
 
-// DependenciesSatisfiable returns true when a dependency is satisfied
-// or could be satisfied in the future, and false if any of the first
-// order dependencies are blocked, checking the cache if necessary.
-//
-// Use dependencies met (which can also check the cache,) to figure
-// out if a task is runable.
-func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
+// RefreshBlockedDependencies manually rechecks first degree dependencies
+// when a task isn't marked as blocked. It returns a slice of this task's dependencies that
+// need to recursively update their dependencies
+func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]string, error) {
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
-		return true, nil
+		return nil, nil
 	}
 
-	// do this early, if possible to avoid caching tasks that we
-	// won't need.
+	// do this early to avoid caching tasks we won't need.
 	for _, dep := range t.DependsOn {
 		if dep.Unattainable {
-			return false, nil
+			return nil, nil
 		}
 	}
 
 	deps, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
+	blockedDeps := []string{}
 	for _, dep := range t.DependsOn {
 		depTask, ok := depCache[dep.TaskId]
 		if !ok {
 			grip.Error(message.Fields{
 				"task_id":     t.Id,
-				"dep_task_id": depTask.Id,
+				"dep_task_id": dep.TaskId,
 				"cache_size":  len(deps),
-				"operation":   "DependencySatisfiable",
+				"operation":   "RefreshBlockedDependencies",
 				"message":     "cache failure",
 			})
 			continue
 		}
-		if depTask.Blocked() {
-			return false, nil
-		}
 
-		if !t.SatisfiesDependency(&depTask) {
-			if depTask.IsFinished() {
-				return false, nil
-			}
-			if !depTask.Activated {
-				return false, nil
-			}
+		if !t.SatisfiesDependency(&depTask) && (depTask.IsFinished() || depTask.Blocked()) {
+			blockedDeps = append(blockedDeps, depTask.Id)
 		}
 	}
 
-	return true, nil
+	return blockedDeps, nil
+}
+
+func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) (bool, error) {
+	_, err := t.populateDependencyTaskCache(depCache)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	for _, dep := range t.DependsOn {
+		depTask, ok := depCache[dep.TaskId]
+		if !ok {
+			return false, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
+		}
+		if !depTask.IsFinished() && !depTask.Activated {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // AllDependenciesSatisfied inspects the tasks first-order
