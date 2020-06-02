@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
@@ -957,10 +959,19 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		if obj.Directory != "" {
 			dir = filepath.Join(dir, obj.Directory)
 		}
+		dirExists := func() bool {
+			_, err := os.Stat(dir)
+			return !os.IsNotExist(err)
+		}
 
 		commandNumber := idx + 1 // to avoid logging a stale number
-		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
-			SetErrorSender(level.Error, opts.Output).
+		cmd := jasper.NewCommand().SetErrorSender(level.Error, opts.Output).
+			PreHook(func(cmd *options.Command, opts *options.Create) {
+				if dirExists() {
+					opts.WorkingDirectory = dir
+				}
+			}).
+			AddWhen(!dirExists(), []string{"mkdir", "-p", dir}).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
