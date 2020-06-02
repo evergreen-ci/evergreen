@@ -258,10 +258,8 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		fieldName := field.Name()
 		if fieldInfo, shouldExtract := fields[fieldName]; shouldExtract {
 			// generate the BuildFromService code
-			if !strings.Contains(fieldInfo.OutputFieldType, field.Type().String()) && !strings.Contains(field.Type().String(), fieldInfo.OutputFieldType) {
-				// this should ideally be a more sophisticated check to ensure that complex types are convertible
-				// to each other, but for now we rely on the naming convention to find obvious type errors
-				fieldErrs.Errorf("DB model field '%s' has type %s which is incompatible with REST model type %s", fieldName, field.Type().String(), fieldInfo.OutputFieldType)
+			if err = validateFieldTypes(fieldName, field.Type().String(), fieldInfo.OutputFieldType); err != nil {
+				fieldErrs.Add(err)
 				continue
 			}
 			converter, err := conversionFn(field.Type(), fieldInfo.Nullable)
@@ -308,4 +306,14 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		TsConversions:  strings.Join(tsCode, "\n"),
 	}
 	return output(serviceTemplate, data)
+}
+
+func validateFieldTypes(fieldName, inputType, outputType string) error {
+	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
+		// this should ideally be a more sophisticated check to ensure that complex types are convertible
+		// to each other, but for now we rely on the naming convention to find obvious type errors
+		return errors.Errorf("DB model field '%s' has type '%s' which is incompatible with REST model type '%s'", fieldName, inputType, outputType)
+	}
+
+	return nil
 }
