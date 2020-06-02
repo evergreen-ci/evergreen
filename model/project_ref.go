@@ -966,8 +966,6 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		commandNumber := idx + 1
 		cmdString := obj.Command
 
-		// if the directory doesn't currently exist we need to create it
-		// PreHook sets the working directory for the subsequent command
 		cmd := jasper.NewCommand().SetErrorSender(level.Error, opts.Output).
 			Append(obj.Command).
 			Prerequisite(func() bool {
