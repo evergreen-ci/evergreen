@@ -703,10 +703,14 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Identifier)
 		}
-		v.Id = mgobson.NewObjectId().Hex()
+		v.Id = makeVersionIdWithTag(ref.String(), metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
 		v.Requester = evergreen.GitTagRequester
 		v.CreateTime = time.Now()
 		v.TriggeredByGitTag = metadata.GitTag
+		v.Message = fmt.Sprintf("Triggered From Git Tag '%s': %s", metadata.GitTag.Tag, v.Message)
+		if metadata.RemotePath != "" {
+			v.RemotePath = metadata.RemotePath
+		}
 	} else {
 		v.Id = makeVersionId(ref.String(), metadata.Revision.Revision)
 	}
@@ -718,6 +722,10 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 
 func makeVersionId(project, revision string) string {
 	return util.CleanName(fmt.Sprintf("%s_%s", project, revision))
+}
+
+func makeVersionIdWithTag(project, tag, id string) string {
+	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, tag, id))
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.

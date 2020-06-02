@@ -88,6 +88,9 @@ type Connector interface {
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
 
+	// GetProjectFromFile finds the file for the projectRef and returns the translated project, using the given token
+	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (*model.Project, *model.ParserProject, error)
+
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.
 	EnableWebhooks(context.Context, *model.ProjectRef) (bool, error)
@@ -266,8 +269,9 @@ type Connector interface {
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project
 	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
-	// HasMatchingGitTagAlias returns true if the project has aliases defined that match the given tag
-	HasMatchingGitTagAlias(string, string) (bool, error)
+	// HasMatchingGitTagAliasAndRemotePath returns true if the project has aliases defined that match the given tag, and
+	// returns the remote path if applicable
+	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
 	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error

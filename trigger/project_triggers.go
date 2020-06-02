@@ -2,14 +2,12 @@ package trigger
 
 import (
 	"context"
-	"encoding/base64"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
@@ -140,21 +138,8 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Pr
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	configFile, err := thirdparty.GetGithubFile(ctx, token, ref.Owner, ref.Repo, file, ref.Branch)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s'", ref.Identifier)
-	}
-	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", ref.Identifier)
-	}
 
-	config := model.Project{}
-	pp, err := model.LoadProjectInto(fileContents, ref.Identifier, &config)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
-	}
-	return &config, pp, nil
+	return model.GetProjectFromFile(ctx, ref, file, token)
 }
 
 func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (*model.Project, *model.ParserProject, error) {

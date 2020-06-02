@@ -103,7 +103,16 @@ func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, 
 	if err != nil {
 		return nil, err
 	}
-	return aliasesMatchingGitTag(aliases, tag)
+	matchingAliases, err := aliasesMatchingGitTag(aliases, tag)
+	if err != nil {
+		return nil, err
+	}
+	for _, alias := range matchingAliases {
+		if alias.RemotePath != "" && len(matchingAliases) > 1 {
+			return matchingAliases, errors.Errorf("git tag '%s' matches multiple aliases but a remote path is defined", tag)
+		}
+	}
+	return matchingAliases, nil
 }
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).

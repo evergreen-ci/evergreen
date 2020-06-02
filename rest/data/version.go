@@ -435,7 +435,10 @@ func (mvc *MockVersionConnector) GetVersionsAndVariants(skip, numVersionElements
 }
 
 func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
-	return nil, nil
+	return &model.Version{
+		Requester:         evergreen.GitTagRequester,
+		TriggeredByGitTag: metadata.GitTag,
+	}, nil
 }
 
 func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
