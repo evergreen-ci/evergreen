@@ -361,7 +361,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	// verify git tag alias parameters
 	if responseRef.GitTagVersionsEnabled {
-		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitTagAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
@@ -466,6 +466,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
+	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
