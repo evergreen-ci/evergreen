@@ -888,6 +888,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	pRef := &model.ProjectRef{
 		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
+		GitTagVersionsEnabled: true,
 	}
 	v, err := shellVersionFromRevision(pRef, metadata)
 	assert.NoError(t, err)

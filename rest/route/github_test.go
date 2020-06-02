@@ -331,6 +331,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	pRef := model.ProjectRef{
 		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
+		GitTagVersionsEnabled: true,
 	}
 	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

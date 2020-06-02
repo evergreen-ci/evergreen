@@ -651,10 +651,14 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
-	}))
+	var u *user.DBUser
+	var err error
+	if metadata.Revision.AuthorGithubUID != 0 {
+		u, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
+		}))
+	}
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
 	if err != nil {
@@ -662,6 +666,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 	}
 	v := &model.Version{
 		Author:              metadata.Revision.Author,
+		AuthorID:            metadata.Revision.AuthorID,
 		AuthorEmail:         metadata.Revision.AuthorEmail,
 		Branch:              ref.Branch,
 		CreateTime:          metadata.Revision.CreateTime,
@@ -716,6 +721,8 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 	}
 	if u != nil {
 		v.AuthorID = u.Id
+		v.Author = u.DisplayName()
+		v.AuthorEmail = u.Email()
 	}
 	return v, nil
 }

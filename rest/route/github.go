@@ -411,15 +411,16 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}
 
 		revision := model.Revision{
-			Author:          event.GetSender().GetLogin(),
-			AuthorGithubUID: int(event.GetSender().GetID()),
-			AuthorEmail:     event.GetSender().GetEmail(),
-			Revision:        hash,
+			Author:          existingVersion.Author,
+			AuthorID:        existingVersion.AuthorID,
+			AuthorEmail:     existingVersion.AuthorEmail,
+			Revision:        existingVersion.Revision,
 			RevisionMessage: existingVersion.Message,
 		}
 		v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
 		if err != nil {
 			catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
+			continue
 		}
 		if v != nil {
 			grip.Info(message.Fields{
