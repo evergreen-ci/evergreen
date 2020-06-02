@@ -101,15 +101,17 @@ func SchemaToGo(schema string) ([]byte, error) {
 			continue
 		}
 		fields := ""
+		var fieldData string
 		for _, field := range gqlType.Fields {
-			fieldData, err := output(fieldTemplate, getFieldInfo(field))
+			fieldData, err = output(fieldTemplate, getFieldInfo(field))
 			if err != nil {
 				catcher.Add(err)
 				continue
 			}
 			fields += fieldData
 		}
-		structData, err := output(structTemplate, structInfo{Name: typeName, Fields: fields})
+		var structData string
+		structData, err = output(structTemplate, structInfo{Name: typeName, Fields: fields})
 		if err != nil {
 			catcher.Add(err)
 			continue
