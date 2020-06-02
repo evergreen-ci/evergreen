@@ -34,6 +34,22 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       });
     }
 
+    it('should authenticate on failed requests', () => {
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511)
+        .respond(function(){
+          return [null, null, null, null, 'error']
+        });
+      var attempts = 0;
+      PerformanceAnalysisAndTriageClient.authenticate = function() {
+        attempts++;
+      };
+      makeController();
+      $httpBackend.flush();
+      $httpBackend.verifyNoOutstandingExpectation();
+      $httpBackend.verifyNoOutstandingRequest();
+      expect(attempts).toEqual(1);
+    });
+
     it('should be refresh the data when a new page is loaded', () => {
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511);
       makeController();
@@ -240,7 +256,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 });
 
 function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, pageSize, totalPages, newData) {
-  $httpBackend.expectGET(`${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?page=${page}&pageSize=${pageSize}`).respond(200, JSON.stringify(newData || {
+  return $httpBackend.expectGET(`${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?page=${page}&pageSize=${pageSize}`).respond(200, JSON.stringify(newData || {
     'versions': Array(10).fill(
       {
         'version_id': 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',

@@ -50,7 +50,11 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
-        $scope.errorMessage = err.data.message;
+        if(err.data) {
+          $scope.errorMessage = err.data.message;
+        } else {
+          PerformanceAnalysisAndTriageClient.authenticate()
+        }
       });
 }
 
