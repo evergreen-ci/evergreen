@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
@@ -959,9 +958,8 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		if obj.Directory != "" {
 			dir = filepath.Join(dir, obj.Directory)
 		}
-		dirExists := func() bool {
-			_, err := os.Stat(dir)
-			return !os.IsNotExist(err)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, errors.Wrapf(err, "can't make directory '%s'", dir)
 		}
 
 		// avoid logging the final value of obj
@@ -971,12 +969,6 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		// if the directory doesn't currently exist we need to create it
 		// PreHook sets the working directory for the subsequent command
 		cmd := jasper.NewCommand().SetErrorSender(level.Error, opts.Output).
-			PreHook(func(cmd *options.Command, opts *options.Create) {
-				if dirExists() {
-					opts.WorkingDirectory = dir
-				}
-			}).
-			AddWhen(!dirExists(), []string{"mkdir", "-p", dir}).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
