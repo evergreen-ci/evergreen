@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -958,15 +957,12 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		if obj.Directory != "" {
 			dir = filepath.Join(dir, obj.Directory)
 		}
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, errors.Wrapf(err, "can't make directory '%s'", dir)
-		}
 
 		// avoid logging the final value of obj
 		commandNumber := idx + 1
 		cmdString := obj.Command
 
-		cmd := jasper.NewCommand().SetErrorSender(level.Error, opts.Output).
+		cmd := jasper.NewCommand().Directory(dir).SetErrorSender(level.Error, opts.Output).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
