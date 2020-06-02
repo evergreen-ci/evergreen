@@ -2,6 +2,7 @@ package model
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,6 +35,10 @@ func TestWords(t *testing.T) {
 }
 
 func TestCreateConversionMethods(t *testing.T) {
+	if os.Getenv("RACE_DETECTOR") != "" {
+		t.Skip()
+		return
+	}
 	fields := ExtractedFields{
 		"Author":          ExtractedField{OutputFieldName: "One", Nullable: true},
 		"AuthorEmail":     ExtractedField{OutputFieldName: "Two", Nullable: false},
