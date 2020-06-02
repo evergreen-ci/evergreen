@@ -117,7 +117,8 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			"cause": []string{
 				"job collision",
 				"host data",
-			}}))
+			},
+		}))
 		j.AddError(errors.Wrap(err, "job collision detected"))
 	}()
 
@@ -125,10 +126,6 @@ func (j *setupHostJob) Run(ctx context.Context) {
 
 	j.AddError(j.setupHost(ctx, settings))
 }
-
-var (
-	errIgnorableCreateHost = errors.New("host.create encountered internal error")
-)
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
@@ -723,7 +720,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
+	return h.ProvisionAttempts < provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
 }
 
 func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {

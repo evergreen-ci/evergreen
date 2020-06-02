@@ -37,6 +37,7 @@ type Query {
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   userConfig: UserConfig
+  clientConfig: ClientConfig
 }
 
 type Mutation {
@@ -371,6 +372,7 @@ type File {
 
 type User {
   displayName: String!
+  userId: String!
 }
 
 type RecentTaskLogs {
@@ -458,6 +460,17 @@ type UserConfig {
   api_key: String!
   api_server_host: String!
   ui_server_host: String!
+}
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  os: String
+  url: String
+  displayName: String
 }
 scalar Time
 scalar Duration
