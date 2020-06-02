@@ -5,6 +5,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
   $scope.pageSize = 10;
   $scope.totalPages = 1;
   $scope.projectId = $routeParams.projectId;
+  $scope.measurementRegex = 'AverageLatency|Latency50thPercentile|Latency95thPercentile';
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
@@ -20,7 +21,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
     }
   };
 
-  setupGrid($scope, CHANGE_POINTS_GRID);
+  setupGrid($scope, CHANGE_POINTS_GRID, _.partial(onFilterChanged, $scope, _.partial(getPoints, $scope, PerformanceAnalysisAndTriageClient)));
   getPoints($scope, PerformanceAnalysisAndTriageClient);
 });
 
@@ -47,22 +48,51 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.gridOptions.data = [];
   $scope.isLoading = true;
   $scope.errorMessage = null;
-  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize)
+  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
         $scope.errorMessage = err.data.message;
       });
 }
 
-function setupGrid($scope, CHANGE_POINTS_GRID) {
+function onFilterChanged($scope, loaderFunction) {
+  if($scope.cancelLoading) {
+    $scope.cancelLoading()
+  }
+  this.grid.columns.forEach(function (col) {
+    if(col.field === "variant") {
+      $scope.variantRegex = col.filters[0].term;
+    } else if (col.field === "version") {
+      $scope.versionRegex = col.filters[0].term;
+    } else if (col.field === "task") {
+      $scope.taskRegex = col.filters[0].term;
+    } else if (col.field === "test") {
+      $scope.testRegex = col.filters[0].term;
+    } else if (col.field === "measurement") {
+      $scope.measurementRegex = col.filters[0].term;
+    } else if (col.field === "thread_level") {
+      let tls = col.filters[0].term;
+      $scope.threadLevels = tls ? tls.split(',') : undefined;
+    }
+  });
+  new Promise((resolve, reject) => {
+    $scope.cancelLoading = reject;
+    setTimeout(resolve, 1000);
+  }).then(loaderFunction).catch(() => {});
+}
+
+function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
   $scope.gridOptions = {
     enableFiltering: true,
+    enableSorting: false,
     enableRowSelection: true,
     enableSelectAll: true,
     selectionRowHeaderWidth: 35,
     useExternalFiltering: true,
-    useExternalSorting: true,
     data: [],
+    onRegisterApi: function( gridApi ) {
+      gridApi.core.on.filterChanged($scope, onFilterChanged);
+    },
     columnDefs: [
       {
         name: 'Percent Change',
@@ -104,6 +134,9 @@ function setupGrid($scope, CHANGE_POINTS_GRID) {
         name: 'Measurement',
         field: 'measurement',
         type: 'string',
+        filter: {
+          term: $scope.measurementRegex
+        }
       },
       {
         name: 'Triage Status',
