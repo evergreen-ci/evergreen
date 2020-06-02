@@ -329,7 +329,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			projectRef.TracksPushEvents = false
 		}
 	}
-
+	var aliasesDefined bool
 	if responseRef.PRTestingEnabled {
 		if hook == nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
@@ -349,7 +349,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are PR aliases defined
-		var aliasesDefined bool
 		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
@@ -362,7 +361,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	// verify git tag alias parameters
 	if responseRef.GitTagVersionsEnabled {
-		aliasesDefined, err := verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
