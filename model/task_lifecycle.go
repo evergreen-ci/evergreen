@@ -584,12 +584,8 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
 	}
 
-	versionExists, err := VersionExistsForCommitQueueItem(cq, issue, projectRef.CommitQueue.PatchType)
-	if err != nil {
-		return errors.Wrapf(err, "error verifying if version exists for issue '%s'", issue)
-	}
-
-	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, versionExists)
+	//question for reviewer:  is it safe to assume that versionExists = true here?
+	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Identifier)
 	}

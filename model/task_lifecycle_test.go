@@ -1190,6 +1190,66 @@ func TestAbortTask(t *testing.T) {
 	})
 
 }
+func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
+	patchID := "aabbccddeeff001122334455"
+	v := &Version{
+		Id:     patchID,
+		Status: evergreen.VersionStarted,
+	}
+
+	p := &patch.Patch{
+		Id:          patch.NewId(patchID),
+		Version:     v.Id,
+		Status:      evergreen.PatchStarted,
+		PatchNumber: 12,
+		Alias:       evergreen.CommitQueueAlias,
+	}
+	b := build.Build{
+		Id:      "my-build",
+		Version: v.Id,
+	}
+	t1 := &task.Task{
+		Id:               "t1",
+		Activated:        true,
+		Status:           evergreen.TaskFailed,
+		Version:          v.Id,
+		BuildId:          b.Id,
+		CommitQueueMerge: true,
+	}
+
+	q := []commitqueue.CommitQueueItem{
+		{Issue: patchID},
+		{Issue: "42"},
+	}
+	cq := &commitqueue.CommitQueue{
+		ProjectID:  "my-project",
+		Processing: true,
+		Queue:      q,
+	}
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, p.Insert())
+	assert.NoError(t, b.Insert())
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, commitqueue.InsertQueue(cq))
+
+	pRef := &ProjectRef{Identifier: cq.ProjectID}
+	pRef.CommitQueue.PatchType = commitqueue.CLIPatchType
+
+	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
+	cq, err := commitqueue.FindOneId("my-project")
+	assert.NoError(t, err)
+	assert.Equal(t, cq.FindItem("12"), -1)
+	assert.Len(t, cq.Queue, 1)
+	assert.False(t, cq.Processing)
+
+	mergeTask, err := task.FindMergeTaskForVersion(patchID)
+
+	assert.Equal(t, mergeTask.Priority, int64(-1))
+	p, err = patch.FindOne(patch.ByVersion(patchID))
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+}
 
 func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
