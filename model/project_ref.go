@@ -65,6 +65,7 @@ type ProjectRef struct {
 
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
+	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
 
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
@@ -185,6 +186,7 @@ var (
 	projectRefTracksPushEventsKey      = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefDefaultLogger            = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefGitTagVersionsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
 	projectRefRepotrackerDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey           = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefTaskSyncKey              = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
@@ -709,6 +711,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefTracksPushEventsKey:      projectRef.TracksPushEvents,
 				projectRefDefaultLogger:            projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:      projectRef.PRTestingEnabled,
+				projectRefGitTagVersionsEnabledKey: projectRef.GitTagVersionsEnabled,
 				projectRefCommitQueueKey:           projectRef.CommitQueue,
 				projectRefTaskSyncKey:              projectRef.TaskSync,
 				projectRefPatchingDisabledKey:      projectRef.PatchingDisabled,
@@ -958,14 +961,16 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 			dir = filepath.Join(dir, obj.Directory)
 		}
 
-		commandNumber := idx + 1 // to avoid logging a stale number
-		cmd := jasper.NewCommand().Directory(dir).AppendArgs("mkdir", "-p", dir).
-			SetErrorSender(level.Error, opts.Output).
+		// avoid logging the final value of obj
+		commandNumber := idx + 1
+		cmdString := obj.Command
+
+		cmd := jasper.NewCommand().Directory(dir).SetErrorSender(level.Error, opts.Output).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory":      dir,
-					"command":        obj.Command,
+					"command":        cmdString,
 					"command_number": commandNumber,
 					"op":             "setup command",
 					"project":        p.Identifier,

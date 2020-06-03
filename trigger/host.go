@@ -21,7 +21,7 @@ func init() {
 const (
 	// notification templates
 	expiringHostTitle = `{{.Distro}} host termination reminder`
-	expiringHostBody  = `Your {{.Distro}} host with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
+	expiringHostBody  = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
 )
 
 type hostBase struct {
@@ -76,6 +76,7 @@ func (t *hostBase) Selectors() []event.Selector {
 
 type hostTemplateData struct {
 	ID             string
+	Name           string
 	Distro         string
 	ExpirationTime time.Time
 	URL            string
@@ -104,9 +105,13 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 
 	t.templateData = hostTemplateData{
 		ID:             t.host.Id,
+		Name:           t.host.DisplayName,
 		Distro:         t.host.Distro.Id,
 		ExpirationTime: t.host.ExpirationTime,
 		URL:            fmt.Sprintf("%s/spawn", t.hostBase.uiConfig.Url),
+	}
+	if t.host.DisplayName == "" {
+		t.templateData.Name = t.host.Id
 	}
 	t.event = e
 	return nil
