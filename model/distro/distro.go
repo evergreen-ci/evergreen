@@ -55,6 +55,21 @@ type Distro struct {
 	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings" json:"icecream_settings" yaml:"icecream_settings"`
 }
 
+type DistroData struct {
+	Distro              Distro                   `bson:",inline"`
+	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
+}
+
+func (d *Distro) NewDistroData() DistroData {
+	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
+	res.Distro = *d
+	for _, each := range d.ProviderSettingsList {
+		res.ProviderSettingsMap = append(res.ProviderSettingsMap, each.ExportMap())
+	}
+	res.Distro.ProviderSettingsList = nil
+	return res
+}
+
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
 	// Required
