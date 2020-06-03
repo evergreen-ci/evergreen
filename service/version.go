@@ -27,6 +27,14 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.FormValue("redirect_spruce_users") == "true" {
+		user := MustHaveUser(r)
+		if user.Settings.UseSpruceOptions.PatchPage {
+
+			return
+		}
+	}
+
 	// Set the config to blank to avoid writing it to the UI unnecessarily.
 	projCtx.Version.Config = ""
 

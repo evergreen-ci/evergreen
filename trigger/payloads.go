@@ -465,8 +465,12 @@ func buildLink(uiBase string, buildID string) string {
 	return fmt.Sprintf("%s/build/%s/", uiBase, url.PathEscape(buildID))
 }
 
-func versionLink(uiBase string, versionID string) string {
-	return fmt.Sprintf("%s/version/%s/", uiBase, url.PathEscape(versionID))
+func versionLink(uiBase string, versionID string, redirectSpruceUsers bool) string {
+	url := fmt.Sprintf("%s/version/%s", uiBase, url.PathEscape(versionID))
+	if redirectSpruceUsers {
+		url = fmt.Sprintf("%s?redirect_spruce_users=true", url)
+	}
+	return url
 }
 
 func hostLink(uiBase string, hostID string) string {
