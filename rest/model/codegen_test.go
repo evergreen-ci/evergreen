@@ -2,6 +2,7 @@ package model
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,7 +49,11 @@ func TestWords(t *testing.T) {
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
 }
 
-func TestcreateConversionMethods(t *testing.T) {
+func TestCreateConversionMethods(t *testing.T) {
+	if os.Getenv("RACE_DETECTOR") != "" {
+		t.Skip()
+		return
+	}
 	fields := extractedFields{
 		"Author":          extractedField{OutputFieldName: "One", OutputFieldType: "*string", Nullable: true},
 		"AuthorEmail":     extractedField{OutputFieldName: "Two", OutputFieldType: "string", Nullable: false},
@@ -56,32 +61,28 @@ func TestcreateConversionMethods(t *testing.T) {
 	}
 	generated, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields)
 	assert.NoError(t, err)
-	expected := `package model
-
-import "github.com/evergreen-ci/evergreen/model"
-
+	expected := `
 func (m *APIRevision) BuildFromService(t model.Revision) error {
-	m.One = stringToStringPtr(t.Author)
-	m.Three = intToInt(t.AuthorGithubUID)
-	m.Two = stringToString(t.AuthorEmail)
-	return nil
+    m.One = stringToStringPtr(t.Author)
+m.Three = intToInt(t.AuthorGithubUID)
+m.Two = stringToString(t.AuthorEmail)
+    return nil
 }
 
 func (m *APIRevision) ToService() (model.Revision, error) {
-	out := model.Revision{}
-	out.Author = stringToStringPtr(m.One)
-	out.AuthorEmail = stringToString(m.Two)
-	out.AuthorGithubUID = intToInt(m.Three)
-	return out, nil
-}
-`
+    out := model.Revision{}
+    out.Author = stringToStringPtr(m.One)
+out.AuthorEmail = stringToString(m.Two)
+out.AuthorGithubUID = intToInt(m.Three)
+    return out, nil
+}`
 	assert.Equal(t, expected, string(generated))
 }
 
-func TestcreateConversionMethodsError(t *testing.T) {
+func TestCreateConversionMethodsError(t *testing.T) {
 	fields := extractedFields{
 		"Author": extractedField{OutputFieldName: "One", OutputFieldType: "int", Nullable: true},
 	}
 	_, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields)
-	assert.EqualError(t, err, `DB model field 'Author' has type string which is incompatible with REST model type int`)
+	assert.EqualError(t, err, `DB model field 'Author' has type 'string' which is incompatible with REST model type 'int'`)
 }
