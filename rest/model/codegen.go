@@ -109,14 +109,16 @@ func Codegen(schema string, config ModelMapping) ([]byte, error) {
 		for _, field := range gqlType.Fields {
 			fieldInfo := getFieldInfo(field)
 			extractedFields[field.Name] = fieldInfo
-			fieldData, err := output(fieldTemplate, fieldInfo)
+			var fieldData string
+			fieldData, err = output(fieldTemplate, fieldInfo)
 			if err != nil {
 				catcher.Add(err)
 				continue
 			}
 			fields += fieldData
 		}
-		structData, err := output(structTemplate, structInfo{Name: typeName, Fields: fields})
+		var structData string
+		structData, err = output(structTemplate, structInfo{Name: typeName, Fields: fields})
 		if err != nil {
 			catcher.Add(err)
 			continue
