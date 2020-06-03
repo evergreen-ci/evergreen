@@ -21,7 +21,9 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
     }
   };
 
+  $scope.getAuthenticationUrl = PerformanceAnalysisAndTriageClient.getAuthenticationUrl;
   setupGrid($scope, CHANGE_POINTS_GRID, _.partial(onFilterChanged, $scope, _.partial(getPoints, $scope, PerformanceAnalysisAndTriageClient)));
+
   getPoints($scope, PerformanceAnalysisAndTriageClient);
 });
 
@@ -51,7 +53,12 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
-        $scope.errorMessage = err.data.message;
+        $scope.connectionError = false;
+        if(err.data) {
+          $scope.errorMessage = err.data.message;
+        } else {
+          $scope.connectionError = true
+        }
       });
 }
 

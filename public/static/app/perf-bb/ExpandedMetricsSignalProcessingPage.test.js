@@ -34,6 +34,18 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       });
     }
 
+    it('should authenticate on failed requests', () => {
+      makeController();
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511, $scope)
+        .respond(function(){
+          return [null, null, null, null, 'error']
+        });
+      $httpBackend.flush();
+      $httpBackend.verifyNoOutstandingExpectation();
+      $httpBackend.verifyNoOutstandingRequest();
+      expect($scope.connectionError).toEqual(true);
+    });
+
     it('should be refresh the data when a new page is loaded', () => {
       makeController();
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511, $scope);
@@ -261,6 +273,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
   });
 });
 
+
 function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, pageSize, totalPages, $scope, newData) {
   let url = `${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?page_size=${pageSize}&page=${page}`;
   if($scope.variantRegex) {
@@ -283,7 +296,7 @@ function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, 
       url += `&thread_levels=${tl}`
     })
   }
-  $httpBackend.expectGET(url).respond(200, JSON.stringify(newData || standardData(page, pageSize, totalPages)));
+  return $httpBackend.expectGET(url).respond(200, JSON.stringify(newData || standardData(page, pageSize, totalPages)));
 }
 
 function standardData(page, pageSize, totalPages) {
