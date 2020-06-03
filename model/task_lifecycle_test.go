@@ -20,6 +20,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -1192,7 +1193,7 @@ func TestAbortTask(t *testing.T) {
 }
 func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
-	patchID := "aabbccddeeff001122334455"
+	patchID := mgobson.NewObjectId().Hex()
 	v := &Version{
 		Id:     patchID,
 		Status: evergreen.VersionStarted,
@@ -1239,12 +1240,12 @@ func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
-	assert.Equal(t, cq.FindItem("12"), -1)
+	assert.Equal(t, cq.FindItem(patchID), -1)
 	assert.Len(t, cq.Queue, 1)
 	assert.False(t, cq.Processing)
 
 	mergeTask, err := task.FindMergeTaskForVersion(patchID)
-
+	assert.NoError(t, err)
 	assert.Equal(t, mergeTask.Priority, int64(-1))
 	p, err = patch.FindOne(patch.ByVersion(patchID))
 	assert.NoError(t, err)
