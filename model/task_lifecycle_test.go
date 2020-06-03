@@ -20,7 +20,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -1193,7 +1192,7 @@ func TestAbortTask(t *testing.T) {
 }
 func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
-	patchID := mgobson.NewObjectId().Hex()
+	patchID := "aabbccddeeff001122334455"
 	v := &Version{
 		Id:     patchID,
 		Status: evergreen.VersionStarted,
