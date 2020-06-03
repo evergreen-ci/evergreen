@@ -38,18 +38,14 @@ type structInfo struct {
 	Fields string
 }
 
-type fieldInfo struct {
-	Name    string
-	Type    string
-	JsonTag string
-}
-
-type ExtractedField struct {
+type extractedField struct {
 	OutputFieldName string
+	OutputFieldType string
 	Nullable        bool
+	JsonTag         string
 }
 
-type ExtractedFields map[string]ExtractedField
+type extractedFields map[string]extractedField
 
 type conversionLine struct {
 	RestField          string
@@ -64,7 +60,10 @@ type modelConversionInfo struct {
 	TsConversions  string
 }
 
-func SchemaToGo(schema string) ([]byte, error) {
+// ModelMapping maps schema type names to their respective DB model
+type ModelMapping map[string]string
+
+func Codegen(schema string, config ModelMapping) ([]byte, error) {
 	source := ast.Source{
 		Input: schema,
 	}
@@ -86,6 +85,7 @@ func SchemaToGo(schema string) ([]byte, error) {
 	}
 	catcher := grip.NewBasicCatcher()
 	structs := ""
+	conversionCode := ""
 
 	typeNames := []string{}
 	for key := range parsedAst.Types {
@@ -93,6 +93,10 @@ func SchemaToGo(schema string) ([]byte, error) {
 	}
 	sort.Strings(typeNames)
 	for _, typeName := range typeNames {
+		dbModel, shouldConvert := config[typeName]
+		if !shouldConvert {
+			continue
+		}
 		gqlType := parsedAst.Types[typeName]
 		if gqlType.BuiltIn {
 			continue
@@ -101,22 +105,37 @@ func SchemaToGo(schema string) ([]byte, error) {
 			continue
 		}
 		fields := ""
+		extractedFields := extractedFields{}
 		for _, field := range gqlType.Fields {
-			fieldData, err := output(fieldTemplate, getFieldInfo(field))
+			fieldInfo := getFieldInfo(field)
+			extractedFields[field.Name] = fieldInfo
+			var fieldData string
+			fieldData, err = output(fieldTemplate, fieldInfo)
 			if err != nil {
 				catcher.Add(err)
 				continue
 			}
 			fields += fieldData
 		}
-		structData, err := output(structTemplate, structInfo{Name: typeName, Fields: fields})
+		var structData string
+		structData, err = output(structTemplate, structInfo{Name: typeName, Fields: fields})
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		structs += structData
+
+		parts := strings.Split(dbModel, ".")
+		if len(parts) < 2 {
+			return nil, errors.Errorf("invalid format for DB model: %s", dbModel)
+		}
+		code, err := createConversionMethods(strings.Join(parts[:len(parts)-1], "."), parts[len(parts)-1], extractedFields)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error generating conversion methods for type '%s'", typeName)
+		}
+		conversionCode += code
 	}
-	file, err := output(fileTemplate, fileInfo{Package: "model", Structs: structs})
+	file, err := output(fileTemplate, fileInfo{Package: "model", Structs: structs, Code: conversionCode})
 	catcher.Add(err)
 	formatted, err := goimports(file)
 	catcher.Add(err)
@@ -164,12 +183,14 @@ func output(t *template.Template, data interface{}) (string, error) {
 	return string(w.Bytes()), err
 }
 
-func getFieldInfo(f *ast.FieldDefinition) fieldInfo {
+func getFieldInfo(f *ast.FieldDefinition) extractedField {
 	name, tag := nameAndTag(f.Name)
-	return fieldInfo{
-		Name:    name,
-		Type:    gqlTypeToGoType(f.Type.Name()),
-		JsonTag: tag,
+	outputType := gqlTypeToGoType(f.Type.Name())
+	return extractedField{
+		OutputFieldName: name,
+		OutputFieldType: outputType,
+		Nullable:        strings.Contains(outputType, "*"),
+		JsonTag:         tag,
 	}
 }
 
@@ -192,33 +213,33 @@ func goimports(source string) ([]byte, error) {
 	})
 }
 
-func CreateConversionMethods(packageName, structName string, fields ExtractedFields) ([]byte, error) {
+func createConversionMethods(packageName, structName string, fields extractedFields) (string, error) {
 	pkg, err := importer.Default().Import(packageName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to resolve package '%s'", packageName)
+		return "", errors.Wrapf(err, "unable to resolve package '%s'", packageName)
 	}
 	scope := pkg.Scope()
 	if scope == nil {
-		return nil, errors.Errorf("unable to parse symbols in package '%s'", packageName)
+		return "", errors.Errorf("unable to parse symbols in package '%s'", packageName)
 	}
 	obj := scope.Lookup(structName)
 	if obj == nil {
-		return nil, errors.Errorf("struct '%s' not found in package '%s'", structName, packageName)
+		return "", errors.Errorf("struct '%s' not found in package '%s'", structName, packageName)
 	}
 	structVal, isStruct := obj.Type().Underlying().(*types.Struct)
 	if !isStruct {
-		return nil, errors.Errorf("identifier '%s' exists in package '%s' but is not a struct", structName, packageName)
+		return "", errors.Errorf("identifier '%s' exists in package '%s' but is not a struct", structName, packageName)
 	}
 
 	code, err := generateServiceConversions(structVal, packageName, structName, fields)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return goimports(code)
+	return code, nil
 }
 
-func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields ExtractedFields) (string, error) {
+func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields) (string, error) {
 	serviceTemplate, err := getTemplate(serviceMethodsTemplatePath)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting service methods template")
@@ -233,11 +254,16 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	}
 	bfsCode := []string{}
 	tsCode := []string{}
+	fieldErrs := grip.NewBasicCatcher()
 	for i := 0; i < structVal.NumFields(); i++ {
 		field := structVal.Field(i)
 		fieldName := field.Name()
 		if fieldInfo, shouldExtract := fields[fieldName]; shouldExtract {
 			// generate the BuildFromService code
+			if err = validateFieldTypes(fieldName, field.Type().String(), fieldInfo.OutputFieldType); err != nil {
+				fieldErrs.Add(err)
+				continue
+			}
 			converter, err := conversionFn(field.Type(), fieldInfo.Nullable)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
@@ -272,6 +298,9 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		sort.Strings(bfsCode)
 		sort.Strings(tsCode)
 	}
+	if fieldErrs.HasErrors() {
+		return "", fieldErrs.Resolve()
+	}
 	data := modelConversionInfo{
 		ModelType:      fmt.Sprintf("%s.%s", packageName, structName),
 		RestType:       fmt.Sprintf("API%s", structName),
@@ -279,4 +308,14 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		TsConversions:  strings.Join(tsCode, "\n"),
 	}
 	return output(serviceTemplate, data)
+}
+
+func validateFieldTypes(fieldName, inputType, outputType string) error {
+	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
+		// this should ideally be a more sophisticated check to ensure that complex types are convertible
+		// to each other, but for now we rely on the naming convention to find obvious type errors
+		return errors.Errorf("DB model field '%s' has type '%s' which is incompatible with REST model type '%s'", fieldName, inputType, outputType)
+	}
+
+	return nil
 }

@@ -63,6 +63,7 @@ func (s *hostSuite) SetupTest() {
 
 	s.testData = hostTemplateData{
 		ID:             "myHost",
+		Name:           "hostName",
 		Distro:         "myDistro",
 		ExpirationTime: time.Now().Add(2 * time.Hour),
 		URL:            "idk",
@@ -73,13 +74,13 @@ func (s *hostSuite) TestEmailMessage() {
 	email, err := hostExpirationEmailPayload(s.testData, expiringHostTitle, expiringHostBody, s.t.Selectors())
 	s.NoError(err)
 	s.Equal("myDistro host termination reminder", email.Subject)
-	s.Contains(email.Body, "Your myDistro host with id myHost will be terminated at")
+	s.Contains(email.Body, "Your myDistro host 'hostName' will be terminated at")
 }
 
 func (s *hostSuite) TestSlackMessage() {
 	msg, err := hostExpirationSlackPayload(s.testData, expiringHostBody, s.t.Selectors())
 	s.NoError(err)
-	s.Contains(msg.Body, "Your myDistro host with id myHost will be terminated at")
+	s.Contains(msg.Body, "Your myDistro host 'hostName' will be terminated at")
 }
 
 func (s *hostSuite) TestAllTriggers() {

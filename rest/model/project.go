@@ -15,23 +15,24 @@ type UIProjectFields struct {
 }
 
 type APIProject struct {
-	BatchTime           int                  `json:"batch_time"`
-	Branch              *string              `json:"branch_name"`
-	DisplayName         *string              `json:"display_name"`
-	Enabled             bool                 `json:"enabled"`
-	RepotrackerDisabled bool                 `json:"repotracker_disabled"`
-	Identifier          *string              `json:"identifier"`
-	Owner               *string              `json:"owner_name"`
-	Private             bool                 `json:"private"`
-	RemotePath          *string              `json:"remote_path"`
-	Repo                *string              `json:"repo_name"`
-	Tracked             bool                 `json:"tracked"`
-	DeactivatePrevious  bool                 `json:"deactivate_previous"`
-	Admins              []*string            `json:"admins"`
-	Tags                []*string            `json:"tags"`
-	TracksPushEvents    bool                 `json:"tracks_push_events"`
-	PRTestingEnabled    bool                 `json:"pr_testing_enabled"`
-	CommitQueue         APICommitQueueParams `json:"commit_queue"`
+	BatchTime             int                  `json:"batch_time"`
+	Branch                *string              `json:"branch_name"`
+	DisplayName           *string              `json:"display_name"`
+	Enabled               bool                 `json:"enabled"`
+	RepotrackerDisabled   bool                 `json:"repotracker_disabled"`
+	Identifier            *string              `json:"identifier"`
+	Owner                 *string              `json:"owner_name"`
+	Private               bool                 `json:"private"`
+	RemotePath            *string              `json:"remote_path"`
+	Repo                  *string              `json:"repo_name"`
+	Tracked               bool                 `json:"tracked"`
+	DeactivatePrevious    bool                 `json:"deactivate_previous"`
+	Admins                []*string            `json:"admins"`
+	Tags                  []*string            `json:"tags"`
+	TracksPushEvents      bool                 `json:"tracks_push_events"`
+	PRTestingEnabled      bool                 `json:"pr_testing_enabled"`
+	GitTagVersionsEnabled bool                 `json:"git_tag_versions_enabled"`
+	CommitQueue           APICommitQueueParams `json:"commit_queue"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -64,6 +65,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Tracked = v.Tracked
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
+	apiProject.GitTagVersionsEnabled = v.GitTagVersionsEnabled
 	apiProject.CommitQueue = cq
 	apiProject.DeactivatePrevious = v.DeactivatePrevious
 
@@ -210,6 +212,7 @@ type APIProjectRef struct {
 	DeactivatePrevious          bool                 `json:"deactivate_previous"`
 	TracksPushEvents            bool                 `json:"tracks_push_events"`
 	PRTestingEnabled            bool                 `json:"pr_testing_enabled"`
+	GitTagVersionsEnabled       bool                 `json:"git_tag_versions_enabled"`
 	DefaultLogger               *string              `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
@@ -264,6 +267,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		TracksPushEvents:      p.TracksPushEvents,
 		DefaultLogger:         FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:      p.PRTestingEnabled,
+		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
 		Tracked:               p.Tracked,
@@ -333,6 +337,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.TracksPushEvents = projectRef.TracksPushEvents
 	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
+	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
 	p.Tracked = projectRef.Tracked

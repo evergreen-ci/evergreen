@@ -1,13 +1,4 @@
-type MyType {
-  stringField: String
-  AnotherStringField: String
-  aTime: Time
-  number: Int
-  complex: [What!]
+type Revision {
+  Author: String
+  AuthorGithubUID: Int
 }
-
-type What {
-  yes: String
-}
-
-scalar Time
