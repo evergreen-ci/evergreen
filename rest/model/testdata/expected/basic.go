@@ -2,15 +2,22 @@
 
 package model
 
-import "time"
+import "github.com/evergreen-ci/evergreen/model"
 
-type MyType struct {
-	StringField        string    `json:"string_field"`
-	AnotherStringField string    `json:"another_string_field"`
-	ATime              time.Time `json:"a_time"`
-	Number             int       `json:"number"`
-	Complex            What      `json:"complex"`
+type Revision struct {
+	Author          string `json:"author"`
+	AuthorGithubUID int    `json:"author_github_u_i_d"`
 }
-type What struct {
-	Yes string `json:"yes"`
+
+func (m *APIRevision) BuildFromService(t model.Revision) error {
+	m.Author = stringToString(t.Author)
+	m.AuthorGithubUID = intToInt(t.AuthorGithubUID)
+	return nil
+}
+
+func (m *APIRevision) ToService() (model.Revision, error) {
+	out := model.Revision{}
+	out.Author = stringToString(m.Author)
+	out.AuthorGithubUID = intToInt(m.AuthorGithubUID)
+	return out, nil
 }
