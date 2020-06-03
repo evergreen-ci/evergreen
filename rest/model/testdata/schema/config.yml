@@ -1,0 +1,3 @@
+models:
+  Revision:
+    model: github.com/evergreen-ci/evergreen/model.Revision
