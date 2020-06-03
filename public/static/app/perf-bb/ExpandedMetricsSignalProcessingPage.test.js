@@ -35,11 +35,11 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     }
 
     it('should authenticate on failed requests', () => {
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511)
+      makeController();
+      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511, $scope)
         .respond(function(){
           return [null, null, null, null, 'error']
         });
-      makeController();
       $httpBackend.flush();
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -296,7 +296,7 @@ function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, 
       url += `&thread_levels=${tl}`
     })
   }
-  $httpBackend.expectGET(url).respond(200, JSON.stringify(newData || standardData(page, pageSize, totalPages)));
+  return $httpBackend.expectGET(url).respond(200, JSON.stringify(newData || standardData(page, pageSize, totalPages)));
 }
 
 function standardData(page, pageSize, totalPages) {
