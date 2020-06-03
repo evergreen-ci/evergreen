@@ -34,12 +34,16 @@ func TestCodegen(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			f, err := ioutil.ReadFile(filepath.Join("testdata", "schema", name+".graphql"))
 			require.NoError(t, err)
-			generated, err := Codegen(string(f), mapping)
+			generated, converters, err := Codegen(string(f), mapping)
 			require.NoError(t, err)
 
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "expected", name+".go"))
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(generated))
+
+			expected, err = ioutil.ReadFile(filepath.Join("testdata", "expected", name+"__converters.go"))
+			require.NoError(t, err)
+			assert.Equal(t, string(expected), string(converters))
 		})
 	}
 }
@@ -54,12 +58,13 @@ func TestCreateConversionMethods(t *testing.T) {
 		t.Skip()
 		return
 	}
+	generatedConversions := map[string]string{}
 	fields := extractedFields{
 		"Author":          extractedField{OutputFieldName: "One", OutputFieldType: "*string", Nullable: true},
 		"AuthorEmail":     extractedField{OutputFieldName: "Two", OutputFieldType: "string", Nullable: false},
 		"AuthorGithubUID": extractedField{OutputFieldName: "Three", OutputFieldType: "int", Nullable: false},
 	}
-	generated, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields)
+	generated, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields, generatedConversions)
 	assert.NoError(t, err)
 	expected := `
 func (m *APIRevision) BuildFromService(t model.Revision) error {
@@ -83,6 +88,7 @@ func TestCreateConversionMethodsError(t *testing.T) {
 	fields := extractedFields{
 		"Author": extractedField{OutputFieldName: "One", OutputFieldType: "int", Nullable: true},
 	}
-	_, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields)
+	generatedConversions := map[string]string{}
+	_, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields, generatedConversions)
 	assert.EqualError(t, err, `DB model field 'Author' has type 'string' which is incompatible with REST model type 'int'`)
 }

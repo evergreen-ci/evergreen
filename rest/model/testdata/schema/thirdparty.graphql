@@ -1,0 +1,4 @@
+type Source {
+  Name: String!
+  Input: String!
+}

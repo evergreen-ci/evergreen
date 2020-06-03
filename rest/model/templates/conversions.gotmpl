@@ -1,0 +1,19 @@
+func {{cleanName .Type}}{{cleanName .Type}}(in {{.Type}}) {{.Type}} {
+	return in
+}
+
+func {{cleanName .Type}}{{cleanName .Type}}Ptr(in {{.Type}}) *{{.Type}} {
+	return &in
+}
+
+func {{cleanName .Type}}Ptr{{cleanName .Type}}(in *{{.Type}}) {{.Type}} {
+    var out {{.Type}}
+	if in == nil {
+		return out
+	}
+	return *in
+}
+
+func {{cleanName .Type}}Ptr{{cleanName .Type}}Ptr(in *{{.Type}}) *{{.Type}} {
+	return in
+}

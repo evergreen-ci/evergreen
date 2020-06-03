@@ -1,4 +1,4 @@
 type Revision {
   Author: String
-  AuthorGithubUID: Int
+  AuthorGithubUID: Int!
 }

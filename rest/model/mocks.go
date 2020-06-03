@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type MockModel struct {
 	FieldId   string
 	FieldInt1 int
@@ -19,4 +21,10 @@ func (m *MockModel) ToService() (interface{}, error) {
 
 func (m *MockModel) BuildFromService(in interface{}) error {
 	return nil
+}
+
+type MockScalars struct {
+	TimeType time.Time
+	MapType  map[string]interface{}
+	AnyType  interface{}
 }

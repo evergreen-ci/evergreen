@@ -1,3 +1,7 @@
 models:
   Revision:
     model: github.com/evergreen-ci/evergreen/model.Revision
+  Source:
+    model: github.com/vektah/gqlparser/v2/ast.Source
+  Scalars:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockScalars
