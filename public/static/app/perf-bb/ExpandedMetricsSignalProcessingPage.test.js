@@ -39,15 +39,11 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         .respond(function(){
           return [null, null, null, null, 'error']
         });
-      var attempts = 0;
-      PerformanceAnalysisAndTriageClient.authenticate = function() {
-        attempts++;
-      };
       makeController();
       $httpBackend.flush();
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
-      expect(attempts).toEqual(1);
+      expect($scope.connectionError).toEqual(true);
     });
 
     it('should be refresh the data when a new page is loaded', () => {

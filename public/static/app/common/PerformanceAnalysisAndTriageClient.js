@@ -2,8 +2,8 @@ mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter
   const client = ApiUtil.httpGetter(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE);
 
   return {
-    authenticate: function() {
-      $window.location.href = PERFORMANCE_ANALYSIS_AND_TRIAGE_API.AUTH_URL + "?redirect=" + $window.location.href
+    getAuthenticationUrl: function() {
+      return PERFORMANCE_ANALYSIS_AND_TRIAGE_API.AUTH_URL + "?redirect=" + $window.location.href
     },
     getVersionChangePoints: function (projectId, page, pageSize) {
       return client(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION, {
