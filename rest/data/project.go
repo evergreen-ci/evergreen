@@ -62,7 +62,13 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 }
 
 func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
-	return model.GetProjectFromFile(ctx, pRef, file, token)
+	opts := model.GetProjectOpts{
+		Ref:        &pRef,
+		Revision:   pRef.Branch,
+		RemotePath: file,
+		Token:      token,
+	}
+	return model.GetProjectFromFile(ctx, opts)
 }
 
 // EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.

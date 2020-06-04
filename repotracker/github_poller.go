@@ -2,7 +2,6 @@ package repotracker
 
 import (
 	"context"
-	"encoding/base64"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -65,27 +64,13 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
-
-	githubFile, err := thirdparty.GetGithubFile(ctx, gRepoPoller.OauthToken,
-		projectRef.Owner, projectRef.Repo, projectRef.RemotePath,
-		projectFileRevision)
-	if err != nil {
-		return nil, nil, err
+	opts := model.GetProjectOpts{
+		Ref:        projectRef,
+		RemotePath: projectRef.RemotePath,
+		Revision:   projectFileRevision,
+		Token:      gRepoPoller.OauthToken,
 	}
-
-	projectFileBytes, err := base64.StdEncoding.DecodeString(*githubFile.Content)
-	if err != nil {
-		return nil, nil, thirdparty.FileDecodeError{Message: err.Error()}
-	}
-
-	projectConfig := &model.Project{}
-	pp, err := model.LoadProjectInto(projectFileBytes, projectRef.Identifier, projectConfig)
-
-	if err != nil {
-		return nil, nil, thirdparty.YAMLFormatError{Message: err.Error()}
-	}
-
-	return projectConfig, pp, nil
+	return model.GetProjectFromFile(ctx, opts)
 }
 
 // GetRemoteConfig fetches the contents of a remote github repository's

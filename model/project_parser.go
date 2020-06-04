@@ -520,20 +520,27 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
 }
 
-func GetProjectFromFile(ctx context.Context, ref ProjectRef, file, token string) (*Project, *ParserProject, error) {
-	configFile, err := thirdparty.GetGithubFile(ctx, token, ref.Owner, ref.Repo, file, ref.Branch)
+type GetProjectOpts struct {
+	Ref        *ProjectRef
+	RemotePath string
+	Revision   string
+	Token      string
+}
+
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
+	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s'", ref.Identifier)
+		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s'", opts.Ref.Identifier)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", ref.Identifier)
+		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Identifier)
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(fileContents, ref.Identifier, &config)
+	pp, err := LoadProjectInto(fileContents, opts.Ref.Identifier, &config)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
+		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Identifier)
 	}
 	return &config, pp, nil
 }

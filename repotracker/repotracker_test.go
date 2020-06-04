@@ -860,13 +860,13 @@ func TestCreateManifest(t *testing.T) {
 }
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(user.Collection))
 	// triggered from yaml
 	metadata := model.VersionMetadata{
 		RemotePath: "releases.yml",
 		Revision: model.Revision{
-			Author:          "ablack12",
-			AuthorGithubUID: 12,
+			AuthorID:        "regina.phalange",
+			Author:          "Regina Phalange",
+			AuthorEmail:     "not-fake@email.com",
 			RevisionMessage: "EVG-1234 good version",
 			Revision:        "1234",
 		},
@@ -875,16 +875,6 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 			Pusher: "release-bot",
 		},
 	}
-	user := user.DBUser{
-		Id: "annie.black",
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID:         12,
-				LastKnownAs: "ablack12",
-			},
-		},
-	}
-	assert.NoError(t, user.Insert())
 	pRef := &model.ProjectRef{
 		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
@@ -894,10 +884,12 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
-	assert.Equal(t, "annie.black", v.AuthorID)
-	assert.Equal(t, "release", v.TriggeredByGitTag.Tag)
-	assert.Equal(t, "release-bot", v.TriggeredByGitTag.Pusher)
+	assert.Equal(t, metadata.Revision.AuthorID, v.AuthorID)
+	assert.Equal(t, metadata.Revision.Author, v.Author)
+	assert.Equal(t, metadata.Revision.AuthorEmail, v.AuthorEmail)
+	assert.Equal(t, metadata.GitTag.Tag, v.TriggeredByGitTag.Tag)
+	assert.Equal(t, metadata.GitTag.Pusher, v.TriggeredByGitTag.Pusher)
+	assert.Equal(t, metadata.RemotePath, v.RemotePath)
 	assert.Contains(t, v.Id, "my_project_release_")
 	assert.Equal(t, "Triggered From Git Tag 'release': EVG-1234 good version", v.Message)
-	assert.Equal(t, "releases.yml", v.RemotePath)
 }

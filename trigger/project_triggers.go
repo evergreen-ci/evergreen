@@ -127,19 +127,23 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 }
 
 func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, error) {
+	opts := model.GetProjectOpts{
+		Ref:        &ref,
+		RemotePath: file,
+		Revision:   ref.Branch,
+	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error getting evergreen settings")
 	}
-	token, err := settings.GetGithubOauthToken()
+	opts.Token, err = settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-
-	return model.GetProjectFromFile(ctx, ref, file, token)
+	return model.GetProjectFromFile(ctx, opts)
 }
 
 func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (*model.Project, *model.ParserProject, error) {
