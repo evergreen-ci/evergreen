@@ -210,7 +210,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	event.LogDistroModified(id, u.Username(), newDistro)
+	event.LogDistroModified(id, u.Username(), newDistro.NewDistroData())
 
 	message := fmt.Sprintf("Distro %v successfully updated.", id)
 	if shouldDeco {
@@ -246,7 +246,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroRemoved(id, u.Username(), d)
+	event.LogDistroRemoved(id, u.Username(), d.NewDistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully removed.", id)))
 	gimlet.WriteJSON(w, "distro successfully removed")
@@ -340,7 +340,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogDistroAdded(d.Id, u.Username(), d)
+	event.LogDistroAdded(d.Id, u.Username(), d.NewDistroData())
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully added.", d.Id)))
 	gimlet.WriteJSON(w, "distro successfully added")

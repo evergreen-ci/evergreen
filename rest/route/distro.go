@@ -302,7 +302,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.sc.UpdateDistro(original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), newDistro)
+		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
