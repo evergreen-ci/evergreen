@@ -151,7 +151,7 @@ func ByNeedsPlanning(containerPools []evergreen.ContainerPool) db.Q {
 		}})
 }
 
-// ByNeedsPlanning returns a query that selects distros that don't run containers
+// ByNeedsHostsPlanning returns a query that selects distros that don't run containers
 func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) db.Q {
 	poolDistros := []string{}
 	for _, pool := range containerPools {
@@ -161,6 +161,21 @@ func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) db.Q {
 		"_id": bson.M{
 			"$nin": poolDistros,
 		}})
+}
+
+// ByIsDisabled returns a query that selects distros that don't run containers and are disabled
+func ByIsDisabled(containerPools []evergreen.ContainerPool) db.Q {
+	poolDistros := []string{}
+	for _, pool := range containerPools {
+		poolDistros = append(poolDistros, pool.Distro)
+	}
+	return db.Query(bson.M{
+		// TODO: test query
+		"_id": bson.M{
+			"$nin": poolDistros},
+		"DisabledKey": bson.M{
+			"$exists": true},
+	})
 }
 
 // ByIds creates a query that finds all distros for the given ids and implicitly
