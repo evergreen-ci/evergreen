@@ -18,7 +18,7 @@ mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter
         measurement_regex: measurementRegex,
         thread_levels: threadLevels,
         calculated_on: calculatedOnWindow,
-        percent_change: percentChangeWindows
+        percent_change: percentChangeWindows,
         triage_status_regex: triageStatusRegex,
       })
     },
