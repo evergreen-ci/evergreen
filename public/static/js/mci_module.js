@@ -45,6 +45,7 @@ var mciModule = angular.module('MCI', [
   'md.time.picker',
   'md5',
   'ngMaterial',
+  'ngMaterialDateRangePicker',
   'ngRoute',
   'ngSanitize',
   'ui.grid',

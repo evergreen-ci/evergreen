@@ -1,11 +1,12 @@
 mciModule.controller('ExpandedMetricsSignalProcessingController', function(
-  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams
+  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams, PERFBB_HAZARD_VALUES
 ) {
   $scope.page = 0;
   $scope.pageSize = 10;
   $scope.totalPages = 1;
   $scope.projectId = $routeParams.projectId;
   $scope.measurementRegex = 'AverageLatency|Latency50thPercentile|Latency95thPercentile';
+  $scope.hazardValues = PERFBB_HAZARD_VALUES;
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
@@ -40,6 +41,7 @@ function handleResponse(result, $scope) {
         percent_change: cp.percent_change.toFixed(2),
         triage_status: cp.triage.triage_status,
         thread_level: cp.time_series_info.thread_level,
+        calculated_on: cp.calculated_on
       })
     }
   }
@@ -50,7 +52,7 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.gridOptions.data = [];
   $scope.isLoading = true;
   $scope.errorMessage = null;
-  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels)
+  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.calculatedOnWindow, $scope.percentChangeWindows)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
         $scope.connectionError = false;
@@ -80,6 +82,37 @@ function onFilterChanged($scope, loaderFunction) {
     } else if (col.field === "thread_level") {
       let tls = col.filters[0].term;
       $scope.threadLevels = tls ? tls.split(',') : undefined;
+    } else if (col.field === 'calculated_on') {
+      let dates = col.filters[0].term;
+      if (dates) {
+        let startDate = dates[0];
+        let endDate = dates[dates.length - 1];
+        startDate = startDate ? startDate.toISOString() : '';
+        endDate = endDate ? endDate.toISOString() : '';
+        $scope.calculatedOnWindow = `${startDate.replace('Z','')},${endDate.replace('Z','')}`
+      }
+    } else if (col.field === 'percent_change') {
+      let selected = col.filters[0].term;
+      $scope.percentChangeWindows = [];
+      if (selected) {
+        selected.forEach(function (category) {
+          if (category === "Major Regression") {
+            $scope.percentChangeWindows.push(",-50")
+          } else if (category === "Moderate Regression") {
+            $scope.percentChangeWindows.push("-50,-20")
+          } else if (category === "Minor Regression") {
+            $scope.percentChangeWindows.push("-20,0")
+          } else if (category === "No Change") {
+            $scope.percentChangeWindows.push("0,0")
+          } else if (category === "Minor Improvement") {
+            $scope.percentChangeWindows.push("0,20")
+          } else if (category === "Moderate Improvement") {
+            $scope.percentChangeWindows.push("20,50")
+          } else if (category === "Major Improvement") {
+            $scope.percentChangeWindows.push("50,")
+          }
+        })
+      }
     }
   });
   new Promise((resolve, reject) => {
@@ -104,9 +137,19 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
       {
         name: 'Percent Change',
         field: 'percent_change',
-        type: 'number',
         cellTemplate: '<percent-change-cell row="row" ctx="grid.appScope.spvm.refCtx" />',
+        filterHeaderTemplate: `
+          <md-input-container style="margin:0">
+            <md-select ng-model="col.filters[0].term" multiple>
+              <md-option ng-value="hv" ng-repeat="hv in col.filters[0].hazardValues">{{hv}}</md-option>
+            </md-select>
+          </md-input-container>
+        `,
         width: CHANGE_POINTS_GRID.HAZARD_COL_WIDTH,
+        filter: {
+          term: null,
+          hazardValues: $scope.hazardValues
+        },
       },
       {
         name: 'Variant',
@@ -149,6 +192,14 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         name: 'Triage Status',
         field: 'triage_status',
       },
+      {
+        name: 'Calculated On',
+        field: 'calculated_on',
+        filterHeaderTemplate: '<md-date-range one-panel="true" auto-confirm="true" ng-model="selectedDate" md-on-select="col.filters[0].term = $dates"></md-date-range>',
+        filter: {
+          term: null
+        }
+      }
     ]
   };
 }

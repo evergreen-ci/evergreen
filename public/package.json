@@ -30,5 +30,8 @@
     "react": "^16.2.0",
     "react-bootstrap": "^0.31.5",
     "react-dom": "^16.2.0"
+  },
+  "dependencies": {
+    "md-date-range-picker": "^0.8.4"
   }
 }
