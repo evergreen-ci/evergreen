@@ -5,7 +5,7 @@ mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter
     getAuthenticationUrl: function() {
       return PERFORMANCE_ANALYSIS_AND_TRIAGE_API.AUTH_URL + "?redirect=" + $window.location.href
     },
-    getVersionChangePoints: function (projectId, page, pageSize, variantRegex, versionRegex, taskRegex, testRegex, measurementRegex, threadLevels) {
+    getVersionChangePoints: function (projectId, page, pageSize, variantRegex, versionRegex, taskRegex, testRegex, measurementRegex, threadLevels, triageStatusRegex) {
       return client(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION, {
         projectId: projectId,
       }, {
@@ -17,6 +17,7 @@ mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter
         test_regex: testRegex,
         measurement_regex: measurementRegex,
         thread_levels: threadLevels,
+        triage_status_regex: triageStatusRegex,
       })
     },
   }
