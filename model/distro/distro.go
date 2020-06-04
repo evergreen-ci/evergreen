@@ -56,7 +56,7 @@ type Distro struct {
 }
 
 type DistroData struct {
-	Distro              `bson:",inline"`
+	Distro              Distro                   `bson:",inline"`
 	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
