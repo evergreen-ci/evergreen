@@ -486,13 +486,28 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		// clear queues for purposefully disabled distros
 
+		grip.Info(message.Fields{
+			"name":      "hhoke",
+			"operation": "reached block"})
 		disabled_distros, err := distro.Find(distro.ByIsDisabled(env.Settings().ContainerPools.Pools))
+		grip.Info(message.Fields{
+			"name":             "hhoke",
+			"disabled_distros": disabled_distros,
+			"err":              err,
+			"operation":        "post-ByIsDisabled"})
+		catcher.Add(err)
 		disabled_distro_ids := distro.DistroGroup(disabled_distros).GetDistroIds()
+		grip.Info(message.Fields{
+			"name":                "hhoke",
+			"disabled_distro_ids": disabled_distro_ids,
+			"err":                 err,
+			"operation":           "post-ByIsDisabledIDS"})
 		for _, distroID := range disabled_distro_ids {
 			// we can just delete these queues, the tasks will persist
 			// and get rescheduled once the distro is no longer disabled
 			model.RemoveTaskQueues(distroID)
 			grip.Info(message.Fields{
+				"name":      "hhoke",
 				"distro":    distroID,
 				"operation": "task queue cleared on disable",
 			})
