@@ -25,7 +25,7 @@ module.exports = function(config) {
       'thirdparty/ui-grid.min.js',
       'thirdparty/select.min.js',
       'thirdparty/moment.min.js',
-      'thirdparty/md-date-range-picker/md-date-range-picker.js',
+      'thirdparty/md-date-range-picker.min.js',
       'js/mci_module.js',
       'js/**/*.js',
       'plugins/*/js/*.js',

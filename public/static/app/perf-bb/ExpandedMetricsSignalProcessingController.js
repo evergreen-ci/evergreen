@@ -1,12 +1,20 @@
 mciModule.controller('ExpandedMetricsSignalProcessingController', function(
-  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams, PERFBB_HAZARD_VALUES
+  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams
 ) {
   $scope.page = 0;
   $scope.pageSize = 10;
   $scope.totalPages = 1;
   $scope.projectId = $routeParams.projectId;
   $scope.measurementRegex = 'AverageLatency|Latency50thPercentile|Latency95thPercentile';
-  $scope.hazardValues = PERFBB_HAZARD_VALUES;
+  $scope.hazardValues = [
+    'Major Regression',
+    'Moderate Regression',
+    'Minor Regression',
+    'No Change',
+    'Minor Improvement',
+    'Moderate Improvement',
+    'Major Improvement',
+  ];
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
