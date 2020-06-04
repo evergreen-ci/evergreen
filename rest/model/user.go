@@ -299,6 +299,7 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 
 type APIUser struct {
 	DisplayName *string `json:"display_name"`
+	UserID      *string `json:"user_id"`
 }
 
 func (a *APIUser) BuildFromService(h interface{}) error {

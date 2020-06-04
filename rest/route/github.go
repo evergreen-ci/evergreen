@@ -206,7 +206,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"is_tag":     isTag(event.GetRef()),
 		})
 		if isTag(event.GetRef()) {
-			if err := gh.createVersionForTag(ctx, event); err != nil {
+			if err := gh.handleGitTag(ctx, event); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 			return gimlet.NewJSONResponse(struct{}{})
@@ -322,7 +322,8 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest) error {
 	return nil
 }
 
-func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.PushEvent) error {
+// handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
+func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEvent) error {
 	if err := validatePushTagEvent(event); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -408,7 +409,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, event *github.
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
 			continue
 		}
-		if !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, pusher) {
+		if !pRef.GitTagVersionsEnabled || !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, pusher) {
 			continue
 		}
 		// TODO: add ability to create version from config here

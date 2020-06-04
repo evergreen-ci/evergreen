@@ -66,8 +66,8 @@ func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) myPatchesTimeline(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	if user.Settings.UseSpruceOptions.PatchPage {
-		http.Redirect(w, r, fmt.Sprintf("%s/patches/user/%s", uis.Settings.Ui.UIv2Url, user.Username()), http.StatusTemporaryRedirect)
+	if user.Settings.UseSpruceOptions.SpruceV1 {
+		http.Redirect(w, r, fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username()), http.StatusTemporaryRedirect)
 		return
 	}
 

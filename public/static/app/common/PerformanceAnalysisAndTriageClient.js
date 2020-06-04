@@ -1,13 +1,23 @@
-mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter, ApiUtil, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, CEDAR_APP_URL) {
+mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter, ApiUtil, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, $window) {
   const client = ApiUtil.httpGetter(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE);
 
   return {
-    getVersionChangePoints: function (projectId, page, pageSize) {
+    getAuthenticationUrl: function() {
+      return PERFORMANCE_ANALYSIS_AND_TRIAGE_API.AUTH_URL + "?redirect=" + $window.location.href
+    },
+    getVersionChangePoints: function (projectId, page, pageSize, variantRegex, versionRegex, taskRegex, testRegex, measurementRegex, threadLevels, triageStatusRegex) {
       return client(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION, {
         projectId: projectId,
       }, {
         page: page,
-        pageSize: pageSize
+        page_size: pageSize,
+        variant_regex: variantRegex,
+        version_regex: versionRegex,
+        task_regex: taskRegex,
+        test_regex: testRegex,
+        measurement_regex: measurementRegex,
+        thread_levels: threadLevels,
+        triage_status_regex: triageStatusRegex,
       })
     },
   }

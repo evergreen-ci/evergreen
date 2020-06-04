@@ -520,6 +520,11 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2Fleet
 }
 
+func IsDockerProvider(provider string) bool {
+	return provider == evergreen.ProviderNameDocker ||
+		provider == evergreen.ProviderNameDockerMock
+}
+
 func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
 	region := settings.Region
 	if region == "" {

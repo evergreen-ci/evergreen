@@ -146,4 +146,5 @@ mciModule
   .constant("PERFORMANCE_ANALYSIS_AND_TRIAGE_API", {
     BASE:'https://signal-processing-service.server-tig.prod.corp.mongodb.com',
     CHANGE_POINTS_BY_VERSION: '/change_points/project/{projectId}/by_version',
+    AUTH_URL: 'https://login.corp.mongodb.com/login'
   });

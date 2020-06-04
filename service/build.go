@@ -57,6 +57,14 @@ func getUiTaskCache(build *build.Build) ([]uiTask, time.Duration, time.Duration,
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
+	if r.FormValue("redirect_spruce_users") == "true" {
+		user := MustHaveUser(r)
+		if user.Settings.UseSpruceOptions.SpruceV1 {
+			http.Redirect(w, r, fmt.Sprintf("%s/version/%s?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.DisplayName), http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
 	if projCtx.Build == nil || projCtx.Version == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
