@@ -15,6 +15,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
     'Moderate Improvement',
     'Major Improvement',
   ];
+  $scope.triageStatusRegex = 'not_triaged';
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
@@ -60,7 +61,7 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.gridOptions.data = [];
   $scope.isLoading = true;
   $scope.errorMessage = null;
-  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.calculatedOnWindow, $scope.percentChangeWindows)
+  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.triageStatusRegex, $scope.calculatedOnWindow, $scope.percentChangeWindows)
       .then(result => handleResponse(result, $scope), err => {
         $scope.isLoading = false;
         $scope.connectionError = false;
@@ -90,6 +91,7 @@ function onFilterChanged($scope, loaderFunction) {
     } else if (col.field === "thread_level") {
       let tls = col.filters[0].term;
       $scope.threadLevels = tls ? tls.split(',') : undefined;
+
     } else if (col.field === 'calculated_on') {
       let dates = col.filters[0].term;
       if (dates) {
@@ -121,6 +123,8 @@ function onFilterChanged($scope, loaderFunction) {
           }
         })
       }
+    } else if (col.field === "triage_status") {
+      $scope.triageStatusRegex = col.filters[0].term;
     }
   });
   new Promise((resolve, reject) => {
@@ -199,6 +203,10 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
       {
         name: 'Triage Status',
         field: 'triage_status',
+        type: 'string',
+        filter: {
+          term: $scope.triageStatusRegex
+        }
       },
       {
         name: 'Calculated On',

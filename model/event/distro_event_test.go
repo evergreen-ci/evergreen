@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -16,11 +17,12 @@ func TestLoggingDistroEvents(t *testing.T) {
 		Convey("logged events should be stored and queryable in sorted order", func() {
 			distroId := "distro_id"
 			userId := "user_id"
-
+			// simulate ProviderSettingsMap from DistroData
+			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-1234")).ExportMap()
 			// log some events, sleeping in between to make sure the times are different
 			LogDistroAdded(distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
-			LogDistroModified(distroId, userId, "update")
+			LogDistroModified(distroId, userId, data)
 			time.Sleep(1 * time.Millisecond)
 			LogDistroRemoved(distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
@@ -49,7 +51,12 @@ func TestLoggingDistroEvents(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
-			So(eventData.Data.(string), ShouldEqual, "update")
+
+			doc := birch.NewDocument()
+			doc.ExtendInterface(eventData.Data)
+			ami, ok := doc.Lookup("ami").StringValueOK()
+			So(ok, ShouldBeTrue)
+			So(ami, ShouldEqual, "ami-1234")
 
 			event = eventsForDistro[2]
 			So(event.EventType, ShouldEqual, EventDistroRemoved)

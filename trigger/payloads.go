@@ -466,7 +466,7 @@ func buildLink(uiBase string, buildID string) string {
 }
 
 func versionLink(uiBase string, versionID string) string {
-	return fmt.Sprintf("%s/version/%s/", uiBase, url.PathEscape(versionID))
+	return fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", uiBase, url.PathEscape(versionID))
 }
 
 func hostLink(uiBase string, hostID string) string {

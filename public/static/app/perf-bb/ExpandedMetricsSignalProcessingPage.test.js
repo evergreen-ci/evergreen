@@ -202,6 +202,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       $scope.taskRegex = 'some_task';
       $scope.testRegex = 'some_test';
       $scope.measurementRegex = 'some_measurement';
+      $scope.triageStatusRegex = "some_triage_status";
       $scope.threadLevels = [1,2,3];
       $scope.percentChangeWindows = ["0,20"];
       $scope.calculatedOnWindow = "2020-06-09T04:00:00.000,2020-06-18T04:00:00.000";
@@ -214,6 +215,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should set up the grid, with defaults', () => {
       makeController();
+      expect($scope.triageStatusRegex).toEqual('not_triaged');
       expect($scope.measurementRegex).toEqual('AverageLatency|Latency50thPercentile|Latency95thPercentile');
       delete $scope.gridOptions.onRegisterApi;
       expect($scope.gridOptions).toEqual({
@@ -282,6 +284,10 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
           {
             name: 'Triage Status',
             field: 'triage_status',
+            type: 'string',
+            filter: {
+              term: 'not_triaged'
+            }
           },
           {
             name: 'Calculated On',
@@ -314,6 +320,9 @@ function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, 
   }
   if($scope.measurementRegex) {
     url += `&measurement_regex=${encodeURI($scope.measurementRegex)}`
+  }
+  if($scope.triageStatusRegex) {
+    url += `&triage_status_regex=${encodeURI($scope.triageStatusRegex)}`
   }
   if($scope.threadLevels) {
     $scope.threadLevels.forEach(tl => {

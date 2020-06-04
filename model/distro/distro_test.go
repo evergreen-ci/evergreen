@@ -9,11 +9,13 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestGenerateName(t *testing.T) {
@@ -489,4 +491,37 @@ func TestAddPermissions(t *testing.T) {
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(t, err)
 	assert.Contains(t, dbUser.Roles(), "admin_distro_myDistro")
+}
+
+func TestLogDistroModifiedWithDistroData(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(event.AllLogCollection))
+
+	d := Distro{
+		Id:       "rainbow-lollipop",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument().Set(birch.EC.String("ami", "ami-1234")),
+			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
+		},
+	}
+	event.LogDistroModified(d.Id, "user1", d.NewDistroData())
+	eventsForDistro, err := event.Find(event.AllLogCollection, event.DistroEventsInOrder(d.Id))
+	assert.NoError(t, err)
+	require.Len(t, eventsForDistro, 1)
+	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)
+	assert.True(t, ok)
+	assert.Equal(t, "user1", eventData.UserId)
+	assert.NotNil(t, eventData.Data)
+
+	data := DistroData{}
+	body, err := bson.Marshal(eventData.Data)
+	assert.NoError(t, err)
+	assert.NoError(t, bson.Unmarshal(body, &data))
+	require.NotNil(t, data)
+	assert.Equal(t, d.Id, data.Distro.Id)
+	assert.Equal(t, d.Provider, data.Distro.Provider)
+	assert.Nil(t, data.Distro.ProviderSettingsList)
+	require.Len(t, data.ProviderSettingsMap, 2)
+	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
+	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
 }
