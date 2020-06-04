@@ -492,7 +492,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		disabled_distros, err := distro.Find(distro.ByIsDisabled(env.Settings().ContainerPools.Pools))
 		grip.Info(message.Fields{
 			"name":             "hhoke",
-			"disabled_distros": disabled_distros,
+			"disabled_distros": len(disabled_distros),
 			"err":              err,
 			"operation":        "post-ByIsDisabled"})
 		catcher.Add(err)
