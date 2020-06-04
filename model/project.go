@@ -336,7 +336,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "error unmarshalling into temp structure")
+		return errors.Wrap(err, "input fields may not match the command fields")
 	}
 	c.Function = temp.Function
 	c.Type = temp.Type
