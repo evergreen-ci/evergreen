@@ -85,9 +85,9 @@ type scriptingExec struct {
 	// (e.g. GOPATH or VirtualEnv.) Specify a subpath of the
 	// working directory.
 	HarnessPath string `mapstructure:"harness_path"`
-	// HostPath is the path to the hosting interpreter or binary,
-	// where appropriate. This should be the path to the python
-	// interpreter or go binary.
+	// HostPath is the path to the hosting interpreter or binary, where
+	// appropriate. This should be the path to the interpreter for python or
+	// GOROOT for golang.
 	HostPath string `mapstructure:"host_path"`
 
 	////////////////////////////////
@@ -228,6 +228,10 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 		return errors.Errorf("reporting test results is not supported for harness '%s'", c.Harness)
 	}
 
+	if (c.Harness == "go" || c.Harness == "golang") && c.HostPath == "" && c.Env["GOROOT"] == "" {
+		return errors.Errorf("path to GOROOT is required for golang")
+	}
+
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}
@@ -309,8 +313,6 @@ func (c *scriptingExec) getOutputWithWriter(w io.Writer, logger client.LoggerPro
 		SendErrorToOutput: c.RedirectStandardErrorToOutput,
 	}
 
-	// kim: TODO: not entirely sure that this will send at the correct level to
-	// both senders for all the output.
 	ww := send.WrapWriter(w)
 
 	var logSender send.Sender
@@ -403,6 +405,14 @@ func (c *scriptingExec) getHarnessConfig(output options.Output) (options.Scripti
 			Lisp:           c.HostPath,
 		}, nil
 	case "golang", "go":
+		goroot := c.Env["GOROOT"]
+		if goroot == "" {
+			goroot = c.HostPath
+		}
+		gopath := c.Env["GOPATH"]
+		if gopath == "" {
+			gopath = filepath.Join(c.WorkingDir, c.HarnessPath)
+		}
 		return &options.ScriptingGolang{
 			Output:         output,
 			Environment:    c.Env,
@@ -491,7 +501,6 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	}
 
 	if c.Report {
-		logger.Task().Infof("kim: finished testing, got report output: %s" report.String())
 		if err := c.reportTestResults(ctx, comm, logger, conf, report); err != nil {
 			return errors.Wrap(err, "reporting test results")
 		}
