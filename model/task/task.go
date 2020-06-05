@@ -1044,6 +1044,10 @@ func DeactivateDependencies(tasks []string, caller string) error {
 		}
 	}
 
+	if len(tasksToUpdate) == 0 {
+		return nil
+	}
+
 	taskIDsToUpdate := make([]string, 0, len(tasksToUpdate))
 	for _, t := range tasksToUpdate {
 		taskIDsToUpdate = append(taskIDsToUpdate, t.Id)

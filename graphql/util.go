@@ -460,7 +460,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
+		if err := model.SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
 	default:

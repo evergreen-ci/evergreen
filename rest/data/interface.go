@@ -215,7 +215,7 @@ type Connector interface {
 	// RestartVersion restarts all completed tasks of a version given its ID and the caller.
 	RestartVersion(string, string) error
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
-	SetPatchPriority(string, int64) error
+	SetPatchPriority(string, int64, string) error
 	SetPatchActivated(context.Context, string, string, bool, *evergreen.Settings) error
 
 	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document

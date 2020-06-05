@@ -245,43 +245,47 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
 func SetBuildPriority(buildId string, priority int64, caller string) error {
-	modifier := bson.M{task.PriorityKey: priority}
-	//blacklisted - these tasks should never run, so unschedule now
-	if priority < 0 {
-		modifier[task.ActivatedKey] = false
-	}
-
 	_, err := task.UpdateAll(
 		bson.M{task.BuildIdKey: buildId},
-		bson.M{"$set": modifier},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
 		return errors.Wrapf(err, "problem setting build '%s' priority", buildId)
 	}
 
+	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAllTaskIDsFromBuild(buildId)
+		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).
+			WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
-			return errors.Wrap(err, "can't get tasks for build")
+			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
-		return task.DeactivateDependencies(tasks, caller)
+		return task.DeactivateTasks(tasks, caller)
 	}
 
 	return nil
 }
 
 // SetVersionPriority updates the priority field of all tasks associated with the given version id.
-func SetVersionPriority(versionId string, priority int64) error {
-	modifier := bson.M{task.PriorityKey: priority}
-	//blacklisted - these tasks should never run, so unschedule now
-	if priority < 0 {
-		modifier[task.ActivatedKey] = false
-	}
-
+func SetVersionPriority(versionId string, priority int64, caller string) error {
 	_, err := task.UpdateAll(
 		bson.M{task.VersionKey: versionId},
-		bson.M{"$set": modifier},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
+	if err != nil {
+		return errors.Wrapf(err, "problem setting version '%s' priority", versionId)
+	}
+
+	//blacklisted - these tasks should never run, so unschedule now
+	if priority < 0 {
+		tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
+			WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
+		}
+		return task.DeactivateTasks(tasks, caller)
+	}
+
 	return err
 }
 

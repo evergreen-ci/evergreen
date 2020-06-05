@@ -464,7 +464,7 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 	p, err := s.ctx.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
-	err = s.ctx.SetPatchPriority(s.obj_ids[0], 7)
+	err = s.ctx.SetPatchPriority(s.obj_ids[0], 7, "")
 	s.NoError(err)
 	if s.mock {
 		s.Equal(int64(7), s.ctx.(*MockConnector).MockPatchConnector.CachedPriority[*p.Id])
