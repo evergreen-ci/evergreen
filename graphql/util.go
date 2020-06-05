@@ -138,7 +138,7 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 		if _, ok := baseTaskStatusesByDisplayNameByVariant[task.BuildVariant]; !ok {
 			baseTaskStatusesByDisplayNameByVariant[task.BuildVariant] = map[string]string{}
 		}
-		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
+		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.GetDisplayStatus()
 	}
 	return baseTaskStatusesByDisplayNameByVariant, nil
 }
@@ -530,7 +530,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 func getAllTaskStatuses(tasks []task.Task) []string {
 	statusesMap := map[string]bool{}
 	for _, task := range tasks {
-		statusesMap[task.Status] = true
+		statusesMap[task.GetDisplayStatus()] = true
 	}
 	statusesArr := []string{}
 	for key := range statusesMap {

@@ -44,6 +44,8 @@ models:
         resolver: true
       spawnHostLink:
         resolver: true
+      status:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

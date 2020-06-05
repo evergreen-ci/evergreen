@@ -122,6 +122,8 @@ type Task struct {
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
+	// DisplayStatus is not persisted to the db, but may be added via aggregation
+	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -944,6 +946,31 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 			},
 		})
 
+}
+
+func (t *Task) GetDisplayStatus() string {
+	if t.DisplayStatus != "" {
+		return t.DisplayStatus
+	}
+	if t.Status == evergreen.TaskSucceeded {
+		return evergreen.TaskSucceeded
+	}
+	if t.Details.Type == evergreen.CommandTypeSystem {
+		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
+			return evergreen.TaskSystemUnresponse
+		}
+		if t.Details.TimedOut {
+			return evergreen.TaskSystemTimedOut
+		}
+		return evergreen.TaskSystemFailed
+	}
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		return evergreen.TaskSetupFailed
+	}
+	if t.Details.TimedOut {
+		return evergreen.TaskTimedOut
+	}
+	return t.Status
 }
 
 // displayTaskPriority answers the question "if there is a display task whose executions are
@@ -2018,48 +2045,85 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	match := bson.M{
 		VersionKey: versionID,
 	}
-	if len(statuses) > 0 {
-		match[StatusKey] = bson.M{"$in": statuses}
-	}
 	if variant != "" {
 		match[BuildVariantKey] = bson.M{"$regex": variant, "$options": "i"}
 	}
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
-	sorters := []string{}
+
+	pipeline := []bson.M{
+		{"$match": match},
+		addDisplayStatus,
+	}
+	if len(statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": statuses},
+			},
+		})
+	}
+	countPipeline := []bson.M{}
+	for _, stage := range pipeline {
+		countPipeline = append(countPipeline, stage)
+	}
+	countPipeline = append(countPipeline, bson.M{"$count": "count"})
+	sorters := bson.D{}
 	if len(sortBy) > 0 {
-		sortKey := sortBy
-		if sortDir < 0 {
-			sortKey = "-" + sortKey
-		}
-		sorters = append(sorters, sortKey)
+		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
 	}
 	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
-	sorters = append(sorters, "_id")
-
-	query := db.Query(match).Sort(sorters)
+	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
+	pipeline = append(pipeline, bson.M{
+		"$sort": sorters,
+	})
 	if limit > 0 {
-		query = query.Limit(limit).Skip(page * limit)
+		pipeline = append(pipeline, bson.M{
+			"$skip": page * limit,
+		})
+		pipeline = append(pipeline, bson.M{
+			"$limit": limit,
+		})
 	}
 	if len(fieldsToProject) > 0 {
 		fieldKeys := bson.M{}
 		for _, field := range fieldsToProject {
 			fieldKeys[field] = 1
 		}
-		query.Project(fieldKeys)
+		pipeline = append(pipeline, bson.M{
+			"$project": fieldKeys,
+		})
 	}
-
 	tasks := []Task{}
-	err := db.FindAllQ(Collection, query, &tasks)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := Count(query)
+	err = cursor.All(ctx, &tasks)
 	if err != nil {
-		return tasks, 0, err
+		return nil, 0, err
 	}
-	return tasks, total, nil
+
+	type counter struct {
+		Count int `bson:"count"`
+	}
+	tmp := []counter{}
+	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	err = cursor.All(ctx, &tmp)
+	if err != nil {
+		return nil, 0, err
+	}
+	count := 0
+	if len(tmp) > 0 {
+		count = tmp[0].Count
+	}
+	return tasks, count, nil
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task

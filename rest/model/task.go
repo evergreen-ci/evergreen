@@ -44,6 +44,7 @@ type APITask struct {
 	Execution          int                 `json:"execution"`
 	Order              int                 `json:"order"`
 	Status             *string             `json:"status"`
+	DisplayStatus      *string             `json:"display_status"`
 	Details            ApiTaskEndDetail    `json:"status_details"`
 	Logs               LogLinks            `json:"logs"`
 	TimeTaken          APIDuration         `json:"time_taken_ms"`
@@ -133,6 +134,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				TimedOut:    v.Details.TimedOut,
 			},
 			Status:            ToStringPtr(v.Status),
+			DisplayStatus:     ToStringPtr(v.GetDisplayStatus()),
 			TimeTaken:         NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:     v.Cost,
@@ -215,6 +217,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 			TimedOut:    ad.Details.TimedOut,
 		},
 		Status:           FromStringPtr(ad.Status),
+		DisplayStatus:    FromStringPtr(ad.DisplayStatus),
 		TimeTaken:        ad.TimeTaken.ToDuration(),
 		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 		Cost:             ad.EstimatedCost,
