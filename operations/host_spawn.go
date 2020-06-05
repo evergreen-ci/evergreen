@@ -101,7 +101,7 @@ func hostCreate() cli.Command {
 				if err = utility.ReadYAMLFile(file, &spawnRequest); err != nil {
 					return errors.Wrapf(err, "problem reading from file '%s'", file)
 				}
-				if spawnRequest.Tag != ""{
+				if spawnRequest.Tag != "" {
 					tags, err = host.MakeHostTags([]string{spawnRequest.Tag})
 					if err != nil {
 						return errors.Wrap(err, "a problem generating tags")
