@@ -1006,11 +1006,11 @@ func TestWithinTimePeriodProjectFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:      "task1",
 			Project: "proj",
 		},
-		Task{
+		{
 			Id:      "task2",
 			Project: "other",
 		},
@@ -1031,17 +1031,17 @@ func TestWithinTimePeriodDatesFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:         "task1",
 			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
 			StartTime:  time.Now().AddDate(0, 0, -5), // Shouldn't match
 		},
-		Task{
+		{
 			Id:         "task2",
 			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
 			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
 		},
-		Task{
+		{
 			Id:         "task3",
 			FinishTime: time.Now(),                   // Shouldn't match
 			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
@@ -1064,15 +1064,15 @@ func TestWithinTimePeriodStatusesFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:     "task1",
 			Status: "A",
 		},
-		Task{
+		{
 			Id:     "task2",
 			Status: "B",
 		},
-		Task{
+		{
 			Id:     "task3",
 			Status: "C",
 		},
@@ -1372,13 +1372,13 @@ func TestGetRecentTaskStats(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
-		Task{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
-		Task{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
+		{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
+		{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
 	}
 	for _, task := range tasks {
 		assert.NoError(task.Insert())
