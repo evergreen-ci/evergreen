@@ -188,6 +188,15 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
+	grip.Info(message.Fields{
+		"source":              "github hook",
+		"build_variant_tasks": bvt.Name,
+		"skip_on_patch":       evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild(),
+		"skip_on_non_patch":   !evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild(),
+		"skip_on_git_tag":     !evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild(),
+		"message":             "skipOnRequester",
+	})
+
 	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
 		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
@@ -884,18 +893,25 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
+	if v == nil {
+		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+	}
+
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
+	if evergreen.IsGitTagRequester(v.Requester) {
+		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
+	}
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
 		p, err = patch.FindOne(patch.ByVersion(t.Version))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding patch for version %s", t.Version)
+			return nil, errors.Wrapf(err, "error finding patch for version '%s'", t.Version)
 		}
 		if p == nil {
-			return nil, errors.Errorf("no patch found for version %s", t.Version)
+			return nil, errors.Errorf("no patch found for version '%s'", t.Version)
 		}
 
 		expansions.Put("is_patch", "true")
