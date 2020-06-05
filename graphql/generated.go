@@ -354,6 +354,7 @@ type ComplexityRoot struct {
 	TaskLogLinks struct {
 		AgentLogLink  func(childComplexity int) int
 		AllLogLink    func(childComplexity int) int
+		EventLogLink  func(childComplexity int) int
 		SystemLogLink func(childComplexity int) int
 		TaskLogLink   func(childComplexity int) int
 	}
@@ -2024,6 +2025,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogLinks.AllLogLink(childComplexity), true
 
+	case "TaskLogLinks.eventLogLink":
+		if e.complexity.TaskLogLinks.EventLogLink == nil {
+			break
+		}
+
+		return e.complexity.TaskLogLinks.EventLogLink(childComplexity), true
+
 	case "TaskLogLinks.systemLogLink":
 		if e.complexity.TaskLogLinks.SystemLogLink == nil {
 			break
@@ -2592,6 +2600,7 @@ type TaskLogLinks {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
+  eventLogLink: String
 }
 
 type TaskEndDetail {
@@ -10273,6 +10282,37 @@ func (ec *executionContext) _TaskLogLinks_taskLogLink(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskLogLinks_eventLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskLogLinks",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskResult_id(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -14582,6 +14622,8 @@ func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._TaskLogLinks_systemLogLink(ctx, field, obj)
 		case "taskLogLink":
 			out.Values[i] = ec._TaskLogLinks_taskLogLink(ctx, field, obj)
+		case "eventLogLink":
+			out.Values[i] = ec._TaskLogLinks_eventLogLink(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
