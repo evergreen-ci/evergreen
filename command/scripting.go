@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
@@ -110,6 +112,10 @@ type scriptingExec struct {
 	// task logs. This can be used to collect diagnostic data in the background of a running task.
 	SystemLog bool `mapstructure:"system_log"`
 
+	// Report indicates whether or not the test results should be reported (if
+	// supported).
+	Report bool `mapstructure:"report"`
+
 	// WorkingDir is the working directory to start the shell in.
 	WorkingDir string `mapstructure:"working_dir"`
 
@@ -201,6 +207,14 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 		c.IgnoreStandardOutput = true
 	}
 
+	if c.IgnoreStandardOutput && c.Report {
+		return errors.New("cannot ignore standard output and also parse test results")
+	}
+
+	if c.Report && c.Harness != "go" && c.Harness != "golang" {
+		return errors.Errorf("reporting test results is not supported for harness '%s'", c.Harness)
+	}
+
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}
@@ -273,6 +287,42 @@ func (c *scriptingExec) doExpansions(exp *util.Expansions) error {
 	}
 
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
+}
+
+func (c *scriptingExec) getOutputWithWriter(w io.Writer, logger client.LoggerProducer) (options.Output, []grip.CheckFunction) {
+	output := options.Output{
+		SuppressError:     c.IgnoreStandardError,
+		SuppressOutput:    c.IgnoreStandardOutput,
+		SendErrorToOutput: c.RedirectStandardErrorToOutput,
+	}
+
+	// kim: TODO: not entirely sure that this will send at the correct level to
+	// both senders for all the output.
+	ww := send.WrapWriter(w)
+
+	var logSender send.Sender
+	var closers []grip.CheckFunction
+	if c.SystemLog {
+		logSender = logger.System().GetSender()
+	} else {
+		logSender = logger.Task().GetSender()
+	}
+
+	multi := send.NewConfiguredMultiSender(logSender, ww)
+
+	if !c.IgnoreStandardOutput {
+		ws := send.MakeWriterSender(multi, level.Info)
+		closers = append(closers, ws.Close)
+		output.Output = ws
+	}
+
+	if !c.IgnoreStandardError {
+		ws := send.MakeWriterSender(multi, level.Error)
+		closers = append(closers, ws.Close)
+		output.Error = ws
+	}
+
+	return output, closers
 }
 
 func (c *scriptingExec) getOutput(logger client.LoggerProducer) (options.Output, []grip.CheckFunction) {
@@ -380,7 +430,14 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 
 	addTempDirs(c.Env, taskTmpDir)
 
-	output, closer := c.getOutput(logger)
+	var output options.Output
+	var closers []grip.CheckFunction
+	report := &bytes.Buffer{}
+	if c.Report {
+		output, closers = c.getOutputWithWriter(report, logger)
+	} else {
+		output, closers = c.getOutput(logger)
+	}
 	opts, err := c.getHarnessConfig(output)
 	if err != nil {
 		return errors.WithStack(err)
@@ -419,7 +476,14 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 			})
 		}
 	}
-	catcher.CheckExtend(closer)
+
+	if c.Report {
+		if err := c.reportTestResults(ctx, comm, logger, conf, report); err != nil {
+			return errors.Wrap(err, "reporting test results")
+		}
+	}
+
+	catcher.CheckExtend(closers)
 	if c.CleanupHarness {
 		catcher.Add(harness.Cleanup(ctx))
 	}
@@ -435,4 +499,25 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	}
 
 	return catcher.Resolve()
+}
+
+func (c *scriptingExec) reportTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, report io.Reader) error {
+	switch c.Harness {
+	case "go", "golang":
+		log, result, err := parseTestOutput(ctx, conf, report, "")
+		if err != nil {
+			return errors.Wrap(err, "parsing test output")
+		}
+
+		logs := []model.TestLog{log}
+		results := [][]task.TestResult{result}
+
+		if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
+			return errors.Wrap(err, "sending test logs and test results")
+		}
+
+		return nil
+	default:
+		return errors.Errorf("cannot report results for harness '%s'", c.Harness)
+	}
 }

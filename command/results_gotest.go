@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,18 +74,25 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "error parsing output results")
 	}
 
+	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
+		return errors.Wrap(err, "sending test logs and test results")
+	}
+
+	return nil
+}
+
+func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	// ship all of the test logs off to the server
 	logger.Task().Info("Sending test logs to server...")
+
 	allResults := task.LocalTestResults{}
 	for idx, log := range logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
 
-		var logId string
-
-		logId, err = comm.SendTestLog(ctx, td, &log)
+		logId, err := comm.SendTestLog(ctx, td, &log)
 		if err != nil {
 			// continue on error to let the other logs be posted
 			logger.Task().Errorf("problem posting log: %v", err)
@@ -143,7 +151,31 @@ func (c *goTestResults) allOutputFiles() ([]string, error) {
 
 }
 
-// ParseTestOutputFiles parses all of the files that are passed in, and returns the
+// parseTestOutput parses the test results and logs from a single output source.
+func parseTestOutput(ctx context.Context, conf *model.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []task.TestResult, error) {
+	// parse the output logs
+	parser := &goTestParser{Suite: suiteName}
+	if err := parser.Parse(report); err != nil {
+		return model.TestLog{}, nil, errors.Wrap(err, "parsing file")
+	}
+
+	if len(parser.order) == 0 && len(parser.logs) == 0 {
+		return model.TestLog{}, nil, errors.New("no results found")
+	}
+
+	// build up the test logs
+	logLines := parser.Logs()
+	testLog := model.TestLog{
+		Name:          suiteName,
+		Task:          conf.Task.Id,
+		TaskExecution: conf.Task.Execution,
+		Lines:         logLines,
+	}
+
+	return testLog, ToModelTestResults(parser.Results()).Results, nil
+}
+
+// parseTestOutputFiles parses all of the files that are passed in, and returns the
 // test logs and test results found within.
 func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 	conf *model.TaskConfig, outputFiles []string) ([]model.TestLog, [][]task.TestResult, error) {
@@ -172,32 +204,16 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
-		// parse the output logs
-		parser := &goTestParser{Suite: suiteName}
-		if err := parser.Parse(fileReader); err != nil {
+		log, result, err := parseTestOutput(ctx, conf, fileReader, suiteName)
+		if err != nil {
 			// continue on error
 			logger.Task().Errorf("Error parsing file '%s': %v", outputFile, err)
 			continue
 		}
 
-		if len(parser.order) == 0 && len(parser.logs) == 0 {
-			logger.Task().Debugf("go test output file %s did not contain any results", outputFile)
-			continue
-		}
-
-		// build up the test logs
-		logLines := parser.Logs()
-		testLog := model.TestLog{
-			Name:          suiteName,
-			Task:          conf.Task.Id,
-			TaskExecution: conf.Task.Execution,
-			Lines:         logLines,
-		}
-
 		// save the results
-		results = append(results, ToModelTestResults(parser.Results()).Results)
-		logs = append(logs, testLog)
-
+		results = append(results, result)
+		logs = append(logs, log)
 	}
 
 	if len(results) == 0 && len(logs) == 0 {
