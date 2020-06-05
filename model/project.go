@@ -188,15 +188,6 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
-	grip.Info(message.Fields{
-		"source":              "github hook",
-		"build_variant_tasks": bvt.Name,
-		"skip_on_patch":       evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild(),
-		"skip_on_non_patch":   !evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild(),
-		"skip_on_git_tag":     !evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild(),
-		"message":             "skipOnRequester",
-	})
-
 	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
 		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
