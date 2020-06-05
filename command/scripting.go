@@ -527,7 +527,10 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 func (c *scriptingExec) reportTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, report io.Reader) error {
 	switch c.Harness {
 	case "go", "golang":
-		log, result, err := parseTestOutput(ctx, conf, report, "")
+		// kim: TODO: I don't actually know if the test name is consequential,
+		// but I included it because if  I didn't specify it, the REST request
+		// to post logs hangs and the task times out.
+		log, result, err := parseTestOutput(ctx, conf, report, "output.test")
 		if err != nil {
 			return errors.Wrap(err, "parsing test output")
 		}

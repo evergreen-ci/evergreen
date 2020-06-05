@@ -105,7 +105,6 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 
 			allResults.Results = append(allResults.Results, result)
 		}
-
 	}
 	logger.Task().Info("Finished posting logs to server")
 
@@ -154,7 +153,7 @@ func (c *goTestResults) allOutputFiles() ([]string, error) {
 // parseTestOutput parses the test results and logs from a single output source.
 func parseTestOutput(ctx context.Context, conf *model.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []task.TestResult, error) {
 	// parse the output logs
-	parser := &goTestParser{ /*kim: TODO: remove Suite: suiteName*/ }
+	parser := &goTestParser{}
 	if err := parser.Parse(report); err != nil {
 		return model.TestLog{}, nil, errors.Wrap(err, "parsing file")
 	}
