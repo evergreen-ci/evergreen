@@ -71,7 +71,7 @@ func hostCreate() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(fileFlagName, "f"),
-				Usage: "name of a file containing the spawn host params",
+				Usage: "name of a json or yaml file containing the spawn host params",
 			},
 		},
 		Action: func(c *cli.Context) error {
