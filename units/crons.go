@@ -485,43 +485,26 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// clear queues for purposefully disabled distros
-
-		grip.Info(message.Fields{
-			"name":      "hhoke",
-			"operation": "reached block"})
-		disabled_distros, err := distro.Find(distro.ByIsDisabled(env.Settings().ContainerPools.Pools))
-		grip.Info(message.Fields{
-			"name":             "hhoke",
-			"disabled_distros": len(disabled_distros),
-			"err":              err,
-			"operation":        "post-ByIsDisabled"})
+		disabledDistros, err := distro.Find(distro.ByIsDisabled(env.Settings().ContainerPools.Pools))
 		catcher.Add(err)
-		disabled_distro_ids := distro.DistroGroup(disabled_distros).GetDistroIds()
-		grip.Info(message.Fields{
-			"name":                "hhoke",
-			"disabled_distro_ids": disabled_distro_ids,
-			"err":                 err,
-			"operation":           "post-ByIsDisabledIDS"})
+		disabled_distro_ids := distro.DistroGroup(disabledDistros).GetDistroIds()
 		for _, distroID := range disabled_distro_ids {
 			// we can just delete these queues, the tasks will persist
 			// and get rescheduled once the distro is no longer disabled
 			queue_info, err := model.GetDistroQueueInfo(distroID)
-			grip.Info(message.Fields{
-				"name":         "hhoke",
-				"distro":       distroID,
-				"queue_length": queue_info.Length,
-				"err":          err,
-				"operation":    "pre-removal",
-			})
-			model.RemoveTaskQueues(distroID)
-			queue_info, err = model.GetDistroQueueInfo(distroID)
-			grip.Info(message.Fields{
-				"name":         "hhoke",
-				"distro":       distroID,
-				"queue_length": queue_info.Length,
-				"err":          err,
-				"operation":    "poast-removal",
-			})
+
+			if queue_info.Length > 0 {
+				model.RemoveTaskQueues(distroID)
+				if err != nil {
+					grip.Error(err)
+				}
+				queue_info, err = model.GetDistroQueueInfo(distroID)
+				grip.Info(message.Fields{
+					"distro":    distroID,
+					"err":       err,
+					"operation": "removed queue of disabled distro",
+				})
+			}
 		}
 
 		// find all active distros
