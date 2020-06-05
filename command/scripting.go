@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -159,11 +160,23 @@ func subprocessScriptingFactory() Command {
 	return &scriptingExec{}
 }
 
+func validTestingHarnesses() []string {
+	return []string{
+		"go", "golang",
+		"lisp", "roswell",
+		"python", "python3", "python2",
+	}
+}
+
 func (c *scriptingExec) Name() string { return "subprocess.scripting" }
 func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
+	}
+
+	if !utility.StringSliceContains(validTestingHarnesses(), c.Harness) {
+		return errors.Errorf("invalid testing harness '%s': valid options are %s", c.Harness, validTestingHarnesses())
 	}
 
 	if c.Command != "" {
@@ -478,6 +491,7 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	}
 
 	if c.Report {
+		logger.Task().Infof("kim: finished testing, got report output: %s" report.String())
 		if err := c.reportTestResults(ctx, comm, logger, conf, report); err != nil {
 			return errors.Wrap(err, "reporting test results")
 		}

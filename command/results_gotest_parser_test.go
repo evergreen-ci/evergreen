@@ -73,7 +73,7 @@ func TestParserFunctionality(t *testing.T) {
 	Convey("With a simple log file and parser", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "1_simple.log"))
 		require.NoError(t, err, "couldn't open log file")
-		parser := &goTestParser{Suite: "test"}
+		parser := &goTestParser{}
 
 		Convey("running parse on the given log file should succeed", func() {
 			err = parser.Parse(bytes.NewBuffer(logdata))
@@ -95,14 +95,12 @@ func TestParserFunctionality(t *testing.T) {
 					So(results[0].RunTime, ShouldEqual, rTime)
 					So(results[0].StartLine, ShouldEqual, 1)
 					So(results[0].EndLine, ShouldEqual, 14)
-					So(results[0].SuiteName, ShouldEqual, "test")
 					So(results[1].Name, ShouldEqual, "TestFailures2")
 					So(results[1].Status, ShouldEqual, FAIL)
 					rTime, _ = time.ParseDuration("2.00s")
 					So(results[1].RunTime, ShouldEqual, rTime)
 					So(results[1].StartLine, ShouldEqual, 15)
 					So(results[1].EndLine, ShouldEqual, 15)
-					So(results[1].SuiteName, ShouldEqual, "test")
 				})
 			})
 		})
@@ -110,7 +108,7 @@ func TestParserFunctionality(t *testing.T) {
 	Convey("With a gocheck log file and parser", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))
 		require.NoError(t, err, "couldn't open log file")
-		parser := &goTestParser{Suite: "gocheck_test"}
+		parser := &goTestParser{}
 
 		Convey("running parse on the given log file should succeed", func() {
 			err = parser.Parse(bytes.NewBuffer(logdata))
@@ -132,7 +130,6 @@ func TestParserFunctionality(t *testing.T) {
 					So(results[1].RunTime, ShouldEqual, rTime)
 					So(results[1].StartLine, ShouldEqual, 2)
 					So(results[1].EndLine, ShouldEqual, 4)
-					So(results[1].SuiteName, ShouldEqual, "gocheck_test")
 				})
 			})
 		})
@@ -140,7 +137,7 @@ func TestParserFunctionality(t *testing.T) {
 	Convey("un-terminated tests are failures", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "3_simple.log"))
 		require.NoError(t, err, "couldn't open log file")
-		parser := &goTestParser{Suite: "gocheck_test"}
+		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 
@@ -153,7 +150,7 @@ func TestParserFunctionality(t *testing.T) {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "4_simple.log"))
 		So(err, ShouldBeNil)
 
-		parser := &goTestParser{Suite: "testify test"}
+		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 
@@ -166,7 +163,7 @@ func TestParserFunctionality(t *testing.T) {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "5_simple.log"))
 		So(err, ShouldBeNil)
 
-		parser := &goTestParser{Suite: "test"}
+		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 
@@ -183,7 +180,7 @@ func TestParserFunctionality(t *testing.T) {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "6_simple.log"))
 		So(err, ShouldBeNil)
 
-		parser := &goTestParser{Suite: "test"}
+		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 
@@ -196,7 +193,7 @@ func TestParserFunctionality(t *testing.T) {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "7_simple.log"))
 		So(err, ShouldBeNil)
 
-		parser := &goTestParser{Suite: "test"}
+		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 

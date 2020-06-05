@@ -154,7 +154,7 @@ func (c *goTestResults) allOutputFiles() ([]string, error) {
 // parseTestOutput parses the test results and logs from a single output source.
 func parseTestOutput(ctx context.Context, conf *model.TaskConfig, report io.Reader, suiteName string) (model.TestLog, []task.TestResult, error) {
 	// parse the output logs
-	parser := &goTestParser{Suite: suiteName}
+	parser := &goTestParser{ /*kim: TODO: remove Suite: suiteName*/ }
 	if err := parser.Parse(report); err != nil {
 		return model.TestLog{}, nil, errors.Wrap(err, "parsing file")
 	}
@@ -175,8 +175,8 @@ func parseTestOutput(ctx context.Context, conf *model.TaskConfig, report io.Read
 	return testLog, ToModelTestResults(parser.Results()).Results, nil
 }
 
-// parseTestOutputFiles parses all of the files that are passed in, and returns the
-// test logs and test results found within.
+// parseTestOutputFiles parses all of the files that are passed in, and returns
+// the test logs and test results found within.
 func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 	conf *model.TaskConfig, outputFiles []string) ([]model.TestLog, [][]task.TestResult, error) {
 
@@ -189,8 +189,6 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 			return nil, nil, errors.New("command was stopped")
 		}
 
-		// assume that the name of the file, stripping off the ".suite" extension if present,
-		// is the name of the suite being tested
 		_, suiteName := filepath.Split(outputFile)
 		suiteName = strings.TrimSuffix(suiteName, ".suite")
 
