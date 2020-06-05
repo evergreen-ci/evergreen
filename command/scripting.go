@@ -418,9 +418,9 @@ func (c *scriptingExec) getHarnessConfig(output options.Output) (options.Scripti
 			Environment:    c.Env,
 			Packages:       c.Packages,
 			CachedDuration: time.Duration(c.CacheDurationSeconds) * time.Second,
-			Gopath:         filepath.Join(c.WorkingDir, c.HarnessPath),
+			Gopath:         gopath,
 			Directory:      c.WorkingDir,
-			Goroot:         c.HostPath,
+			Goroot:         goroot,
 		}, nil
 	default:
 		return nil, errors.Errorf("there is no support for harness: '%s'", c.Harness)

@@ -75,8 +75,22 @@ variables:
       - func: run-make
         vars:
           target: revendor
-      - func: run-make
-        vars: { target: "${task_name}" }
+      # - func: run-make
+      #   vars: { target: "${task_name}" }
+      - command: subprocess.scripting
+        params:
+          harness: "go"
+          working_dir: ${workdir}
+          test_dir: gopath/src/github.com/evergreen-ci/evergreen
+          report: true
+          host_path: /opt/golang/go1.12
+          harness_path: ./gopath
+          test_options:
+            args:
+              - ./util
+          env:
+            GOROOT: /opt/golang/go1.12
+            GOPATH: ${workdir}/gopath
   - &run-go-test-suite-with-docker
     name: test
     commands:
