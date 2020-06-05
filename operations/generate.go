@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/mongodb/jasper/buildsystem/generator"
-	"github.com/mongodb/jasper/buildsystem/model"
+	"github.com/mongodb/jasper/metabuild/generator"
+	"github.com/mongodb/jasper/metabuild/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
