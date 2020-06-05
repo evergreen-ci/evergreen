@@ -49,7 +49,7 @@ func TestBuildSetPriority(t *testing.T) {
 		Convey("setting its priority should update the priority"+
 			" of all its tasks in the database", func() {
 
-			So(SetBuildPriority(b.Id, 42), ShouldBeNil)
+			So(SetBuildPriority(b.Id, 42, ""), ShouldBeNil)
 
 			tasks, err := task.Find(task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
@@ -399,7 +399,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -418,7 +418,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
-				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
@@ -466,7 +466,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(t3.Insert(), ShouldBeNil)
 				So(t4.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// refresh from the database and check again
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -505,7 +505,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(matching2.Insert(), ShouldBeNil)
 
 				// have a user set the build activation to true
-				So(SetBuildActivation(b.Id, true, user, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
 				task1, err := task.FindOne(task.ById(matching.Id))
@@ -526,7 +526,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
