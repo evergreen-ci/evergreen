@@ -61,6 +61,16 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 	return nil
 }
 
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
+	opts := model.GetProjectOpts{
+		Ref:        &pRef,
+		Revision:   pRef.Branch,
+		RemotePath: file,
+		Token:      token,
+	}
+	return model.GetProjectFromFile(ctx, opts)
+}
+
 // EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
 func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
@@ -375,6 +385,21 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 
 func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
 	return nil
+}
+
+func (pc *MockProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
+	config := `
+buildvariants:
+- name: v1
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(config), pRef.Identifier, p)
+	return p, pp, err
 }
 
 func (pc *MockProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {

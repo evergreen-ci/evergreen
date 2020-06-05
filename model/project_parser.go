@@ -1,12 +1,15 @@
 package model
 
 import (
+	"context"
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -515,6 +518,31 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 	*project = *p
 	project.Identifier = identifier
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
+}
+
+type GetProjectOpts struct {
+	Ref        *ProjectRef
+	RemotePath string
+	Revision   string
+	Token      string
+}
+
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
+	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s'", opts.Ref.Identifier)
+	}
+	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Identifier)
+	}
+
+	config := Project{}
+	pp, err := LoadProjectInto(fileContents, opts.Ref.Identifier, &config)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Identifier)
+	}
+	return &config, pp, nil
 }
 
 // createIntermediateProject marshals the supplied YAML into our

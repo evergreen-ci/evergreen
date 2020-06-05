@@ -858,3 +858,38 @@ func TestCreateManifest(t *testing.T) {
 	manifest, err = CreateManifest(v, &proj, projRef, settings)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
+
+func TestShellVersionFromRevisionGitTags(t *testing.T) {
+	// triggered from yaml
+	metadata := model.VersionMetadata{
+		RemotePath: "releases.yml",
+		Revision: model.Revision{
+			AuthorID:        "regina.phalange",
+			Author:          "Regina Phalange",
+			AuthorEmail:     "not-fake@email.com",
+			RevisionMessage: "EVG-1234 good version",
+			Revision:        "1234",
+		},
+		GitTag: model.GitTag{
+			Tag:    "release",
+			Pusher: "release-bot",
+		},
+	}
+	pRef := &model.ProjectRef{
+		Identifier:            "my-project",
+		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
+		GitTagVersionsEnabled: true,
+	}
+	v, err := shellVersionFromRevision(pRef, metadata)
+	assert.NoError(t, err)
+	require.NotNil(t, v)
+	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
+	assert.Equal(t, metadata.Revision.AuthorID, v.AuthorID)
+	assert.Equal(t, metadata.Revision.Author, v.Author)
+	assert.Equal(t, metadata.Revision.AuthorEmail, v.AuthorEmail)
+	assert.Equal(t, metadata.GitTag.Tag, v.TriggeredByGitTag.Tag)
+	assert.Equal(t, metadata.GitTag.Pusher, v.TriggeredByGitTag.Pusher)
+	assert.Equal(t, metadata.RemotePath, v.RemotePath)
+	assert.Contains(t, v.Id, "my_project_release_")
+	assert.Equal(t, "Triggered From Git Tag 'release': EVG-1234 good version", v.Message)
+}

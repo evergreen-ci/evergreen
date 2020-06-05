@@ -409,10 +409,32 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
 			continue
 		}
-		if !pRef.GitTagVersionsEnabled || !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, pusher) {
+
+		revision := model.Revision{
+			Author:          existingVersion.Author,
+			AuthorID:        existingVersion.AuthorID,
+			AuthorEmail:     existingVersion.AuthorEmail,
+			Revision:        existingVersion.Revision,
+			RevisionMessage: existingVersion.Message,
+		}
+		v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
 			continue
 		}
-		// TODO: add ability to create version from config here
+		if v != nil {
+			grip.Info(message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"ref":     event.GetRef(),
+				"owner":   ownerAndRepo[0],
+				"repo":    ownerAndRepo[1],
+				"tag":     tag,
+				"version": v.Id,
+				"message": "triggered version from git tag",
+			})
+		}
 	}
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
@@ -425,6 +447,53 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		"message": "errors updating/creating versions for git tag",
 	}))
 	return nil
+}
+
+func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
+	revision model.Revision, tag model.GitTag) (*model.Version, error) {
+	if !pRef.GitTagVersionsEnabled || !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, tag.Pusher) {
+		return nil, nil
+	}
+	hasAliases, remotePath, err := gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.String(), tag.Tag)
+	if err != nil {
+		return nil, err
+	}
+	if !hasAliases {
+		return nil, nil
+	}
+	metadata := model.VersionMetadata{
+		Revision:   revision,
+		GitTag:     tag,
+		RemotePath: remotePath,
+	}
+	info := &model.ProjectInfo{Ref: &pRef}
+	if remotePath != "" {
+		// run everything in the yaml that's provided
+		if gh.settings == nil {
+			gh.settings, err = evergreen.GetConfig()
+			if err != nil {
+				return nil, errors.New("error getting settings config")
+			}
+		}
+		var token string
+		token, err = gh.settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.New("error getting github token")
+		}
+		info.Project, info.IntermediateProject, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to unmarshal yaml config")
+		}
+	} else {
+		// use the standard project config with the git tag alias
+		info.Project, info.IntermediateProject, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Identifier)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
+		}
+		metadata.Alias = evergreen.GitTagAlias
+	}
+
+	return gh.sc.CreateVersionFromConfig(ctx, info, metadata, true)
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {

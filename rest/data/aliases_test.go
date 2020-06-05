@@ -3,6 +3,7 @@ package data
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -118,4 +119,50 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 	a.Equal("new_alias", restModel.FromStringPtr(found[1].Alias))
 	a.Equal("new_task", restModel.FromStringPtr(found[1].Task))
 	a.Equal("new_variant", restModel.FromStringPtr(found[1].Variant))
+}
+
+func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
+	newAlias := model.ProjectAlias{
+		ProjectID: "project_id",
+		Alias:     evergreen.GitTagAlias,
+		GitTag:    "release",
+		Variant:   "variant",
+		Task:      "task",
+	}
+	a.NoError(newAlias.Upsert())
+	newAlias2 := model.ProjectAlias{
+		ProjectID:  "project_id",
+		Alias:      evergreen.GitTagAlias,
+		GitTag:     "release",
+		RemotePath: "file.yml",
+	}
+	a.NoError(newAlias2.Upsert())
+	hasAliases, path, err := a.sc.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	a.Error(err)
+	a.False(hasAliases)
+	a.Empty(path)
+
+	newAlias2.RemotePath = ""
+	a.NoError(newAlias2.Upsert())
+	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	a.NoError(err)
+	a.True(hasAliases)
+	a.Empty(path)
+
+	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	a.NoError(err)
+	a.False(hasAliases)
+	a.Empty(path)
+
+	newAlias3 := model.ProjectAlias{
+		ProjectID:  "project_id2",
+		Alias:      evergreen.GitTagAlias,
+		GitTag:     "release",
+		RemotePath: "file.yml",
+	}
+	a.NoError(newAlias3.Upsert())
+	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	a.NoError(err)
+	a.True(hasAliases)
+	a.Equal("file.yml", path)
 }

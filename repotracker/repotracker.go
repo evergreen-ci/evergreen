@@ -651,10 +651,14 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
-	}))
+	var u *user.DBUser
+	var err error
+	if metadata.Revision.AuthorGithubUID != 0 {
+		u, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
+		}))
+	}
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
 	if err != nil {
@@ -662,6 +666,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 	}
 	v := &model.Version{
 		Author:              metadata.Revision.Author,
+		AuthorID:            metadata.Revision.AuthorID,
 		AuthorEmail:         metadata.Revision.AuthorEmail,
 		Branch:              ref.Branch,
 		CreateTime:          metadata.Revision.CreateTime,
@@ -703,21 +708,31 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Identifier)
 		}
-		v.Id = mgobson.NewObjectId().Hex()
+		v.Id = makeVersionIdWithTag(ref.String(), metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
 		v.Requester = evergreen.GitTagRequester
 		v.CreateTime = time.Now()
 		v.TriggeredByGitTag = metadata.GitTag
+		v.Message = fmt.Sprintf("Triggered From Git Tag '%s': %s", metadata.GitTag.Tag, v.Message)
+		if metadata.RemotePath != "" {
+			v.RemotePath = metadata.RemotePath
+		}
 	} else {
 		v.Id = makeVersionId(ref.String(), metadata.Revision.Revision)
 	}
 	if u != nil {
 		v.AuthorID = u.Id
+		v.Author = u.DisplayName()
+		v.AuthorEmail = u.Email()
 	}
 	return v, nil
 }
 
 func makeVersionId(project, revision string) string {
 	return util.CleanName(fmt.Sprintf("%s_%s", project, revision))
+}
+
+func makeVersionIdWithTag(project, tag, id string) string {
+	return util.CleanName(fmt.Sprintf("%s_%s_%s", project, tag, id))
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.

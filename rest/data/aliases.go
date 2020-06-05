@@ -1,7 +1,6 @@
 package data
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -81,15 +80,18 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	}
 	return catcher.Resolve()
 }
-func (d *DBAliasConnector) HasMatchingGitTagAlias(projectId, tag string) (bool, error) {
-	aliasesList, err := model.FindAliasInProject(projectId, evergreen.GitTagAlias)
+
+//  GetMatchingGitTagAliasesForProject returns matching git tag aliases that match the given git tag
+func (d *DBAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+	aliases, err := model.FindMatchingGitTagAliasesInProject(projectId, tag)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
-	if len(aliasesList) == 0 {
-		return false, nil
+
+	if len(aliases) == 1 && aliases[0].RemotePath != "" {
+		return true, aliases[0].RemotePath, nil
 	}
-	return model.ProjectAliases(aliasesList).HasMatchingGitTag(tag)
+	return len(aliases) > 0, "", nil
 }
 
 // MockAliasConnector is a struct that implements mock versions of
@@ -110,6 +112,9 @@ func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId strin
 func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	return nil
 }
-func (d *MockAliasConnector) HasMatchingGitTagAlias(projectId, tag string) (bool, error) {
-	return true, nil
+func (d *MockAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+	if len(d.Aliases) == 1 && restModel.FromStringPtr(d.Aliases[0].RemotePath) != "" {
+		return true, restModel.FromStringPtr(d.Aliases[0].RemotePath), nil
+	}
+	return len(d.Aliases) > 0, "", nil
 }
