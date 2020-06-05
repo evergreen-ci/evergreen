@@ -322,25 +322,25 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[0].TaskId},
 		}
-		blocked, err := taskDoc.BlockedOnDeactivatedDependency(nil)
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.False(t, blocked)
+		assert.Empty(t, blockingTasks)
 	})
 	t.Run("NoBlockedFinished", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[1].TaskId},
 		}
-		blocked, err := taskDoc.BlockedOnDeactivatedDependency(nil)
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.False(t, blocked)
+		assert.Empty(t, blockingTasks)
 	})
 	t.Run("Blocked", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[2].TaskId},
 		}
-		blocked, err := taskDoc.BlockedOnDeactivatedDependency(nil)
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.True(t, blocked)
+		assert.Len(t, blockingTasks, 1)
 	})
 }
 

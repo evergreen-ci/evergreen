@@ -493,22 +493,24 @@ func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]string, e
 	return blockedDeps, nil
 }
 
-func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) (bool, error) {
+func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]string, error) {
 	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
+
+	blockingDeps := []string{}
 	for _, dep := range t.DependsOn {
 		depTask, ok := depCache[dep.TaskId]
 		if !ok {
-			return false, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
+			return nil, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
 		}
 		if !depTask.IsFinished() && !depTask.Activated {
-			return true, nil
+			blockingDeps = append(blockingDeps, depTask.Id)
 		}
 	}
 
-	return false, nil
+	return blockingDeps, nil
 }
 
 // AllDependenciesSatisfied inspects the tasks first-order
