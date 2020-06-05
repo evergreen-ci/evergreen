@@ -34,6 +34,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		fileFlagName         = "file"
 	)
 
 	return cli.Command{
@@ -68,6 +69,10 @@ func hostCreate() cli.Command {
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(fileFlagName, "f"),
+				Usage: "name of a json or yaml file containing the spawn host params",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -78,6 +83,7 @@ func hostCreate() cli.Command {
 			instanceType := c.String(instanceTypeFlagName)
 			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
+			file := c.String(fileFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -89,29 +95,44 @@ func hostCreate() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			var script string
+			spawnRequest := &restModel.HostRequestOptions{}
+			var tags []host.Tag
+			if file != "" {
+				if err = utility.ReadYAMLFile(file, &spawnRequest); err != nil {
+					return errors.Wrapf(err, "problem reading from file '%s'", file)
+				}
+				if spawnRequest.Tag != "" {
+					tags, err = host.MakeHostTags([]string{spawnRequest.Tag})
+					if err != nil {
+						return errors.Wrap(err, "a problem generating tags")
+					}
+					spawnRequest.InstanceTags = tags
+				}
+
+				fn = spawnRequest.UserData
+
+			} else {
+				tags, err = host.MakeHostTags(tagSlice)
+				if err != nil {
+					return errors.Wrap(err, "problem generating tags")
+				}
+				spawnRequest = &restModel.HostRequestOptions{
+					DistroID:     distro,
+					KeyName:      key,
+					InstanceTags: tags,
+					InstanceType: instanceType,
+					Region:       region,
+					NoExpiration: noExpire,
+				}
+			}
+
 			if fn != "" {
 				var out []byte
 				out, err = ioutil.ReadFile(fn)
 				if err != nil {
 					return errors.Wrapf(err, "problem reading userdata file '%s'", fn)
 				}
-				script = string(out)
-			}
-
-			tags, err := host.MakeHostTags(tagSlice)
-			if err != nil {
-				return errors.Wrap(err, "problem generating tags")
-			}
-
-			spawnRequest := &restModel.HostRequestOptions{
-				DistroID:     distro,
-				KeyName:      key,
-				UserData:     script,
-				InstanceTags: tags,
-				InstanceType: instanceType,
-				Region:       region,
-				NoExpiration: noExpire,
+				spawnRequest.UserData = string(out)
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
