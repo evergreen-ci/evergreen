@@ -281,7 +281,7 @@ func hostConfigure() cli.Command {
 				Name:  joinFlagNames(quietFlagName, "q"),
 				Usage: "suppress output",
 			},
-			cli.BoolFlag{
+			cli.StringFlag{
 				Name:  distroNameFlagName,
 				Usage: "specify the name of the current distro for spawn hosts (optional)",
 			},
@@ -360,6 +360,10 @@ func hostConfigure() cli.Command {
 			})
 
 			for idx, cmd := range cmds {
+				if err := makeWorkingDir(cmd); err != nil {
+					return errors.Wrap(err, "problem making working directory")
+				}
+
 				if err := cmd.Run(ctx); err != nil {
 					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Identifier)
 				}
@@ -367,6 +371,19 @@ func hostConfigure() cli.Command {
 			return nil
 		},
 	}
+}
+
+func makeWorkingDir(cmd *jasper.Command) error {
+	opts, err := cmd.Export()
+	if err != nil {
+		return errors.Wrap(err, "can't export command options")
+	}
+	if len(opts) == 0 {
+		return errors.New("export returned empty options")
+	}
+
+	workingDir := opts[0].WorkingDirectory
+	return errors.Wrapf(os.MkdirAll(workingDir, 0755), "can't make directory '%s'", workingDir)
 }
 
 func hostStop() cli.Command {

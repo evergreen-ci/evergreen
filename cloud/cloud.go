@@ -39,6 +39,9 @@ type Manager interface {
 	// Get the status of an instance
 	GetInstanceStatus(context.Context, *host.Host) (CloudStatus, error)
 
+	// SetPortMappings sets the port mappings for the container
+	SetPortMappings(context.Context, *host.Host, *host.Host) error
+
 	// TerminateInstance destroys the host in the underlying provider
 	TerminateInstance(context.Context, *host.Host, string, string) error
 
@@ -75,7 +78,7 @@ type Manager interface {
 	// ModifyVolume modifies an existing volume.
 	ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error
 
-	// GetVolumeAttachment gets a volume's attachement
+	// GetVolumeAttachment gets a volume's attachment
 	GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error)
 
 	// CheckInstanceType determines if the given instance type is available in the current region.

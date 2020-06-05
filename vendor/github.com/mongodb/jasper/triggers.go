@@ -61,7 +61,7 @@ const (
 
 func makeOptionsCloseTrigger() ProcessTrigger {
 	return func(info ProcessInfo) {
-		grip.Warning(errors.Wrap(info.Options.Close(), "error occurred while closing options"))
+		grip.Warning(errors.Wrap(info.Options.Close(), "error occurred while closing creation options"))
 	}
 }
 

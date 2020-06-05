@@ -17,7 +17,7 @@ import (
 
 type basicProcess struct {
 	info           ProcessInfo
-	cmd            executor.Executor
+	exec           executor.Executor
 	err            error
 	id             string
 	tags           map[string]struct{}
@@ -31,14 +31,14 @@ func newBasicProcess(ctx context.Context, opts *options.Create) (Process, error)
 	id := uuid.New().String()
 	opts.AddEnvVar(EnvironID, id)
 
-	cmd, deadline, err := opts.Resolve(ctx)
+	exec, deadline, err := opts.Resolve(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building command from options")
 	}
 
 	p := &basicProcess{
 		id:            id,
-		cmd:           cmd,
+		exec:          exec,
 		tags:          make(map[string]struct{}),
 		waitProcessed: make(chan struct{}),
 	}
@@ -49,16 +49,18 @@ func newBasicProcess(ctx context.Context, opts *options.Create) (Process, error)
 
 	if err = p.RegisterTrigger(ctx, makeOptionsCloseTrigger()); err != nil {
 		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(opts.Close(), "problem closing options")
 		catcher.Add(err)
+		catcher.Wrap(opts.Close(), "problem closing options")
+		catcher.Wrap(exec.Close(), "problem closing executor")
 		return nil, errors.Wrap(catcher.Resolve(), "problem registering options close trigger")
 	}
 
-	if err = cmd.Start(); err != nil {
+	if err = exec.Start(); err != nil {
 		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(opts.Close(), "problem closing options")
 		catcher.Add(err)
-		return nil, errors.Wrap(catcher.Resolve(), "problem starting command")
+		catcher.Wrap(opts.Close(), "problem closing options")
+		catcher.Wrap(exec.Close(), "problem closing executor")
+		return nil, errors.Wrap(catcher.Resolve(), "problem starting process execution")
 	}
 
 	p.info.StartAt = time.Now()
@@ -70,21 +72,21 @@ func newBasicProcess(ctx context.Context, opts *options.Create) (Process, error)
 		p.info.Host, _ = os.Hostname()
 	}
 	p.info.IsRunning = true
-	p.info.PID = cmd.PID()
+	p.info.PID = exec.PID()
 
-	go p.transition(ctx, deadline, cmd)
+	go p.transition(ctx, deadline)
 
 	return p, nil
 }
 
-func (p *basicProcess) transition(ctx context.Context, deadline time.Time, cmd executor.Executor) {
-	defer cmd.Close()
+func (p *basicProcess) transition(ctx context.Context, deadline time.Time) {
+	defer p.exec.Close()
 
 	waitFinished := make(chan error)
 
 	go func() {
 		defer close(waitFinished)
-		waitFinished <- cmd.Wait()
+		waitFinished <- p.exec.Wait()
 	}()
 
 	finish := func(err error) {
@@ -96,18 +98,19 @@ func (p *basicProcess) transition(ctx context.Context, deadline time.Time, cmd e
 		p.info.EndAt = finishTime
 		p.info.IsRunning = false
 		p.info.Complete = true
-		if sig, signaled := cmd.SignalInfo(); signaled {
+		if sig, signaled := p.exec.SignalInfo(); signaled {
 			p.info.ExitCode = int(sig)
 			if !deadline.IsZero() {
 				p.info.Timeout = sig == syscall.SIGKILL && finishTime.After(deadline)
 			}
 		} else {
-			p.info.ExitCode = cmd.ExitCode()
+			exitCode := p.exec.ExitCode()
+			p.info.ExitCode = exitCode
 			if runtime.GOOS == "windows" && !deadline.IsZero() {
-				p.info.Timeout = cmd.ExitCode() == 1 && finishTime.After(deadline)
+				p.info.Timeout = exitCode == 1 && finishTime.After(deadline)
 			}
 		}
-		p.info.Successful = cmd.Success()
+		p.info.Successful = p.exec.Success()
 		p.triggers.Run(p.info)
 	}
 	finish(<-waitFinished)
@@ -143,7 +146,7 @@ func (p *basicProcess) Signal(_ context.Context, sig syscall.Signal) error {
 
 	if skipSignal := p.signalTriggers.Run(p.info, sig); !skipSignal {
 		sig = makeCompatible(sig)
-		return errors.Wrapf(p.cmd.Signal(sig), "problem sending signal '%s' to '%s'", sig, p.id)
+		return errors.Wrapf(p.exec.Signal(sig), "problem sending signal '%s' to '%s'", sig, p.id)
 	}
 	return nil
 }

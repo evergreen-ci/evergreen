@@ -66,12 +66,12 @@ type restDaemon struct {
 	Host    string
 	Port    int
 	Manager jasper.Manager
-	Logger  *options.Logger
+	Logger  *options.LoggerConfig
 
 	exit chan struct{}
 }
 
-func newRESTDaemon(host string, port int, manager jasper.Manager, logger *options.Logger) *restDaemon {
+func newRESTDaemon(host string, port int, manager jasper.Manager, logger *options.LoggerConfig) *restDaemon {
 	return &restDaemon{
 		Host:    host,
 		Port:    port,

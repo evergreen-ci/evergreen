@@ -125,7 +125,7 @@ func TestLinuxProcessTrackerWithCgroups(t *testing.T) {
 					require.NoError(t, tracker.Add(proc.Info(ctx)))
 					require.NoError(t, tracker.Cleanup())
 
-					newProc, err := makeProc(ctx, testutil.YesCreateOpts(0))
+					newProc, err := makeProc(ctx, testutil.SleepCreateOpts(1))
 					require.NoError(t, err)
 
 					require.NoError(t, tracker.Add(newProc.Info(ctx)))
@@ -139,7 +139,7 @@ func TestLinuxProcessTrackerWithCgroups(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 
-					opts := testutil.YesCreateOpts(testutil.TestTimeout)
+					opts := testutil.SleepCreateOpts(1)
 					proc, err := makeProc(ctx, opts)
 					require.NoError(t, err)
 
@@ -222,7 +222,7 @@ func TestLinuxProcessTrackerWithEnvironmentVariables(t *testing.T) {
 					// Override default cgroup behavior.
 					linuxTracker.cgroup = nil
 
-					testCase(ctx, t, linuxTracker, testutil.YesCreateOpts(testutil.TestTimeout), ManagerEnvironID, envVarValue)
+					testCase(ctx, t, linuxTracker, testutil.SleepCreateOpts(1), ManagerEnvironID, envVarValue)
 				})
 			}
 		})
@@ -238,7 +238,8 @@ func TestManagerSetsEnvironmentVariables(t *testing.T) {
 	for managerName, makeManager := range map[string]func() *basicProcessManager{
 		"Basic": func() *basicProcessManager {
 			return &basicProcessManager{
-				procs: map[string]Process{},
+				procs:   map[string]Process{},
+				loggers: NewLoggingCache(),
 				tracker: &mockProcessTracker{
 					Infos: []ProcessInfo{},
 				},
@@ -248,7 +249,7 @@ func TestManagerSetsEnvironmentVariables(t *testing.T) {
 		t.Run(managerName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(context.Context, *testing.T, *basicProcessManager){
 				"CreateProcessSetsManagerEnvironmentVariables": func(ctx context.Context, t *testing.T, manager *basicProcessManager) {
-					proc, err := manager.CreateProcess(ctx, testutil.YesCreateOpts(testutil.ManagerTestTimeout))
+					proc, err := manager.CreateProcess(ctx, testutil.SleepCreateOpts(1))
 					require.NoError(t, err)
 
 					env := proc.Info(ctx).Options.Environment

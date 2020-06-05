@@ -3,10 +3,12 @@ package options
 import (
 	"io"
 	"io/ioutil"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 )
 
@@ -22,7 +24,7 @@ type Output struct {
 	// Loggers are self-contained and specific to the process they are attached
 	// to. They are closed and cleaned up when the process exits. If this
 	// behavior is not desired, use Output instead of Loggers.
-	Loggers []Logger `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
+	Loggers []*LoggerConfig `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
 
 	outputSender *send.WriterSender
 	errorSender  *send.WriterSender
@@ -95,17 +97,13 @@ func (o *Output) Validate() error {
 		catcher.Add(errors.New("cannot create redirect cycle between output and error"))
 	}
 
-	for _, logger := range o.Loggers {
-		catcher.Wrap(logger.Validate(), "invalid logger")
-	}
-
 	return catcher.Resolve()
 }
 
 // GetOutput returns a Writer that has the stdout output from the process that
 // the Output that this method is called on is attached to. The caller is
-// responsible for calling closeLoggers when the loggers are not needed anymore.
-func (o *Output) GetOutput() (w io.Writer, err error) {
+// responsible for calling Close when the loggers are not needed anymore.
+func (o *Output) GetOutput() (io.Writer, error) {
 	if o.SendOutputToError {
 		return o.GetError()
 	}
@@ -122,7 +120,7 @@ func (o *Output) GetOutput() (w io.Writer, err error) {
 		outLoggers := []send.Sender{}
 
 		for i := range o.Loggers {
-			sender, err := o.Loggers[i].Configure()
+			sender, err := o.Loggers[i].Resolve()
 			if err != nil {
 				return ioutil.Discard, err
 			}
@@ -172,7 +170,7 @@ func (o *Output) GetError() (io.Writer, error) {
 		errSenders := []send.Sender{}
 
 		for i := range o.Loggers {
-			sender, err := o.Loggers[i].Configure()
+			sender, err := o.Loggers[i].Resolve()
 			if err != nil {
 				return ioutil.Discard, err
 			}
@@ -209,7 +207,7 @@ func (o *Output) Copy() *Output {
 	optsCopy.errorMulti = nil
 
 	if o.Loggers != nil {
-		optsCopy.Loggers = make([]Logger, len(o.Loggers))
+		optsCopy.Loggers = make([]*LoggerConfig, len(o.Loggers))
 		_ = copy(optsCopy.Loggers, o.Loggers)
 	}
 
@@ -219,27 +217,32 @@ func (o *Output) Copy() *Output {
 // Close calls all of the processes' output senders' Close method.
 func (o *Output) Close() error {
 	catcher := grip.NewBasicCatcher()
-	// Closing the outputSender and errorSender does not close the underlying
-	// send.Sender.
+	// Close the outputSender and errorSender, which does not close the
+	// underlying send.Sender.
 	if o.outputSender != nil {
-		catcher.Add(o.outputSender.Close())
+		catcher.Wrap(o.outputSender.Close(), "problem closing output sender")
 	}
 	if o.errorSender != nil {
-		catcher.Add(o.errorSender.Close())
+		catcher.Wrap(o.errorSender.Close(), "problem closing error sender")
 	}
+	// Close the sender wrapped by the send.WriterSender.
 	if o.outputSender != nil {
-		catcher.Add(o.outputSender.Sender.Close())
+		catcher.Wrap(o.outputSender.Sender.Close(), "problem closing wrapped output sender")
 	}
 	// Since senders are shared, only close error's senders if output hasn't
 	// already closed them.
 	if o.errorSender != nil && (o.SuppressOutput || o.SendOutputToError) {
-		catcher.Add(o.errorSender.Sender.Close())
-	}
-	// Since loggers are owned by this process, we close the loggers to clean up
-	// their underlying send.Senders.
-	for _, logger := range o.Loggers {
-		catcher.Add(logger.Close())
+		catcher.Wrap(o.errorSender.Sender.Close(), "problem closing wrapped error sender")
 	}
 
-	return errors.WithStack(catcher.Resolve())
+	return catcher.Resolve()
+}
+
+func (o *Output) CachedLogger(id string) *CachedLogger {
+	return &CachedLogger{
+		ID:       id,
+		Accessed: time.Now(),
+		Error:    util.ConvertWriter(o.GetError()),
+		Output:   util.ConvertWriter(o.GetOutput()),
+	}
 }

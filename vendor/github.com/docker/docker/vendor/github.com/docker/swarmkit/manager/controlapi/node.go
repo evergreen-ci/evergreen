@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -142,6 +142,12 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 				return filterMatchLabels(e.Description.Engine.Labels, request.Filters.Labels)
 			},
 			func(e *api.Node) bool {
+				if len(request.Filters.NodeLabels) == 0 {
+					return true
+				}
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.NodeLabels)
+			},
+			func(e *api.Node) bool {
 				if len(request.Filters.Roles) == 0 {
 					return true
 				}
@@ -248,24 +254,33 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 	}, nil
 }
 
-func removeNodeAttachments(tx store.Tx, nodeID string) error {
-	// orphan the node's attached containers. if we don't do this, the
-	// network these attachments are connected to will never be removeable
+func orphanNodeTasks(tx store.Tx, nodeID string) error {
+	// when a node is deleted, all of its tasks are irrecoverably removed.
+	// additionally, the Dispatcher can no longer be relied on to update the
+	// task status. Therefore, when the node is removed, we must additionally
+	// move all of its assigned tasks to the Orphaned state, so that their
+	// resources can be cleaned up.
 	tasks, err := store.FindTasks(tx, store.ByNodeID(nodeID))
 	if err != nil {
 		return err
 	}
 	for _, task := range tasks {
-		// if the task is an attachment, then we just delete it. the allocator
-		// will do the heavy lifting. basically, GetAttachment will return the
-		// attachment if that's the kind of runtime, or nil if it's not.
-		if task.Spec.GetAttachment() != nil {
-			// don't delete the task. instead, update it to `ORPHANED` so that
-			// the taskreaper will clean it up.
-			task.Status.State = api.TaskStateOrphaned
-			if err := store.UpdateTask(tx, task); err != nil {
-				return err
+		// this operation must occur within the same transaction boundary. If
+		// we cannot accomplish this task orphaning in the same transaction, we
+		// could crash or die between transactions and not get a chance to do
+		// this. however, in cases were there is an exceptionally large number
+		// of tasks for a node, this may cause the transaction to exceed the
+		// max message size.
+		//
+		// therefore, we restrict updating to only tasks in a non-terminal
+		// state. Tasks in a terminal state do not need to be updated.
+		if task.Status.State < api.TaskStateCompleted {
+			task.Status = api.TaskStatus{
+				Timestamp: gogotypes.TimestampNow(),
+				State:     api.TaskStateOrphaned,
+				Message:   "Task belonged to a node that has been deleted",
 			}
+			store.UpdateTask(tx, task)
 		}
 	}
 	return nil
@@ -336,7 +351,7 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 			return err
 		}
 
-		if err := removeNodeAttachments(tx, request.NodeID); err != nil {
+		if err := orphanNodeTasks(tx, request.NodeID); err != nil {
 			return err
 		}
 

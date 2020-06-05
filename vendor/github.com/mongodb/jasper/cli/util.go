@@ -59,6 +59,15 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+func requireStringSliceFlag(name string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		if len(c.StringSlice(name)) == 0 {
+			return errors.Errorf("must specify at least one string for flag '--%s'", name)
+		}
+		return nil
+	}
+}
+
 const (
 	minPort = 1 << 10
 	maxPort = math.MaxUint16 - 1

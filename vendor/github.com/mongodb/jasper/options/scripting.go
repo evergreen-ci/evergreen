@@ -22,7 +22,7 @@ type ScriptingHarness interface {
 
 // NewScriptingHarness provides a factory to generate concrete
 // implementations of the ScriptingEnvironment interface for use in
-// marshaling arbitrary values for a known environment exists.
+// marshaling arbitrary values for a known environment.
 func NewScriptingHarness(se string) (ScriptingHarness, error) {
 	switch se {
 	case "python2":

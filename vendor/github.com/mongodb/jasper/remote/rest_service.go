@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -88,6 +89,12 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/scripting/{id}/script").Version(1).Post().Handler(s.scriptingRunScript)
 	app.AddRoute("/scripting/{id}/build").Version(1).Post().Handler(s.scriptingBuild)
 	app.AddRoute("/scripting/{id}/test").Version(1).Post().Handler(s.scriptingTest)
+	app.AddRoute("/logging/size").Version(1).Get().Handler(s.loggingCacheSize)
+	app.AddRoute("/logging/prune/{time}").Version(1).Delete().Handler(s.loggingCachePrune)
+	app.AddRoute("/logging/{id}").Version(1).Post().Handler(s.loggingCacheCreate)
+	app.AddRoute("/logging/{id}").Version(1).Delete().Handler(s.loggingCacheDelete)
+	app.AddRoute("/logging/{id}").Version(1).Get().Handler(s.loggingCacheGet)
+	app.AddRoute("/logging/{id}/send").Version(1).Post().Handler(s.loggingSend)
 	app.AddRoute("/file/write").Version(1).Put().Handler(s.writeFile)
 	app.AddRoute("/clear").Version(1).Post().Handler(s.clearManager)
 	app.AddRoute("/close").Version(1).Delete().Handler(s.closeManager)
@@ -245,8 +252,15 @@ func (s *Service) getBuildloggerURLs(rw http.ResponseWriter, r *http.Request) {
 	info := getProcInfoNoHang(ctx, proc)
 	urls := []string{}
 	for _, logger := range info.Options.Output.Loggers {
-		if logger.Type == options.LogBuildloggerV2 || logger.Type == options.LogBuildloggerV3 {
-			urls = append(urls, logger.Options.BuildloggerOptions.GetGlobalLogURL())
+		if logger.Type() == options.LogBuildloggerV2 {
+			producer := logger.Producer()
+			if producer == nil {
+				continue
+			}
+			rawProducer, ok := producer.(*options.BuildloggerV2Options)
+			if ok {
+				urls = append(urls, rawProducer.Buildlogger.GetGlobalLogURL())
+			}
 		}
 	}
 
@@ -741,6 +755,91 @@ func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Reques
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "problem registering signal trigger with id '%s'", sigTriggerID).Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+type restLoggingCacheSize struct {
+	Size int `json:"size"`
+}
+
+func (s *Service) loggingCacheSize(rw http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(rw, &restLoggingCacheSize{Size: s.manager.LoggingCache(r.Context()).Len()})
+}
+
+func (s *Service) loggingCacheCreate(rw http.ResponseWriter, r *http.Request) {
+	args := &options.Output{}
+	id := gimlet.GetVars(r)["id"]
+	if err := gimlet.GetJSON(r.Body, args); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem parsing options").Error(),
+		})
+		return
+	}
+
+	cl, err := s.manager.LoggingCache(r.Context()).Create(id, args)
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem creating loggers").Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, cl)
+}
+
+func (s *Service) loggingCacheDelete(rw http.ResponseWriter, r *http.Request) {
+	s.manager.LoggingCache(r.Context()).Remove(gimlet.GetVars(r)["id"])
+}
+
+func (s *Service) loggingCachePrune(rw http.ResponseWriter, r *http.Request) {
+	ts, err := time.Parse(time.RFC3339, gimlet.GetVars(r)["time"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrapf(err, "problem parsing timestamp").Error(),
+		})
+		return
+	}
+
+	s.manager.LoggingCache(r.Context()).Prune(ts)
+}
+
+func (s *Service) loggingCacheGet(rw http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(rw, s.manager.LoggingCache(r.Context()).Get(gimlet.GetVars(r)["id"]))
+}
+
+func (s *Service) loggingSend(rw http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["id"]
+	cache := s.manager.LoggingCache(r.Context())
+	logger := cache.Get(id)
+	if logger == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("logger '%s' does not exist", id),
+		})
+		return
+	}
+
+	payload := &options.LoggingPayload{}
+	if err := gimlet.GetJSON(r.Body, payload); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Wrapf(err, "problem parsing payload for %s", id).Error(),
+		})
+		return
+	}
+
+	err := logger.Send(payload)
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
 		})
 		return
 	}

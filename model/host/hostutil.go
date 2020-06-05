@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -785,13 +786,17 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 
 	inMemoryLoggerExists := false
 	for _, logger := range opts.Output.Loggers {
-		if logger.Type == options.LogInMemory {
+		if logger.Type() == options.LogInMemory {
 			inMemoryLoggerExists = true
 			break
 		}
 	}
 	if !inMemoryLoggerExists {
-		opts.Output.Loggers = append(opts.Output.Loggers, jasper.NewInMemoryLogger(OutputBufferSize))
+		logger, loggerErr := jasper.NewInMemoryLogger(OutputBufferSize)
+		if err != nil {
+			return nil, errors.Wrap(loggerErr, "problem creating a new in-memroy logger")
+		}
+		opts.Output.Loggers = append(opts.Output.Loggers, logger)
 	}
 
 	proc, err := client.CreateProcess(ctx, opts)
@@ -859,20 +864,10 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return false, "", nil
 	}
 
-	bufferSize := 0
-	if len(info.Options.Output.Loggers) > 0 {
-		for _, logger := range info.Options.Output.Loggers {
-			if logger.Type == options.LogInMemory {
-				bufferSize = logger.Options.InMemoryCap
-				break
-			}
-		}
-	}
-	if bufferSize == 0 {
-		return true, "", nil
-	}
-
-	logStream, err := client.GetLogStream(ctx, processID, bufferSize)
+	// using MaxInt32 because we can assume the in-mem buffer size is small
+	// enough and want to get ALL logs in the buffer with one call to
+	// GetLogsStream.
+	logStream, err := client.GetLogStream(ctx, processID, math.MaxInt32)
 	if err != nil {
 		return true, "", errors.Wrap(err, "can't get output of process")
 	}

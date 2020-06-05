@@ -40,6 +40,7 @@ $http.get(templateUrl).success(function(template) {
   $scope.savedCompares = []
   $scope.trendResults = [];
   $scope.jiraHost = $window.jiraHost
+  $scope.threadsToSelect = {};
 
   $scope.isGraphHidden = function (k) {
     return $scope.hiddenGraphs[k] == true
@@ -51,39 +52,106 @@ $http.get(templateUrl).success(function(template) {
     } else {
       $scope.hiddenGraphs[k] = true
     }
-    $scope.syncHash(-1)
+    $scope.syncHash()
   }
 
-  $scope.syncHash = function (tab) {
-    var hash = {}
-    var locationHash = decodeURIComponent($location.hash());
-    if (locationHash.length > 0) {
-      try {
-        hash = JSON.parse(locationHash);
-      } catch (e) {
-        return;
-      }
-    }
-    if (Object.keys($scope.hiddenGraphs).length > 0) {
-      hash.hiddenGraphs = Object.keys($scope.hiddenGraphs)
-    }
-    if (tab >= 0) {
-      hash.perftab = tab
+  const defaultPerfTab = 2;
+  const hiddenGraphsKey = "hidden";
+  const savedCompareHashesKey = "comparehashes";
+  const savedCompareTagsKey = "comparetags";
+  const metricSelectKey = "metric";
+  const threadLevelModeKey = "threads";
+  const selectedThreadsPrefix = "selected";
+  $scope.syncHash = function () {
+    $location.hash($scope.makeHash().toString());
+  }
+
+  $scope.makeHash = function () {
+    let hash = new URLSearchParams();
+
+    const hiddenGraphs = Object.keys($scope.hiddenGraphs);
+    if (hiddenGraphs.length > 0) {
+      hash.append(hiddenGraphsKey, hiddenGraphs.join(","));
     }
 
     if ($scope.savedCompares.length > 0) {
-      hash.compare = $scope.savedCompares
-    } else {
-      delete hash.compare
+      let compareHashes = _.compact(_.pluck($scope.savedCompares, "hash")).join(",");
+      let compareTags = _.compact(_.pluck($scope.savedCompares, "tag")).join(",");
+      if (compareHashes) {
+        hash.append(savedCompareHashesKey, compareHashes);
+      }
+      if (compareTags) {
+        hash.append(savedCompareTagsKey, compareTags);
+      }
     }
 
     if ($scope.metricSelect.value != $scope.metricSelect.default) {
-      hash.metric = $scope.metricSelect.value.key
+      hash.append(metricSelectKey, $scope.metricSelect.value.key);
     }
 
-    $location.hash(encodeURIComponent(JSON.stringify(hash)))
-    // Do not moify browser history
-    $location.replace()
+    if (Settings.perf.trendchart.threadLevelMode) {
+      hash.append(threadLevelModeKey, Settings.perf.trendchart.threadLevelMode);
+    }
+
+    if ($scope.selectedThreads) {
+      _.each($scope.selectedThreads, (threads, test) => {
+        hash.append(`${selectedThreadsPrefix}.${test}`, threads.join(","));
+      })
+    }
+
+    return hash;
+  }
+
+  $scope.loadHash = function (locationHash) {
+    if (locationHash.length === 0) {
+      return;
+    }
+    const queryVars = locationHash.split("&");
+    let state = {};
+    _.each(queryVars, (queryVar) => {
+      let keyVals = queryVar.split("=");
+      if (keyVals.length !== 2) {
+        return;
+      }
+      state[keyVals[0]] = keyVals[1];
+    })
+
+    if (state[hiddenGraphsKey]) {
+      let hiddenGraphs = state[hiddenGraphsKey].split(",");
+      _.each(hiddenGraphs, (testName) => {
+        $scope.hiddenGraphs[testName] = true;
+      })
+    }
+
+    if (state[savedCompareHashesKey]) {
+      let compareHashes = state[savedCompareHashesKey].split(",");
+      _.each(compareHashes, (hash) => {
+        $scope.addCompare(hash);
+      })
+    }
+
+    if (state[savedCompareTagsKey]) {
+      let compareTags = state[savedCompareTagsKey].split(",");
+      _.each(compareTags, (tag) => {
+        $scope.addCompare(null, tag);
+      })
+    }
+
+    if (state[metricSelectKey]) {
+      $scope.metricToSelect = state[metricSelectKey];
+    }
+
+    if (state[threadLevelModeKey]) {
+      Settings.perf.trendchart.threadLevelMode = state[threadLevelModeKey];
+    }
+
+    _.each(state, (val, key) => {
+      const prefix = `${selectedThreadsPrefix}.`;
+      if (!key.startsWith(prefix) || !val || val.length === 0) {
+        return;
+      }
+      $scope.threadsToSelect[key.substring(prefix.length)] = val.split(",");
+    })
   }
 
   $scope.checkEnter = function (keyEvent) {
@@ -96,8 +164,8 @@ $http.get(templateUrl).success(function(template) {
   $scope.removeCompareItem = function (index) {
     $scope.comparePerfSamples.splice(index, 1);
     $scope.savedCompares.splice(index, 1);
-    $scope.redrawGraphs()
-    $scope.syncHash(-1)
+    $scope.redrawGraphs();
+    $scope.syncHash();
   }
 
   $scope.deleteTag = function () {
@@ -142,7 +210,7 @@ $http.get(templateUrl).success(function(template) {
   $scope.metricSelect.value = $scope.metricSelect.default
 
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend
-  $scope.perftab = 2;
+  $scope.perftab = defaultPerfTab;
   $scope.project = $window.project;
   $scope.compareHash = "ss";
   $scope.comparePerfSamples = [];
@@ -189,14 +257,15 @@ $http.get(templateUrl).success(function(template) {
   $scope.$watch('threadLevelsRadio.value', function (newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
-    Settings.perf.trendchart.threadLevelMode = newVal
-    $scope.redrawGraphs()
+    Settings.perf.trendchart.threadLevelMode = newVal;
+    $scope.syncHash();
+    $scope.redrawGraphs();
   })
 
   $scope.$watch('metricSelect.value', function (newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
-    $scope.syncHash(-1)
+    $scope.syncHash()
     $scope.redrawGraphs()
   })
 
@@ -255,8 +324,9 @@ $http.get(templateUrl).success(function(template) {
         });
       });
 
-      let updateThreadLevels = (threads) => {
+      let getThreadLevels = (threads) => {
         $scope.selectedThreads[key] = threads;
+        $scope.syncHash();
       }
       let containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       let cps = scope.changePoints || {};
@@ -275,7 +345,8 @@ $http.get(templateUrl).success(function(template) {
         linearMode: scope.scaleModel.linearMode,
         originMode: scope.rangeModel.originMode,
         metric: scope.metricSelect.value.key,
-        updateThreadLevels: updateThreadLevels,
+        getThreadLevels: getThreadLevels,
+        activeThreads: scope.threadsToSelect[key] || null
       })
     }
     scope.showToolbar = true
@@ -596,27 +667,24 @@ $http.get(templateUrl).success(function(template) {
     return true
   }
 
-  $scope.addComparisonForm = function (formData, draw) {
-    const commitHash = formData.hash
-    const saveObj = {}
+  $scope.switchTab = function (tab) {
+    $scope.perftab = tab;
+  }
 
-    if (commitHash) {
-      saveObj.hash = commitHash
-    } else {
-      saveObj.tag = formData.tag
+  $scope.addCompare = function (hash, tag, draw) {
+    let newCompare = {};
+    if (hash) {
+      newCompare.hash = hash;
+    } else if (tag) {
+      newCompare.tag = tag;
     }
-
-    if (Boolean(formData.tag) && Boolean(formData.tag.tag)) {
-      formData.tag = formData.tag.tag
-    }
-
     // Add only unique hashes and tags
-    $scope.savedCompares = _.uniq($scope.savedCompares.concat(saveObj), function (d) {
+    $scope.savedCompares = _.uniq($scope.savedCompares.concat(newCompare), function (d) {
       return '' + d.tag + d.hash
     })
 
-    if (Boolean(commitHash)) {
-      $http.get("/plugin/json/commit/" + $scope.project + "/" + commitHash + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
+    if (hash) {
+      $http.get("/plugin/json/commit/" + $scope.project + "/" + hash + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function (resp) {
           const d = resp.data;
           const compareSample = new TestSample(d);
@@ -626,8 +694,8 @@ $http.get(templateUrl).success(function(template) {
         function (resp) {
           console.log(resp.data)
         });
-    } else if (Boolean(formData.tag) && formData.tag.length > 0) {
-      $http.get("/plugin/json/tag/" + $scope.project + "/" + formData.tag + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
+    } else if (tag && tag.length > 0) {
+      $http.get("/plugin/json/tag/" + $scope.project + "/" + tag + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function (resp) {
           const d = resp.data;
           const compareSample = new TestSample(d);
@@ -640,7 +708,7 @@ $http.get(templateUrl).success(function(template) {
     }
 
     $scope.compareForm = {}
-    $scope.syncHash(-1)
+    $scope.syncHash()
   }
 
   $scope.perfDiscoveryURL = function () {
@@ -652,10 +720,8 @@ $http.get(templateUrl).success(function(template) {
     return url;
   }
 
-  $scope.addComparisonHash = function (hash) {
-    $scope.addComparisonForm({
-      hash: hash
-    }, true)
+  $scope.addComparisonForm = function (compareForm) {
+    $scope.addCompare(compareForm.hash, compareForm.tag, true)
   }
 
   $scope.redrawGraphs = function () {
@@ -672,13 +738,10 @@ $http.get(templateUrl).success(function(template) {
     let metric = $scope.metricSelect.value.key;
     if (samples) {
       let series = samples.seriesByName;
-      $scope.hiddenGraphs = {};
       _.each(series, function (testResults, testName) {
-        if (_.some(testResults, (singleResult) => {
+        if (!_.some(testResults, (singleResult) => {
             return singleResult[metric]
           })) {
-          delete($scope.hiddenGraphs[testName]);
-        } else {
           $scope.hiddenGraphs[testName] = true;
         }
       });
@@ -733,24 +796,7 @@ $http.get(templateUrl).success(function(template) {
   };
 
   if ($scope.conf.enabled) {
-    if ($location.hash().length > 0) {
-      try {
-        var hashparsed = JSON.parse(decodeURIComponent($location.hash()))
-        if ('hiddenGraphs' in hashparsed) {
-          for (let i = 0; i < hashparsed.hiddenGraphs.length; i++) {
-            $scope.hiddenGraphs[hashparsed.hiddenGraphs[i]] = true
-          }
-        }
-        if ('perftab' in hashparsed) {
-          $scope.perftab = hashparsed.perftab
-        }
-        if ('compare' in hashparsed) {
-          for (let i = 0; i < hashparsed.compare.length; i++) {
-            $scope.addComparisonForm(hashparsed.compare[i], false)
-          }
-        }
-      } catch (e) {}
-    }
+    $scope.loadHash(decodeURIComponent($location.hash()));
     // Populate the graph and table for this task
     var legacySuccess = function (toMerge, resp) {
       var d = resp.data;
@@ -783,7 +829,7 @@ $http.get(templateUrl).success(function(template) {
 
     if ($scope.task.patch_info && $scope.task.patch_info.Patch.Githash) {
       //pre-populate comparison vs. base commit of patch.
-      $scope.addComparisonHash($scope.task.patch_info.Patch.Githash);
+      $scope.addCompare($scope.task.patch_info.Patch.Githash);
     }
   }
 }).factory('trendDataComplete', function ($location, TrendSamples) {
@@ -834,6 +880,14 @@ $http.get(templateUrl).success(function(template) {
     scope.metricSelect.options = _.uniq(scope.metricSelect.options, false, function (option) {
       return option.key;
     })
+    if (scope.metricToSelect) {
+      let metric = _.findWhere(scope.metricSelect.options, {
+        key: scope.metricToSelect
+      });
+      if (metric) {
+        scope.metricSelect.value = metric;
+      }
+    }
 
     // Some copy pasted checks
     if (scope.conf.enabled) {

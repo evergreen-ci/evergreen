@@ -20,7 +20,7 @@ import (
 // RunLogging runs the logging benchmark suite.
 func RunLogging(ctx context.Context) error {
 	prefix := filepath.Join(
-		"build",
+		testutil.BuildDirectory(),
 		fmt.Sprintf("jasper-log-benchmark-%d", time.Now().Unix()),
 	)
 	if err := os.Mkdir(prefix, os.ModePerm); err != nil {

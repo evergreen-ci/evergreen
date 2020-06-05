@@ -382,6 +382,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           git_tag_authorized_users: $scope.projectRef.git_tag_authorized_users || [],
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
+          git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
           commit_queue: data.ProjectRef.commit_queue || {},
           workstation_config: data.ProjectRef.workstation_config || {},
           notify_on_failure: $scope.projectRef.notify_on_failure,
@@ -524,7 +525,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.isDirty = false;
       },
       function (resp) {
-        $scope.saveMessage = "Couldn't save project: " + resp.data;
+        $scope.saveMessage = "Couldn't save project: " + resp.data.error;
         console.log(resp.status);
       });
   };

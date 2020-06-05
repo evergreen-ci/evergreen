@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -560,4 +561,18 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert.True(now.Equal(p.PeriodicBuilds[0].NextRunTime))
 	assert.True(now.Add(10 * time.Hour).Equal(dbProject.PeriodicBuilds[1].NextRunTime))
 	assert.True(now.Add(10 * time.Hour).Equal(p.PeriodicBuilds[1].NextRunTime))
+}
+
+func TestGetProjectSetupCommands(t *testing.T) {
+	p := ProjectRef{}
+	p.WorkstationConfig.SetupCommands = []WorkstationSetupCommand{
+		{Command: "c0"},
+		{Command: "c1"},
+	}
+
+	cmds, err := p.GetProjectSetupCommands(apimodels.WorkstationSetupCommandOptions{})
+	assert.NoError(t, err)
+	assert.Len(t, cmds, 2)
+	assert.Contains(t, cmds[0].String(), "c0")
+	assert.Contains(t, cmds[1].String(), "c1")
 }

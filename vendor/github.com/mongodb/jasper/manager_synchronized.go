@@ -9,11 +9,11 @@ import (
 )
 
 // MakeSynchronizedManager wraps the given manager in a thread-safe Manager.
-func MakeSynchronizedManager(manager Manager) (Manager, error) {
-	return &synchronizedProcessManager{manager: manager}, nil
+func MakeSynchronizedManager(manager Manager) Manager {
+	return &synchronizedProcessManager{manager: manager}
 }
 
-// NewSynchronizedManager is a constructor for a thread-safe Manager.
+// NewSynchronizedManager is a constructor for a thread-safe basic Manager.
 func NewSynchronizedManager(trackProcs bool) (Manager, error) {
 	basicManager, err := newBasicProcessManager(map[string]Process{}, trackProcs, false)
 	if err != nil {
@@ -59,13 +59,6 @@ func (m *synchronizedProcessManager) CreateCommand(ctx context.Context) *Command
 	defer m.mu.RUnlock()
 
 	return NewCommand().ProcConstructor(m.CreateProcess)
-}
-
-func (m *synchronizedProcessManager) WriteFile(ctx context.Context, opts options.WriteFile) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return errors.WithStack(m.manager.WriteFile(ctx, opts))
 }
 
 func (m *synchronizedProcessManager) Register(ctx context.Context, proc Process) error {
@@ -122,4 +115,18 @@ func (m *synchronizedProcessManager) Group(ctx context.Context, name string) ([]
 		syncedProcs = append(syncedProcs, &synchronizedProcess{proc: proc})
 	}
 	return syncedProcs, errors.WithStack(err)
+}
+
+func (m *synchronizedProcessManager) LoggingCache(ctx context.Context) LoggingCache {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.manager.LoggingCache(ctx)
+}
+
+func (m *synchronizedProcessManager) WriteFile(ctx context.Context, opts options.WriteFile) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.manager.WriteFile(ctx, opts)
 }

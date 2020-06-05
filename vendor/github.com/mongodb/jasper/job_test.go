@@ -17,29 +17,25 @@ func TestAmboyJob(t *testing.T) {
 	defer cancel()
 
 	t.Run("Registry", func(t *testing.T) {
-		count := 0
-		for n := range registry.JobTypeNames() {
-			if n == "bond-recall-download-file" {
-				continue
+		numJobs := func() int {
+			count := 0
+			for n := range registry.JobTypeNames() {
+				if n == "bond-recall-download-file" {
+					continue
+				}
+				if n != "" {
+					count++
+				}
 			}
-			if n != "" {
-				count++
-			}
+			return count
 		}
-		require.Equal(t, 0, count)
 
-		RegisterJobs(newBasicProcess)
-
-		for n := range registry.JobTypeNames() {
-			if n == "bond-recall-download-file" {
-				continue
-			}
-			if n != "" {
-				assert.Contains(t, n, "jasper")
-				count++
-			}
+		// We may run this test multiple times, so make it idempotent.
+		if numJobs() == 0 {
+			RegisterJobs(newBasicProcess)
 		}
-		require.Equal(t, 3, count)
+
+		assert.Equal(t, 3, numJobs())
 	})
 	t.Run("RoundTripMarshal", func(t *testing.T) {
 		for _, frm := range []amboy.Format{amboy.BSON2, amboy.JSON} {

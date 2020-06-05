@@ -19,6 +19,7 @@
 package archive
 
 import (
+	"archive/tar"
 	"bufio"
 	"context"
 	"encoding/base64"
@@ -34,9 +35,7 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"github.com/Microsoft/hcsshim"
-	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/sys"
-	"github.com/dmcgowan/go-tar"
 )
 
 const (
@@ -75,7 +74,7 @@ func tarName(p string) (string, error) {
 	// in file names, it is mostly safe to replace however we must
 	// check just in case
 	if strings.Contains(p, "/") {
-		return "", fmt.Errorf("Windows path contains forward slash: %s", p)
+		return "", fmt.Errorf("windows path contains forward slash: %s", p)
 	}
 
 	return strings.Replace(p, string(os.PathSeparator), "/", -1), nil
@@ -131,11 +130,7 @@ func skipFile(hdr *tar.Header) bool {
 	// specific or Linux-specific, this warning should be changed to an error
 	// to cater for the situation where someone does manage to upload a Linux
 	// image but have it tagged as Windows inadvertently.
-	if strings.Contains(hdr.Name, ":") {
-		return true
-	}
-
-	return false
+	return strings.Contains(hdr.Name, ":")
 }
 
 // handleTarTypeBlockCharFifo is an OS-specific helper function used by
@@ -180,8 +175,12 @@ func applyWindowsLayer(ctx context.Context, root string, tr *tar.Reader, options
 		return 0, err
 	}
 	defer func() {
-		if err := w.Close(); err != nil {
-			log.G(ctx).Errorf("failed to close layer writer: %v", err)
+		if err2 := w.Close(); err2 != nil {
+			// This error should not be discarded as a failure here
+			// could result in an invalid layer on disk
+			if err == nil {
+				err = err2
+			}
 		}
 	}()
 
@@ -256,7 +255,7 @@ func fileInfoFromHeader(hdr *tar.Header) (name string, size int64, fileInfo *win
 		if err != nil {
 			return "", 0, nil, err
 		}
-		fileInfo.FileAttributes = uintptr(attr)
+		fileInfo.FileAttributes = uint32(attr)
 	} else {
 		if hdr.Typeflag == tar.TypeDir {
 			fileInfo.FileAttributes |= syscall.FILE_ATTRIBUTE_DIRECTORY

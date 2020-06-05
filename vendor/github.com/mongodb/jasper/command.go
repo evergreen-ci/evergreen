@@ -98,10 +98,10 @@ func (c *Command) SetOutputOptions(opts options.Output) *Command {
 // String returns a stringified representation.
 func (c *Command) String() string {
 	var remote string
-	if c.opts.Remote == nil {
+	if c.opts.Process.Remote == nil {
 		remote = "nil"
 	} else {
-		remote = c.opts.Remote.String()
+		remote = c.opts.Process.Remote.String()
 	}
 
 	return fmt.Sprintf("id='%s', remote='%s', cmd='%s'", c.opts.ID, remote, c.getCmd())
@@ -118,38 +118,38 @@ func (c *Command) Export() ([]*options.Create, error) {
 }
 
 func (c *Command) initRemote() {
-	if c.opts.Remote == nil {
-		c.opts.Remote = &options.Remote{}
+	if c.opts.Process.Remote == nil {
+		c.opts.Process.Remote = &options.Remote{}
 	}
 }
 
 func (c *Command) initRemoteProxy() {
-	if c.opts.Remote == nil {
-		c.opts.Remote = &options.Remote{}
+	if c.opts.Process.Remote == nil {
+		c.opts.Process.Remote = &options.Remote{}
 	}
-	if c.opts.Remote.Proxy == nil {
-		c.opts.Remote.Proxy = &options.Proxy{}
+	if c.opts.Process.Remote.Proxy == nil {
+		c.opts.Process.Remote.Proxy = &options.Proxy{}
 	}
 }
 
 // Host sets the hostname for connecting to a remote host.
 func (c *Command) Host(h string) *Command {
 	c.initRemote()
-	c.opts.Remote.Host = h
+	c.opts.Process.Remote.Host = h
 	return c
 }
 
 // User sets the username for connecting to a remote host.
 func (c *Command) User(u string) *Command {
 	c.initRemote()
-	c.opts.Remote.User = u
+	c.opts.Process.Remote.User = u
 	return c
 }
 
 // Port sets the port for connecting to a remote host.
 func (c *Command) Port(p int) *Command {
 	c.initRemote()
-	c.opts.Remote.Port = p
+	c.opts.Process.Remote.Port = p
 	return c
 }
 
@@ -158,14 +158,14 @@ func (c *Command) Port(p int) *Command {
 // underlying ssh command, for remote commands.
 func (c *Command) ExtendRemoteArgs(args ...string) *Command {
 	c.initRemote()
-	c.opts.Remote.Args = append(c.opts.Remote.Args, args...)
+	c.opts.Process.Remote.Args = append(c.opts.Process.Remote.Args, args...)
 	return c
 }
 
 // PrivKey sets the private key in order to authenticate to a remote host.
 func (c *Command) PrivKey(key string) *Command {
 	c.initRemote()
-	c.opts.Remote.Key = key
+	c.opts.Process.Remote.Key = key
 	return c
 }
 
@@ -173,7 +173,7 @@ func (c *Command) PrivKey(key string) *Command {
 // a remote host.
 func (c *Command) PrivKeyFile(path string) *Command {
 	c.initRemote()
-	c.opts.Remote.KeyFile = path
+	c.opts.Process.Remote.KeyFile = path
 	return c
 }
 
@@ -181,42 +181,42 @@ func (c *Command) PrivKeyFile(path string) *Command {
 // authenticate to a remote host.
 func (c *Command) PrivKeyPassphrase(pass string) *Command {
 	c.initRemote()
-	c.opts.Remote.KeyPassphrase = pass
+	c.opts.Process.Remote.KeyPassphrase = pass
 	return c
 }
 
 // Password sets the password in order to authenticate to a remote host.
 func (c *Command) Password(p string) *Command {
 	c.initRemote()
-	c.opts.Remote.Password = p
+	c.opts.Process.Remote.Password = p
 	return c
 }
 
 // ProxyHost sets the proxy hostname for connecting to a proxy host.
 func (c *Command) ProxyHost(h string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.Host = h
+	c.opts.Process.Remote.Proxy.Host = h
 	return c
 }
 
 // ProxyUser sets the proxy username for connecting to a proxy host.
 func (c *Command) ProxyUser(u string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.User = u
+	c.opts.Process.Remote.Proxy.User = u
 	return c
 }
 
 // ProxyPort sets the proxy port for connecting to a proxy host.
 func (c *Command) ProxyPort(p int) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.Port = p
+	c.opts.Process.Remote.Proxy.Port = p
 	return c
 }
 
 // ProxyPrivKey sets the proxy private key in order to authenticate to a remote host.
 func (c *Command) ProxyPrivKey(key string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.Key = key
+	c.opts.Process.Remote.Proxy.Key = key
 	return c
 }
 
@@ -224,7 +224,7 @@ func (c *Command) ProxyPrivKey(key string) *Command {
 // authenticate to a proxy host.
 func (c *Command) ProxyPrivKeyFile(path string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.KeyFile = path
+	c.opts.Process.Remote.Proxy.KeyFile = path
 	return c
 }
 
@@ -232,20 +232,23 @@ func (c *Command) ProxyPrivKeyFile(path string) *Command {
 // authenticate to a proxy host.
 func (c *Command) ProxyPrivKeyPassphrase(pass string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.KeyPassphrase = pass
+	c.opts.Process.Remote.Proxy.KeyPassphrase = pass
 	return c
 }
 
 // ProxyPassword sets the password in order to authenticate to a proxy host.
 func (c *Command) ProxyPassword(p string) *Command {
 	c.initRemoteProxy()
-	c.opts.Remote.Proxy.Password = p
+	c.opts.Process.Remote.Proxy.Password = p
 	return c
 }
 
 // SetRemoteOptions sets the configuration for remote operations. This overrides
 // any existing remote configuration.
-func (c *Command) SetRemoteOptions(opts *options.Remote) *Command { c.opts.Remote = opts; return c }
+func (c *Command) SetRemoteOptions(opts *options.Remote) *Command {
+	c.opts.Process.Remote = opts
+	return c
+}
 
 // Directory sets the working directory. If this is a remote command, it sets
 // the working directory of the command being run remotely.
@@ -302,21 +305,21 @@ func (c *Command) SuppressStandardError(v bool) *Command {
 
 // SetLoggers sets the logging output on this command to the specified
 // slice. This removes any loggers previously configured.
-func (c *Command) SetLoggers(l []options.Logger) *Command {
+func (c *Command) SetLoggers(l []*options.LoggerConfig) *Command {
 	c.opts.Process.Output.Loggers = l
 	return c
 }
 
 // AppendLoggers adds one or more loggers to the existing configured
 // loggers in the command.
-func (c *Command) AppendLoggers(l ...options.Logger) *Command {
+func (c *Command) AppendLoggers(l ...*options.LoggerConfig) *Command {
 	c.opts.Process.Output.Loggers = append(c.opts.Process.Output.Loggers, l...)
 	return c
 }
 
 // ExtendLoggers takes the existing slice of loggers and adds that to any
 // existing configuration.
-func (c *Command) ExtendLoggers(l []options.Logger) *Command {
+func (c *Command) ExtendLoggers(l []*options.LoggerConfig) *Command {
 	c.opts.Process.Output.Loggers = append(c.opts.Process.Output.Loggers, l...)
 	return c
 }
@@ -359,14 +362,18 @@ func (c *Command) AddEnv(k, v string) *Command {
 	return c
 }
 
-// Prerequisite sets a function on the Command such that the Command will only
-// execute if the function returns true.
-func (c *Command) Prerequisite(chk func() bool) *Command { c.opts.Prerequisite = chk; return c }
-
 // Add adds on a sub-command.
 func (c *Command) Add(args []string) *Command {
 	c.opts.Commands = append(c.opts.Commands, args)
 	return c
+}
+
+// AddWhen adds a command only when the conditional is true.
+func (c *Command) AddWhen(cond bool, args []string) *Command {
+	if !cond {
+		return c
+	}
+	return c.Add(args)
 }
 
 // Sudo runs each command with superuser privileges with the default target
@@ -391,6 +398,15 @@ func (c *Command) Extend(cmds [][]string) *Command {
 	return c
 }
 
+// ExtendWhen adds on multiple sub-commands, only when the conditional
+// is true.
+func (c *Command) ExtendWhen(cond bool, cmds [][]string) *Command {
+	if !cond {
+		return c
+	}
+	return c.Extend(cmds)
+}
+
 // Append takes a series of strings and splits them into sub-commands and adds
 // them to the Command.
 func (c *Command) Append(cmds ...string) *Command {
@@ -400,6 +416,16 @@ func (c *Command) Append(cmds ...string) *Command {
 	return c
 }
 
+// AppendWhen adds a sequence of subcommands to the Command only when
+// the conditional is true.
+func (c *Command) AppendWhen(cond bool, cmds ...string) *Command {
+	if !cond {
+		return c
+	}
+
+	return c.Append(cmds...)
+}
+
 // ShellScript adds an operation to the command that runs a shell script, using
 // the shell's "-c" option).
 func (c *Command) ShellScript(shell, script string) *Command {
@@ -407,21 +433,75 @@ func (c *Command) ShellScript(shell, script string) *Command {
 	return c
 }
 
+// ShellScriptWhen a shell script option only when the conditional of true.
+func (c *Command) ShellScriptWhen(cond bool, shell, script string) *Command {
+	if !cond {
+		return c
+	}
+
+	return c.ShellScript(shell, script)
+}
+
 // Bash adds a script using "bash -c", as syntactic sugar for the ShellScript2
 // method.
 func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", script) }
+
+// BashWhen adds a bash script only when the conditional is true.
+func (c *Command) BashWhen(cond bool, script string) *Command {
+	if !cond {
+		return c
+
+	}
+
+	return c.Bash(script)
+}
 
 // Sh adds a script using "sh -c", as syntactic sugar for the ShellScript
 // method.
 func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script) }
 
+// ShWhen adds a shell script (e.g. "sh -c") only when the conditional
+// is true.
+func (c *Command) ShWhen(cond bool, script string) *Command {
+	if !cond {
+		return c
+	}
+
+	return c.Sh(script)
+}
+
 // AppendArgs is the variadic equivalent of Add, which adds a command
 // in the form of arguments.
 func (c *Command) AppendArgs(args ...string) *Command { return c.Add(args) }
 
-// SetHook allows you to add a function that's always called (locally)
-// after the command completes.
-func (c *Command) SetHook(h func(error) error) *Command { c.opts.Hook = h; return c }
+// AppendArgsWhen is the variadic equivalent of AddWhen, which adds a command
+// in the form of arguments only when the conditional is true.
+func (c *Command) AppendArgsWhen(cond bool, args ...string) *Command {
+	if !cond {
+		return c
+	}
+
+	return c.Add(args)
+}
+
+// Prerequisite sets a function on the Command such that the Command will only
+// execute if the function returns true. The Prerequisite function runs once per
+// Command object regardless of how many subcommands are
+// present. Prerequsite functions run even if the command's
+// RunFunction is set.
+func (c *Command) Prerequisite(chk func() bool) *Command { c.opts.Prerequisite = chk; return c }
+
+// PostHook allows you to add a function that runs (locally) after the
+// each subcommand in the Command completes. When specified, the
+// PostHook can override or annotate any error produced by the command
+// execution. The error returned is subject to the IgnoreError
+// options. The PostHook is not run when using SetRunFunction.
+func (c *Command) PostHook(h options.CommandPostHook) *Command { c.opts.PostHook = h; return c }
+
+// PreHook allows you to add a function that runs (locally) before
+// each subcommand executes, and allows you to log or modify the
+// creation option. The PreHook is not run when using SetRunFunction.
+func (c *Command) PreHook(fn options.CommandPreHook) *Command { c.opts.PreHook = fn; return c }
 
 func (c *Command) setupEnv() {
 	if c.opts.Process.Environment == nil {
@@ -460,11 +540,16 @@ func (c *Command) Run(ctx context.Context) error {
 			return catcher.Resolve()
 		}
 
-		err := c.exec(ctx, opt, idx)
-		catcher.AddWhen(!c.opts.IgnoreError, err)
+		if c.opts.PreHook != nil {
+			c.opts.PreHook(&c.opts, opt)
+		}
 
-		if c.opts.Hook != nil {
-			catcher.AddWhen(!c.opts.IgnoreError, c.opts.Hook(err))
+		err := c.exec(ctx, opt, idx)
+
+		if c.opts.PostHook != nil {
+			catcher.AddWhen(!c.opts.IgnoreError, c.opts.PostHook(err))
+		} else {
+			catcher.AddWhen(!c.opts.IgnoreError, err)
 		}
 
 		if err != nil && !c.opts.ContinueOnError {
@@ -700,7 +785,7 @@ func (c *Command) getCreateOpt(args []string) (*options.Create, error) {
 	case 0:
 		return nil, errors.New("cannot have empty args")
 	case 1:
-		if c.opts.Remote == nil && strings.ContainsAny(args[0], " \"'") {
+		if c.opts.Process.Remote == nil && strings.ContainsAny(args[0], " \"'") {
 			spl, err := shlex.Split(args[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")
@@ -727,10 +812,6 @@ func (c *Command) getCreateOpts() ([]*options.Create, error) {
 		if err != nil {
 			catcher.Add(err)
 			continue
-		}
-
-		if c.opts.Remote != nil {
-			cmd.Remote = c.opts.Remote
 		}
 
 		out = append(out, cmd)
@@ -781,8 +862,14 @@ func getMsgOutput(opts options.Output) func(msg message.Fields) message.Fields {
 		return noOutput
 	}
 
-	logger := NewInMemoryLogger(1000)
-	sender, err := logger.Configure()
+	logger, err := NewInMemoryLogger(1000)
+	if err != nil {
+		return func(msg message.Fields) message.Fields {
+			msg["log_err"] = errors.Wrap(err, "could not set up in-memory sender for capturing output")
+			return msg
+		}
+	}
+	sender, err := logger.Resolve()
 	if err != nil {
 		return func(msg message.Fields) message.Fields {
 			msg["log_err"] = errors.Wrap(err, "could not set up in-memory sender for capturing output")

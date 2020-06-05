@@ -9,16 +9,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 // ScriptingGolang describes a Go environment for building and running
 // arbitrary code.
 type ScriptingGolang struct {
-	Gopath         string            `bson:"gopath" json:"gopath" yaml:"gopath"`
-	Goroot         string            `bson:"goroot" json:"goroot" yaml:"goroot"`
-	Packages       []string          `bson:"packages" json:"packages" yaml:"packages"`
-	Context        string            `bson:"context" json:"context" yaml:"context"`
-	WithUpdate     bool              `bson:"with_update" json:"with_update" yaml:"with_update"`
+	Gopath string `bson:"gopath" json:"gopath" yaml:"gopath"`
+	Goroot string `bson:"goroot" json:"goroot" yaml:"goroot"`
+	// Packages describes the required packages for running scripts.
+	// TODO: better support for go modules for getting specific versions?
+	Packages []string `bson:"packages" json:"packages" yaml:"packages"`
+	// Directory is the base working directory in which scripting is performed.
+	Directory string `bson:"directory" json:"directory" yaml:"directory"`
+	// UpdatePackages will update any required packages that already exist.
+	UpdatePackages bool `bson:"update_packages" json:"update_packages" yaml:"update_packages"`
+
 	CachedDuration time.Duration     `bson:"cached_duration" json:"cached_duration" yaml:"cached_duration"`
 	Environment    map[string]string `bson:"environment" json:"environment" yaml:"environment"`
 	Output         Output            `bson:"output" json:"output" yaml:"output"`
@@ -52,6 +58,10 @@ func (opts *ScriptingGolang) Interpreter() string { return filepath.Join(opts.Go
 // both ensures that the values are permissible and sets, where
 // possible, good defaults.
 func (opts *ScriptingGolang) Validate() error {
+	if opts.Goroot == "" {
+		return errors.New("must specify a GOROOT")
+	}
+
 	if opts.CachedDuration == 0 {
 		opts.CachedDuration = 10 * time.Minute
 	}
@@ -78,7 +88,7 @@ func (opts *ScriptingGolang) ID() string {
 		_, _ = io.WriteString(hash, str)
 	}
 
-	_, _ = io.WriteString(hash, opts.Context)
+	_, _ = io.WriteString(hash, opts.Directory)
 
 	opts.cachedHash = fmt.Sprintf("%x", hash.Sum(nil))
 	opts.cachedAt = time.Now()

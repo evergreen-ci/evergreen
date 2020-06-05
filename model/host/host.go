@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -142,6 +143,8 @@ type Host struct {
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 
+	// PortBindings is populated if PublishPorts is specified when creating docker container from task
+	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
@@ -198,6 +201,23 @@ type VolumeAttachment struct {
 	HostID     string `bson:"host_id" json:"host_id"`
 }
 
+// PortMap maps container port to the parent host ports (container port is formatted as <port>/<protocol>)
+type PortMap map[string][]string
+
+func GetPortMap(m nat.PortMap) PortMap {
+	res := map[string][]string{}
+	for containerPort, bindings := range m {
+		hostPorts := []string{}
+		for _, binding := range bindings {
+			hostPorts = append(hostPorts, binding.HostPort)
+		}
+		if len(hostPorts) > 0 {
+			res[string(containerPort)] = hostPorts
+		}
+	}
+	return res
+}
+
 // DockerOptions contains options for starting a container
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
@@ -210,8 +230,10 @@ type DockerOptions struct {
 	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url,omitempty"`
 	// Method is either "pull" or "import" and defines how to retrieve the image.
 	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type,omitempty"`
-	// Command is required and is the command to run on the docker.
+	// Command is the command to run on the docker (if not specified, will use the default entrypoint).
 	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
+	// If PublishPorts is true, any port that's exposed in the image will be published
+	PublishPorts bool `mapstructure:"publish_ports" bson:"publish_ports,omitempty" json:"publish_ports,omitempty"`
 	// If the container is created from host create, we want to skip building the image with agent
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
@@ -380,6 +402,10 @@ func (h *Host) IsEphemeral() bool {
 
 func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
+}
+
+func (h *Host) NeedsPortBindings() bool {
+	return h.DockerOptions.PublishPorts && h.PortBindings == nil
 }
 
 func IsIntentHostId(id string) bool {
@@ -736,6 +762,25 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 	}
 
 	h.IP = ipv6Address
+	return nil
+}
+
+// probably don't want to store the port mapping exactly this way
+func (h *Host) SetPortMapping(portsMap PortMap) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				PortBindingsKey: portsMap,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	h.PortBindings = portsMap
 	return nil
 }
 
