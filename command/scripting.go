@@ -176,7 +176,7 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 	}
 
 	if !utility.StringSliceContains(validTestingHarnesses(), c.Harness) {
-		return errors.Errorf("invalid testing harness '%s': valid options are %s", c.Harness, validTestingHarnesses())
+		return errors.Errorf("invalid testing harness '%s': valid options are %s", c.Harness, strings.Join(validTestingHarnesses(), ", "))
 	}
 
 	if c.Command != "" {
