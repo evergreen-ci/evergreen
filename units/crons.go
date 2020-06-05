@@ -505,11 +505,22 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		for _, distroID := range disabled_distro_ids {
 			// we can just delete these queues, the tasks will persist
 			// and get rescheduled once the distro is no longer disabled
-			model.RemoveTaskQueues(distroID)
+			queue_info, err := model.GetDistroQueueInfo(distroID)
 			grip.Info(message.Fields{
-				"name":      "hhoke",
-				"distro":    distroID,
-				"operation": "task queue cleared on disable",
+				"name":         "hhoke",
+				"distro":       distroID,
+				"queue_length": queue_info.Length,
+				"err":          err,
+				"operation":    "pre-removal",
+			})
+			model.RemoveTaskQueues(distroID)
+			queue_info, err = model.GetDistroQueueInfo(distroID)
+			grip.Info(message.Fields{
+				"name":         "hhoke",
+				"distro":       distroID,
+				"queue_length": queue_info.Length,
+				"err":          err,
+				"operation":    "poast-removal",
 			})
 		}
 

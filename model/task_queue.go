@@ -60,7 +60,7 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 }
 
 func RemoveTaskQueues(distroID string) error {
-	query := db.Query(bson.M{"_id": distroID})
+	query := db.Query(bson.M{taskQueueDistroKey: distroID})
 	catcher := grip.NewBasicCatcher()
 	err := db.RemoveAllQ(TaskQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
@@ -80,6 +80,7 @@ func (q *DistroQueueInfo) GetQueueCollection() string {
 
 // TaskQueue represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
+	//todelete
 	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Distro          string           `bson:"distro" json:"distro"`
 	GeneratedAt     time.Time        `bson:"generated_at" json:"generated_at"`
@@ -115,6 +116,7 @@ type TaskQueueItem struct {
 // must not no-lint these values
 var (
 	// bson fields for the task queue struct
+	// to delete
 	taskQueueIdKey              = bsonutil.MustHaveTag(TaskQueue{}, "Id")
 	taskQueueDistroKey          = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
 	taskQueueGeneratedAtKey     = bsonutil.MustHaveTag(TaskQueue{}, "GeneratedAt")

@@ -170,11 +170,9 @@ func ByIsDisabled(containerPools []evergreen.ContainerPool) db.Q {
 		poolDistros = append(poolDistros, pool.Distro)
 	}
 	return db.Query(bson.M{
-		// TODO: test query
 		"_id": bson.M{
 			"$nin": poolDistros},
-		"DisabledKey": bson.M{
-			"$exists": true},
+		DisabledKey: true,
 	})
 }
 
