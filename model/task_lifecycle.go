@@ -41,12 +41,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	if active {
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
+		tasksToActivate := []task.Task{}
 		if !t.OverrideDependencies {
-			for _, dep := range t.DependsOn {
-				if err = SetActiveState(dep.TaskId, caller, true); err != nil {
-					return errors.Wrapf(err, "error activating dependency for %v with id %v",
-						taskId, dep.TaskId)
-				}
+			deps, err := task.GetRecursiveDependenciesUp([]task.Task{*t}, nil)
+			if err != nil {
+				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
+			}
+			for _, dep := range deps {
+				tasksToActivate = append(tasksToActivate, dep)
 			}
 		}
 
@@ -55,10 +57,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 				return errors.Wrap(err, "error resetting task")
 			}
 		} else {
-			if err = t.ActivateTask(caller); err != nil {
-				return errors.Wrap(err, "error while activating task")
-			}
-			event.LogTaskActivated(taskId, t.Execution, caller)
+			tasksToActivate = append(tasksToActivate, *t)
+		}
+
+		if err = task.ActivateTasks(tasksToActivate, caller); err != nil {
+			return errors.Wrapf(err, "can't activate tasks")
 		}
 
 		if t.DistroId == "" && !t.DisplayOnly {

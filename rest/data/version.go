@@ -330,7 +330,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 	if active {
 		catcher := grip.NewBasicCatcher()
 		for _, b := range newVersion.BuildIds {
-			catcher.Add(model.SetBuildActivation(b, true, evergreen.DefaultTaskActivator, true))
+			catcher.Add(model.SetBuildActivation(b, true, evergreen.DefaultTaskActivator))
 		}
 		if catcher.HasErrors() {
 			return nil, gimlet.ErrorResponse{

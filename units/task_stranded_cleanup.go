@@ -79,12 +79,16 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		j.AddError(err)
 	}
 
+	tasksToDeactivate := []task.Task{}
 	for _, t := range tasks {
 		if time.Since(t.CreateTime) >= 2*7*24*time.Hour {
-			j.AddError(t.DeactivateTask(j.ID()))
+			tasksToDeactivate = append(tasksToDeactivate, t)
 		} else {
 			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), &t.Details))
 		}
+	}
+	if len(tasksToDeactivate) > 0 {
+		j.AddError(task.DeactivateTasks(tasksToDeactivate, j.ID()))
 	}
 
 	grip.InfoWhen(!j.HasErrors(),

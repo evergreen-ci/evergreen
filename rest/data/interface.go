@@ -65,7 +65,7 @@ type Connector interface {
 	GetManifestByTask(string) (*manifest.Manifest, error)
 
 	// SetBuildPriority and SetBuildActivated change the status of the input build
-	SetBuildPriority(string, int64) error
+	SetBuildPriority(string, int64, string) error
 	SetBuildActivated(string, string, bool) error
 
 	// AbortBuild is a method to abort the build matching the same BuildId.

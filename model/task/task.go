@@ -872,35 +872,52 @@ func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
 	t.ActivatedTime = time.Now()
-	err := UpdateOne(
+
+	return ActivateTasks([]Task{*t}, caller)
+}
+
+func ActivateTasks(tasks []Task, caller string) error {
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+
+	_, err := UpdateAll(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: bson.M{"$in": taskIDs},
 		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
-				ActivatedTimeKey: t.ActivatedTime,
+				ActivatedTimeKey: time.Now(),
 			},
 		})
 	if err != nil {
 		return errors.Wrap(err, "can't activate task")
 	}
 
-	return ActivateDependencies([]Task{*t}, caller, t.ActivatedTime)
+	for _, t := range tasks {
+		event.LogTaskActivated(t.Id, t.Execution, caller)
+	}
+
+	return ActivateDeactivatedDependencies(taskIDs, caller)
 }
 
-// ActivateDependencies activates tasks that depend on these tasks which were deactivated because a task
+// ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated
-func ActivateDependencies(tasks []Task, caller string, activationTime time.Time) error {
+func ActivateDeactivatedDependencies(tasks []string, caller string) error {
+	taskMap := make(map[string]bool)
+	for _, t := range tasks {
+		taskMap[t] = true
+	}
+
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
 		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
-
-	taskMap := make(map[string]Task)
-	for _, t := range append(tasks, tasksDependingOnTheseTasks...) {
-		taskMap[t.Id] = t
+	for _, t := range tasksDependingOnTheseTasks {
+		taskMap[t.Id] = true
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -911,7 +928,7 @@ func ActivateDependencies(tasks []Task, caller string, activationTime time.Time)
 		}
 
 		for _, dep := range t.DependsOn {
-			if _, ok := taskMap[dep.TaskId]; !ok {
+			if !taskMap[dep.TaskId] {
 				tasksToGet = append(tasksToGet, dep.TaskId)
 			}
 		}
@@ -925,7 +942,7 @@ func ActivateDependencies(tasks []Task, caller string, activationTime time.Time)
 		missingTaskMap[t.Id] = t
 	}
 
-	tasksToActivate := []string{}
+	tasksToActivate := []Task{}
 	for _, t := range tasksDependingOnTheseTasks {
 		if t.Activated || !t.DeactivatedForDependency {
 			continue
@@ -933,29 +950,37 @@ func ActivateDependencies(tasks []Task, caller string, activationTime time.Time)
 
 		for _, dep := range t.DependsOn {
 			// not being activated now
-			if _, ok := taskMap[dep.TaskId]; !ok {
+			if !taskMap[dep.TaskId] {
 				// and not already activated
 				if depTask := missingTaskMap[dep.TaskId]; !depTask.Activated {
 					continue
 				}
 			}
 		}
-		tasksToActivate = append(tasksToActivate, t.Id)
+		tasksToActivate = append(tasksToActivate, t)
 	}
 
 	if len(tasksToActivate) == 0 {
 		return nil
 	}
 
+	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
+	for _, t := range tasksToActivate {
+		taskIDsToActivate = append(taskIDsToActivate, t.Id)
+	}
 	_, err = UpdateAll(
-		bson.M{IdKey: bson.M{"$in": tasksToActivate}},
+		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
 		bson.M{"$set": bson.M{
 			ActivatedKey:                true,
 			DeactivatedForDependencyKey: false,
 			ActivatedByKey:              caller,
-			ActivatedTimeKey:            activationTime,
+			ActivatedTimeKey:            time.Now(),
 		}},
 	)
+
+	for _, t := range tasksToActivate {
+		event.LogTaskActivated(t.Id, t.Execution, caller)
+	}
 
 	return errors.Wrap(err, "can't update activation for dependencies")
 }
@@ -965,40 +990,58 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
-	err := UpdateOne(
+
+	return DeactivateTasks([]Task{*t}, caller)
+}
+
+func DeactivateTasks(tasks []Task, caller string) error {
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+
+	_, err := UpdateAll(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: bson.M{"$in": taskIDs},
 		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     false,
+				ActivatedByKey:   caller,
 				ScheduledTimeKey: utility.ZeroTime,
 			},
 		},
 	)
 	if err != nil {
-		return errors.Wrapf(err, "problem deactivating task '%s'", t.Id)
+		return errors.Wrap(err, "problem deactivating tasks")
 	}
 
-	return DeactivateDependencies([]Task{*t})
+	for _, t := range tasks {
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+	}
+	return errors.Wrap(DeactivateDependencies(taskIDs, caller), "can't deactivate dependencies")
 }
 
-func DeactivateDependencies(tasks []Task) error {
+func DeactivateDependencies(tasks []string, caller string) error {
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
 		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
 
-	tasksToUpdate := make([]string, 0, len(tasksDependingOnTheseTasks))
+	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
 	for _, t := range tasksDependingOnTheseTasks {
 		if t.Activated {
-			tasksToUpdate = append(tasksToUpdate, t.Id)
+			tasksToUpdate = append(tasksToUpdate, t)
 		}
 	}
 
+	taskIDsToUpdate := make([]string, 0, len(tasksToUpdate))
+	for _, t := range tasksToUpdate {
+		taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
+	}
 	_, err = UpdateAll(
 		bson.M{
-			IdKey: bson.M{"$in": tasksToUpdate},
+			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
 		bson.M{"$set": bson.M{
 			ActivatedKey:                false,
@@ -1006,6 +1049,11 @@ func DeactivateDependencies(tasks []Task) error {
 			ScheduledTimeKey:            utility.ZeroTime,
 		}},
 	)
+
+	for _, t := range tasksToUpdate {
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+	}
+
 	return errors.Wrap(err, "problem deactivating dependencies")
 }
 
@@ -1157,25 +1205,27 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetPriority sets the priority of the task and the tasks that depend on it
+// SetPriority sets the priority of the task.
+// It increases the priority of the tasks it depends on.
 func (t *Task) SetPriority(priority int64, user string) error {
 	t.Priority = priority
-	depsCache := make(map[string]Task)
-	if err := t.getRecursiveDependenciesUp(depsCache); err != nil {
+	depTasks, err := GetRecursiveDependenciesUp([]Task{*t}, nil)
+	if err != nil {
 		return errors.Wrap(err, "error getting task dependencies")
 	}
 
 	ids := []string{t.Id}
 	ids = append(ids, t.ExecutionTasks...)
-	for id := range depsCache {
-		ids = append(ids, id)
+	depIDs := make([]string, 0, len(depTasks))
+	for _, task := range depTasks {
+		depIDs = append(depIDs, task.Id)
 	}
 
-	_, err := UpdateAll(
+	_, err = UpdateAll(
 		bson.M{"$or": []bson.M{
-			{IdKey: t.Id},
+			{IdKey: bson.M{"$in": ids}},
 			{
-				IdKey:       bson.M{"$in": ids},
+				IdKey:       bson.M{"$in": depIDs},
 				PriorityKey: bson.M{"$lt": priority},
 			},
 		}},
@@ -1195,72 +1245,68 @@ func (t *Task) SetPriority(priority int64, user string) error {
 	return nil
 }
 
-// getRecursiveDependenciesUp populates a map containing all tasks t recursively depends on.
+// GetRecursiveDependenciesUp returns all tasks recursively depended upon
+// that are not in the original task slice. depCache should originally be nil
 // We assume there are no dependency cycles.
-func (t *Task) getRecursiveDependenciesUp(depCache map[string]Task) error {
+func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
-	recurIds := []string{}
-	for _, dependency := range t.DependsOn {
-		recurIds = append(recurIds, dependency.TaskId)
+	for _, t := range tasks {
+		depCache[t.Id] = t
 	}
 
 	tasksToFind := []string{}
-	for _, id := range recurIds {
-		if _, ok := depCache[id]; !ok {
-			tasksToFind = append(tasksToFind, id)
+	for _, t := range tasks {
+		for _, dep := range t.DependsOn {
+			if _, ok := depCache[dep.TaskId]; !ok {
+				tasksToFind = append(tasksToFind, dep.TaskId)
+			}
 		}
 	}
 
 	// leaf node
 	if len(tasksToFind) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	deps, err := Find(ByIds(tasksToFind))
+	deps, err := Find(ByIds(tasksToFind).WithFields(IdKey, DependsOnKey, ExecutionKey))
 	if err != nil {
-		return errors.WithStack(err)
-	}
-	for _, dep := range deps {
-		depCache[dep.Id] = dep
+		return nil, errors.Wrap(err, "can't get dependencies")
 	}
 
-	for _, recurTask := range deps {
-		if err := recurTask.getRecursiveDependenciesUp(depCache); err != nil {
-			return errors.WithStack(err)
-		}
+	recursiveDeps, err := GetRecursiveDependenciesUp(deps, depCache)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get recursive deps")
 	}
 
-	return nil
+	return append(deps, recursiveDeps...), nil
 }
 
-// getRecursiveDependenciesUp returns a slice containing all tasks recursively depending on tasks.
+// getRecursiveDependenciesDown returns a slice containing all tasks recursively depending on tasks.
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
-func getRecursiveDependenciesDown(tasks []Task, taskMap map[string]Task) ([]Task, error) {
+func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Task, error) {
 	if taskMap == nil {
-		taskMap = make(map[string]Task)
+		taskMap = make(map[string]bool)
 	}
-	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
-		taskMap[t.Id] = t
+		taskMap[t] = true
 	}
 
 	// find the tasks that depend on these tasks
 	dependOnUsTasks, err := FindAll(db.Query(bson.M{
-		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": taskIDs},
-	}))
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": tasks},
+	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
 
 	// if the task hasn't yet been visited we need to recurse on it
-	depsToRecurse := []Task{}
+	depsToRecurse := []string{}
 	for _, t := range dependOnUsTasks {
-		if _, ok := taskMap[t.Id]; !ok {
-			depsToRecurse = append(depsToRecurse, t)
+		if !taskMap[t.Id] {
+			depsToRecurse = append(depsToRecurse, t.Id)
 		}
 	}
 
