@@ -361,6 +361,10 @@ buildvariants:
 		Author:              "somebody",
 		RevisionOrderNumber: 42,
 		Config:              config,
+		Requester:           evergreen.GitTagRequester,
+		TriggeredByGitTag: GitTag{
+			Tag: "release",
+		},
 	}
 	assert.NoError(v.Insert())
 	taskDoc := &task.Task{
@@ -381,7 +385,7 @@ buildvariants:
 	assert.NoError(err)
 	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 19)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -393,6 +397,7 @@ buildvariants:
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
+	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
 	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
@@ -419,6 +424,7 @@ buildvariants:
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
+	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
@@ -449,6 +455,7 @@ buildvariants:
 	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
+	assert.False(expansions.Exists("triggered_by_git_tag"))
 	assert.True(expansions.Exists("github_repo"))
 	assert.True(expansions.Exists("github_author"))
 	assert.True(expansions.Exists("github_pr_number"))
