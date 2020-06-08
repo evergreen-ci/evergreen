@@ -25,9 +25,9 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentUser := MustHaveUser(r)
-
+	spruceLink := fmt.Sprintf("%s/patch/%s/configure", uis.Settings.Ui.UIv2Url, projCtx.Patch.Id.Hex())
 	if currentUser.Settings.UseSpruceOptions.SpruceV1 {
-		http.Redirect(w, r, fmt.Sprintf("%s/patch/%s/configure", uis.Settings.Ui.UIv2Url, projCtx.Patch.Id.Hex()), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -72,9 +72,10 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Tasks               []struct{ Name string }
 		CanEdit             bool
 		CommitQueuePosition int
+		ToggleUILink        string
 		ViewData
 	}{versionAsUI, variantsAndTasksFromProject.Variants, variantsAndTasksFromProject.Tasks, currentUser != nil,
-		commitQueuePosition, uis.GetCommonViewData(w, r, true, true)},
+		commitQueuePosition, spruceLink, uis.GetCommonViewData(w, r, true, true)},
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
