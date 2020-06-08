@@ -42,11 +42,7 @@ mciModule.controller("NavBarController", function (
   $timeout,
   $rootScope,
   mciTime,
-  $window,
-  $mdDialog,
-  mciSubscriptionsService,
-  notificationService,
-  $mdToast
+  $window
 ) {
   $scope.uiToggleLink = $window.ToggleUILink;
   $scope.showUIToggle = $window.user && $window.ToggleUILink;
