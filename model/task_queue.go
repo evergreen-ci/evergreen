@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -47,7 +46,7 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	err := db.FindOne(
 		TaskQueuesCollection,
 		bson.M{taskQueueDistroKey: distroID},
-		bson.M{taskQueueDistroQueueInfoKey: 1, taskQueueIdKey: 0},
+		bson.M{taskQueueDistroQueueInfoKey: 1},
 		db.NoSort,
 		taskQueue,
 	)
@@ -60,7 +59,7 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 }
 
 func RemoveTaskQueues(distroID string) error {
-	query := db.Query(bson.M{"_id": distroID})
+	query := db.Query(bson.M{taskQueueDistroKey: distroID})
 	catcher := grip.NewBasicCatcher()
 	err := db.RemoveAllQ(TaskQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
@@ -80,11 +79,10 @@ func (q *DistroQueueInfo) GetQueueCollection() string {
 
 // TaskQueue represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
-	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
-	Distro          string           `bson:"distro" json:"distro"`
-	GeneratedAt     time.Time        `bson:"generated_at" json:"generated_at"`
-	Queue           []TaskQueueItem  `bson:"queue" json:"queue"`
-	DistroQueueInfo DistroQueueInfo  `bson:"distro_queue_info" json:"distro_queue_info"`
+	Distro          string          `bson:"distro" json:"distro"`
+	GeneratedAt     time.Time       `bson:"generated_at" json:"generated_at"`
+	Queue           []TaskQueueItem `bson:"queue" json:"queue"`
+	DistroQueueInfo DistroQueueInfo `bson:"distro_queue_info" json:"distro_queue_info"`
 
 	useModerDequeueOp bool
 }
@@ -115,7 +113,6 @@ type TaskQueueItem struct {
 // must not no-lint these values
 var (
 	// bson fields for the task queue struct
-	taskQueueIdKey              = bsonutil.MustHaveTag(TaskQueue{}, "Id")
 	taskQueueDistroKey          = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
 	taskQueueGeneratedAtKey     = bsonutil.MustHaveTag(TaskQueue{}, "GeneratedAt")
 	taskQueueQueueKey           = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
@@ -430,7 +427,8 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 		},
 		{
 			"$group": bson.M{
-				"_id": taskQueueIdKey,
+				//todo_hhoke: update from slack
+				"_id": taskQueueItemIdKey,
 				taskQueueQueueKey: bson.M{
 					"$push": bson.M{
 						taskQueueItemIdKey:            "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey),
@@ -526,8 +524,7 @@ func FindEnqueuedTaskIDs(taskIDs []string, coll string) ([]string, error) {
 			queueItemIdKey: bson.M{"$in": taskIDs},
 		}},
 		{"$project": bson.M{
-			taskQueueIdKey: 0,
-			"task_id":      "$" + queueItemIdKey,
+			"task_id": "$" + queueItemIdKey,
 		}},
 	}
 

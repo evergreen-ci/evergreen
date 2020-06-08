@@ -83,7 +83,6 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "error retrieving scheduler settings"))
 		return
 	}
-
 	conf := scheduler.Configuration{
 		DistroID:         j.DistroID,
 		TaskFinder:       settings.Scheduler.TaskFinder,
