@@ -132,7 +132,7 @@ input SubscriberInput {
 }
 
 input UseSpruceOptionsInput {
-  hasUsedSpruceBefore: Boolean
+  hasUsedSpruceBefore: Boolean!
 }
 
 type PatchTasks {

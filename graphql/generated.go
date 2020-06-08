@@ -2501,7 +2501,7 @@ input SubscriberInput {
 }
 
 input UseSpruceOptionsInput {
-  hasUsedSpruceBefore: Boolean
+  hasUsedSpruceBefore: Boolean!
 }
 
 type PatchTasks {
@@ -12813,7 +12813,7 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 		switch k {
 		case "hasUsedSpruceBefore":
 			var err error
-			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.HasUsedSpruceBefore, err = ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
