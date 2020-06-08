@@ -49,7 +49,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 			grip.Error(err)
 		}
 		if queue_info.Length > 0 {
-			err := model.RemoveTaskQueues(distro.Id)
+			err = model.RemoveTaskQueues(distro.Id)
 			if err != nil {
 				grip.Error(err)
 			}
