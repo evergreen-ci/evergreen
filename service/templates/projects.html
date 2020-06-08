@@ -243,18 +243,7 @@ Evergreen Projects
                       <div class="muted small">Ignore commits pushed to the repo</div>
                   </div>
                   <div ng-hide="settingsFormData.repotracker_disabled || !github_webhooks_enabled">
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be automatically run every few minutes</label>
-                    </div>
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="true"> <strong> Trigger Repotracker via PushEvents</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
-                    </div>
+                    <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
                   </div>
               </div>
               <br />
