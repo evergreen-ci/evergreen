@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -36,6 +37,7 @@ func TestCodegen(t *testing.T) {
 			require.NoError(t, err)
 			generated, converters, err := Codegen(string(f), mapping)
 			require.NoError(t, err)
+			grip.Info(generated)
 
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "expected", name+".go"))
 			require.NoError(t, err)
@@ -68,17 +70,17 @@ func TestCreateConversionMethods(t *testing.T) {
 	assert.NoError(t, err)
 	expected := `
 func (m *APIRevision) BuildFromService(t model.Revision) error {
-    m.One = stringToStringPtr(t.Author)
-m.Three = intToInt(t.AuthorGithubUID)
-m.Two = stringToString(t.AuthorEmail)
+    m.One = StringStringPtr(t.Author)
+m.Three = IntInt(t.AuthorGithubUID)
+m.Two = StringString(t.AuthorEmail)
     return nil
 }
 
 func (m *APIRevision) ToService() (model.Revision, error) {
     out := model.Revision{}
-    out.Author = stringToStringPtr(m.One)
-out.AuthorEmail = stringToString(m.Two)
-out.AuthorGithubUID = intToInt(m.Three)
+    out.Author = StringStringPtr(m.One)
+out.AuthorEmail = StringString(m.Two)
+out.AuthorGithubUID = IntInt(m.Three)
     return out, nil
 }`
 	assert.Equal(t, expected, string(generated))

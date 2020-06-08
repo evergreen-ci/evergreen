@@ -1,4 +1,4 @@
-type Source {
-  Name: String!
-  Input: String!
+type GithubOpts {
+  Account: String!
+  Repo: String!
 }

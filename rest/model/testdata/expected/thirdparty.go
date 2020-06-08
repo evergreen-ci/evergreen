@@ -2,22 +2,22 @@
 
 package model
 
-import "github.com/vektah/gqlparser/ast"
+import "github.com/mongodb/grip/send"
 
-type APISource struct {
-	Name  string `json:"name"`
-	Input string `json:"input"`
+type APIGithubOptions struct {
+	Account string `json:"account"`
+	Repo    string `json:"repo"`
 }
 
-func (m *APISource) BuildFromService(t ast.Source) error {
-	m.Input = StringString(t.Input)
-	m.Name = StringString(t.Name)
+func (m *APIGithubOptions) BuildFromService(t send.GithubOptions) error {
+	m.Account = StringString(t.Account)
+	m.Repo = StringString(t.Repo)
 	return nil
 }
 
-func (m *APISource) ToService() (ast.Source, error) {
-	out := ast.Source{}
-	out.Input = StringString(m.Input)
-	out.Name = StringString(m.Name)
+func (m *APIGithubOptions) ToService() (send.GithubOptions, error) {
+	out := send.GithubOptions{}
+	out.Account = StringString(m.Account)
+	out.Repo = StringString(m.Repo)
 	return out, nil
 }
