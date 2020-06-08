@@ -8,6 +8,9 @@
 window.BannerTheme = {{.BannerTheme}};
 window.BannerText = {{.Banner}};
 window.JiraHost = {{.JiraHost}};
+{{if .ToggleUILink}}
+window.ToggleUILink = {{.ToggleUILink}};
+{{end}}
 </script>
 <body onload="setBanner()">
   <!-- menu toolbar -->
@@ -42,7 +45,7 @@ window.JiraHost = {{.JiraHost}};
         </ul>
 
         <ul class="nav navbar-nav navbar-right">
-          <li><a ng-show="true" ng-click="$event.preventDefault();newUIRedirect()">Open Page in the New UI</a></li>
+          <li><a ng-show="showUIToggle" ng-href="[[uiToggleLink]]">Open Page in the New UI</a></li>
           <li class="dropdown" ng-show="!!allProjects" ng-cloak>
           <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a>
           <ul class="dropdown-menu project-dropdown">

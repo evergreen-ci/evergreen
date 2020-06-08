@@ -97,10 +97,16 @@ func (uis *UIServer) projectPatchesTimeline(w http.ResponseWriter, r *http.Reque
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Author string
+	toggleUILink := ""
+	if len(author) > 0 {
+		toggleUILink = fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, author)
+	}
+	pageData := struct {
+		Author       string
+		ToggleUILink string
 		ViewData
-	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")
+	}{author, toggleUILink, uis.GetCommonViewData(w, r, false, true)}
+	uis.render.WriteResponse(w, http.StatusOK, pageData, "base", "patches.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {

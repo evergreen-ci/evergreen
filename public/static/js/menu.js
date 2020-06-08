@@ -48,11 +48,6 @@ mciModule.controller("NavBarController", function (
   notificationService,
   $mdToast
 ) {
-  $scope.newUILink = $window.newUILink;
-  console.log($scope);
-  $scope.newUIRedirect = () => {
-    console.log($scope);
-    window.location = $scope.newUILink;
-  };
-  $scope.showUIToggle = $window.user && $window.newUILink;
+  $scope.uiToggleLink = $window.ToggleUILink;
+  $scope.showUIToggle = $window.user && $window.ToggleUILink;
 });
