@@ -5,6 +5,7 @@
       taskLogLink
       agentLogLink
       systemLogLink
+      eventLogLink
     }
     id
     createTime

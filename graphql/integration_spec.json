@@ -1724,7 +1724,8 @@
               "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
               "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
               "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
-              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S"
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S",
+              "eventLogLink": "https://localhost:8443/event_log/task/wuzzup"
             },
             "id": "wuzzup",
             "createTime": "2018-01-10T19:01:36-05:00",

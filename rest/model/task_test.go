@@ -91,6 +91,7 @@ func TestTaskBuildFromService(t *testing.T) {
 						TaskLogLink:   ToStringPtr("url/task_log_raw//0?type=T"),
 						SystemLogLink: ToStringPtr("url/task_log_raw//0?type=S"),
 						AgentLogLink:  ToStringPtr("url/task_log_raw//0?type=E"),
+						EventLogLink:  ToStringPtr("url/event_log/task/"),
 					},
 					CreateTime:    &time.Time{},
 					DispatchTime:  &time.Time{},

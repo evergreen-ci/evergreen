@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	LogLinkFormat = "%s/task_log_raw/%s/%d?type=%s"
+	TaskLogLinkFormat  = "%s/task_log_raw/%s/%d?type=%s"
+	EventLogLinkFormat = "%s/event_log/task/%s"
 )
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
@@ -72,6 +73,7 @@ type LogLinks struct {
 	TaskLogLink   *string `json:"task_log"`
 	AgentLogLink  *string `json:"agent_log"`
 	SystemLogLink *string `json:"system_log"`
+	EventLogLink  *string `json:"event_log"`
 }
 
 type ApiTaskEndDetail struct {
@@ -177,10 +179,11 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 	case string:
 		ll := LogLinks{
-			AllLogLink:    ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "S")),
+			AllLogLink:    ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
+			TaskLogLink:   ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
+			AgentLogLink:  ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
+			SystemLogLink: ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "S")),
+			EventLogLink:  ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, FromStringPtr(at.Id))),
 		}
 		at.Logs = ll
 	default:

@@ -250,6 +250,7 @@ type TaskLogLinks {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
+  eventLogLink: String
 }
 
 type TaskEndDetail {
