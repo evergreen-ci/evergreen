@@ -218,7 +218,7 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 		model.ParserProject `yaml:"pp,inline"`
 		// Variables is only used to suppress yaml unmarshalling errors related
 		// to a non-existent variables field.
-		Variables interface{} `yaml:"variables" bson:"-"`
+		Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 	}{}
 
 	if err := yaml.UnmarshalStrict(yamlBytes, &strictProjectWithVariables); err != nil {
