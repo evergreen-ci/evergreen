@@ -209,14 +209,16 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
-
+	newUILink := fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool
 		JiraHost      string
+		NewUILink     string
 		ViewData
 	}{
+		NewUILink:     newUILink,
 		Version:       &versionAsUI,
 		PluginContent: pluginContent,
 		CanEdit:       canEdit,

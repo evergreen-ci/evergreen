@@ -9,10 +9,9 @@ window.BannerTheme = {{.BannerTheme}};
 window.BannerText = {{.Banner}};
 window.JiraHost = {{.JiraHost}};
 </script>
-
 <body onload="setBanner()">
   <!-- menu toolbar -->
-  <div id="nav" class="navbar navbar-inverse navbar-fixed-top">
+  <div id="nav" class="navbar navbar-inverse navbar-fixed-top" ng-controller="NavBarController">
     <div class="container-fluid">
       <div class="navbar-header">
         <a class="navbar-brand" href="/" style="padding:0px">
@@ -43,6 +42,7 @@ window.JiraHost = {{.JiraHost}};
         </ul>
 
         <ul class="nav navbar-nav navbar-right">
+          <li><a ng-show="true" ng-click="$event.preventDefault();newUIRedirect()">Open Page in the New UI</a></li>
           <li class="dropdown" ng-show="!!allProjects" ng-cloak>
           <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a>
           <ul class="dropdown-menu project-dropdown">
