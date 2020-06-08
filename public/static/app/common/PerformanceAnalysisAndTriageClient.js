@@ -1,12 +1,13 @@
 mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter, ApiUtil, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, $window) {
-  const client = ApiUtil.httpGetter(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE);
+  const getClient = ApiUtil.httpGetter(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE);
+  const postClient = ApiUtil.httpPoster(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE);
 
   return {
     getAuthenticationUrl: function() {
       return PERFORMANCE_ANALYSIS_AND_TRIAGE_API.AUTH_URL + "?redirect=" + $window.location.href
     },
     getVersionChangePoints: function (projectId, page, pageSize, variantRegex, versionRegex, taskRegex, testRegex, measurementRegex, threadLevels, triageStatusRegex, calculatedOnWindow, percentChangeWindows) {
-      return client(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION, {
+      return getClient(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION, {
         projectId: projectId,
       }, {
         page: page,
@@ -22,5 +23,11 @@ mciModule.factory('PerformanceAnalysisAndTriageClient', function ($http, $filter
         triage_status_regex: triageStatusRegex,
       })
     },
+    triagePoints: function(changePointIds, status) {
+      return postClient(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.TRIAGE_POINTS, {}, {
+        change_point_ids: changePointIds,
+        status: status,
+      });
+    }
   }
 });
