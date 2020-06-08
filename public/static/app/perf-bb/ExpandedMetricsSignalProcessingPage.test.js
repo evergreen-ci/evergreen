@@ -107,6 +107,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         percent_change: '12.32',
         triage_status: 'triaged',
         thread_level: 5,
+        calculated_on: "2020-05-04T20:21:12.037000"
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -132,6 +133,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         percent_change: '50.32',
         triage_status: 'untriaged',
         thread_level: 0,
+        calculated_on: "2020-05-04T20:21:12.037000"
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -156,6 +158,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         percent_change: '50.32',
         triage_status: 'untriaged',
         thread_level: 0,
+        calculated_on: "2020-05-04T20:21:12.037000"
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -177,6 +180,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         percent_change: '50.32',
         triage_status: 'untriaged',
         thread_level: 0,
+        calculated_on: "2020-05-04T20:21:12.037000"
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -200,6 +204,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       $scope.measurementRegex = 'some_measurement';
       $scope.triageStatusRegex = "some_triage_status";
       $scope.threadLevels = [1,2,3];
+      $scope.percentChangeWindows = ["0,20"];
+      $scope.calculatedOnWindow = "2020-06-09T04:00:00.000,2020-06-18T04:00:00.000";
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 1, 10, 511, $scope);
       $scope.nextPage();
       $httpBackend.flush();
@@ -224,9 +230,19 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
           {
             name: 'Percent Change',
             field: 'percent_change',
-            type: 'number',
             cellTemplate: '<percent-change-cell row="row" ctx="grid.appScope.spvm.refCtx" />',
+            filterHeaderTemplate: `
+          <md-input-container style="margin:0">
+            <md-select ng-model="col.filters[0].term" multiple>
+              <md-option ng-value="hv" ng-repeat="hv in col.filters[0].hazardValues">{{hv}}</md-option>
+            </md-select>
+          </md-input-container>
+        `,
             width: CHANGE_POINTS_GRID.HAZARD_COL_WIDTH,
+            filter: {
+              term: null,
+              hazardValues: $scope.hazardValues
+            },
           },
           {
             name: 'Variant',
@@ -273,6 +289,14 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
               term: 'not_triaged'
             }
           },
+          {
+            name: 'Calculated On',
+            field: 'calculated_on',
+            filterHeaderTemplate: '<md-date-range one-panel="true" auto-confirm="true" ng-model="selectedDate" md-on-select="col.filters[0].term = $dates"></md-date-range>',
+            filter: {
+              term: null
+            }
+          }
         ]
       });
     })
@@ -304,6 +328,14 @@ function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, 
     $scope.threadLevels.forEach(tl => {
       url += `&thread_levels=${tl}`
     })
+  }
+  if($scope.percentChangeWindows) {
+    $scope.percentChangeWindows.forEach(w => {
+      url += `&percent_change=${w}`
+    })
+  }
+  if($scope.calculatedOnWindow) {
+    url += `&calculated_on=${$scope.calculatedOnWindow}`
   }
   return $httpBackend.expectGET(url).respond(200, JSON.stringify(newData || standardData(page, pageSize, totalPages)));
 }
