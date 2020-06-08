@@ -501,7 +501,6 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 				if err != nil {
 					grip.Error(err)
 				}
-				queue_info, err = model.GetDistroQueueInfo(distroID)
 				grip.Info(message.Fields{
 					"distro":    distroID,
 					"err":       err,

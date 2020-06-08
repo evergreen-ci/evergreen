@@ -46,7 +46,7 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	err := db.FindOne(
 		TaskQueuesCollection,
 		bson.M{taskQueueDistroKey: distroID},
-		bson.M{taskQueueDistroQueueInfoKey: 1, "_id": 0},
+		bson.M{taskQueueDistroQueueInfoKey: 1},
 		db.NoSort,
 		taskQueue,
 	)
@@ -524,7 +524,6 @@ func FindEnqueuedTaskIDs(taskIDs []string, coll string) ([]string, error) {
 			queueItemIdKey: bson.M{"$in": taskIDs},
 		}},
 		{"$project": bson.M{
-			"_id":     0,
 			"task_id": "$" + queueItemIdKey,
 		}},
 	}

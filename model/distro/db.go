@@ -163,15 +163,9 @@ func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) db.Q {
 		}})
 }
 
-// ByIsDisabled returns a query that selects distros that don't run containers and are disabled
+// ByIsDisabled returns a query that selects distros that are disabled
 func ByIsDisabled(containerPools []evergreen.ContainerPool) db.Q {
-	poolDistros := []string{}
-	for _, pool := range containerPools {
-		poolDistros = append(poolDistros, pool.Distro)
-	}
 	return db.Query(bson.M{
-		"_id": bson.M{
-			"$nin": poolDistros},
 		DisabledKey: true,
 	})
 }
