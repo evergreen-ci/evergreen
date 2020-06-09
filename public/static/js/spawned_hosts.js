@@ -343,7 +343,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.invalidVolumeSize = function(size) {
-        return $scope.availableVolumeSize() - size < 0;
+        return size <= 0 || $scope.availableVolumeSize() - size < 0;
     };
 
     $scope.availableUnexpirableVolumes = function () {
@@ -927,6 +927,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           $scope.setResourceType("hosts");
         }
       });
+    }
+
+    $scope.goToPage = function (resource_type) {
+      $scope.setResourceType(resource_type);
+      if ($scope.modalOpen) {
+        $('#spawn-modal').modal('hide');
+      }
     }
 
     initializeModal = function (modal, title, action) {
