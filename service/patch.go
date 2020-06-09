@@ -66,16 +66,20 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version             *uiVersion
 		Variants            map[string]model.BuildVariant
 		Tasks               []struct{ Name string }
 		CanEdit             bool
 		CommitQueuePosition int
-		NewUILink        string
+		NewUILink           string
 		ViewData
 	}{versionAsUI, variantsAndTasksFromProject.Variants, variantsAndTasksFromProject.Tasks, currentUser != nil,
-		commitQueuePosition, spruceLink, uis.GetCommonViewData(w, r, true, true)},
+		commitQueuePosition, newUILink, uis.GetCommonViewData(w, r, true, true)},
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 

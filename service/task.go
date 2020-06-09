@@ -407,14 +407,17 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	newUILink := fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
 		JiraHost      string
 		Permissions   gimlet.Permissions
-		NewUILink  string
+		NewUILink     string
 		ViewData
 	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }

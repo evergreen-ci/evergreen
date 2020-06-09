@@ -98,11 +98,11 @@ func (uis *UIServer) projectPatchesTimeline(w http.ResponseWriter, r *http.Reque
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
 	newUILink := ""
-	if len(author) > 0 {
+	if len(author) > 0 && len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, author)
 	}
 	pageData := struct {
-		Author       string
+		Author    string
 		NewUILink string
 		ViewData
 	}{author, newUILink, uis.GetCommonViewData(w, r, false, true)}

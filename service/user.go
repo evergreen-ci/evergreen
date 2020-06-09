@@ -201,7 +201,10 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		regions = append(regions, item.Region)
 	}
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url, regions}
-	newUILink := fmt.Sprintf("%s/preferences", uis.Settings.Ui.UIv2Url)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/preferences", uis.Settings.Ui.UIv2Url)
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data           user.UserSettings
 		Config         confFile
@@ -209,7 +212,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		GithubUser     string
 		GithubUID      int
 		CanClearTokens bool
-		NewUILink   string
+		NewUILink      string
 		ViewData
 	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs,
 		currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, newUILink, uis.GetCommonViewData(w, r, true, true)},
