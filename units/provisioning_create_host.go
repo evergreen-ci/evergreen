@@ -106,7 +106,16 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			//probably haven't made an AWS call yet
+			hostErr := fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID)
+			grip.Warning(message.WrapError(hostErr, message.Fields{
+				"host_id":  j.HostID,
+				"attempt":  j.CurrentAttempt,
+				"distro":   j.host.Distro.Id,
+				"job":      j.ID(),
+				"provider": j.host.Provider,
+				"message":  "could not find host",
+			}))
 			return
 		}
 	}
@@ -142,7 +151,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
 
 			j.AddError(err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.CurrentAttempt,
 				"distro":   j.host.Distro.Id,
