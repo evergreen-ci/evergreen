@@ -2,8 +2,8 @@ package model
 
 import (
 	"regexp"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/pkg/errors"
