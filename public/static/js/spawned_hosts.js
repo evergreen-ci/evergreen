@@ -343,7 +343,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     };
 
     $scope.invalidVolumeSize = function(size) {
-        return $scope.availableVolumeSize() - size < 0;
+        return size <= 0 || $scope.availableVolumeSize() - size < 0;
     };
 
     $scope.availableUnexpirableVolumes = function () {

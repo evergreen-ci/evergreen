@@ -28,6 +28,9 @@
               <div class="entry">
                 <strong>Availability Zone</strong> <span>[[curVolumeData.zone]]</span>
               </div>
+              <div class="entry">
+                <strong>Home Volume</strong> <span>[[curVolumeData.home_volume]]</span>
+              </div>
               <div class="entry" ng-show="curVolumeData.host_id">
                 <strong>Mounted On</strong> <span> <a class="pointer" ng-click="goToHost(curVolumeData.host_id)">[[ getHostDisplayName(curVolumeData.host_id) ]]</a> </span>
               </div>

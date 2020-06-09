@@ -1,4 +1,4 @@
-<form name="form" novalidate ng-submit="form.$valid && spawnHost()">
+<form name="spawnHostForm" novalidate ng-submit="spawnHostForm.$valid && spawnHost()">
   <fieldset>
     <div style="margin-left: 10px;">
       <span class="dropdown" style="float: left" ng-show="spawnableDistros.length > 0">
@@ -66,10 +66,10 @@
       </span>
     </div>
     <br />
-    <span class="semi-muted invalid" ng-show="saveKey && (form.keyname.$error.required || form.keyname.$error.keyNameUnique)">
+    <span class="semi-muted invalid" ng-show="saveKey && (spawnHostForm.keyname.$error.required || spawnHostForm.keyname.$error.keyNameUnique)">
       Please enter a unique key name for your new key<br />
     </span>
-    <span class="semi-muted invalid" ng-show="form.pubkey.$dirty && (form.pubkey.$error.required || form.pubkey.$error.keyBaseValid)">
+    <span class="semi-muted invalid" ng-show="spawnHostForm.pubkey.$dirty && (spawnHostForm.pubkey.$error.required || spawnHostForm.pubkey.$error.keyBaseValid)">
       Key is invalid. It must begin with 'ssh-rsa' or 'ssh-dss'. Ensure you have copied the public half of the key.<br />
     </span>
     <span class="semi-muted invalid" ng-show="!spawnableDistros || spawnableDistros.length === 0">
@@ -112,9 +112,9 @@
           </ul>
           <div ng-show="!$parent.homeVolumeID">
             <label> Volume size (GB) </label>
-            <input type="number" ng-disabled="availableVolumeSize() <= 0" ng-model="$parent.homeVolumeSize" min="1"/>
+            <input type="number" ng-model="$parent.homeVolumeSize"/>
             <span class="warning-text" ng-show="invalidVolumeSize($parent.homeVolumeSize)"><i class="fa fa-warning"></i>
-          Can have at most [[ maxVolumeSizePerUser ]] GiB per user
+                [[ $parent.homeVolumeSize > 0 ? availableVolumeSize() + "GiB of " + maxVolumeSizePerUser + "GiB remaining" : "Size must be greater than 0" ]]
             </span>
           </div>
           <div>
@@ -145,7 +145,7 @@
         Also start any hosts this task started (if applicable)
     </div>
     <div>
-      <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" ng-disabled="!form.$valid || invalidHostOptions() || spawnReqSent">Spawn</button>
+      <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" ng-disabled="!spawnHostForm.$valid || invalidHostOptions() || spawnReqSent">Spawn</button>
       <button type="button" class="btn btn-danger" style="float: left; margin-left: 30px;" data-dismiss="modal">Cancel</button>
     </div>
   </fieldset>
