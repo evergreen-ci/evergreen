@@ -144,7 +144,7 @@ mciModule
   .constant('CANARY_EXCLUSION_REGEX', /^((?!canary_|fio_|iperf|NetworkBandwidth).*)$/)
   .constant('CEDAR_APP_URL', 'https://cedar.mongodb.com')
   .constant("PERFORMANCE_ANALYSIS_AND_TRIAGE_API", {
-    BASE:'https://signal-processing-service.server-tig.staging.corp.mongodb.com',
+    BASE:'https://signal-processing-service.server-tig.prod.corp.mongodb.com',
     CHANGE_POINTS_BY_VERSION: '/change_points/project/{projectId}/by_version',
     AUTH_URL: 'https://login.corp.mongodb.com/login',
     TRIAGE_POINTS: '/change_points/triage/mark'

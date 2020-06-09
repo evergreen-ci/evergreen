@@ -1,5 +1,5 @@
 mciModule.controller('ExpandedMetricsSignalProcessingController', function(
-  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams, PERFORMANCE_ANALYSIS_AND_TRIAGE_API
+  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams
 ) {
   $scope.page = 0;
   $scope.pageSize = 10;
