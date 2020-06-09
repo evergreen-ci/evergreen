@@ -21,7 +21,7 @@
         </li>
       </ul>
       </span>
-      <span class="dropdown" style="margin-left: 10px; align: left;">
+      <span class="dropdown" style="margin: 10px">
         <button class="btn btn-link btn-dropdown" data-toggle="dropdown">
           <span class="semi-muted">
            Public Key:
@@ -45,7 +45,7 @@
           </li>
         </ul>
       </span>
-      <span class="dropdown" style="float:left;" ng-show="selectedDistro.regions.length > 1">
+      <span class="dropdown" ng-show="selectedDistro.regions.length > 1">
         <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="regions">
           <span class="semi-muted">
            Region:
@@ -87,8 +87,8 @@
     <div style="padding-bottom:5px;" ng-show="selectedDistro.virtual_workstation_allowed">
       <input type="checkbox" ng-disabled="$parent.spawnTaskChecked" ng-model="$parent.isVirtualWorkstation" /> Virtual Workstation
       <div ng-show="$parent.isVirtualWorkstation">
-        <div class="dropdown">
-          <button class="btn btn-link btn-dropdown" data-toggle="dropdown">
+        <div class="dropdown" style="padding-left: 10px">
+          <button class="btn btn-link btn-dropdown" style="padding-left: 0" data-toggle="dropdown">
             <span class="semi-muted">
              Volume:
             </span>
