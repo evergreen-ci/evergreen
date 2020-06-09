@@ -693,7 +693,7 @@ func TestValidateBVNames(t *testing.T) {
 			}
 			validationResults := validateBVNames(project)
 			So(validationResults, ShouldNotResemble, ValidationErrors{})
-			So(len(validationResults), ShouldEqual, 1)
+			So(len(validationResults), ShouldEqual, 3)
 			So(validationResults[0].Level, ShouldEqual, Error)
 		})
 
@@ -718,10 +718,10 @@ func TestValidateBVNames(t *testing.T) {
 			"should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					{Name: "linux"},
-					{Name: "linux"},
-					{Name: "windows"},
-					{Name: "windows"},
+					{Name: "linux", DisplayName: "foo0"},
+					{Name: "linux", DisplayName: "foo1"},
+					{Name: "windows", DisplayName: "foo2"},
+					{Name: "windows", DisplayName: "foo3"},
 				},
 			}
 			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
@@ -732,8 +732,8 @@ func TestValidateBVNames(t *testing.T) {
 			" returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					{Name: "linux"},
-					{Name: "windows"},
+					{Name: "linux", DisplayName: "foo0"},
+					{Name: "windows", DisplayName: "foo1"},
 				},
 			}
 			So(validateBVNames(project), ShouldResemble, ValidationErrors{})
@@ -742,10 +742,10 @@ func TestValidateBVNames(t *testing.T) {
 		Convey("if a buildvariant name contains unauthorized characters, an error should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					{Name: "|linux"},
-					{Name: "linux|"},
-					{Name: "wind|ows"},
-					{Name: "windows"},
+					{Name: "|linux", DisplayName: "foo0"},
+					{Name: "linux|", DisplayName: "foo1"},
+					{Name: "wind|ows", DisplayName: "foo2"},
+					{Name: "windows", DisplayName: "foo3"},
 				},
 			}
 			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
