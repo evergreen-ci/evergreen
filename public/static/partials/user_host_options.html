@@ -115,7 +115,7 @@
             <input type="number" ng-model="$parent.homeVolumeSize"/>
             <span class="warning-text" ng-show="invalidVolumeSize($parent.homeVolumeSize)"><i class="fa fa-warning"></i>
                 [[ $parent.homeVolumeSize > 0 ? availableVolumeSize() + "GiB of " + maxVolumeSizePerUser + "GiB remaining" : "Size must be greater than 0" ]]
-                <div ng-show="$parent.homeVolumeSize > 0"><a ng-click="setResourceType('volumes')">Volumes Page</a></div>
+                <span ng-show="$parent.homeVolumeSize > 0">(<a class="pointer" ng-click="goToPage('volumes')">Volumes Page</a>)</span>
             </span>
           </div>
           <div>

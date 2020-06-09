@@ -929,6 +929,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       });
     }
 
+    $scope.goToPage = function (resource_type) {
+      $scope.setResourceType(resource_type);
+      if ($scope.modalOpen) {
+        $('#spawn-modal').modal('hide');
+      }
+    }
+
     initializeModal = function (modal, title, action) {
       $scope.modalTitle = title;
       modal.on('shown.bs.modal', function () {
