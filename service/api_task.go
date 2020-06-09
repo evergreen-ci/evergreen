@@ -557,6 +557,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"host_id":                 currentHost.Id,
 			"host_last_group":         currentHost.LastGroup,
 			"host_last_build_variant": currentHost.LastBuildVariant,
+			"host_last_task":          currentHost.LastTask,
 			"host_last_version":       currentHost.LastVersion,
 			"host_last_project":       currentHost.LastProject,
 			"task_group":              nextTask.TaskGroup,
@@ -565,6 +566,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_project":            nextTask.Project,
 			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
 		})
+
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
 			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
 			if err != nil {
@@ -573,7 +575,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			if numHosts > nextTask.TaskGroupMaxHosts {
 				grip.Debug(message.Fields{
 					"message":              "task group race, not dispatching",
-					"distro_id":            nextTask.DistroId,
+					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
 					"task_group":           nextTask.TaskGroup,
@@ -581,10 +583,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					"task_version":         nextTask.Version,
 					"task_project":         nextTask.Project,
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+					"num_hosts_found":      numHosts,
 				})
 				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
 					"message":              "problem clearing task group task from host after dispatch race",
-					"distro_id":            nextTask.DistroId,
+					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
 					"task_group":           nextTask.TaskGroup,
