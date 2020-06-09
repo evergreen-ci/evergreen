@@ -440,7 +440,7 @@ func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
 	buildDisplay, err := build.FindOne(build.ById(abortedTask.BuildId))
-	if err != nil {
+	if err != nil || buildDisplay == nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
 	abortedBy := &abortedByDisplay{
