@@ -256,6 +256,9 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 
 	s.True(triggersRetry("created", commentString))
 	s.False(triggersRetry("deleted", commentString))
+
+	//test whitespace trimming
+	s.True(triggersRetry("created", "  evergreen retry "))
 }
 
 func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
