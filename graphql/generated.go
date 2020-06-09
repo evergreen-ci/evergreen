@@ -392,6 +392,7 @@ type ComplexityRoot struct {
 
 	UseSpruceOptions struct {
 		HasUsedSpruceBefore func(childComplexity int) int
+		SpruceV1            func(childComplexity int) int
 	}
 
 	User struct {
@@ -2191,6 +2192,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UseSpruceOptions.HasUsedSpruceBefore(childComplexity), true
 
+	case "UseSpruceOptions.spruceV1":
+		if e.complexity.UseSpruceOptions.SpruceV1 == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.SpruceV1(childComplexity), true
+
 	case "User.displayName":
 		if e.complexity.User.DisplayName == nil {
 			break
@@ -2501,7 +2509,8 @@ input SubscriberInput {
 }
 
 input UseSpruceOptionsInput {
-  hasUsedSpruceBefore: Boolean!
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -2810,6 +2819,7 @@ type UserSettings {
 
 type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
@@ -11002,6 +11012,37 @@ func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Co
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UseSpruceOptions",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpruceV1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12813,7 +12854,13 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 		switch k {
 		case "hasUsedSpruceBefore":
 			var err error
-			it.HasUsedSpruceBefore, err = ec.unmarshalNBoolean2bool(ctx, v)
+			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spruceV1":
+			var err error
+			it.SpruceV1, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -14929,6 +14976,8 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
 		case "hasUsedSpruceBefore":
 			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
+		case "spruceV1":
+			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

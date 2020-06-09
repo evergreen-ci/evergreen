@@ -48,6 +48,7 @@ type APIUserSettings struct {
 type APIUseSpruceOptions struct {
 	PatchPage           bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
 	HasUsedSpruceBefore bool `json:"has_used_spruce_before" bson:"has_used_spruce_before,omitempty"`
+	SpruceV1            bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -59,6 +60,7 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 		s.UseSpruceOptions = &APIUseSpruceOptions{
 			PatchPage:           v.UseSpruceOptions.PatchPage,
 			HasUsedSpruceBefore: v.UseSpruceOptions.HasUsedSpruceBefore,
+			SpruceV1:            v.UseSpruceOptions.SpruceV1,
 		}
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
@@ -97,6 +99,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	if s.UseSpruceOptions != nil {
 		useSpruceOptions.PatchPage = s.UseSpruceOptions.PatchPage
 		useSpruceOptions.HasUsedSpruceBefore = s.UseSpruceOptions.HasUsedSpruceBefore
+		useSpruceOptions.SpruceV1 = s.UseSpruceOptions.SpruceV1
 	}
 	return user.UserSettings{
 		Timezone:         FromStringPtr(s.Timezone),
