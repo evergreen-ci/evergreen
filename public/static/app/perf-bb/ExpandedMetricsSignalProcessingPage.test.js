@@ -46,7 +46,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       expect($scope.connectionError).toEqual(true);
     });
 
-    it('should be refresh the data when a new page is loaded', () => {
+    it('should refresh the data when a new page is loaded', () => {
       makeController();
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511, $scope);
       $httpBackend.flush();
@@ -56,6 +56,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             'version_id': 'another_version',
             'change_points': [
               {
+                "_id": "another_id",
                 "time_series_info": {
                   "project": "sys-perf",
                   "variant": "another_variant",
@@ -98,7 +99,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       expect($scope.page).toEqual(1);
       expect($scope.pageSize).toEqual(10);
       expect($scope.totalPages).toEqual(511);
+      expect($scope.selection).toEqual([]);
       expect($scope.gridOptions.data).toEqual(Array(10).fill({
+        id: 'another_id',
         version: 'another_version',
         variant: 'another_variant',
         task: 'another_task',
@@ -121,10 +124,12 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       $scope.page = 511;
       $scope.prevPage();
       $httpBackend.flush();
+      expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(510);
       expect($scope.pageSize).toEqual(10);
       expect($scope.totalPages).toEqual(511);
       expect($scope.gridOptions.data).toEqual(Array(10).fill({
+        id: "test-id",
         version: 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',
         variant: 'linux-standalone',
         task: 'large_scale_model',
@@ -146,10 +151,12 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 1, 10, 511, $scope);
       $scope.nextPage();
       $httpBackend.flush();
+      expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(1);
       expect($scope.pageSize).toEqual(10);
       expect($scope.totalPages).toEqual(511);
       expect($scope.gridOptions.data).toEqual(Array(10).fill({
+        id: "test-id",
         version: 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',
         variant: 'linux-standalone',
         task: 'large_scale_model',
@@ -168,10 +175,12 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       makeController();
       expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, 0, 10, 511, $scope);
       $httpBackend.flush();
+      expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(0);
       expect($scope.pageSize).toEqual(10);
       expect($scope.totalPages).toEqual(511);
       expect($scope.gridOptions.data).toEqual(Array(10).fill({
+        id: "test-id",
         version: 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',
         variant: 'linux-standalone',
         task: 'large_scale_model',
@@ -188,6 +197,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should set default pagination variables', () => {
       makeController();
+      expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(0);
       expect($scope.pageSize).toEqual(10);
       expect($scope.totalPages).toEqual(1);
@@ -347,6 +357,7 @@ function standardData(page, pageSize, totalPages) {
         'version_id': 'sys_perf_085ffeb310e8fed49739cf8443fcb13ea795d867',
         'change_points': [
           {
+            "_id": "test-id",
             "time_series_info": {
               "project": "sys-perf",
               "variant": "linux-standalone",
