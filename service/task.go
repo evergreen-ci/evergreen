@@ -436,12 +436,15 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
 	abortedTask, err := task.FindOne(task.ById(abortedByTaskId))
-	if err != nil || abortedTask == nil {
+	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
 	buildDisplay, err := build.FindOne(build.ById(abortedTask.BuildId))
-	if err != nil || buildDisplay == nil {
+	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
+	}
+	if buildDisplay == nil || abortedTask == nil {
+		return nil, errors.New("problem getting abortBy display information")
 	}
 	abortedBy := &abortedByDisplay{
 		TaskDisplayName:     abortedTask.DisplayName,
