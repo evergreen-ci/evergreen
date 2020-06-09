@@ -67,8 +67,9 @@ type UserSettings struct {
 }
 
 type UseSpruceOptions struct {
-	PatchPage bool `json:"patch_page" bson:"patch_page"`
-	SpruceV1  bool `json:"spruce_v1" bson:"spruce_v1"`
+	PatchPage           bool `json:"patch_page" bson:"patch_page"`
+	SpruceV1            bool `json:"spruce_v1" bson:"spruce_v1"`
+	HasUsedSpruceBefore bool `json:"has_used_spruce_before" bson:"has_used_spruce_before"`
 }
 
 type NotificationPreferences struct {
