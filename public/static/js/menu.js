@@ -44,6 +44,6 @@ mciModule.controller("NavBarController", function (
   mciTime,
   $window
 ) {
-  $scope.toggleUILink = $window.ToggleUILink;
-  $scope.showToggle = $window.user && $window.ToggleUILink;
+  $scope.newUILink = $window.NewUILink;
+  $scope.showNewUILink = $window.user && $window.NewUILink;
 });

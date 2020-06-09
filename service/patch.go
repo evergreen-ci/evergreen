@@ -72,7 +72,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Tasks               []struct{ Name string }
 		CanEdit             bool
 		CommitQueuePosition int
-		ToggleUILink        string
+		NewUILink        string
 		ViewData
 	}{versionAsUI, variantsAndTasksFromProject.Variants, variantsAndTasksFromProject.Tasks, currentUser != nil,
 		commitQueuePosition, spruceLink, uis.GetCommonViewData(w, r, true, true)},
