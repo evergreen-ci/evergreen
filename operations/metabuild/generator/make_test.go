@@ -95,10 +95,8 @@ func TestMakeGenerate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: model.MakeVariantParameters{
-						Tasks: []model.MakeVariantTask{
-							{Tag: "tag"},
-						},
+					Tasks: []model.MakeVariantTask{
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -149,10 +147,8 @@ func TestMakeGenerate(t *testing.T) {
 						Name:    "variant1",
 						Distros: []string{"distro1"},
 					},
-					MakeVariantParameters: model.MakeVariantParameters{
-						Tasks: []model.MakeVariantTask{
-							{Tag: "tag"},
-						},
+					Tasks: []model.MakeVariantTask{
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -184,10 +180,8 @@ func TestMakeGenerate(t *testing.T) {
 					Name:    "newVariant",
 					Distros: []string{"newDistro"},
 				},
-				MakeVariantParameters: model.MakeVariantParameters{
-					Tasks: []model.MakeVariantTask{
-						{Name: "newTask"},
-					},
+				Tasks: []model.MakeVariantTask{
+					{Name: "newTask"},
 				},
 			})
 			conf, err := m.Generate()
@@ -200,10 +194,8 @@ func TestMakeGenerate(t *testing.T) {
 					Name:    "newVariant",
 					Distros: []string{"newDistro"},
 				},
-				MakeVariantParameters: model.MakeVariantParameters{
-					Tasks: []model.MakeVariantTask{
-						{Name: "nonexistent"},
-					},
+				Tasks: []model.MakeVariantTask{
+					{Name: "nonexistent"},
 				},
 			})
 			conf, err := m.Generate()
@@ -216,10 +208,8 @@ func TestMakeGenerate(t *testing.T) {
 					Name:    "newVariant",
 					Distros: []string{"newDistro"},
 				},
-				MakeVariantParameters: model.MakeVariantParameters{
-					Tasks: []model.MakeVariantTask{
-						{Tag: "nonexistent"},
-					},
+				Tasks: []model.MakeVariantTask{
+					{Tag: "nonexistent"},
 				},
 			})
 			conf, err := m.Generate()
@@ -229,6 +219,9 @@ func TestMakeGenerate(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			mm := model.Make{
+				GeneralConfig: model.GeneralConfig{
+					WorkingDirectory: "working_dir",
+				},
 				TargetSequences: []model.MakeTargetSequence{
 					{
 						Name:    "sequence1",
@@ -257,10 +250,8 @@ func TestMakeGenerate(t *testing.T) {
 							Name:    "variant1",
 							Distros: []string{"distro1"},
 						},
-						MakeVariantParameters: model.MakeVariantParameters{
-							Tasks: []model.MakeVariantTask{
-								{Name: "task1"},
-							},
+						Tasks: []model.MakeVariantTask{
+							{Name: "task1"},
 						},
 					},
 					{
@@ -268,14 +259,11 @@ func TestMakeGenerate(t *testing.T) {
 							Name:    "variant2",
 							Distros: []string{"distro2"},
 						},
-						MakeVariantParameters: model.MakeVariantParameters{
-							Tasks: []model.MakeVariantTask{
-								{Name: "task2"},
-							},
+						Tasks: []model.MakeVariantTask{
+							{Name: "task2"},
 						},
 					},
 				},
-				WorkingDirectory: "working_dir",
 			}
 
 			m := NewMake(mm)

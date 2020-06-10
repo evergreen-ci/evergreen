@@ -31,96 +31,6 @@ func TestMakeVariantTask(t *testing.T) {
 	})
 }
 
-func TestMakeVariantParameters(t *testing.T) {
-	t.Run("Validate", func(t *testing.T) {
-		t.Run("SucceedsWithName", func(t *testing.T) {
-			mvp := MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Name: "name"},
-				},
-			}
-			assert.NoError(t, mvp.Validate())
-		})
-		t.Run("SucceedsWithTag", func(t *testing.T) {
-			mvp := MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Tag: "tag"},
-				},
-			}
-			assert.NoError(t, mvp.Validate())
-		})
-		t.Run("SucceedsWithMultiple", func(t *testing.T) {
-			mvp := MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Name: "name1"},
-					{Name: "name2"},
-					{Tag: "tag1"},
-					{Tag: "tag2"},
-				},
-			}
-			assert.NoError(t, mvp.Validate())
-		})
-		t.Run("FailsWithEmpty", func(t *testing.T) {
-			mvp := MakeVariantParameters{}
-			assert.Error(t, mvp.Validate())
-		})
-		t.Run("FailsWithDuplicateName", func(t *testing.T) {
-			mvp := MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Name: "name"},
-					{Name: "name"},
-				},
-			}
-			assert.Error(t, mvp.Validate())
-		})
-		t.Run("FailsWithDuplicateTag", func(t *testing.T) {
-			mvp := MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Tag: "tag"},
-					{Tag: "tag"},
-				},
-			}
-			assert.Error(t, mvp.Validate())
-		})
-	})
-}
-
-func TestNamedMakeVariantParameters(t *testing.T) {
-	t.Run("Validate", func(t *testing.T) {
-		t.Run("Succeeds", func(t *testing.T) {
-			nmvp := NamedMakeVariantParameters{
-				Name: "variant",
-				MakeVariantParameters: MakeVariantParameters{
-					Tasks: []MakeVariantTask{
-						{Name: "task"},
-					},
-				},
-			}
-			assert.NoError(t, nmvp.Validate())
-		})
-		t.Run("FailsWithEmpty", func(t *testing.T) {
-			nmvp := NamedMakeVariantParameters{}
-			assert.Error(t, nmvp.Validate())
-		})
-		t.Run("FailsWithoutName", func(t *testing.T) {
-			nmvp := NamedMakeVariantParameters{
-				MakeVariantParameters: MakeVariantParameters{
-					Tasks: []MakeVariantTask{
-						{Name: "task"},
-					},
-				},
-			}
-			assert.Error(t, nmvp.Validate())
-		})
-		t.Run("FailsWithInvalidParameters", func(t *testing.T) {
-			nmvp := NamedMakeVariantParameters{
-				Name: "variant",
-			}
-			assert.Error(t, nmvp.Validate())
-		})
-	})
-}
-
 func TestMakeVariant(t *testing.T) {
 	t.Run("Validate", func(t *testing.T) {
 		for testName, testCase := range map[string]func(t *testing.T, v *MakeVariant){
@@ -157,6 +67,31 @@ func TestMakeVariant(t *testing.T) {
 				}
 				assert.Error(t, mv.Validate())
 			},
+			"SucceedsWithTaskName": func(t *testing.T, mv *MakeVariant) {
+				mv.Tasks = []MakeVariantTask{
+					{Name: "name"},
+				}
+				assert.NoError(t, mv.Validate())
+			},
+			"SucceedsWithTaskTag": func(t *testing.T, mv *MakeVariant) {
+				mv.Tasks = []MakeVariantTask{
+					{Tag: "tag"},
+				}
+				assert.NoError(t, mv.Validate())
+			},
+			"SucceedsWithMultipleTaskReferences": func(t *testing.T, mv *MakeVariant) {
+				mv.Tasks = []MakeVariantTask{
+					{Name: "name1"},
+					{Name: "name2"},
+					{Tag: "tag1"},
+					{Tag: "tag2"},
+				}
+				assert.NoError(t, mv.Validate())
+			},
+			"FailsWithEmpty": func(t *testing.T, _ *MakeVariant) {
+				mv := &MakeVariant{}
+				assert.Error(t, mv.Validate())
+			},
 		} {
 			t.Run(testName, func(t *testing.T) {
 				mv := MakeVariant{
@@ -164,11 +99,9 @@ func TestMakeVariant(t *testing.T) {
 						Name:    "var_name",
 						Distros: []string{"distro1", "distro2"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "name"},
-							{Tag: "tag"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "name"},
+						{Tag: "tag"},
 					},
 				}
 				testCase(t, &mv)
@@ -177,15 +110,15 @@ func TestMakeVariant(t *testing.T) {
 	})
 }
 
-func TestMakeRuntimeOptions(t *testing.T) {
+func TestMakeFlags(t *testing.T) {
 	t.Run("Merge", func(t *testing.T) {
 		t.Run("ReturnsIdenticalWithNoArguments", func(t *testing.T) {
-			mro := MakeRuntimeOptions([]string{"-i", "-k"})
-			assert.Equal(t, mro, mro.Merge())
+			mf := MakeFlags([]string{"-i", "-k"})
+			assert.Equal(t, mf, mf.Merge())
 		})
 		t.Run("ReturnsConcatenatedArguments", func(t *testing.T) {
-			mro := MakeRuntimeOptions([]string{"-i", "-k"})
-			merged := mro.Merge([]string{"-n"}, []string{"-w", "-k"})
+			mf := MakeFlags([]string{"-i", "-k"})
+			merged := mf.Merge([]string{"-n"}, []string{"-w", "-k"})
 			for i, expected := range []string{"-i", "-k", "-n", "-w", "-k"} {
 				assert.Equal(t, expected, merged[i])
 			}
@@ -540,20 +473,16 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "task"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "task"},
 					},
 				}, {
 					VariantDistro: VariantDistro{
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "task"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "task"},
 					},
 				},
 			}
@@ -574,10 +503,8 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "task"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "task"},
 					},
 				},
 			}
@@ -590,10 +517,8 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "foo"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "foo"},
 					},
 				},
 			}
@@ -612,11 +537,9 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Name: "task"},
-							{Tag: "tag"},
-						},
+					Tasks: []MakeVariantTask{
+						{Name: "task"},
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -638,10 +561,8 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Tag: "tag"},
-						},
+					Tasks: []MakeVariantTask{
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -654,10 +575,8 @@ func TestMakeValidate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					MakeVariantParameters: MakeVariantParameters{
-						Tasks: []MakeVariantTask{
-							{Tag: "nonexistent"},
-						},
+					Tasks: []MakeVariantTask{
+						{Tag: "nonexistent"},
 					},
 				},
 			}
@@ -691,10 +610,8 @@ func TestMakeValidate(t *testing.T) {
 							Name:    "variant",
 							Distros: []string{"distro"},
 						},
-						MakeVariantParameters: MakeVariantParameters{
-							Tasks: []MakeVariantTask{
-								{Name: "task"},
-							},
+						Tasks: []MakeVariantTask{
+							{Name: "task"},
 						},
 					},
 				},
@@ -723,7 +640,7 @@ func TestMakeMergeTasks(t *testing.T) {
 				},
 				Tags: []string{"tag2"},
 			}
-			_ = m.MergeTasks(mt)
+			m.MergeTasks(mt)
 			require.Len(t, m.Tasks, 1)
 			assert.Equal(t, mt, m.Tasks[0])
 		},
@@ -731,7 +648,7 @@ func TestMakeMergeTasks(t *testing.T) {
 			mt := MakeTask{
 				Tags: []string{"tag1"},
 			}
-			_ = m.MergeTasks(mt)
+			m.MergeTasks(mt)
 			require.Len(t, m.Tasks, 2)
 			assert.Equal(t, mts[0], m.Tasks[0])
 			assert.Equal(t, mt, m.Tasks[1])
@@ -746,12 +663,15 @@ func TestMakeMergeTasks(t *testing.T) {
 	}
 }
 
-func TestMakeMergeVariantDistros(t *testing.T) {
+func TestMakeMergeVariants(t *testing.T) {
 	mvs := []MakeVariant{
 		{
 			VariantDistro: VariantDistro{
 				Name:    "variant1",
 				Distros: []string{"distro1"},
+			},
+			Tasks: []MakeVariantTask{
+				{Name: "task1"},
 			},
 		},
 		{
@@ -764,152 +684,39 @@ func TestMakeMergeVariantDistros(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T, m *Make){
 		"OverwritesExistingWithMatchingName": func(t *testing.T, m *Make) {
-			vd := VariantDistro{
-				Name:    "variant1",
-				Distros: []string{"distro3"},
+			mv := MakeVariant{
+				VariantDistro: VariantDistro{
+					Name:    "variant1",
+					Distros: []string{"distro3"},
+				},
+				Tasks: []MakeVariantTask{
+					{Name: "task3"},
+				},
 			}
-			_ = m.MergeVariantDistros(vd)
+			m.MergeVariants(mv)
 			require.Len(t, m.Variants, 2)
-			assert.Equal(t, vd, m.Variants[0].VariantDistro)
+			assert.Equal(t, mv, m.Variants[0])
 			assert.Equal(t, mvs[1], m.Variants[1])
 		},
 		"AddsNewVariant": func(t *testing.T, m *Make) {
-			vd := VariantDistro{
-				Name:    "variant3",
-				Distros: []string{"distro3"},
+			mv := MakeVariant{
+				VariantDistro: VariantDistro{
+					Name:    "variant3",
+					Distros: []string{"distro3"},
+				},
+				Tasks: []MakeVariantTask{
+					{Name: "task3"},
+				},
 			}
-			_ = m.MergeVariantDistros(vd)
+			m.MergeVariants(mv)
 			require.Len(t, m.Variants, 3)
 			assert.Equal(t, mvs[0:2], m.Variants[0:2])
-			assert.Equal(t, vd, m.Variants[2].VariantDistro)
+			assert.Equal(t, mv, m.Variants[2])
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			m := Make{
 				Variants: mvs,
-			}
-			testCase(t, &m)
-		})
-	}
-}
-
-func TestMakeMergeVariantParameters(t *testing.T) {
-	mvs := []MakeVariant{
-		{
-			VariantDistro: VariantDistro{
-				Name: "variant1",
-			},
-			MakeVariantParameters: MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Name: "task1"},
-				},
-			},
-		},
-		{
-			VariantDistro: VariantDistro{
-				Name: "variant2",
-			},
-			MakeVariantParameters: MakeVariantParameters{
-				Tasks: []MakeVariantTask{
-					{Name: "task2"},
-				},
-			},
-		},
-	}
-
-	for testName, testCase := range map[string]func(t *testing.T, m *Make){
-		"OverwritesExistingWithMatchingName": func(t *testing.T, m *Make) {
-			nmvp := NamedMakeVariantParameters{
-				Name: "variant1",
-				MakeVariantParameters: MakeVariantParameters{
-					Tasks: []MakeVariantTask{
-						{Name: "task3"},
-					},
-				},
-			}
-			_ = m.MergeVariantParameters(nmvp)
-			require.Len(t, m.Variants, 2)
-			assert.Equal(t, nmvp.MakeVariantParameters, m.Variants[0].MakeVariantParameters)
-			assert.Equal(t, mvs[1], m.Variants[1])
-		},
-		"AddsNewVariant": func(t *testing.T, m *Make) {
-			nmvp := NamedMakeVariantParameters{
-				Name: "variant3",
-				MakeVariantParameters: MakeVariantParameters{
-					Tasks: []MakeVariantTask{
-						{Name: "task3"},
-					},
-				},
-			}
-			_ = m.MergeVariantParameters(nmvp)
-			require.Len(t, m.Variants, 3)
-			assert.Equal(t, mvs[0:2], m.Variants[0:2])
-			assert.Equal(t, nmvp.MakeVariantParameters, m.Variants[2].MakeVariantParameters)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			m := Make{
-				Variants: mvs,
-			}
-			testCase(t, &m)
-		})
-	}
-}
-
-func TestMakeMergeEnvironments(t *testing.T) {
-	env := map[string]string{
-		"key1": "val1",
-		"key2": "val2",
-	}
-	for testName, testCase := range map[string]func(t *testing.T, m *Make){
-		"OverwritesExistingWithMatchingName": func(t *testing.T, m *Make) {
-			newEnv := map[string]string{
-				"key1": "val3",
-			}
-			_ = m.MergeEnvironments(newEnv)
-			assert.Len(t, m.Environment, 2)
-			assert.Equal(t, newEnv["key1"], m.Environment["key1"])
-			assert.Equal(t, env["key2"], m.Environment["key2"])
-		},
-		"AddsNewEnvVars": func(t *testing.T, m *Make) {
-			newEnv := map[string]string{
-				"key3": "val3",
-			}
-			_ = m.MergeEnvironments(newEnv)
-			assert.Len(t, m.Environment, 3)
-			assert.Equal(t, env["key1"], m.Environment["key1"])
-			assert.Equal(t, env["key2"], m.Environment["key2"])
-			assert.Equal(t, newEnv["key3"], m.Environment["key3"])
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			m := Make{
-				Environment: env,
-			}
-			testCase(t, &m)
-		})
-	}
-}
-
-func TestMakeMergeDefaultTags(t *testing.T) {
-	defaultTags := []string{"tag"}
-	for testName, testCase := range map[string]func(t *testing.T, m *Make){
-		"AddsNewTags": func(t *testing.T, m *Make) {
-			_ = m.MergeDefaultTags("newTag1", "newTag2")
-			assert.Len(t, m.DefaultTags, len(defaultTags)+2)
-			assert.Subset(t, m.DefaultTags, defaultTags)
-			assert.Contains(t, m.DefaultTags, "newTag1")
-			assert.Contains(t, m.DefaultTags, "newTag2")
-		},
-		"IgnoresDuplicateTags": func(t *testing.T, m *Make) {
-			_ = m.MergeDefaultTags("tag")
-			assert.Len(t, m.DefaultTags, len(defaultTags))
-			assert.Subset(t, m.DefaultTags, defaultTags)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			m := Make{
-				DefaultTags: defaultTags,
 			}
 			testCase(t, &m)
 		})
@@ -961,7 +768,9 @@ func TestMakeApplyDefaultTags(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			m := Make{
-				DefaultTags: defaultTags,
+				GeneralConfig: GeneralConfig{
+					DefaultTags: defaultTags,
+				},
 			}
 			testCase(t, &m)
 		})

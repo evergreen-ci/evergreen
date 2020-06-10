@@ -107,10 +107,8 @@ func TestGolangGenerate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					GolangVariantParameters: model.GolangVariantParameters{
-						Packages: []model.GolangVariantPackage{
-							{Tag: "tag"},
-						},
+					Packages: []model.GolangVariantPackage{
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -159,10 +157,8 @@ func TestGolangGenerate(t *testing.T) {
 						Name:    "variant",
 						Distros: []string{"distro"},
 					},
-					GolangVariantParameters: model.GolangVariantParameters{
-						Packages: []model.GolangVariantPackage{
-							{Tag: "tag"},
-						},
+					Packages: []model.GolangVariantPackage{
+						{Tag: "tag"},
 					},
 				},
 			}
@@ -186,10 +182,8 @@ func TestGolangGenerate(t *testing.T) {
 				VariantDistro: model.VariantDistro{
 					Name: "newVariant",
 				},
-				GolangVariantParameters: model.GolangVariantParameters{
-					Packages: []model.GolangVariantPackage{
-						{Name: "nonexistent"},
-					},
+				Packages: []model.GolangVariantPackage{
+					{Name: "nonexistent"},
 				},
 			})
 			conf, err := g.Generate()
@@ -201,10 +195,8 @@ func TestGolangGenerate(t *testing.T) {
 				VariantDistro: model.VariantDistro{
 					Name: "newVariant",
 				},
-				GolangVariantParameters: model.GolangVariantParameters{
-					Packages: []model.GolangVariantPackage{
-						{Path: "nonexistent"},
-					},
+				Packages: []model.GolangVariantPackage{
+					{Path: "nonexistent"},
 				},
 			})
 			conf, err := g.Generate()
@@ -216,10 +208,8 @@ func TestGolangGenerate(t *testing.T) {
 				VariantDistro: model.VariantDistro{
 					Name: "newVariant",
 				},
-				GolangVariantParameters: model.GolangVariantParameters{
-					Packages: []model.GolangVariantPackage{
-						{Tag: "nonexistent"},
-					},
+				Packages: []model.GolangVariantPackage{
+					{Tag: "nonexistent"},
 				},
 			})
 			conf, err := g.Generate()
@@ -240,11 +230,16 @@ func TestGolangGenerate(t *testing.T) {
 			gopath := "gopath"
 
 			mg := model.Golang{
-				Environment: map[string]string{
-					"GOPATH": gopath,
-					"GOROOT": "some_goroot",
+				GolangGeneralConfig: model.GolangGeneralConfig{
+					GeneralConfig: model.GeneralConfig{
+						Environment: map[string]string{
+							"GOPATH": gopath,
+							"GOROOT": "some_goroot",
+						},
+						WorkingDirectory: util.ConsistentFilepath(filepath.Dir(gopath)),
+					},
+					RootPackage: rootPackage,
 				},
-				RootPackage: rootPackage,
 				Packages: []model.GolangPackage{
 					{
 						Path: "path1",
@@ -260,11 +255,9 @@ func TestGolangGenerate(t *testing.T) {
 							Name:    "variant1",
 							Distros: []string{"distro1"},
 						},
-						GolangVariantParameters: model.GolangVariantParameters{
-							Packages: []model.GolangVariantPackage{
-								{Path: "path1"},
-								{Name: "name2"},
-							},
+						Packages: []model.GolangVariantPackage{
+							{Path: "path1"},
+							{Name: "name2"},
 						},
 					},
 					{
@@ -272,14 +265,11 @@ func TestGolangGenerate(t *testing.T) {
 							Name:    "variant2",
 							Distros: []string{"distro2"},
 						},
-						GolangVariantParameters: model.GolangVariantParameters{
-							Packages: []model.GolangVariantPackage{
-								{Name: "name2"},
-							},
+						Packages: []model.GolangVariantPackage{
+							{Name: "name2"},
 						},
 					},
 				},
-				WorkingDirectory: util.ConsistentFilepath(filepath.Dir(gopath)),
 			}
 
 			g := NewGolang(mg)

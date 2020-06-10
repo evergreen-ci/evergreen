@@ -2,6 +2,22 @@ package model
 
 import "github.com/mongodb/grip"
 
+// VariablesSection defines an optional variables section that can be used
+// within YAML files to define additional structures (e.g. anchors).
+type VariablesSection struct {
+	Variables interface{} `yaml:"variables,omitempty"`
+}
+
+// GeneralConfig defines common top-level configuration between different
+// generator types.
+type GeneralConfig struct {
+	// Environment defines global environment variables.
+	Environment map[string]string `yaml:"env,omitempty"`
+	// DefaultTags are tags that apply to all units of work.
+	DefaultTags      []string `yaml:"default_tags,omitempty"`
+	WorkingDirectory string   `yaml:"-"`
+}
+
 // VariantDistro represents a mapping between a variant name and the distros
 // that it runs on.
 type VariantDistro struct {

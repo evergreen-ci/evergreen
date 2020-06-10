@@ -31,7 +31,7 @@ func (g *Golang) Generate() (*shrub.Configuration, error) {
 			var tasksForVariant []*shrub.Task
 			// Make one task per package in this variant. We cannot make one
 			// task per package, because we have to account for variant-level
-			// options possibly overriding package-level options, which requires
+			// flags possibly overriding package-level flags, which requires
 			// making separate tasks with different commands.
 			for _, gvp := range gv.Packages {
 				var gps []model.GolangPackage
@@ -117,9 +117,9 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 		return nil, errors.Wrap(err, "getting project path as a relative path")
 	}
 
-	testOpts := gp.Options
-	if gv.Options != nil {
-		testOpts = testOpts.Merge(*gv.Options)
+	testOpts := gp.Flags
+	if gv.Flags != nil {
+		testOpts = testOpts.Merge(*gv.Flags)
 	}
 
 	relPath := gp.Path

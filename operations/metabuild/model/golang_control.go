@@ -12,72 +12,59 @@ import (
 // GolangControl represents a control file which can be used to build a Golang
 // generator from multiple files containing the necessary build configuration.
 type GolangControl struct {
-	// TODO (MAKE-1347): this configuration is required to know the full go package name but
-	// doesn't have a designated config file where it can be placed.
-	RootPackage string `yaml:"root_package"`
-
-	VariantDistroFiles    []string `yaml:"variant_distro_files"`
-	VariantParameterFiles []string `yaml:"variant_parameter_files"`
-	PackageFiles          []string `yaml:"package_files"`
-	EnvironmentFiles      []string `yaml:"environment_files"`
-	DefaultTagFiles       []string `yaml:"default_tag_files"`
+	GeneralFile  string   `yaml:"general,omitempty"`
+	VariantFiles []string `yaml:"variants"`
+	PackageFiles []string `yaml:"packages,omitempty"`
 
 	ControlDirectory string `yaml:"-"`
 	WorkingDirectory string `yaml:"-"`
 }
 
 // NewGolangControl creates a new representation of a Golang control file from
-// the given file. The working directory is the
+// the given file. The working directory is the directory where the project
+// will be cloned.
 func NewGolangControl(file, workingDir string) (*GolangControl, error) {
-	gc := GolangControl{
-		ControlDirectory: util.ConsistentFilepath(filepath.Dir(file)),
-		WorkingDirectory: workingDir,
-	}
-	if err := utility.ReadYAMLFileStrict(file, &gc); err != nil {
+	gcv := struct {
+		GolangControl    `yaml:",inline"`
+		VariablesSection `yaml:",inline"`
+	}{}
+	if err := utility.ReadYAMLFileStrict(file, &gcv); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling from YAML file")
 	}
+	gc := gcv.GolangControl
+	gc.ControlDirectory = util.ConsistentFilepath(filepath.Dir(file))
+	gc.WorkingDirectory = workingDir
 	return &gc, nil
 }
 
 // Build creates a Golang model from the files referenced in the GolangControl.
 func (gc *GolangControl) Build() (*Golang, error) {
-	g := Golang{RootPackage: gc.RootPackage}
+	g := Golang{}
 
 	gps, err := gc.buildPackages()
 	if err != nil {
 		return nil, errors.Wrap(err, "building package definitions")
 	}
-	_ = g.MergePackages(gps...)
+	g.MergePackages(gps...)
 
-	vds, err := gc.buildVariantDistros()
+	gvs, err := gc.buildVariants()
 	if err != nil {
-		return nil, errors.Wrap(err, "building variant-distro mappings")
+		return nil, errors.Wrap(err, "building variant definitions")
 	}
-	_ = g.MergeVariantDistros(vds...)
+	g.MergeVariants(gvs...)
 
-	ngvps, err := gc.buildVariantParameters()
+	ggc, err := gc.buildGeneral()
 	if err != nil {
-		return nil, errors.Wrap(err, "building variant parameters")
+		return nil, errors.Wrap(err, "building top-level configuration")
 	}
-	_ = g.MergeVariantParameters(ngvps...)
+	g.GolangGeneralConfig = ggc
 
-	envs, err := gc.buildEnvironments()
-	if err != nil {
-		return nil, errors.Wrap(err, "building environment variables")
-	}
-	_ = g.MergeEnvironments(envs...)
-
-	tags, err := gc.buildDefaultTags()
-	if err != nil {
-		return nil, errors.Wrap(err, "building default tags")
-	}
-	_ = g.MergeDefaultTags(tags...)
+	g.WorkingDirectory = gc.WorkingDirectory
 
 	if err := g.DiscoverPackages(); err != nil {
 		return nil, errors.Wrap(err, "automatically discovering test packages")
 	}
 
-	g.WorkingDirectory = gc.WorkingDirectory
 	g.ApplyDefaultTags()
 
 	if err := g.Validate(); err != nil {
@@ -90,10 +77,14 @@ func (gc *GolangControl) Build() (*Golang, error) {
 func (gc *GolangControl) buildPackages() ([]GolangPackage, error) {
 	var all []GolangPackage
 	if err := withMatchingFiles(gc.ControlDirectory, gc.PackageFiles, func(file string) error {
-		gps := []GolangPackage{}
-		if err := utility.ReadYAMLFileStrict(file, &gps); err != nil {
+		gpsv := struct {
+			Packages         []GolangPackage `yaml:"packages"`
+			VariablesSection `yaml:",inline"`
+		}{}
+		if err := utility.ReadYAMLFileStrict(file, &gpsv); err != nil {
 			return errors.Wrap(err, "unmarshalling from YAML file")
 		}
+		gps := gpsv.Packages
 
 		catcher := grip.NewBasicCatcher()
 		for _, gp := range gps {
@@ -113,23 +104,27 @@ func (gc *GolangControl) buildPackages() ([]GolangPackage, error) {
 	return all, nil
 }
 
-func (gc *GolangControl) buildVariantDistros() ([]VariantDistro, error) {
-	var all []VariantDistro
-	if err := withMatchingFiles(gc.ControlDirectory, gc.VariantDistroFiles, func(file string) error {
-		vds := []VariantDistro{}
-		if err := utility.ReadYAMLFileStrict(file, &vds); err != nil {
+func (gc *GolangControl) buildVariants() ([]GolangVariant, error) {
+	var all []GolangVariant
+	if err := withMatchingFiles(gc.ControlDirectory, gc.VariantFiles, func(file string) error {
+		gvsv := struct {
+			Variants         []GolangVariant `yaml:"variants"`
+			VariablesSection `yaml:",inline"`
+		}{}
+		if err := utility.ReadYAMLFileStrict(file, &gvsv); err != nil {
 			return errors.Wrap(err, "unmarshalling from YAML file")
 		}
+		gvs := gvsv.Variants
 
 		catcher := grip.NewBasicCatcher()
-		for _, vd := range vds {
-			catcher.Wrapf(vd.Validate(), "variant '%s'", vd.Name)
+		for _, gv := range gvs {
+			catcher.Wrapf(gv.Validate(), "variant '%s'", gv.Name)
 		}
 		if catcher.HasErrors() {
-			return errors.Wrap(catcher.Resolve(), "invalid variant-distro mappings")
+			return errors.Wrap(catcher.Resolve(), "invalid variant definition(s)")
 		}
 
-		all = append(all, vds...)
+		all = append(all, gvs...)
 
 		return nil
 	}); err != nil {
@@ -139,66 +134,19 @@ func (gc *GolangControl) buildVariantDistros() ([]VariantDistro, error) {
 	return all, nil
 }
 
-func (gc *GolangControl) buildVariantParameters() ([]NamedGolangVariantParameters, error) {
-	var all []NamedGolangVariantParameters
+func (gc *GolangControl) buildGeneral() (GolangGeneralConfig, error) {
+	ggcv := struct {
+		GolangGeneralConfig `yaml:"general"`
+		VariablesSection    `yaml:",inline"`
+	}{}
 
-	if err := withMatchingFiles(gc.ControlDirectory, gc.VariantParameterFiles, func(file string) error {
-		ngvps := []NamedGolangVariantParameters{}
-		if err := utility.ReadYAMLFileStrict(file, &ngvps); err != nil {
-			return errors.Wrap(err, "unmarshalling from YAML file")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, ngvp := range ngvps {
-			catcher.Wrapf(ngvp.Validate(), "variant '%s'", ngvp.Name)
-		}
-		if catcher.HasErrors() {
-			return errors.Wrap(catcher.Resolve(), "invalid variant parameters")
-		}
-
-		all = append(all, ngvps...)
-
-		return nil
-	}); err != nil {
-		return nil, errors.WithStack(err)
+	if err := utility.ReadYAMLFileStrict(gc.GeneralFile, &ggcv); err != nil {
+		return GolangGeneralConfig{}, errors.Wrap(err, "unmarshalling from YAML file")
+	}
+	ggc := ggcv.GolangGeneralConfig
+	if err := ggc.Validate(); err != nil {
+		return GolangGeneralConfig{}, errors.Wrap(err, "invalid top-level configuration")
 	}
 
-	return all, nil
-}
-
-func (gc *GolangControl) buildEnvironments() ([]map[string]string, error) {
-	var all []map[string]string
-
-	if err := withMatchingFiles(gc.ControlDirectory, gc.EnvironmentFiles, func(file string) error {
-		env := map[string]string{}
-		if err := utility.ReadYAMLFileStrict(file, &env); err != nil {
-			return errors.Wrap(err, "unmarshalling from YAML file")
-		}
-
-		all = append(all, env)
-
-		return nil
-	}); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return all, nil
-}
-
-func (gc *GolangControl) buildDefaultTags() ([]string, error) {
-	var all []string
-	if err := withMatchingFiles(gc.ControlDirectory, gc.DefaultTagFiles, func(file string) error {
-		tags := []string{}
-		if err := utility.ReadYAMLFileStrict(file, &tags); err != nil {
-			return errors.Wrap(err, "unmarshalling from YAML file")
-		}
-
-		all = append(all, tags...)
-
-		return nil
-	}); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return all, nil
+	return ggc, nil
 }

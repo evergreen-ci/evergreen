@@ -59,7 +59,7 @@ func generateGolang() cli.Command {
 		Action: func(c *cli.Context) error {
 			workingDir := c.String(workingDirFlagName)
 			genFile := c.String(generatorFileFlagName)
-			ctrlFile := c.String(generatorFileFlagName)
+			ctrlFile := c.String(controlFileFlagName)
 			outputFile := c.String(outputFileFlagName)
 			var err error
 			if !filepath.IsAbs(workingDir) {

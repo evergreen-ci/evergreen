@@ -88,11 +88,11 @@ func (m *Make) taskCmds(mv model.MakeVariant, mt model.MakeTask) ([]shrub.Comman
 		if err != nil {
 			return nil, errors.Wrap(err, "resolving commands for targets")
 		}
-		opts := target.Options.Merge(mt.Options, mv.Options)
+		flags := target.Flags.Merge(mt.Flags, mv.Flags)
 		for _, targetName := range targetNames {
 			cmds = append(cmds, &shrub.CmdExec{
 				Binary:           "make",
-				Args:             append(opts, targetName),
+				Args:             append(flags, targetName),
 				Env:              env,
 				WorkingDirectory: m.WorkingDirectory,
 			})
