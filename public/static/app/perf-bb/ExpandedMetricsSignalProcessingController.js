@@ -85,8 +85,8 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
 
 function handleResponse(result, $scope) {
   $scope.totalPages = result.data.total_pages;
-  let datas = [];
   for (version of result.data.versions) {
+    let datas = [];
     let cps = version.change_points;
     for (cp of cps) {
       let data = {
