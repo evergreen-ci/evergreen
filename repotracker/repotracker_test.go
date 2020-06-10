@@ -633,6 +633,7 @@ func (s *CreateVersionFromConfigSuite) TestCreateBasicVersion() {
 	configYml := `
 buildvariants:
 - name: bv
+  display_name: "bv_display"
   run_on: d
   tasks:
   - name: task1
@@ -673,6 +674,7 @@ func (s *CreateVersionFromConfigSuite) TestInvalidConfigErrors() {
 	configYml := `
 buildvariants:
 - name: bv
+  display_name: "bv_display"
   tasks:
   - name: task1
   - name: task2
@@ -711,6 +713,7 @@ func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
 	configYml := `
 buildvariants:
 - name: bv
+  display_name: "bv_display"
   tasks:
   - name: task1
   - name: task2
@@ -745,6 +748,7 @@ func (s *CreateVersionFromConfigSuite) TestTransactionAbort() {
 	configYml := `
 buildvariants:
 - name: bv
+  display_name: "bv_display"
   run_on: d
   tasks:
   - name: task1

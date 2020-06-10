@@ -1697,6 +1697,7 @@ func TestTaskValidation(t *testing.T) {
   - name: this task is too long
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - name: task0
     - name: "this task is too long"
@@ -1723,6 +1724,7 @@ func TestTaskGroupValidation(t *testing.T) {
     - example_task_1
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - name: example_task_group
   `
@@ -1746,6 +1748,7 @@ func TestTaskGroupValidation(t *testing.T) {
     - example_task_2
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - name: foo
   `
@@ -1775,6 +1778,7 @@ task_groups:
   - example_task_2
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   tasks:
   - name: example_task_group
 `
@@ -1801,6 +1805,7 @@ task_groups:
   - example_task_3
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   tasks:
   - name: example_task_group
 `
@@ -1842,6 +1847,7 @@ task_groups:
   - task_in_a_task_group_2
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   run_on: "example_distro"
   tasks:
   - name: not_in_a_task_group
@@ -1879,6 +1885,7 @@ tasks:
   - command: shell.exec
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   run_on: "example_distro"
   not_a_field: true
   tasks:
@@ -1906,6 +1913,7 @@ tasks:
   - command: shell.exec
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   run_on: "example_distro"
   tasks:
   - name: task1
@@ -1935,6 +1943,7 @@ task_groups:
   - task_in_a_task_group
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   run_on: "example_distro"
   tasks:
   - name: example_task_group
@@ -1978,6 +1987,7 @@ tasks:
   - command: shell.exec
 buildvariants:
 - name: "bv"
+  display_name: "bv_display"
   run_on: "example_distro"
   tasks:
   - name: one
@@ -2020,6 +2030,7 @@ func TestValidateCreateHosts(t *testing.T) {
     - command: host.create
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - name: t_1
   `
@@ -2041,6 +2052,7 @@ func TestValidateCreateHosts(t *testing.T) {
     - command: host.create
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - name: t_1
   `
@@ -2064,6 +2076,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - tg1
     - t1
@@ -2086,6 +2099,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - t1
     - tg1
@@ -2110,6 +2124,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
   buildvariants:
   - name: "bv"
+    display_name: "bv_display"
     tasks:
     - tg1
     - tg2
@@ -2212,6 +2227,7 @@ tasks:
     - command: s3.push
 buildvariants:
   - name: bvA
+    display_name: "bvA_display"
     run_on: example_distro
     tasks:
       - name: taskA
