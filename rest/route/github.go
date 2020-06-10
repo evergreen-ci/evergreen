@@ -611,7 +611,7 @@ func triggersRetry(action, comment string) bool {
 	if action == "deleted" {
 		return false
 	}
-
+	comment = strings.TrimSpace(comment)
 	return comment == retryComment
 }
 

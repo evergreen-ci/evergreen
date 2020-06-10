@@ -961,7 +961,7 @@ Evergreen - Distros
             </p>
             <p class="distro-checkbox checkbox">
               <input type="checkbox" ng-model="activeDistro.disabled">
-              Disable scheduling this distro. Tasks already in the schedule will be dispatched.
+              Disable queueing this distro. Tasks already in the task queue will be removed.
             </p>
             <span class="warning-text" ng-show="activeDistro.disabled && activeDistro.host_allocator_settings.minimum_hosts > 0"><i class="fa fa-warning"></i>
 This will still allow the minimum number of hosts to start.

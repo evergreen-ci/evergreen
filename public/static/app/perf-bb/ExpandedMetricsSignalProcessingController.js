@@ -15,7 +15,50 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
     'Moderate Improvement',
     'Major Improvement',
   ];
-  $scope.triageStatusRegex = 'not_triaged';
+  $scope.triageStatusRegex = "not_triaged";
+
+  function refreshGridData($scope) {
+    $scope.gridApi.selection.clearSelectedRows();
+    handleRowSelectionChange($scope, $scope.gridApi);
+    getPoints($scope, PerformanceAnalysisAndTriageClient)
+  };
+
+  $scope.actions = [{
+    title:    'Not Triaged',
+    value:    "not_triaged"
+  }, {
+    title:    'True Positive',
+    value:    "true_positive",
+  }, {
+    title:    'False Positive',
+    value:    "false_positive"
+  }, {
+    title:    'Under Investigation',
+    value:    "under_investigation"
+  }];
+  // Holds currently selected items
+  $scope.selection = [];
+
+  $scope.isNoActionSelected = function() {
+    return $scope.selectedAction == undefined
+  }
+
+  $scope.triagePoints = function() {
+    var cpIds = [];
+    for (cp of $scope.selection) {
+      cpIds.push(cp.id);
+    }
+    PerformanceAnalysisAndTriageClient.triagePoints(cpIds, $scope.selectedAction.value)
+      .then(result => refreshGridData($scope), err => {
+        $scope.isLoading = false;
+        $scope.connectionError = false;
+        if(err.data) {
+          $scope.errorMessage = err.data.message;
+        } else {
+          $scope.connectionError = true
+        }
+      });
+  }
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
@@ -42,6 +85,7 @@ function handleResponse(result, $scope) {
   for (version of result.data.versions) {
     for (cp of version.change_points) {
       $scope.gridOptions.data.push({
+        id: cp._id,
         version: version.version_id,
         variant: cp.time_series_info.variant,
         task: cp.time_series_info.task,
@@ -71,6 +115,10 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
           $scope.connectionError = true
         }
       });
+}
+
+function handleRowSelectionChange($scope, gridApi) {
+  $scope.selection = gridApi.selection.getSelectedRows();
 }
 
 function onFilterChanged($scope, loaderFunction) {
@@ -143,7 +191,20 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
     useExternalFiltering: true,
     data: [],
     onRegisterApi: function( gridApi ) {
+      $scope.gridApi = gridApi;
       gridApi.core.on.filterChanged($scope, onFilterChanged);
+      // Debounce is neat when selecting multiple items
+      gridApi.selection.on.rowSelectionChanged(null, _.debounce(function() {
+        handleRowSelectionChange($scope, gridApi);
+        // This function executed asynchronously, so we should call $apply manually
+        $scope.$apply();
+      }));
+
+      // This is required when user selects all items
+      // (rowSelecionChanged doesn't work)
+      gridApi.selection.on.rowSelectionChangedBatch(null, function() {
+        handleRowSelectionChange($scope, gridApi);
+      });
     },
     columnDefs: [
       {
