@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -104,12 +103,6 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
-	url := versionLink(t.uiConfig.Url, t.version.Id)
-	grip.Info(message.Fields{
-		url:       url,
-		"message": "github version link",
-	})
-
 	data := commonTemplateData{
 		ID:              t.version.Id,
 		EventID:         t.event.ID,
@@ -117,7 +110,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		DisplayName:     t.version.Id,
 		Object:          event.ObjectVersion,
 		Project:         t.version.Identifier,
-		URL:             url,
+		URL:             versionLink(t.uiConfig.Url, t.version.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
