@@ -599,22 +599,20 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	isMember := true
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "Failed to authenticate github PR",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		}))
+		return false, err
 
-	// isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
-	// if err != nil {
-	// 	grip.Error(message.WrapError(err, message.Fields{
-	// 		"message":      "Failed to authenticate github PR",
-	// 		"source":       "patch intents",
-	// 		"creator":      githubUser,
-	// 		"required_org": requiredOrganization,
-	// 		"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-	// 		"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-	// 		"pr_number":    patchDoc.GithubPatchData.PRNumber,
-	// 	}))
-	// 	return false, err
-
-	// }
+	}
 
 	hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
