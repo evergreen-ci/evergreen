@@ -574,8 +574,13 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		}
 		buildVariantNames[buildVariant.Name] = true
 		dispName := buildVariant.DisplayName
-		if dispName == "" { // Default display name to the actual name (identifier)
-			dispName = buildVariant.Name
+		if dispName == "" {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("project '%s' buildvariant '%s' does not have a display name",
+						project.Identifier, buildVariant.Name),
+				},
+			)
 		}
 		displayNames[dispName] = displayNames[dispName] + 1
 

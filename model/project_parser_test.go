@@ -1016,6 +1016,7 @@ task_groups:
   - .odd
 buildvariants:
 - name: bv
+  display_name: "bv_display"
   tasks:
   - name: even_task_group
   - name: odd_task_group
@@ -1189,6 +1190,7 @@ tasks:
 - name: task_5
 buildvariants:
 - name: bv_1
+  display_name: "bv_display"
   depends_on:
     - name: task_3
   tasks:
@@ -1197,9 +1199,11 @@ buildvariants:
       - name: task_4
   - name: task_2
 - name: bv_2
+  display_name: "bv_display"
   tasks:
     - name: task_3
 - name: bv_3
+  display_name: "bv_display"
   requires:
     - name: task_3
   tasks:
@@ -1242,17 +1246,20 @@ tasks:
 - name: task_2
 buildvariants:
 - name: bv_1
+  display_name: "bv_display"
   tasks:
   - name: task_1
   - name: task_2
     patch_only: false
 - name: bv_2
+  display_name: "bv_display"
   tasks:
   - name: task_1
     patch_only: false
   - name: task_2
     patch_only: true
 - name: bv_3
+  display_name: "bv_display"
   tasks:
   - name: task_2
 `
@@ -1283,17 +1290,20 @@ tasks:
 - name: task_2
 buildvariants:
 - name: bv_1
+  display_name: "bv_display"
   tasks:
   - name: task_1
   - name: task_2
     git_tag_only: false
 - name: bv_2
+  display_name: "bv_display"
   tasks:
   - name: task_1
     git_tag_only: false
   - name: task_2
     git_tag_only: true
 - name: bv_3
+  display_name: "bv_display"
   tasks:
   - name: task_2
 `
