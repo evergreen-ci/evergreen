@@ -43,7 +43,7 @@ func (m *Make) Generate() (*shrub.Configuration, error) {
 
 			if len(tasksForVariant) >= minTasksForTaskGroup {
 				tg := c.TaskGroup(getTaskGroupName(mv.Name)).SetMaxHosts(len(tasksForVariant) / 2)
-				tg.SetupTask = shrub.CommandSequence{getProjectCmd.Resolve()}
+				tg.SetupGroup = shrub.CommandSequence{getProjectCmd.Resolve()}
 
 				for _, task := range tasksForVariant {
 					_ = tg.Task(task.Name)

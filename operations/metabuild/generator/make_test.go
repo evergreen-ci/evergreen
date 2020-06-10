@@ -115,8 +115,8 @@ func TestMakeGenerate(t *testing.T) {
 			}
 
 			taskGroup := conf.TaskGroup(getTaskGroupName(m.Variants[0].Name))
-			require.Len(t, taskGroup.SetupTask, 1)
-			getProjectCmd := taskGroup.SetupTask[0]
+			require.Len(t, taskGroup.SetupGroup, 1)
+			getProjectCmd := taskGroup.SetupGroup[0]
 			assert.Equal(t, shrub.CmdGetProject{}.Name(), getProjectCmd.CommandName)
 			assert.Equal(t, m.WorkingDirectory, getProjectCmd.Params["directory"])
 			assert.Equal(t, numTasks/2, taskGroup.MaxHosts)

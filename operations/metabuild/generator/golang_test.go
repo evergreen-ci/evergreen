@@ -130,8 +130,8 @@ func TestGolangGenerate(t *testing.T) {
 
 			assert.Equal(t, numTasks/2, taskGroup.MaxHosts)
 			assert.Len(t, taskGroup.Tasks, numTasks)
-			require.Len(t, taskGroup.SetupTask, 1)
-			getProjectCmd := taskGroup.SetupTask[0]
+			require.Len(t, taskGroup.SetupGroup, 1)
+			getProjectCmd := taskGroup.SetupGroup[0]
 			assert.Equal(t, shrub.CmdGetProject{}.Name(), getProjectCmd.CommandName)
 			projectPath, err := g.RelProjectPath()
 			require.NoError(t, err)
