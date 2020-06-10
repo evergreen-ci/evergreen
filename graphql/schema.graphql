@@ -132,7 +132,8 @@ input SubscriberInput {
 }
 
 input UseSpruceOptionsInput {
-  hasUsedSpruceBefore: Boolean!
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -441,6 +442,7 @@ type UserSettings {
 
 type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
