@@ -243,8 +243,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       expect($scope.gridOptions).toEqual({
         enableFiltering: true,
         enableRowSelection: true,
+        useExternalSorting: true,
         enableSelectAll: true,
-        enableSorting: false,
+        enableSorting: true,
         selectionRowHeaderWidth: 35,
         useExternalFiltering: true,
         data: [],
@@ -283,17 +284,20 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             field: 'variant',
             type: 'string',
             cellTemplate: 'ui-grid-link',
+            enableSorting: false,
           },
           {
             name: 'Task',
             field: 'task',
             type: 'string',
+            enableSorting: false,
             cellTemplate: 'ui-grid-link',
           },
           {
             name: 'Test',
             field: 'test',
             type: 'string',
+            enableSorting: false,
             cellTemplate: 'ui-grid-link',
           },
           {
@@ -309,6 +313,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             name: 'Thread Level',
             field: 'thread_level',
             type: 'number',
+            enableSorting: false,
           },
           {
             name: 'Measurement',
@@ -316,7 +321,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             filter: {
               term: 'AverageLatency|Latency50thPercentile|Latency95thPercentile'
-            }
+            },
+            enableSorting: false,
           },
           {
             name: 'Triage Status',
@@ -324,7 +330,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             filter: {
               term: 'not_triaged'
-            }
+            },
+            enableSorting: false,
           },
           {
             name: 'Calculated On',
@@ -332,7 +339,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             filterHeaderTemplate: '<md-date-range one-panel="true" auto-confirm="true" ng-model="selectedDate" md-on-select="col.filters[0].term = $dates"></md-date-range>',
             filter: {
               term: null
-            }
+            },
+            enableSorting: false,
           }
         ]
       });
