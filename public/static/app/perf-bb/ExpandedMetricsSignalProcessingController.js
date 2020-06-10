@@ -108,6 +108,7 @@ function handleResponse(result, $scope) {
       .then(resp => {
         for (data of datas) {
           data['revision'] = resp.data.revision;
+          data['revision_time'] = resp.data.create_time;
           data['build_id'] = $scope.EvgUtil.generateBuildId({
             project: $scope.projectId,
             revision: data.revision,
@@ -250,6 +251,18 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
           term: null,
           hazardValues: $scope.hazardValues
         },
+      },
+      {
+        name: 'Revision',
+        field: 'revision',
+        type: 'string',
+        enableFiltering: false
+      },
+      {
+        name: 'Date',
+        field: 'revision_time',
+        type: 'string',
+        enableFiltering: false
       },
       {
         name: 'Variant',

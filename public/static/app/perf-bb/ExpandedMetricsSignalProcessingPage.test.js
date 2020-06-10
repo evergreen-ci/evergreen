@@ -113,7 +113,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         calculated_on: "2020-05-04T20:21:12.037000",
         revision: 'd00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0',
         build_id: 'some_project_another_variant_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
-        task_id: 'some_project_another_variant_another_task_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52'
+        task_id: 'some_project_another_variant_another_task_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
+        revision_time: '2020-05-30T03:21:52Z',
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -142,7 +143,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         calculated_on: "2020-05-04T20:21:12.037000",
         revision: 'd00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0',
         build_id: 'some_project_linux_standalone_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
-        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52'
+        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
+        revision_time: '2020-05-30T03:21:52Z',
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -170,7 +172,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         calculated_on: "2020-05-04T20:21:12.037000",
         revision: 'd00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0',
         build_id: 'some_project_linux_standalone_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
-        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52'
+        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
+        revision_time: '2020-05-30T03:21:52Z',
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -196,7 +199,8 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         calculated_on: "2020-05-04T20:21:12.037000",
         revision: 'd00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0',
         build_id: 'some_project_linux_standalone_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
-        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52'
+        task_id: 'some_project_linux_standalone_large_scale_model_d00b75bfcac3ac74036ac6c2ceec4e8b42ac93a0_20_05_30_03_21_52',
+        revision_time: '2020-05-30T03:21:52Z',
       }));
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
@@ -261,6 +265,18 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
               term: null,
               hazardValues: $scope.hazardValues
             },
+          },
+          {
+            name: 'Revision',
+            field: 'revision',
+            type: 'string',
+            enableFiltering: false
+          },
+          {
+            name: 'Date',
+            field: 'revision_time',
+            type: 'string',
+            enableFiltering: false
           },
           {
             name: 'Variant',
