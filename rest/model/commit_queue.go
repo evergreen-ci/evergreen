@@ -2,6 +2,7 @@ package model
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -91,6 +92,7 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 }
 
 func ParseGitHubCommentModules(comment string) []APIModule {
+	comment = strings.TrimSpace(comment)
 	modules := []APIModule{}
 
 	r := regexp.MustCompile(`(?:--module|-m)\s+(\w+):(\d+)`)

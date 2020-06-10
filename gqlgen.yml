@@ -86,3 +86,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
   ClientBinary:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
+  UseSpruceOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  UseSpruceOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions

@@ -1,3 +1,14 @@
+<div class="toolbar">
+  <div class="control-group">
+    <span class="legend">Actions:</span>
+    <select ng-options="action as action.title for action in actions"
+    ng-model="selectedAction"></select>
+    <button ng-disabled="isNoActionSelected()"
+      ng-click="triagePoints()"
+      class="btn btn-sm btn-success"
+    >Triage Points</button>
+  </div>
+</div>
 <div
   class="grid"
   ui-grid="gridOptions"
@@ -36,7 +47,7 @@
 
 <style>
 .ui-grid {
-  height:80%
+  height:80%;
 }
 .error {
   color: red

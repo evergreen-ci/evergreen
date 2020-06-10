@@ -390,6 +390,11 @@ type ComplexityRoot struct {
 		TestFile  func(childComplexity int) int
 	}
 
+	UseSpruceOptions struct {
+		HasUsedSpruceBefore func(childComplexity int) int
+		SpruceV1            func(childComplexity int) int
+	}
+
 	User struct {
 		DisplayName func(childComplexity int) int
 		UserID      func(childComplexity int) int
@@ -408,11 +413,12 @@ type ComplexityRoot struct {
 	}
 
 	UserSettings struct {
-		GithubUser    func(childComplexity int) int
-		Notifications func(childComplexity int) int
-		Region        func(childComplexity int) int
-		SlackUsername func(childComplexity int) int
-		Timezone      func(childComplexity int) int
+		GithubUser       func(childComplexity int) int
+		Notifications    func(childComplexity int) int
+		Region           func(childComplexity int) int
+		SlackUsername    func(childComplexity int) int
+		Timezone         func(childComplexity int) int
+		UseSpruceOptions func(childComplexity int) int
 	}
 
 	VariantTask struct {
@@ -2179,6 +2185,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.TestFile(childComplexity), true
 
+	case "UseSpruceOptions.hasUsedSpruceBefore":
+		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.HasUsedSpruceBefore(childComplexity), true
+
+	case "UseSpruceOptions.spruceV1":
+		if e.complexity.UseSpruceOptions.SpruceV1 == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.SpruceV1(childComplexity), true
+
 	case "User.displayName":
 		if e.complexity.User.DisplayName == nil {
 			break
@@ -2269,6 +2289,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UserSettings.Timezone(childComplexity), true
+
+	case "UserSettings.useSpruceOptions":
+		if e.complexity.UserSettings.UseSpruceOptions == nil {
+			break
+		}
+
+		return e.complexity.UserSettings.UseSpruceOptions(childComplexity), true
 
 	case "VariantTask.name":
 		if e.complexity.VariantTask.Name == nil {
@@ -2469,6 +2496,7 @@ input UserSettingsInput {
   githubUser: GithubUserInput
   slackUsername: String
   notifications: NotificationsInput
+  useSpruceOptions: UseSpruceOptionsInput
 }
 input SelectorInput {
   type: String!
@@ -2478,6 +2506,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+input UseSpruceOptionsInput {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -2781,6 +2814,12 @@ type UserSettings {
   githubUser: GithubUser
   slackUsername: String
   notifications: Notifications
+  useSpruceOptions: UseSpruceOptions
+}
+
+type UseSpruceOptions {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
@@ -2823,6 +2862,7 @@ type ClientBinary {
   url: String
   displayName: String
 }
+
 scalar Time
 scalar Duration
 scalar StringMap
@@ -10941,6 +10981,68 @@ func (ec *executionContext) _TestResult_endTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UseSpruceOptions",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasUsedSpruceBefore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UseSpruceOptions",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpruceV1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -11366,6 +11468,37 @@ func (ec *executionContext) _UserSettings_notifications(ctx context.Context, fie
 	res := resTmp.(*model.APINotificationPreferences)
 	fc.Result = res
 	return ec.marshalONotifications2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserSettings_useSpruceOptions(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserSettings",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UseSpruceOptions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIUseSpruceOptions)
+	fc.Result = res
+	return ec.marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
@@ -12713,6 +12846,30 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Context, obj interface{}) (model.APIUseSpruceOptions, error) {
+	var it model.APIUseSpruceOptions
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "hasUsedSpruceBefore":
+			var err error
+			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spruceV1":
+			var err error
+			it.SpruceV1, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context, obj interface{}) (model.APIUserSettings, error) {
 	var it model.APIUserSettings
 	var asMap = obj.(map[string]interface{})
@@ -12746,6 +12903,12 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 		case "notifications":
 			var err error
 			it.Notifications, err = ec.unmarshalONotificationsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "useSpruceOptions":
+			var err error
+			it.UseSpruceOptions, err = ec.unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -14800,6 +14963,32 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var useSpruceOptionsImplementors = []string{"UseSpruceOptions"}
+
+func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APIUseSpruceOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, useSpruceOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
+		case "hasUsedSpruceBefore":
+			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
+		case "spruceV1":
+			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var userImplementors = []string{"User"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.APIUser) graphql.Marshaler {
@@ -14927,6 +15116,8 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserSettings_slackUsername(ctx, field, obj)
 		case "notifications":
 			out.Values[i] = ec._UserSettings_notifications(ctx, field, obj)
+		case "useSpruceOptions":
+			out.Values[i] = ec._UserSettings_useSpruceOptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17268,6 +17459,29 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 		return graphql.Null
 	}
 	return ec.marshalOTime2timeᚐTime(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOUseSpruceOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v model.APIUseSpruceOptions) graphql.Marshaler {
+	return ec._UseSpruceOptions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v *model.APIUseSpruceOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UseSpruceOptions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUseSpruceOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, v interface{}) (model.APIUseSpruceOptions, error) {
+	return ec.unmarshalInputUseSpruceOptionsInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, v interface{}) (*model.APIUseSpruceOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOUseSpruceOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOUserConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx context.Context, sel ast.SelectionSet, v UserConfig) graphql.Marshaler {

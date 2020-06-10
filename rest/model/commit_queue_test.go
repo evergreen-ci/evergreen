@@ -44,11 +44,11 @@ func TestCommitQueueBuildFromService(t *testing.T) {
 func TestParseGitHubCommentModules(t *testing.T) {
 	assert := assert.New(t)
 
-	comment := "evergreen merge"
+	comment := " evergreen merge "
 	modules := ParseGitHubCommentModules(comment)
 	assert.Len(modules, 0)
 
-	comment = "evergreen merge --unknown-option blah_blah"
+	comment = " evergreen merge --unknown-option blah_blah "
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 0)
 
