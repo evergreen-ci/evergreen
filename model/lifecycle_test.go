@@ -1940,3 +1940,55 @@ func TestShouldSyncTask(t *testing.T) {
 		})
 	}
 }
+
+func TestSetTaskActivationForBuildsActivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	build := build.Build{Id: "b0"}
+	require.NoError(t, build.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b1", Status: evergreen.TaskUndispatched},
+		{Id: "t2", BuildId: "b0", DependsOn: []task.Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	// set activated
+	assert.NoError(t, SetTaskActivationForBuilds([]string{"b0"}, true, ""))
+
+	dbTasks, err := task.FindAll(db.Q{})
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 3)
+	for _, task := range dbTasks {
+		assert.True(t, task.Activated)
+	}
+}
+
+func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	build := build.Build{Id: "b0"}
+	require.NoError(t, build.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", Activated: true, BuildId: "b0", Status: evergreen.TaskUndispatched},
+		{Id: "t1", Activated: true, BuildId: "b1", DependsOn: []task.Dependency{{TaskId: "t2"}}, Status: evergreen.TaskUndispatched},
+		{Id: "t2", Activated: true, BuildId: "b0", Status: evergreen.TaskUndispatched},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	// set deactivated
+	assert.NoError(t, SetTaskActivationForBuilds([]string{"b0"}, false, ""))
+
+	dbTasks, err := task.FindAll(db.Q{})
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 3)
+	for _, task := range dbTasks {
+		assert.False(t, task.Activated)
+	}
+}

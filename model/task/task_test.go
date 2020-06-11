@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -1806,4 +1807,214 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
+}
+
+func TestGetRecursiveDependenciesUp(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[3], tasks[4]}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, taskDependsOn, 3)
+	expectedIDs := []string{"t2", "t1", "t0"}
+	for _, task := range taskDependsOn {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
+func TestGetRecursiveDependenciesDown(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	dependingOnMe, err := getRecursiveDependenciesDown([]string{"t0"}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, dependingOnMe, 3)
+	expectedIDs := []string{"t2", "t4", "t5"}
+	for _, task := range dependingOnMe {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
+func TestDeactivateDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, DeactivateDependencies([]string{"t0"}, ""))
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 6)
+
+	updatedIDs := []string{"t4", "t5"}
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.False(t, task.Activated)
+			assert.True(t, task.DeactivatedForDependency)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
+}
+
+func TestActivateDeactivatedDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, ActivateDeactivatedDependencies([]string{"t0"}, ""))
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 5)
+
+	updatedIDs := []string{"t3", "t4"}
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.True(t, task.Activated)
+			assert.False(t, task.DeactivatedForDependency)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
+}
+
+func TestTopologicalSort(t *testing.T) {
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t2"}}},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
+	}
+
+	sortedTasks, err := topologicalSort(tasks)
+	assert.NoError(t, err)
+	assert.Len(t, sortedTasks, 4)
+
+	indexMap := make(map[string]int)
+	for i, task := range sortedTasks {
+		indexMap[task.Id] = i
+	}
+
+	assert.True(t, indexMap["t0"] < indexMap["t1"])
+	assert.True(t, indexMap["t0"] < indexMap["t2"])
+	assert.True(t, indexMap["t0"] < indexMap["t3"])
+	assert.True(t, indexMap["t2"] < indexMap["t1"])
+	assert.True(t, indexMap["t1"] < indexMap["t3"])
+}
+
+func TestActivateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, ActivateTasks([]Task{tasks[0]}, ""))
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 5)
+
+	updatedIDs := []string{"t0", "t3", "t4"}
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.True(t, task.Activated)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
+				}
+			}
+		}
+	}
+}
+
+func TestDeactivateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	assert.NoError(t, DeactivateTasks([]Task{tasks[0]}, ""))
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 6)
+
+	updatedIDs := []string{"t0", "t4", "t5"}
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.False(t, task.Activated)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
 }
