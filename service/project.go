@@ -24,9 +24,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
-// is authorized to view and edit the settings of.
-func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef, error) {
+// filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
+// is authorized to view
+func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
 	allProjects, err := model.FindAllProjectRefs()
 	if err != nil {
 		return nil, err
@@ -34,17 +34,18 @@ func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef
 	authorizedProjects := []model.ProjectRef{}
 	// only returns projects for which the user is authorized to see.
 	for _, project := range allProjects {
-		if isAdmin(u, &project) {
+		if hasViewPermission(u, &project) {
 			authorizedProjects = append(authorizedProjects, project)
 		}
 	}
 	return authorizedProjects, nil
 
 }
+
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -642,7 +643,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -703,7 +704,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("Could not log new project %s", id)
 	}
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)

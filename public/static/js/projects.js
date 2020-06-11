@@ -3,6 +3,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isAdmin;
+  //hasViewPermissions is true if the user has permissions to view at least one project
+  $scope.hasProjectViewPermissions = $window.allTrackedProjects.length > 0; 
+  console.log("allprojects: " + $window.allTrackedProjects, JSON.stringify($window.allTrackedProjects))
+  console.log("length: " +  $window.allTrackedProjects.length)
+  console.log("hasProjectViewPermissions: " +   $scope.hasProjectViewPermissions)
   $scope.create = $window.canCreate;
   $scope.validDefaultLoggers = $window.validDefaultLoggers;
 
@@ -293,6 +298,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function (resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
+              console.log("data.AllProjects: " + data.AllProjects, JSON.stringify(data_put.AllProjects))
+              console.log("length: " +  data_put.AllProjects.length)
+              console.log("hasProjectViewPermissions: " +   $scope.hasProjectViewPermissions)
               $scope.loadProject(data_put.ProjectId);
               $scope.newProject = {};
             },
@@ -310,6 +318,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         function (resp) {
           var data = resp.data;
           $scope.refreshTrackedProjects(data.AllProjects);
+          console.log("data.AllProjects: " + data.AllProjects, JSON.stringify(data.AllProjects))
+          console.log("length: " +  data.AllProjects.length)
+          console.log("hasProjectViewPermissions: " +   $scope.hasProjectViewPermissions)
           $scope.loadProject(data.ProjectId);
           $scope.newProject = {};
           $scope.settingsFormData.tracks_push_events = true;
@@ -519,6 +530,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         var data = resp.data;
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
+        console.log("data.AllProjects: " + data.AllProjects, JSON.stringify(data.AllProjects))
+        console.log("length: " +  data.AllProjects.length)
+        console.log("hasProjectViewPermissions: " +   $scope.hasProjectViewPermissions)
         $scope.settingsForm.$setPristine();
         $scope.settingsFormData.force_repotracker_run = false;
         $scope.loadProject($scope.settingsFormData.identifier)
