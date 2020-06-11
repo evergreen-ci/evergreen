@@ -108,13 +108,11 @@ func (j *createHostJob) Run(ctx context.Context) {
 		if j.host == nil {
 			//host intent document has been removed by another evergreen process
 			grip.Warning(message.Fields{
-				"host_id":  j.HostID,
-				"task_id":  j.TaskID,
-				"attempt":  j.CurrentAttempt,
-				"distro":   j.host.Distro.Id,
-				"job":      j.ID(),
-				"provider": j.host.Provider,
-				"message":  "could not find host",
+				"host_id": j.HostID,
+				"task_id": j.TaskID,
+				"attempt": j.CurrentAttempt,
+				"job":     j.ID(),
+				"message": "could not find host",
 			})
 			return
 		}
