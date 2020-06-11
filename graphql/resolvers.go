@@ -188,7 +188,7 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 }
 
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{task.StatusKey})
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{task.DisplayStatusKey})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -1224,6 +1224,10 @@ func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask
 
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	return *obj.Status == evergreen.TaskUndispatched, nil
+}
+
+func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
+	return *obj.DisplayStatus, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

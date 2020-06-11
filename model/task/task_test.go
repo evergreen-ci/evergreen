@@ -1769,3 +1769,83 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
 }
+
+func TestDisplayStatus(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:     "t1",
+		Status: evergreen.TaskSucceeded,
+	}
+	assert.NoError(t, t1.Insert())
+	checkStatuses(t, evergreen.TaskSucceeded, t1)
+	t2 := Task{
+		Id:     "t2",
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(t, t2.Insert())
+	checkStatuses(t, evergreen.TaskUndispatched, t2)
+	t3 := Task{
+		Id:     "t3",
+		Status: evergreen.TaskFailed,
+	}
+	assert.NoError(t, t3.Insert())
+	checkStatuses(t, evergreen.TaskFailed, t3)
+	t4 := Task{
+		Id:     "t4",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Type: evergreen.CommandTypeSetup,
+		},
+	}
+	assert.NoError(t, t4.Insert())
+	checkStatuses(t, evergreen.TaskSetupFailed, t4)
+	t5 := Task{
+		Id:     "t5",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Type: evergreen.CommandTypeSystem,
+		},
+	}
+	assert.NoError(t, t5.Insert())
+	checkStatuses(t, evergreen.TaskSystemFailed, t5)
+	t6 := Task{
+		Id:     "t6",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Type:     evergreen.CommandTypeSystem,
+			TimedOut: true,
+		},
+	}
+	assert.NoError(t, t6.Insert())
+	checkStatuses(t, evergreen.TaskSystemTimedOut, t6)
+	t7 := Task{
+		Id:     "t7",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Type:        evergreen.CommandTypeSystem,
+			TimedOut:    true,
+			Description: evergreen.TaskDescriptionHeartbeat,
+		},
+	}
+	assert.NoError(t, t7.Insert())
+	checkStatuses(t, evergreen.TaskSystemUnresponse, t7)
+	t8 := Task{
+		Id:     "t8",
+		Status: evergreen.TaskStarted,
+	}
+	assert.NoError(t, t8.Insert())
+	checkStatuses(t, evergreen.TaskStarted, t8)
+}
+
+func checkStatuses(t *testing.T, expected string, toCheck Task) {
+	var dbTasks []Task
+	err := db.Aggregate(Collection, []bson.M{
+		{"$match": bson.M{
+			IdKey: toCheck.Id,
+		}},
+		addDisplayStatus,
+	}, &dbTasks)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
+	assert.Equal(t, expected, toCheck.GetDisplayStatus())
+}

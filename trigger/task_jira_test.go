@@ -489,24 +489,24 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 		},
 	}
 
-	assert.Equal(evergreen.TaskSucceeded, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskSucceeded, doc.GetDisplayStatus())
 
 	doc.Status = evergreen.TaskFailed
-	assert.Equal(evergreen.TaskFailed, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskFailed, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = true
-	assert.Equal(evergreen.TaskTimedOut, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskTimedOut, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = false
 	doc.Details.Type = evergreen.CommandTypeSetup
-	assert.Equal(evergreen.TaskSetupFailed, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskSetupFailed, doc.GetDisplayStatus())
 
 	doc.Details.Type = evergreen.CommandTypeSystem
 	doc.Details.TimedOut = true
-	assert.Equal(evergreen.TaskSystemTimedOut, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskSystemTimedOut, doc.GetDisplayStatus())
 
 	doc.Details.Description = evergreen.TaskDescriptionHeartbeat
-	assert.Equal(evergreen.TaskSystemUnresponse, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskSystemUnresponse, doc.GetDisplayStatus())
 }
 
 func TestMakeSummaryPrefix(t *testing.T) {
