@@ -414,6 +414,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
+	}
 
 	if uiTask.AbortInfo.TaskID != "" {
 		abortedBy, err := getAbortedBy(projCtx.Task.AbortInfo.TaskID)
@@ -430,8 +434,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		JiraHost      string
 		Permissions   gimlet.Permissions
+		NewUILink     string
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
