@@ -106,16 +106,16 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 		if j.host == nil {
-			//probably haven't made an AWS call yet
-			hostErr := fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID)
-			grip.Warning(message.WrapError(hostErr, message.Fields{
+			//host intent document has been removed by another evergreen process
+			grip.Warning(message.Fields{
 				"host_id":  j.HostID,
+				"task_id":  j.TaskID,
 				"attempt":  j.CurrentAttempt,
 				"distro":   j.host.Distro.Id,
 				"job":      j.ID(),
 				"provider": j.host.Provider,
 				"message":  "could not find host",
-			}))
+			})
 			return
 		}
 	}
@@ -321,10 +321,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 				"distro":      j.host.Distro.Id,
 				"job":         j.ID(),
 			}))
-			grip.Notice(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "problem removing intent host",
 				"job":     j.ID(),
 				"host_id": j.HostID,
+				"error":   err.Error(),
 			}))
 			return errors.Wrapf(err, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
 		}
