@@ -63,6 +63,9 @@ type modelConversionInfo struct {
 // ModelMapping maps schema type names to their respective DB model
 type ModelMapping map[string]string
 
+// Codegen takes a GraphQL schema as well as a mapping file of GQL structs to
+// DB structs, then returns a generated REST model with conversion code, as well
+// as utility code to convert between pointers
 func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	source := ast.Source{
 		Input: schema,
@@ -94,6 +97,10 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	}
 	sort.Strings(typeNames)
 	for _, typeName := range typeNames {
+		dbModel, shouldConvert := config[typeName]
+		if !shouldConvert {
+			continue
+		}
 		gqlType := parsedAst.Types[typeName]
 		if gqlType == nil {
 			catcher.Errorf("unable to find type '%s'", typeName)
@@ -103,10 +110,6 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 			continue
 		}
 		if gqlType.Kind == ast.Scalar {
-			continue
-		}
-		dbModel, shouldConvert := config[typeName]
-		if !shouldConvert {
 			continue
 		}
 
@@ -121,7 +124,7 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	modelFile, err := output(fileTemplate, fileInfo{Package: "model", Structs: structs, Code: serviceCode})
 	catcher.Add(err)
 	formattedModelCode, err := goimports(modelFile)
-	catcher.Add(err)
+	catcher.Wrap(err, "unable to format model code")
 
 	converters := []string{}
 	conversionCode := ""
@@ -135,18 +138,19 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	converterFile, err := output(fileTemplate, fileInfo{Package: "model", Code: conversionCode})
 	catcher.Add(err)
 	formattedConverterFile, err := goimports(converterFile)
-	catcher.Add(err)
+	catcher.Wrap(err, "unable to format type converter code")
 
 	return formattedModelCode, formattedConverterFile, catcher.Resolve()
 }
 
+// generateForStruct takes a specific db type and returns the code for the REST type
+// as well as BuildFromService/ToService conversion methods
 func generateForStruct(fieldTemplate, structTemplate *template.Template, typeName, dbModel string, gqlType ast.Definition, generatedConversions map[string]string) (string, string, error) {
 	fields := ""
 	extractedFields := extractedFields{}
 	for _, field := range gqlType.Fields {
 		fieldInfo := getFieldInfo(field)
 		extractedFields[field.Name] = fieldInfo
-		var fieldData string
 		fieldData, err := output(fieldTemplate, fieldInfo)
 		if err != nil {
 			return "", "", err

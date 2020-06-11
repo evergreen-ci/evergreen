@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -37,7 +36,6 @@ func TestCodegen(t *testing.T) {
 			require.NoError(t, err)
 			generated, converters, err := Codegen(string(f), mapping)
 			require.NoError(t, err)
-			grip.Info(generated)
 
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "expected", name+".go"))
 			require.NoError(t, err)
