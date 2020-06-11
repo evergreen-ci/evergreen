@@ -129,7 +129,7 @@ func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuse
 	if includeCommitQueue == false {
 		queryInterface[AliasKey] = commitQueueFilter
 	}
-	q := db.Query(queryInterface).Sort([]string{"-" + CreateTimeKey, "-" + IdKey})
+	q := db.Query(queryInterface).Sort([]string{"-" + CreateTimeKey})
 	if page > 0 {
 		q = q.Skip(page * limit)
 	}
