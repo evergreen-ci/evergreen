@@ -151,7 +151,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
 
 			j.AddError(err)
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.CurrentAttempt,
 				"distro":   j.host.Distro.Id,
