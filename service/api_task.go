@@ -448,6 +448,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
+			grip.DebugWhen(queueItem.Group != "", message.Fields{
+				"message":            "error retrieving next task",
+				"task_id":            queueItem.Id,
+				"task_group":         queueItem.Group,
+				"task_build_variant": queueItem.BuildVariant,
+				"task_version":       queueItem.Version,
+			})
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "database error while retrieving the db.tasks document for the next task to be assigned to this host",
 				"distro_id":    d.Id,
@@ -459,6 +466,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		if nextTask == nil {
+			grip.DebugWhen(queueItem.Group != "", message.Fields{
+				"message":            "next task is nil",
+				"task_id":            queueItem.Id,
+				"task_group":         queueItem.Group,
+				"task_build_variant": queueItem.BuildVariant,
+				"task_version":       queueItem.Version,
+			})
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, false, nil
 		}
@@ -479,10 +493,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		projectRef, err := model.FindOneProjectRef(nextTask.Project)
 		if err != nil || projectRef == nil {
 			grip.Alert(message.Fields{
-				"task_id": nextTask.Id,
-				"message": "could not find project ref for next task, skipping",
-				"project": nextTask.Project,
-				"host_id": currentHost.Id,
+				"task_id":            nextTask.Id,
+				"message":            "could not find project ref for next task, skipping",
+				"project":            nextTask.Project,
+				"host_id":            currentHost.Id,
+				"task_group":         nextTask.TaskGroup,
+				"task_build_variant": nextTask.BuildVariant,
+				"task_version":       nextTask.Version,
 			})
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
@@ -500,12 +517,27 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
+			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+				"message":            "exiting early to tear down current group",
+				"details_task_group": details.TaskGroup,
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"task_build_variant": nextTask.BuildVariant,
+				"task_version":       nextTask.Version,
+			})
 			return nil, true, nil
 		}
 
 		// UpdateRunningTask updates the running task in the host document
 		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
+			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+				"message":            "failed to update running task for task group",
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"task_build_variant": nextTask.BuildVariant,
+				"task_version":       nextTask.Version,
+			})
 			return nil, false, errors.WithStack(err)
 		}
 
@@ -525,6 +557,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"host_id":                 currentHost.Id,
 			"host_last_group":         currentHost.LastGroup,
 			"host_last_build_variant": currentHost.LastBuildVariant,
+			"host_last_task":          currentHost.LastTask,
 			"host_last_version":       currentHost.LastVersion,
 			"host_last_project":       currentHost.LastProject,
 			"task_group":              nextTask.TaskGroup,
@@ -533,6 +566,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_project":            nextTask.Project,
 			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
 		})
+
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
 			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
 			if err != nil {
@@ -541,7 +575,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			if numHosts > nextTask.TaskGroupMaxHosts {
 				grip.Debug(message.Fields{
 					"message":              "task group race, not dispatching",
-					"distro_id":            nextTask.DistroId,
+					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
 					"task_group":           nextTask.TaskGroup,
@@ -549,10 +583,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					"task_version":         nextTask.Version,
 					"task_project":         nextTask.Project,
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+					"num_hosts_found":      numHosts,
 				})
 				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
 					"message":              "problem clearing task group task from host after dispatch race",
-					"distro_id":            nextTask.DistroId,
+					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
 					"task_group":           nextTask.TaskGroup,

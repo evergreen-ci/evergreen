@@ -119,6 +119,7 @@ input UserSettingsInput {
   githubUser: GithubUserInput
   slackUsername: String
   notifications: NotificationsInput
+  useSpruceOptions: UseSpruceOptionsInput
 }
 input SelectorInput {
   type: String!
@@ -128,6 +129,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+input UseSpruceOptionsInput {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -250,6 +256,7 @@ type TaskLogLinks {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
+  eventLogLink: String
 }
 
 type TaskEndDetail {
@@ -430,6 +437,12 @@ type UserSettings {
   githubUser: GithubUser
   slackUsername: String
   notifications: Notifications
+  useSpruceOptions: UseSpruceOptions
+}
+
+type UseSpruceOptions {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
@@ -472,6 +485,7 @@ type ClientBinary {
   url: String
   displayName: String
 }
+
 scalar Time
 scalar Duration
 scalar StringMap

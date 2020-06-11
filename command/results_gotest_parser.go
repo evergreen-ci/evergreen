@@ -38,11 +38,6 @@ var (
 type goTestResult struct {
 	// The name of the test
 	Name string
-	// The name of the test suite the test is a part of.
-	// Currently, for this plugin, this is the name of the package
-	// being tested, prefixed with a unique number to avoid
-	// collisions when packages have the same name
-	SuiteName string
 	// The result status of the test
 	Status string
 	// How long the test took to run
@@ -95,8 +90,7 @@ func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
 // This should cover regular go tests as well as those written with the
 // popular testing packages goconvey and gocheck.
 type goTestParser struct {
-	Suite string
-	logs  []string
+	logs []string
 	// map for storing tests during parsing. this is an array to handle multiple
 	// executions of the same test in the same log
 	tests map[string][]*goTestResult
@@ -199,11 +193,10 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 }
 
 // newTestResult populates a test result type with the given
-// test name, current suite, and current line number.
+// test name and current line number.
 func (vp *goTestParser) newTestResult(name string) *goTestResult {
 	return &goTestResult{
 		Name:      name,
-		SuiteName: vp.Suite,
 		StartLine: len(vp.logs),
 	}
 }

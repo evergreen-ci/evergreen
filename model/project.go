@@ -884,18 +884,25 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
+	if v == nil {
+		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+	}
+
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
+	if evergreen.IsGitTagRequester(v.Requester) {
+		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
+	}
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
 		p, err = patch.FindOne(patch.ByVersion(t.Version))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding patch for version %s", t.Version)
+			return nil, errors.Wrapf(err, "error finding patch for version '%s'", t.Version)
 		}
 		if p == nil {
-			return nil, errors.Errorf("no patch found for version %s", t.Version)
+			return nil, errors.Errorf("no patch found for version '%s'", t.Version)
 		}
 
 		expansions.Put("is_patch", "true")

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/shlex"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -34,6 +35,7 @@ func hostCreate() cli.Command {
 		tagFlagName          = "tag"
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
+		fileFlagName         = "file"
 	)
 
 	return cli.Command{
@@ -68,6 +70,10 @@ func hostCreate() cli.Command {
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(fileFlagName, "f"),
+				Usage: "name of a json or yaml file containing the spawn host params",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -78,6 +84,7 @@ func hostCreate() cli.Command {
 			instanceType := c.String(instanceTypeFlagName)
 			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
+			file := c.String(fileFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -89,29 +96,44 @@ func hostCreate() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			var script string
+			spawnRequest := &restModel.HostRequestOptions{}
+			var tags []host.Tag
+			if file != "" {
+				if err = utility.ReadYAMLFile(file, &spawnRequest); err != nil {
+					return errors.Wrapf(err, "problem reading from file '%s'", file)
+				}
+				if spawnRequest.Tag != "" {
+					tags, err = host.MakeHostTags([]string{spawnRequest.Tag})
+					if err != nil {
+						return errors.Wrap(err, "a problem generating tags")
+					}
+					spawnRequest.InstanceTags = tags
+				}
+
+				fn = spawnRequest.UserData
+
+			} else {
+				tags, err = host.MakeHostTags(tagSlice)
+				if err != nil {
+					return errors.Wrap(err, "problem generating tags")
+				}
+				spawnRequest = &restModel.HostRequestOptions{
+					DistroID:     distro,
+					KeyName:      key,
+					InstanceTags: tags,
+					InstanceType: instanceType,
+					Region:       region,
+					NoExpiration: noExpire,
+				}
+			}
+
 			if fn != "" {
 				var out []byte
 				out, err = ioutil.ReadFile(fn)
 				if err != nil {
 					return errors.Wrapf(err, "problem reading userdata file '%s'", fn)
 				}
-				script = string(out)
-			}
-
-			tags, err := host.MakeHostTags(tagSlice)
-			if err != nil {
-				return errors.Wrap(err, "problem generating tags")
-			}
-
-			spawnRequest := &restModel.HostRequestOptions{
-				DistroID:     distro,
-				KeyName:      key,
-				UserData:     script,
-				InstanceTags: tags,
-				InstanceType: instanceType,
-				Region:       region,
-				NoExpiration: noExpire,
+				spawnRequest.UserData = string(out)
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)
@@ -1084,6 +1106,7 @@ func hostRsync() cli.Command {
 		timeoutFlagName               = "timeout"
 		sanityChecksFlagName          = "sanity-checks"
 		dryRunFlagName                = "dry-run"
+		binaryParamsFlagName          = "params"
 	)
 	return cli.Command{
 		Name:  "rsync",
@@ -1096,10 +1119,14 @@ Paths can be specified as absolute or relative paths. For the local path, a
 relative path is relative to the current working directory. For the remote path,
 a relative path is relative to the home directory.
 
+If you already know how to use rsync and this command doesn't have an explicit
+option for something that rsync provides, you can pass parameters directly to
+the rsync binary using --params.
+
 Examples:
 * Create or overwrite a file between the local filesystem and remote spawn host:
 
-	evergreen host rsync -l /path/to/local/file1 -r /path/to/remote/file2 -h <host_id>
+	evergreen host rsync -l /path/to/local/file1 -r /path/to/remote/file2 --host <host_id>
 
 	If file2 does not exist on the remote host, it will be created (including
 	any parent directories) and its contents will exactly match those of file1
@@ -1107,11 +1134,11 @@ Examples:
 
 * A more practical example to upload your .bashrc to the host:
 
-	evergreen host rsync -l ~/.bashrc -r .bashrc -h <host_id>
+	evergreen host rsync -l ~/.bashrc -r .bashrc --host <host_id>
 
 * Push (mirror) the directory contents from the local filesystem to the directory on the remote spawn host:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id>
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --host <host_id>
 
 	NOTE: the trailing slash in the file paths are required here.
 	This will replace all the contents of the remote directory dir2 to match the
@@ -1119,7 +1146,7 @@ Examples:
 
 * Pull (mirror) a spawn host's remote directory onto the local filesystem:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --pull -h <host_id>
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --pull --host <host_id>
 
 	NOTE: the trailing slash in the file paths are required here.
 	This will replace all the contents of the local directory dir1 to match the
@@ -1127,7 +1154,7 @@ Examples:
 
 * Push a local directory to become a subdirectory at the remote path on the remote spawn host:
 
-	evergreen host rsync -l /path/to/local/dir1 -r /path/to/remote/dir2 -h <host_id>
+	evergreen host rsync -l /path/to/local/dir1 -r /path/to/remote/dir2 --host <host_id>
 
 	NOTE: this should not have a trailing slash at the end of the file paths.
 	This will create a subdirectory dir1 containing the local dir1's contents below
@@ -1142,7 +1169,7 @@ Examples:
 
 * Exclude files/directories from being synced:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> -x excluded_dir/ -x excluded_file
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --host <host_id> -x excluded_dir/ -x excluded_file
 
 	NOTE: paths to excluded files/directory are relative to the source directory.
 	This will mirror all the contents of the local dir1 in the remote dir2
@@ -1150,11 +1177,11 @@ Examples:
 
 * Disable sanity checking prompt when mirroring directories:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> --sanity-checks=false
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --host <host_id> --sanity-checks=false
 
 * Dry run the command to see what will be changed without actually changing anything:
 
-	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ -h <host_id> --dry-run
+	evergreen host rsync -l /path/to/local/dir1/ -r /path/to/remote/dir2/ --host <host_id> --dry-run
 `,
 		Flags: addHostFlag(
 			cli.StringFlag{
@@ -1197,6 +1224,10 @@ Examples:
 				Name:  joinFlagNames(dryRunFlagName, "n"),
 				Usage: "show what would occur if executed, but do not actually execute",
 			},
+			cli.StringSliceFlag{
+				Name:  binaryParamsFlagName,
+				Usage: "pass arbitrary additional parameters to the rsync binary",
+			},
 		),
 		Before: mergeBeforeFuncs(
 			mutuallyExclusiveArgs(true, hostFlagName, remoteIsLocalFlagName),
@@ -1210,6 +1241,10 @@ Examples:
 			pull := c.Bool(pullFlagName)
 			dryRun := c.Bool(dryRunFlagName)
 			remoteIsLocal := c.Bool(remoteIsLocalFlagName)
+			binaryParams, err := splitRsyncBinaryParams(c.StringSlice(binaryParamsFlagName)...)
+			if err != nil {
+				return errors.Wrap(err, "splitting rsync parameters")
+			}
 
 			if strings.HasSuffix(localPath, "/") && !strings.HasSuffix(remotePath, "/") {
 				remotePath = remotePath + "/"
@@ -1222,7 +1257,6 @@ Examples:
 			defer cancel()
 
 			var user, host string
-			var err error
 			if !remoteIsLocal {
 				hostID := c.String(hostFlagName)
 				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(confFlagName))
@@ -1255,6 +1289,7 @@ Examples:
 				shouldDelete:         c.BoolT(deleteFlagName),
 				pull:                 pull,
 				dryRun:               dryRun,
+				binaryParams:         binaryParams,
 			}
 			if makeParentDirs && !makeParentDirsOnRemote {
 				if err = makeLocalParentDirs(localPath, remotePath, pull); err != nil {
@@ -1268,6 +1303,20 @@ Examples:
 			return cmd.Run(ctx)
 		},
 	}
+}
+
+// splitRsyncBinaryParams splits parameters to the rsync binary using shell
+// parsing rules.
+func splitRsyncBinaryParams(params ...string) ([]string, error) {
+	var rsyncParams []string
+	for _, param := range params {
+		splitParams, err := shlex.Split(param)
+		if err != nil {
+			return nil, errors.Wrap(err, "shell parsing")
+		}
+		rsyncParams = append(rsyncParams, splitParams...)
+	}
+	return rsyncParams, nil
 }
 
 // makeLocalParentDirs creates the parent directories for the rsync destination
@@ -1353,6 +1402,7 @@ type rsyncOpts struct {
 	shouldDelete         bool
 	pull                 bool
 	dryRun               bool
+	binaryParams         []string
 }
 
 // buildRsyncCommand takes the given options and constructs an rsync command.
@@ -1393,6 +1443,8 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 		dryRunIndex = len(args)
 		args = append(args, "-n")
 	}
+
+	args = append(args, opts.binaryParams...)
 
 	var remote string
 	if opts.user != "" && opts.host != "" {

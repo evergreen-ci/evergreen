@@ -422,6 +422,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 			"stepback": true,
 			"buildvariants": [{
 				"name": "v1",
+				"display_name": "v1_display",
 				"run_on": "d",
 				"tasks": [
 					{"name": "t1"},
@@ -475,6 +476,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 stepback: true
 buildvariants:
 - name: v1
+  display_name: "v1_display"
   run_on: d
   tasks:
   - name: t1
