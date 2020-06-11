@@ -78,6 +78,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Identifier)
 	}
 	if hook != nil {
+		projectRef.TracksPushEvents = true
 		return true, nil
 	}
 
@@ -105,6 +106,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 	if err = hook.Insert(); err != nil {
 		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Identifier)
 	}
+	projectRef.TracksPushEvents = true
 	return true, nil
 }
 

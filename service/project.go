@@ -315,6 +315,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
+			projectRef.TracksPushEvents = true
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",
