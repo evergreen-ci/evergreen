@@ -77,10 +77,69 @@ type LogLinks struct {
 }
 
 type ApiTaskEndDetail struct {
-	Status      *string `json:"status"`
-	Type        *string `json:"type"`
-	Description *string `json:"desc"`
-	TimedOut    bool    `json:"timed_out"`
+	Status      *string           `json:"status"`
+	Type        *string           `json:"type"`
+	Description *string           `json:"desc"`
+	TimedOut    bool              `json:"timed_out"`
+	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
+}
+
+func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
+	v, ok := t.(apimodels.TaskEndDetail)
+	if !ok {
+		return errors.Errorf("Incorrect type %T when unmarshalling TaskEndDetail", t)
+	}
+	at.Status = ToStringPtr(v.Status)
+	at.Type = ToStringPtr(v.Type)
+	at.Description = ToStringPtr(v.Description)
+	at.TimedOut = v.TimedOut
+
+	apiOomTracker := APIOomTrackerInfo{}
+	if err := apiOomTracker.BuildFromService(v.OOMTracker); err != nil {
+		return errors.Wrap(err, "can't build oom tracker from service")
+	}
+	at.OOMTracker = apiOomTracker
+
+	return nil
+}
+
+func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
+	detail := apimodels.TaskEndDetail{
+		Status:      FromStringPtr(ad.Status),
+		Type:        FromStringPtr(ad.Type),
+		Description: FromStringPtr(ad.Description),
+		TimedOut:    ad.TimedOut,
+	}
+	oomTrackerIface, err := ad.OOMTracker.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't convert OOMTrackerInfo to service")
+	}
+	detail.OOMTracker = oomTrackerIface.(apimodels.OOMTrackerInfo)
+
+	return detail, nil
+}
+
+type APIOomTrackerInfo struct {
+	Detected bool  `json:"detected"`
+	Pids     []int `json:"pids"`
+}
+
+func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
+	v, ok := t.(apimodels.OOMTrackerInfo)
+	if !ok {
+		return errors.Errorf("Incorrect type %T when unmarshalling OOMTrackerInfo", t)
+	}
+	at.Detected = v.Detected
+	at.Pids = v.Pids
+
+	return nil
+}
+
+func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
+	return apimodels.OOMTrackerInfo{
+		Detected: ad.Detected,
+		Pids:     ad.Pids,
+	}, nil
 }
 
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
@@ -106,34 +165,28 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *task.Task:
 		(*at) = APITask{
-			Id:            ToStringPtr(v.Id),
-			ProjectId:     ToStringPtr(v.Project),
-			CreateTime:    ToTimePtr(v.CreateTime),
-			DispatchTime:  ToTimePtr(v.DispatchTime),
-			ScheduledTime: ToTimePtr(v.ScheduledTime),
-			StartTime:     ToTimePtr(v.StartTime),
-			FinishTime:    ToTimePtr(v.FinishTime),
-			IngestTime:    ToTimePtr(v.IngestTime),
-			ActivatedTime: ToTimePtr(v.ActivatedTime),
-			Version:       ToStringPtr(v.Version),
-			Revision:      ToStringPtr(v.Revision),
-			Priority:      v.Priority,
-			Activated:     v.Activated,
-			ActivatedBy:   ToStringPtr(v.ActivatedBy),
-			BuildId:       ToStringPtr(v.BuildId),
-			DistroId:      ToStringPtr(v.DistroId),
-			BuildVariant:  ToStringPtr(v.BuildVariant),
-			DisplayName:   ToStringPtr(v.DisplayName),
-			HostId:        ToStringPtr(v.HostId),
-			Restarts:      v.Restarts,
-			Execution:     v.Execution,
-			Order:         v.RevisionOrderNumber,
-			Details: ApiTaskEndDetail{
-				Status:      ToStringPtr(v.Details.Status),
-				Type:        ToStringPtr(v.Details.Type),
-				Description: ToStringPtr(v.Details.Description),
-				TimedOut:    v.Details.TimedOut,
-			},
+			Id:                ToStringPtr(v.Id),
+			ProjectId:         ToStringPtr(v.Project),
+			CreateTime:        ToTimePtr(v.CreateTime),
+			DispatchTime:      ToTimePtr(v.DispatchTime),
+			ScheduledTime:     ToTimePtr(v.ScheduledTime),
+			StartTime:         ToTimePtr(v.StartTime),
+			FinishTime:        ToTimePtr(v.FinishTime),
+			IngestTime:        ToTimePtr(v.IngestTime),
+			ActivatedTime:     ToTimePtr(v.ActivatedTime),
+			Version:           ToStringPtr(v.Version),
+			Revision:          ToStringPtr(v.Revision),
+			Priority:          v.Priority,
+			Activated:         v.Activated,
+			ActivatedBy:       ToStringPtr(v.ActivatedBy),
+			BuildId:           ToStringPtr(v.BuildId),
+			DistroId:          ToStringPtr(v.DistroId),
+			BuildVariant:      ToStringPtr(v.BuildVariant),
+			DisplayName:       ToStringPtr(v.DisplayName),
+			HostId:            ToStringPtr(v.HostId),
+			Restarts:          v.Restarts,
+			Execution:         v.Execution,
+			Order:             v.RevisionOrderNumber,
 			Status:            ToStringPtr(v.Status),
 			TimeTaken:         NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
@@ -153,6 +206,10 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				Statuses: v.SyncAtEndOpts.Statuses,
 				Timeout:  v.SyncAtEndOpts.Timeout,
 			},
+		}
+
+		if err := at.Details.BuildFromService(v.Details); err != nil {
+			return errors.Wrap(err, "can't build TaskEndDetail from service")
 		}
 
 		if v.HostId != "" {
@@ -211,21 +268,15 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Restarts:            ad.Restarts,
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
-		Details: apimodels.TaskEndDetail{
-			Status:      FromStringPtr(ad.Details.Status),
-			Type:        FromStringPtr(ad.Details.Type),
-			Description: FromStringPtr(ad.Details.Description),
-			TimedOut:    ad.Details.TimedOut,
-		},
-		Status:           FromStringPtr(ad.Status),
-		TimeTaken:        ad.TimeTaken.ToDuration(),
-		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
-		Cost:             ad.EstimatedCost,
-		GenerateTask:     ad.GenerateTask,
-		GeneratedBy:      ad.GeneratedBy,
-		DisplayOnly:      ad.DisplayOnly,
-		Requester:        FromStringPtr(ad.Requester),
-		CanSync:          ad.CanSync,
+		Status:              FromStringPtr(ad.Status),
+		TimeTaken:           ad.TimeTaken.ToDuration(),
+		ExpectedDuration:    ad.ExpectedDuration.ToDuration(),
+		Cost:                ad.EstimatedCost,
+		GenerateTask:        ad.GenerateTask,
+		GeneratedBy:         ad.GeneratedBy,
+		DisplayOnly:         ad.DisplayOnly,
+		Requester:           FromStringPtr(ad.Requester),
+		CanSync:             ad.CanSync,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  ad.SyncAtEndOpts.Enabled,
 			Statuses: ad.SyncAtEndOpts.Statuses,
@@ -233,6 +284,9 @@ func (ad *APITask) ToService() (interface{}, error) {
 		},
 	}
 	catcher := grip.NewBasicCatcher()
+	serviceDetails, err := ad.Details.ToService()
+	catcher.Add(err)
+	st.Details = serviceDetails.(apimodels.TaskEndDetail)
 	createTime, err := FromTimePtr(ad.CreateTime)
 	catcher.Add(err)
 	dispatchTime, err := FromTimePtr(ad.DispatchTime)
