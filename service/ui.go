@@ -65,7 +65,7 @@ type ViewData struct {
 	Bugsnag             string
 	NewRelic            evergreen.NewRelicConfig
 	IsAdmin             bool
-	NewUILink        string
+	NewUILink           string
 	ValidDefaultLoggers []string
 }
 
