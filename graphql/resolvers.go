@@ -1164,7 +1164,7 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
 	}
 	if baseTask == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+		return nil, nil
 	}
 
 	dur := restModel.NewAPIDuration(baseTask.TimeTaken)

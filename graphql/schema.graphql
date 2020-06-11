@@ -346,7 +346,7 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  baseTaskMetadata: BaseTaskMetadata!
+  baseTaskMetadata: BaseTaskMetadata
   canRestart: Boolean!
   canAbort: Boolean!
   canSchedule: Boolean!

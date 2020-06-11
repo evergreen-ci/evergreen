@@ -28,16 +28,7 @@
     },
     {
       "query_file": "baseTaskMetadata-no-base-task.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "Unable to find task taskity_task on base commit",
-            "path": ["task", "baseTaskMetadata"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
-          }
-        ],
-        "data": { "task": null }
-      }
+      "result": { "data": { "task": { "baseTaskMetadata": null } } }
     },
     {
       "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
