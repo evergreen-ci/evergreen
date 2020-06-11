@@ -43,7 +43,8 @@ type ProjectRef struct {
 	DeactivatePrevious bool     `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	Tags               []string `bson:"tags" json:"tags" yaml:"tags"`
 
-	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
+	// TracksPushEvents, if true indicates that Repotracker is triggered by
+	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
 	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`

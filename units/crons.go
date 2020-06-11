@@ -53,7 +53,8 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
-			// only do catchup jobs for enabled projects that track push events.
+			// only do catchup jobs for enabled projects
+			// that track push events.
 			if !proj.Enabled || proj.RepotrackerDisabled || !proj.TracksPushEvents {
 				continue
 			}
@@ -75,6 +76,44 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 				j.SetPriority(-1)
 				catcher.Add(queue.Put(ctx, j))
 			}
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.RepotrackerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "repotracker is disabled",
+				"impact":  "polling repos disabled",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		projects, err := model.FindAllTrackedProjectRefsWithRepoInfo()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := utility.RoundPartOfHour(15).Format(TSFormat)
+
+		catcher := grip.NewBasicCatcher()
+		for _, proj := range projects {
+			if !proj.Enabled || proj.RepotrackerDisabled || proj.TracksPushEvents {
+				continue
+			}
+
+			j := NewRepotrackerJob(fmt.Sprintf("polling-%s", ts), proj.Identifier)
+			j.SetPriority(-1)
+			catcher.Add(queue.Put(ctx, j))
 		}
 
 		return catcher.Resolve()
