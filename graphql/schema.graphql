@@ -36,6 +36,7 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
 }
