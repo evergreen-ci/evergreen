@@ -1,13 +1,15 @@
 function setBanner() {
   var theme = window.BannerTheme;
   var text = bannerText();
-  var jiraLinkify = angular.element(document).injector().get('$filter')('jiraLinkify')
+  var jiraLinkify = angular.element(document).injector().get("$filter")(
+    "jiraLinkify"
+  );
   if (isDismissed(text)) {
     $("#banner-container").addClass("nodisp");
     return;
   }
   $("#bannerText").html(jiraLinkify(text, window.JiraHost));
-  switch(theme) {
+  switch (theme) {
     case "important":
       $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
       $("#bannerIcon").addClass("banner-icon-important");
@@ -28,9 +30,20 @@ function setBanner() {
       $("#bannerIcon").addClass("banner-icon-announcement");
       $("#bannerBack").addClass("banner-text-announcement");
   }
-};
+}
 
 function dismissBanner() {
   localStorage.setItem("dismissed", md5(bannerText()));
   $("#banner-container").addClass("nodisp");
-};
+}
+mciModule.controller("NavBarController", function (
+  $scope,
+  $http,
+  $timeout,
+  $rootScope,
+  mciTime,
+  $window
+) {
+  $scope.newUILink = $window.NewUILink;
+  $scope.showNewUILink = $window.user && $window.NewUILink;
+});

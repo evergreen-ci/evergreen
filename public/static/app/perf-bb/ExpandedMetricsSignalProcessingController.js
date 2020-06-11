@@ -132,7 +132,7 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.gridOptions.data = [];
   $scope.isLoading = true;
   $scope.errorMessage = null;
-  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.triageStatusRegex, $scope.calculatedOnWindow, $scope.percentChangeWindows)
+  PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.triageStatusRegex, $scope.calculatedOnWindow, $scope.percentChangeWindows, $scope.sortAscending)
     .then(result => handleResponse(result, $scope), err => {
       $scope.isLoading = false;
       $scope.connectionError = false;
@@ -156,6 +156,7 @@ function onFilterChanged($scope, loaderFunction) {
     if (col.field === "variant") {
       $scope.variantRegex = col.filters[0].term;
     } else if (col.field === "version") {
+      $scope.sortAscending = col.sort.direction === "asc";
       $scope.versionRegex = col.filters[0].term;
     } else if (col.field === "task") {
       $scope.taskRegex = col.filters[0].term;
@@ -212,27 +213,26 @@ function onFilterChanged($scope, loaderFunction) {
 function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
   $scope.gridOptions = {
     enableFiltering: true,
-    enableSorting: false,
     enableRowSelection: true,
+    enableSorting: true,
     enableSelectAll: true,
     selectionRowHeaderWidth: 35,
     useExternalFiltering: true,
+    useExternalSorting: true,
     data: [],
     onRegisterApi: function (gridApi) {
       $scope.gridApi = gridApi;
       gridApi.core.on.filterChanged($scope, onFilterChanged);
-      // Debounce is neat when selecting multiple items
       gridApi.selection.on.rowSelectionChanged(null, _.debounce(function () {
         handleRowSelectionChange($scope, gridApi);
-        // This function executed asynchronously, so we should call $apply manually
         $scope.$apply();
       }));
 
-      // This is required when user selects all items
-      // (rowSelecionChanged doesn't work)
       gridApi.selection.on.rowSelectionChangedBatch(null, function () {
         handleRowSelectionChange($scope, gridApi);
       });
+
+      gridApi.core.on.sortChanged($scope, onFilterChanged)
     },
     columnDefs: [
       {
@@ -268,6 +268,7 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         name: 'Variant',
         field: 'variant',
         type: 'string',
+        enableSorting: false,
         _link: row => '/build/' + row.entity.build_id,
         cellTemplate: 'ui-grid-link',
       },
@@ -275,6 +276,7 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         name: 'Task',
         field: 'task',
         type: 'string',
+        enableSorting: false,
         _link: row => '/task/' + row.entity.task_id,
         cellTemplate: 'ui-grid-link',
       },
@@ -282,6 +284,7 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         name: 'Test',
         field: 'test',
         type: 'string',
+        enableSorting: false,
         _link: row => '/task/' + row.entity.task_id + '##' + row.entity.test,
         cellTemplate: 'ui-grid-link',
       },
@@ -298,6 +301,7 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         name: 'Thread Level',
         field: 'thread_level',
         type: 'number',
+        enableSorting: false,
       },
       {
         name: 'Measurement',
@@ -305,7 +309,8 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         type: 'string',
         filter: {
           term: $scope.measurementRegex
-        }
+        },
+        enableSorting: false,
       },
       {
         name: 'Triage Status',
@@ -313,7 +318,8 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         type: 'string',
         filter: {
           term: $scope.triageStatusRegex
-        }
+        },
+        enableSorting: false,
       },
       {
         name: 'Calculated On',
@@ -321,7 +327,8 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         filterHeaderTemplate: '<md-date-range one-panel="true" auto-confirm="true" ng-model="selectedDate" md-on-select="col.filters[0].term = $dates"></md-date-range>',
         filter: {
           term: null
-        }
+        },
+        enableSorting: false,
       }
     ]
   };
