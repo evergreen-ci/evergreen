@@ -63,29 +63,33 @@ type modelConversionInfo struct {
 // ModelMapping maps schema type names to their respective DB model
 type ModelMapping map[string]string
 
-func Codegen(schema string, config ModelMapping) ([]byte, error) {
+// Codegen takes a GraphQL schema as well as a mapping file of GQL structs to
+// DB structs, then returns a generated REST model with conversion code, as well
+// as utility code to convert between pointers
+func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	source := ast.Source{
 		Input: schema,
 	}
 	fileTemplate, err := getTemplate(fileTemplatePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "error loading file template")
+		return nil, nil, errors.Wrap(err, "error loading file template")
 	}
 	structTemplate, err := getTemplate(structTemplatePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "error loading struct template")
+		return nil, nil, errors.Wrap(err, "error loading struct template")
 	}
 	fieldTemplate, err := getTemplate(fieldTemplatePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "error loading field template")
+		return nil, nil, errors.Wrap(err, "error loading field template")
 	}
 	parsedAst, parseErr := gqlparser.LoadSchema(&source)
 	if parseErr != nil {
-		return nil, errors.Wrap(parseErr, "error parsing schema")
+		return nil, nil, errors.Wrap(parseErr, "error parsing schema")
 	}
 	catcher := grip.NewBasicCatcher()
 	structs := ""
-	conversionCode := ""
+	serviceCode := ""
+	generatedConversions := map[string]string{}
 
 	typeNames := []string{}
 	for key := range parsedAst.Types {
@@ -98,49 +102,78 @@ func Codegen(schema string, config ModelMapping) ([]byte, error) {
 			continue
 		}
 		gqlType := parsedAst.Types[typeName]
+		if gqlType == nil {
+			catcher.Errorf("unable to find type '%s'", typeName)
+			continue
+		}
 		if gqlType.BuiltIn {
 			continue
 		}
 		if gqlType.Kind == ast.Scalar {
 			continue
 		}
-		fields := ""
-		extractedFields := extractedFields{}
-		for _, field := range gqlType.Fields {
-			fieldInfo := getFieldInfo(field)
-			extractedFields[field.Name] = fieldInfo
-			var fieldData string
-			fieldData, err = output(fieldTemplate, fieldInfo)
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			fields += fieldData
-		}
-		var structData string
-		structData, err = output(structTemplate, structInfo{Name: typeName, Fields: fields})
+
+		structData, code, err := generateForStruct(fieldTemplate, structTemplate, typeName, dbModel, *gqlType, generatedConversions)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
 		structs += structData
-
-		parts := strings.Split(dbModel, ".")
-		if len(parts) < 2 {
-			return nil, errors.Errorf("invalid format for DB model: %s", dbModel)
-		}
-		code, err := createConversionMethods(strings.Join(parts[:len(parts)-1], "."), parts[len(parts)-1], extractedFields)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error generating conversion methods for type '%s'", typeName)
-		}
-		conversionCode += code
+		serviceCode += code
 	}
-	file, err := output(fileTemplate, fileInfo{Package: "model", Structs: structs, Code: conversionCode})
+	modelFile, err := output(fileTemplate, fileInfo{Package: "model", Structs: structs, Code: serviceCode})
 	catcher.Add(err)
-	formatted, err := goimports(file)
-	catcher.Add(err)
+	formattedModelCode, err := goimports(modelFile)
+	catcher.Wrap(err, "unable to format model code")
 
-	return formatted, catcher.Resolve()
+	converters := []string{}
+	conversionCode := ""
+	for key := range generatedConversions {
+		converters = append(converters, key)
+	}
+	sort.Strings(converters)
+	for _, converterType := range converters {
+		conversionCode += generatedConversions[converterType] + "\n"
+	}
+	converterFile, err := output(fileTemplate, fileInfo{Package: "model", Code: conversionCode})
+	catcher.Add(err)
+	formattedConverterFile, err := goimports(converterFile)
+	catcher.Wrap(err, "unable to format type converter code")
+
+	return formattedModelCode, formattedConverterFile, catcher.Resolve()
+}
+
+// generateForStruct takes a specific db type and returns the code for the REST type
+// as well as BuildFromService/ToService conversion methods
+func generateForStruct(fieldTemplate, structTemplate *template.Template, typeName, dbModel string, gqlType ast.Definition, generatedConversions map[string]string) (string, string, error) {
+	fields := ""
+	extractedFields := extractedFields{}
+	for _, field := range gqlType.Fields {
+		fieldInfo := getFieldInfo(field)
+		extractedFields[field.Name] = fieldInfo
+		fieldData, err := output(fieldTemplate, fieldInfo)
+		if err != nil {
+			return "", "", err
+		}
+		fields += fieldData
+	}
+	parts := strings.Split(dbModel, ".")
+	if len(parts) < 2 {
+		return "", "", errors.Errorf("invalid format for DB model: %s", dbModel)
+	}
+	dbPkg := strings.Join(parts[:len(parts)-1], ".")
+	dbStructName := parts[len(parts)-1]
+	structData, err := output(structTemplate, structInfo{Name: "API" + dbStructName, Fields: fields})
+	if err != nil {
+		return "", "", err
+	}
+
+	code, err := createConversionMethods(dbPkg, dbStructName, extractedFields, generatedConversions)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "error generating conversion methods for type '%s'", typeName)
+	}
+
+	return structData, code, nil
 }
 
 func getTemplate(filepath string) (*template.Template, error) {
@@ -153,6 +186,7 @@ func getTemplate(filepath string) (*template.Template, error) {
 			split := strings.Split(pkg, "/")
 			return split[len(split)-1]
 		},
+		"cleanName": cleanName,
 	}).Parse(string(f))
 }
 
@@ -185,7 +219,7 @@ func output(t *template.Template, data interface{}) (string, error) {
 
 func getFieldInfo(f *ast.FieldDefinition) extractedField {
 	name, tag := nameAndTag(f.Name)
-	outputType := gqlTypeToGoType(f.Type.Name())
+	outputType := gqlTypeToGoType(f.Type.Name(), !f.Type.NonNull)
 	return extractedField{
 		OutputFieldName: name,
 		OutputFieldType: outputType,
@@ -194,14 +228,23 @@ func getFieldInfo(f *ast.FieldDefinition) extractedField {
 	}
 }
 
-func gqlTypeToGoType(gqlType string) string {
+func gqlTypeToGoType(gqlType string, nullable bool) string {
+	returntype := ""
+	if nullable {
+		returntype = "*"
+	}
 	switch gqlType {
 	case "String":
-		return "string"
+		return returntype + "string"
 	case "Int":
-		return "int"
+		return returntype + "int"
+	// the next 3 are built-in scalars from https://gqlgen.com/reference/scalars/#built-in-helpers
 	case "Time":
-		return "time.Time"
+		return returntype + "time.Time"
+	case "Map":
+		return returntype + "map[string]interface{}"
+	case "Any":
+		return returntype + "interface{}"
 	default:
 		return gqlType
 	}
@@ -213,7 +256,7 @@ func goimports(source string) ([]byte, error) {
 	})
 }
 
-func createConversionMethods(packageName, structName string, fields extractedFields) (string, error) {
+func createConversionMethods(packageName, structName string, fields extractedFields, generatedConversions map[string]string) (string, error) {
 	pkg, err := importer.Default().Import(packageName)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to resolve package '%s'", packageName)
@@ -231,7 +274,7 @@ func createConversionMethods(packageName, structName string, fields extractedFie
 		return "", errors.Errorf("identifier '%s' exists in package '%s' but is not a struct", structName, packageName)
 	}
 
-	code, err := generateServiceConversions(structVal, packageName, structName, fields)
+	code, err := generateServiceConversions(structVal, packageName, structName, fields, generatedConversions)
 	if err != nil {
 		return "", err
 	}
@@ -239,7 +282,7 @@ func createConversionMethods(packageName, structName string, fields extractedFie
 	return code, nil
 }
 
-func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields) (string, error) {
+func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields, generatedConversions map[string]string) (string, error) {
 	serviceTemplate, err := getTemplate(serviceMethodsTemplatePath)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting service methods template")
@@ -264,7 +307,7 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 				fieldErrs.Add(err)
 				continue
 			}
-			converter, err := conversionFn(field.Type(), fieldInfo.Nullable)
+			converter, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
@@ -280,7 +323,7 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 			bfsCode = append(bfsCode, lineData)
 
 			// generate the ToService code
-			converter, err = conversionFn(field.Type(), fieldInfo.Nullable) // TODO: this is wrong, figure out how to reverse
+			converter, err = conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions) // TODO: this is wrong, figure out how to reverse
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
