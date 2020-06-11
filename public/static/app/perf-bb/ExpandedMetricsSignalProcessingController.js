@@ -1,5 +1,5 @@
-mciModule.controller('ExpandedMetricsSignalProcessingController', function(
-  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams
+mciModule.controller('ExpandedMetricsSignalProcessingController', function (
+  $scope, CHANGE_POINTS_GRID, PerformanceAnalysisAndTriageClient, $routeParams, ApiV2, EvgUtil, $q
 ) {
   $scope.page = 0;
   $scope.pageSize = 10;
@@ -16,34 +16,37 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
     'Major Improvement',
   ];
   $scope.triageStatusRegex = "not_triaged";
+  $scope.getVersion = ApiV2.getVersionById;
+  $scope.EvgUtil = EvgUtil;
+  $scope.q = $q;
 
   function refreshGridData($scope) {
     $scope.gridApi.selection.clearSelectedRows();
     handleRowSelectionChange($scope, $scope.gridApi);
     getPoints($scope, PerformanceAnalysisAndTriageClient)
-  };
+  }
 
   $scope.actions = [{
-    title:    'Not Triaged',
-    value:    "not_triaged"
+    title: 'Not Triaged',
+    value: "not_triaged"
   }, {
-    title:    'True Positive',
-    value:    "true_positive",
+    title: 'True Positive',
+    value: "true_positive",
   }, {
-    title:    'False Positive',
-    value:    "false_positive"
+    title: 'False Positive',
+    value: "false_positive"
   }, {
-    title:    'Under Investigation',
-    value:    "under_investigation"
+    title: 'Under Investigation',
+    value: "under_investigation"
   }];
   // Holds currently selected items
   $scope.selection = [];
 
-  $scope.isNoActionSelected = function() {
+  $scope.isNoActionSelected = function () {
     return $scope.selectedAction == undefined
   }
 
-  $scope.triagePoints = function() {
+  $scope.triagePoints = function () {
     var cpIds = [];
     for (cp of $scope.selection) {
       cpIds.push(cp.id);
@@ -52,7 +55,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
       .then(result => refreshGridData($scope), err => {
         $scope.isLoading = false;
         $scope.connectionError = false;
-        if(err.data) {
+        if (err.data) {
           $scope.errorMessage = err.data.message;
         } else {
           $scope.connectionError = true
@@ -83,8 +86,10 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function(
 function handleResponse(result, $scope) {
   $scope.totalPages = result.data.total_pages;
   for (version of result.data.versions) {
-    for (cp of version.change_points) {
-      $scope.gridOptions.data.push({
+    let datas = [];
+    let cps = version.change_points;
+    for (cp of cps) {
+      let data = {
         id: cp._id,
         version: version.version_id,
         variant: cp.time_series_info.variant,
@@ -95,8 +100,30 @@ function handleResponse(result, $scope) {
         triage_status: cp.triage.triage_status,
         thread_level: cp.time_series_info.thread_level,
         calculated_on: cp.calculated_on
-      })
+      };
+      $scope.gridOptions.data.push(data);
+      datas.push(data);
     }
+    $scope.getVersion(version.version_id)
+      .then(resp => {
+        for (data of datas) {
+          data['revision'] = resp.data.revision;
+          data['revision_time'] = resp.data.create_time;
+          data['build_id'] = $scope.EvgUtil.generateBuildId({
+            project: $scope.projectId,
+            revision: data.revision,
+            buildVariant: data.variant,
+            createTime: resp.data.create_time,
+          });
+          data['task_id'] = $scope.EvgUtil.generateTaskId({
+            project: $scope.projectId,
+            revision: resp.data.revision,
+            buildVariant: cp.time_series_info.variant,
+            task: cp.time_series_info.task,
+            createTime: resp.data.create_time,
+          });
+        }
+      });
   }
   $scope.isLoading = false;
 }
@@ -106,15 +133,15 @@ function getPoints($scope, PerformanceAnalysisAndTriageClient) {
   $scope.isLoading = true;
   $scope.errorMessage = null;
   PerformanceAnalysisAndTriageClient.getVersionChangePoints($scope.projectId, $scope.page, $scope.pageSize, $scope.variantRegex, $scope.versionRegex, $scope.taskRegex, $scope.testRegex, $scope.measurementRegex, $scope.threadLevels, $scope.triageStatusRegex, $scope.calculatedOnWindow, $scope.percentChangeWindows)
-      .then(result => handleResponse(result, $scope), err => {
-        $scope.isLoading = false;
-        $scope.connectionError = false;
-        if(err.data) {
-          $scope.errorMessage = err.data.message;
-        } else {
-          $scope.connectionError = true
-        }
-      });
+    .then(result => handleResponse(result, $scope), err => {
+      $scope.isLoading = false;
+      $scope.connectionError = false;
+      if (err.data) {
+        $scope.errorMessage = err.data.message;
+      } else {
+        $scope.connectionError = true
+      }
+    });
 }
 
 function handleRowSelectionChange($scope, gridApi) {
@@ -122,11 +149,11 @@ function handleRowSelectionChange($scope, gridApi) {
 }
 
 function onFilterChanged($scope, loaderFunction) {
-  if($scope.cancelLoading) {
+  if ($scope.cancelLoading) {
     $scope.cancelLoading()
   }
   this.grid.columns.forEach(function (col) {
-    if(col.field === "variant") {
+    if (col.field === "variant") {
       $scope.variantRegex = col.filters[0].term;
     } else if (col.field === "version") {
       $scope.versionRegex = col.filters[0].term;
@@ -147,7 +174,7 @@ function onFilterChanged($scope, loaderFunction) {
         let endDate = dates[dates.length - 1];
         startDate = startDate ? startDate.toISOString() : '';
         endDate = endDate ? endDate.toISOString() : '';
-        $scope.calculatedOnWindow = `${startDate.replace('Z','')},${endDate.replace('Z','')}`
+        $scope.calculatedOnWindow = `${startDate.replace('Z', '')},${endDate.replace('Z', '')}`
       }
     } else if (col.field === 'percent_change') {
       let selected = col.filters[0].term;
@@ -178,7 +205,8 @@ function onFilterChanged($scope, loaderFunction) {
   new Promise((resolve, reject) => {
     $scope.cancelLoading = reject;
     setTimeout(resolve, 1000);
-  }).then(loaderFunction).catch(() => {});
+  }).then(loaderFunction).catch(() => {
+  });
 }
 
 function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
@@ -190,11 +218,11 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
     selectionRowHeaderWidth: 35,
     useExternalFiltering: true,
     data: [],
-    onRegisterApi: function( gridApi ) {
+    onRegisterApi: function (gridApi) {
       $scope.gridApi = gridApi;
       gridApi.core.on.filterChanged($scope, onFilterChanged);
       // Debounce is neat when selecting multiple items
-      gridApi.selection.on.rowSelectionChanged(null, _.debounce(function() {
+      gridApi.selection.on.rowSelectionChanged(null, _.debounce(function () {
         handleRowSelectionChange($scope, gridApi);
         // This function executed asynchronously, so we should call $apply manually
         $scope.$apply();
@@ -202,7 +230,7 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
 
       // This is required when user selects all items
       // (rowSelecionChanged doesn't work)
-      gridApi.selection.on.rowSelectionChangedBatch(null, function() {
+      gridApi.selection.on.rowSelectionChangedBatch(null, function () {
         handleRowSelectionChange($scope, gridApi);
       });
     },
@@ -225,19 +253,37 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         },
       },
       {
+        name: 'Revision',
+        field: 'revision',
+        type: 'string',
+        enableFiltering: false
+      },
+      {
+        name: 'Date',
+        field: 'revision_time',
+        type: 'string',
+        enableFiltering: false
+      },
+      {
         name: 'Variant',
         field: 'variant',
         type: 'string',
+        _link: row => '/build/' + row.entity.build_id,
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Task',
         field: 'task',
         type: 'string',
+        _link: row => '/task/' + row.entity.task_id,
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Test',
         field: 'test',
         type: 'string',
+        _link: row => '/task/' + row.entity.task_id + '##' + row.entity.test,
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Version',

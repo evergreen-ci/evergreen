@@ -14,6 +14,17 @@ mciModule.factory('EvgUtil', function() {
   return {
     // Generates version id from project_id and revision
     // :param params: {project, revision, buildVariant, createTime}
+    generateTaskId: function (params) {
+      return generateId([
+        params.project,
+        params.buildVariant,
+        params.task,
+        params.revision,
+        moment.utc(params.createTime).format(DATE_ID_FORMAT)
+      ])
+    },
+    // Generates version id from project_id and revision
+    // :param params: {project, revision, buildVariant, createTime}
     generateBuildId: function (params) {
       return generateId([
         params.project,
