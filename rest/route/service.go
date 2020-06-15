@@ -126,6 +126,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(checkUser, addProject, checkProjectAdmin, viewProjectSettings).RouteHandler(makeGetProjectByID(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(checkUser, addProject, checkProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(sc, env.Settings()))
+	app.AddRoute("/projects/{project_id}/repotracker").Version(2).Post().Wrap(checkUser, addProject).RouteHandler(makeRunRepotrackerForProject(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(createProject).RouteHandler(makePutProjectByID(sc))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(checkUser, addProject, createProject, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(sc))
 	app.AddRoute("/projects/{project_id}/copy/variables").Version(2).Post().Wrap(checkUser, addProject, checkProjectAdmin, editProjectSettings).RouteHandler(makeCopyVariables(sc))

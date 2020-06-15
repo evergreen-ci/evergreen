@@ -569,6 +569,43 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// POST /rest/v2/projects/{project_id}/repotracker
+
+type projectRepotrackerHandler struct {
+	projectID string
+	sc        data.Connector
+}
+
+func makeRunRepotrackerForProject(sc data.Connector) gimlet.RouteHandler {
+	return &projectRepotrackerHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectRepotrackerHandler) Factory() gimlet.RouteHandler {
+	return &projectRepotrackerHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectRepotrackerHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+	j := units.NewRepotrackerJob(fmt.Sprintf("rest-%s", ts), h.projectID)
+
+	queue := evergreen.GetEnvironment().RemoteQueue()
+	if err := queue.Put(ctx, j); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job from rest route"))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /rest/v2/projects/{project_id}
 
 type projectIDGetHandler struct {
