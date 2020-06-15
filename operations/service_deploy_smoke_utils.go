@@ -114,7 +114,7 @@ func checkTaskByCommit(username, key string) error {
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
 		if i == 0 {
 			grip.Infof("running repotracker for evergreen project")
-			_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
+			_, err = makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
 			if err != nil {
 				grip.Error(err)
 			}
