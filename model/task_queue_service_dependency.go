@@ -557,18 +557,14 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))
 	if err == nil && len(blockingTasks) > 0 {
-		for _, tId := range blockingTasks {
-			tDb, err := task.FindOneId(tId)
-			catcher.Add(errors.Wrapf(err, "can't get task '%s'", tId))
-			if err == nil {
-				catcher.Add(errors.Wrapf(UpdateBlockedDependencies(tDb), "can't update blocked dependencies for '%s'", tId))
-			}
+		for _, task := range blockingTasks {
+			catcher.Add(errors.Wrapf(UpdateBlockedDependencies(&task), "can't update blocked dependencies for '%s'", task.Id))
 		}
 	}
 
 	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocked status"))
-	if err == nil && len(blockingTasks) > 0 {
+	if err == nil && len(blockingDeactivatedTasks) > 0 {
 		catcher.Add(errors.Wrapf(task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher"), "can't deactivate task '%s'", t.Id))
 	}
 

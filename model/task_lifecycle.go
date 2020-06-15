@@ -43,13 +43,12 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		// activate the task's dependencies as well
 		tasksToActivate := []task.Task{}
 		if !t.OverrideDependencies {
-			deps, err := task.GetRecursiveDependenciesUp([]task.Task{*t}, nil)
+			var deps []task.Task
+			deps, err = task.GetRecursiveDependenciesUp([]task.Task{*t}, nil)
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
-			for _, dep := range deps {
-				tasksToActivate = append(tasksToActivate, dep)
-			}
+			tasksToActivate = append(tasksToActivate, deps...)
 		}
 
 		if t.DispatchTime != utility.ZeroTime && t.Status == evergreen.TaskUndispatched {
@@ -84,7 +83,6 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
-		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	} else {
 		return nil
 	}

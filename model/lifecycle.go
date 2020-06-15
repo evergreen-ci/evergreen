@@ -108,6 +108,9 @@ func SetTaskActivationForBuilds(buildIds []string, active bool, caller string) e
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
 		dependOn, err := task.GetRecursiveDependenciesUp(tasks, nil)
+		if err != nil {
+			return errors.Wrap(err, "can't get recursive dependencies")
+		}
 
 		if err = task.ActivateTasks(append(tasks, dependOn...), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
@@ -278,7 +281,8 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 
 	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
+		var tasks []task.Task
+		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
 			WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
@@ -286,7 +290,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		return task.DeactivateTasks(tasks, caller)
 	}
 
-	return err
+	return nil
 }
 
 // RestartVersion restarts completed tasks associated with a given versionId.
