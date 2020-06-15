@@ -54,20 +54,27 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
-	task, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if task == nil {
+	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
-	if err := model.SetActiveState(task, usr.Username(), isActive); err != nil {
+	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
+	// Get the modified task back out of the db
+	t, err = task.FindOneId(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
 	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(task)
+	err = apiTask.BuildFromService(t)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
