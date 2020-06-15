@@ -96,7 +96,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || j.host.Status != evergreen.HostProvisioning || j.host.RunningTask != "" {
+	if j.host.NeedsReprovision != host.ReprovisionJasperRestart || (j.host.Status != evergreen.HostProvisioning && j.host.Status != evergreen.HostRunning) {
 		return
 	}
 
