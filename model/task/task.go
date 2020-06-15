@@ -1087,9 +1087,11 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
+	taskIDsToUpdate := make([]string, 0, len(tasksDependingOnTheseTasks))
 	for _, t := range tasksDependingOnTheseTasks {
 		if t.Activated {
 			tasksToUpdate = append(tasksToUpdate, t)
+			taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
 		}
 	}
 
@@ -1097,10 +1099,6 @@ func DeactivateDependencies(tasks []string, caller string) error {
 		return nil
 	}
 
-	taskIDsToUpdate := make([]string, 0, len(tasksToUpdate))
-	for _, t := range tasksToUpdate {
-		taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
-	}
 	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
