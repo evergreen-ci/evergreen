@@ -99,27 +99,33 @@ func checkTaskByCommit(username, key string) error {
 
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
+
+	time.Sleep(10 * time.Second)
+	// trigger repotracker
+	for i := 0; i < 5; i++ {
+		if i == 5 {
+			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
+		}
+		grip.Infof("running repotracker for evergreen project (%d/5)", i)
+		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
+		if err != nil {
+			grip.Error(err)
+			continue
+		}
+		break
+	}
 	for i := 0; i <= 30; i++ {
 		// get task id
 		if i == 30 {
 			return errors.New("error getting builds for version")
 		}
 		time.Sleep(10 * time.Second)
-
 		latest, err := getLatestGithubCommit()
 		if err != nil {
 			grip.Error(errors.Wrap(err, "error getting latest GitHub commit"))
 			continue
 		}
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
-		if i == 0 {
-			grip.Infof("running repotracker for evergreen project")
-			_, err = makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
-			if err != nil {
-				grip.Error(err)
-			}
-		}
-
 		body, err := makeSmokeRequest(username, key, http.MethodGet, client, "/rest/v2/versions/evergreen_"+latest+"/builds")
 		if err != nil {
 			grip.Error(err)
