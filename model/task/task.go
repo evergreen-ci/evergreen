@@ -919,18 +919,24 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		taskMap[t] = true
 	}
 
-	depTaskMap := make(map[string]bool)
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
 		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
-	for _, t := range tasksDependingOnTheseTasks {
-		depTaskMap[t.Id] = true
+
+	// do a topological sort so we've dealt with
+	// all a task's dependencies by the time we get up to it
+	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
+	if err != nil {
+		return errors.Wrap(err, "can't do topological sort")
 	}
 
 	// get dependencies we don't have yet and add them to a map
 	tasksToGet := []string{}
-	for _, t := range tasksDependingOnTheseTasks {
+	depTaskMap := make(map[string]bool)
+	for _, t := range sortedDependencies {
+		depTaskMap[t.Id] = true
+
 		if t.Activated || !t.DeactivatedForDependency {
 			continue
 		}
@@ -950,12 +956,6 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		missingTaskMap[t.Id] = t
 	}
 
-	// do a topological sort so we've adjudicated all a task's dependencies by the time
-	// we get up to it
-	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
-	if err != nil {
-		return errors.Wrap(err, "can't do topological sort")
-	}
 	tasksToActivate := make(map[string]Task)
 	for _, t := range sortedDependencies {
 		if t.Activated || !t.DeactivatedForDependency {
