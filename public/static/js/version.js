@@ -1,14 +1,15 @@
-mciModule.controller('VersionController', function($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService, $mdDialog, mciSubscriptionsService, $mdToast) {
+mciModule.controller('VersionController', function ($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService, $mdDialog, mciSubscriptionsService, $mdToast) {
   var nsPerMs = 1000000
   $scope.canEdit = $window.canEdit
   $scope.jiraHost = $window.jiraHost;
 
-  var dateSorter = function(a, b){ return (+a) - (+b) }
+  var dateSorter = function (a, b) {
+    return (+a) - (+b)
+  }
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
-  $scope.triggers = [
-    {
+  $scope.triggers = [{
       trigger: "outcome",
       resource_type: "VERSION",
       label: "this version finishes",
@@ -27,17 +28,21 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       trigger: "exceeds-duration",
       resource_type: "VERSION",
       label: "the runtime for this version exceeds some duration",
-      extraFields: [
-        {text: "Version duration (seconds)", key: "version-duration-secs", validator: validateDuration}
-      ],
+      extraFields: [{
+        text: "Version duration (seconds)",
+        key: "version-duration-secs",
+        validator: validateDuration
+      }],
     },
     {
       trigger: "runtime-change",
       resource_type: "VERSION",
       label: "the runtime for this version changes by some percentage",
-      extraFields: [
-        {text: "Percent change", key: "version-percent-change", validator: validatePercentage}
-      ],
+      extraFields: [{
+        text: "Percent change",
+        key: "version-percent-change",
+        validator: validatePercentage
+      }],
     },
     {
       trigger: "outcome",
@@ -74,59 +79,62 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     $scope.tab = parseInt(hash);
   }
 
-  $scope.$watch("collapsed", function() {
+  $scope.$watch("collapsed", function () {
     localStorage.setItem("collapsed", $scope.collapsed);
   });
 
-  $scope.getTab = function() {
+  $scope.getTab = function () {
     return $scope.tab;
   }
 
-  $scope.setTab = function(tabnum) {
+  $scope.setTab = function (tabnum) {
     $scope.tab = tabnum;
-    setTimeout(function() {
+    setTimeout(function () {
       $location.hash('' + $scope.tab);
       $scope.$apply();
     }, 0)
   }
 
-  $scope.addSubscription = function() {
+  $scope.addSubscription = function () {
     omitMethods = {};
     omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
     omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
     promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
-    $mdDialog.show(promise).then(function(data){
+    $mdDialog.show(promise).then(function (data) {
       if (data.resource_type === "VERSION") {
         addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
 
-      }else {
+      } else {
         addInSelectorsAndOwnerType(data, "version", "version", $scope.version.Version.id);
       }
       $scope.saveSubscription(data);
     });
   };
 
-  $scope.saveSubscription = function(subscription) {
-    var success = function() {
+  $scope.saveSubscription = function (subscription) {
+    var success = function () {
       $mdToast.show({
         templateUrl: "/static/partials/subscription_confirmation_toast.html",
         position: "bottom right"
       });
     };
-    var failure = function(resp) {
+    var failure = function (resp) {
       notifier.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
     };
-    mciSubscriptionsService.post([subscription], { success: success, error: failure });
+    mciSubscriptionsService.post([subscription], {
+      success: success,
+      error: failure
+    });
   }
 
-  $rootScope.$on("version_updated", function(e, newVersion){
+  $rootScope.$on("version_updated", function (e, newVersion) {
     // cheat and copy over the patch info, since it never changes.
     newVersion.PatchInfo = $scope.version['PatchInfo']
     $scope.setVersion(newVersion);
   })
 
-  $scope.setVersion = function(version) {
+  $scope.setVersion = function (version) {
     $scope.version = version;
 
     $scope.commit = {
@@ -135,9 +143,9 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       author_email: $scope.version.Version.author_email,
       create_time: $scope.version.Version.create_time,
       git_tags: $scope.version.Version.git_tags,
-      gitspec: $scope.version.upstream?$scope.version.upstream.revision:$scope.version.Version.revision,
-      repo_owner: $scope.version.upstream?$scope.version.upstream.owner:$scope.version.repo_owner,
-      repo_name: $scope.version.upstream?$scope.version.upstream.repo:$scope.version.repo_name
+      gitspec: $scope.version.upstream ? $scope.version.upstream.revision : $scope.version.Version.revision,
+      repo_owner: $scope.version.upstream ? $scope.version.upstream.owner : $scope.version.repo_owner,
+      repo_name: $scope.version.upstream ? $scope.version.upstream.repo : $scope.version.repo_name
     };
 
     $scope.taskStatuses = {};
@@ -190,7 +198,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     $scope.totalTimeMS = version.time_taken / nsPerMs;
   };
 
-  $scope.getGridLink = function(bv, test) {
+  $scope.getGridLink = function (bv, test) {
     if (!(bv in $scope.taskGrid)) {
       return '#';
     }
@@ -201,7 +209,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     return '/task/' + cell.id;
   }
 
-  $scope.getGridClass = function(bv, test) {
+  $scope.getGridClass = function (bv, test) {
     var returnval = '';
     var bvRow = $scope.taskGrid[bv];
     if (!bvRow) return 'skipped';
@@ -228,19 +236,19 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     }
   }
 
-  $scope.load = function() {
+  $scope.load = function () {
     $http.get('/version_json/' + $scope.version.Version.id).then(
-    function(resp) {
-      var data = resp.data;
-      if (data.error) {
-        notificationService.pushNotification(data.error);
-      } else {
-        $scope.setVersion(data);
-      }
-    },
-    function(resp) {
-      notificationService.pushNotification("Error occurred - " + resp.data.error);
-    });
+      function (resp) {
+        var data = resp.data;
+        if (data.error) {
+          notificationService.pushNotification(data.error);
+        } else {
+          $scope.setVersion(data);
+        }
+      },
+      function (resp) {
+        notificationService.pushNotification("Error occurred - " + resp.data.error);
+      });
   };
 
   $scope.setVersion($window.version);
@@ -248,7 +256,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
 });
 
 
-mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filter, $timeout, historyDrawerService) {
+mciModule.controller('VersionHistoryDrawerCtrl', function ($scope, $window, $filter, $timeout, historyDrawerService) {
   const APPROX_REVISION_ITEM_HEIGHT = 17
 
   // cache the task being displayed on the page
@@ -258,7 +266,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   var drawerContentsEl = $('#drawer-contents');
 
   // is the specified revision the one with the current task in it?
-  $scope.isCurrent = function(revision) {
+  $scope.isCurrent = function (revision) {
     return revision.revision === $scope.version.Version.revision;
   }
 
@@ -268,7 +276,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
     // group the revisions by date, ordered backwards by date
     var groupedRevisions = [];
     var datesSeen = {}; // to avoid double-entering dates
-    history.forEach(function(revision) {
+    history.forEach(function (revision) {
       var date = revision.create_time.substring(0, 10);
 
       // if we haven't seen the date, add a new entry for it
@@ -290,7 +298,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   // make a backend call to get the drawer contents
   function fetchHistory() {
     historyDrawerService.fetchVersionHistory($scope.version.Version.id, 'surround', 20, {
-      success: function(resp) {
+      success: function (resp) {
         var data = resp.data;
 
         // save the revisions as a list
@@ -301,7 +309,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
 
         // scroll to the relevant element
         $timeout(
-          function() {
+          function () {
             var currentRevisionDomEl = $('.drawer-item-highlighted')[0];
             if (!currentRevisionDomEl) {
               return;
@@ -313,7 +321,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
             }
           }, 500)
       },
-      error: function(data) {
+      error: function (data) {
         console.log('error fetching history: ' + JSON.stringify(data));
       }
     });
@@ -323,7 +331,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   // function fired when scrolling up hits the top of the frame,
   // loads more revisions asynchronously
   var fetchLaterRevisions = _.debounce(
-    function() {
+    function () {
       // get the most recent revision in the history
       var mostRecentRevision = ($scope.revisions && $scope.revisions[0]);
 
@@ -336,7 +344,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
       var anchorId = mostRecentRevision.version_id;
 
       historyDrawerService.fetchVersionHistory(anchorId, 'after', 20, {
-        success: function(resp) {
+        success: function (resp) {
           var data = resp.data;
           // no computation necessary
           if (!data) {
@@ -353,7 +361,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
           drawerContentsEl.scrollTop(APPROX_REVISION_ITEM_HEIGHT * data.revisions.length);
 
         },
-        error: function(data) {
+        error: function (data) {
           console.log('error fetching later revisions: ' + JSON.stringify(data));
         }
       })
@@ -363,7 +371,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   // loads more revisions asynchronously
   var fetchEarlierRevisions = _.debounce(
 
-    function() {
+    function () {
       // get the least recent revision in the history
       var leastRecentRevision = ($scope.revisions &&
         $scope.revisions[$scope.revisions.length - 1]);
@@ -380,7 +388,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
         anchorId,
         'before',
         20, {
-          success: function(resp) {
+          success: function (resp) {
             var data = resp.data;
             // no computation necessary
             if (!data) {
@@ -394,7 +402,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
             $scope.groupedRevisions = groupHistory($scope.revisions);
 
           },
-          error: function(data) {
+          error: function (data) {
             console.log('error fetching earlier revisions: ' + JSON.stringify(data));
           }
         }
@@ -419,7 +427,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   // scrolling function to fire if the element is not actually scrollable
   // (does not overflow its div)
   var loadMoreSmall = _.debounce(
-    function(e) {
+    function (e) {
       var evt = window.event || e;
       if (evt.wheelDelta) {
         if (evt.wheelDelta < 0) {
@@ -444,7 +452,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
 
   // activates infinite scrolling if the drawer contents are not large enough
   // to be normally scrollable
-  var smallScrollFunc = function(e) {
+  var smallScrollFunc = function (e) {
     if (drawerFilledEl.height() < drawerContentsEl.height()) {
       loadMoreSmall(e);
     }
@@ -454,7 +462,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
 
   // scrolling function to fire if the element is scrollable (it overflows
   // its div)
-  var bigScrollFunc = function() {
+  var bigScrollFunc = function () {
     if (drawerContentsEl.scrollTop() === 0) {
       // we hit the top of the drawer
       fetchLaterRevisions();
@@ -470,8 +478,8 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   drawerContentsEl.scroll(bigScrollFunc);
 
   var eopFilter = $filter('endOfPath');
-  $scope.failuresTooltip = function(failures) {
-    return _.map(failures, function(failure) {
+  $scope.failuresTooltip = function (failures) {
+    return _.map(failures, function (failure) {
       return eopFilter(failure);
     }).join('\n');
   }

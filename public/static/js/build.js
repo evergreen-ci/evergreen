@@ -1,21 +1,21 @@
-mciModule.controller('BuildVariantHistoryController', function($scope, $http, $filter, $timeout, $window) {
+mciModule.controller('BuildVariantHistoryController', function ($scope, $http, $filter, $timeout, $window) {
   $scope.userTz = $window.userTz;
   $scope.builds = [];
   $scope.buildId = "";
   $scope.buildResults = {};
 
-  $scope.setBuildId = function(buildId) {
+  $scope.setBuildId = function (buildId) {
     $scope.buildId = buildId;
     if (!$scope.build.PatchInfo) {
       $scope.loadHistory();
     }
   };
 
-  $scope.checkTaskHidden = function(task) {
+  $scope.checkTaskHidden = function (task) {
     return !task.activated;
   };
 
-  var computeBuildResults = function(buildData) {
+  var computeBuildResults = function (buildData) {
     var build = buildData.Build;
     $scope.buildResults[build._id] = [];
 
@@ -29,7 +29,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
   };
 
 
-  $scope.setBuilds = function(resp) {
+  $scope.setBuilds = function (resp) {
     var data = resp.data;
     var builds = data.builds;
     $scope.buildResults = {};
@@ -52,19 +52,19 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
     $scope.lastUpdate = new Date();
   }
 
-  $scope.loadHistory = function() {
+  $scope.loadHistory = function () {
     $http.get('/json/build_history/' + $scope.buildId).then(
-      function(resp) {
+      function (resp) {
         $scope.setBuilds(resp);
       },
-      function(resp) {
+      function (resp) {
         console.log("Error getting build history: " + JSON.stringify(resp.data));
       });
-    };
-  });
+  };
+});
 
 
-mciModule.controller('BuildViewController', function($scope, $http, $timeout, $rootScope, mciTime, $window, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
+mciModule.controller('BuildViewController', function ($scope, $http, $timeout, $rootScope, mciTime, $window, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
   var nsPerMs = 1000000
   $scope.build = {};
   $scope.computed = {};
@@ -72,8 +72,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   $scope.lastUpdate = null;
   $scope.jiraHost = $window.jiraHost;
   $scope.hide_add_subscription = true;
-  $scope.triggers = [
-    {
+  $scope.triggers = [{
       trigger: "outcome",
       resource_type: "BUILD",
       label: "this build finishes",
@@ -92,17 +91,21 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       trigger: "exceeds-duration",
       resource_type: "BUILD",
       label: "the runtime for this build exceeds some duration",
-      extraFields: [
-        {text: "Build duration (seconds)", key: "build-duration-secs", validator: validateDuration}
-      ],
+      extraFields: [{
+        text: "Build duration (seconds)",
+        key: "build-duration-secs",
+        validator: validateDuration
+      }],
     },
     {
       trigger: "runtime-change",
       resource_type: "BUILD",
       label: "the runtime for this build changes by some percentage",
-      extraFields: [
-        {text: "Percent change", key: "build-percent-change", validator: validatePercentage}
-      ],
+      extraFields: [{
+        text: "Percent change",
+        key: "build-percent-change",
+        validator: validatePercentage
+      }],
     },
     {
       trigger: "outcome",
@@ -124,39 +127,44 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     },
   ];
 
-  var dateSorter = function(a, b){ return (+a) - (+b) }
+  var dateSorter = function (a, b) {
+    return (+a) - (+b)
+  }
 
-  $scope.addSubscription = function() {
+  $scope.addSubscription = function () {
     omitMethods = {};
     omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
     omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
     promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
-    $mdDialog.show(promise).then(function(data){
+    $mdDialog.show(promise).then(function (data) {
       if (data.resource_type === "BUILD") {
         addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
 
-      }else {
+      } else {
         addInSelectorsAndOwnerType(data, "build", "build", $scope.build.Build._id);
       }
       $scope.saveSubscription(data);
     });
   };
 
-  $scope.saveSubscription = function(subscription) {
-    var success = function() {
+  $scope.saveSubscription = function (subscription) {
+    var success = function () {
       $mdToast.show({
         templateUrl: "/static/partials/subscription_confirmation_toast.html",
         position: "bottom right"
       });
     };
-    var failure = function(resp) {
+    var failure = function (resp) {
       notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
     };
-    mciSubscriptionsService.post([subscription], { success: success, error: failure });
+    mciSubscriptionsService.post([subscription], {
+      success: success,
+      error: failure
+    });
   }
 
-  $scope.setBuild = function(build) {
+  $scope.setBuild = function (build) {
     $scope.build = build;
     $scope.commit = {
       message: $scope.build.Version.message,
@@ -231,7 +239,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     $scope.totalTimeMS = build.time_taken / nsPerMs;
   };
 
-  $rootScope.$on("build_updated", function(e, newBuild){
+  $rootScope.$on("build_updated", function (e, newBuild) {
     newBuild.PatchInfo = $scope.build.PatchInfo
     $scope.setBuild(newBuild);
   });
