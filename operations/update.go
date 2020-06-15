@@ -40,6 +40,7 @@ func Update() cli.Command {
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
 		},
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
