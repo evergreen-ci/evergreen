@@ -106,7 +106,8 @@ mciModule.controller('VersionController', function ($scope, $rootScope, $locatio
         addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
 
       } else {
-        addInSelectorsAndOwnerType(data, "version", "version", $scope.version.Version.id);
+        // this block assumes that the resource_types of all subscriptions getting here are "BUILD"
+        addInSelectorsAndOwnerType(data, "build", "version", $scope.version.Version.id);
       }
       $scope.saveSubscription(data);
     });

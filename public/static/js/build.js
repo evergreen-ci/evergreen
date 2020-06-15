@@ -142,7 +142,8 @@ mciModule.controller('BuildViewController', function ($scope, $http, $timeout, $
         addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
 
       } else {
-        addInSelectorsAndOwnerType(data, "build", "build", $scope.build.Build._id);
+        // this block assumes that the resource_types of all subscriptions getting here are "TASK"
+        addInSelectorsAndOwnerType(data, "task", "build", $scope.build.Build._id);
       }
       $scope.saveSubscription(data);
     });
