@@ -65,7 +65,8 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		})
 		return errors.New("owner from push event is invalid")
 	}
-	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
+
+	refs, err := model.FindProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -75,7 +76,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			"repo":    *event.Repo.Name,
 			"ref":     *event.Ref,
 			"branch":  branch,
-			"message": "error occurred while trying to match push event to project refs",
+			"message": "no matching project refs found",
 		}))
 		return err
 	}
@@ -153,8 +154,7 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 		return nil
 	}
 
-	_, err = validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
-
+	_, err = model.FindProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	return err
 }
 
@@ -181,23 +181,4 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 		}
 	}
 	return strings.Join(refs[2:], "/"), nil
-}
-
-func validateProjectRefs(owner, repo, branch string) ([]model.ProjectRef, error) {
-	refs, err := model.FindProjectRefsByRepoAndBranch(owner, repo, branch)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		}
-	}
-
-	if len(refs) == 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "no project refs found",
-		}
-	}
-
-	return refs, nil
 }
