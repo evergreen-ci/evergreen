@@ -880,10 +880,10 @@ func (t *Task) ActivateTask(caller string) error {
 	t.Activated = true
 	t.ActivatedTime = time.Now()
 
-	return ActivateTasks([]Task{*t}, caller)
+	return ActivateTasks([]Task{*t}, t.ActivatedTime, caller)
 }
 
-func ActivateTasks(tasks []Task, caller string) error {
+func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -897,11 +897,11 @@ func ActivateTasks(tasks []Task, caller string) error {
 			"$set": bson.M{
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
-				ActivatedTimeKey: time.Now(),
+				ActivatedTimeKey: activationTime,
 			},
 		})
 	if err != nil {
-		return errors.Wrap(err, "can't activate task")
+		return errors.Wrap(err, "can't activate tasks")
 	}
 
 	for _, t := range tasks {
@@ -928,7 +928,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
-		return errors.Wrap(err, "can't do topological sort")
+		return errors.WithStack(err)
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -947,13 +947,17 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			}
 		}
 	}
-	missingTasks, err := FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
-	if err != nil {
-		return errors.Wrap(err, "can't get missing tasks")
-	}
+
 	missingTaskMap := make(map[string]Task)
-	for _, t := range missingTasks {
-		missingTaskMap[t.Id] = t
+	if len(tasksToGet) > 0 {
+		var missingTasks []Task
+		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
+		if err != nil {
+			return errors.Wrap(err, "can't get missing tasks")
+		}
+		for _, t := range missingTasks {
+			missingTaskMap[t.Id] = t
+		}
 	}
 
 	tasksToActivate := make(map[string]Task)
@@ -1279,21 +1283,33 @@ func (t *Task) SetPriority(priority int64, user string) error {
 		depIDs = append(depIDs, task.Id)
 	}
 
-	_, err = UpdateAll(
-		bson.M{"$or": []bson.M{
+	tasks, err := FindAll(db.Query(bson.M{
+		"$or": []bson.M{
 			{IdKey: bson.M{"$in": ids}},
 			{
 				IdKey:       bson.M{"$in": depIDs},
 				PriorityKey: bson.M{"$lt": priority},
 			},
-		}},
+		},
+	}).WithFields(ExecutionKey))
+	if err != nil {
+		return errors.Wrap(err, "can't find matching tasks")
+	}
+
+	taskIDs := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		taskIDs = append(taskIDs, task.Id)
+	}
+	_, err = UpdateAll(
+		bson.M{IdKey: bson.M{"$in": taskIDs}},
 		bson.M{"$set": bson.M{PriorityKey: priority}},
 	)
 	if err != nil {
 		return errors.Wrap(err, "can't update priority")
 	}
-
-	event.LogTaskPriority(t.Id, t.Execution, user, priority)
+	for _, task := range tasks {
+		event.LogTaskPriority(task.Id, task.Execution, user, priority)
+	}
 
 	//blacklisted - deactivate the task
 	if priority < 0 {

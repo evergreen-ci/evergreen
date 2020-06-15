@@ -112,27 +112,19 @@ func SetTaskActivationForBuilds(buildIds []string, active bool, caller string) e
 			return errors.Wrap(err, "can't get recursive dependencies")
 		}
 
-		if err = task.ActivateTasks(append(tasks, dependOn...), caller); err != nil {
+		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
 	} else {
-		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
-		// if the caller is the default task activator,
-		// only deactivate tasks that are activated by the default task activator
-		var query bson.M
-		if evergreen.IsSystemActivator(caller) {
-			query = bson.M{
-				task.BuildIdKey:     bson.M{"$in": buildIds},
-				task.StatusKey:      evergreen.TaskUndispatched,
-				task.ActivatedByKey: caller,
-			}
-		} else {
-			// update all tasks if the caller is not evergreen.
-			query = bson.M{
-				task.BuildIdKey: bson.M{"$in": buildIds},
-				task.StatusKey:  evergreen.TaskUndispatched,
-			}
+		query := bson.M{
+			task.BuildIdKey: bson.M{"$in": buildIds},
+			task.StatusKey:  evergreen.TaskUndispatched,
 		}
+		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
+		if evergreen.IsSystemActivator(caller) {
+			query[task.ActivatedByKey] = caller
+		}
+
 		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")

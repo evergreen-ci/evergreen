@@ -1964,7 +1964,7 @@ func TestActivateTasks(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, ActivateTasks([]Task{tasks[0]}, ""))
+	assert.NoError(t, ActivateTasks([]Task{tasks[0]}, time.Time{}, ""))
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)

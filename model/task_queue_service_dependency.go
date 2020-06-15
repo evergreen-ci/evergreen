@@ -556,7 +556,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 
 	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))
-	if err == nil && len(blockingTasks) > 0 {
+	if err == nil {
 		for _, task := range blockingTasks {
 			catcher.Add(errors.Wrapf(UpdateBlockedDependencies(&task), "can't update blocked dependencies for '%s'", task.Id))
 		}
