@@ -153,7 +153,15 @@ func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority i
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
 func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
-	return errors.Wrap(serviceModel.SetActiveState(taskId, user, activated),
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", t.Id)
+	}
+
+	return errors.Wrap(serviceModel.SetActiveState(t, user, activated),
 		"Erorr setting task active")
 }
 

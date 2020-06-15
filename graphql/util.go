@@ -54,9 +54,6 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
-	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
 	task, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -64,6 +61,11 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	if task == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
+
+	if err := model.SetActiveState(task, usr.Username(), isActive); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
 	apiTask := restModel.APITask{}
 	err = apiTask.BuildFromService(task)
 	if err != nil {

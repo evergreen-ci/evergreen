@@ -728,7 +728,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case "set_active":
 		active := putParams.Active
-		if err = model.SetActiveState(projCtx.Task.Id, authUser.Username(), active); err != nil {
+		if err = model.SetActiveState(projCtx.Task, authUser.Username(), active); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
