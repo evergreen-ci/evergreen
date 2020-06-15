@@ -234,7 +234,10 @@ Evergreen Projects
             </div>
           </div>
           <div class="h3">Repotracker Settings</div>
-          <div class="form-group">
+          <div class="project-error" ng-hide="github_webhooks_enabled">
+             Webhooks must be enabled to run the repotracker. Webhooks are enabled after saving with a valid repository and branch.
+          </div>
+          <div class="form-group" ng-show="github_webhooks_enabled">
               <div class="col-lg-5 col-header">
                   <div>
                       <label class="control-label">Disable Repotracker&nbsp;&nbsp;
@@ -242,28 +245,18 @@ Evergreen Projects
                       </label>
                       <div class="muted small">Ignore commits pushed to the repo</div>
                   </div>
-                  <div ng-hide="settingsFormData.repotracker_disabled || !github_webhooks_enabled">
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be automatically run every few minutes</label>
-                    </div>
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="true"> <strong> Trigger Repotracker via PushEvents</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
+                  <div ng-hide="settingsFormData.repotracker_disabled">
+                    <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks.</label>
+                    <div class="col-lg-8 col-header">
+                      <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
+                        <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
+                      </label>
                     </div>
                   </div>
               </div>
               <br />
-              <div class="col-lg-8 col-header">
-                <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
-                  <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
-                </label>
-              </div>
           </div>
+
         </div>
 
         <div id="logging-info">
