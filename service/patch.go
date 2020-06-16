@@ -26,9 +26,11 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	currentUser := MustHaveUser(r)
 	spruceLink := fmt.Sprintf("%s/patch/%s/configure", uis.Settings.Ui.UIv2Url, projCtx.Patch.Id.Hex())
-	if currentUser.Settings.UseSpruceOptions.SpruceV1 {
-		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
-		return
+	if r.FormValue("redirect_spruce_users") == "true" {
+		if currentUser.Settings.UseSpruceOptions.SpruceV1 {
+			http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
+			return
+		}
 	}
 
 	var versionAsUI *uiVersion

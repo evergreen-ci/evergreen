@@ -138,14 +138,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 			return newPatch, nil
 		}
 
-		var url string
-		if newPatch.Activated {
-			url = conf.UIServerHost + "/version/" + newPatch.Id.Hex()
-		} else {
-			url = conf.UIServerHost + "/patch/" + newPatch.Id.Hex()
-		}
-
-		browserCmd = append(browserCmd, url)
+		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return newPatch, cmd.Run()
 	}
@@ -338,12 +331,6 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 // which can be written to the terminal.
 func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
-	var url string
-	if p.Activated {
-		url = uiHost + "/version/" + p.Id.Hex()
-	} else {
-		url = uiHost + "/patch/" + p.Id.Hex()
-	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
@@ -354,7 +341,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.Alias != evergreen.CommitQueueAlias,
-		Link:          url,
+		Link:          p.GetURL(uiHost),
 	})
 	if err != nil {
 		return "", err

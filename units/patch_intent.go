@@ -203,6 +203,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	if j.user.Settings.UseSpruceOptions.SpruceV1 {
+		patchDoc.DisplayNewUI = true
+	}
+
 	pref, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
