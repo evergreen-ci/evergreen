@@ -100,12 +100,12 @@ func checkTaskByCommit(username, key string) error {
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
 
-	time.Sleep(10 * time.Second)
 	// trigger repotracker
 	for i := 0; i < 5; i++ {
 		if i == 5 {
 			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
 		}
+		time.Sleep(2 * time.Second)
 		grip.Infof("running repotracker for evergreen project (%d/5)", i)
 		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
 		if err != nil {
