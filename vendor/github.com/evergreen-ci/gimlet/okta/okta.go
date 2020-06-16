@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -325,23 +326,35 @@ func (m *userManager) GetLoginHandler(_ string) http.HandlerFunc {
 		// presents a cookie containing a login token associated with an
 		// existing user.
 		var canSilentReauth bool
+		var user gimlet.User
 		for _, cookie := range r.Cookies() {
 			if cookie.Name == m.loginCookieName {
 				loginToken, err := url.QueryUnescape(cookie.Value)
 				if err != nil {
 					grip.Warning(errors.Wrapf(err, "could not decode login cookie '%s'", cookie.Value))
 				}
-				user, err := m.GetUserByToken(context.Background(), loginToken)
+				user, err = m.GetUserByToken(context.Background(), loginToken)
 				if (err == nil || errors.Cause(err) == gimlet.ErrNeedsReauthentication) && user != nil {
 					canSilentReauth = true
 					break
 				}
 			}
 		}
+		var userName string
+		if user != nil {
+			userName = user.Username()
+		}
 
 		m.setTemporaryCookie(w, nonceCookieName, nonce)
 		m.setTemporaryCookie(w, stateCookieName, state)
 		m.setTemporaryCookie(w, requestURICookieName, redirectURI)
+		grip.Debug(message.Fields{
+			"message": "storing nonce and state cookies",
+			"nonce":   nonce,
+			"state":   state,
+			"user":    userName,
+			"context": "Okta",
+		})
 
 		q.Add("client_id", m.clientID)
 		q.Add("response_type", "code")
@@ -414,7 +427,7 @@ func (m *userManager) GetLoginCallbackHandler() http.HandlerFunc {
 
 		nonce, state, requestURI, err := getCookies(r)
 		if err != nil {
-			err = errors.Wrap(err, "failed to get Okta nonce and state from cookies")
+			err = errors.Wrap(err, "failed to get Okta nonce and state from user")
 			grip.Error(err)
 			writeError(w, err)
 			return
@@ -684,7 +697,16 @@ func (m *userManager) redeemTokens(ctx context.Context, query string) (*tokenRes
 	if resp.StatusCode != http.StatusOK {
 		catcher := grip.NewBasicCatcher()
 		catcher.Errorf("received unexpected status code %d", resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
 		catcher.Wrap(resp.Body.Close(), "error closing response body")
+		catcher.Wrap(err, "could not read error response body")
+		grip.ErrorWhen(len(body) != 0, message.Fields{
+			"message":     "received non-OK status code from server",
+			"status_code": resp.StatusCode,
+			"body":        string(body),
+			"endpoint":    "token",
+			"context":     "Okta user manager",
+		})
 		return nil, catcher.Resolve()
 	}
 	tokens := &tokenResponse{}
