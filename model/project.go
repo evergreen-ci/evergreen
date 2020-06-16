@@ -1357,16 +1357,16 @@ func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 }
 
 type HostCreateCounts struct {
-	Docker    map[string]int
-	NonDocker map[string]int
-	All       map[string]int
+	Docker map[string]int
+	EC2    map[string]int
+	All    map[string]int
 }
 
 // TasksThatCallHostCreateByProvider is similar to TasksThatCallCommand, except the output is split into
 // host.create for Docker hosts and host.create for non-docker hosts, so limits can be validated separately.
 func (p *Project) TasksThatCallHostCreateByProvider() HostCreateCounts {
 	// get all functions that call the command.
-	nonDockerFs := map[string]int{}
+	ec2Fs := map[string]int{}
 	dockerFs := map[string]int{}
 	for f, cmds := range p.Functions {
 		if cmds == nil {
@@ -1378,7 +1378,7 @@ func (p *Project) TasksThatCallHostCreateByProvider() HostCreateCounts {
 				if ok && provider.(string) == evergreen.ProviderNameDocker {
 					dockerFs[f] += 1
 				} else {
-					nonDockerFs[f] += 1
+					ec2Fs[f] += 1
 				}
 			}
 		}
@@ -1386,15 +1386,15 @@ func (p *Project) TasksThatCallHostCreateByProvider() HostCreateCounts {
 
 	// get all tasks that call the command.
 	counts := HostCreateCounts{
-		Docker:    map[string]int{},
-		NonDocker: map[string]int{},
-		All:       map[string]int{},
+		Docker: map[string]int{},
+		EC2:    map[string]int{},
+		All:    map[string]int{},
 	}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {
 			if c.Function != "" {
-				if times, ok := nonDockerFs[c.Function]; ok {
-					counts.NonDocker[t.Name] += times
+				if times, ok := ec2Fs[c.Function]; ok {
+					counts.EC2[t.Name] += times
 					counts.All[t.Name] += times
 				}
 				if times, ok := dockerFs[c.Function]; ok {
@@ -1408,7 +1408,7 @@ func (p *Project) TasksThatCallHostCreateByProvider() HostCreateCounts {
 					counts.Docker[t.Name] += 1
 					counts.All[t.Name] += 1
 				} else {
-					counts.NonDocker[t.Name] += 1
+					counts.EC2[t.Name] += 1
 					counts.All[t.Name] += 1
 				}
 			}

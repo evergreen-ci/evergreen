@@ -29,9 +29,9 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters        = "|"
-	NonDockerHostCreateTotalLimit = 50
-	DockerHostCreateTotalLimit    = 200
+	unauthorizedCharacters     = "|"
+	EC2HostCreateTotalLimit    = 50
+	DockerHostCreateTotalLimit = 200
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -1139,24 +1139,24 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 
 func validateCreateHostTotals(p *model.Project, counts model.HostCreateCounts) ValidationErrors {
 	errs := ValidationErrors{}
-	totalDocker := 0
-	totalNonDocker := 0
+	dockerTotal := 0
+	ec2Total := 0
 	errorFmt := "project config may only call %s %s %d time(s) but it is called %d time(s)"
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			totalDocker += counts.Docker[t.Name]
-			totalNonDocker += counts.NonDocker[t.Name]
+			dockerTotal += counts.Docker[t.Name]
+			ec2Total += counts.EC2[t.Name]
 		}
 	}
-	if totalNonDocker > NonDockerHostCreateTotalLimit {
+	if ec2Total > EC2HostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf(errorFmt, "non-docker", evergreen.CreateHostCommandName, NonDockerHostCreateTotalLimit, totalNonDocker),
+			Message: fmt.Sprintf(errorFmt, "ec2", evergreen.CreateHostCommandName, EC2HostCreateTotalLimit, ec2Total),
 			Level:   Error,
 		})
 	}
-	if totalDocker > DockerHostCreateTotalLimit {
+	if dockerTotal > DockerHostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf(errorFmt, "docker", evergreen.CreateHostCommandName, DockerHostCreateTotalLimit, totalDocker),
+			Message: fmt.Sprintf(errorFmt, "docker", evergreen.CreateHostCommandName, DockerHostCreateTotalLimit, dockerTotal),
 			Level:   Error,
 		})
 	}
