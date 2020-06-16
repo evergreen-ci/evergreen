@@ -76,9 +76,22 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			"repo":    *event.Repo.Name,
 			"ref":     *event.Ref,
 			"branch":  branch,
-			"message": "no matching project refs found",
+			"message": "error trying to get project refs",
 		}))
 		return err
+	}
+	if len(refs) == 0 {
+		grip.Info(message.Fields{
+			"source":  "github hook",
+			"msg_id":  msgID,
+			"event":   "push",
+			"owner":   *event.Repo.Owner.Name,
+			"repo":    *event.Repo.Name,
+			"ref":     *event.Ref,
+			"branch":  branch,
+			"message": "no matching project refs found",
+		})
+		return nil
 	}
 
 	succeeded := []string{}
