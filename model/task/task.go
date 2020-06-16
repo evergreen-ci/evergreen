@@ -903,7 +903,6 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error 
 	if err != nil {
 		return errors.Wrap(err, "can't activate tasks")
 	}
-
 	for _, t := range tasks {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
 	}
@@ -999,12 +998,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			ActivatedTimeKey:            time.Now(),
 		}},
 	)
-
+	if err != nil {
+		return errors.Wrap(err, "can't update activation for dependencies")
+	}
 	for _, t := range tasksToActivate {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
 	}
 
-	return errors.Wrap(err, "can't update activation for dependencies")
+	return nil
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
@@ -1073,10 +1074,10 @@ func DeactivateTasks(tasks []Task, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem deactivating tasks")
 	}
-
 	for _, t := range tasks {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
+
 	return errors.Wrap(DeactivateDependencies(taskIDs, caller), "can't deactivate dependencies")
 }
 
@@ -1109,12 +1110,14 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			ScheduledTimeKey:            utility.ZeroTime,
 		}},
 	)
-
+	if err != nil {
+		return errors.Wrap(err, "problem deactivating dependencies")
+	}
 	for _, t := range tasksToUpdate {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	return errors.Wrap(err, "problem deactivating dependencies")
+	return nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
