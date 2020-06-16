@@ -29,7 +29,9 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters = "|"
+	unauthorizedCharacters        = "|"
+	NonDockerHostCreateTotalLimit = 50
+	DockerHostCreateTotalLimit    = 200
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -1112,13 +1114,14 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 }
 
 func validateCreateHosts(p *model.Project) ValidationErrors {
-	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
-	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3, Error)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 75)...)
+	counts := p.TasksThatCallHostCreateByProvider()
+	errs := validateTimesCalledPerTask(p, counts.All, evergreen.CreateHostCommandName, 3, Error)
+	errs = append(errs, validateCreateHostTotals(p, counts)...)
 	return errs
 }
 
-func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) (errs ValidationErrors) {
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if count, ok := ts[t.Name]; ok {
@@ -1134,18 +1137,26 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 	return errs
 }
 
-func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
-	total := 0
+func validateCreateHostTotals(p *model.Project, counts model.HostCreateCounts) ValidationErrors {
+	errs := ValidationErrors{}
+	totalDocker := 0
+	totalNonDocker := 0
+	errorFmt := "project config may only call %s %s %d time(s) but it is called %d time(s)"
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			if count, ok := ts[t.Name]; ok {
-				total += count
-			}
+			totalDocker += counts.Docker[t.Name]
+			totalNonDocker += counts.NonDocker[t.Name]
 		}
 	}
-	if total > times {
+	if totalNonDocker > NonDockerHostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project config may only call %s %d time(s) but it is called %d time(s)", commandName, times, total),
+			Message: fmt.Sprintf(errorFmt, "non-docker", evergreen.CreateHostCommandName, NonDockerHostCreateTotalLimit, totalNonDocker),
+			Level:   Error,
+		})
+	}
+	if totalDocker > DockerHostCreateTotalLimit {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf(errorFmt, "docker", evergreen.CreateHostCommandName, DockerHostCreateTotalLimit, totalDocker),
 			Level:   Error,
 		})
 	}

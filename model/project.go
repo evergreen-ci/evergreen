@@ -1356,6 +1356,68 @@ func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 	return vts
 }
 
+type HostCreateCounts struct {
+	Docker    map[string]int
+	NonDocker map[string]int
+	All       map[string]int
+}
+
+// TasksThatCallHostCreateByProvider is similar to TasksThatCallCommand, except the output is split into
+// host.create for Docker hosts and host.create for non-docker hosts, so limits can be validated separately.
+func (p *Project) TasksThatCallHostCreateByProvider() HostCreateCounts {
+	// get all functions that call the command.
+	nonDockerFs := map[string]int{}
+	dockerFs := map[string]int{}
+	for f, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
+		for _, c := range cmds.List() {
+			if c.Command == evergreen.CreateHostCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					dockerFs[f] += 1
+				} else {
+					nonDockerFs[f] += 1
+				}
+			}
+		}
+	}
+
+	// get all tasks that call the command.
+	counts := HostCreateCounts{
+		Docker:    map[string]int{},
+		NonDocker: map[string]int{},
+		All:       map[string]int{},
+	}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if times, ok := nonDockerFs[c.Function]; ok {
+					counts.NonDocker[t.Name] += times
+					counts.All[t.Name] += times
+				}
+				if times, ok := dockerFs[c.Function]; ok {
+					counts.Docker[t.Name] += times
+					counts.All[t.Name] += times
+				}
+			}
+			if c.Command == evergreen.CreateHostCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					counts.Docker[t.Name] += 1
+					counts.All[t.Name] += 1
+				} else {
+					counts.NonDocker[t.Name] += 1
+					counts.All[t.Name] += 1
+				}
+			}
+		}
+	}
+
+	return counts
+}
+
 // TasksThatCallCommand returns a map of tasks that call a given command to the
 // number of times the command is called in the task.
 func (p *Project) TasksThatCallCommand(find string) map[string]int {
