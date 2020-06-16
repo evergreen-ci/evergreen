@@ -137,6 +137,8 @@ type Patch struct {
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	// DisplayNewUI is only used when roundtripping the patch via the CLI
+	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -190,6 +192,20 @@ func (p *Patch) SetDescription(desc string) error {
 			},
 		},
 	)
+}
+
+func (p *Patch) GetURL(uiHost string) string {
+	var url string
+	if p.Activated {
+		url = uiHost + "/version/" + p.Id.Hex()
+	} else {
+		url = uiHost + "/patch/" + p.Id.Hex()
+	}
+	if p.DisplayNewUI {
+		url = url + "?redirect_spruce_users=true"
+	}
+
+	return url
 }
 
 // ClearPatchData removes any inline patch data stored in this patch object for patches that have
