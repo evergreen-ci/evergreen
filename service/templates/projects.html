@@ -1,6 +1,6 @@
 {{define "scripts"}}
 <script>
-  window.trackedProjects = {{.AllProjects}};
+  window.allTrackedProjects = {{.AllProjects}};
   {{if .User}}
   window.user = {{.User}};
   window.isAdmin = {{.ProjectData.IsAdmin}};
