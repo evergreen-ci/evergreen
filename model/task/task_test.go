@@ -1737,13 +1737,18 @@ func TestDeactivateDependencies(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, DeactivateDependencies([]string{"t0"}, ""))
+	updatedIDs := []string{"t4", "t5"}
+	deactivatedDependencies, err := DeactivateDependencies([]string{"t0"}, "")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedDependencies, 2)
+	for _, dep := range deactivatedDependencies {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
-	updatedIDs := []string{"t4", "t5"}
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.False(t, task.Activated)
@@ -1772,13 +1777,18 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, ActivateDeactivatedDependencies([]string{"t0"}, ""))
+	updatedIDs := []string{"t3", "t4"}
+	activatedDependencies, err := ActivateDeactivatedDependencies([]string{"t0"}, "")
+	assert.NoError(t, err)
+	assert.Len(t, activatedDependencies, 2)
+	for _, dep := range activatedDependencies {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
-	updatedIDs := []string{"t3", "t4"}
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
@@ -1831,13 +1841,18 @@ func TestActivateTasks(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, ActivateTasks([]Task{tasks[0]}, time.Time{}, ""))
+	updatedIDs := []string{"t0", "t3", "t4"}
+	activatedTasks, err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
+	assert.NoError(t, err)
+	assert.Len(t, activatedTasks, 3)
+	for _, dep := range activatedTasks {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
-	updatedIDs := []string{"t0", "t3", "t4"}
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
@@ -1866,13 +1881,18 @@ func TestDeactivateTasks(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, DeactivateTasks([]Task{tasks[0]}, ""))
+	updatedIDs := []string{"t0", "t4", "t5"}
+	deactivatedTasks, err := DeactivateTasks([]Task{tasks[0]}, "")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedTasks, 3)
+	for _, dep := range deactivatedTasks {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
-	updatedIDs := []string{"t0", "t4", "t5"}
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.False(t, task.Activated)
@@ -1883,5 +1903,30 @@ func TestDeactivateTasks(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestBlacklist(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0", ExecutionTasks: []string{"t1", "t2"}},
+		{Id: "t1"},
+		{Id: "t2"},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	deactivatedTasks, err := tasks[0].Blacklist("")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedTasks, 1)
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 3)
+
+	for _, task := range dbTasks {
+		assert.Equal(t, evergreen.BlacklistPriority, task.Priority)
 	}
 }

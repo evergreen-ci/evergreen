@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -89,61 +88,6 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	return errors.WithStack(build.SetManyCachedTasksActivated(modifiedTasks, active))
-}
-
-func SetTaskPriority(t task.Task, priority int64, caller string) error {
-	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
-	if err != nil {
-		return errors.Wrap(err, "error getting task dependencies")
-	}
-
-	ids := []string{t.Id}
-	ids = append(ids, t.ExecutionTasks...)
-	depIDs := make([]string, 0, len(depTasks))
-	for _, task := range depTasks {
-		depIDs = append(depIDs, task.Id)
-	}
-
-	tasks, err := task.FindAll(db.Query(bson.M{
-		"$or": []bson.M{
-			{task.IdKey: bson.M{"$in": ids}},
-			{
-				task.IdKey:       bson.M{"$in": depIDs},
-				task.PriorityKey: bson.M{"$lt": priority},
-			},
-		},
-	}).WithFields(ExecutionKey))
-	if err != nil {
-		return errors.Wrap(err, "can't find matching tasks")
-	}
-
-	taskIDs := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		taskIDs = append(taskIDs, task.Id)
-	}
-	_, err = task.UpdateAll(
-		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
-		bson.M{"$set": bson.M{task.PriorityKey: priority}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "can't update priority")
-	}
-	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, caller, priority)
-	}
-
-	//blacklisted - deactivate the task
-	if priority < 0 {
-		var deactivatedTasks []task.Task
-		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
-			return errors.Wrap(err, "can't deactivate task")
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't update task cache activation")
-		}
-	}
-
-	return nil
 }
 
 // ActivatePreviousTask will set the Active state for the first task with a

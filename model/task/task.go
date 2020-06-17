@@ -1283,6 +1283,7 @@ func (t *Task) UpdateHeartbeat() error {
 
 // Blacklist sets the priority of a task so it will never run.
 // It also deactivates the task and any tasks that depend on it.
+// The build cache is not updated
 func (t *Task) Blacklist(user string) ([]Task, error) {
 	t.Priority = evergreen.BlacklistPriority
 
