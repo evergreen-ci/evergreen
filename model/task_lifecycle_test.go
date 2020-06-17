@@ -255,6 +255,139 @@ func TestSetActiveState(t *testing.T) {
 	})
 }
 
+func TestTaskSetPriority(t *testing.T) {
+
+	Convey("With a task", t, func() {
+
+		require.NoError(t, db.Clear(task.Collection), "Error clearing"+
+			" '%v' collection", task.Collection)
+
+		tasks := []task.Task{
+			{
+				Id:        "one",
+				DependsOn: []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
+				Activated: true,
+			},
+			{
+				Id:        "two",
+				Priority:  5,
+				Activated: true,
+			},
+			{
+				Id:        "three",
+				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
+				Activated: true,
+			},
+			{
+				Id:        "four",
+				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
+				Activated: true,
+			},
+			{
+				Id:        "five",
+				Activated: true,
+			},
+			{
+				Id:        "six",
+				Activated: true,
+			},
+		}
+
+		for _, task := range tasks {
+			So(task.Insert(), ShouldBeNil)
+		}
+
+		Convey("setting its priority should update it in-memory"+
+			" and update it and all dependencies in the database", func() {
+
+			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+			So(tasks[0].Priority, ShouldEqual, 1)
+
+			t, err := task.FindOne(task.ById("one"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("two"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
+
+			t, err = task.FindOne(task.ById("three"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("four"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("five"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("six"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
+
+		})
+
+		Convey("decreasing priority should update the task but not its dependencies", func() {
+
+			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+			So(tasks[0].Activated, ShouldEqual, true)
+			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
+			So(tasks[0].Priority, ShouldEqual, -1)
+
+			t, err := task.FindOne(task.ById("one"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, -1)
+			So(t.Activated, ShouldEqual, false)
+
+			t, err = task.FindOne(task.ById("two"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("three"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("four"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("five"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("six"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
+			So(t.Activated, ShouldEqual, true)
+		})
+	})
+
+}
+
 func TestActivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),

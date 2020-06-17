@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -31,6 +32,7 @@ type StatusChanges struct {
 }
 
 func SetActiveState(t *task.Task, caller string, active bool) error {
+	modifiedTasks := []task.Task{}
 	if active {
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
@@ -50,8 +52,9 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		} else {
 			tasksToActivate = append(tasksToActivate, *t)
 		}
-
-		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
+		var err error
+		modifiedTasks, err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
+		if err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
 
@@ -70,23 +73,77 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		// If it is not, then we can deactivate it.
 		// Otherwise, if it was originally activated by evergreen, anything can
 		// deactivate it.
-
-		if err := t.DeactivateTask(caller); err != nil {
+		var err error
+		modifiedTasks, err = t.DeactivateTask(caller)
+		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
 	} else {
 		return nil
 	}
 
-	taskID := t.Id
 	if t.IsPartOfDisplay() {
 		if err := updateDisplayTaskAndCache(t); err != nil {
 			return err
 		}
-		taskID = t.DisplayTask.Id
 	}
 
-	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskID, active))
+	return errors.WithStack(build.SetManyCachedTasksActivated(modifiedTasks, active))
+}
+
+func SetTaskPriority(t task.Task, priority int64, caller string) error {
+	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
+	if err != nil {
+		return errors.Wrap(err, "error getting task dependencies")
+	}
+
+	ids := []string{t.Id}
+	ids = append(ids, t.ExecutionTasks...)
+	depIDs := make([]string, 0, len(depTasks))
+	for _, task := range depTasks {
+		depIDs = append(depIDs, task.Id)
+	}
+
+	tasks, err := task.FindAll(db.Query(bson.M{
+		"$or": []bson.M{
+			{task.IdKey: bson.M{"$in": ids}},
+			{
+				task.IdKey:       bson.M{"$in": depIDs},
+				task.PriorityKey: bson.M{"$lt": priority},
+			},
+		},
+	}).WithFields(ExecutionKey))
+	if err != nil {
+		return errors.Wrap(err, "can't find matching tasks")
+	}
+
+	taskIDs := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		taskIDs = append(taskIDs, task.Id)
+	}
+	_, err = task.UpdateAll(
+		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "can't update priority")
+	}
+	for _, task := range tasks {
+		event.LogTaskPriority(task.Id, task.Execution, caller, priority)
+	}
+
+	//blacklisted - deactivate the task
+	if priority < 0 {
+		var deactivatedTasks []task.Task
+		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
+			return errors.Wrap(err, "can't deactivate task")
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't update task cache activation")
+		}
+	}
+
+	return nil
 }
 
 // ActivatePreviousTask will set the Active state for the first task with a
@@ -130,11 +187,12 @@ func resetTask(taskId, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	if err = t.ActivateTask(caller); err != nil {
+	var activatedTasks []task.Task
+	if activatedTasks, err = t.ActivateTask(caller); err != nil {
 		return errors.WithStack(err)
 	}
 
-	if err = build.SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+	if err = build.SetManyCachedTasksActivated(activatedTasks, true); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -306,15 +364,8 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			continue
 		}
 
-		err = SetActiveState(&t, caller, false)
-		if err != nil {
+		if err = SetActiveState(&t, caller, false); err != nil {
 			return err
-		}
-		// update the cached version of the task, in its build document to be deactivated
-		if !t.IsPartOfDisplay() {
-			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
-				return err
-			}
 		}
 	}
 

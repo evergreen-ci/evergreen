@@ -268,8 +268,10 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 		if err != nil {
 			return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
 		}
-		err = mergeTask.SetPriority(-1, evergreen.User)
-		if err != nil {
+		if mergeTask == nil {
+			return errors.New("merge task doesn't exist")
+		}
+		if err = mergeTask.Blacklist(evergreen.User); err != nil {
 			return errors.Wrap(err, "can't blacklist merge task")
 		}
 	}

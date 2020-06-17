@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -565,7 +566,12 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocked status"))
 	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		catcher.Add(errors.Wrapf(task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher"), "can't deactivate task '%s'", t.Id))
+		var deactivatedDependencies []task.Task
+		deactivatedDependencies, err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
+		catcher.Add(err)
+		if err != nil {
+			catcher.Add(build.SetManyCachedTasksActivated(deactivatedDependencies, false))
+		}
 	}
 
 	return catcher.Resolve()

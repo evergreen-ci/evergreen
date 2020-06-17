@@ -112,7 +112,7 @@ func SetTaskActivationForBuilds(buildIds []string, active bool, caller string) e
 			return errors.Wrap(err, "can't get recursive dependencies")
 		}
 
-		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		if _, err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
 	} else {
@@ -129,7 +129,7 @@ func SetTaskActivationForBuilds(buildIds []string, active bool, caller string) e
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, caller); err != nil {
+		if _, err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrap(err, "can't deactivate tasks")
 		}
 	}
@@ -255,7 +255,14 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
-		return task.DeactivateTasks(tasks, caller)
+		var deactivatedTasks []task.Task
+		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		if err != nil {
+			return errors.Wrapf(err, "can't deactivate tasks for build '%s'", buildId)
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't set cached tasks deactivated")
+		}
 	}
 
 	return nil
@@ -279,7 +286,14 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
 		}
-		return task.DeactivateTasks(tasks, caller)
+		var deactivatedTasks []task.Task
+		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		if err != nil {
+			return errors.Wrapf(err, "can't deactivate tasks for version '%s'", versionId)
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't set cached tasks deactivated")
+		}
 	}
 
 	return nil
