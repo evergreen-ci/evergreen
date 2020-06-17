@@ -55,7 +55,7 @@ func startWebService() cli.Command {
 			// Create the user manager before setting up job queues to allow
 			// background reauthorization jobs to start.
 			if err = setupUserManager(env, settings); err != nil {
-				return errors.Wrap(err, "could not set up user manager")
+				grip.EmergencyFatal(errors.Wrap(err, "could not set up user manager"))
 			}
 
 			defer cancel()
