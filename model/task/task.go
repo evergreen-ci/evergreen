@@ -1281,36 +1281,37 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetPriority sets the priority of the task.
-// It increases the priority of the tasks it depends on.
-func (t *Task) Blacklist(user string) error {
-	t.Priority = -1
+// Blacklist sets the priority of a task so it will never run.
+// It also deactivates the task and any tasks that depend on it.
+func (t *Task) Blacklist(user string) ([]Task, error) {
+	t.Priority = evergreen.BlacklistPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
 	_, err := UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{PriorityKey: -1}},
+		bson.M{"$set": bson.M{PriorityKey: evergreen.BlacklistPriority}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't update priority")
+		return nil, errors.Wrap(err, "can't update priority")
 	}
 
 	tasks, err := FindAll(db.Query(bson.M{
 		IdKey: bson.M{"$in": ids},
 	}).WithFields(ExecutionKey))
 	if err != nil {
-		return errors.Wrap(err, "can't find matching tasks")
+		return nil, errors.Wrap(err, "can't find matching tasks")
 	}
 	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, user, -1)
+		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.BlacklistPriority)
 	}
 
-	// deactivate the task
-	if _, err = t.DeactivateTask(user); err != nil {
-		return errors.Wrap(err, "can't deactivate blacklisted task")
+	var deactivatedTasks []Task
+	deactivatedTasks, err = t.DeactivateTask(user)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't deactivate blacklisted task")
 	}
 
-	return nil
+	return deactivatedTasks, nil
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -271,8 +272,11 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 		if mergeTask == nil {
 			return errors.New("merge task doesn't exist")
 		}
-		if err = mergeTask.Blacklist(evergreen.User); err != nil {
+		if _, err = mergeTask.Blacklist(evergreen.User); err != nil {
 			return errors.Wrap(err, "can't blacklist merge task")
+		}
+		if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
+			return errors.Wrap(err, "can't update build cache for deactivated ")
 		}
 	}
 
