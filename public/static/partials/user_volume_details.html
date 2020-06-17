@@ -42,8 +42,8 @@
               <strong>Expiration:</strong>
               <md-datepicker  ng-disabled="curVolumeData.no_expiration" ng-model="curVolumeData.current_expiration" md-min-date="curVolumeData.original_expiration" md-placeholder="Date"></md-datepicker>
               <md-time-picker read-only="curVolumeData.no_expiration"   ng-model="curVolumeData.current_expiration" class="inline" message="message"></md-time-picker>
-              <md-checkbox id="no-volume-expiration" class="inline" ng-model="curVolumeData.no_expiration" ng-disabled="!unexpirableVolumeEnabled()" style="margin-left:25px">Never</md-checkbox>
-              <em ng-class="{'text-muted': unexpirableVolumeEnabled(), 'text-error': !unexpirableVolumeEnabled()}" style="margin-left: 5px;" ng-cloak>
+              <md-checkbox id="no-volume-expiration" class="inline" ng-model="curVolumeData.no_expiration" ng-disabled="!unexpirableVolumeEnabled()" style="margin-left:25px; margin-right: 5px; ">Never</md-checkbox>
+              <em ng-class="{'text-muted': unexpirableVolumeEnabled(), 'text-error': !unexpirableVolumeEnabled()}" style="white-space: nowrap;" ng-cloak>
                 [[availableUnexpirableVolumes()]] [[availableUnexpirableVolumes() | pluralize:'unexpirable volume']] remaining
               </em>
             </md-card-content>
