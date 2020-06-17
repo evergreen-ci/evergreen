@@ -8,8 +8,6 @@
   window.canCreate = {{.CanCreate}};
   window.validDefaultLoggers = {{.ValidDefaultLoggers}};
   window.userTz = {{GetTimezone $.User}}
-  alert(trackedProjects.length>0)
-  alert(!trackedProjects.length>0)
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
 <script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ BuildRevision }}"></script>
