@@ -9,15 +9,16 @@ type APIRevision struct {
 	AuthorGithubUID int     `json:"author_github_u_i_d"`
 }
 
-func (m *APIRevision) BuildFromService(t model.Revision) error {
+func APIRevisionBuildFromService(t model.Revision) *APIRevision {
+	m := APIRevision{}
 	m.Author = StringStringPtr(t.Author)
 	m.AuthorGithubUID = IntInt(t.AuthorGithubUID)
-	return nil
+	return &m
 }
 
-func (m *APIRevision) ToService() (model.Revision, error) {
+func APIRevisionToService(m *APIRevision) model.Revision {
 	out := model.Revision{}
 	out.Author = StringStringPtr(m.Author)
 	out.AuthorGithubUID = IntInt(m.AuthorGithubUID)
-	return out, nil
+	return out
 }

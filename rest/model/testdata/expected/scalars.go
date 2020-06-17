@@ -14,17 +14,18 @@ type APIMockScalars struct {
 	AnyType  interface{}            `json:"any_type"`
 }
 
-func (m *APIMockScalars) BuildFromService(t model.MockScalars) error {
+func APIMockScalarsBuildFromService(t model.MockScalars) *APIMockScalars {
+	m := APIMockScalars{}
 	m.AnyType = InterfaceInterface(t.AnyType)
 	m.MapType = MapstringinterfaceMapstringinterface(t.MapType)
 	m.TimeType = TimeTimeTimeTimePtr(t.TimeType)
-	return nil
+	return &m
 }
 
-func (m *APIMockScalars) ToService() (model.MockScalars, error) {
+func APIMockScalarsToService(m *APIMockScalars) model.MockScalars {
 	out := model.MockScalars{}
 	out.AnyType = InterfaceInterface(m.AnyType)
 	out.MapType = MapstringinterfaceMapstringinterface(m.MapType)
 	out.TimeType = TimeTimeTimeTimePtr(m.TimeType)
-	return out, nil
+	return out
 }

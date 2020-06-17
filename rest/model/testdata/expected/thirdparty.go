@@ -9,15 +9,16 @@ type APIGithubOptions struct {
 	Repo    string `json:"repo"`
 }
 
-func (m *APIGithubOptions) BuildFromService(t send.GithubOptions) error {
+func APIGithubOptionsBuildFromService(t send.GithubOptions) *APIGithubOptions {
+	m := APIGithubOptions{}
 	m.Account = StringString(t.Account)
 	m.Repo = StringString(t.Repo)
-	return nil
+	return &m
 }
 
-func (m *APIGithubOptions) ToService() (send.GithubOptions, error) {
+func APIGithubOptionsToService(m *APIGithubOptions) send.GithubOptions {
 	out := send.GithubOptions{}
 	out.Account = StringString(m.Account)
 	out.Repo = StringString(m.Repo)
-	return out, nil
+	return out
 }
