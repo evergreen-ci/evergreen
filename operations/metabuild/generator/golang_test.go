@@ -15,16 +15,15 @@ func TestGolangGenerate(t *testing.T) {
 	checkTask := func(t *testing.T, g *Golang, task *shrub.Task) {
 		require.Len(t, task.Commands, 2)
 
+		gopath := g.Environment["GOPATH"]
+
 		getProjectCmd := task.Commands[0]
 		assert.Equal(t, shrub.CmdGetProject{}.Name(), getProjectCmd.CommandName)
-		projectPath, err := g.RelProjectPath()
-		require.NoError(t, err)
+		projectPath := g.RelProjectPath(gopath)
 		assert.Equal(t, projectPath, getProjectCmd.Params["directory"])
 
 		scriptingCmd := task.Commands[1]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
-		gopath, err := g.RelGopath()
-		require.NoError(t, err)
 		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
 		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
@@ -37,12 +36,10 @@ func TestGolangGenerate(t *testing.T) {
 		require.Len(t, task.Commands, 1)
 		scriptingCmd := task.Commands[0]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
-		gopath, err := g.RelGopath()
-		require.NoError(t, err)
+		gopath := g.Environment["GOPATH"]
 		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
 		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
-		projectPath, err := g.RelProjectPath()
-		require.NoError(t, err)
+		projectPath := g.RelProjectPath(gopath)
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		env, ok := scriptingCmd.Params["env"].(map[string]interface{})
 		require.True(t, ok)
@@ -131,7 +128,8 @@ func TestGolangGenerate(t *testing.T) {
 			require.Len(t, taskGroup.SetupGroup, 1)
 			getProjectCmd := taskGroup.SetupGroup[0]
 			assert.Equal(t, shrub.CmdGetProject{}.Name(), getProjectCmd.CommandName)
-			projectPath, err := g.RelProjectPath()
+			gopath := g.Environment["GOPATH"]
+			projectPath := g.RelProjectPath(gopath)
 			require.NoError(t, err)
 			assert.Equal(t, projectPath, getProjectCmd.Params["directory"])
 			assert.Subset(t, taskGroup.Tasks, taskNames)
@@ -212,14 +210,6 @@ func TestGolangGenerate(t *testing.T) {
 					{Tag: "nonexistent"},
 				},
 			})
-			conf, err := g.Generate()
-			assert.Error(t, err)
-			assert.Zero(t, conf)
-		},
-		"FailsWithGOPATHNotWithinWorkingDirectory": func(t *testing.T, g *Golang) {
-			absGopath, err := filepath.Abs(filepath.Join("/path", "outside", "working", "directory"))
-			require.NoError(t, err)
-			g.Environment["GOPATH"] = util.ConsistentFilepath(absGopath)
 			conf, err := g.Generate()
 			assert.Error(t, err)
 			assert.Zero(t, conf)

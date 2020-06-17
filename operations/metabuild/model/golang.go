@@ -28,9 +28,9 @@ type GolangGeneralConfig struct {
 	// GeneralConfig defines generic top-level configuration.
 	// WorkingDirectory is the absolute path to the base directory where the
 	// GOPATH directory is located.
-	// Environment requires that GOPATH and GOROOT be defined. If the working
-	// directory is specified, GOPATH must be specified as a subdirectory of the
-	// working directory.
+	// Environment requires that GOPATH and GOROOT be defined globally.
+	// GOPATH must be specified as a subdirectory of the working directory.
+	// These can be overridden the the package or variant level.
 	// DefaultTags are applied to all packages (discovered or explicitly
 	// defined) unless explicitly excluded.
 	GeneralConfig `yaml:",inline"`
@@ -42,88 +42,8 @@ type GolangGeneralConfig struct {
 func (ggc *GolangGeneralConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(ggc.RootPackage == "", "must specify the import path of the root package of the project")
-	catcher.Wrap(ggc.validateEnvVars(), "invalid environment variables")
+	catcher.Wrap(ggc.GeneralConfig.Validate(), "invalid general config")
 	return catcher.Resolve()
-}
-
-func (ggc *GolangGeneralConfig) validateEnvVars() error {
-	catcher := grip.NewBasicCatcher()
-	for _, name := range []string{"GOPATH", "GOROOT"} {
-		if val, ok := ggc.Environment[name]; ok && val != "" {
-			ggc.Environment[name] = util.ConsistentFilepath(val)
-			continue
-		}
-		if val := os.Getenv(name); val != "" {
-			ggc.Environment[name] = util.ConsistentFilepath(val)
-			continue
-		}
-		catcher.Errorf("environment variable '%s' must be explicitly defined or already present in the environment", name)
-	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
-
-	// According to the semantics of the generator's GOPATH, it must be relative
-	// to the working directory (if specified).
-	relGopath, err := ggc.RelGopath()
-	if err != nil {
-		catcher.Wrap(err, "converting GOPATH to relative path")
-	} else {
-		ggc.Environment["GOPATH"] = relGopath
-	}
-
-	return catcher.Resolve()
-}
-
-// AbsGopath converts the relative GOPATH in the environment into an absolute
-// path based on the working directory.
-func (ggc *GolangGeneralConfig) AbsGopath() (string, error) {
-	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
-	workingDir := util.ConsistentFilepath(ggc.WorkingDirectory)
-	if workingDir != "" && !strings.HasPrefix(gopath, workingDir) {
-		return util.ConsistentFilepath(workingDir, gopath), nil
-	}
-	if !filepath.IsAbs(gopath) {
-		return "", errors.New("GOPATH is relative path, but needs to be absolute path")
-	}
-	return gopath, nil
-}
-
-// RelGopath returns the GOPATH in the environment relative to the working
-// directory (if it is defined).
-func (ggc *GolangGeneralConfig) RelGopath() (string, error) {
-	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
-	workingDir := util.ConsistentFilepath(ggc.WorkingDirectory)
-	if workingDir != "" && strings.HasPrefix(gopath, workingDir) {
-		relGopath, err := filepath.Rel(workingDir, gopath)
-		if err != nil {
-			return "", errors.Wrap(err, "making GOPATH relative")
-		}
-		return util.ConsistentFilepath(relGopath), nil
-	}
-	if filepath.IsAbs(gopath) {
-		return "", errors.New("GOPATH is absolute path, but needs to be relative path")
-	}
-	return gopath, nil
-}
-
-// AbsProjectPath returns the absolute path to the project.
-func (ggc *GolangGeneralConfig) AbsProjectPath() (string, error) {
-	gopath, err := ggc.AbsGopath()
-	if err != nil {
-		return "", errors.Wrap(err, "getting GOPATH as an absolute path")
-	}
-	return util.ConsistentFilepath(gopath, "src", ggc.RootPackage), nil
-}
-
-// RelProjectPath returns the path to the project relative to the working
-// directory.
-func (ggc *GolangGeneralConfig) RelProjectPath() (string, error) {
-	gopath, err := ggc.RelGopath()
-	if err != nil {
-		return "", errors.Wrap(err, "getting GOPATH as a relative path")
-	}
-	return util.ConsistentFilepath(gopath, "src", ggc.RootPackage), nil
 }
 
 // NewGolang returns a model of a Golang build configuration from a single file
@@ -203,10 +123,77 @@ func (g *Golang) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Wrap(g.GolangGeneralConfig.Validate(), "invalid top-level configuration")
+	catcher.Wrap(g.validateEnvVars(), "invalid environment variable(s)")
 	catcher.Wrap(g.validatePackages(), "invalid package definition(s)")
 	catcher.Wrap(g.validateVariants(), "invalid variant definition(s)")
 
 	return catcher.Resolve()
+}
+
+// validateEnvVars checks that:
+// - GOROOT is defined at the top-level global environment.
+// - GOPATH is defined at the top-level global environment and can be converted
+//   to a path relative to the working directory.
+func (g *Golang) validateEnvVars() error {
+	catcher := grip.NewBasicCatcher()
+	for _, name := range []string{"GOPATH", "GOROOT"} {
+		if val := g.Environment[name]; val != "" {
+			g.Environment[name] = util.ConsistentFilepath(val)
+			continue
+		}
+		if val := os.Getenv(name); val != "" {
+			g.Environment[name] = util.ConsistentFilepath(val)
+			continue
+		}
+		catcher.Errorf("environment variable '%s' must be explicitly defined or already present in the environment", name)
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	// According to the semantics of this GOPATH, it must be relative to the
+	// working directory.
+	relGopath, err := g.relGopath()
+	if err != nil {
+		catcher.Wrap(err, "getting GOPATH as relative path")
+	} else {
+		g.Environment["GOPATH"] = relGopath
+	}
+
+	return catcher.Resolve()
+}
+
+// absGopath converts the relative GOPATH in the global environment into an
+// absolute path based on the working directory.
+func (ggc *GolangGeneralConfig) absGopath() (string, error) {
+	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
+	relGopath, err := relToPath(gopath, ggc.WorkingDirectory)
+	if err != nil {
+		return "", errors.Wrap(err, "global GOPATH cannot be made relative to the working directory")
+	}
+	return util.ConsistentFilepath(ggc.WorkingDirectory, relGopath), nil
+}
+
+// relGopath returns the global GOPATH in the environment relative to the
+// working directory.
+func (ggc *GolangGeneralConfig) relGopath() (string, error) {
+	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
+	relGopath, err := relToPath(gopath, ggc.WorkingDirectory)
+	if err != nil {
+		return "", errors.Wrap(err, "global GOPATH cannot be made relative to the working directory")
+	}
+	return relGopath, nil
+}
+
+// absProjectPath returns the absolute path to the project based on the given
+// gopath.
+func (ggc *GolangGeneralConfig) absProjectPath(gopath string) string {
+	return util.ConsistentFilepath(gopath, "src", ggc.RootPackage)
+}
+
+// RelProjectPath returns the path to the project based on the given gopath.
+func (g *Golang) RelProjectPath(gopath string) string {
+	return util.ConsistentFilepath(gopath, "src", g.RootPackage)
 }
 
 // validatePackages checks that:
@@ -248,10 +235,6 @@ func (g *Golang) validatePackages() error {
 	return catcher.Resolve()
 }
 
-// validateEnvVars checks that:
-// - GOROOT is defined.
-// - GOPATH is defined and can be converted to a path relative to the working
-//   directory.
 // validateVariants checks that:
 // - Variants are defined.
 // - Each variant name is unique.
@@ -314,10 +297,11 @@ func (g *Golang) DiscoverPackages() error {
 		return errors.Wrap(err, "invalid environment variables")
 	}
 
-	projectPath, err := g.AbsProjectPath()
+	gopath, err := g.absGopath()
 	if err != nil {
-		return errors.Wrap(err, "getting project path as an absolute path")
+		return errors.Wrap(err, "getting GOPATH as an absolute path")
 	}
+	projectPath := g.absProjectPath(gopath)
 
 	if err := filepath.Walk(projectPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -451,6 +435,14 @@ type GolangPackage struct {
 	ExcludeTags []string `yaml:"exclude_tags,omitempty"`
 	// Flags are package-specific Golang flags that modify runtime execution.
 	Flags GolangFlags `yaml:"flags,omitempty"`
+	// Environment defines environment variables for this package. This takes
+	// precedence over the top-level global environment.  Therefore, if an
+	// environment variable is already defined in the global environment and is
+	// redefined in this package, the global environment variable will be
+	// overridden by the value in this environment. GOPATH cannot be redefined
+	// in a package, because it could conflict with the GOPATH used at the
+	// variant or global level.
+	Environment map[string]string `yaml:"env,omitempty"`
 }
 
 // Validate ensures that for each package:
@@ -468,6 +460,14 @@ func (gp *GolangPackage) Validate() error {
 		tags[tag] = struct{}{}
 	}
 	catcher.Wrap(gp.Flags.Validate(), "invalid flag(s)")
+
+	// Do not allow GOPATH to be defined at the package level, because changing
+	// the value will conflict with the value used by the variant, which
+	// determines the location to git clone the repository. Changing GOPATH here
+	// would also interact poorly with task groups due to the assumption that
+	// all packages within a variant share the same project directory location.
+	catcher.ErrorfWhen(gp.Environment["GOPATH"] != "", "cannot define package-level GOPATH in environment")
+
 	return catcher.Resolve()
 }
 
@@ -481,7 +481,15 @@ type GolangVariant struct {
 	// Golang are variant-specific flags that modify runtime execution.
 	// Explicitly setting these values will override any flags specified under
 	// the package definitions.
-	Flags *GolangFlags `yaml:"flags,omitempty"`
+	Flags GolangFlags `yaml:"flags,omitempty"`
+	// Environment defines environment variables for this variant. This takes
+	// precedence over the package environment and top-level global environment.
+	// This has higher precedence than the global environment. Therefore, if an
+	// environment variable is already defined in the global or package-level
+	// environment and is redefined in this variant, the global or package-level
+	// environement variable will be overridden by the value in this
+	// environment.
+	Environment map[string]string `yaml:"env,omitempty"`
 }
 
 // Validate checks that the variant-distro mapping and the Golang-specific
@@ -493,6 +501,10 @@ func (gv *GolangVariant) Validate() error {
 
 	if gv.Flags != nil {
 		catcher.Wrap(gv.Flags.Validate(), "invalid flag(s)")
+	}
+
+	if gopath := gv.Environment["GOPATH"]; gopath != "" && filepath.IsAbs(gopath) {
+		catcher.Errorf("variant-level GOPATH '%s' must be relative to the working directory", gopath)
 	}
 
 	return catcher.Resolve()

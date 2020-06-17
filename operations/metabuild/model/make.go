@@ -114,6 +114,7 @@ func (m *Make) MergeDefaultTags(tags ...string) *Make {
 // Validate checks that the entire Make build configuration is valid.
 func (m *Make) Validate() error {
 	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(m.GeneralConfig.Validate(), "invalid general config")
 	catcher.Wrap(m.validateTargetSequences(), "invalid target sequence definition(s)")
 	catcher.Wrap(m.validateTasks(), "invalid task definition(s)")
 	catcher.Wrap(m.validateVariants(), "invalid variant definition(s)")

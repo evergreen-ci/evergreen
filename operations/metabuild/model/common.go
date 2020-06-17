@@ -18,6 +18,12 @@ type GeneralConfig struct {
 	WorkingDirectory string   `yaml:"-"`
 }
 
+func (gc *GeneralConfig) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(gc.WorkingDirectory == "", "must specify working directory")
+	return nil
+}
+
 // VariantDistro represents a mapping between a variant name and the distros
 // that it runs on.
 type VariantDistro struct {

@@ -50,13 +50,11 @@ func (mc *MakeControl) Build() (*Make, error) {
 	}
 	m.MergeVariants(mvs...)
 
-	gc, err := mc.buildGeneral()
+	gc, err := mc.buildGeneral(mc.WorkingDirectory)
 	if err != nil {
 		return nil, errors.Wrap(err, "building top-level configuration")
 	}
 	m.GeneralConfig = gc
-
-	m.WorkingDirectory = mc.WorkingDirectory
 
 	m.ApplyDefaultTags()
 
@@ -136,7 +134,7 @@ func (mc *MakeControl) buildVariants() ([]MakeVariant, error) {
 	return all, nil
 }
 
-func (mc *MakeControl) buildGeneral() (GeneralConfig, error) {
+func (mc *MakeControl) buildGeneral(workingDir string) (GeneralConfig, error) {
 	gcv := struct {
 		GeneralConfig    `yaml:"general"`
 		VariablesSection `yaml:",inline"`
@@ -146,6 +144,11 @@ func (mc *MakeControl) buildGeneral() (GeneralConfig, error) {
 	}
 
 	gc := gcv.GeneralConfig
+	gc.WorkingDirectory = workingDir
+
+	if err := gc.Validate(); err != nil {
+		return GeneralConfig{}, errors.Wrap(err, "invalid general config")
+	}
 
 	return gc, nil
 }

@@ -41,17 +41,15 @@ func (g *Golang) Generate() (*shrub.Configuration, error) {
 					panic(errors.Wrapf(err, "package definition for variant '%s'", gv.Name))
 				}
 
-				newTasks, err := g.generateVariantTasksForRef(c, gv, gps, pkgRef)
-				if err != nil {
-					panic(errors.Wrapf(err, "generating task for package ref '%s' in variant '%s'", pkgRef, gv.Name))
-				}
+				newTasks := g.generateVariantTasksForRef(c, gv, gps, pkgRef)
 				tasksForVariant = append(tasksForVariant, newTasks...)
 			}
 
-			projectPath, err := g.RelProjectPath()
-			if err != nil {
-				panic(errors.Wrap(err, "getting project path as a relative path"))
+			gopath := g.Environment["GOPATH"]
+			if val := gv.Environment["GOPATH"]; val != "" {
+				gopath = val
 			}
+			projectPath := g.RelProjectPath(gopath)
 			getProjectCmd := shrub.CmdGetProject{
 				Directory: projectPath,
 			}
@@ -83,14 +81,11 @@ func (g *Golang) Generate() (*shrub.Configuration, error) {
 	return conf, nil
 }
 
-func (g *Golang) generateVariantTasksForRef(c *shrub.Configuration, gv model.GolangVariant, gps []model.GolangPackage, pkgRef string) ([]*shrub.Task, error) {
+func (g *Golang) generateVariantTasksForRef(c *shrub.Configuration, gv model.GolangVariant, gps []model.GolangPackage, pkgRef string) []*shrub.Task {
 	var tasks []*shrub.Task
 
 	for _, gp := range gps {
-		scriptCmd, err := g.subprocessScriptingCmd(gv, gp)
-		if err != nil {
-			return nil, errors.Wrapf(err, "generating %s command for package '%s' in variant '%s'", shrub.CmdSubprocessScripting{}.Name(), gp.Path, gv.Name)
-		}
+		scriptCmd := g.subprocessScriptingCmd(gv, gp)
 		var taskName string
 		if len(gps) > 1 {
 			id := gp.Path
@@ -104,22 +99,19 @@ func (g *Golang) generateVariantTasksForRef(c *shrub.Configuration, gv model.Gol
 		tasks = append(tasks, c.Task(taskName).Command(scriptCmd))
 	}
 
-	return tasks, nil
+	return tasks
 }
 
-func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangPackage) (*shrub.CmdSubprocessScripting, error) {
-	gopath, err := g.RelGopath()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GOPATH as a relative path")
+func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangPackage) *shrub.CmdSubprocessScripting {
+	gopath := g.Environment["GOPATH"]
+	if val := gv.Environment["GOPATH"]; val != "" {
+		gopath = val
 	}
-	projectPath, err := g.RelProjectPath()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting project path as a relative path")
-	}
+	projectPath := g.RelProjectPath(gopath)
 
 	testOpts := gp.Flags
 	if gv.Flags != nil {
-		testOpts = testOpts.Merge(*gv.Flags)
+		testOpts = testOpts.Merge(gv.Flags)
 	}
 
 	relPath := gp.Path
@@ -128,20 +120,21 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 	}
 	testOpts = append(testOpts, relPath)
 
+	env := model.MergeEnvironments(g.Environment, gp.Environment, gv.Environment)
+
 	return &shrub.CmdSubprocessScripting{
 		Harness:     "golang",
 		WorkingDir:  g.WorkingDirectory,
 		HarnessPath: gopath,
-		// It is not a problem for the environment to set the
-		// GOPATH here (relative to the working directory),
-		// which conflicts with the actual GOPATH (an absolute
-		// path). The GOPATH in the environment will be
-		// overridden when subprocess.scripting runs to be an
-		// absolute path relative to the working directory.
-		Env:     g.Environment,
+		// It is not a problem for the environment to set a relative GOPATH
+		// here, which conflicts with the actual GOPATH (an absolute path). The
+		// GOPATH in the environment will be overridden when
+		// subprocess.scripting runs to be an absolute path relative to the
+		// working directory.
+		Env:     env,
 		TestDir: projectPath,
 		TestOptions: &shrub.ScriptingTestOptions{
 			Args: testOpts,
 		},
-	}, nil
+	}
 }

@@ -53,13 +53,11 @@ func (gc *GolangControl) Build() (*Golang, error) {
 	}
 	g.MergeVariants(gvs...)
 
-	ggc, err := gc.buildGeneral()
+	ggc, err := gc.buildGeneral(gc.WorkingDirectory)
 	if err != nil {
 		return nil, errors.Wrap(err, "building top-level configuration")
 	}
 	g.GolangGeneralConfig = ggc
-
-	g.WorkingDirectory = gc.WorkingDirectory
 
 	if err := g.DiscoverPackages(); err != nil {
 		return nil, errors.Wrap(err, "automatically discovering test packages")
@@ -134,7 +132,7 @@ func (gc *GolangControl) buildVariants() ([]GolangVariant, error) {
 	return all, nil
 }
 
-func (gc *GolangControl) buildGeneral() (GolangGeneralConfig, error) {
+func (gc *GolangControl) buildGeneral(workingDir string) (GolangGeneralConfig, error) {
 	ggcv := struct {
 		GolangGeneralConfig `yaml:"general"`
 		VariablesSection    `yaml:",inline"`
@@ -144,6 +142,7 @@ func (gc *GolangControl) buildGeneral() (GolangGeneralConfig, error) {
 		return GolangGeneralConfig{}, errors.Wrap(err, "unmarshalling from YAML file")
 	}
 	ggc := ggcv.GolangGeneralConfig
+	ggc.WorkingDirectory = workingDir
 	if err := ggc.Validate(); err != nil {
 		return GolangGeneralConfig{}, errors.Wrap(err, "invalid top-level configuration")
 	}

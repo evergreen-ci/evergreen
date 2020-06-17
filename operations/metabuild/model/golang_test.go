@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/utility"
@@ -139,9 +140,20 @@ func TestGolangVariant(t *testing.T) {
 				gv := &GolangVariant{}
 				assert.Error(t, gv.Validate())
 			},
-			"FailsWithInvalidOptions": func(t *testing.T, gv *GolangVariant) {
-				flags := GolangFlags([]string{"-v"})
-				gv.Flags = &flags
+			"FailsWithInvalidFlags": func(t *testing.T, gv *GolangVariant) {
+				gv.Flags = GolangFlags([]string{"-v"})
+				assert.Error(t, gv.Validate())
+			},
+			"FailsWithAbsoluteGOPATH": func(t *testing.T, gv *GolangVariant) {
+				if runtime.GOOS == "windows" {
+					gv.Environment = map[string]string{
+						"GOPATH": util.ConsistentFilepath("C:", "/gopath"),
+					}
+				} else {
+					gv.Environment = map[string]string{
+						"GOPATH": util.ConsistentFilepath("/gopath"),
+					}
+				}
 				assert.Error(t, gv.Validate())
 			},
 		} {
@@ -175,6 +187,7 @@ func TestGolangPackage(t *testing.T) {
 			},
 			"FailsWithDuplicateTags": func(t *testing.T, gp *GolangPackage) {
 				gp.Tags = []string{"tag1", "tag1"}
+				assert.Error(t, gp.Validate())
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
@@ -371,7 +384,7 @@ func TestGolangValidate(t *testing.T) {
 			assert.Error(t, g.Validate())
 		},
 		"SucceedsWithGOROOTInEnvironment": func(t *testing.T, g *Golang) {
-			goroot := os.Getenv("GOROOT")
+			goroot := util.ConsistentFilepath(os.Getenv("GOROOT"))
 			if goroot == "" {
 				t.Skip("GOROOT is not defined in environment")
 			}
@@ -400,6 +413,15 @@ func TestGolangValidate(t *testing.T) {
 			relGopath, err := filepath.Rel(g.WorkingDirectory, gopath)
 			require.NoError(t, err)
 			assert.Equal(t, util.ConsistentFilepath(relGopath), util.ConsistentFilepath(g.Environment["GOPATH"]))
+		},
+		"FailsIfGOPATHNotWithinWorkingDirectory": func(t *testing.T, g *Golang) {
+			if runtime.GOOS == "windows" {
+				g.Environment["GOPATH"] = util.ConsistentFilepath("C:", "/gopath")
+			} else {
+				g.Environment["GOPATH"] = util.ConsistentFilepath("/gopath")
+			}
+			g.WorkingDirectory = util.ConsistentFilepath("/working", "directory")
+			assert.Error(t, g.Validate())
 		},
 		"FailsWithoutGOPATHEnvVar": func(t *testing.T, g *Golang) {
 			if gopath, ok := os.LookupEnv("GOPATH"); ok {
@@ -570,6 +592,24 @@ func TestGolangValidate(t *testing.T) {
 			}
 			assert.Error(t, g.Validate())
 		},
+		"FailsWithDuplicateGolangPackageNameReferences": func(t *testing.T, g *Golang) {
+			g.Packages = []GolangPackage{
+				{Name: "name", Path: "path"},
+			}
+			g.Variants = []GolangVariant{
+				{
+					VariantDistro: VariantDistro{
+						Name:    "variant",
+						Distros: []string{"distro"},
+					},
+					Packages: []GolangVariantPackage{
+						{Name: "name"},
+						{Name: "name"},
+					},
+				},
+			}
+			assert.Error(t, g.Validate())
+		},
 		"FailsWithInvalidVariantPackagePath": func(t *testing.T, g *Golang) {
 			g.Variants = []GolangVariant{
 				{
@@ -650,6 +690,15 @@ func TestGolangValidate(t *testing.T) {
 
 func TestDiscoverPackages(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, g *Golang, rootPath string){
+		"FailsIfEnvVarsMissing": func(t *testing.T, g *Golang, rootPath string) {
+			g.Environment = map[string]string{}
+			assert.Error(t, g.DiscoverPackages())
+		},
+		"FailsIfGOPATHIsOutsideWorkingDirectory": func(t *testing.T, g *Golang, rootPath string) {
+			g.Environment["GOPATH"] = util.ConsistentFilepath("/gopath")
+			g.WorkingDirectory = util.ConsistentFilepath("/working", "directory")
+			assert.Error(t, g.DiscoverPackages())
+		},
 		"FailsIfPackageNotFound": func(t *testing.T, g *Golang, rootPath string) {
 			g.RootPackage = "foo"
 			assert.Error(t, g.DiscoverPackages())
@@ -861,7 +910,6 @@ func TestGolangMergePackages(t *testing.T) {
 		},
 		"AddsNewUnnamedPackage": func(t *testing.T, g *Golang) {
 			gp := GolangPackage{
-				Name: "package2",
 				Path: "path2",
 				Tags: []string{"tag1"},
 			}
@@ -994,4 +1042,13 @@ func TestGolangApplyDefaultTags(t *testing.T) {
 			testCase(t, &m)
 		})
 	}
+}
+
+func TestGolangRelProjectPath(t *testing.T) {
+	g := Golang{
+		GolangGeneralConfig: GolangGeneralConfig{
+			RootPackage: util.ConsistentFilepath("github.com", "fake_user", "fake_repo"),
+		},
+	}
+	assert.Equal(t, util.ConsistentFilepath("gopath", "src", "github.com", "fake_user", "fake_repo"), g.RelProjectPath("gopath"))
 }
