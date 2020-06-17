@@ -388,6 +388,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{
 		PublishAllPorts: containerHost.DockerOptions.PublishPorts,
+		ExtraHosts:      containerHost.DockerOptions.ExtraHosts,
 	}
 
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
