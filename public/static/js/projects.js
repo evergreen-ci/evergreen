@@ -3,8 +3,6 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isAdmin;
-  //hasViewPermissions is true if the user has permissions to view at least one project
-  $scope.hasProjectViewPermissions = $window.allTrackedProjects.length > 0; 
   $scope.create = $window.canCreate;
   $scope.validDefaultLoggers = $window.validDefaultLoggers;
 
