@@ -83,6 +83,9 @@ func (c *MockStatusConnector) FindRecentTaskListDistro(minutes int) (*model.APIR
 func (c *MockStatusConnector) FindRecentTaskListProject(minutes int) (*model.APIRecentTaskStatsList, error) {
 	return c.CachedResultCountList, nil
 }
+func (c *MockStatusConnector) FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList, error) {
+	return c.CachedResultCountList, nil
+}
 
 // GetHostStatsByDistro returns mock stats for hosts broken down by distro
 func (c *MockStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
