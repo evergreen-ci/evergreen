@@ -1218,6 +1218,7 @@ func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	b := build.Build{
 		Id:      "my-build",
 		Version: v.Id,
+		Tasks:   []build.TaskCache{{Id: "t1", Activated: true}},
 	}
 	t1 := &task.Task{
 		Id:               "t1",
@@ -1256,6 +1257,7 @@ func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	mergeTask, err := task.FindMergeTaskForVersion(patchID)
 	assert.NoError(t, err)
 	assert.Equal(t, mergeTask.Priority, int64(-1))
+	assert.False(t, mergeTask.Activated)
 	p, err = patch.FindOne(patch.ByVersion(patchID))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
