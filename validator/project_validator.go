@@ -108,7 +108,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
-	validateCreateHosts,
+	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateTaskSyncCommands,
@@ -1114,10 +1114,10 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 	return nil
 }
 
-func validateCreateHosts(p *model.Project) ValidationErrors {
+func validateHostCreates(p *model.Project) ValidationErrors {
 	counts := tasksThatCallHostCreateByProvider(p)
-	errs := validateTimesCalledPerTask(p, counts.All, evergreen.CreateHostCommandName, HostCreateLimitPerTask, Error)
-	errs = append(errs, validateCreateHostTotals(p, counts)...)
+	errs := validateTimesCalledPerTask(p, counts.All, evergreen.HostCreateCommandName, HostCreateLimitPerTask, Error)
+	errs = append(errs, validateHostCreateTotals(p, counts)...)
 	return errs
 }
 
@@ -1138,7 +1138,7 @@ func tasksThatCallHostCreateByProvider(p *model.Project) hostCreateCounts {
 			continue
 		}
 		for _, c := range cmds.List() {
-			if c.Command == evergreen.CreateHostCommandName {
+			if c.Command == evergreen.HostCreateCommandName {
 				provider, ok := c.Params["provider"]
 				if ok && provider.(string) == evergreen.ProviderNameDocker {
 					dockerFs[f] += 1
@@ -1167,7 +1167,7 @@ func tasksThatCallHostCreateByProvider(p *model.Project) hostCreateCounts {
 					counts.All[t.Name] += times
 				}
 			}
-			if c.Command == evergreen.CreateHostCommandName {
+			if c.Command == evergreen.HostCreateCommandName {
 				provider, ok := c.Params["provider"]
 				if ok && provider.(string) == evergreen.ProviderNameDocker {
 					counts.Docker[t.Name] += 1
@@ -1200,7 +1200,7 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 	return errs
 }
 
-func validateCreateHostTotals(p *model.Project, counts hostCreateCounts) ValidationErrors {
+func validateHostCreateTotals(p *model.Project, counts hostCreateCounts) ValidationErrors {
 	errs := ValidationErrors{}
 	dockerTotal := 0
 	ec2Total := 0
@@ -1213,13 +1213,13 @@ func validateCreateHostTotals(p *model.Project, counts hostCreateCounts) Validat
 	}
 	if ec2Total > EC2HostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf(errorFmt, "ec2", evergreen.CreateHostCommandName, EC2HostCreateTotalLimit, ec2Total),
+			Message: fmt.Sprintf(errorFmt, "ec2", evergreen.HostCreateCommandName, EC2HostCreateTotalLimit, ec2Total),
 			Level:   Error,
 		})
 	}
 	if dockerTotal > DockerHostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf(errorFmt, "docker", evergreen.CreateHostCommandName, DockerHostCreateTotalLimit, dockerTotal),
+			Message: fmt.Sprintf(errorFmt, "docker", evergreen.HostCreateCommandName, DockerHostCreateTotalLimit, dockerTotal),
 			Level:   Error,
 		})
 	}
