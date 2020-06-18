@@ -29,7 +29,10 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters = "|"
+	unauthorizedCharacters     = "|"
+	EC2HostCreateTotalLimit    = 75
+	DockerHostCreateTotalLimit = 200
+	HostCreateLimitPerTask     = 3
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -105,7 +108,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
-	validateCreateHosts,
+	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateTaskSyncCommands,
@@ -1111,14 +1114,77 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 	return nil
 }
 
-func validateCreateHosts(p *model.Project) ValidationErrors {
-	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
-	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3, Error)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 75)...)
+func validateHostCreates(p *model.Project) ValidationErrors {
+	counts := tasksThatCallHostCreateByProvider(p)
+	errs := validateTimesCalledPerTask(p, counts.All, evergreen.HostCreateCommandName, HostCreateLimitPerTask, Error)
+	errs = append(errs, validateHostCreateTotals(p, counts)...)
 	return errs
 }
 
-func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) (errs ValidationErrors) {
+type hostCreateCounts struct {
+	Docker map[string]int
+	EC2    map[string]int
+	All    map[string]int
+}
+
+// tasksThatCallHostCreateByProvider is similar to TasksThatCallCommand in the model package, except the output is
+// split into host.create for Docker hosts and host.create for non-docker hosts, so limits can be validated separately.
+func tasksThatCallHostCreateByProvider(p *model.Project) hostCreateCounts {
+	// get all functions that call the command.
+	ec2Fs := map[string]int{}
+	dockerFs := map[string]int{}
+	for f, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
+		for _, c := range cmds.List() {
+			if c.Command == evergreen.HostCreateCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					dockerFs[f] += 1
+				} else {
+					ec2Fs[f] += 1
+				}
+			}
+		}
+	}
+
+	// get all tasks that call the command.
+	counts := hostCreateCounts{
+		Docker: map[string]int{},
+		EC2:    map[string]int{},
+		All:    map[string]int{},
+	}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if times, ok := ec2Fs[c.Function]; ok {
+					counts.EC2[t.Name] += times
+					counts.All[t.Name] += times
+				}
+				if times, ok := dockerFs[c.Function]; ok {
+					counts.Docker[t.Name] += times
+					counts.All[t.Name] += times
+				}
+			}
+			if c.Command == evergreen.HostCreateCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					counts.Docker[t.Name] += 1
+					counts.All[t.Name] += 1
+				} else {
+					counts.EC2[t.Name] += 1
+					counts.All[t.Name] += 1
+				}
+			}
+		}
+	}
+
+	return counts
+}
+
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if count, ok := ts[t.Name]; ok {
@@ -1134,18 +1200,26 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 	return errs
 }
 
-func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
-	total := 0
+func validateHostCreateTotals(p *model.Project, counts hostCreateCounts) ValidationErrors {
+	errs := ValidationErrors{}
+	dockerTotal := 0
+	ec2Total := 0
+	errorFmt := "project config may only call %s %s %d time(s) but it is called %d time(s)"
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			if count, ok := ts[t.Name]; ok {
-				total += count
-			}
+			dockerTotal += counts.Docker[t.Name]
+			ec2Total += counts.EC2[t.Name]
 		}
 	}
-	if total > times {
+	if ec2Total > EC2HostCreateTotalLimit {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("project config may only call %s %d time(s) but it is called %d time(s)", commandName, times, total),
+			Message: fmt.Sprintf(errorFmt, "ec2", evergreen.HostCreateCommandName, EC2HostCreateTotalLimit, ec2Total),
+			Level:   Error,
+		})
+	}
+	if dockerTotal > DockerHostCreateTotalLimit {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf(errorFmt, "docker", evergreen.HostCreateCommandName, DockerHostCreateTotalLimit, dockerTotal),
 			Level:   Error,
 		})
 	}
