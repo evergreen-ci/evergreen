@@ -244,11 +244,10 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 		return errors.Wrap(err, "error getting task dependencies")
 	}
 
-	ids := []string{t.Id}
-	ids = append(ids, t.ExecutionTasks...)
+	ids := append([]string{t.Id}, t.ExecutionTasks...)
 	depIDs := make([]string, 0, len(depTasks))
-	for _, task := range depTasks {
-		depIDs = append(depIDs, task.Id)
+	for _, depTask := range depTasks {
+		depIDs = append(depIDs, depTask.Id)
 	}
 
 	tasks, err := task.FindAll(db.Query(bson.M{
@@ -265,8 +264,8 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	}
 
 	taskIDs := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		taskIDs = append(taskIDs, task.Id)
+	for _, taskToUpdate := range tasks {
+		taskIDs = append(taskIDs, taskToUpdate.Id)
 	}
 	_, err = task.UpdateAll(
 		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
@@ -275,12 +274,12 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "can't update priority")
 	}
-	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, caller, priority)
+	for _, modifiedTask := range tasks {
+		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, caller, priority)
 	}
 
 	//blacklisted - deactivate the task
-	if priority < 0 {
+	if priority <= evergreen.BlacklistPriority {
 		var deactivatedTasks []task.Task
 		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
 			return errors.Wrap(err, "can't deactivate task")

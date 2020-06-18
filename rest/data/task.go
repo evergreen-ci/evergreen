@@ -150,8 +150,7 @@ func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority i
 	if t == nil {
 		return errors.New("task cannot be nil")
 	}
-	err := model.SetTaskPriority(*t, priority, user)
-	return err
+	return model.SetTaskPriority(*t, priority, user)
 }
 
 // SetTaskPriority changes the priority value of a task using a call to the
