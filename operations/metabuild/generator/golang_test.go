@@ -32,6 +32,28 @@ func TestGolangGenerate(t *testing.T) {
 		assert.EqualValues(t, g.Environment["GOROOT"], env["GOROOT"])
 	}
 
+	checkTaskWithVariant := func(t *testing.T, g *Golang, gv model.GolangVariant, task *shrub.Task) {
+		require.Len(t, task.Commands, 2)
+
+		env := model.MergeEnvironments(g.Environment, gv.Environment)
+		gopath := env["GOPATH"]
+
+		getProjectCmd := task.Commands[0]
+		assert.Equal(t, shrub.CmdGetProject{}.Name(), getProjectCmd.CommandName)
+		projectPath := g.RelProjectPath(gopath)
+		assert.Equal(t, projectPath, getProjectCmd.Params["directory"])
+
+		scriptingCmd := task.Commands[1]
+		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
+		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
+		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
+		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
+		taskEnv, ok := scriptingCmd.Params["env"].(map[string]interface{})
+		require.True(t, ok)
+		goroot := env["GOROOT"]
+		assert.EqualValues(t, goroot, taskEnv["GOROOT"])
+	}
+
 	checkTaskInTaskGroup := func(t *testing.T, g *Golang, task *shrub.Task) {
 		require.Len(t, task.Commands, 1)
 		scriptingCmd := task.Commands[0]
@@ -213,6 +235,27 @@ func TestGolangGenerate(t *testing.T) {
 			conf, err := g.Generate()
 			assert.Error(t, err)
 			assert.Zero(t, conf)
+		},
+		"VariantGOPATHOverridesGlobalGOPATH": func(t *testing.T, g *Golang) {
+			g.Packages = []model.GolangPackage{
+				{Path: "path"},
+			}
+			g.Variants = []model.GolangVariant{
+				{
+					VariantDistro: model.VariantDistro{
+						Name:    "variant",
+						Distros: []string{"distro"},
+					},
+					Packages: []model.GolangVariantPackage{
+						{Path: "path"},
+					},
+				},
+			}
+			g.Variants[0].Environment = map[string]string{"GOPATH": "variant_gopath"}
+			conf, err := g.Generate()
+			require.NoError(t, err)
+			require.Len(t, conf.Tasks, 1)
+			checkTaskWithVariant(t, g, g.Variants[0], conf.Task(getTaskName(g.Variants[0].Name, g.Packages[0].Path)))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

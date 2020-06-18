@@ -37,6 +37,11 @@ type GolangGeneralConfig struct {
 	// RootPackage is the name of the root package for the project (e.g.
 	// github.com/mongodb/jasper).
 	RootPackage string `yaml:"root_package"`
+	// DiscoverSourceFiles determines whether or not source files will also be
+	// taken into consideration when automatically discovering packages. By
+	// default, packages will only be discovered if they contain test files
+	// (i.e. file that ends in "_test.go").
+	DiscoverSourceFiles bool `yaml:"discover_source_files,omitempty"`
 }
 
 func (ggc *GolangGeneralConfig) Validate() error {
@@ -280,8 +285,10 @@ func (g *Golang) validateVariants() error {
 }
 
 const (
-	// golangTestFileSuffix is the suffix indicating that a golang file is meant to
-	// be run as a test.
+	// golangFileSuffix is the suffix for a golang file.
+	golangFileSuffix = ".go"
+	// golangTestFileSuffix is the suffix indicating that a golang file is meant
+	// to be run as a test.
 	golangTestFileSuffix = "_test.go"
 	// golangVendorDir is the special vendor directory for vendoring
 	// dependencies.
@@ -318,7 +325,9 @@ func (g *Golang) DiscoverPackages() error {
 		if info.IsDir() {
 			return nil
 		}
-		if !strings.Contains(fileName, golangTestFileSuffix) {
+		if g.DiscoverSourceFiles && !strings.HasSuffix(fileName, golangFileSuffix) {
+			return nil
+		} else if !g.DiscoverSourceFiles && !strings.HasSuffix(fileName, golangTestFileSuffix) {
 			return nil
 		}
 		dir := filepath.Dir(path)

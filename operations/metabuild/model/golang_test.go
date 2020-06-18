@@ -703,11 +703,11 @@ func TestDiscoverPackages(t *testing.T) {
 			g.RootPackage = "foo"
 			assert.Error(t, g.DiscoverPackages())
 		},
-		"DoesNotDiscoverPackageWithoutTestFiles": func(t *testing.T, g *Golang, rootPath string) {
+		"DoesNotDiscoverPackageWithoutFiles": func(t *testing.T, g *Golang, rootPath string) {
 			assert.NoError(t, g.DiscoverPackages())
 			assert.Empty(t, g.Packages)
 		},
-		"DiscoversPackageIfTestFilesPresent": func(t *testing.T, g *Golang, rootPath string) {
+		"FindsIfTestFilesPresent": func(t *testing.T, g *Golang, rootPath string) {
 			f, err := os.Create(filepath.Join(rootPath, "fake_test.go"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
@@ -717,6 +717,29 @@ func TestDiscoverPackages(t *testing.T) {
 			assert.Equal(t, ".", g.Packages[0].Path)
 			assert.Empty(t, g.Packages[0].Name)
 			assert.Empty(t, g.Packages[0].Tags)
+		},
+		"DoesNotFindWithOnlySourceFiles": func(t *testing.T, g *Golang, rootPath string) {
+			f, err := os.Create(filepath.Join(rootPath, "fake.go"))
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+			assert.NoError(t, g.DiscoverPackages())
+			assert.Empty(t, g.Packages)
+		},
+		"FindsWithSourceFileDiscoveryIfSourcesFilesPresent": func(t *testing.T, g *Golang, rootPath string) {
+			f, err := os.Create(filepath.Join(rootPath, "fake.go"))
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+			g.DiscoverSourceFiles = true
+			assert.NoError(t, g.DiscoverPackages())
+			require.Len(t, g.Packages, 1)
+			assert.Equal(t, ".", g.Packages[0].Path)
+			assert.Empty(t, g.Packages[0].Name)
+			assert.Empty(t, g.Packages[0].Tags)
+		},
+		"DoesNotFindWithSourceFileDiscoveryWithoutFiles": func(t *testing.T, g *Golang, rootPath string) {
+			g.DiscoverSourceFiles = true
+			assert.NoError(t, g.DiscoverPackages())
+			assert.Empty(t, g.Packages)
 		},
 		"DoesNotModifyPackageDefinitionIfAlreadyDefined": func(t *testing.T, g *Golang, rootPath string) {
 			gp := GolangPackage{
@@ -739,6 +762,16 @@ func TestDiscoverPackages(t *testing.T) {
 			vendorDir := filepath.Join(rootPath, golangVendorDir)
 			require.NoError(t, os.Mkdir(vendorDir, 0777))
 			f, err := os.Create(filepath.Join(vendorDir, "fake_test.go"))
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+
+			assert.NoError(t, g.DiscoverPackages())
+			assert.Empty(t, g.Packages)
+		},
+		"IgnoresTestDataDirectory": func(t *testing.T, g *Golang, rootPath string) {
+			testDataDir := filepath.Join(rootPath, golangTestDataDir)
+			require.NoError(t, os.Mkdir(testDataDir, 0777))
+			f, err := os.Create(filepath.Join(testDataDir, "fake_test.go"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
 

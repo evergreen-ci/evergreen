@@ -45,10 +45,8 @@ func (g *Golang) Generate() (*shrub.Configuration, error) {
 				tasksForVariant = append(tasksForVariant, newTasks...)
 			}
 
-			gopath := g.Environment["GOPATH"]
-			if val := gv.Environment["GOPATH"]; val != "" {
-				gopath = val
-			}
+			env := model.MergeEnvironments(g.Environment, gv.Environment)
+			gopath := env["GOPATH"]
 			projectPath := g.RelProjectPath(gopath)
 			getProjectCmd := shrub.CmdGetProject{
 				Directory: projectPath,
@@ -103,10 +101,8 @@ func (g *Golang) generateVariantTasksForRef(c *shrub.Configuration, gv model.Gol
 }
 
 func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangPackage) *shrub.CmdSubprocessScripting {
-	gopath := g.Environment["GOPATH"]
-	if val := gv.Environment["GOPATH"]; val != "" {
-		gopath = val
-	}
+	env := model.MergeEnvironments(g.Environment, gp.Environment, gv.Environment)
+	gopath := env["GOPATH"]
 	projectPath := g.RelProjectPath(gopath)
 
 	testOpts := gp.Flags
@@ -119,8 +115,6 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 		relPath = "./" + relPath
 	}
 	testOpts = append(testOpts, relPath)
-
-	env := model.MergeEnvironments(g.Environment, gp.Environment, gv.Environment)
 
 	return &shrub.CmdSubprocessScripting{
 		Harness:     "golang",
