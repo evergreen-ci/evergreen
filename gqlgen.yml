@@ -44,6 +44,8 @@ models:
         resolver: true
       spawnHostLink:
         resolver: true
+      status:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:
@@ -82,3 +84,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  ClientConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
+  ClientBinary:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
+  UseSpruceOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  UseSpruceOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions

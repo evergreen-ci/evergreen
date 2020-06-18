@@ -569,9 +569,10 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 	if p.IsPRMergePatch() {
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
 	}
-	removed, err := cq.Remove(issue)
+
+	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove item '%s' from queue '%s'", t.Version, projectRef.Identifier)
+		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Identifier)
 	}
 	if !removed {
 		return nil

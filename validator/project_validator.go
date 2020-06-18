@@ -218,7 +218,7 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 		model.ParserProject `yaml:"pp,inline"`
 		// Variables is only used to suppress yaml unmarshalling errors related
 		// to a non-existent variables field.
-		Variables interface{} `yaml:"variables" bson:"-"`
+		Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 	}{}
 
 	if err := yaml.UnmarshalStrict(yamlBytes, &strictProjectWithVariables); err != nil {
@@ -574,8 +574,13 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		}
 		buildVariantNames[buildVariant.Name] = true
 		dispName := buildVariant.DisplayName
-		if dispName == "" { // Default display name to the actual name (identifier)
-			dispName = buildVariant.Name
+		if dispName == "" {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("project '%s' buildvariant '%s' does not have a display name",
+						project.Identifier, buildVariant.Name),
+				},
+			)
 		}
 		displayNames[dispName] = displayNames[dispName] + 1
 
@@ -1109,7 +1114,7 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3, Error)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 50)...)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 75)...)
 	return errs
 }
 

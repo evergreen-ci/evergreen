@@ -60,6 +60,18 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 	}
 
+	ClientBinary struct {
+		Arch        func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		OS          func(childComplexity int) int
+		URL         func(childComplexity int) int
+	}
+
+	ClientConfig struct {
+		ClientBinaries func(childComplexity int) int
+		LatestRevision func(childComplexity int) int
+	}
+
 	CommitQueue struct {
 		ProjectID func(childComplexity int) int
 		Queue     func(childComplexity int) int
@@ -160,6 +172,7 @@ type ComplexityRoot struct {
 		Activated           func(childComplexity int) int
 		Alias               func(childComplexity int) int
 		Author              func(childComplexity int) int
+		BaseTaskStatuses    func(childComplexity int) int
 		BaseVersionID       func(childComplexity int) int
 		Builds              func(childComplexity int) int
 		CommitQueuePosition func(childComplexity int) int
@@ -174,6 +187,7 @@ type ComplexityRoot struct {
 		ProjectId           func(childComplexity int) int
 		Status              func(childComplexity int) int
 		TaskCount           func(childComplexity int) int
+		TaskStatuses        func(childComplexity int) int
 		Tasks               func(childComplexity int) int
 		Time                func(childComplexity int) int
 		Variants            func(childComplexity int) int
@@ -237,6 +251,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AwsRegions         func(childComplexity int) int
+		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
@@ -247,6 +263,7 @@ type ComplexityRoot struct {
 		TaskLogs           func(childComplexity int, taskID string) int
 		TaskTests          func(childComplexity int, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User               func(childComplexity int) int
+		UserConfig         func(childComplexity int) int
 		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
 		UserSettings       func(childComplexity int) int
 	}
@@ -338,6 +355,7 @@ type ComplexityRoot struct {
 	TaskLogLinks struct {
 		AgentLogLink  func(childComplexity int) int
 		AllLogLink    func(childComplexity int) int
+		EventLogLink  func(childComplexity int) int
 		SystemLogLink func(childComplexity int) int
 		TaskLogLink   func(childComplexity int) int
 	}
@@ -373,8 +391,21 @@ type ComplexityRoot struct {
 		TestFile  func(childComplexity int) int
 	}
 
+	UseSpruceOptions struct {
+		HasUsedSpruceBefore func(childComplexity int) int
+		SpruceV1            func(childComplexity int) int
+	}
+
 	User struct {
 		DisplayName func(childComplexity int) int
+		UserID      func(childComplexity int) int
+	}
+
+	UserConfig struct {
+		APIKey        func(childComplexity int) int
+		APIServerHost func(childComplexity int) int
+		UIServerHost  func(childComplexity int) int
+		User          func(childComplexity int) int
 	}
 
 	UserPatches struct {
@@ -383,11 +414,12 @@ type ComplexityRoot struct {
 	}
 
 	UserSettings struct {
-		GithubUser    func(childComplexity int) int
-		Notifications func(childComplexity int) int
-		Region        func(childComplexity int) int
-		SlackUsername func(childComplexity int) int
-		Timezone      func(childComplexity int) int
+		GithubUser       func(childComplexity int) int
+		Notifications    func(childComplexity int) int
+		Region           func(childComplexity int) int
+		SlackUsername    func(childComplexity int) int
+		Timezone         func(childComplexity int) int
+		UseSpruceOptions func(childComplexity int) int
 	}
 
 	VariantTask struct {
@@ -422,6 +454,8 @@ type PatchResolver interface {
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 	Builds(ctx context.Context, obj *model.APIPatch) ([]*model.APIBuild, error)
 	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
+	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
+	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
@@ -436,6 +470,9 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
+	AwsRegions(ctx context.Context) ([]string, error)
+	UserConfig(ctx context.Context) (*UserConfig, error)
+	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -445,6 +482,8 @@ type TaskResolver interface {
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
+
+	Status(ctx context.Context, obj *model.APITask) (string, error)
 
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -517,6 +556,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
+
+	case "ClientBinary.arch":
+		if e.complexity.ClientBinary.Arch == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.Arch(childComplexity), true
+
+	case "ClientBinary.displayName":
+		if e.complexity.ClientBinary.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.DisplayName(childComplexity), true
+
+	case "ClientBinary.os":
+		if e.complexity.ClientBinary.OS == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.OS(childComplexity), true
+
+	case "ClientBinary.url":
+		if e.complexity.ClientBinary.URL == nil {
+			break
+		}
+
+		return e.complexity.ClientBinary.URL(childComplexity), true
+
+	case "ClientConfig.clientBinaries":
+		if e.complexity.ClientConfig.ClientBinaries == nil {
+			break
+		}
+
+		return e.complexity.ClientConfig.ClientBinaries(childComplexity), true
+
+	case "ClientConfig.latestRevision":
+		if e.complexity.ClientConfig.LatestRevision == nil {
+			break
+		}
+
+		return e.complexity.ClientConfig.LatestRevision(childComplexity), true
 
 	case "CommitQueue.projectId":
 		if e.complexity.CommitQueue.ProjectID == nil {
@@ -1013,6 +1094,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Author(childComplexity), true
 
+	case "Patch.baseTaskStatuses":
+		if e.complexity.Patch.BaseTaskStatuses == nil {
+			break
+		}
+
+		return e.complexity.Patch.BaseTaskStatuses(childComplexity), true
+
 	case "Patch.baseVersionID":
 		if e.complexity.Patch.BaseVersionID == nil {
 			break
@@ -1110,6 +1198,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.TaskCount(childComplexity), true
+
+	case "Patch.taskStatuses":
+		if e.complexity.Patch.TaskStatuses == nil {
+			break
+		}
+
+		return e.complexity.Patch.TaskStatuses(childComplexity), true
 
 	case "Patch.tasks":
 		if e.complexity.Patch.Tasks == nil {
@@ -1321,6 +1416,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Projects.OtherProjects(childComplexity), true
 
+	case "Query.awsRegions":
+		if e.complexity.Query.AwsRegions == nil {
+			break
+		}
+
+		return e.complexity.Query.AwsRegions(childComplexity), true
+
+	case "Query.clientConfig":
+		if e.complexity.Query.ClientConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.ClientConfig(childComplexity), true
+
 	case "Query.commitQueue":
 		if e.complexity.Query.CommitQueue == nil {
 			break
@@ -1430,6 +1539,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.User(childComplexity), true
+
+	case "Query.userConfig":
+		if e.complexity.Query.UserConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.UserConfig(childComplexity), true
 
 	case "Query.userPatches":
 		if e.complexity.Query.UserPatches == nil {
@@ -1926,6 +2042,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogLinks.AllLogLink(childComplexity), true
 
+	case "TaskLogLinks.eventLogLink":
+		if e.complexity.TaskLogLinks.EventLogLink == nil {
+			break
+		}
+
+		return e.complexity.TaskLogLinks.EventLogLink(childComplexity), true
+
 	case "TaskLogLinks.systemLogLink":
 		if e.complexity.TaskLogLinks.SystemLogLink == nil {
 			break
@@ -2073,12 +2196,61 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.TestFile(childComplexity), true
 
+	case "UseSpruceOptions.hasUsedSpruceBefore":
+		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.HasUsedSpruceBefore(childComplexity), true
+
+	case "UseSpruceOptions.spruceV1":
+		if e.complexity.UseSpruceOptions.SpruceV1 == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.SpruceV1(childComplexity), true
+
 	case "User.displayName":
 		if e.complexity.User.DisplayName == nil {
 			break
 		}
 
 		return e.complexity.User.DisplayName(childComplexity), true
+
+	case "User.userId":
+		if e.complexity.User.UserID == nil {
+			break
+		}
+
+		return e.complexity.User.UserID(childComplexity), true
+
+	case "UserConfig.api_key":
+		if e.complexity.UserConfig.APIKey == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.APIKey(childComplexity), true
+
+	case "UserConfig.api_server_host":
+		if e.complexity.UserConfig.APIServerHost == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.APIServerHost(childComplexity), true
+
+	case "UserConfig.ui_server_host":
+		if e.complexity.UserConfig.UIServerHost == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.UIServerHost(childComplexity), true
+
+	case "UserConfig.user":
+		if e.complexity.UserConfig.User == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.User(childComplexity), true
 
 	case "UserPatches.filteredPatchCount":
 		if e.complexity.UserPatches.FilteredPatchCount == nil {
@@ -2128,6 +2300,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UserSettings.Timezone(childComplexity), true
+
+	case "UserSettings.useSpruceOptions":
+		if e.complexity.UserSettings.UseSpruceOptions == nil {
+			break
+		}
+
+		return e.complexity.UserSettings.UseSpruceOptions(childComplexity), true
 
 	case "VariantTask.name":
 		if e.complexity.VariantTask.Name == nil {
@@ -2245,6 +2424,9 @@ var sources = []*ast.Source{
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  awsRegions: [String!]
+  userConfig: UserConfig
+  clientConfig: ClientConfig
 }
 
 type Mutation {
@@ -2326,6 +2508,7 @@ input UserSettingsInput {
   githubUser: GithubUserInput
   slackUsername: String
   notifications: NotificationsInput
+  useSpruceOptions: UseSpruceOptionsInput
 }
 input SelectorInput {
   type: String!
@@ -2335,6 +2518,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+input UseSpruceOptionsInput {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -2404,6 +2592,8 @@ type Patch {
   project: PatchProject
   builds: [Build!]!
   commitQueuePosition: Int
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
 }
 
 type Build {
@@ -2455,6 +2645,7 @@ type TaskLogLinks {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
+  eventLogLink: String
 }
 
 type TaskEndDetail {
@@ -2544,7 +2735,7 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  baseTaskMetadata: BaseTaskMetadata!
+  baseTaskMetadata: BaseTaskMetadata
   canRestart: Boolean!
   canAbort: Boolean!
   canSchedule: Boolean!
@@ -2577,6 +2768,7 @@ type File {
 
 type User {
   displayName: String!
+  userId: String!
 }
 
 type RecentTaskLogs {
@@ -2634,6 +2826,12 @@ type UserSettings {
   githubUser: GithubUser
   slackUsername: String
   notifications: Notifications
+  useSpruceOptions: UseSpruceOptions
+}
+
+type UseSpruceOptions {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
@@ -2659,6 +2857,24 @@ type Notifications {
   spawnHostOutcome: String
   commitQueue: String
 }
+type UserConfig {
+  user: String!
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
+}
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  os: String
+  url: String
+  displayName: String
+}
+
 scalar Time
 scalar Duration
 scalar StringMap
@@ -3497,6 +3713,192 @@ func (ec *executionContext) _Build_actualMakespan(ctx context.Context, field gra
 	res := resTmp.(model.APIDuration)
 	fc.Result = res
 	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Arch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_os(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_url(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientBinary_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientBinary",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientConfig_clientBinaries(ctx context.Context, field graphql.CollectedField, obj *model.APIClientConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientBinaries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIClientBinary)
+	fc.Result = res
+	return ec.marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ClientConfig_latestRevision(ctx context.Context, field graphql.CollectedField, obj *model.APIClientConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ClientConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LatestRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueue_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
@@ -6182,6 +6584,74 @@ func (ec *executionContext) _Patch_commitQueuePosition(ctx context.Context, fiel
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Patch_taskStatuses(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().TaskStatuses(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_baseTaskStatuses(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().BaseTaskStatuses(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7479,6 +7949,99 @@ func (ec *executionContext) _Query_userSettings(ctx context.Context, field graph
 	return ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AwsRegions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_userConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().UserConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*UserConfig)
+	fc.Result = res
+	return ec.marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_clientConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ClientConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIClientConfig)
+	fc.Result = res
+	return ec.marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8695,13 +9258,13 @@ func (ec *executionContext) _Task_status(ctx context.Context, field graphql.Coll
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
+		return ec.resolvers.Task().Status(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8713,9 +9276,9 @@ func (ec *executionContext) _Task_status(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_details(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -8990,14 +9553,11 @@ func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*BaseTaskMetadata)
 	fc.Result = res
-	return ec.marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
+	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_canRestart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -9802,6 +10362,37 @@ func (ec *executionContext) _TaskLogLinks_taskLogLink(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskLogLinks_eventLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskLogLinks",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogLink, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskResult_id(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10430,6 +11021,68 @@ func (ec *executionContext) _TestResult_endTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UseSpruceOptions",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasUsedSpruceBefore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UseSpruceOptions",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpruceV1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10462,6 +11115,176 @@ func (ec *executionContext) _User_displayName(ctx context.Context, field graphql
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _User_userId(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "User",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserConfig_user(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserConfig_api_key(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.APIKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserConfig_api_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.APIServerHost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserConfig_ui_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UIServerHost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UserPatches_patches(ctx context.Context, field graphql.CollectedField, obj *UserPatches) (ret graphql.Marshaler) {
@@ -10685,6 +11508,37 @@ func (ec *executionContext) _UserSettings_notifications(ctx context.Context, fie
 	res := resTmp.(*model.APINotificationPreferences)
 	fc.Result = res
 	return ec.marshalONotifications2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UserSettings_useSpruceOptions(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UserSettings",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UseSpruceOptions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIUseSpruceOptions)
+	fc.Result = res
+	return ec.marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
@@ -12032,6 +12886,30 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Context, obj interface{}) (model.APIUseSpruceOptions, error) {
+	var it model.APIUseSpruceOptions
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "hasUsedSpruceBefore":
+			var err error
+			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spruceV1":
+			var err error
+			it.SpruceV1, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context, obj interface{}) (model.APIUserSettings, error) {
 	var it model.APIUserSettings
 	var asMap = obj.(map[string]interface{})
@@ -12065,6 +12943,12 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 		case "notifications":
 			var err error
 			it.Notifications, err = ec.unmarshalONotificationsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "useSpruceOptions":
+			var err error
+			it.UseSpruceOptions, err = ec.unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -12177,6 +13061,62 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var clientBinaryImplementors = []string{"ClientBinary"}
+
+func (ec *executionContext) _ClientBinary(ctx context.Context, sel ast.SelectionSet, obj *model.APIClientBinary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientBinaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientBinary")
+		case "arch":
+			out.Values[i] = ec._ClientBinary_arch(ctx, field, obj)
+		case "os":
+			out.Values[i] = ec._ClientBinary_os(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._ClientBinary_url(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._ClientBinary_displayName(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var clientConfigImplementors = []string{"ClientConfig"}
+
+func (ec *executionContext) _ClientConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIClientConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientConfig")
+		case "clientBinaries":
+			out.Values[i] = ec._ClientConfig_clientBinaries(ctx, field, obj)
+		case "latestRevision":
+			out.Values[i] = ec._ClientConfig_latestRevision(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12839,6 +13779,34 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				res = ec._Patch_commitQueuePosition(ctx, field, obj)
 				return res
 			})
+		case "taskStatuses":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_taskStatuses(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "baseTaskStatuses":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_baseTaskStatuses(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13354,6 +14322,39 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_userSettings(ctx, field)
 				return res
 			})
+		case "awsRegions":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_awsRegions(ctx, field)
+				return res
+			})
+		case "userConfig":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_userConfig(ctx, field)
+				return res
+			})
+		case "clientConfig":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_clientConfig(ctx, field)
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -13569,10 +14570,19 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "status":
-			out.Values[i] = ec._Task_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_status(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "details":
 			out.Values[i] = ec._Task_details(ctx, field, obj)
 		case "timeTaken":
@@ -13598,9 +14608,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_baseTaskMetadata(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "canRestart":
@@ -13835,6 +14842,8 @@ func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._TaskLogLinks_systemLogLink(ctx, field, obj)
 		case "taskLogLink":
 			out.Values[i] = ec._TaskLogLinks_taskLogLink(ctx, field, obj)
+		case "eventLogLink":
+			out.Values[i] = ec._TaskLogLinks_eventLogLink(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14011,6 +15020,32 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var useSpruceOptionsImplementors = []string{"UseSpruceOptions"}
+
+func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APIUseSpruceOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, useSpruceOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
+		case "hasUsedSpruceBefore":
+			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
+		case "spruceV1":
+			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var userImplementors = []string{"User"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.APIUser) graphql.Marshaler {
@@ -14024,6 +15059,53 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("User")
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "userId":
+			out.Values[i] = ec._User_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var userConfigImplementors = []string{"UserConfig"}
+
+func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSet, obj *UserConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserConfig")
+		case "user":
+			out.Values[i] = ec._UserConfig_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "api_key":
+			out.Values[i] = ec._UserConfig_api_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "api_server_host":
+			out.Values[i] = ec._UserConfig_api_server_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ui_server_host":
+			out.Values[i] = ec._UserConfig_ui_server_host(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -14091,6 +15173,8 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserSettings_slackUsername(ctx, field, obj)
 		case "notifications":
 			out.Values[i] = ec._UserSettings_notifications(ctx, field, obj)
+		case "useSpruceOptions":
+			out.Values[i] = ec._UserSettings_useSpruceOptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14379,20 +15463,6 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) marshalNBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
-	return ec._BaseTaskMetadata(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._BaseTaskMetadata(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -14456,6 +15526,10 @@ func (ec *executionContext) marshalNBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 		return graphql.Null
 	}
 	return ec._Build(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
+	return ec._ClientBinary(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNCommitQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueue(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueue) graphql.Marshaler {
@@ -15825,6 +16899,17 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
+	return ec._BaseTaskMetadata(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._BaseTaskMetadata(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -15846,6 +16931,57 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalOClientConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx context.Context, sel ast.SelectionSet, v model.APIClientConfig) graphql.Marshaler {
+	return ec._ClientConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIClientConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ClientConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueItemᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APICommitQueueItem) graphql.Marshaler {
@@ -16377,6 +17513,40 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 		return graphql.Null
 	}
 	return ec.marshalOTime2timeᚐTime(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOUseSpruceOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v model.APIUseSpruceOptions) graphql.Marshaler {
+	return ec._UseSpruceOptions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v *model.APIUseSpruceOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UseSpruceOptions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUseSpruceOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, v interface{}) (model.APIUseSpruceOptions, error) {
+	return ec.unmarshalInputUseSpruceOptionsInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, v interface{}) (*model.APIUseSpruceOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOUseSpruceOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalOUserConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx context.Context, sel ast.SelectionSet, v UserConfig) graphql.Marshaler {
+	return ec._UserConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx context.Context, sel ast.SelectionSet, v *UserConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UserConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {

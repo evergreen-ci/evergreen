@@ -66,8 +66,8 @@ func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) myPatchesTimeline(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	if user.Settings.UseSpruceOptions.PatchPage {
-		http.Redirect(w, r, fmt.Sprintf("%s/patches/user/%s", uis.Settings.Ui.UIv2Url, user.Username()), http.StatusTemporaryRedirect)
+	if user.Settings.UseSpruceOptions.SpruceV1 {
+		http.Redirect(w, r, fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username()), http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -97,10 +97,16 @@ func (uis *UIServer) projectPatchesTimeline(w http.ResponseWriter, r *http.Reque
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Author string
+	newUILink := ""
+	if len(author) > 0 && len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, author)
+	}
+	pageData := struct {
+		Author    string
+		NewUILink string
 		ViewData
-	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")
+	}{author, newUILink, uis.GetCommonViewData(w, r, false, true)}
+	uis.render.WriteResponse(w, http.StatusOK, pageData, "base", "patches.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {

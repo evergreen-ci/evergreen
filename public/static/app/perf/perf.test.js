@@ -53,6 +53,37 @@ describe("PerfPluginTests", function () {
       });
     });
 
+    it("should update state in location hash", () => {
+      makeController();
+      expect(scope.makeHash().toString()).toBe("threads=maxonly");
+
+      scope.hiddenGraphs = {
+        graph1: true
+      }
+      expect(scope.makeHash().toString()).toBe("hidden=graph1&threads=maxonly");
+
+      scope.savedCompares = [{
+          hash: "abc"
+        },
+        {
+          tag: "myTag"
+        }
+      ]
+      expect(scope.makeHash().toString()).toBe("hidden=graph1&comparehashes=abc&comparetags=myTag&threads=maxonly");
+
+      scope.metricSelect = {
+        value: {
+          key: "latency",
+          name: "Latency"
+        }
+      }
+      expect(scope.makeHash().toString()).toBe("hidden=graph1&comparehashes=abc&comparetags=myTag&metric=latency&threads=maxonly");
+
+      scope.selectedThreads = {
+        test1: [1, 16]
+      }
+      expect(scope.makeHash().toString()).toBe("hidden=graph1&comparehashes=abc&comparetags=myTag&metric=latency&threads=maxonly&selected.test1=1%2C16");
+    })
   });
   it("expanded metrics data should be converted correctly to legacy data", function () {
     var converter = $filter("expandedMetricConverter");

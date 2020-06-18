@@ -142,30 +142,8 @@ type jiraTemplateData struct {
 	TaskDisplayName    string
 }
 
-func makeSpecificTaskStatus(t *task.Task) string {
-	if t.Status == evergreen.TaskSucceeded {
-		return evergreen.TaskSucceeded
-	}
-	if t.Details.Type == evergreen.CommandTypeSystem {
-		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
-			return evergreen.TaskSystemUnresponse
-		}
-		if t.Details.TimedOut {
-			return evergreen.TaskSystemTimedOut
-		}
-		return evergreen.TaskSystemFailed
-	}
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		return evergreen.TaskSetupFailed
-	}
-	if t.Details.TimedOut {
-		return evergreen.TaskTimedOut
-	}
-	return evergreen.TaskFailed
-}
-
 func makeSummaryPrefix(t *task.Task, failed int) string {
-	s := makeSpecificTaskStatus(t)
+	s := t.GetDisplayStatus()
 	switch {
 	case s == evergreen.TaskSucceeded:
 		return "Succeeded: "
@@ -189,7 +167,7 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 }
 
 func (j *jiraBuilder) build() (*message.JiraIssue, error) {
-	j.data.SpecificTaskStatus = makeSpecificTaskStatus(j.data.Task)
+	j.data.SpecificTaskStatus = j.data.Task.GetDisplayStatus()
 	description, err := j.getDescription()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating description")

@@ -23,7 +23,8 @@ mciModule.factory('DrawPerfTrendChart', function (
       threadMode = params.threadMode,
       linearMode = params.linearMode,
       originMode = params.originMode,
-      metric = params.metric;
+      metric = params.metric,
+      activeThreads = params.activeThreads;
 
     const nearestByOrder = (sample, point) => sample.order >= point.order;
 
@@ -119,7 +120,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         const data = {
           name: d,
           idx: i,
-          isActive: true,
+          isActive: activeThreads ? _.contains(activeThreads, String(d)) : true,
         };
 
         const match = cfg.knownLevels[d];
@@ -134,8 +135,8 @@ mciModule.factory('DrawPerfTrendChart', function (
     function updateActiveLevels() {
       activeLevels = levelsMeta.filter(meta => meta.isActive);
       activeLevelNames = activeLevels.map(level => level.name)
-      if (params.updateThreadLevels) {
-        params.updateThreadLevels(_.pluck(activeLevels, "name"));
+      if (params.getThreadLevels) {
+        params.getThreadLevels(_.pluck(activeLevels, "name"));
       }
     }
 
@@ -710,19 +711,19 @@ mciModule.factory('DrawPerfTrendChart', function (
           'stroke-width': '4',
         });
 
-        // Walk backwards and find the index of the first non-null value.
-        const changePointIndex = (index, getValueFor) => {
-          while(getValueFor(index) == null) {
-            if (index <= 0) {
-              index = 0;
-              break;
-            }
-            index -= 1;
+      // Walk backwards and find the index of the first non-null value.
+      const changePointIndex = (index, getValueFor) => {
+        while (getValueFor(index) == null) {
+          if (index <= 0) {
+            index = 0;
+            break;
           }
-          return index;
-        };
+          index -= 1;
+        }
+        return index;
+      };
 
-        changePointSegments.select('line')
+      changePointSegments.select('line')
         .transition()
         .attr({
           x1: function (d) {

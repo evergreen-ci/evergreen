@@ -29,20 +29,22 @@ type APIHost struct {
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
+// the yaml tags are used by hostCreate() when parsing the params from a file
 type HostRequestOptions struct {
-	DistroID             string     `json:"distro"`
-	TaskID               string     `json:"task"`
-	TaskSync             bool       `json:"task_sync"`
-	Region               string     `json:"region"`
-	KeyName              string     `json:"keyname"`
-	UserData             string     `json:"userdata"`
-	InstanceTags         []host.Tag `json:"instance_tags"`
-	InstanceType         string     `json:"instance_type"`
-	NoExpiration         bool       `json:"no_expiration"`
-	IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
-	IsCluster            bool       `json:"is_cluster"`
-	HomeVolumeSize       int        `json:"home_volume_size"`
-	HomeVolumeID         string     `json:"home_volume_id"`
+	DistroID             string     `json:"distro" yaml:"distro"`
+	TaskID               string     `json:"task" yaml:"task"`
+	TaskSync             bool       `json:"task_sync" yaml:"task_sync"`
+	Region               string     `json:"region" yaml:"region"`
+	KeyName              string     `json:"keyname" yaml:"key"`
+	UserData             string     `json:"userdata" yaml:"userdata_file"`
+	Tag                  string     `yaml:"tag"`
+	InstanceTags         []host.Tag `json:"instance_tags" yaml:"instance_tags"`
+	InstanceType         string     `json:"instance_type" yaml:"type"`
+	NoExpiration         bool       `json:"no_expiration" yaml:"no-expire"`
+	IsVirtualWorkstation bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
+	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
+	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
+	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
 }
 
 type DistroInfo struct {

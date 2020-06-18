@@ -19,7 +19,7 @@ import (
 
 const (
 	buildingContainerImageJobName = "building-container-image"
-	containerBuildRetries         = 5
+	containerBuildRetries         = 8
 )
 
 func init() {

@@ -63,7 +63,7 @@ describe('DrawPerfTrendChartTest', function () {
       threadMode: 'all',
       linearMode: true,
       originMode: true,
-      updateThreadLevels: checkThreadLevels
+      getThreadLevels: checkThreadLevels
     };
 
     document.getElementById = function () {

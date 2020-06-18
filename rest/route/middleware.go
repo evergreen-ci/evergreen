@@ -170,17 +170,17 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
-func NewHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
-	return &HostAuthMiddleware{
+func NewTaskHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &TaskHostAuthMiddleware{
 		sc: sc,
 	}
 }
 
-type HostAuthMiddleware struct {
+type TaskHostAuthMiddleware struct {
 	sc data.Connector
 }
 
-func (m *HostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
 	hostID, ok := vars["host_id"]
 	if !ok {
@@ -193,7 +193,22 @@ func (m *HostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	if code, err := m.sc.CheckHostSecret(hostID, r); err != nil {
+	h, err := m.sc.FindHostById(hostID)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+	}
+
+	if h.StartedBy == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Host was not started by task",
+		}))
+	}
+	t, err := m.sc.FindTaskById(h.StartedBy)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+	}
+	if code, err := m.sc.CheckHostSecret(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),

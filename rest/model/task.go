@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	LogLinkFormat = "%s/task_log_raw/%s/%d?type=%s"
+	TaskLogLinkFormat  = "%s/task_log_raw/%s/%d?type=%s"
+	EventLogLinkFormat = "%s/event_log/task/%s"
 )
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
@@ -44,6 +45,7 @@ type APITask struct {
 	Execution          int                 `json:"execution"`
 	Order              int                 `json:"order"`
 	Status             *string             `json:"status"`
+	DisplayStatus      *string             `json:"display_status"`
 	Details            ApiTaskEndDetail    `json:"status_details"`
 	Logs               LogLinks            `json:"logs"`
 	TimeTaken          APIDuration         `json:"time_taken_ms"`
@@ -72,6 +74,7 @@ type LogLinks struct {
 	TaskLogLink   *string `json:"task_log"`
 	AgentLogLink  *string `json:"agent_log"`
 	SystemLogLink *string `json:"system_log"`
+	EventLogLink  *string `json:"event_log"`
 }
 
 type ApiTaskEndDetail struct {
@@ -186,6 +189,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Execution:         v.Execution,
 			Order:             v.RevisionOrderNumber,
 			Status:            ToStringPtr(v.Status),
+			DisplayStatus:     ToStringPtr(v.GetDisplayStatus()),
 			TimeTaken:         NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:     v.Cost,
@@ -234,10 +238,11 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 	case string:
 		ll := LogLinks{
-			AllLogLink:    ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: ToStringPtr(fmt.Sprintf(LogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "S")),
+			AllLogLink:    ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
+			TaskLogLink:   ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
+			AgentLogLink:  ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
+			SystemLogLink: ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "S")),
+			EventLogLink:  ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, FromStringPtr(at.Id))),
 		}
 		at.Logs = ll
 	default:
@@ -266,6 +271,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
 		Status:              FromStringPtr(ad.Status),
+		DisplayStatus:       FromStringPtr(ad.DisplayStatus),
 		TimeTaken:           ad.TimeTaken.ToDuration(),
 		ExpectedDuration:    ad.ExpectedDuration.ToDuration(),
 		Cost:                ad.EstimatedCost,

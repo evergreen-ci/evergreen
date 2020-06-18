@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -81,7 +82,7 @@ func TestListHostsForTask(t *testing.T) {
 	require.NoError((&build.Build{Id: "build_1"}).Insert())
 
 	c := DBCreateHostConnector{}
-	found, err := c.ListHostsForTask("task_1")
+	found, err := c.ListHostsForTask(context.Background(), "task_1")
 	assert.NoError(err)
 	require.Len(found, 3)
 	assert.Equal("4.com", found[0].Host)
@@ -332,7 +333,8 @@ buildvariants:
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
+		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 
 	t1 := task.Task{
 		Id:           "t1",
@@ -379,16 +381,20 @@ buildvariants:
 	assert.NoError(h1.Insert())
 
 	parent := distro.Distro{
-		Id: "parent-distro",
-		// PoolSize: 3,
-		Provider: evergreen.ProviderNameMock,
+		Id:       "parent-distro",
+		Provider: evergreen.ProviderNameDockerMock,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 3,
 		},
 	}
 	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
+	settings, err := evergreen.GetConfig()
+	assert.NoError(err)
+	settings.ContainerPools = poolConfig
+	assert.NoError(evergreen.UpdateConfig(settings))
 	parentHost := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -396,11 +402,15 @@ buildvariants:
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: pool,
+		ContainerPoolSettings: &pool,
 	}
 	require.NoError(parentHost.Insert())
 
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	d := distro.Distro{
+		Id:            "distro",
+		Provider:      evergreen.ProviderNameDockerMock,
+		ContainerPool: pool.Id,
+	}
 	require.NoError(d.Insert())
 
 	p := model.ProjectRef{
@@ -413,8 +423,7 @@ buildvariants:
 	assert.NoError(pvars.Insert())
 
 	dc := DBCreateHostConnector{}
-	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
-	assert.NoError(err)
+	assert.NoError(dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -96,6 +97,41 @@ func TestReqestPanicLoggerWithPanic(t *testing.T) {
 	fields, ok := m.Message.Raw().(message.Fields)
 	assert.True(ok)
 	fmt.Println(fields)
+}
+
+func TestReqestPanicLoggerWithErrAbortHandler(t *testing.T) {
+	assert := assert.New(t)
+
+	sender, err := send.NewInternalLogger("test", grip.GetSender().Level())
+	assert.NoError(err)
+	middlewear := NewRecoveryLogger(logging.MakeGrip(sender))
+
+	next := func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	}
+	req := &http.Request{
+		URL:    &url.URL{},
+		Header: http.Header{},
+	}
+	testrw := httptest.NewRecorder()
+	rw := negroni.NewResponseWriter(testrw)
+
+	startAt := getNumber()
+	middlewear.ServeHTTP(rw, req, next)
+
+	assert.Equal(startAt+2, getNumber())
+	assert.True(sender.HasMessage())
+
+	// get the second message
+	assert.Equal(sender.Len(), 2)
+	_, _ = sender.GetMessageSafe()
+	m, ok := sender.GetMessageSafe()
+	assert.True(ok)
+	assert.NotNil(m)
+	assert.Equal(level.Debug, m.Priority)
+	fields, ok := m.Message.Raw().(message.Fields)
+	assert.True(ok)
+	assert.Equal("hit suppressed abort panic", fields["message"])
 }
 
 func TestDefaultGripMiddlwareSetters(t *testing.T) {

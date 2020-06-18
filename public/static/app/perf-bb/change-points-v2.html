@@ -1,3 +1,14 @@
+<div class="toolbar">
+  <div class="control-group">
+    <span class="legend">Actions:</span>
+    <select ng-options="action as action.title for action in actions"
+    ng-model="selectedAction"></select>
+    <button ng-disabled="isNoActionSelected()"
+      ng-click="triagePoints()"
+      class="btn btn-sm btn-success"
+    >Triage Points</button>
+  </div>
+</div>
 <div
   class="grid"
   ui-grid="gridOptions"
@@ -19,6 +30,9 @@
   <div class="error" ng-if="errorMessage">
     <p>Failed to load list: [[errorMessage]]</p>
   </div>
+  <div class="error" ng-if="connectionError">
+    <p>It appears we can not reach the performance analysis and triage service. This may be an authentication failure; please follow <a href=[[getAuthenticationUrl()]]>this link</a> and let us know if the issue persists.</p>
+  </div>
   <div class="page-selection">
     <p ng-click="prevPage()"><</p><p>Page [[page+1]] of [[totalPages]]</p><p ng-click="nextPage()">></p>
   </div>
@@ -33,7 +47,7 @@
 
 <style>
 .ui-grid {
-  height:80%
+  height:80%;
 }
 .error {
   color: red

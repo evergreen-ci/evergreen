@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -56,6 +57,7 @@ type uiTaskData struct {
 	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
+	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display,omitempty"`
 	OverrideDependencies bool                    `json:"override_dependencies"`
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
@@ -132,8 +134,21 @@ type logData struct {
 	User        gimlet.User
 }
 
+type abortedByDisplay struct {
+	TaskDisplayName     string `json:"task_display_name"`
+	BuildVariantDisplay string `json:"build_variant_display"`
+}
+
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+
+	if r.FormValue("redirect_spruce_users") == "true" {
+		user := MustHaveUser(r)
+		if user.Settings.UseSpruceOptions.SpruceV1 {
+			http.Redirect(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id), http.StatusTemporaryRedirect)
+			return
+		}
+	}
 
 	if projCtx.Task == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -399,6 +414,19 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
+	}
+
+	if uiTask.AbortInfo.TaskID != "" {
+		abortedBy, err := getAbortedBy(projCtx.Task.AbortInfo.TaskID)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		uiTask.AbortedByDisplay = abortedBy
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task          uiTaskData
@@ -406,8 +434,29 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		JiraHost      string
 		Permissions   gimlet.Permissions
+		NewUILink     string
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+}
+
+func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
+	abortedTask, err := task.FindOne(task.ById(abortedByTaskId))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting abortedBy task")
+	}
+	buildDisplay, err := build.FindOne(build.ById(abortedTask.BuildId))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting abortedBy build")
+	}
+	if buildDisplay == nil || abortedTask == nil {
+		return nil, errors.New("problem getting abortBy display information")
+	}
+	abortedBy := &abortedByDisplay{
+		TaskDisplayName:     abortedTask.DisplayName,
+		BuildVariantDisplay: buildDisplay.DisplayName,
+	}
+
+	return abortedBy, nil
 }
 
 type taskHistoryPageData struct {

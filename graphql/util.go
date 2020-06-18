@@ -108,17 +108,13 @@ func IsURL(str string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// BaseTaskStatuses represents the format {buildVariant: {displayName: status}} for base task statuses
-type BaseTaskStatuses map[string]map[string]string
-
-// GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
-func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskStatuses, error) {
-	version, err := r.sc.FindVersionById(patchID)
+func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error) {
+	version, err := d.FindVersionById(versionID)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting version %s: %s", patchID, err.Error())
+		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
 	}
 	if version == nil {
-		return nil, fmt.Errorf("No version found for ID %s", patchID)
+		return nil, fmt.Errorf("No version found for ID %s", versionID)
 	}
 	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(version.Identifier, version.Revision))
 	if err != nil {
@@ -134,13 +130,24 @@ func GetBaseTaskStatusesFromPatchID(r *queryResolver, patchID string) (BaseTaskS
 	if baseTasks == nil {
 		return nil, fmt.Errorf("No tasks found for version %s", baseVersion.Id)
 	}
+	return baseTasks, nil
+}
 
+// BaseTaskStatuses represents the format {buildVariant: {displayName: status}} for base task statuses
+type BaseTaskStatuses map[string]map[string]string
+
+// GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
+func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskStatuses, error) {
+	baseTasks, err := getVersionBaseTasks(d, patchID)
+	if err != nil {
+		return nil, err
+	}
 	baseTaskStatusesByDisplayNameByVariant := make(map[string]map[string]string)
 	for _, task := range baseTasks {
 		if _, ok := baseTaskStatusesByDisplayNameByVariant[task.BuildVariant]; !ok {
 			baseTaskStatusesByDisplayNameByVariant[task.BuildVariant] = map[string]string{}
 		}
-		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.Status
+		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.GetDisplayStatus()
 	}
 	return baseTaskStatusesByDisplayNameByVariant, nil
 }
@@ -527,4 +534,19 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
 	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
 	return &canRestart, nil
+}
+
+func getAllTaskStatuses(tasks []task.Task) []string {
+	statusesMap := map[string]bool{}
+	for _, task := range tasks {
+		statusesMap[task.GetDisplayStatus()] = true
+	}
+	statusesArr := []string{}
+	for key := range statusesMap {
+		statusesArr = append(statusesArr, key)
+	}
+	sort.SliceStable(statusesArr, func(i, j int) bool {
+		return statusesArr[i] < statusesArr[j]
+	})
+	return statusesArr
 }

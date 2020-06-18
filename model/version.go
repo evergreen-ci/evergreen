@@ -159,6 +159,7 @@ type VersionMetadata struct {
 	Message             string
 	Alias               string
 	PeriodicBuildID     string
+	RemotePath          string
 	GitTag              GitTag
 }
 

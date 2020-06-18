@@ -1,0 +1,15 @@
+command_type: test
+stepback: true
+
+tasks:
+  - name: task1
+  - name: task2
+
+buildvariants:
+  - name: buildvariant
+    display_name: something
+    run_on:
+      - somedistro
+    tasks:
+      - name: task1
+      - name: task2

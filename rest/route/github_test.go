@@ -256,6 +256,9 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 
 	s.True(triggersRetry("created", commentString))
 	s.False(triggersRetry("deleted", commentString))
+
+	//test whitespace trimming
+	s.True(triggersRetry("created", "  evergreen retry "))
 }
 
 func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
@@ -311,4 +314,29 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	// try dequeue returns no error if no projectRef matches the PR
 	owner = "octocat"
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+}
+
+func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
+	//createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
+	//revision model.Revision, tag model.GitTag)
+	tag := model.GitTag{
+		Tag:    "release",
+		Pusher: "release-bot",
+	}
+	s.sc.Aliases = []restModel.APIProjectAlias{
+		{
+			Alias:      restModel.ToStringPtr(evergreen.GitTagAlias),
+			GitTag:     restModel.ToStringPtr("release"),
+			RemotePath: restModel.ToStringPtr("rest/route/testdata/release.yml"),
+		},
+	}
+	pRef := model.ProjectRef{
+		Identifier:            "my-project",
+		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
+		GitTagVersionsEnabled: true,
+	}
+	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
+	s.NoError(err)
+	s.NotNil(v)
 }

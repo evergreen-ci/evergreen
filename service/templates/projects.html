@@ -19,13 +19,13 @@
 Evergreen Projects
 {{end}}
 {{define "content"}}
-<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-hide="isAdmin">
+<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="!(trackedProjects.length>0)">
   <div class="row" style="text-align: center; margin-top:50px;" ng-cloak>
-    <h1>Looks like you're not an admin... awkward.</h1>
+    <h1>Looks like you don't have view permissions... awkward.</h1>
     <h2> If you need access, please contact your Evergreen administrator. </h2>
   </div>
 </div>
-<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="isAdmin">
+<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="trackedProjects.length>0">
   <div class="col-lg-2 col-lg-offset-1">
     <h1> Projects</h1>
     <div class="row" ng-show="create">
@@ -95,7 +95,7 @@ Evergreen Projects
         </div>
       </div>
     </div>
-    <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
+    <div ng-show="trackedProjects.length>0"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
       <fieldset style="display:inline-block;" ng-disabled="permissions.project_settings<20">
       <div class ="form-group">
@@ -234,7 +234,10 @@ Evergreen Projects
             </div>
           </div>
           <div class="h3">Repotracker Settings</div>
-          <div class="form-group">
+          <div class="project-error" ng-hide="github_webhooks_enabled">
+             Webhooks must be enabled to run the repotracker. Webhooks are enabled after saving with a valid repository and branch.
+          </div>
+          <div class="form-group" ng-show="github_webhooks_enabled">
               <div class="col-lg-5 col-header">
                   <div>
                       <label class="control-label">Disable Repotracker&nbsp;&nbsp;
@@ -242,28 +245,18 @@ Evergreen Projects
                       </label>
                       <div class="muted small">Ignore commits pushed to the repo</div>
                   </div>
-                  <div ng-hide="settingsFormData.repotracker_disabled || !github_webhooks_enabled">
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be automatically run every few minutes</label>
-                    </div>
-                    <div class="radio">
-                        <label class="control-label">
-                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="true"> <strong> Trigger Repotracker via PushEvents</strong>
-                        </label> <br>
-                        <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
+                  <div ng-hide="settingsFormData.repotracker_disabled">
+                    <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks.</label>
+                    <div class="col-lg-8 col-header">
+                      <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
+                        <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
+                      </label>
                     </div>
                   </div>
               </div>
               <br />
-              <div class="col-lg-8 col-header">
-                <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
-                  <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
-                </label>
-              </div>
           </div>
+
         </div>
 
         <div id="logging-info">
@@ -278,7 +271,7 @@ Evergreen Projects
         <div ng-include="'static/partials/subscription_list.html'">
         </div>
 
-        <div class="variables" ng-show="isAdmin">
+        <div class="variables" ng-show="trackedProjects.length>0">
           <div class="form-group">
             <div class="col-header col-lg-8 form-control-static"> <h3>Patch Settings</h3> </div>
           </div>
@@ -291,7 +284,7 @@ Evergreen Projects
           </div>
         </div>
 
-        <div class="variables" ng-show="isAdmin">
+        <div class="variables" ng-show="trackedProjects.length>0">
           <div class="form-group">
             <div class="col-header col-lg-8 form-control-static"> <h3>Task Sync</h3> </div>
             <div class="col-lg-8">
@@ -363,7 +356,7 @@ Evergreen Projects
                 <div ng-show="github_webhooks_enabled">
                   GitHub webhooks are enabled.
                 </div>
-                <div class="project-error" ng-show="!github_webhooks_enabled">
+                <div class="project-error" ng-hide="github_webhooks_enabled">
                   <div>GitHub Pull Request testing and the commit queue are disabled because webhooks are not enabled. Webhooks are enabled after saving with a repository and branch.</div>
                 </div>
             </div>
@@ -390,10 +383,72 @@ Evergreen Projects
                   <label for="prtesting-checkbox">Enable Github PR Testing</label>
               </div>
           </div>
-          <!-- GIT TAGS -->
-          <div class="authorized_for_git_tags"> <!-- after functionality is finished, change to ng-show="github_webhooks_enabled" -->
+          <!-- GITHUB PATCH DEFINITIONS -->
+          <div ng-show="settingsFormData.pr_testing_enabled === true && prTestingConflicts.length === 0">
             <div class="form-group">
-              <div class="col-header col-lg-4 form-control-static"> <h3> Users Authorized To Create Versions From Git Tags </h3></div>
+                <div class="col-header col-lg-6 form-control-static"> <h4> GitHub Patch Definitions </h4>
+                <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
+                </div>
+            </div>
+
+            <div id="patch-variants-list-header" class="form-group">
+                <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
+                <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+                <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
+                <div class="col-lg-2"></div>
+            </div>
+
+            <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_aliases track by $index">
+                <div class="col-lg-3">
+                  <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
+                </div>
+                <div class="col-lg-3">
+                  <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
+                </div>
+                <div class="col-lg-2">
+                  <tag-input klass="form-control" items="obj.tags" placeholder="tags (comma-delimited)" />
+                </div>
+                <div class="col-lg-4">
+                  <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubAlias($index)">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-lg-3">
+                  <input ng-model="github_alias.variant" class="form-control" type="text" placeholder="variant regex">
+                </div>
+                  <div class="col-lg-3">
+                <input ng-model="github_alias.task" class="form-control" type="text" placeholder="task regex">
+                </div>
+                <div class="col-lg-2">
+                  <tag-input klass="form-control" items="github_alias.tags" placeholder="tags (comma-delimited)" />
+                </div>
+                <div class="col-lg-4">
+                  <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias)" type="button" ng-click="addGithubAlias()">
+                    <i class="fa fa-plus"></i>
+                  </button>
+                <label class="distro-error">[[invalidGitHubPatchDefinitionMessage]]</label>
+                </div>
+            </div>
+          </div>
+
+          <!-- GIT TAGS -->
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static">
+              <h3>Trigger Versions With Git Tags</h3>
+            </div>
+          </div>
+          <div id="authorized_for_git_tags" class="form-group">
+            <div class="col-lg-6">
+              <input type="checkbox" id="git-tags-checkbox" ng-model="settingsFormData.git_tag_versions_enabled" />
+              <label for="git-tags-checkbox">Enable Triggering Versions With Git Tags</label>
+            </div>
+          </div>
+          <div ng-show="settingsFormData.git_tag_versions_enabled">
+            <div class="form-group">
+              <div class="col-header col-lg-4 form-control-static"> <h3> Github Users Authorized To Create Versions With Git Tags </h3></div>
             </div>
             <div id="gitTagUsersList" class="form-group" ng-repeat="(index, user) in settingsFormData.git_tag_authorized_users">
               <div class="col-lg-4"> <label class="control-label">[[user]]</label> </div>
@@ -482,57 +537,6 @@ Evergreen Projects
             </div>
           </div>
 
-
-          <!-- GITHUB PATCH DEFINITIONS -->
-          <div ng-show="settingsFormData.pr_testing_enabled === true && prTestingConflicts.length === 0">
-            <div class="form-group">
-                <div class="col-header col-lg-6 form-control-static"> <h4> GitHub Patch Definitions </h4>
-                <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
-                </div>
-            </div>
-
-            <div id="patch-variants-list-header" class="form-group">
-                <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
-                <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
-                <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
-                <div class="col-lg-2"></div>
-            </div>
-
-            <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_aliases track by $index">
-                <div class="col-lg-3">
-                  <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
-                </div>
-                <div class="col-lg-3">
-                  <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
-                </div>
-                <div class="col-lg-2">
-                  <tag-input klass="form-control" items="obj.tags" placeholder="tags (comma-delimited)" />
-                </div>
-                <div class="col-lg-4">
-                  <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubAlias($index)">
-                    <i class="fa fa-trash"></i>
-                  </button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <div class="col-lg-3">
-                  <input ng-model="github_alias.variant" class="form-control" type="text" placeholder="variant regex">
-                </div>
-                  <div class="col-lg-3">
-                <input ng-model="github_alias.task" class="form-control" type="text" placeholder="task regex">
-                </div>
-                <div class="col-lg-2">
-                  <tag-input klass="form-control" items="github_alias.tags" placeholder="tags (comma-delimited)" />
-                </div>
-                <div class="col-lg-4">
-                  <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias)" type="button" ng-click="addGithubAlias()">
-                    <i class="fa fa-plus"></i>
-                  </button>
-                <label class="distro-error">[[invalidGitHubPatchDefinitionMessage]]</label>
-                </div>
-            </div>
-          </div>
 
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> 

@@ -42,6 +42,7 @@ var (
 
 type Revision struct {
 	Author          string
+	AuthorID        string
 	AuthorGithubUID int
 	AuthorEmail     string
 	RevisionMessage string

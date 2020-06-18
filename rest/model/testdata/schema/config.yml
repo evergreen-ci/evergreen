@@ -1,0 +1,7 @@
+models:
+  Revision:
+    model: github.com/evergreen-ci/evergreen/model.Revision
+  GithubOpts:
+    model: github.com/mongodb/grip/send.GithubOptions
+  Scalars:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockScalars

@@ -18,6 +18,7 @@ import (
 
 type createHost struct {
 	CreateHost *apimodels.CreateHost
+	File       string
 	base
 }
 
@@ -33,11 +34,13 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 		c.CreateHost.Background = true
 	}
 
-	// if a filename is defined, get the params from the file
 	if _, ok := params["file"]; ok {
 		fileName := fmt.Sprintf("%v", params["file"])
-		return errors.Wrapf(utility.ReadYAMLFile(fileName, &c.CreateHost),
-			"error reading from file '%s'", fileName)
+		c.File = fileName
+		if len(params) > 1 {
+			return errors.New("no params should be defined when using a file to parse params")
+		}
+		return nil
 	}
 
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -50,7 +53,23 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(decoder.Decode(params), "error parsing '%s' params", c.Name())
 }
 
+func (c *createHost) parseParamsFromFile(fn string, conf *model.TaskConfig) error {
+	if !filepath.IsAbs(fn) {
+		fn = filepath.Join(conf.WorkDir, fn)
+	}
+	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost),
+		"error reading from file '%s'", fn)
+}
+
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
+	// if a filename is defined, then parseParams has not parsed the parameters yet,
+	// since the file was not yet available. it therefore needs to be parsed now.
+	if c.File != "" {
+		if err := c.parseParamsFromFile(c.File, conf); err != nil {
+			return err
+		}
+	}
+
 	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
 		return err
 	}

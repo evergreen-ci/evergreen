@@ -1,0 +1,9 @@
+type Scalars {
+  TimeType: Time
+  MapType: Map!
+  AnyType: Any!
+}
+
+scalar Time
+scalar Map
+scalar Any

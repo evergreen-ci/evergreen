@@ -24,9 +24,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
-// is authorized to view and edit the settings of.
-func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef, error) {
+// filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
+// is authorized to view
+func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
 	allProjects, err := model.FindAllProjectRefs()
 	if err != nil {
 		return nil, err
@@ -34,17 +34,18 @@ func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef
 	authorizedProjects := []model.ProjectRef{}
 	// only returns projects for which the user is authorized to see.
 	for _, project := range allProjects {
-		if isAdmin(u, &project) {
+		if hasViewPermission(u, &project) {
 			authorizedProjects = append(authorizedProjects, project)
 		}
 	}
 	return authorizedProjects, nil
 
 }
+
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -222,6 +223,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitTagAuthorizedUsers []string                       `json:"git_tag_authorized_users"`
 		TracksPushEvents      bool                           `json:"tracks_push_events"`
 		PRTestingEnabled      bool                           `json:"pr_testing_enabled"`
+		GitTagVersionsEnabled bool                           `json:"git_tag_versions_enabled"`
 		CommitQueue           restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync              restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled      bool                           `json:"patching_disabled"`
@@ -314,6 +316,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
+			projectRef.TracksPushEvents = true
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",
@@ -328,7 +331,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			projectRef.TracksPushEvents = false
 		}
 	}
-
+	var aliasesDefined bool
 	if responseRef.PRTestingEnabled {
 		if hook == nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
@@ -348,7 +351,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are PR aliases defined
-		var aliasesDefined bool
 		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
@@ -356,6 +358,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		if !aliasesDefined {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
+			return
+		}
+	}
+	// verify git tag alias parameters
+	if responseRef.GitTagVersionsEnabled {
+		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitTagAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
+			return
+		}
+		if !aliasesDefined {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
+			return
+		}
+		if len(responseRef.GitTagAuthorizedUsers) == 0 {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users to create git tag versions"))
 			return
 		}
 	}
@@ -450,6 +468,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
+	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
@@ -625,7 +644,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -686,7 +705,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		grip.Infof("Could not log new project %s", id)
 	}
 
-	allProjects, err := uis.filterAuthorizedProjects(dbUser)
+	allProjects, err := uis.filterViewableProjects(dbUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)

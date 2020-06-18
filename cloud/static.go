@@ -74,6 +74,10 @@ func (staticMgr *staticManager) GetDNSName(ctx context.Context, host *host.Host)
 	return host.Id, nil
 }
 
+func (m *staticManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with static provider")
+}
+
 // terminate an instance
 func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	// a decommissioned static host will be removed from the database

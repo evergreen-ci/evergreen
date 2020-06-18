@@ -148,6 +148,10 @@ func (m *vsphereManager) GetInstanceStatus(ctx context.Context, host *host.Host)
 	return vsphereToEvgStatus(state), nil
 }
 
+func (m *vsphereManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
+	return errors.New("can't set port mappings with vsphere provider")
+}
+
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {

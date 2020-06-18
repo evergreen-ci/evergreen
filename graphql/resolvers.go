@@ -187,6 +187,22 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 	return commitQueuePosition, nil
 }
 
+func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{task.DisplayStatusKey})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+	}
+	return getAllTaskStatuses(tasks), nil
+}
+
+func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
+	baseTasks, err := getVersionBaseTasks(r.sc, *obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
+	}
+	return getAllTaskStatuses(baseTasks), nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -437,11 +453,11 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if taskName != nil {
 		taskNameParam = *taskName
 	}
-	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statusesParam, variantParam, taskNameParam, sortDirParam, pageParam, limitParam, []string{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
-	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r, patchID)
+	baseTaskStatuses, err := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base task statuses for %s: %s", patchID, err.Error()))
 	}
@@ -750,7 +766,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0)
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, "", "", 1, 0, 0, []string{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
@@ -804,6 +820,38 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	}
 
 	return commitQueue, nil
+}
+
+func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
+	usr := route.MustHaveUser(ctx)
+	settings := evergreen.GetEnvironment().Settings()
+	config := &UserConfig{
+		User:          usr.Username(),
+		APIKey:        usr.GetAPIKey(),
+		UIServerHost:  settings.Ui.Url,
+		APIServerHost: settings.ApiUrl + "/api",
+	}
+
+	return config, nil
+}
+
+func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientConfig, error) {
+	envClientConfig := evergreen.GetEnvironment().ClientConfig()
+	clientConfig := restModel.APIClientConfig{}
+	err := clientConfig.BuildFromService(*envClientConfig)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIClientConfig from service: %s", err.Error()))
+	}
+
+	return &clientConfig, nil
+}
+
+func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
+	regions := []string{}
+	for _, item := range evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys {
+		regions = append(regions, item.Region)
+	}
+	return regions, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
@@ -1085,11 +1133,14 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	}
 	return true, nil
 }
+
 func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	displayName := usr.DisplayName()
+	userID := usr.Username()
 	user := restModel.APIUser{
 		DisplayName: &displayName,
+		UserID:      &userID,
 	}
 	return &user, nil
 }
@@ -1129,7 +1180,7 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
 	}
 	if baseTask == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task %s on base commit", *at.Id))
+		return nil, nil
 	}
 
 	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
@@ -1189,6 +1240,10 @@ func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask
 
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	return *obj.Status == evergreen.TaskUndispatched, nil
+}
+
+func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
+	return *obj.DisplayStatus, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

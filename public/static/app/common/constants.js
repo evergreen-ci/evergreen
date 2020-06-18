@@ -114,7 +114,7 @@ mciModule
   })
 
   .constant('API_V2', {
-    BASE: '/rest/v2',
+    BASE: 'https://evergreen.mongodb.com/rest/v2',
     PATCH_BY_ID: 'patches/{patch_id}',
     VERSION_BY_ID: 'versions/{version_id}',
     RECENT_VERSIONS: 'projects/{project_id}/recent_versions',
@@ -146,4 +146,6 @@ mciModule
   .constant("PERFORMANCE_ANALYSIS_AND_TRIAGE_API", {
     BASE:'https://signal-processing-service.server-tig.prod.corp.mongodb.com',
     CHANGE_POINTS_BY_VERSION: '/change_points/project/{projectId}/by_version',
+    AUTH_URL: 'https://login.corp.mongodb.com/login',
+    TRIAGE_POINTS: '/change_points/triage/mark'
   });

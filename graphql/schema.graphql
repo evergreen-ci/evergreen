@@ -36,6 +36,9 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  awsRegions: [String!]
+  userConfig: UserConfig
+  clientConfig: ClientConfig
 }
 
 type Mutation {
@@ -117,6 +120,7 @@ input UserSettingsInput {
   githubUser: GithubUserInput
   slackUsername: String
   notifications: NotificationsInput
+  useSpruceOptions: UseSpruceOptionsInput
 }
 input SelectorInput {
   type: String!
@@ -126,6 +130,11 @@ input SelectorInput {
 input SubscriberInput {
   type: String!
   target: String!
+}
+
+input UseSpruceOptionsInput {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 type PatchTasks {
@@ -195,6 +204,8 @@ type Patch {
   project: PatchProject
   builds: [Build!]!
   commitQueuePosition: Int
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
 }
 
 type Build {
@@ -246,6 +257,7 @@ type TaskLogLinks {
   agentLogLink: String
   systemLogLink: String
   taskLogLink: String
+  eventLogLink: String
 }
 
 type TaskEndDetail {
@@ -335,7 +347,7 @@ type Task {
   generateTask: Boolean
   generatedBy: String
   aborted: Boolean
-  baseTaskMetadata: BaseTaskMetadata!
+  baseTaskMetadata: BaseTaskMetadata
   canRestart: Boolean!
   canAbort: Boolean!
   canSchedule: Boolean!
@@ -368,6 +380,7 @@ type File {
 
 type User {
   displayName: String!
+  userId: String!
 }
 
 type RecentTaskLogs {
@@ -425,6 +438,12 @@ type UserSettings {
   githubUser: GithubUser
   slackUsername: String
   notifications: Notifications
+  useSpruceOptions: UseSpruceOptions
+}
+
+type UseSpruceOptions {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
 }
 
 input GithubUserInput {
@@ -450,6 +469,24 @@ type Notifications {
   spawnHostOutcome: String
   commitQueue: String
 }
+type UserConfig {
+  user: String!
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
+}
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  os: String
+  url: String
+  displayName: String
+}
+
 scalar Time
 scalar Duration
 scalar StringMap

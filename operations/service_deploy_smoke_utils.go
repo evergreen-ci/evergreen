@@ -56,12 +56,12 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) e
 	catcher := grip.NewSimpleCatcher()
 	grip.Info("Testing UI Endpoints")
 	for url, expected := range tests.UI {
-		catcher.Add(makeSmokeRequestAndCheck(username, key, client, url, expected))
+		catcher.Add(makeSmokeGetRequestAndCheck(username, key, client, url, expected))
 	}
 
 	grip.Info("Testing API Endpoints")
 	for url, expected := range tests.API {
-		catcher.Add(makeSmokeRequestAndCheck(username, key, client, "/api"+url, expected))
+		catcher.Add(makeSmokeGetRequestAndCheck(username, key, client, "/api"+url, expected))
 	}
 
 	grip.InfoWhen(!catcher.HasErrors(), "success: all endpoints accessible")
@@ -99,22 +99,34 @@ func checkTaskByCommit(username, key string) error {
 
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
+
+	// trigger repotracker
+	for i := 0; i < 5; i++ {
+		if i == 5 {
+			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
+		}
+		time.Sleep(2 * time.Second)
+		grip.Infof("running repotracker for evergreen project (%d/5)", i)
+		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
+		if err != nil {
+			grip.Error(err)
+			continue
+		}
+		break
+	}
 	for i := 0; i <= 30; i++ {
 		// get task id
 		if i == 30 {
 			return errors.New("error getting builds for version")
 		}
 		time.Sleep(10 * time.Second)
-
 		latest, err := getLatestGithubCommit()
 		if err != nil {
 			grip.Error(errors.Wrap(err, "error getting latest GitHub commit"))
 			continue
 		}
-
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
-
-		body, err := makeSmokeRequest(username, key, client, "/rest/v2/versions/evergreen_"+latest+"/builds")
+		body, err := makeSmokeRequest(username, key, http.MethodGet, client, "/rest/v2/versions/evergreen_"+latest+"/builds")
 		if err != nil {
 			grip.Error(err)
 			continue
@@ -171,7 +183,7 @@ OUTER:
 			for i := 0; i < 3; i++ {
 				grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
 				var body []byte
-				body, err = makeSmokeRequest(username, key, client, task.Logs["task_log"]+"&text=true")
+				body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
 				if err != nil {
 					err = errors.Wrap(err, "error getting log data")
 					grip.Debug(err)
@@ -269,12 +281,12 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 	return task, nil
 }
 
-func makeSmokeRequest(username, key string, client *http.Client, url string) ([]byte, error) {
+func makeSmokeRequest(username, key string, method string, client *http.Client, url string) ([]byte, error) {
 	grip.Infof("Getting endpoint '%s'", url)
 	if !strings.HasPrefix(url, smokeUrlPrefix) {
 		url = smokeUrlPrefix + smokeUiPort + url
 	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error forming request")
 	}
@@ -287,6 +299,7 @@ func makeSmokeRequest(username, key string, client *http.Client, url string) ([]
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting endpoint '%s'", url)
 	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
@@ -300,8 +313,8 @@ func makeSmokeRequest(username, key string, client *http.Client, url string) ([]
 	return body, nil
 }
 
-func makeSmokeRequestAndCheck(username, key string, client *http.Client, url string, expected []string) error {
-	body, err := makeSmokeRequest(username, key, client, url)
+func makeSmokeGetRequestAndCheck(username, key string, client *http.Client, url string, expected []string) error {
+	body, err := makeSmokeRequest(username, key, http.MethodGet, client, url)
 	grip.Error(err)
 	page := string(body)
 	catcher := grip.NewSimpleCatcher()

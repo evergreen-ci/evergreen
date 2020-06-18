@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -25,6 +26,16 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
+	}
+
+	if r.FormValue("redirect_spruce_users") == "true" {
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id), http.StatusTemporaryRedirect)
+				return
+			}
+		}
 	}
 
 	// Set the config to blank to avoid writing it to the UI unnecessarily.
@@ -201,14 +212,19 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
-
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool
 		JiraHost      string
+		NewUILink     string
 		ViewData
 	}{
+		NewUILink:     newUILink,
 		Version:       &versionAsUI,
 		PluginContent: pluginContent,
 		CanEdit:       canEdit,

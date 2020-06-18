@@ -115,7 +115,7 @@ Evergreen - My Hosts
               <td class="col-lg-2 no-word-wrap">
                 [[host.expires_in]]
               </td>
-              <td class="col-lg-2 no-word-wrap" ng-show="host.isStarted">
+              <td class="col-lg-2 no-word-wrap">
                 [[host.uptime]]
               </td>
               <td class="col-sm-2 no-word-wrap">
@@ -190,7 +190,7 @@ Evergreen - My Hosts
                 <span class= "no-word-wrap" ng-class="getVolumeStatusLabel(volume)" style="margin-right: 5px">[[volume.status]]</span>
               </td>
               <td class="col-lg-2 no-word-wrap">
-                [[volume.expires_in]]
+                [[ (volume.status != 'mounted' || volume.no_expiration) ?  volume.expires_in : "--" ]]
               </td>
               <td class="col-sm-2 no-word-wrap">
                 <i class="fa fa-trash pointer" ng-show="!volume.host_id" style="float: right" ng-click="openVolumeModal('deleteVolume')"></i>

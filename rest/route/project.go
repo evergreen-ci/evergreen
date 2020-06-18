@@ -285,6 +285,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.projectID))
 	}
 
+	adminsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
+	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...))      // get original and new admin
+	newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
+
+	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
+	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
+	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
+
 	if newProjectRef.Enabled {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, newProjectRef)
@@ -308,12 +316,33 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			if !ghAliasesDefined {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
-					Message:    "cannot enable PR testing without a PR patch definitions",
+					Message:    "cannot enable PR testing without a PR patch definition",
 				})
 			}
 
 			if err = h.sc.EnablePRTesting(newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
+			}
+		}
+
+		// verify enabling git tag versions is valid
+		if newProjectRef.GitTagVersionsEnabled {
+			var gitTagAliasesDefined bool
+			gitTagAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GitTagAlias)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
+			}
+			if !gitTagAliasesDefined {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "cannot enable git tag versions without a version definition",
+				})
+			}
+			if len(newProjectRef.GitTagAuthorizedUsers) == 0 {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "must authorize users to create git tag versions",
+				})
 			}
 		}
 
@@ -354,14 +383,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 	}
-
-	adminsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
-	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...))      // get original and new admin
-	newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
-
-	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
-	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
-	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
@@ -544,6 +565,43 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return responder
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/projects/{project_id}/repotracker
+
+type projectRepotrackerHandler struct {
+	projectID string
+	sc        data.Connector
+}
+
+func makeRunRepotrackerForProject(sc data.Connector) gimlet.RouteHandler {
+	return &projectRepotrackerHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectRepotrackerHandler) Factory() gimlet.RouteHandler {
+	return &projectRepotrackerHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectRepotrackerHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+	j := units.NewRepotrackerJob(fmt.Sprintf("rest-%s", ts), h.projectID)
+
+	queue := evergreen.GetEnvironment().RemoteQueue()
+	if err := queue.Put(ctx, j); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job from rest route"))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

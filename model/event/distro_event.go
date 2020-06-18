@@ -42,14 +42,17 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 	}
 }
 
+// LogDistroAdded should take in DistroData in order to preserve the ProviderSettingsList
 func LogDistroAdded(distroId, userId string, data interface{}) {
 	LogDistroEvent(distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
 }
 
+// LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
 func LogDistroModified(distroId, userId string, data interface{}) {
 	LogDistroEvent(distroId, EventDistroModified, DistroEventData{UserId: userId, Data: data})
 }
 
+// LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
 func LogDistroRemoved(distroId, userId string, data interface{}) {
 	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
 }

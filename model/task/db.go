@@ -79,6 +79,7 @@ var (
 	ResetWhenFinishedKey     = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                  = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey      = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
+	DisplayStatusKey         = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -127,6 +128,55 @@ var (
 	},
 	}
 	CompletedStatuses = []string{evergreen.TaskSucceeded, evergreen.TaskFailed}
+
+	addDisplayStatus = bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: bson.M{
+				"$switch": bson.M{
+					"branches": []bson.M{
+						{"case": bson.M{
+							"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
+						},
+							"then": evergreen.TaskSucceeded,
+						},
+						{"case": bson.M{
+							"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup},
+						},
+							"then": evergreen.TaskSetupFailed,
+						},
+						{"case": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+								{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
+							},
+						},
+							"then": evergreen.TaskSystemUnresponse,
+						},
+						{"case": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+								{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+							},
+						},
+							"then": evergreen.TaskSystemTimedOut,
+						},
+						{"case": bson.M{
+							"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem},
+						},
+							"then": evergreen.TaskSystemFailed,
+						},
+						{"case": bson.M{
+							"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
+						},
+							"then": evergreen.TaskTimedOut,
+						},
+					},
+					"default": "$" + StatusKey,
+				},
+			},
+		},
+	}
 )
 
 // ById creates a query that finds a task by its _id.
