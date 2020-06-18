@@ -1527,13 +1527,21 @@ func TestMarkDispatched(t *testing.T) {
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
-			So(MarkTaskDispatched(testTask, "testHost", "distroId"), ShouldBeNil)
+			sampleHost := &host.Host{
+				Id: "testHost",
+				Distro: &distro.Distro{
+					Id: "distroId",
+				},
+				AgentRevision: "testAgentVersion",
+			}
+			So(MarkTaskDispatched(testTask, sampleHost), ShouldBeNil)
 			var err error
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(testTask.HostId, ShouldEqual, "testHost")
 			So(testTask.DistroId, ShouldEqual, "distroId")
+			So(testTask.AgentVersion, ShouldEqual, "testAgentVersion")
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Tasks, ShouldNotBeNil)
