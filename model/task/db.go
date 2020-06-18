@@ -45,6 +45,7 @@ var (
 	NumDepsKey                = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey            = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	HostIdKey                 = bsonutil.MustHaveTag(Task{}, "HostId")
+	AgentVersionKey           = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey              = bsonutil.MustHaveTag(Task{}, "Execution")
 	RestartsKey               = bsonutil.MustHaveTag(Task{}, "Restarts")
 	OldTaskIdKey              = bsonutil.MustHaveTag(Task{}, "OldTaskId")

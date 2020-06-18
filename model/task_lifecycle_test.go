@@ -1529,7 +1529,7 @@ func TestMarkDispatched(t *testing.T) {
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			sampleHost := &host.Host{
 				Id: "testHost",
-				Distro: &distro.Distro{
+				Distro: distro.Distro{
 					Id: "distroId",
 				},
 				AgentRevision: "testAgentVersion",
