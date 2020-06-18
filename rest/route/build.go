@@ -118,7 +118,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err = b.sc.SetBuildPriority(b.buildId, priority); err != nil {
+		if err = b.sc.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}

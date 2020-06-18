@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -146,14 +147,24 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
 func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority int64) error {
-	err := t.SetPriority(priority, user)
-	return err
+	if t == nil {
+		return errors.New("task cannot be nil")
+	}
+	return model.SetTaskPriority(*t, priority, user)
 }
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
 func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
-	return errors.Wrap(serviceModel.SetActiveState(taskId, user, activated),
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", t.Id)
+	}
+
+	return errors.Wrap(serviceModel.SetActiveState(t, user, activated),
 		"Erorr setting task active")
 }
 

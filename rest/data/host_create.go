@@ -163,7 +163,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 }
 
 func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
-	if cmd.Command != evergreen.CreateHostCommandName {
+	if cmd.Command != evergreen.HostCreateCommandName {
 		return nil, nil
 	}
 	createHost := &apimodels.CreateHost{}

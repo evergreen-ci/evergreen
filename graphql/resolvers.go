@@ -875,8 +875,16 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
 	}
-	if err = t.SetPriority(int64(priority), authUser.Username()); err != nil {
+	if err = model.SetTaskPriority(*t, int64(priority), authUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
+	}
+
+	t, err = r.sc.FindTaskById(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err

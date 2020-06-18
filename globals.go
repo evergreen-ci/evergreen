@@ -121,6 +121,8 @@ const (
 	// maximum task priority
 	MaxTaskPriority = 100
 
+	BlacklistPriority = int64(-1)
+
 	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
@@ -356,7 +358,7 @@ const (
 
 const (
 	GenerateTasksCommandName = "generate.tasks"
-	CreateHostCommandName    = "host.create"
+	HostCreateCommandName    = "host.create"
 	S3PushCommandName        = "s3.push"
 	S3PullCommandName        = "s3.pull"
 )

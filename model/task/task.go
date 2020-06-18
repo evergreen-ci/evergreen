@@ -22,6 +22,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/simple"
+	"gonum.org/v1/gonum/graph/topo"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -82,14 +85,15 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated            bool         `bson:"activated" json:"activated"`
-	ActivatedBy          string       `bson:"activated_by" json:"activated_by"`
-	BuildId              string       `bson:"build_id" json:"build_id"`
-	DistroId             string       `bson:"distro" json:"distro"`
-	BuildVariant         string       `bson:"build_variant" json:"build_variant"`
-	DependsOn            []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	Activated                bool         `bson:"activated" json:"activated"`
+	ActivatedBy              string       `bson:"activated_by" json:"activated_by"`
+	DeactivatedForDependency bool         `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
+	BuildId                  string       `bson:"build_id" json:"build_id"`
+	DistroId                 string       `bson:"distro" json:"distro"`
+	BuildVariant             string       `bson:"build_variant" json:"build_variant"`
+	DependsOn                []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
@@ -444,6 +448,9 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+		if len(newDeps) != len(depIdsToQueryFor) {
+			return nil, errors.Errorf("task '%s' depends on non-existent tasks", t.Id)
+		}
 
 		// add queried dependencies to the cache
 		for _, newDep := range newDeps {
@@ -455,57 +462,58 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	return deps, nil
 }
 
-// DependenciesSatisfiable returns true when a dependency is satisfied
-// or could be satisfied in the future, and false if any of the first
-// order dependencies are blocked, checking the cache if necessary.
-//
-// Use dependencies met (which can also check the cache,) to figure
-// out if a task is runable.
-func (t *Task) DependencySatisfiable(depCache map[string]Task) (bool, error) {
+// RefreshBlockedDependencies manually rechecks first degree dependencies
+// when a task isn't marked as blocked. It returns a slice of this task's dependencies that
+// need to recursively update their dependencies
+func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]Task, error) {
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
-		return true, nil
+		return nil, nil
 	}
 
-	// do this early, if possible to avoid caching tasks that we
-	// won't need.
+	// do this early to avoid caching tasks we won't need.
 	for _, dep := range t.DependsOn {
 		if dep.Unattainable {
-			return false, nil
+			return nil, nil
 		}
 	}
 
-	deps, err := t.populateDependencyTaskCache(depCache)
+	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
+	blockedDeps := []Task{}
 	for _, dep := range t.DependsOn {
 		depTask, ok := depCache[dep.TaskId]
 		if !ok {
-			grip.Error(message.Fields{
-				"task_id":     t.Id,
-				"dep_task_id": depTask.Id,
-				"cache_size":  len(deps),
-				"operation":   "DependencySatisfiable",
-				"message":     "cache failure",
-			})
-			continue
+			return nil, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
 		}
-		if depTask.Blocked() {
-			return false, nil
-		}
-
-		if !t.SatisfiesDependency(&depTask) {
-			if depTask.IsFinished() {
-				return false, nil
-			}
-			if !depTask.Activated {
-				return false, nil
-			}
+		if !t.SatisfiesDependency(&depTask) && (depTask.IsFinished() || depTask.Blocked()) {
+			blockedDeps = append(blockedDeps, depTask)
 		}
 	}
 
-	return true, nil
+	return blockedDeps, nil
+}
+
+func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]string, error) {
+	_, err := t.populateDependencyTaskCache(depCache)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	blockingDeps := []string{}
+	for _, dep := range t.DependsOn {
+		depTask, ok := depCache[dep.TaskId]
+		if !ok {
+			return nil, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
+		}
+		if !depTask.IsFinished() && !depTask.Activated {
+			blockingDeps = append(blockingDeps, depTask.Id)
+		}
+	}
+
+	return blockingDeps, nil
 }
 
 // AllDependenciesSatisfied inspects the tasks first-order
@@ -873,39 +881,262 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 }
 
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
-func (t *Task) ActivateTask(caller string) error {
+func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller
 	t.Activated = true
 	t.ActivatedTime = time.Now()
-	return UpdateOne(
+
+	return ActivateTasks([]Task{*t}, t.ActivatedTime, caller)
+}
+
+func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Task, error) {
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+
+	_, err := UpdateAll(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: bson.M{"$in": taskIDs},
 		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
-				ActivatedTimeKey: t.ActivatedTime,
+				ActivatedTimeKey: activationTime,
 			},
 		})
+	if err != nil {
+		return nil, errors.Wrap(err, "can't activate tasks")
+	}
+	for _, t := range tasks {
+		event.LogTaskActivated(t.Id, t.Execution, caller)
+	}
+
+	activatedDependencies, err := ActivateDeactivatedDependencies(taskIDs, caller)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't activate dependencies")
+	}
+
+	return append(tasks, activatedDependencies...), nil
+}
+
+// ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
+// they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
+func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, error) {
+	taskMap := make(map[string]bool)
+	for _, t := range tasks {
+		taskMap[t] = true
+	}
+
+	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+	}
+
+	// do a topological sort so we've dealt with
+	// all a task's dependencies by the time we get up to it
+	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// get dependencies we don't have yet and add them to a map
+	tasksToGet := []string{}
+	depTaskMap := make(map[string]bool)
+	for _, t := range sortedDependencies {
+		depTaskMap[t.Id] = true
+
+		if t.Activated || !t.DeactivatedForDependency {
+			continue
+		}
+
+		for _, dep := range t.DependsOn {
+			if !taskMap[dep.TaskId] && !depTaskMap[dep.TaskId] {
+				tasksToGet = append(tasksToGet, dep.TaskId)
+			}
+		}
+	}
+
+	missingTaskMap := make(map[string]Task)
+	if len(tasksToGet) > 0 {
+		var missingTasks []Task
+		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get missing tasks")
+		}
+		for _, t := range missingTasks {
+			missingTaskMap[t.Id] = t
+		}
+	}
+
+	tasksToActivate := make(map[string]Task)
+	for _, t := range sortedDependencies {
+		if t.Activated || !t.DeactivatedForDependency {
+			continue
+		}
+
+		depsSatisfied := true
+		for _, dep := range t.DependsOn {
+			// not being activated now
+			if _, ok := tasksToActivate[dep.TaskId]; !ok && !taskMap[dep.TaskId] {
+				// and not already activated
+				if depTask := missingTaskMap[dep.TaskId]; !depTask.Activated {
+					depsSatisfied = false
+					break
+				}
+			}
+		}
+		if depsSatisfied {
+			tasksToActivate[t.Id] = t
+		}
+	}
+
+	if len(tasksToActivate) == 0 {
+		return nil, nil
+	}
+
+	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
+	for _, t := range tasksToActivate {
+		taskIDsToActivate = append(taskIDsToActivate, t.Id)
+	}
+	_, err = UpdateAll(
+		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
+		bson.M{"$set": bson.M{
+			ActivatedKey:                true,
+			DeactivatedForDependencyKey: false,
+			ActivatedByKey:              caller,
+			ActivatedTimeKey:            time.Now(),
+		}},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't update activation for dependencies")
+	}
+
+	taskSlice := make([]Task, 0, len(tasksToActivate))
+	for _, t := range tasksToActivate {
+		event.LogTaskActivated(t.Id, t.Execution, caller)
+		taskSlice = append(taskSlice, t)
+	}
+
+	return taskSlice, nil
+}
+
+func topologicalSort(tasks []Task) ([]Task, error) {
+	depGraph := simple.NewDirectedGraph()
+	taskNodeMap := make(map[string]graph.Node)
+	nodeTaskMap := make(map[int64]Task)
+
+	for _, task := range tasks {
+		node := depGraph.NewNode()
+		depGraph.AddNode(node)
+		nodeTaskMap[node.ID()] = task
+		taskNodeMap[task.Id] = node
+	}
+
+	for _, task := range tasks {
+		for _, dep := range task.DependsOn {
+			if toNode, ok := taskNodeMap[dep.TaskId]; ok {
+				edge := simple.Edge{
+					F: simple.Node(toNode.ID()),
+					T: simple.Node(taskNodeMap[task.Id].ID()),
+				}
+				depGraph.SetEdge(edge)
+			}
+		}
+	}
+
+	sorted, err := topo.Sort(depGraph)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem with topological sort")
+	}
+	sortedTasks := make([]Task, 0, len(tasks))
+	for _, node := range sorted {
+		sortedTasks = append(sortedTasks, nodeTaskMap[node.ID()])
+	}
+
+	return sortedTasks, nil
 }
 
 // DeactivateTask will set the ActivatedBy field to the caller and set the active state to be false and deschedule the task
-func (t *Task) DeactivateTask(caller string) error {
+func (t *Task) DeactivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
-	return UpdateOne(
+
+	return DeactivateTasks([]Task{*t}, caller)
+}
+
+func DeactivateTasks(tasks []Task, caller string) ([]Task, error) {
+	taskIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+
+	_, err := UpdateAll(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: bson.M{"$in": taskIDs},
 		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:     false,
+				ActivatedByKey:   caller,
 				ScheduledTimeKey: utility.ZeroTime,
 			},
 		},
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem deactivating tasks")
+	}
+	for _, t := range tasks {
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+	}
+
+	deactivatedDependencies, err := DeactivateDependencies(taskIDs, caller)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't deactivate dependencies")
+	}
+
+	return append(tasks, deactivatedDependencies...), nil
+}
+
+func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
+	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+	}
+
+	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
+	taskIDsToUpdate := make([]string, 0, len(tasksDependingOnTheseTasks))
+	for _, t := range tasksDependingOnTheseTasks {
+		if t.Activated {
+			tasksToUpdate = append(tasksToUpdate, t)
+			taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
+		}
+	}
+
+	if len(tasksToUpdate) == 0 {
+		return nil, nil
+	}
+
+	_, err = UpdateAll(
+		bson.M{
+			IdKey: bson.M{"$in": taskIDsToUpdate},
+		},
+		bson.M{"$set": bson.M{
+			ActivatedKey:                false,
+			DeactivatedForDependencyKey: true,
+			ScheduledTimeKey:            utility.ZeroTime,
+		}},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem deactivating dependencies")
+	}
+	for _, t := range tasksToUpdate {
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+	}
+
+	return tasksToUpdate, nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -1081,61 +1312,120 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetPriority sets the priority of the tasks and the tasks that they depend on
-func (t *Task) SetPriority(priority int64, user string) error {
-	t.Priority = priority
-	modifier := bson.M{PriorityKey: priority}
+// Blacklist sets the priority of a task so it will never run.
+// It also deactivates the task and any tasks that depend on it.
+// The build cache is not updated
+func (t *Task) Blacklist(user string) ([]Task, error) {
+	t.Priority = evergreen.BlacklistPriority
 
-	//blacklisted - this task should never run, so unschedule it now
-	if priority < 0 {
-		modifier[ActivatedKey] = false
-	}
-
-	ids, err := t.getRecursiveDependencies()
-	if err != nil {
-		return errors.Wrap(err, "error getting task dependencies")
-	}
-	ids = append(ids, t.ExecutionTasks...)
-
-	_, err = UpdateAll(
-		bson.M{"$or": []bson.M{
-			{IdKey: t.Id},
-			{IdKey: bson.M{"$in": ids},
-				PriorityKey: bson.M{"$lt": priority}},
-		}},
-		bson.M{"$set": modifier},
+	ids := append([]string{t.Id}, t.ExecutionTasks...)
+	_, err := UpdateAll(
+		bson.M{IdKey: bson.M{"$in": ids}},
+		bson.M{"$set": bson.M{PriorityKey: evergreen.BlacklistPriority}},
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't update priority")
+	}
 
-	event.LogTaskPriority(t.Id, t.Execution, user, priority)
+	tasks, err := FindAll(db.Query(bson.M{
+		IdKey: bson.M{"$in": ids},
+	}).WithFields(ExecutionKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't find matching tasks")
+	}
+	for _, task := range tasks {
+		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.BlacklistPriority)
+	}
 
-	return errors.WithStack(err)
+	var deactivatedTasks []Task
+	deactivatedTasks, err = t.DeactivateTask(user)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't deactivate blacklisted task")
+	}
 
+	return deactivatedTasks, nil
 }
 
-// getRecursiveDependencies creates a slice containing t.Id and the Ids of all recursive dependencies.
+// GetRecursiveDependenciesUp returns all tasks recursively depended upon
+// that are not in the original task slice. depCache should originally be nil
 // We assume there are no dependency cycles.
-func (t *Task) getRecursiveDependencies() ([]string, error) {
-	recurIds := make([]string, 0, len(t.DependsOn))
-	for _, dependency := range t.DependsOn {
-		recurIds = append(recurIds, dependency.TaskId)
+func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
+	if depCache == nil {
+		depCache = make(map[string]Task)
+	}
+	for _, t := range tasks {
+		depCache[t.Id] = t
 	}
 
-	recurTasks, err := Find(ByIds(recurIds))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	ids := make([]string, 0)
-	for _, recurTask := range recurTasks {
-		appendIds, err := recurTask.getRecursiveDependencies()
-		if err != nil {
-			return nil, errors.WithStack(err)
+	tasksToFind := []string{}
+	for _, t := range tasks {
+		for _, dep := range t.DependsOn {
+			if _, ok := depCache[dep.TaskId]; !ok {
+				tasksToFind = append(tasksToFind, dep.TaskId)
+			}
 		}
-		ids = append(ids, appendIds...)
 	}
 
-	ids = append(ids, t.Id)
-	return ids, nil
+	// leaf node
+	if len(tasksToFind) == 0 {
+		return nil, nil
+	}
+
+	deps, err := Find(ByIds(tasksToFind).WithFields(IdKey, DependsOnKey, ExecutionKey, BuildIdKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get dependencies")
+	}
+
+	recursiveDeps, err := GetRecursiveDependenciesUp(deps, depCache)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get recursive deps")
+	}
+
+	return append(deps, recursiveDeps...), nil
+}
+
+// getRecursiveDependenciesDown returns a slice containing all tasks recursively depending on tasks.
+// taskMap should originally be nil.
+// We assume there are no dependency cycles.
+func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Task, error) {
+	if taskMap == nil {
+		taskMap = make(map[string]bool)
+	}
+	for _, t := range tasks {
+		taskMap[t] = true
+	}
+
+	// find the tasks that depend on these tasks
+	dependOnUsTasks, err := FindAll(db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": tasks},
+	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get dependencies")
+	}
+
+	// if the task hasn't yet been visited we need to recurse on it
+	newDeps := []Task{}
+	for _, t := range dependOnUsTasks {
+		if !taskMap[t.Id] {
+			newDeps = append(newDeps, t)
+		}
+	}
+
+	// everything is aleady in the map or nothing depends on tasks
+	if len(newDeps) == 0 {
+		return nil, nil
+	}
+
+	newDepIDs := make([]string, 0, len(newDeps))
+	for _, t := range newDeps {
+		newDepIDs = append(newDepIDs, t.Id)
+	}
+	recurseTasks, err := getRecursiveDependenciesDown(newDepIDs, taskMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get recursive dependencies")
+	}
+
+	return append(newDeps, recurseTasks...), nil
 }
 
 // MarkStart updates the task's start time and sets the status to started
