@@ -116,15 +116,15 @@ func SetManyCachedTasksActivated(tasks []task.Task, activated bool) error {
 		buildMap[t.BuildId][taskID] = true
 	}
 
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
 	for buildID, taskIDs := range buildMap {
 		taskIDSlice := make([]string, 0, len(taskIDs))
 		for taskID := range taskIDs {
 			taskIDSlice = append(taskIDSlice, taskID)
 		}
 
-		env := evergreen.GetEnvironment()
-		ctx, cancel := env.Context()
-		defer cancel()
 		res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
 			bson.M{
 				IdKey: buildID,
