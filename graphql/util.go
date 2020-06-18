@@ -449,7 +449,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				proj = projRef
 			}
 			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Identifier,
-				proj.CommitQueue.PatchType, version.Id)
+				proj.CommitQueue.PatchType, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}

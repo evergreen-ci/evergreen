@@ -600,7 +600,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number))
+	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number), *pr.Base.Repo.Owner.Login)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
 	}

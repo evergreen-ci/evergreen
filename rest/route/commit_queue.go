@@ -85,7 +85,7 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	found, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item)
+	found, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
