@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -274,24 +275,26 @@ func SetTaskJSONTagForTask(taskId, name, tag string) error {
 }
 
 func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
-	var t2 *task.Task = t
+	var baseVersion *Version
 	var err error
+
+	revisionOrderNumber := t.RevisionOrderNumber
 	if evergreen.IsPatchRequester(t.Requester) {
-		t2, err = t.FindTaskOnBaseCommit()
+		baseVersion, err = VersionFindOne(BaseVersionByProjectIdAndRevision(t.Project, t.Revision))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error finding base version for revision '%s'", t.Revision)
 		}
-		if t2 == nil {
-			return nil, errors.New("could not find task on base commit")
+		if baseVersion == nil {
+			return nil, errors.Errorf("base version does not exist for revision '%s'", t.Revision)
 		}
-		t.RevisionOrderNumber = t2.RevisionOrderNumber
+		revisionOrderNumber = baseVersion.RevisionOrderNumber
 	}
 
 	before := []TaskJSON{}
 	jsonQuery := db.Query(bson.M{
 		TaskJSONProjectIdKey:           t.Project,
 		TaskJSONVariantKey:             t.BuildVariant,
-		TaskJSONRevisionOrderNumberKey: bson.M{"$lte": t.RevisionOrderNumber},
+		TaskJSONRevisionOrderNumberKey: bson.M{"$lte": revisionOrderNumber},
 		TaskJSONTaskNameKey:            t.DisplayName,
 		TaskJSONIsPatchKey:             false,
 		TaskJSONNameKey:                name,
@@ -310,7 +313,7 @@ func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	jsonAfterQuery := db.Query(bson.M{
 		TaskJSONProjectIdKey:           t.Project,
 		TaskJSONVariantKey:             t.BuildVariant,
-		TaskJSONRevisionOrderNumberKey: bson.M{"$gt": t.RevisionOrderNumber},
+		TaskJSONRevisionOrderNumberKey: bson.M{"$gt": revisionOrderNumber},
 		TaskJSONTaskNameKey:            t.DisplayName,
 		TaskJSONIsPatchKey:             false,
 		TaskJSONNameKey:                name}).Sort([]string{"order"}).Limit(100)
@@ -324,7 +327,7 @@ func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 
 	// if our task was a patch, replace the base commit's info in the history with the patch
 	if evergreen.IsPatchRequester(t.Requester) {
-		before, err = fixPatchInHistory(t.Id, t2, before)
+		before, err = fixPatchInHistory(t, baseVersion, before)
 		if err != nil {
 			return nil, err
 		}
@@ -332,22 +335,19 @@ func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	return before, nil
 }
 
-func fixPatchInHistory(taskId string, base *task.Task, history []TaskJSON) ([]TaskJSON, error) {
+func fixPatchInHistory(t *task.Task, baseVersion *Version, history []TaskJSON) ([]TaskJSON, error) {
 	var jsonForTask *TaskJSON
-	err := db.FindOneQ(TaskJSONCollection, db.Query(bson.M{TaskJSONTaskIdKey: taskId}), &jsonForTask)
-	if err != nil {
-		return nil, err
+	if err := db.FindOneQ(TaskJSONCollection, db.Query(bson.M{TaskJSONTaskIdKey: t.Id}), &jsonForTask); err != nil {
+		if adb.ResultsNotFound(err) {
+			return history, nil
+		}
+		return nil, errors.Wrap(err, "can't get json for patch task")
 	}
-	if base != nil {
-		jsonForTask.RevisionOrderNumber = base.RevisionOrderNumber
-	}
-	if jsonForTask == nil {
-		return history, nil
-	}
+	jsonForTask.RevisionOrderNumber = baseVersion.RevisionOrderNumber
 
 	found := false
 	for i, item := range history {
-		if item.Revision == base.Revision {
+		if item.Revision == baseVersion.Revision {
 			history[i] = *jsonForTask
 			found = true
 		}
