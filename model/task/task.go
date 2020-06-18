@@ -104,7 +104,7 @@ type Task struct {
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// The version of the agent this task was run on.
-	AgentVersion string `bson:"agent_version" json:"agent_version"`
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
 
 	// the number of times this task has been restarted
 	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`

@@ -890,14 +890,14 @@ func MarkTaskUndispatched(t *task.Task) error {
 	return nil
 }
 
-func MarkTaskDispatched(t *task.Task, host *host.Host) error {
+func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	// record that the task was dispatched on the host
-	if err := t.MarkAsDispatched(host.Id, host.Distro.Id, host.AgentRevision, time.Now()); err != nil {
+	if err := t.MarkAsDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
-			"on host %s", t.Id, host.Id)
+			"on host %s", t.Id, h.Id)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, t.Execution, host.Id)
+	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTaskAndCache(t)
