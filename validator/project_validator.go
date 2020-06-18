@@ -30,8 +30,9 @@ const (
 	Error ValidationErrorLevel = iota
 	Warning
 	unauthorizedCharacters     = "|"
-	EC2HostCreateTotalLimit    = 50
+	EC2HostCreateTotalLimit    = 75
 	DockerHostCreateTotalLimit = 200
+	HostCreateLimitPerTask     = 3
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -1114,10 +1115,72 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 }
 
 func validateCreateHosts(p *model.Project) ValidationErrors {
-	counts := p.TasksThatCallHostCreateByProvider()
-	errs := validateTimesCalledPerTask(p, counts.All, evergreen.CreateHostCommandName, 3, Error)
+	counts := tasksThatCallHostCreateByProvider(p)
+	errs := validateTimesCalledPerTask(p, counts.All, evergreen.CreateHostCommandName, HostCreateLimitPerTask, Error)
 	errs = append(errs, validateCreateHostTotals(p, counts)...)
 	return errs
+}
+
+type hostCreateCounts struct {
+	Docker map[string]int
+	EC2    map[string]int
+	All    map[string]int
+}
+
+// tasksThatCallHostCreateByProvider is similar to TasksThatCallCommand in the model package, except the output is
+// split into host.create for Docker hosts and host.create for non-docker hosts, so limits can be validated separately.
+func tasksThatCallHostCreateByProvider(p *model.Project) hostCreateCounts {
+	// get all functions that call the command.
+	ec2Fs := map[string]int{}
+	dockerFs := map[string]int{}
+	for f, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
+		for _, c := range cmds.List() {
+			if c.Command == evergreen.CreateHostCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					dockerFs[f] += 1
+				} else {
+					ec2Fs[f] += 1
+				}
+			}
+		}
+	}
+
+	// get all tasks that call the command.
+	counts := hostCreateCounts{
+		Docker: map[string]int{},
+		EC2:    map[string]int{},
+		All:    map[string]int{},
+	}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if times, ok := ec2Fs[c.Function]; ok {
+					counts.EC2[t.Name] += times
+					counts.All[t.Name] += times
+				}
+				if times, ok := dockerFs[c.Function]; ok {
+					counts.Docker[t.Name] += times
+					counts.All[t.Name] += times
+				}
+			}
+			if c.Command == evergreen.CreateHostCommandName {
+				provider, ok := c.Params["provider"]
+				if ok && provider.(string) == evergreen.ProviderNameDocker {
+					counts.Docker[t.Name] += 1
+					counts.All[t.Name] += 1
+				} else {
+					counts.EC2[t.Name] += 1
+					counts.All[t.Name] += 1
+				}
+			}
+		}
+	}
+
+	return counts
 }
 
 func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int, level ValidationErrorLevel) ValidationErrors {
@@ -1137,7 +1200,7 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 	return errs
 }
 
-func validateCreateHostTotals(p *model.Project, counts model.HostCreateCounts) ValidationErrors {
+func validateCreateHostTotals(p *model.Project, counts hostCreateCounts) ValidationErrors {
 	errs := ValidationErrors{}
 	dockerTotal := 0
 	ec2Total := 0
