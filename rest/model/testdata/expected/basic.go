@@ -16,9 +16,9 @@ func APIRevisionBuildFromService(t model.Revision) *APIRevision {
 	return &m
 }
 
-func APIRevisionToService(m *APIRevision) model.Revision {
-	out := model.Revision{}
-	out.Author = StringStringPtr(m.Author)
+func APIRevisionToService(m APIRevision) *model.Revision {
+	out := &model.Revision{}
+	out.Author = StringPtrString(m.Author)
 	out.AuthorGithubUID = IntInt(m.AuthorGithubUID)
 	return out
 }

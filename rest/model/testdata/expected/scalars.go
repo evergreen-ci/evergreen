@@ -22,10 +22,10 @@ func APIMockScalarsBuildFromService(t model.MockScalars) *APIMockScalars {
 	return &m
 }
 
-func APIMockScalarsToService(m *APIMockScalars) model.MockScalars {
-	out := model.MockScalars{}
+func APIMockScalarsToService(m APIMockScalars) *model.MockScalars {
+	out := &model.MockScalars{}
 	out.AnyType = InterfaceInterface(m.AnyType)
 	out.MapType = MapstringinterfaceMapstringinterface(m.MapType)
-	out.TimeType = TimeTimeTimeTimePtr(m.TimeType)
+	out.TimeType = TimeTimePtrTimeTime(m.TimeType)
 	return out
 }

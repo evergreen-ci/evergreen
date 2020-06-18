@@ -16,8 +16,8 @@ func APIGithubOptionsBuildFromService(t send.GithubOptions) *APIGithubOptions {
 	return &m
 }
 
-func APIGithubOptionsToService(m *APIGithubOptions) send.GithubOptions {
-	out := send.GithubOptions{}
+func APIGithubOptionsToService(m APIGithubOptions) *send.GithubOptions {
+	out := &send.GithubOptions{}
 	out.Account = StringString(m.Account)
 	out.Repo = StringString(m.Repo)
 	return out

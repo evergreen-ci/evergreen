@@ -28,3 +28,15 @@ type MockScalars struct {
 	MapType  map[string]interface{}
 	AnyType  interface{}
 }
+
+type MockEmbedded struct {
+	One MockLayerOne
+}
+
+type MockLayerOne struct {
+	Two MockLayerTwo
+}
+
+type MockLayerTwo struct {
+	SomeField string
+}

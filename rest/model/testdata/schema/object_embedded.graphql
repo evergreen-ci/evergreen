@@ -1,0 +1,11 @@
+type MockEmbedded {
+  One: MockLayerOne
+}
+
+type MockLayerOne {
+  Two: MockLayerTwo
+}
+
+type MockLayerTwo {
+  SomeField: String
+}

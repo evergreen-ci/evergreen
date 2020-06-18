@@ -5,8 +5,8 @@ func {{.RestType}}BuildFromService(t {{shortenpackage .ModelType }}) *{{.RestTyp
     return &m
 }
 
-func {{.RestType}}ToService(m *{{.RestType}}) {{shortenpackage .ModelType}} {
-    out := {{shortenpackage .ModelType}}{}
+func {{.RestType}}ToService(m {{.RestType}}) *{{shortenpackage .ModelType}} {
+    out := &{{shortenpackage .ModelType}}{}
     {{.TsConversions}}
     return out
 }
