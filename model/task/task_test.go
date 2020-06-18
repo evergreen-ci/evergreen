@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -219,18 +220,96 @@ func TestDependenciesMet(t *testing.T) {
 	})
 }
 
-func TestDependencySatisfiable(t *testing.T) {
+func TestRefreshBlockedDependencies(t *testing.T) {
+	taskId := "t1"
+	taskDoc := &Task{
+		Id: taskId,
+	}
+	depTasks := []*Task{
+		{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched},
+		{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
+		{Id: depTaskIds[2].TaskId, Status: evergreen.TaskFailed},
+		{Id: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+		{Id: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+		{Id: "td6", Status: evergreen.TaskDispatched, DependsOn: []Dependency{{TaskId: "DNE", Unattainable: true}}},
+	}
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	for name, test := range map[string]func(*testing.T){
+		"NoDeps": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"Satisfied": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Empty(t, tasks)
+		},
+		"UnsatisfiedAndFinished": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: depTaskIds[2].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"BlockedEarly": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Unattainable: true},
+				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			// already marked blocked
+			assert.Len(t, tasks, 0)
+		},
+		"BlockedLater": func(t *testing.T) {
+			taskDoc.DependsOn = []Dependency{
+				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+				{TaskId: "td6", Status: evergreen.TaskSucceeded},
+			}
+			require.NoError(t, taskDoc.Insert())
+
+			tasks, err := taskDoc.RefreshBlockedDependencies(map[string]Task{})
+			assert.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		}} {
+		require.NoError(t, db.Clear(Collection))
+		for _, depTask := range depTasks {
+			require.NoError(t, depTask.Insert())
+		}
+		t.Run(name, test)
+	}
+}
+
+func TestBlockedOnDeactivatedDependency(t *testing.T) {
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
 	}
 	depTasks := []*Task{
 		{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched, Activated: true},
-		{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
-		{Id: depTaskIds[2].TaskId, Status: evergreen.TaskFailed, Activated: true},
-		{Id: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Activated: true},
-		{Id: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded, Activated: true},
-		{Id: "td6", Status: evergreen.TaskDispatched, Activated: true, DependsOn: []Dependency{{TaskId: "DNE", Unattainable: true}}},
+		{Id: depTaskIds[1].TaskId, Status: evergreen.TaskSucceeded, Activated: false},
+		{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched, Activated: false},
 	}
 	require.NoError(t, db.Clear(Collection))
 	for _, depTask := range depTasks {
@@ -240,69 +319,29 @@ func TestDependencySatisfiable(t *testing.T) {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
-	t.Run("NoDeps", func(t *testing.T) {
-		taskDoc.DependsOn = []Dependency{}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
-		require.NoError(t, err)
-		assert.True(t, satisfiable)
-	})
-	t.Run("Satisfied", func(t *testing.T) {
+	t.Run("NotBlocked", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[0].TaskId},
 		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.True(t, satisfiable)
+		assert.Empty(t, blockingTasks)
 	})
-	t.Run("UnsatisfiedAndFinished", func(t *testing.T) {
+	t.Run("NoBlockedFinished", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[2].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[1].TaskId},
 		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.False(t, satisfiable)
+		assert.Empty(t, blockingTasks)
 	})
-	t.Run("UnsatisfiedAndNotActivated", func(t *testing.T) {
+	t.Run("Blocked", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[1].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
+			{TaskId: depTaskIds[2].TaskId},
 		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
 		require.NoError(t, err)
-		assert.False(t, satisfiable)
-	})
-	t.Run("UnsatisfiedAndActivated", func(t *testing.T) {
-		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[0].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
-		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
-		require.NoError(t, err)
-		assert.True(t, satisfiable)
-	})
-	t.Run("BlockedEarly", func(t *testing.T) {
-		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Unattainable: true},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
-		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
-		require.NoError(t, err)
-		assert.False(t, satisfiable)
-	})
-	t.Run("BlockedLater", func(t *testing.T) {
-		taskDoc.DependsOn = []Dependency{
-			{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
-			{TaskId: "td6", Status: evergreen.TaskSucceeded},
-		}
-		satisfiable, err := taskDoc.DependencySatisfiable(map[string]Task{})
-		require.NoError(t, err)
-		assert.False(t, satisfiable)
+		assert.Len(t, blockingTasks, 1)
 	})
 }
 
@@ -373,139 +412,6 @@ func TestSetTasksScheduledTime(t *testing.T) {
 
 		})
 	})
-}
-
-func TestTaskSetPriority(t *testing.T) {
-
-	Convey("With a task", t, func() {
-
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
-
-		tasks := []Task{
-			{
-				Id:        "one",
-				DependsOn: []Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
-				Activated: true,
-			},
-			{
-				Id:        "two",
-				Priority:  5,
-				Activated: true,
-			},
-			{
-				Id:        "three",
-				DependsOn: []Dependency{{TaskId: "five", Status: ""}},
-				Activated: true,
-			},
-			{
-				Id:        "four",
-				DependsOn: []Dependency{{TaskId: "five", Status: ""}},
-				Activated: true,
-			},
-			{
-				Id:        "five",
-				Activated: true,
-			},
-			{
-				Id:        "six",
-				Activated: true,
-			},
-		}
-
-		for _, task := range tasks {
-			So(task.Insert(), ShouldBeNil)
-		}
-
-		Convey("setting its priority should update it in-memory"+
-			" and update it and all dependencies in the database", func() {
-
-			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
-			So(tasks[0].Priority, ShouldEqual, 1)
-
-			t, err := FindOne(ById("one"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, 1)
-
-			t, err = FindOne(ById("two"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, 5)
-
-			t, err = FindOne(ById("three"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, 1)
-
-			t, err = FindOne(ById("four"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "four")
-			So(t.Priority, ShouldEqual, 1)
-
-			t, err = FindOne(ById("five"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "five")
-			So(t.Priority, ShouldEqual, 1)
-
-			t, err = FindOne(ById("six"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
-
-		})
-
-		Convey("decreasing priority should update the task but not its dependencies", func() {
-
-			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
-			So(tasks[0].Activated, ShouldEqual, true)
-			So(tasks[0].SetPriority(-1, "user"), ShouldBeNil)
-			So(tasks[0].Priority, ShouldEqual, -1)
-
-			t, err := FindOne(ById("one"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, -1)
-			So(t.Activated, ShouldEqual, false)
-
-			t, err = FindOne(ById("two"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, 5)
-			So(t.Activated, ShouldEqual, true)
-
-			t, err = FindOne(ById("three"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Priority, ShouldEqual, 1)
-			So(t.Activated, ShouldEqual, true)
-
-			t, err = FindOne(ById("four"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "four")
-			So(t.Priority, ShouldEqual, 1)
-			So(t.Activated, ShouldEqual, true)
-
-			t, err = FindOne(ById("five"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "five")
-			So(t.Priority, ShouldEqual, 1)
-			So(t.Activated, ShouldEqual, true)
-
-			t, err = FindOne(ById("six"))
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
-			So(t.Activated, ShouldEqual, true)
-		})
-	})
-
 }
 
 func TestFindTasksByIds(t *testing.T) {
@@ -968,11 +874,11 @@ func TestWithinTimePeriodProjectFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:      "task1",
 			Project: "proj",
 		},
-		Task{
+		{
 			Id:      "task2",
 			Project: "other",
 		},
@@ -993,17 +899,17 @@ func TestWithinTimePeriodDatesFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:         "task1",
 			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
 			StartTime:  time.Now().AddDate(0, 0, -5), // Shouldn't match
 		},
-		Task{
+		{
 			Id:         "task2",
 			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
 			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
 		},
-		Task{
+		{
 			Id:         "task3",
 			FinishTime: time.Now(),                   // Shouldn't match
 			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
@@ -1026,15 +932,15 @@ func TestWithinTimePeriodStatusesFilter(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDocs := []Task{
-		Task{
+		{
 			Id:     "task1",
 			Status: "A",
 		},
-		Task{
+		{
 			Id:     "task2",
 			Status: "B",
 		},
-		Task{
+		{
 			Id:     "task3",
 			Status: "C",
 		},
@@ -1334,13 +1240,13 @@ func TestGetRecentTaskStats(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
-		Task{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
-		Task{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
-		Task{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
+		{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
+		{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
 	}
 	for _, task := range tasks {
 		assert.NoError(task.Insert())
@@ -1768,6 +1674,261 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
+}
+
+func TestGetRecursiveDependenciesUp(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[3], tasks[4]}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, taskDependsOn, 3)
+	expectedIDs := []string{"t2", "t1", "t0"}
+	for _, task := range taskDependsOn {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
+func TestGetRecursiveDependenciesDown(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	dependingOnMe, err := getRecursiveDependenciesDown([]string{"t0"}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, dependingOnMe, 3)
+	expectedIDs := []string{"t2", "t4", "t5"}
+	for _, task := range dependingOnMe {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
+func TestDeactivateDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	updatedIDs := []string{"t4", "t5"}
+	deactivatedDependencies, err := DeactivateDependencies([]string{"t0"}, "")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedDependencies, 2)
+	for _, dep := range deactivatedDependencies {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 6)
+
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.False(t, task.Activated)
+			assert.True(t, task.DeactivatedForDependency)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
+}
+
+func TestActivateDeactivatedDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	updatedIDs := []string{"t3", "t4"}
+	activatedDependencies, err := ActivateDeactivatedDependencies([]string{"t0"}, "")
+	assert.NoError(t, err)
+	assert.Len(t, activatedDependencies, 2)
+	for _, dep := range activatedDependencies {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 5)
+
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.True(t, task.Activated)
+			assert.False(t, task.DeactivatedForDependency)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
+}
+
+func TestTopologicalSort(t *testing.T) {
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t2"}}},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}}},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}},
+	}
+
+	sortedTasks, err := topologicalSort(tasks)
+	assert.NoError(t, err)
+	assert.Len(t, sortedTasks, 4)
+
+	indexMap := make(map[string]int)
+	for i, task := range sortedTasks {
+		indexMap[task.Id] = i
+	}
+
+	assert.True(t, indexMap["t0"] < indexMap["t1"])
+	assert.True(t, indexMap["t0"] < indexMap["t2"])
+	assert.True(t, indexMap["t0"] < indexMap["t3"])
+	assert.True(t, indexMap["t2"] < indexMap["t1"])
+	assert.True(t, indexMap["t1"] < indexMap["t3"])
+}
+
+func TestActivateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	updatedIDs := []string{"t0", "t3", "t4"}
+	activatedTasks, err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
+	assert.NoError(t, err)
+	assert.Len(t, activatedTasks, 3)
+	for _, dep := range activatedTasks {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 5)
+
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.True(t, task.Activated)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
+				}
+			}
+		}
+	}
+}
+
+func TestDeactivateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	updatedIDs := []string{"t0", "t4", "t5"}
+	deactivatedTasks, err := DeactivateTasks([]Task{tasks[0]}, "")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedTasks, 3)
+	for _, dep := range deactivatedTasks {
+		assert.Contains(t, updatedIDs, dep.Id)
+	}
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 6)
+
+	for _, task := range dbTasks {
+		if utility.StringSliceContains(updatedIDs, task.Id) {
+			assert.False(t, task.Activated)
+		} else {
+			for _, origTask := range tasks {
+				if origTask.Id == task.Id {
+					assert.Equal(t, origTask.Activated, task.Activated)
+				}
+			}
+		}
+	}
+}
+
+func TestBlacklist(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	tasks := []Task{
+		{Id: "t0", ExecutionTasks: []string{"t1", "t2"}},
+		{Id: "t1"},
+		{Id: "t2"},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	deactivatedTasks, err := tasks[0].Blacklist("")
+	assert.NoError(t, err)
+	assert.Len(t, deactivatedTasks, 1)
+
+	dbTasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 3)
+
+	for _, task := range dbTasks {
+		assert.Equal(t, evergreen.BlacklistPriority, task.Priority)
+	}
 }
 
 func TestDisplayStatus(t *testing.T) {

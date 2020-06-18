@@ -37,13 +37,13 @@ func (bc *DBBuildConnector) AbortBuild(buildId string, user string) error {
 }
 
 // SetBuildPriority wraps the service level method
-func (bc *DBBuildConnector) SetBuildPriority(buildId string, priority int64) error {
-	return model.SetBuildPriority(buildId, priority)
+func (bc *DBBuildConnector) SetBuildPriority(buildId string, priority int64, caller string) error {
+	return model.SetBuildPriority(buildId, priority, caller)
 }
 
 // SetBuildActivated wraps the service level method
 func (bc *DBBuildConnector) SetBuildActivated(buildId string, user string, activated bool) error {
-	return model.SetBuildActivation(buildId, activated, user, false)
+	return model.SetBuildActivation(buildId, activated, user)
 }
 
 // RestartBuild wraps the service level RestartBuild
@@ -86,7 +86,7 @@ func (bc *MockBuildConnector) AbortBuild(buildId string, user string) error {
 }
 
 // SetBuildPriority throws an error if instructed
-func (bc *MockBuildConnector) SetBuildPriority(buildId string, priority int64) error {
+func (bc *MockBuildConnector) SetBuildPriority(buildId string, priority int64, caller string) error {
 	if bc.FailOnChangePriority {
 		return errors.New("manufactured fail")
 	}

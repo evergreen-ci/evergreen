@@ -25,6 +25,141 @@ func taskIdInSlice(tasks []task.Task, id string) bool {
 	return false
 }
 
+func TestTaskSetPriority(t *testing.T) {
+
+	Convey("With a task", t, func() {
+
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+
+		tasks := []task.Task{
+			{
+				Id:        "one",
+				DependsOn: []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
+				Activated: true,
+				BuildId:   "b0",
+			},
+			{
+				Id:        "two",
+				Priority:  5,
+				Activated: true,
+			},
+			{
+				Id:        "three",
+				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
+				Activated: true,
+			},
+			{
+				Id:        "four",
+				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
+				Activated: true,
+			},
+			{
+				Id:        "five",
+				Activated: true,
+			},
+			{
+				Id:        "six",
+				Activated: true,
+			},
+		}
+
+		for _, task := range tasks {
+			So(task.Insert(), ShouldBeNil)
+		}
+
+		b0 := build.Build{Id: "b0", Tasks: []build.TaskCache{{Id: tasks[0].Id}}}
+		require.NoError(t, b0.Insert())
+
+		Convey("setting its priority should update it and all dependencies in the database", func() {
+
+			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+
+			t, err := task.FindOne(task.ById("one"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("two"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
+
+			t, err = task.FindOne(task.ById("three"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("four"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("five"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
+
+			t, err = task.FindOne(task.ById("six"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
+
+		})
+
+		Convey("decreasing priority should update the task but not its dependencies", func() {
+			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
+			So(tasks[0].Activated, ShouldEqual, true)
+			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
+
+			b0, err := build.FindOneId("b0")
+			So(err, ShouldBeNil)
+			So(b0.Tasks[0].Activated, ShouldBeFalse)
+
+			t, err := task.FindOne(task.ById("one"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, -1)
+			So(t.Activated, ShouldEqual, false)
+
+			t, err = task.FindOne(task.ById("two"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("three"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("four"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("five"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
+
+			t, err = task.FindOne(task.ById("six"))
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
+			So(t.Activated, ShouldEqual, true)
+		})
+	})
+}
+
 func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
@@ -49,7 +184,7 @@ func TestBuildSetPriority(t *testing.T) {
 		Convey("setting its priority should update the priority"+
 			" of all its tasks in the database", func() {
 
-			So(SetBuildPriority(b.Id, 42), ShouldBeNil)
+			So(SetBuildPriority(b.Id, 42, ""), ShouldBeNil)
 
 			tasks, err := task.Find(task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
@@ -399,7 +534,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -418,7 +553,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
-				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
@@ -466,7 +601,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(t3.Insert(), ShouldBeNil)
 				So(t4.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// refresh from the database and check again
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -505,7 +640,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(matching2.Insert(), ShouldBeNil)
 
 				// have a user set the build activation to true
-				So(SetBuildActivation(b.Id, true, user, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
 				task1, err := task.FindOne(task.ById(matching.Id))
@@ -526,7 +661,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
@@ -1938,5 +2073,57 @@ func TestShouldSyncTask(t *testing.T) {
 			shouldSync := shouldSyncTask(testCase.syncVTs, testCase.bv, testCase.task)
 			assert.Equal(t, testCase.shouldSync, shouldSync)
 		})
+	}
+}
+
+func TestSetTaskActivationForBuildsActivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	build := build.Build{Id: "b0"}
+	require.NoError(t, build.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b1", Status: evergreen.TaskUndispatched},
+		{Id: "t2", BuildId: "b0", DependsOn: []task.Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	// set activated
+	assert.NoError(t, SetTaskActivationForBuilds([]string{"b0"}, true, ""))
+
+	dbTasks, err := task.FindAll(db.Q{})
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 3)
+	for _, task := range dbTasks {
+		assert.True(t, task.Activated)
+	}
+}
+
+func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	build := build.Build{Id: "b0"}
+	require.NoError(t, build.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", Activated: true, BuildId: "b0", Status: evergreen.TaskUndispatched},
+		{Id: "t1", Activated: true, BuildId: "b1", DependsOn: []task.Dependency{{TaskId: "t2"}}, Status: evergreen.TaskUndispatched},
+		{Id: "t2", Activated: true, BuildId: "b0", Status: evergreen.TaskUndispatched},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	// set deactivated
+	assert.NoError(t, SetTaskActivationForBuilds([]string{"b0"}, false, ""))
+
+	dbTasks, err := task.FindAll(db.Q{})
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 3)
+	for _, task := range dbTasks {
+		assert.False(t, task.Activated)
 	}
 }

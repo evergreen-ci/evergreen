@@ -133,17 +133,17 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivatedFail() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := s.ctx.SetBuildPriority("build1", int64(2))
+	err := s.ctx.SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)
 
-	err = s.ctx.SetBuildPriority("build1", int64(3))
+	err = s.ctx.SetBuildPriority("build1", int64(3), "")
 	s.NoError(err)
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriorityFail() {
 	if s.mock {
 		s.ctx.(*MockConnector).MockBuildConnector.FailOnChangePriority = true
-		err := s.ctx.SetBuildPriority("build1", int64(2))
+		err := s.ctx.SetBuildPriority("build1", int64(2), "")
 		s.Error(err)
 	}
 }
