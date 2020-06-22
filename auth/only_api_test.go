@@ -93,7 +93,6 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				Users: []evergreen.OnlyAPIUser{u1},
 			}
 			um, err := NewOnlyAPIUserManager(conf)
-			//check that it still returns a user manager and no error
 			assert.NoError(t, err)
 			assert.NotNil(t, um)
 		},
