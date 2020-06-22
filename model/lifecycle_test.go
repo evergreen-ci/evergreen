@@ -1927,18 +1927,20 @@ func TestCreateTasksFromGroup(t *testing.T) {
 func TestMarkAsDispatched(t *testing.T) {
 
 	var (
-		taskId   string
-		hostId   string
-		buildId  string
-		distroId string
-		taskDoc  *task.Task
-		b        *build.Build
+		taskId       string
+		hostId       string
+		agentVersion string
+		buildId      string
+		distroId     string
+		taskDoc      *task.Task
+		b            *build.Build
 	)
 
 	Convey("With a task", t, func() {
 
 		taskId = "t1"
 		hostId = "h1"
+		agentVersion = "a1"
 		buildId = "b1"
 		distroId = "d1"
 
@@ -1964,19 +1966,21 @@ func TestMarkAsDispatched(t *testing.T) {
 			" should be set to reflect this", func() {
 
 			// mark the task as dispatched
-			So(taskDoc.MarkAsDispatched(hostId, distroId, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db
 			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(taskDoc.HostId, ShouldEqual, hostId)
+			So(taskDoc.AgentVersion, ShouldEqual, agentVersion)
 			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
 			taskDoc, err := task.FindOne(task.ById(taskId))
 			So(err, ShouldBeNil)
 			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(taskDoc.HostId, ShouldEqual, hostId)
+			So(taskDoc.AgentVersion, ShouldEqual, agentVersion)
 			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
 
 		})

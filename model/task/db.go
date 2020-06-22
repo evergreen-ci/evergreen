@@ -46,6 +46,7 @@ var (
 	NumDepsKey                  = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey              = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	HostIdKey                   = bsonutil.MustHaveTag(Task{}, "HostId")
+	AgentVersionKey             = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                = bsonutil.MustHaveTag(Task{}, "Execution")
 	RestartsKey                 = bsonutil.MustHaveTag(Task{}, "Restarts")
 	OldTaskIdKey                = bsonutil.MustHaveTag(Task{}, "OldTaskId")
@@ -72,6 +73,7 @@ var (
 	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")

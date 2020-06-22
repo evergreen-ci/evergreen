@@ -245,6 +245,7 @@ type Connector interface {
 	FindRecentTasks(int) ([]task.Task, *task.ResultCounts, error)
 	FindRecentTaskListDistro(int) (*restModel.APIRecentTaskStatsList, error)
 	FindRecentTaskListProject(int) (*restModel.APIRecentTaskStatsList, error)
+	FindRecentTaskListAgentVersion(int) (*restModel.APIRecentTaskStatsList, error)
 	// GetHostStatsByDistro returns host stats broken down by distro
 	GetHostStatsByDistro() ([]host.StatsByDistro, error)
 

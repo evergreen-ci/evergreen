@@ -107,6 +107,9 @@ type Task struct {
 	// tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
+	// The version of the agent this task was run on.
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+
 	// the number of times this task has been restarted
 	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
 	Execution           int    `bson:"execution" json:"execution"`
@@ -616,10 +619,11 @@ func (t *Task) cacheExpectedDuration() error {
 // Mark that the task has been dispatched onto a particular host. Sets the
 // running task field on the host and the host id field on the task.
 // Returns an error if any of the database updates fail.
-func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime time.Time) error {
+func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatchTime time.Time) error {
 	t.DispatchTime = dispatchTime
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostId
+	t.AgentVersion = agentRevision
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
 	err := UpdateOne(
@@ -633,6 +637,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				HostIdKey:        hostId,
 				LastHeartbeatKey: dispatchTime,
 				DistroIdKey:      distroId,
+				AgentVersionKey:  agentRevision,
 			},
 			"$unset": bson.M{
 				AbortedKey:   "",
@@ -647,7 +652,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	if t.IsPartOfDisplay() {
 		//when dispatching an execution task, mark its parent as dispatched
 		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == utility.ZeroTime {
-			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
+			return t.DisplayTask.MarkAsDispatched("", "", "", dispatchTime)
 		}
 	}
 	return nil
