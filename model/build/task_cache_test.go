@@ -18,7 +18,7 @@ func TestUpdateCachedTask(t *testing.T) {
 	b := &Build{
 		Id: "build1",
 		Tasks: []TaskCache{
-			TaskCache{
+			{
 				Id:        "task1",
 				Status:    evergreen.TaskUndispatched,
 				TimeTaken: 0,
@@ -71,4 +71,23 @@ func TestUpdateCachedTask(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.True(dbBuild.Tasks[0].Blocked)
+}
+
+func TestSetManyCachedTasksActivated(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	b := Build{
+		Id: "b0",
+		Tasks: []TaskCache{
+			{Id: "t0", Activated: false},
+			{Id: "t1", Activated: false},
+		},
+	}
+	require.NoError(t, b.Insert())
+
+	assert.NoError(t, SetManyCachedTasksActivated([]task.Task{{Id: "t0", BuildId: "b0"}}, true))
+
+	bDb, err := FindOneId("b0")
+	require.NoError(t, err)
+	assert.True(t, bDb.Tasks[0].Activated)
+	assert.False(t, bDb.Tasks[1].Activated)
 }

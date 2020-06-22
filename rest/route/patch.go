@@ -79,7 +79,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := p.sc.SetPatchPriority(p.patchId, priority); err != nil {
+		if err := p.sc.SetPatchPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}

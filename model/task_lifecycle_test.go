@@ -52,45 +52,55 @@ func TestSetActiveState(t *testing.T) {
 		So(testTask.Insert(), ShouldBeNil)
 
 		Convey("activating the task should set the task state to active", func() {
-			So(SetActiveState(testTask.Id, "randomUser", true), ShouldBeNil)
+			So(SetActiveState(testTask, "randomUser", true), ShouldBeNil)
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldBeTrue)
 			So(testTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
 
+			var testBuild *build.Build
+			testBuild, err = build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(testBuild.Tasks[0].Activated, ShouldBeTrue)
+
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
-				So(SetActiveState(testTask.Id, userName, false), ShouldBeNil)
+				So(SetActiveState(testTask, userName, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(testTask.Activated, ShouldBeFalse)
+
+				var testBuild *build.Build
+				testBuild, err = build.FindOneId(b.Id)
+				So(err, ShouldBeNil)
+				So(testBuild.Tasks[0].Activated, ShouldBeFalse)
 			})
 		})
 		Convey("when deactivating an active task as evergreen", func() {
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
-				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, true), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
-				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
-				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.StepbackTaskActivator, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
-				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
 			})
 			Convey("if the task is not activated by evergreen, the task should not deactivate", func() {
-				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+				So(SetActiveState(testTask, userName, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
-				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
@@ -100,31 +110,31 @@ func TestSetActiveState(t *testing.T) {
 		Convey("when deactivating an active task a normal user", func() {
 			u := "test_user"
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
-				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, true), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
-				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				So(SetActiveState(testTask, u, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is activated by stepback user, the task should deactivate", func() {
-				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
+				So(SetActiveState(testTask, evergreen.StepbackTaskActivator, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
-				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				So(SetActiveState(testTask, u, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
-				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+				So(SetActiveState(testTask, userName, true), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
-				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				So(SetActiveState(testTask, u, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
@@ -184,7 +194,7 @@ func TestSetActiveState(t *testing.T) {
 		So(testTask.DistroId, ShouldNotEqual, "")
 
 		Convey("activating the task should activate the tasks it depends on", func() {
-			So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+			So(SetActiveState(&testTask, userName, true), ShouldBeNil)
 			depTask, err := task.FindOne(task.ById(dep1.Id))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeTrue)
@@ -194,7 +204,7 @@ func TestSetActiveState(t *testing.T) {
 			So(depTask.Activated, ShouldBeTrue)
 
 			Convey("deactivating the task should not deactive the tasks it depends on", func() {
-				So(SetActiveState(testTask.Id, userName, false), ShouldBeNil)
+				So(SetActiveState(&testTask, userName, false), ShouldBeNil)
 				depTask, err = task.FindOne(task.ById(depTask.Id))
 				So(err, ShouldBeNil)
 				So(depTask.Activated, ShouldBeTrue)
@@ -205,7 +215,7 @@ func TestSetActiveState(t *testing.T) {
 		Convey("activating a task with override dependencies set should not activate the tasks it depends on", func() {
 			So(testTask.SetOverrideDependencies(userName), ShouldBeNil)
 
-			So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+			So(SetActiveState(&testTask, userName, true), ShouldBeNil)
 			depTask, err := task.FindOne(task.ById(dep1.Id))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeFalse)
@@ -242,7 +252,7 @@ func TestSetActiveState(t *testing.T) {
 		}
 		So(t1.Insert(), ShouldBeNil)
 
-		So(SetActiveState(dt.Id, "test", true), ShouldBeNil)
+		So(SetActiveState(dt, "test", true), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Activated, ShouldBeTrue)
@@ -1208,6 +1218,7 @@ func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	b := build.Build{
 		Id:      "my-build",
 		Version: v.Id,
+		Tasks:   []build.TaskCache{{Id: "t1", Activated: true}},
 	}
 	t1 := &task.Task{
 		Id:               "t1",
@@ -1246,6 +1257,7 @@ func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
 	mergeTask, err := task.FindMergeTaskForVersion(patchID)
 	assert.NoError(t, err)
 	assert.Equal(t, mergeTask.Priority, int64(-1))
+	assert.False(t, mergeTask.Activated)
 	p, err = patch.FindOne(patch.ByVersion(patchID))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
@@ -1527,13 +1539,21 @@ func TestMarkDispatched(t *testing.T) {
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
-			So(MarkTaskDispatched(testTask, "testHost", "distroId"), ShouldBeNil)
+			sampleHost := &host.Host{
+				Id: "testHost",
+				Distro: distro.Distro{
+					Id: "distroId",
+				},
+				AgentRevision: "testAgentVersion",
+			}
+			So(MarkTaskDispatched(testTask, sampleHost), ShouldBeNil)
 			var err error
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(testTask.HostId, ShouldEqual, "testHost")
 			So(testTask.DistroId, ShouldEqual, "distroId")
+			So(testTask.AgentVersion, ShouldEqual, "testAgentVersion")
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Tasks, ShouldNotBeNil)

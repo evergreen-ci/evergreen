@@ -125,6 +125,14 @@ func (s *StatusSuite) TestParseAndValidateByProject() {
 	s.True(s.h.byProject)
 }
 
+func (s *StatusSuite) TestParseAndValidateByAgentVersion() {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_agent_version=1", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.NoError(err)
+	s.True(s.h.byAgentVersion)
+}
+
 func (s *StatusSuite) TestParseAndValidateByDistroAndProject() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true&by_project=1", &bytes.Buffer{})
 	s.Require().NoError(err)

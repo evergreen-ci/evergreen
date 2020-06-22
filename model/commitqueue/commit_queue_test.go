@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
@@ -310,7 +311,7 @@ func TestPreventMergeForItemPR(t *testing.T) {
 }
 
 func TestPreventMergeForItemCLI(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection))
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, build.Collection))
 
 	patchID := "abcdef012345"
 	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
@@ -320,7 +321,9 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 		Issue: patchID,
 	}
 
-	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID}
+	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}
+	require.NoError(t, mergeBuild.Insert())
+	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID, BuildId: "b1"}
 	require.NoError(t, mergeTask.Insert())
 
 	// Without a corresponding version
@@ -342,6 +345,10 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	mergeTask, err = task.FindOneId("t1")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(-1), mergeTask.Priority)
+
+	mergeBuild, err = build.FindOneId("b1")
+	assert.NoError(t, err)
+	assert.False(t, mergeBuild.Tasks[0].Activated)
 }
 
 func TestClearVersionPatchSubscriber(t *testing.T) {

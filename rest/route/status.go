@@ -18,12 +18,13 @@ const (
 )
 
 type recentTasksGetHandler struct {
-	minutes   int
-	verbose   bool
-	byDistro  bool
-	byProject bool
-	taskType  string
-	sc        data.Connector
+	minutes        int
+	verbose        bool
+	byDistro       bool
+	byProject      bool
+	byAgentVersion bool
+	taskType       string
+	sc             data.Connector
 }
 
 func makeRecentTaskStatusHandler(sc data.Connector) gimlet.RouteHandler {
@@ -66,8 +67,13 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 		h.byProject = true
 	}
 
-	if h.byDistro && h.byProject {
-		return errors.New("by_distro and by_project can't both be true")
+	byAgentVersionStr := r.URL.Query().Get("by_agent_version")
+	if byAgentVersionStr == "true" || byAgentVersionStr == "1" {
+		h.byAgentVersion = true
+	}
+
+	if h.byDistro && h.byProject || h.byProject && h.byAgentVersion || h.byDistro && h.byAgentVersion {
+		return errors.New("only one of the following can be true: by_distro by_project by_agent_version")
 	}
 
 	h.taskType = r.URL.Query().Get("status")
@@ -101,12 +107,15 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(response)
 	}
 
-	if h.byDistro || h.byProject {
+	if h.byDistro || h.byProject || h.byAgentVersion {
 		var stats *model.APIRecentTaskStatsList
-		if h.byDistro {
+		switch {
+		case h.byDistro:
 			stats, err = h.sc.FindRecentTaskListDistro(h.minutes)
-		} else {
+		case h.byProject:
 			stats, err = h.sc.FindRecentTaskListProject(h.minutes)
+		case h.byAgentVersion:
+			stats, err = h.sc.FindRecentTaskListAgentVersion(h.minutes)
 		}
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

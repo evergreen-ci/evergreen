@@ -2038,7 +2038,7 @@ func TestValidateCreateHosts(t *testing.T) {
 	pp, err := model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
-	errs := validateCreateHosts(&p)
+	errs := validateHostCreates(&p)
 	assert.Len(errs, 0)
 
 	// error: times called per task
@@ -2059,7 +2059,7 @@ func TestValidateCreateHosts(t *testing.T) {
 	pp, err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
-	errs = validateCreateHosts(&p)
+	errs = validateHostCreates(&p)
 	assert.Len(errs, 1)
 }
 

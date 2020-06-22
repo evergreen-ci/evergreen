@@ -132,8 +132,8 @@ func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
 
 // SetPatchPriority attempts to set the priority on the corresponding version.
 // Will not error if no version exists.
-func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64) error {
-	return model.SetVersionPriority(patchId, priority)
+func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64, caller string) error {
+	return model.SetVersionPriority(patchId, priority, caller)
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
@@ -306,7 +306,7 @@ func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
 }
 
 // SetPatchPriority sets the patch priority in the CachedPriority map.
-func (pc *MockPatchConnector) SetPatchPriority(patchId string, priority int64) error {
+func (pc *MockPatchConnector) SetPatchPriority(patchId string, priority int64, caller string) error {
 	pc.CachedPriority[patchId] = priority
 	return nil
 }

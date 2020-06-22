@@ -65,7 +65,7 @@ type Connector interface {
 	GetManifestByTask(string) (*manifest.Manifest, error)
 
 	// SetBuildPriority and SetBuildActivated change the status of the input build
-	SetBuildPriority(string, int64) error
+	SetBuildPriority(string, int64, string) error
 	SetBuildActivated(string, string, bool) error
 
 	// AbortBuild is a method to abort the build matching the same BuildId.
@@ -218,7 +218,7 @@ type Connector interface {
 	// RestartVersion restarts all completed tasks of a version given its ID and the caller.
 	RestartVersion(string, string) error
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
-	SetPatchPriority(string, int64) error
+	SetPatchPriority(string, int64, string) error
 	SetPatchActivated(context.Context, string, string, bool, *evergreen.Settings) error
 
 	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
@@ -245,6 +245,7 @@ type Connector interface {
 	FindRecentTasks(int) ([]task.Task, *task.ResultCounts, error)
 	FindRecentTaskListDistro(int) (*restModel.APIRecentTaskStatsList, error)
 	FindRecentTaskListProject(int) (*restModel.APIRecentTaskStatsList, error)
+	FindRecentTaskListAgentVersion(int) (*restModel.APIRecentTaskStatsList, error)
 	// GetHostStatsByDistro returns host stats broken down by distro
 	GetHostStatsByDistro() ([]host.StatsByDistro, error)
 

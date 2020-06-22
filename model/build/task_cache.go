@@ -1,14 +1,16 @@
 package build
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Creates a new task cache with the specified id, display name, and value for
@@ -97,6 +99,51 @@ func SetCachedTaskActivated(buildId, taskId string, active bool) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{TasksKey + ".$." + TaskCacheActivatedKey: active},
 	})
+}
+
+// SetManyCachedTasksActivated activates tasks in their build caches
+func SetManyCachedTasksActivated(tasks []task.Task, activated bool) error {
+	buildMap := make(map[string]map[string]bool)
+	for _, t := range tasks {
+		taskID := t.Id
+		if t.IsPartOfDisplay() {
+			taskID = t.DisplayTask.Id
+		}
+
+		if _, ok := buildMap[t.BuildId]; !ok {
+			buildMap[t.BuildId] = make(map[string]bool)
+		}
+		buildMap[t.BuildId][taskID] = true
+	}
+
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	for buildID, taskIDs := range buildMap {
+		taskIDSlice := make([]string, 0, len(taskIDs))
+		for taskID := range taskIDs {
+			taskIDSlice = append(taskIDSlice, taskID)
+		}
+
+		res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
+			bson.M{
+				IdKey: buildID,
+			},
+			bson.M{
+				"$set": bson.M{bsonutil.GetDottedKeyName(TasksKey, "$[task]", TaskCacheActivatedKey): activated},
+			},
+			options.FindOneAndUpdate().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+				bson.M{
+					bsonutil.GetDottedKeyName("task", TaskCacheIdKey): bson.M{"$in": taskIDSlice},
+				},
+			}}),
+		)
+		if err := res.Err(); err != nil {
+			return errors.Wrapf(err, "can't activate build '%s' cached tasks", buildID)
+		}
+	}
+
+	return nil
 }
 
 // ResetCachedTask resets the given task
