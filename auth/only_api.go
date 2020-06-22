@@ -100,9 +100,8 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 		},
 	}
 	cache, err := usercache.NewExternal(opts)
-	if err != nil {
-		catcher.Wrap(err, "could not create DB cache")
-	}
+	catcher.Wrap(err, "could not create DB cache")
+
 	if catcher.HasErrors() {
 		grip.Critical(message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "failed to create API-only manager",
