@@ -144,6 +144,7 @@ type PatchTasks {
 
 type PatchBuildVariant {
   variant: String!
+  displayName: String!
   tasks: [PatchBuildVariantTask]
 }
 type PatchBuildVariantTask {

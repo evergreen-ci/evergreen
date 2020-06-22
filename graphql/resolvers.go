@@ -770,6 +770,11 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
+	patchVariants, err := GetVariantsAndTasksFromProject(*patch.PatchedConfig, *patch.Project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprint("Error getting variants from project, `%s`", err))
+	}
+	fmt.Println(patchVariants)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
