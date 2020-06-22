@@ -637,6 +637,7 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 				HostIdKey:        hostId,
 				LastHeartbeatKey: dispatchTime,
 				DistroIdKey:      distroId,
+				AgentVersionKey:  agentRevision,
 			},
 			"$unset": bson.M{
 				AbortedKey:   "",
