@@ -377,8 +377,22 @@ func ClearTaskQueue(distro string) error {
 		"message": "clearing task queue",
 		"distro":  distro,
 	})
+
+	catcher := grip.NewBasicCatcher()
+	err := clearTaskQueueCollection(distro, TaskQueuesCollection)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+	}
+	err = clearTaskQueueCollection(distro, TaskAliasQueuesCollection)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+	}
+	return catcher.Resolve()
+}
+
+func clearTaskQueueCollection(distro, collection string) error {
 	_, err := db.Upsert(
-		TaskQueuesCollection,
+		collection,
 		bson.M{
 			taskQueueDistroKey: distro,
 		},
@@ -389,7 +403,7 @@ func ClearTaskQueue(distro string) error {
 			},
 		},
 	)
-	return errors.Wrap(err, "error clearing task queue")
+	return err
 }
 
 type taskQueueQuery struct {
