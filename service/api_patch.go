@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -105,6 +107,15 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchID := mgobson.NewObjectId()
+	grip.Info(message.Fields{
+		"operation":  "patch creation",
+		"message":    "creating patch from CLI",
+		"patch_id":   patchID,
+		"finalizing": data.Finalize,
+		"variants":   data.Variants,
+		"tasks":      data.Tasks,
+		"alias":      data.Alias,
+	})
 	job := units.NewPatchIntentProcessor(patchID, intent)
 	job.Run(r.Context())
 
@@ -344,6 +355,15 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		grip.Info(message.Fields{
+			"operation":     "patch creation",
+			"message":       "finalized patch with finalize-patch",
+			"patch_id":      p.Id,
+			"variants":      p.BuildVariants,
+			"tasks":         p.Tasks,
+			"variant_tasks": p.VariantsTasks,
+			"alias":         p.Alias,
+		})
 
 		gimlet.WriteJSON(w, "patch finalized")
 	case "cancel":

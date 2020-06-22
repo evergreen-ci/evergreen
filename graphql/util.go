@@ -245,6 +245,17 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
+		if requester == evergreen.PatchVersionRequester {
+			grip.Info(message.Fields{
+				"operation":     "patch creation",
+				"message":       "finalized patch from the UI",
+				"patch_id":      p.Id,
+				"variants":      p.BuildVariants,
+				"tasks":         p.Tasks,
+				"variant_tasks": p.VariantsTasks,
+				"alias":         p.Alias,
+			})
+		}
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())

@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -156,7 +158,17 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
 			return errors.Wrapf(err, "error finalizing patch '%s'", p.Id.Hex())
 		}
-
+		if requester == evergreen.PatchVersionRequester {
+			grip.Info(message.Fields{
+				"operation":     "patch creation",
+				"message":       "finalized patch with status rest route",
+				"patch_id":      p.Id,
+				"variants":      p.BuildVariants,
+				"tasks":         p.Tasks,
+				"variant_tasks": p.VariantsTasks,
+				"alias":         p.Alias,
+			})
+		}
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
 			q := evergreen.GetEnvironment().LocalQueue()
