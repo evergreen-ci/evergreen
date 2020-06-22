@@ -3,7 +3,6 @@ package repotracker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -24,7 +23,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -935,28 +933,13 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 	const retryCount = 5
 
 	client := evergreen.GetEnvironment().Client()
+	errs := grip.NewBasicCatcher()
 	for i := 0; i < retryCount; i++ {
 		err := client.UseSession(ctx, sessionFunc)
-		// only continue if we had a transaction error
-		if !isTransientTxErr(err, versionId) {
-			return err
+		if err == nil {
+			return nil
 		}
+		errs.Add(err)
 	}
-	return errors.Errorf("hit max client retries for version '%s'", versionId)
-}
-
-func isTransientTxErr(err error, versionId string) bool {
-	if err == nil {
-		return false
-	}
-	rootErr := errors.Cause(err)
-	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
-	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) || strings.Contains(err.Error(), "LockTimeout") {
-		grip.Notice(message.WrapError(err, message.Fields{
-			"message": "hit transient transaction error, will retry",
-			"version": versionId,
-		}))
-		return true
-	}
-	return false
+	return errors.Wrapf(errs.Resolve(), "hit max client retries for version '%s'", versionId)
 }
