@@ -920,7 +920,7 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	tasks, err := Find(db.Query(bson.M{
 		BuildIdKey:   buildId,
 		TaskGroupKey: taskGroup,
-	}))
+	}).Sort([]string{TaskGroupOrderKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting tasks in task group")
 	}
