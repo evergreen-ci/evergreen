@@ -3,6 +3,7 @@ package repotracker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -950,7 +951,7 @@ func isTransientTxErr(err error, versionId string) bool {
 	}
 	rootErr := errors.Cause(err)
 	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
-	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) {
+	if isCmdErr && cmdErr.HasErrorLabel(driver.TransientTransactionError) || strings.Contains(err.Error(), "LockTimeout") {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "hit transient transaction error, will retry",
 			"version": versionId,
