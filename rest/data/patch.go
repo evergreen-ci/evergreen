@@ -161,7 +161,8 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 		if requester == evergreen.PatchVersionRequester {
 			grip.Info(message.Fields{
 				"operation":     "patch creation",
-				"message":       "finalized patch with status rest route",
+				"message":       "finalized patch",
+				"from":          "rest route",
 				"patch_id":      p.Id,
 				"variants":      p.BuildVariants,
 				"tasks":         p.Tasks,

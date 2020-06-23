@@ -357,7 +357,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if j.IntentType == patch.CliIntentType {
 			grip.Info(message.Fields{
 				"operation":     "patch creation",
-				"message":       "finalized patch from CLI",
+				"message":       "finalized patch at time of patch creation",
+				"from":          "CLI",
 				"job":           j.ID(),
 				"patch_id":      patchDoc.Id,
 				"variants":      patchDoc.BuildVariants,

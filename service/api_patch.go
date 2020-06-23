@@ -109,7 +109,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	patchID := mgobson.NewObjectId()
 	grip.Info(message.Fields{
 		"operation":  "patch creation",
-		"message":    "creating patch from CLI",
+		"message":    "creating patch",
+		"from":       "CLI",
 		"patch_id":   patchID,
 		"finalizing": data.Finalize,
 		"variants":   data.Variants,
@@ -357,7 +358,8 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		grip.Info(message.Fields{
 			"operation":     "patch creation",
-			"message":       "finalized patch with finalize-patch",
+			"message":       "finalized patch",
+			"from":          "CLI",
 			"patch_id":      p.Id,
 			"variants":      p.BuildVariants,
 			"tasks":         p.Tasks,
