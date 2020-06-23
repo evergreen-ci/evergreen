@@ -394,8 +394,7 @@ func ClearTaskQueue(distroId string) error {
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
-	distroQueueInfo.Length = 0
-	distroQueueInfo.CountOverThreshold = 0
+	clearQueueInfo(&distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, TaskQueuesCollection, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
@@ -405,13 +404,21 @@ func ClearTaskQueue(distroId string) error {
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
-	distroQueueInfo.Length = 0
-	distroQueueInfo.CountOverThreshold = 0
+	clearQueueInfo(&distroQueueInfo)
+
 	err = clearTaskQueueCollection(distroId, TaskAliasQueuesCollection, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
 	return catcher.Resolve()
+}
+
+// clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
+func clearQueueInfo(distroQueueInfo *DistroQueueInfo) {
+	distroQueueInfo.Length = 0
+	distroQueueInfo.CountOverThreshold = 0
+	distroQueueInfo.ExpectedDuration = time.Duration(0)
+	distroQueueInfo.TaskGroupInfos = []TaskGroupInfo{}
 }
 
 func clearTaskQueueCollection(distroId, collection string, distroQueueInfo DistroQueueInfo) error {

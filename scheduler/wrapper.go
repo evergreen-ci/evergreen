@@ -41,7 +41,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	if distro.Disabled {
-		// we can just delete these queues, the tasks will persist
+		// we can just clear these queues, the tasks will persist
 		// and get rescheduled once the distro is no longer disabled
 		var queue_info model.DistroQueueInfo
 		queue_info, err = model.GetDistroQueueInfo(distro.Id)
