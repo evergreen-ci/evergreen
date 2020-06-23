@@ -46,9 +46,24 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return rval, err
 }
 
-func GetDistroAliasQueueInfo(distroID string) (DistroQueueInfo, error) {
+// GetDistroQueueInfoGuaranteed always returns a DistroQueueInfo.
+// If there is a database error, this will be empty.
+func GetDistroQueueInfoGuaranteed(distroID string) DistroQueueInfo {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+
+	if err != nil {
+		rval = DistroQueueInfo{}
+	}
+	return rval
+}
+
+func GetDistroAliasQueueInfoGuaranteed(distroID string) DistroQueueInfo {
 	rval, err := getDistroQueueInfoCollection(distroID, TaskAliasQueuesCollection)
-	return rval, err
+
+	if err != nil {
+		rval = DistroQueueInfo{}
+	}
+	return rval
 }
 
 func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo, error) {
@@ -393,7 +408,7 @@ func ClearTaskQueue(distroId string) error {
 
 	catcher := grip.NewBasicCatcher()
 
-	distroQueueInfo, err := GetDistroQueueInfo(distroId)
+	distroQueueInfo, err := GetDistroQueueInfoGuaranteed(distroId)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
@@ -403,7 +418,7 @@ func ClearTaskQueue(distroId string) error {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
 
-	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
+	distroQueueInfo, err = GetDistroAliasQueueInfoGuaranteed(distroId)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
@@ -418,7 +433,7 @@ func ClearTaskQueue(distroId string) error {
 
 // clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
 func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
-	new_distroQueueInfo := DistroQueueInfo{
+	newDistroQueueInfo := DistroQueueInfo{
 		Length:               0,
 		ExpectedDuration:     time.Duration(0),
 		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
@@ -428,7 +443,7 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 		AliasQueue:           distroQueueInfo.AliasQueue,
 	}
 
-	return new_distroQueueInfo
+	return newDistroQueueInfo
 }
 
 func clearTaskQueueCollection(distroId, collection string, distroQueueInfo DistroQueueInfo) error {
