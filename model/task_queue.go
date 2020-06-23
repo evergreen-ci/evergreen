@@ -46,8 +46,8 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return rval, err
 }
 
-func GetDistroQueueInfoAlias(distroID string) (DistroQueueInfo, error) {
-	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+func GetDistroAliasQueueInfo(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskAliasQueuesCollection)
 	return rval, err
 }
 
@@ -382,6 +382,9 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo D
 	return errors.WithStack(err)
 }
 
+// ClearTaskQueue removes all tasks from task queue by updating them with a blank queue,
+//and modifies the queue info.
+//This is in contrast to RemoveTaskQueues, which simply deletes these documents.
 func ClearTaskQueue(distroId string) error {
 	grip.Info(message.Fields{
 		"message": "clearing task queue",
@@ -394,17 +397,17 @@ func ClearTaskQueue(distroId string) error {
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
-	clearQueueInfo(&distroQueueInfo)
+	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, TaskQueuesCollection, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
 
-	distroQueueInfo, err = GetDistroQueueInfoAlias(distroId)
+	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
-	clearQueueInfo(&distroQueueInfo)
+	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
 	err = clearTaskQueueCollection(distroId, TaskAliasQueuesCollection, distroQueueInfo)
 	if err != nil {
@@ -414,11 +417,18 @@ func ClearTaskQueue(distroId string) error {
 }
 
 // clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
-func clearQueueInfo(distroQueueInfo *DistroQueueInfo) {
-	distroQueueInfo.Length = 0
-	distroQueueInfo.CountOverThreshold = 0
-	distroQueueInfo.ExpectedDuration = time.Duration(0)
-	distroQueueInfo.TaskGroupInfos = []TaskGroupInfo{}
+func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
+	new_distroQueueInfo := DistroQueueInfo{
+		Length:               0,
+		ExpectedDuration:     time.Duration(0),
+		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
+		PlanCreatedAt:        distroQueueInfo.PlanCreatedAt,
+		CountOverThreshold:   0,
+		TaskGroupInfos:       []TaskGroupInfo{},
+		AliasQueue:           distroQueueInfo.AliasQueue,
+	}
+
+	return new_distroQueueInfo
 }
 
 func clearTaskQueueCollection(distroId, collection string, distroQueueInfo DistroQueueInfo) error {
