@@ -42,9 +42,19 @@ type DistroQueueInfo struct {
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+	return rval, err
+}
+
+func GetDistroQueueInfoAlias(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+	return rval, err
+}
+
+func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
-		TaskQueuesCollection,
+		collection,
 		bson.M{taskQueueDistroKey: distroID},
 		bson.M{taskQueueDistroQueueInfoKey: 1},
 		db.NoSort,
@@ -372,34 +382,50 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo D
 	return errors.WithStack(err)
 }
 
-func ClearTaskQueue(distro string) error {
+func ClearTaskQueue(distroId string) error {
 	grip.Info(message.Fields{
 		"message": "clearing task queue",
-		"distro":  distro,
+		"distro":  distroId,
 	})
 
 	catcher := grip.NewBasicCatcher()
-	err := clearTaskQueueCollection(distro, TaskQueuesCollection)
+
+	distroQueueInfo, err := GetDistroQueueInfo(distroId)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
-	err = clearTaskQueueCollection(distro, TaskAliasQueuesCollection)
+	distroQueueInfo.Length = 0
+	distroQueueInfo.CountOverThreshold = 0
+	err = clearTaskQueueCollection(distroId, TaskQueuesCollection, distroQueueInfo)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+	}
+
+	distroQueueInfo, err = GetDistroQueueInfoAlias(distroId)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+	}
+	distroQueueInfo.Length = 0
+	distroQueueInfo.CountOverThreshold = 0
+	err = clearTaskQueueCollection(distroId, TaskAliasQueuesCollection, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
 	return catcher.Resolve()
 }
 
-func clearTaskQueueCollection(distro, collection string) error {
+func clearTaskQueueCollection(distroId, collection string, distroQueueInfo DistroQueueInfo) error {
+
 	_, err := db.Upsert(
 		collection,
 		bson.M{
-			taskQueueDistroKey: distro,
+			taskQueueDistroKey: distroId,
 		},
 		bson.M{
 			"$set": bson.M{
-				taskQueueQueueKey:       []TaskQueueItem{},
-				taskQueueGeneratedAtKey: time.Now(),
+				taskQueueQueueKey:           []TaskQueueItem{},
+				taskQueueGeneratedAtKey:     time.Now(),
+				taskQueueDistroQueueInfoKey: distroQueueInfo,
 			},
 		},
 	)
@@ -441,7 +467,6 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 		},
 		{
 			"$group": bson.M{
-				//todo_hhoke: update from slack
 				"_id": taskQueueItemIdKey,
 				taskQueueQueueKey: bson.M{
 					"$push": bson.M{

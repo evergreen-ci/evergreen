@@ -55,12 +55,18 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 			}
 			grip.Info(message.Fields{
 				"distro":      distro.Id,
-				"err":         err,
 				"removed_len": queue_info.Length,
 				"operation":   "removed queue of disabled distro",
 			})
 		}
+		queue_info, err = model.GetDistroQueueInfo(distro.Id)
 
+		grip.Info(message.Fields{
+			"distro":      distro.Id,
+			"removed_len": queue_info.Length,
+			"err":         err,
+			"operation":   "poast",
+		})
 		grip.InfoWhen(sometimes.Quarter(), message.Fields{
 			"message": "scheduling for distro is disabled",
 			"runner":  RunnerName,
