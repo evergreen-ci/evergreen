@@ -774,7 +774,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
-			Status: task.Status,
+			Status: task.GetDisplayStatus(),
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 	}
