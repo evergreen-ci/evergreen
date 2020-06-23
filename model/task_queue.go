@@ -383,8 +383,8 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo D
 }
 
 // ClearTaskQueue removes all tasks from task queue by updating them with a blank queue,
-//and modifies the queue info.
-//This is in contrast to RemoveTaskQueues, which simply deletes these documents.
+// and modifies the queue info.
+// This is in contrast to RemoveTaskQueues, which simply deletes these documents.
 func ClearTaskQueue(distroId string) error {
 	grip.Info(message.Fields{
 		"message": "clearing task queue",
