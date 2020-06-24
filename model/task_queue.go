@@ -395,23 +395,37 @@ func ClearTaskQueue(distroId string) error {
 
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+		catcher.Add(errors.Wrap(err, "error getting task queue info"))
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
-	err = clearTaskQueueCollection(distroId, TaskQueuesCollection, distroQueueInfo)
+	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
 
+	aliasQuery := bson.M{
+		taskQueueDistroKey: distroId,
+	}
+	aliasCount, err := db.Count(TaskAliasQueuesCollection, aliasQuery)
+	if err != nil {
+		catcher.Add(err)
+	}
+	if aliasCount == 0 && err == nil {
+		grip.Info(message.Fields{
+			"message": "alias task queue not found, skipping",
+			"distro":  distroId,
+		})
+		return catcher.Resolve()
+	}
 	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+		catcher.Add(errors.Wrap(err, "error getting alias queue info"))
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
-	err = clearTaskQueueCollection(distroId, TaskAliasQueuesCollection, distroQueueInfo)
+	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+		catcher.Add(errors.Wrap(err, "error clearing task alias queue"))
 	}
 	return catcher.Resolve()
 }
@@ -431,10 +445,10 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 	return new_distroQueueInfo
 }
 
-func clearTaskQueueCollection(distroId, collection string, distroQueueInfo DistroQueueInfo) error {
+func clearTaskQueueCollection(distroId string, distroQueueInfo DistroQueueInfo) error {
 
 	_, err := db.Upsert(
-		collection,
+		distroQueueInfo.GetQueueCollection(),
 		bson.M{
 			taskQueueDistroKey: distroId,
 		},
