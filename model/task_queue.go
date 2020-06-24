@@ -42,9 +42,19 @@ type DistroQueueInfo struct {
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+	return rval, err
+}
+
+func GetDistroAliasQueueInfo(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskAliasQueuesCollection)
+	return rval, err
+}
+
+func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
-		TaskQueuesCollection,
+		collection,
 		bson.M{taskQueueDistroKey: distroID},
 		bson.M{taskQueueDistroQueueInfoKey: 1},
 		db.NoSort,
@@ -372,24 +382,88 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo D
 	return errors.WithStack(err)
 }
 
-func ClearTaskQueue(distro string) error {
+// ClearTaskQueue removes all tasks from task queue by updating them with a blank queue,
+// and modifies the queue info.
+// This is in contrast to RemoveTaskQueues, which simply deletes these documents.
+func ClearTaskQueue(distroId string) error {
 	grip.Info(message.Fields{
 		"message": "clearing task queue",
-		"distro":  distro,
+		"distro":  distroId,
 	})
+
+	catcher := grip.NewBasicCatcher()
+
+	// task queue should always exist, so proceed with clearing
+	distroQueueInfo, err := GetDistroQueueInfo(distroId)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error getting task queue info"))
+	}
+	distroQueueInfo = clearQueueInfo(distroQueueInfo)
+	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+	}
+
+	// make sure task alias queue actually exists before modifying
+	aliasQuery := bson.M{
+		taskQueueDistroKey: distroId,
+	}
+	aliasCount, err := db.Count(TaskAliasQueuesCollection, aliasQuery)
+	if err != nil {
+		catcher.Add(err)
+	}
+	// want to at least try to clear even in the case of an error
+	if aliasCount == 0 && err == nil {
+		grip.Info(message.Fields{
+			"message": "alias task queue not found, skipping",
+			"distro":  distroId,
+		})
+		return catcher.Resolve()
+	}
+	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error getting task alias queue info"))
+	}
+	distroQueueInfo = clearQueueInfo(distroQueueInfo)
+
+	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error clearing task alias queue"))
+	}
+	return catcher.Resolve()
+}
+
+// clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
+func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
+	new_distroQueueInfo := DistroQueueInfo{
+		Length:               0,
+		ExpectedDuration:     time.Duration(0),
+		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
+		PlanCreatedAt:        distroQueueInfo.PlanCreatedAt,
+		CountOverThreshold:   0,
+		TaskGroupInfos:       []TaskGroupInfo{},
+		AliasQueue:           distroQueueInfo.AliasQueue,
+	}
+
+	return new_distroQueueInfo
+}
+
+func clearTaskQueueCollection(distroId string, distroQueueInfo DistroQueueInfo) error {
+
 	_, err := db.Upsert(
-		TaskQueuesCollection,
+		distroQueueInfo.GetQueueCollection(),
 		bson.M{
-			taskQueueDistroKey: distro,
+			taskQueueDistroKey: distroId,
 		},
 		bson.M{
 			"$set": bson.M{
-				taskQueueQueueKey:       []TaskQueueItem{},
-				taskQueueGeneratedAtKey: time.Now(),
+				taskQueueQueueKey:           []TaskQueueItem{},
+				taskQueueGeneratedAtKey:     time.Now(),
+				taskQueueDistroQueueInfoKey: distroQueueInfo,
 			},
 		},
 	)
-	return errors.Wrap(err, "error clearing task queue")
+	return err
 }
 
 type taskQueueQuery struct {
@@ -427,7 +501,6 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 		},
 		{
 			"$group": bson.M{
-				//todo_hhoke: update from slack
 				"_id": taskQueueItemIdKey,
 				taskQueueQueueKey: bson.M{
 					"$push": bson.M{

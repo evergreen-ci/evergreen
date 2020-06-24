@@ -41,7 +41,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	if distro.Disabled {
-		// we can just delete these queues, the tasks will persist
+		// we can just clear these queues, the tasks will persist
 		// and get rescheduled once the distro is no longer disabled
 		var queue_info model.DistroQueueInfo
 		queue_info, err = model.GetDistroQueueInfo(distro.Id)
@@ -49,17 +49,16 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 			grip.Error(err)
 		}
 		if queue_info.Length > 0 {
-			err = model.RemoveTaskQueues(distro.Id)
+			err = model.ClearTaskQueue(distro.Id)
 			if err != nil {
 				grip.Error(err)
 			}
 			grip.Info(message.Fields{
-				"distro":    distro.Id,
-				"err":       err,
-				"operation": "removed queue of disabled distro",
+				"distro":      distro.Id,
+				"removed_len": queue_info.Length,
+				"operation":   "removed queue of disabled distro",
 			})
 		}
-
 		grip.InfoWhen(sometimes.Quarter(), message.Fields{
 			"message": "scheduling for distro is disabled",
 			"runner":  RunnerName,
