@@ -292,6 +292,14 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
+		if err := SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+			return errors.WithStack(err)
+		}
+
+		// update the cached version of the task, in its build document
+		if err := ResetCachedTask(t.BuildId, t.Id); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	// reset the build statuses, once per build
@@ -299,7 +307,6 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	for k := range buildIdSet {
 		buildIdList = append(buildIdList, k)
 	}
-
 	// Set the build status for all the builds containing the tasks that we touched
 	_, err := UpdateAllBuilds(
 		bson.M{IdKey: bson.M{"$in": buildIdList}},

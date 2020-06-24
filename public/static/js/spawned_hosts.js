@@ -630,7 +630,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             $window.location.reload();
           },
           error: function (resp) {
-            notificationService.pushNotification('Error changing host status: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error changing host status: ' + resp.data, 'errorHeader');
           }
         }
       );
