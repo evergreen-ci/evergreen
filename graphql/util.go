@@ -407,7 +407,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			ID:           task.Id,
 			DisplayName:  task.DisplayName,
 			Version:      task.Version,
-			Status:       task.Status,
+			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
 		}
