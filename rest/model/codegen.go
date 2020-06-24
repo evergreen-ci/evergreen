@@ -182,11 +182,8 @@ func getTemplate(filepath string) (*template.Template, error) {
 		return nil, err
 	}
 	return template.New(filepath).Funcs(template.FuncMap{
-		"shortenpackage": func(pkg string) string {
-			split := strings.Split(pkg, "/")
-			return split[len(split)-1]
-		},
-		"cleanName": cleanName,
+		"shortenpackage": shortenPackage,
+		"cleanName":      cleanName,
 	}).Parse(string(f))
 }
 
@@ -246,7 +243,7 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	case "Any":
 		return returntype + "interface{}"
 	default:
-		return gqlType
+		return "API" + gqlType
 	}
 }
 
@@ -307,14 +304,14 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 				fieldErrs.Add(err)
 				continue
 			}
-			converter, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
+			convertFuncs, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
 			data := conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: converter,
+				TypeConversionFunc: convertFuncs.converter,
 			}
 			lineData, err := output(bfsConvertTemplate, data)
 			if err != nil {
@@ -323,14 +320,10 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 			bfsCode = append(bfsCode, lineData)
 
 			// generate the ToService code
-			converter, err = conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions) // TODO: this is wrong, figure out how to reverse
-			if err != nil {
-				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
-			}
 			data = conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: converter,
+				TypeConversionFunc: convertFuncs.inverter,
 			}
 			lineData, err = output(tsConvertTemplate, data)
 			if err != nil {
@@ -354,6 +347,8 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 }
 
 func validateFieldTypes(fieldName, inputType, outputType string) error {
+	inputType = stripPackage(inputType)
+	outputType = stripPackage(outputType)
 	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
 		// this should ideally be a more sophisticated check to ensure that complex types are convertible
 		// to each other, but for now we rely on the naming convention to find obvious type errors
