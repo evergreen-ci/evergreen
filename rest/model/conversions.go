@@ -22,10 +22,15 @@ const (
 	toService        = "ToService"
 )
 
+type convertFuncs struct {
+	converter string
+	inverter  string
+}
+
 // conversionFn uses the specific naming conventions of type conversion funcs in conversions.gotmpl
-// to find the correct generated type conversion function. It returns the name of the conversion function,
-// then the name of the inverse conversion function
-func conversionFn(in types.Type, outIsPtr bool, generatedConversions map[string]string) (string, string, error) {
+// to find the correct generated type conversion function. It returns the name of the conversion function
+// and the name of the inverse conversion function
+func conversionFn(in types.Type, outIsPtr bool, generatedConversions map[string]string) (convertFuncs, error) {
 	if _, inIsPrimitive := in.(*types.Basic); inIsPrimitive {
 		return simplePtrs(in.String(), outIsPtr, generatedConversions)
 	}
@@ -38,7 +43,7 @@ func conversionFn(in types.Type, outIsPtr bool, generatedConversions map[string]
 		if isStruct {
 			return objectTypeFnName(underlyingStruct, outIsPtr)
 		}
-		return "", "", errors.New("complex pointers not implemented yet")
+		return convertFuncs{}, errors.New("complex pointers not implemented yet")
 	}
 	if intype, inIsNamedType := in.(*types.Named); inIsNamedType {
 		switch intype.String() {
@@ -53,7 +58,7 @@ func conversionFn(in types.Type, outIsPtr bool, generatedConversions map[string]
 		case "map[string]interface{}":
 			return simplePtrs(intype.String(), outIsPtr, generatedConversions)
 		default:
-			return "", "", errors.New("complex maps not implemented yet")
+			return convertFuncs{}, errors.New("complex maps not implemented yet")
 		}
 	}
 	if intype, inIsInterface := in.(*types.Interface); inIsInterface {
@@ -61,33 +66,40 @@ func conversionFn(in types.Type, outIsPtr bool, generatedConversions map[string]
 		case "interface{}":
 			return simplePtrs(intype.String(), outIsPtr, generatedConversions)
 		default:
-			return "", "", errors.New("non-empty interfaces not implemented yet")
+			return convertFuncs{}, errors.New("non-empty interfaces not implemented yet")
 		}
 	}
 
-	return "", "", errors.Errorf("converting type %s is not supported", in.String())
+	return convertFuncs{}, errors.Errorf("converting type %s is not supported", in.String())
 }
 
-func objectTypeFnName(in types.Type, outIsPtr bool) (string, string, error) {
+func objectTypeFnName(in types.Type, outIsPtr bool) (convertFuncs, error) {
+	funcs := convertFuncs{}
 	fnName := ""
 	if !outIsPtr {
 		fnName = "*"
 	}
 	fnName += "API"
 	fnName += stripPackage(in.String())
-	return fnName + buildFromService, fnName + toService, nil
+	funcs.converter = fnName + buildFromService
+	funcs.inverter = fnName + toService
+	return funcs, nil
 }
 
-func simplePtrs(typeName string, outIsPtr bool, generatedConversions map[string]string) (string, string, error) {
+func simplePtrs(typeName string, outIsPtr bool, generatedConversions map[string]string) (convertFuncs, error) {
+	funcs := convertFuncs{}
 	if err := generateConversionCode(generatedConversions, typeName); err != nil {
-		return "", "", err
+		return funcs, err
 	}
 	typeName = cleanName(typeName)
 	if outIsPtr {
-		return fmt.Sprintf("%s%sPtr", typeName, typeName), fmt.Sprintf("%sPtr%s", typeName, typeName), nil
+		funcs.converter = fmt.Sprintf("%s%sPtr", typeName, typeName)
+		funcs.inverter = fmt.Sprintf("%sPtr%s", typeName, typeName)
+		return funcs, nil
 	}
-	out := fmt.Sprintf("%s%s", typeName, typeName)
-	return out, out, nil
+	funcs.converter = fmt.Sprintf("%s%s", typeName, typeName)
+	funcs.inverter = funcs.converter
+	return funcs, nil
 }
 
 func cleanName(name string) string {

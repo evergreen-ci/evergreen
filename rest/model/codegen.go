@@ -304,14 +304,14 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 				fieldErrs.Add(err)
 				continue
 			}
-			converter, inverter, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
+			convertFuncs, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
 			data := conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: converter,
+				TypeConversionFunc: convertFuncs.converter,
 			}
 			lineData, err := output(bfsConvertTemplate, data)
 			if err != nil {
@@ -323,7 +323,7 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 			data = conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: inverter,
+				TypeConversionFunc: convertFuncs.inverter,
 			}
 			lineData, err = output(tsConvertTemplate, data)
 			if err != nil {
