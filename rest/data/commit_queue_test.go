@@ -95,11 +95,11 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 
 	s.NoError(s.queue.SetProcessing(true))
 
-	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
 	s.NoError(err)
 	s.False(found)
 
-	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
@@ -249,11 +249,11 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
 	s.NoError(err)
 	s.False(found)
 
-	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
