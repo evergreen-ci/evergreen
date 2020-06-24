@@ -997,12 +997,13 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id: %s: %s", t.Project, err.Error()))
 	}
-	err = model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName())
+	user := gimlet.GetUser(ctx).DisplayName()
+	err = model.AbortTask(taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version, gimlet.GetUser(ctx).DisplayName())
+		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version, user)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}
