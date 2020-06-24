@@ -18,7 +18,6 @@ import (
 const (
 	Collection    = "tasks"
 	OldCollection = "old_tasks"
-	TestLogPath   = "/test_log/"
 )
 
 var (
@@ -126,7 +125,6 @@ var (
 		},
 	},
 	}
-	CompletedStatuses = []string{evergreen.TaskSucceeded, evergreen.TaskFailed}
 
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
@@ -237,6 +235,15 @@ func ByVersions(versions []string) db.Q {
 func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db.Q {
 	return db.Query(bson.M{
 		IdKey:      bson.M{"$in": taskIds},
+		BuildIdKey: buildId,
+		StatusKey: bson.M{
+			"$in": statuses,
+		},
+	})
+}
+
+func ByBuildAndStatus(buildId string, statuses []string) db.Q {
+	return db.Query(bson.M{
 		BuildIdKey: buildId,
 		StatusKey: bson.M{
 			"$in": statuses,
@@ -508,14 +515,13 @@ func WithinTimePeriod(startedAfter, finishedBefore time.Time, project string, st
 	})
 }
 
-func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, statuses []string) db.Q {
+func ByIdsVersionAndStatus(taskIds []string, versionId string, statuses []string) db.Q {
 	return db.Query(bson.M{
 		IdKey: bson.M{
 			"$in": taskIds,
 		},
-		VersionKey:      versionId,
-		DispatchTimeKey: bson.M{"$ne": utility.ZeroTime},
-		StatusKey:       bson.M{"$in": statuses},
+		VersionKey: versionId,
+		StatusKey:  bson.M{"$in": statuses},
 	})
 }
 
@@ -1153,4 +1159,39 @@ func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 		}}),
 	)
 	return res.Err()
+}
+
+func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
+	q := bson.M{
+		BuildIdKey: buildId,
+		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+	}
+	if len(taskIds) > 0 {
+		q[IdKey] = bson.M{"$in": taskIds}
+	}
+	_, err := UpdateAll(
+		q,
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:   true,
+				AbortInfoKey: AbortInfo{User: caller},
+			},
+		},
+	)
+	return err
+}
+
+func AbortTasksForVersion(versionId string, taskIds []string, caller string) error {
+	_, err := UpdateAll(
+		bson.M{
+			VersionKey: versionId,
+			IdKey:      bson.M{"$in": taskIds},
+			StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		},
+		bson.M{"$set": bson.M{
+			AbortedKey:   true,
+			AbortInfoKey: AbortInfo{User: caller},
+		}},
+	)
+	return err
 }

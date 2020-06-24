@@ -136,7 +136,7 @@ func resetTask(taskId, caller string) error {
 		return errors.WithStack(err)
 	}
 	if t.IsPartOfDisplay() {
-		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
+		return errors.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
 	}
 	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
@@ -1101,10 +1101,6 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
 		return errors.Wrap(checkResetDisplayTask(t.DisplayTask), "can't check display task reset")
-	} else if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "can't mark task group for reset")
-		}
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.MonitorPackage, &t.Details), "problem resetting task")

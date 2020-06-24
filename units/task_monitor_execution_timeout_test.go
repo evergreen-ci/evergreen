@@ -111,10 +111,12 @@ func TestCleanupTask(t *testing.T) {
 						Project:   "proj",
 						Restarts:  0,
 						Requester: evergreen.PatchVersionRequester,
+						Activated: true,
 					}
 					et2 := &task.Task{
-						Id:     "et2",
-						Status: evergreen.TaskStarted,
+						Id:        "et2",
+						Status:    evergreen.TaskStarted,
+						Activated: true,
 					}
 					So(dt.Insert(), ShouldBeNil)
 					So(et1.Insert(), ShouldBeNil)
