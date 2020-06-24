@@ -211,7 +211,7 @@ func SetupEnv(env evergreen.Environment) error {
 	return nil
 }
 
-func RemoveCommitQueueItemForVersion(projectId, patchType, version string) (bool, error) {
+func RemoveCommitQueueItemForVersion(projectId, patchType, version string, user string) (bool, error) {
 	cq, err := FindOneId(projectId)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
@@ -232,10 +232,11 @@ func RemoveCommitQueueItemForVersion(projectId, patchType, version string) (bool
 		issue = head.Issue
 	}
 
-	return cq.RemoveItemAndPreventMerge(issue, patchType, true)
+	return cq.RemoveItemAndPreventMerge(issue, patchType, true, user)
 }
 
-func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versionExists bool) (bool, error) {
+func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versionExists bool, user string) (bool, error) {
+
 	head, valid := cq.Next()
 	if !valid {
 		return false, nil
@@ -248,11 +249,12 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versio
 	if !removed || head.Issue != issue {
 		return removed, nil
 	}
-	return removed, errors.Wrapf(preventMergeForItem(patchType, versionExists, head),
+
+	return removed, errors.Wrapf(preventMergeForItem(patchType, versionExists, head, user),
 		"can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
 }
 
-func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem) error {
+func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem, user string) error {
 	if patchType == PRPatchType && item.Version != "" {
 		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
@@ -272,14 +274,14 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 		if mergeTask == nil {
 			return errors.New("merge task doesn't exist")
 		}
-		if _, err = mergeTask.Blacklist(evergreen.User); err != nil {
+		event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
+		if _, err = mergeTask.Blacklist(user); err != nil {
 			return errors.Wrap(err, "can't blacklist merge task")
 		}
 		if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
 			return errors.Wrap(err, "can't update build cache for deactivated ")
 		}
 	}
-
 	return nil
 }
 
