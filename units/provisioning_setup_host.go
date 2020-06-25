@@ -320,16 +320,6 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 				scriptName, j.host.Id, output)
 		}
 	}
-
-	if j.host.Distro.Teardown != "" {
-		var output string
-		output, err = copyScript(ctx, j.env, settings, j.host, filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName), j.host.Distro.Teardown)
-		if err != nil {
-			return errors.Wrapf(err, "error copying teardown script %s to host %s: %s",
-				evergreen.TeardownScriptName, j.host.Id, output)
-		}
-	}
-
 	return nil
 }
 

@@ -84,8 +84,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(createDistro).RouteHandler(makePutDistro(sc, settings))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup(sc))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
-	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroTeardown(sc))
-	app.AddRoute("/distros/{distro_id}/teardown").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroTeardown(sc))
 	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroExecute(sc, env))
 	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(sc, env))
 
