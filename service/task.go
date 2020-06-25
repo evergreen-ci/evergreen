@@ -761,7 +761,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 		if projCtx.Task.Requester == evergreen.MergeTestRequester {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
-				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version)
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, authName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -785,7 +785,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
-				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version)
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, authName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}

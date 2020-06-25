@@ -245,6 +245,18 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
+		if requester == evergreen.PatchVersionRequester {
+			grip.Info(message.Fields{
+				"operation":     "patch creation",
+				"message":       "finalized patch",
+				"from":          "UI",
+				"patch_id":      p.Id,
+				"variants":      p.BuildVariants,
+				"tasks":         p.Tasks,
+				"variant_tasks": p.VariantsTasks,
+				"alias":         p.Alias,
+			})
+		}
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
@@ -395,7 +407,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			ID:           task.Id,
 			DisplayName:  task.DisplayName,
 			Version:      task.Version,
-			Status:       task.Status,
+			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
 		}
@@ -449,7 +461,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				proj = projRef
 			}
 			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Identifier,
-				proj.CommitQueue.PatchType, version.Id)
+				proj.CommitQueue.PatchType, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}

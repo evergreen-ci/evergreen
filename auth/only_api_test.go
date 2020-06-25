@@ -93,8 +93,8 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				Users: []evergreen.OnlyAPIUser{u1},
 			}
 			um, err := NewOnlyAPIUserManager(conf)
-			assert.Error(t, err)
-			assert.Nil(t, um)
+			assert.NoError(t, err)
+			assert.NotNil(t, um)
 		},
 		"DeletesOldOnlyAPIUsers": func(t *testing.T) {
 			regUser := &user.DBUser{

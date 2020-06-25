@@ -74,14 +74,6 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 		catcher.Wrap(err, "could not delete old API-only users from DB")
 	}
 
-	if catcher.HasErrors() {
-		grip.Critical(message.WrapError(catcher.Resolve(), message.Fields{
-			"message": "failed to create API-only manager",
-			"reason":  "problems updating API-only users in database",
-		}))
-		return nil, errors.Wrap(catcher.Resolve(), "could not initialize API-only user manager")
-	}
-
 	opts := usercache.ExternalOptions{
 		PutUserGetToken: func(gimlet.User) (string, error) {
 			return "", errors.New("cannot put new users in DB")
@@ -108,8 +100,13 @@ func NewOnlyAPIUserManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserMana
 		},
 	}
 	cache, err := usercache.NewExternal(opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create DB cache")
+	catcher.Wrap(err, "could not create DB cache")
+
+	if catcher.HasErrors() {
+		grip.Critical(message.WrapError(catcher.Resolve(), message.Fields{
+			"message": "failed to create API-only manager",
+			"reason":  "problems updating API-only users in database",
+		}))
 	}
 	return cached.NewUserManager(cache)
 }

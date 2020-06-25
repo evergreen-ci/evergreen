@@ -779,7 +779,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
-			Status: task.Status,
+			Status: task.GetDisplayStatus(),
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 	}
@@ -1002,12 +1002,13 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id: %s: %s", t.Project, err.Error()))
 	}
-	err = model.AbortTask(taskID, gimlet.GetUser(ctx).DisplayName())
+	user := gimlet.GetUser(ctx).DisplayName()
+	err = model.AbortTask(taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
 	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version)
+		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version, user)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
 		}
@@ -1041,7 +1042,8 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
-	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID)
+
+	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
 	}

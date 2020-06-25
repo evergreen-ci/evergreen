@@ -346,7 +346,6 @@ func hostConfigure() cli.Command {
 				Directory: directory,
 				Quiet:     quiet,
 				DryRun:    dryRun,
-				Output:    grip.GetSender(),
 			})
 			if err != nil {
 				return errors.Wrapf(err, "error getting commands")

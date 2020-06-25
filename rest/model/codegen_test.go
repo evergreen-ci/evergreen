@@ -2,7 +2,6 @@ package model
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,37 +50,6 @@ func TestCodegen(t *testing.T) {
 func TestWords(t *testing.T) {
 	s := "thisIsAFieldName"
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
-}
-
-func TestCreateConversionMethods(t *testing.T) {
-	if os.Getenv("RACE_DETECTOR") != "" {
-		t.Skip()
-		return
-	}
-	generatedConversions := map[string]string{}
-	fields := extractedFields{
-		"Author":          extractedField{OutputFieldName: "One", OutputFieldType: "*string", Nullable: true},
-		"AuthorEmail":     extractedField{OutputFieldName: "Two", OutputFieldType: "string", Nullable: false},
-		"AuthorGithubUID": extractedField{OutputFieldName: "Three", OutputFieldType: "int", Nullable: false},
-	}
-	generated, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields, generatedConversions)
-	assert.NoError(t, err)
-	expected := `
-func (m *APIRevision) BuildFromService(t model.Revision) error {
-    m.One = StringStringPtr(t.Author)
-m.Three = IntInt(t.AuthorGithubUID)
-m.Two = StringString(t.AuthorEmail)
-    return nil
-}
-
-func (m *APIRevision) ToService() (model.Revision, error) {
-    out := model.Revision{}
-    out.Author = StringStringPtr(m.One)
-out.AuthorEmail = StringString(m.Two)
-out.AuthorGithubUID = IntInt(m.Three)
-    return out, nil
-}`
-	assert.Equal(t, expected, string(generated))
 }
 
 func TestCreateConversionMethodsError(t *testing.T) {

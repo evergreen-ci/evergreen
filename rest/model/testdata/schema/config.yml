@@ -5,3 +5,13 @@ models:
     model: github.com/mongodb/grip/send.GithubOptions
   Scalars:
     model: github.com/evergreen-ci/evergreen/rest/model.MockScalars
+  UserSettings:
+    model: github.com/evergreen-ci/evergreen/model/user.UserSettings
+  GithubUser:
+    model: github.com/evergreen-ci/evergreen/model/user.GithubUser
+  MockEmbedded:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockEmbedded
+  MockLayerOne:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockLayerOne
+  MockLayerTwo:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockLayerTwo

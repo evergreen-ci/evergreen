@@ -30,6 +30,7 @@ const (
 	TaskPriorityChanged         = "TASK_PRIORITY_CHANGED"
 	TaskJiraAlertCreated        = "TASK_JIRA_ALERT_CREATED"
 	TaskDepdendenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
+	MergeTaskUnscheduled        = "MERGE_TASK_UNSCHEDULED"
 )
 
 // implements Data
@@ -150,5 +151,10 @@ func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
 
 func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {
 	logTaskEvent(taskId, TaskDepdendenciesOverridden,
+		TaskEventData{Execution: execution, UserId: userID})
+}
+
+func LogMergeTaskUnscheduled(taskId string, execution int, userID string) {
+	logTaskEvent(taskId, MergeTaskUnscheduled,
 		TaskEventData{Execution: execution, UserId: userID})
 }
