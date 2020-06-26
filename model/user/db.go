@@ -46,6 +46,8 @@ var (
 var (
 	SettingsTZKey             = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
 	userSettingsGithubUserKey = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
+	UseSpruceOptionsKey       = bsonutil.MustHaveTag(UserSettings{}, "UseSpruceOptions")
+	SpruceV1Key               = bsonutil.MustHaveTag(UseSpruceOptions{}, "SpruceV1")
 )
 
 func FindByGithubUID(uid int) (*DBUser, error) {
