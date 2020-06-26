@@ -91,7 +91,24 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias, data.SyncBuildVariants, data.SyncTasks, data.SyncStatuses, data.SyncTimeout)
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         dbUser.Id,
+		Project:      data.Project,
+		BaseGitHash:  data.Githash,
+		Module:       r.FormValue("module"),
+		PatchContent: patchString,
+		Description:  data.Description,
+		Finalize:     data.Finalize,
+		Variants:     data.Variants,
+		Tasks:        data.Tasks,
+		Alias:        data.Alias,
+		SyncParams: patch.SyncAtEndOptions{
+			BuildVariants: data.SyncBuildVariants,
+			Tasks:         data.SyncTasks,
+			Statuses:      data.SyncStatuses,
+			Timeout:       data.SyncTimeout,
+		},
+	})
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
