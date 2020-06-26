@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -224,12 +226,24 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
+	region := ""
 	if len(d.ProviderSettingsList) > 1 {
-		return ManagerOpts{}, errors.Errorf("distro should be modified to have only one provider settings")
+		if IsEc2Provider(d.Provider) {
+			// this shouldn't ever happen, but if it does we want to continue so we don't inadvertently block task queues
+			grip.Error(message.Fields{
+				"message":           "distro should be modified to have only one provider settings",
+				"provider_settings": d.ProviderSettingsList,
+				"distro":            d.Id,
+			})
+			region = evergreen.DefaultEC2Region
+		} else {
+			return ManagerOpts{}, errors.Errorf(
+				"distro '%s' has multiple provider settings, but is provider '%s'", d.Id, d.Provider)
+		}
 	}
 	if IsEc2Provider(d.Provider) {
 		s := &EC2ProviderSettings{}
-		if err := s.FromDistroSettings(d, ""); err != nil {
+		if err := s.FromDistroSettings(d, region); err != nil {
 			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
 		}
 

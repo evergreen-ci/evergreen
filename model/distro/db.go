@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -174,4 +175,22 @@ func ByIsDisabled(containerPools []evergreen.ContainerPool) db.Q {
 // returns them ordered by {"_id": 1}
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+}
+
+func FindByIdWithDefaultSettings(id string) (*Distro, error) {
+	d, err := FindByID(id)
+	if err != nil {
+		return d, errors.WithStack(err)
+	}
+	if d == nil {
+		return nil, nil
+	}
+	if len(d.ProviderSettingsList) > 1 {
+		providerSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error getting %s provider settings for distro '%s'", evergreen.DefaultEC2Region, id)
+		}
+		d.ProviderSettingsList = []*birch.Document{providerSettings}
+	}
+	return d, nil
 }

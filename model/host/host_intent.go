@@ -143,7 +143,7 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	if err != nil {
 		return nil, nil, err
 	}
-	parentDistro, err := distro.FindByID(pool.Distro)
+	parentDistro, err := distro.FindByIdWithDefaultSettings(pool.Distro)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding distro")
 	}
