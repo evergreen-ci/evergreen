@@ -158,7 +158,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-	TeardownScriptName            = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 

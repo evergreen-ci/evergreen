@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,7 +19,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -337,15 +335,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.runHostTeardown(ctx, settings); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_type": j.Type().Name,
-			"message":  "Error running teardown script",
-			"host_id":  j.host.Id,
-			"logs":     output,
-		}))
-	}
-
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.Reason); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
@@ -404,48 +393,4 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"cost":        j.host.TotalCost,
 		})
 	}
-}
-
-func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *evergreen.Settings) (string, error) {
-	if !j.host.Distro.LegacyBootstrap() {
-		// Attempt to run the teardown command through Jasper.
-		output, err := j.tryRunTeardownScript(func(runScript string) (string, error) {
-			output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-				Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", runScript},
-			})
-			return strings.Join(output, "\n"), err
-		})
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not run teardown script using Jasper, will attempt to run teardown using SSH",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"logs":    output,
-				"job":     j.ID(),
-			}))
-		} else {
-			return output, nil
-		}
-	}
-
-	return j.tryRunTeardownScript(func(runScript string) (string, error) {
-		return j.host.RunSSHCommand(ctx, runScript)
-	})
-}
-
-// tryRunTeardownScript attempts to run the teardown script using the given
-// runCmd to execute the teardown command.
-func (j *hostTerminationJob) tryRunTeardownScript(runCmd func(runScript string) (string, error)) (string, error) {
-	startTime := time.Now()
-	output, err := runCmd(j.host.TearDownCommand())
-	if err != nil {
-		event.LogHostTeardown(j.host.Id, output, false, time.Since(startTime))
-
-		output, err = runCmd(host.TearDownDirectlyCommand())
-		if err != nil {
-			event.LogHostTeardown(j.host.Id, output, false, time.Since(startTime))
-		}
-	}
-	event.LogHostTeardown(j.host.Id, output, true, time.Since(startTime))
-	return output, nil
 }
