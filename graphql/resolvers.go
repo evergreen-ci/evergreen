@@ -1184,10 +1184,14 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 	if baseTask == nil {
 		return nil, nil
 	}
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+	}
 
 	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
 	baseTaskMetadata := BaseTaskMetadata{
-		BaseTaskLink:     fmt.Sprintf("/task/%s", baseTask.Id),
+		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
 		BaseTaskDuration: &dur,
 	}
 	if baseTask.TimeTaken == 0 {
