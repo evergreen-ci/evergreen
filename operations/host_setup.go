@@ -93,39 +93,6 @@ func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, run
 	return errors.Wrap(catcher.Resolve(), output)
 }
 
-func hostTeardown() cli.Command {
-	return cli.Command{
-		Name:  "teardown",
-		Usage: "run a teardown script on a build host",
-		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithTimeout(context.Background(), setupTimeout)
-			defer cancel()
-
-			return errors.WithStack(runTeardownScript(ctx))
-		},
-	}
-}
-
-func runTeardownScript(ctx context.Context) error {
-	if _, err := os.Stat(evergreen.TeardownScriptName); os.IsNotExist(err) {
-		return errors.Errorf("no teardown script '%s' found", evergreen.TeardownScriptName)
-	}
-
-	chmod := host.ChmodCommandWithSudo(evergreen.TeardownScriptName, false)
-	if output, err := runCmd(ctx, chmod); err != nil {
-		return errors.Wrap(err, output)
-	}
-
-	teardown := host.ShCommandWithSudo(evergreen.TeardownScriptName, false)
-	output, err := runCmd(ctx, teardown)
-	if err != nil {
-		return errors.Wrap(err, output)
-	}
-	fmt.Println(output)
-
-	return nil
-}
-
 // runCmd runs the given command and returns the output.
 func runCmd(ctx context.Context, args []string) (string, error) {
 	output := util.NewMBCappedWriter()

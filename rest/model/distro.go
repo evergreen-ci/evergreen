@@ -384,7 +384,6 @@ type APIDistro struct {
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
 	Setup                 *string                  `json:"setup"`
-	Teardown              *string                  `json:"teardown"`
 	User                  *string                  `json:"user"`
 	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
 	CloneMethod           *string                  `json:"clone_method"`
@@ -429,7 +428,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = ToStringPtr(d.Setup)
-	apiDistro.Teardown = ToStringPtr(d.Teardown)
 	apiDistro.User = ToStringPtr(d.User)
 	bootstrapSettings := APIBootstrapSettings{}
 	if err := bootstrapSettings.BuildFromService(d.BootstrapSettings); err != nil {
@@ -510,7 +508,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = FromStringPtr(apiDistro.Setup)
-	d.Teardown = FromStringPtr(apiDistro.Teardown)
 	d.User = FromStringPtr(apiDistro.User)
 	i, err := apiDistro.BootstrapSettings.ToService()
 	if err != nil {

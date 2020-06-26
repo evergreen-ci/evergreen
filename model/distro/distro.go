@@ -30,7 +30,6 @@ type Distro struct {
 	ProviderSettingsList  []*birch.Document     `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown              string                `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
 	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	BootstrapSettings     BootstrapSettings     `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
 	CloneMethod           string                `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
