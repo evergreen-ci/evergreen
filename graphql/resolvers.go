@@ -770,25 +770,27 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
-	patchVariants, err := GetVariantsAndTasksFromProject(*patch.PatchedConfig, *patch.Project)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprint("Error getting variants from project, `%s`", err))
-	}
-	fmt.Println(patchVariants)
+	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
-			Status: task.GetDisplayStatus(),
+			Status: task.Status,
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+		build, err := r.sc.FindBuildById(task.BuildId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
+		}
+		variantDisplayName[task.BuildVariant] = build.DisplayName
 	}
 
 	result := []*PatchBuildVariant{}
 	for variant, tasks := range tasksByVariant {
 		pbv := PatchBuildVariant{
-			Variant: variant,
-			Tasks:   tasks,
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
 		}
 		result = append(result, &pbv)
 	}
