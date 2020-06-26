@@ -75,7 +75,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		// So we check if the person trying to deactivate is evergreen.
 		// If it is not, then we can deactivate it.
 		// Otherwise, if it was originally activated by evergreen, anything can
-		// decativate it.
+		// deactivate it.
 
 		err = t.DeactivateTask(caller)
 		if err != nil {
@@ -1195,6 +1195,9 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 	tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 	if err != nil {
 		return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
+	}
+	if len(tasks) == 0 {
+		return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
 	}
 	shouldReset := false
 	for _, tgTask := range tasks {

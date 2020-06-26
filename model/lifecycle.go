@@ -296,7 +296,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-	finishedTasks, err := task.FindWithDisplayTasks(task.ByIdsVersionAndStatus(taskIds, versionId, evergreen.CompletedStatuses))
+	finishedTasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil && !adb.ResultsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -374,7 +374,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindWithDisplayTasks(task.ByIdsBuildAndStatus(taskIds, buildId, evergreen.CompletedStatuses))
+	tasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
 	}

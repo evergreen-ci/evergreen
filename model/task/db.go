@@ -232,19 +232,9 @@ func ByVersions(versions []string) db.Q {
 }
 
 // ByIdsBuildIdAndStatus creates a query to return tasks with a certain build id and statuses
-func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db.Q {
+func ByIdsAndStatus(taskIds []string, statuses []string) db.Q {
 	return db.Query(bson.M{
-		IdKey:      bson.M{"$in": taskIds},
-		BuildIdKey: buildId,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-	})
-}
-
-func ByBuildAndStatus(buildId string, statuses []string) db.Q {
-	return db.Query(bson.M{
-		BuildIdKey: buildId,
+		IdKey: bson.M{"$in": taskIds},
 		StatusKey: bson.M{
 			"$in": statuses,
 		},
@@ -512,16 +502,6 @@ func WithinTimePeriod(startedAfter, finishedBefore time.Time, project string, st
 
 	return db.Query(bson.M{
 		"$and": q,
-	})
-}
-
-func ByIdsVersionAndStatus(taskIds []string, versionId string, statuses []string) db.Q {
-	return db.Query(bson.M{
-		IdKey: bson.M{
-			"$in": taskIds,
-		},
-		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": statuses},
 	})
 }
 
@@ -929,9 +909,6 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	}).Sort([]string{TaskGroupOrderKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting tasks in task group")
-	}
-	if len(tasks) == 0 {
-		return nil, errors.New("no tasks in task group")
 	}
 	return tasks, nil
 }
