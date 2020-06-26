@@ -27,6 +27,12 @@ const (
 	tsConvertTemplatePath      = "templates/toservice_conversion.gotmpl"
 )
 
+const (
+	aliasesDirective = "aliases"
+	dbFieldNameArg   = "db"
+	jsonTagArg       = "json"
+)
+
 type fileInfo struct {
 	Package string
 	Structs string
@@ -150,7 +156,7 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 	extractedFields := extractedFields{}
 	for _, field := range gqlType.Fields {
 		fieldInfo := getFieldInfo(field)
-		extractedFields[field.Name] = fieldInfo
+		extractedFields[dbField(*field)] = fieldInfo
 		fieldData, err := output(fieldTemplate, fieldInfo)
 		if err != nil {
 			return "", "", err
@@ -176,6 +182,18 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 	return structData, code, nil
 }
 
+func dbField(gqlDefinition ast.FieldDefinition) string {
+	name := gqlDefinition.Name
+	directive := gqlDefinition.Directives.ForName(aliasesDirective)
+	if directive != nil {
+		arg := directive.Arguments.ForName(dbFieldNameArg)
+		if arg != nil {
+			name = arg.Value.String()
+		}
+	}
+	return name
+}
+
 func getTemplate(filepath string) (*template.Template, error) {
 	f, err := ioutil.ReadFile(filepath)
 	if err != nil {
@@ -187,14 +205,18 @@ func getTemplate(filepath string) (*template.Template, error) {
 	}).Parse(string(f))
 }
 
-func nameAndTag(fieldName string) (string, string) {
-	pieces := words(fieldName)
-	name := ""
-	for _, piece := range pieces {
-		name += strings.Title(piece)
+func jsonTag(gqlDefinition ast.FieldDefinition) string {
+	directive := gqlDefinition.Directives.ForName(aliasesDirective)
+	if directive != nil {
+		arg := directive.Arguments.ForName(jsonTagArg)
+		if arg != nil {
+			return arg.Value.String()
+		}
 	}
-	return name, strings.Join(pieces, "_")
+	pieces := words(gqlDefinition.Name)
+	return strings.Join(pieces, "_")
 }
+
 func words(in string) []string {
 	out := []string{}
 	re := regexp.MustCompile(`[A-Za-z][^A-Z]*`)
@@ -215,13 +237,12 @@ func output(t *template.Template, data interface{}) (string, error) {
 }
 
 func getFieldInfo(f *ast.FieldDefinition) extractedField {
-	name, tag := nameAndTag(f.Name)
 	outputType := gqlTypeToGoType(f.Type.Name(), !f.Type.NonNull)
 	return extractedField{
-		OutputFieldName: name,
+		OutputFieldName: f.Name,
 		OutputFieldType: outputType,
 		Nullable:        strings.Contains(outputType, "*"),
-		JsonTag:         tag,
+		JsonTag:         jsonTag(*f),
 	}
 }
 

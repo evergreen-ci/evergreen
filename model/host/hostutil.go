@@ -47,24 +47,6 @@ func (h *Host) SetupCommand() string {
 	return cmd
 }
 
-// TearDownCommand returns a command for running a teardown script on a host.
-func (h *Host) TearDownCommand() string {
-	return fmt.Sprintf("cd %s && ./%s host teardown", h.Distro.HomeDir(), h.Distro.BinaryName())
-}
-
-// TearDownDirectlyCommand returns a command for running a teardown script on a host. This command
-// runs if there is a problem running host teardown with the agent and is intended only as a
-// backstop if multiple agent deploys interfere with one another
-// (https://jira.mongodb.org/browse/EVG-5972). It likely can be removed after work to improve amboy
-// job locking or the SSH dependency.
-func TearDownDirectlyCommand() string {
-	chmod := ChmodCommandWithSudo(evergreen.TeardownScriptName, false)
-	chmodString := strings.Join(chmod, " ")
-	sh := ShCommandWithSudo(evergreen.TeardownScriptName, false)
-	shString := strings.Join(sh, " ")
-	return fmt.Sprintf("%s && %s", chmodString, shString)
-}
-
 func ShCommandWithSudo(script string, sudo bool) []string {
 	args := []string{}
 	if sudo {

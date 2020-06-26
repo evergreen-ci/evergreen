@@ -134,114 +134,6 @@ func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for GET /rest/v2/distros/{distro_id}/teardown
-
-type DistroTeardownByIDSuite struct {
-	sc *data.MockConnector
-	rm gimlet.RouteHandler
-
-	suite.Suite
-}
-
-func TestDistroTeardownByIDSuite(t *testing.T) {
-	suite.Run(t, new(DistroTeardownByIDSuite))
-}
-
-func (s *DistroTeardownByIDSuite) SetupSuite() {
-	s.sc = getMockDistrosConnector()
-	s.rm = makeGetDistroTeardown(s.sc)
-}
-
-func (s *DistroTeardownByIDSuite) TestRunValidId() {
-	ctx := context.Background()
-	h := s.rm.(*distroIDGetTeardownHandler)
-	h.distroID = "fedora8"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	script := resp.Data()
-	s.Equal(script, model.ToStringPtr("Tear-down script"))
-}
-
-func (s *DistroTeardownByIDSuite) TestRunInvalidId() {
-	ctx := context.Background()
-	h := s.rm.(*distroIDGetTeardownHandler)
-	h.distroID = "invalid"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// Tests for PATCH /rest/v2/distros/{distro_id}/teardown
-
-type DistroPatchTeardownByIDSuite struct {
-	sc *data.MockConnector
-	rm gimlet.RouteHandler
-
-	suite.Suite
-}
-
-func TestDistroPatchTeardownByIDSuite(t *testing.T) {
-	suite.Run(t, new(DistroPatchTeardownByIDSuite))
-}
-
-func (s *DistroPatchTeardownByIDSuite) SetupSuite() {
-	s.sc = getMockDistrosConnector()
-	s.rm = makeChangeDistroTeardown(s.sc)
-}
-
-func (s *DistroPatchTeardownByIDSuite) TestParseValidJSON() {
-	ctx := context.Background()
-	json := []byte(`{"teardown": "New tear-down script"}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/teardown", bytes.NewBuffer(json))
-
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-	s.Equal("New tear-down script", s.rm.(*distroIDChangeTeardownHandler).Teardown)
-}
-
-func (s *DistroPatchTeardownByIDSuite) TestParseInvalidJSON() {
-	ctx := context.Background()
-	json := []byte(`{"malform": "ed}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/teardown", bytes.NewBuffer(json))
-
-	err := s.rm.Parse(ctx, req)
-	s.Error(err)
-}
-
-func (s *DistroPatchTeardownByIDSuite) TestRunValidId() {
-	ctx := context.Background()
-	h := s.rm.(*distroIDChangeTeardownHandler)
-	h.distroID = "fedora8"
-	h.Teardown = "New tear-down script"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
-	s.Require().True(ok)
-	s.Equal(apiDistro.Teardown, model.ToStringPtr("New tear-down script"))
-}
-
-func (s *DistroPatchTeardownByIDSuite) TestRunInvalidId() {
-	ctx := context.Background()
-	h := s.rm.(*distroIDChangeTeardownHandler)
-	h.distroID = "invalid"
-	h.Teardown = "New set-up script"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
 // Tests for GET /rest/v2/distros/{distro_id}
 
 type DistroByIDSuite struct {
@@ -625,7 +517,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				ProviderSettingsList: settingsList,
 				SetupAsSudo:          true,
 				Setup:                "Set-up string",
-				Teardown:             "Tear-down string",
 				User:                 "root",
 				SSHKey:               sshKey,
 				SSHOptions: []string{
@@ -829,22 +720,6 @@ func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, model.ToStringPtr("New Set-up string"))
-}
-
-func (s *DistroPatchByIDSuite) TestRunValidTearDown() {
-	ctx := context.Background()
-	json := []byte(`{"teardown": "New Tear-down string"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
-	s.Require().True(ok)
-	s.Equal(apiDistro.Teardown, model.ToStringPtr("New Tear-down string"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidUser() {
@@ -1228,7 +1103,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					}],
 				"setup_as_sudo" : false,
 				"setup" : "~Set-up script",
-				"teardown" : "~Tear-down script",
 				"user" : "~root",
 				"bootstrap_settings": {
 					"method": "legacy-ssh",
@@ -1303,7 +1177,6 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, model.ToStringPtr("~Set-up script"))
-	s.Equal(apiDistro.Teardown, model.ToStringPtr("~Tear-down script"))
 	s.Equal(model.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(model.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(model.ToStringPtr(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
@@ -1388,7 +1261,6 @@ func getMockDistrosConnector() *data.MockConnector {
 					)},
 					SetupAsSudo: true,
 					Setup:       "Set-up script",
-					Teardown:    "Tear-down script",
 					User:        "root",
 					SSHKey:      "SSH key string",
 					SSHOptions: []string{

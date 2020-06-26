@@ -52,7 +52,6 @@ const (
 	EventHostTaskPidSet                  = "HOST_TASK_PID_SET"
 	EventHostMonitorFlag                 = "HOST_MONITOR_FLAG"
 	EventTaskFinished                    = "HOST_TASK_FINISHED"
-	EventHostTeardown                    = "HOST_TEARDOWN"
 	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
 	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
@@ -214,15 +213,6 @@ func LogHostTaskPidSet(hostId string, taskPid string) {
 // several retries
 func LogProvisionFailed(hostId string, setupLogs string) {
 	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{Logs: setupLogs})
-}
-
-func LogHostTeardown(hostId, teardownLogs string, success bool, duration time.Duration) {
-	LogHostEvent(hostId, EventHostTeardown,
-		HostEventData{Logs: teardownLogs, Successful: success, Duration: duration})
-}
-
-func LogMonitorOperation(hostId string, op string) {
-	LogHostEvent(hostId, EventHostMonitorFlag, HostEventData{MonitorOp: op})
 }
 
 func LogSpawnhostExpirationWarningSent(hostID string) {
