@@ -95,8 +95,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "Database error for find() by distro id '%s'", j.DistroID))
 		return
 	}
-	if distro != nil {
-		j.AddError(errors.Wrapf(err, "distro '%s' not found", j.DistroID))
+	if distro == nil {
+		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
 		return
 	}
 
