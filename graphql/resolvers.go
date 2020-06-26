@@ -778,11 +778,14 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 			Status: task.Status,
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
-		build, err := r.sc.FindBuildById(task.BuildId)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
+		if _, ok := variantDisplayName[task.BuildVariant]; !ok {
+			build, err := r.sc.FindBuildById(task.BuildId)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
+			}
+			variantDisplayName[task.BuildVariant] = build.DisplayName
 		}
-		variantDisplayName[task.BuildVariant] = build.DisplayName
+
 	}
 
 	result := []*PatchBuildVariant{}
