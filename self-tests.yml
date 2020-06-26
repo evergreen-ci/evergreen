@@ -259,6 +259,7 @@ functions:
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         SMOKE_TEST_FILE: ${smoke_test_file}
+        STAGING_ONLY : ${staging_only|}
         TEST_TIMEOUT: ${test_timeout}
         TZ: ${tz}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
@@ -389,6 +390,29 @@ tasks:
           target: "coverage-html"
           make_args: "-k"
           tz: "America/New_York"
+
+  - name: staging-dist 
+    patch_only: true
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - func: run-make
+        vars: { target: task, staging_only: 1 }
+      - command: s3.put
+        type: system
+        params:
+          optional: true
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/${task_name}.tar.gz
+          remote_file: evergreen/${build_id}-${build_variant}/evergreen-${task_name}-${revision}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: dist.tar.gz
+
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -585,6 +609,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist"
+      - name: "staging-dist"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
