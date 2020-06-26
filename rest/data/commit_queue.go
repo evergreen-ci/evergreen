@@ -6,9 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
+	mgobson "gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
@@ -167,6 +170,74 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
+func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string, user *user.DBUser) (string, error) {
+	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(existingPatchID)))
+	if err != nil {
+		return "", errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
+	}
+
+	// verify the patch and its modules are in mbox format
+	if !existingPatch.IsMBox { //TODO: set IsMBox on MBox patches
+		return "", errors.New("can't enqueue a non-mbox patch")
+	}
+
+	// verify the commit queue is on
+	projectRef, err := model.FindOneProjectRef(existingPatch.Project)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
+	}
+	if projectRef == nil {
+		return "", errors.Errorf("no project '%s' exists", existingPatch.Project)
+	}
+	if !projectRef.Enabled {
+		return "", errors.Errorf("project '%s' is disabled", existingPatch.Project)
+	}
+	if projectRef.PatchingDisabled {
+		return "", errors.Errorf("patching is disabled for project '%s'", existingPatch.Project)
+	}
+	if !projectRef.CommitQueue.Enabled {
+		return "", errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
+	}
+
+	patchID := mgobson.NewObjectId()
+	patchDoc := &patch.Patch{
+		Id:            patchID,
+		Description:   "", // TODO: fill in
+		Author:        user.Id,
+		Project:       existingPatch.Project,
+		Githash:       existingPatch.Githash,
+		Status:        evergreen.PatchCreated,
+		Alias:         evergreen.CommitQueueAlias,
+		Patches:       existingPatch.Patches,
+		PatchedConfig: existingPatch.PatchedConfig,
+		CreateTime:    time.Now(),
+		DisplayNewUI:  existingPatch.DisplayNewUI,
+		IsMBox:        true,
+	}
+
+	// verify the commit queue has tasks/variants enabled that match the project
+	project := &model.Project{}
+	if _, err = model.LoadProjectInto([]byte(patchDoc.PatchedConfig), patchDoc.Project, project); err != nil {
+		return "", errors.Wrap(err, "problem loading project")
+	}
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+	if len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
+		return "", errors.New("commit queue has no build variants or tasks configured")
+	}
+
+	// get the next patch number for the user
+	patchDoc.PatchNumber, err = user.IncPatchNumber()
+	if err != nil {
+		return "", errors.Wrap(err, "error computing patch num")
+	}
+
+	if err = patchDoc.Insert(); err != nil {
+		return "", errors.Wrap(err, "can't insert patch")
+	}
+
+	return patchID.Hex(), nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -249,4 +320,8 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 
 func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
 	return true, nil
+}
+
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string, user *user.DBUser) (string, error) {
+	return "", nil
 }

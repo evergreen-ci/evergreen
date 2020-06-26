@@ -137,6 +137,7 @@ type Patch struct {
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	IsMBox          bool             `bson:"is_mobx"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }

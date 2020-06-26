@@ -320,6 +320,7 @@ type Connector interface {
 	CommitQueueRemoveItem(string, string, string) (bool, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
+	CreatePatchForMerge(context.Context, string, *user.DBUser) (string, error)
 	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 

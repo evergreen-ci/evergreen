@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -32,10 +34,12 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	s.projectRef = &model.ProjectRef{
-		Identifier: "mci",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
+		Identifier:       "mci",
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Branch:           "master",
+		Enabled:          true,
+		PatchingDisabled: false,
 		CommitQueue: model.CommitQueueParams{
 			Enabled:   true,
 			PatchType: commitqueue.CLIPatchType,
@@ -180,6 +184,44 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
 	s.NoError(err)
 	s.False(authorized)
+}
+
+func (s *CommitQueueSuite) TestCreatePatchForMerge() {
+	s.ctx = &DBConnector{}
+	s.Require().NoError(db.ClearCollections(patch.Collection, model.ProjectAliasCollection, user.Collection))
+
+	cqAlias := model.ProjectAlias{
+		ProjectID: s.projectRef.Identifier,
+		Alias:     evergreen.CommitQueueAlias,
+		Variant:   "v0",
+		Task:      "t0",
+	}
+	s.Require().NoError(cqAlias.Upsert())
+
+	existingPatch := &patch.Patch{
+		Project: s.projectRef.Identifier,
+		PatchedConfig: `
+tasks:
+  - name: t0
+buildvariants:
+  - name: v0
+    tasks:
+    - name: "t0"
+`,
+		IsMBox: true,
+	}
+	s.Require().NoError(existingPatch.Insert())
+	existingPatch, err := patch.FindOne(db.Q{})
+	s.Require().NoError(err)
+	s.Require().NotNil(existingPatch)
+
+	newPatchID, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), &user.DBUser{Id: "me"})
+	s.NoError(err)
+	s.NotEmpty(newPatchID)
+
+	newPatch, err := patch.FindOne(patch.ById(patch.NewId(newPatchID)))
+	s.NoError(err)
+	s.Equal(evergreen.CommitQueueAlias, newPatch.Alias)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
