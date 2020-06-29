@@ -180,6 +180,8 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			if dbHost != nil {
 				event.LogHostStatusChanged(dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
 			}
+		} else if provisioned && dbHost.Status == evergreen.HostProvisioning {
+			staticHost.Status = evergreen.HostRunning
 		} else {
 			staticHost.Status = dbHost.Status
 		}
