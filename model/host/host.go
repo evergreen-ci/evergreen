@@ -2353,8 +2353,8 @@ func (h *Host) MarkShouldNotExpire(expireOnValue string) error {
 // MarkShouldExpire resets a host's expiration to expire like
 // a normal spawn host, after 24 hours.
 func (h *Host) MarkShouldExpire(expireOnValue string) error {
-	//if it's already set to expire, do nothing.
-	if h.NoExpiration == false {
+	// If it's already set to expire, do nothing.
+	if !h.NoExpiration {
 		return nil
 	}
 
