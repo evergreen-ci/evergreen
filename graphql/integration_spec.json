@@ -2391,7 +2391,7 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find old task with id task-with-fake-old-id",
+            "message": "cannot find task with id task-does-not-exist",
             "path": ["taskFiles"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }

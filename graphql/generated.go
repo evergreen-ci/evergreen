@@ -258,10 +258,10 @@ type ComplexityRoot struct {
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
-		Task               func(childComplexity int, taskID string) int
-		TaskFiles          func(childComplexity int, taskID string) int
+		Task               func(childComplexity int, taskID string, execution *int) int
+		TaskFiles          func(childComplexity int, taskID string, execution *int) int
 		TaskLogs           func(childComplexity int, taskID string) int
-		TaskTests          func(childComplexity int, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
+		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User               func(childComplexity int) int
 		UserConfig         func(childComplexity int) int
 		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
@@ -459,12 +459,12 @@ type PatchResolver interface {
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
-	Task(ctx context.Context, taskID string) (*model.APITask, error)
+	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Projects(ctx context.Context) (*Projects, error)
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
-	TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
-	TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error)
+	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
+	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
 	User(ctx context.Context) (*model.APIUser, error)
 	TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error)
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
@@ -1495,7 +1495,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Task(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Query.Task(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Query.taskFiles":
 		if e.complexity.Query.TaskFiles == nil {
@@ -1507,7 +1507,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Query.taskLogs":
 		if e.complexity.Query.TaskLogs == nil {
@@ -1531,7 +1531,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -2395,7 +2395,7 @@ var sources = []*ast.Source{
     userId: String
     includeCommitQueue: Boolean = false
   ): UserPatches!
-  task(taskId: String!): Task
+  task(taskId: String!, execution: Int): Task
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -2411,6 +2411,7 @@ var sources = []*ast.Source{
   ): PatchTasks!
   taskTests(
     taskId: String!
+    execution: Int
     sortCategory: TestSortCategory = TEST_NAME
     sortDirection: SortDirection = ASC
     page: Int = 0
@@ -2418,7 +2419,7 @@ var sources = []*ast.Source{
     testName: String = ""
     statuses: [String!]! = []
   ): TaskTestResult!
-  taskFiles(taskId: String!): TaskFiles!
+  taskFiles(taskId: String!, execution: Int): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
@@ -3297,6 +3298,14 @@ func (ec *executionContext) field_Query_taskFiles_args(ctx context.Context, rawA
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -3325,54 +3334,62 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 		}
 	}
 	args["taskId"] = arg0
-	var arg1 *TestSortCategory
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 *TestSortCategory
 	if tmp, ok := rawArgs["sortCategory"]; ok {
-		arg1, err = ec.unmarshalOTestSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx, tmp)
+		arg2, err = ec.unmarshalOTestSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["sortCategory"] = arg1
-	var arg2 *SortDirection
+	args["sortCategory"] = arg2
+	var arg3 *SortDirection
 	if tmp, ok := rawArgs["sortDirection"]; ok {
-		arg2, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
+		arg3, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["sortDirection"] = arg2
-	var arg3 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg3
+	args["sortDirection"] = arg3
 	var arg4 *int
-	if tmp, ok := rawArgs["limit"]; ok {
+	if tmp, ok := rawArgs["page"]; ok {
 		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg4
-	var arg5 *string
+	args["page"] = arg4
+	var arg5 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		arg5, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg5
+	var arg6 *string
 	if tmp, ok := rawArgs["testName"]; ok {
-		arg5, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg6, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["testName"] = arg5
-	var arg6 []string
+	args["testName"] = arg6
+	var arg7 []string
 	if tmp, ok := rawArgs["statuses"]; ok {
-		arg6, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		arg7, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["statuses"] = arg6
+	args["statuses"] = arg7
 	return args, nil
 }
 
@@ -3387,6 +3404,14 @@ func (ec *executionContext) field_Query_task_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -7549,7 +7574,7 @@ func (ec *executionContext) _Query_task(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Task(rctx, args["taskId"].(string))
+		return ec.resolvers.Query().Task(rctx, args["taskId"].(string), args["execution"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7703,7 +7728,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7744,7 +7769,7 @@ func (ec *executionContext) _Query_taskFiles(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskFiles(rctx, args["taskId"].(string))
+		return ec.resolvers.Query().TaskFiles(rctx, args["taskId"].(string), args["execution"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
