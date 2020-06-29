@@ -203,6 +203,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	if j.user.Settings.UseSpruceOptions.SpruceV1 {
+		patchDoc.DisplayNewUI = true
+	}
+
 	pref, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
@@ -349,6 +353,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				"source":      "patch intents",
 			}))
 			return err
+		}
+		if j.IntentType == patch.CliIntentType {
+			grip.Info(message.Fields{
+				"operation":     "patch creation",
+				"message":       "finalized patch at time of patch creation",
+				"from":          "CLI",
+				"job":           j.ID(),
+				"patch_id":      patchDoc.Id,
+				"variants":      patchDoc.BuildVariants,
+				"tasks":         patchDoc.Tasks,
+				"variant_tasks": patchDoc.VariantsTasks,
+				"alias":         patchDoc.Alias,
+			})
 		}
 	}
 

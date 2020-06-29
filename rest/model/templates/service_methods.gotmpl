@@ -1,11 +1,12 @@
 
-func (m *{{.RestType}}) BuildFromService(t {{shortenpackage .ModelType }}) error {
+func {{.RestType}}BuildFromService(t {{shortenpackage .ModelType }}) *{{.RestType}} {
+    m := {{.RestType}}{}
     {{.BfsConversions}}
-    return nil
+    return &m
 }
 
-func (m *{{.RestType}}) ToService() ({{shortenpackage .ModelType}}, error) {
-    out := {{shortenpackage .ModelType}}{}
+func {{.RestType}}ToService(m {{.RestType}}) *{{shortenpackage .ModelType}} {
+    out := &{{shortenpackage .ModelType}}{}
     {{.TsConversions}}
-    return out, nil
+    return out
 }

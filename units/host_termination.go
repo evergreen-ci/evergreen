@@ -3,14 +3,11 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -22,7 +19,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
@@ -339,15 +335,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.runHostTeardown(ctx, settings); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_type": j.Type().Name,
-			"message":  "Error running teardown script",
-			"host_id":  j.host.Id,
-			"logs":     output,
-		}))
-	}
-
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.Reason); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
@@ -406,98 +393,4 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"cost":        j.host.TotalCost,
 		})
 	}
-}
-
-func (j *hostTerminationJob) runHostTeardown(ctx context.Context, settings *evergreen.Settings) (string, error) {
-	if j.host.Distro.Teardown == "" ||
-		j.host.Status == evergreen.HostProvisionFailed ||
-		j.host.SpawnOptions.SpawnedByTask {
-		return "", nil
-	}
-
-	if !j.host.Distro.LegacyBootstrap() {
-		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			if output, err := j.writeTeardownScript(ctx, settings); err != nil {
-				return output, errors.Wrap(err, "could not put teardown script on host")
-			}
-		}
-
-		// Attempt to run the teardown command through Jasper.
-		output, err := j.tryRunTeardownScript(ctx, settings, func(runScript string) (string, error) {
-			output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-				Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", runScript},
-			})
-			return strings.Join(output, "\n"), err
-		})
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not run teardown script using Jasper, will attempt to run teardown using SSH",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"logs":    output,
-				"job":     j.ID(),
-			}))
-		} else {
-			return output, nil
-		}
-	}
-
-	return j.tryRunTeardownScript(ctx, settings, func(runScript string) (string, error) {
-		return j.host.RunSSHCommand(ctx, runScript)
-	})
-}
-
-// tryRunTeardownScript attempts to run the teardown script using the given
-// runCmd to execute the teardown command.
-func (j *hostTerminationJob) tryRunTeardownScript(ctx context.Context, settings *evergreen.Settings, runCmd func(runScript string) (string, error)) (string, error) {
-	startTime := time.Now()
-	output, err := runCmd(j.host.TearDownCommand())
-	if err != nil {
-		event.LogHostTeardown(j.host.Id, output, false, time.Since(startTime))
-
-		output, err = runCmd(host.TearDownDirectlyCommand())
-		if err != nil {
-			event.LogHostTeardown(j.host.Id, output, false, time.Since(startTime))
-		}
-	}
-	event.LogHostTeardown(j.host.Id, output, true, time.Since(startTime))
-	return output, nil
-}
-
-// writeTeardownScript writes the teardown script to the host for hosts
-// provisioned with user data User data hosts do not write the teardown script
-// in the user data script because the user data script is subject to a 16kB
-// text limit, which is easy to exceed.
-func (j *hostTerminationJob) writeTeardownScript(ctx context.Context, settings *evergreen.Settings) (string, error) {
-	if j.host.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
-		return "", nil
-	}
-
-	script, err := expandScript(j.host.Distro.Teardown, settings)
-	if err != nil {
-		return "", errors.Wrap(err, "error expanding teardown script")
-	}
-
-	args := []string{j.host.Distro.ShellBinary(), "-c",
-		fmt.Sprintf("tee %s", filepath.Join(j.host.Distro.HomeDir(), evergreen.TeardownScriptName))}
-	output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-		Args:               args,
-		StandardInputBytes: []byte(script),
-	})
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not write teardown script to host through Jasper",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"logs":    strings.Join(output, "\n"),
-			"job":     j.ID(),
-		}))
-
-		// If Jasper fails to write the file, fall back to SCPing it
-		// onto the host.
-		var scpOutput string
-		scpOutput, err = copyScript(ctx, j.env, settings, j.host, evergreen.TeardownScriptName, script)
-		return scpOutput, errors.Wrap(err, "failed to SCP teardown script to host")
-	}
-	return strings.Join(output, "\n"), nil
 }

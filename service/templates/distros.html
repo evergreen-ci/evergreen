@@ -721,15 +721,6 @@ Evergreen - Distros
           </div>
           <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
             style="margin-left: 0px; font-family: monospace"></textarea>
-          <div ng-hide="isStatic()">
-            <label class="distro-label">Teardown Script:</label>
-            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2"
-              ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
-            <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
-              There is no guarantee this script will be run if the host is terminated by mechanisms outside of
-              Evergreen.
-            </div>
-          </div><br />
 
           <div class="dropdown">
             <span class="distro-menu-title">SSH Key:</span>

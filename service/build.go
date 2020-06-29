@@ -181,7 +181,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
-				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version)
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -206,14 +206,14 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		err = model.SetBuildPriority(projCtx.Build.Id, priority)
+		err = model.SetBuildPriority(projCtx.Build.Id, priority, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error setting priority on build %v", projCtx.Build.Id),
 				http.StatusInternalServerError)
 			return
 		}
 	case "set_active":
-		err = model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id, false)
+		err = model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)
@@ -227,7 +227,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		}
 		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
-				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version)
+				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}

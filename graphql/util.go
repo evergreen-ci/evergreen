@@ -54,18 +54,27 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := route.MustHaveUser(ctx)
-	if err := model.SetActiveState(taskID, usr.Username(), isActive); err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	task, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if task == nil {
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	// Get the modified task back out of the db
+	t, err = task.FindOneId(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(task)
+	err = apiTask.BuildFromService(t)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -236,6 +245,18 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
+		if requester == evergreen.PatchVersionRequester {
+			grip.Info(message.Fields{
+				"operation":     "patch creation",
+				"message":       "finalized patch",
+				"from":          "UI",
+				"patch_id":      p.Id,
+				"variants":      p.BuildVariants,
+				"tasks":         p.Tasks,
+				"variant_tasks": p.VariantsTasks,
+				"alias":         p.Alias,
+			})
+		}
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
@@ -386,7 +407,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			ID:           task.Id,
 			DisplayName:  task.DisplayName,
 			Version:      task.Version,
-			Status:       task.Status,
+			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
 		}
@@ -440,7 +461,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				proj = projRef
 			}
 			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Identifier,
-				proj.CommitQueue.PatchType, version.Id)
+				proj.CommitQueue.PatchType, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -467,7 +488,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := model.SetVersionPriority(version.Id, modifications.Priority); err != nil {
+		if err := model.SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
 	default:

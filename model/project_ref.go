@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -43,8 +43,7 @@ type ProjectRef struct {
 	DeactivatePrevious bool     `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	Tags               []string `bson:"tags" json:"tags" yaml:"tags"`
 
-	// TracksPushEvents, if true indicates that Repotracker is triggered by
-	// Github PushEvents for this project, instead of the Repotracker runner
+	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
 	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
@@ -923,6 +922,9 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
+// GetProjectSetupCommands returns jasper commands for the project's configuration commands
+// Stderr/Stdin are passed through to the commands as well as Stdout, when opts.Quiet is false
+// The commands' working directories may not exist and need to be created before running the commands
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Identifier)
@@ -935,7 +937,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
 
 		cmd := jasper.NewCommand().Add(args).
-			SetErrorSender(level.Error, opts.Output).
+			SetErrorWriter(os.Stderr).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory": opts.Directory,
@@ -948,7 +950,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 			})
 
 		if !opts.Quiet {
-			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+			cmd = cmd.SetOutputWriter(os.Stdout)
 		}
 
 		cmds = append(cmds, cmd)
@@ -965,7 +967,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		commandNumber := idx + 1
 		cmdString := obj.Command
 
-		cmd := jasper.NewCommand().Directory(dir).SetErrorSender(level.Error, opts.Output).
+		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(os.Stderr).SetInput(os.Stdin).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
@@ -979,7 +981,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 				return !opts.DryRun
 			})
 		if !opts.Quiet {
-			cmd = cmd.SetOutputSender(level.Info, opts.Output)
+			cmd = cmd.SetOutputWriter(os.Stdout)
 		}
 		cmds = append(cmds, cmd)
 	}

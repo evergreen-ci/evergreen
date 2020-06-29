@@ -30,35 +30,31 @@ type StatusChanges struct {
 	BuildComplete    bool
 }
 
-func SetActiveState(taskId string, caller string, active bool) error {
-	t, err := task.FindOne(task.ById(taskId))
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return errors.Errorf("task '%s' not found", taskId)
-	}
+func SetActiveState(t *task.Task, caller string, active bool) error {
+	modifiedTasks := []task.Task{}
 	if active {
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
+		tasksToActivate := []task.Task{}
 		if !t.OverrideDependencies {
-			for _, dep := range t.DependsOn {
-				if err = SetActiveState(dep.TaskId, caller, true); err != nil {
-					return errors.Wrapf(err, "error activating dependency for %v with id %v",
-						taskId, dep.TaskId)
-				}
+			deps, err := task.GetRecursiveDependenciesUp([]task.Task{*t}, nil)
+			if err != nil {
+				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
+			tasksToActivate = append(tasksToActivate, deps...)
 		}
 
 		if t.DispatchTime != utility.ZeroTime && t.Status == evergreen.TaskUndispatched {
-			if err = resetTask(t.Id, caller); err != nil {
+			if err := resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
 		} else {
-			if err = t.ActivateTask(caller); err != nil {
-				return errors.Wrap(err, "error while activating task")
-			}
-			event.LogTaskActivated(taskId, t.Execution, caller)
+			tasksToActivate = append(tasksToActivate, *t)
+		}
+		var err error
+		modifiedTasks, err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
+		if err != nil {
+			return errors.Wrapf(err, "can't activate tasks")
 		}
 
 		if t.DistroId == "" && !t.DisplayOnly {
@@ -76,25 +72,22 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		// If it is not, then we can deactivate it.
 		// Otherwise, if it was originally activated by evergreen, anything can
 		// deactivate it.
-
-		err = t.DeactivateTask(caller)
+		var err error
+		modifiedTasks, err = t.DeactivateTask(caller)
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
-		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	} else {
 		return nil
 	}
 
 	if t.IsPartOfDisplay() {
-		err = updateDisplayTaskAndCache(t)
-		if err != nil {
+		if err := updateDisplayTaskAndCache(t); err != nil {
 			return err
 		}
-		taskId = t.DisplayTask.Id
 	}
 
-	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
+	return errors.WithStack(build.SetManyCachedTasksActivated(modifiedTasks, active))
 }
 
 // ActivatePreviousTask will set the Active state for the first task with a
@@ -118,7 +111,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 	}
 
 	// activate the task
-	return errors.WithStack(SetActiveState(prevTask.Id, caller, true))
+	return errors.WithStack(SetActiveState(prevTask, caller, true))
 }
 
 func resetManyTasks(tasks []task.Task, caller string) error {
@@ -147,11 +140,12 @@ func resetTask(taskId, caller string) error {
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
 
-	if err = t.ActivateTask(caller); err != nil {
+	var activatedTasks []task.Task
+	if activatedTasks, err = t.ActivateTask(caller); err != nil {
 		return errors.WithStack(err)
 	}
 
-	if err = build.SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+	if err = build.SetManyCachedTasksActivated(activatedTasks, true); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -271,7 +265,7 @@ func AbortTask(taskId, caller string) error {
 	}
 
 	// set the active state and then set the abort
-	if err = SetActiveState(t.Id, caller, false); err != nil {
+	if err = SetActiveState(t, caller, false); err != nil {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
@@ -325,16 +319,8 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			continue
 		}
 
-		err = SetActiveState(t.Id, caller, false)
-		if err != nil {
+		if err = SetActiveState(&t, caller, false); err != nil {
 			return err
-		}
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
-		// update the cached version of the task, in its build document to be deactivated
-		if !t.IsPartOfDisplay() {
-			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -600,7 +586,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
 	}
 
-	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true)
+	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true, caller)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Identifier)
 	}
@@ -906,14 +892,14 @@ func MarkTaskUndispatched(t *task.Task) error {
 	return nil
 }
 
-func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
+func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	// record that the task was dispatched on the host
-	if err := t.MarkAsDispatched(hostId, distroId, time.Now()); err != nil {
+	if err := t.MarkAsDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
-			"on host %s", t.Id, hostId)
+			"on host %s", t.Id, h.Id)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, t.Execution, hostId)
+	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTaskAndCache(t)

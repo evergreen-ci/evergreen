@@ -480,11 +480,21 @@ func TestClearTaskQueue(t *testing.T) {
 			Id: "task3",
 		},
 	}
+	info := DistroQueueInfo{
+		Length: 3,
+		TaskGroupInfos: []TaskGroupInfo{
+			{
+				Name:             "taskGroupInfo1",
+				Count:            8,
+				ExpectedDuration: 2600127105386,
+			},
+		},
+	}
 
-	queue := NewTaskQueue(distro, tasks, DistroQueueInfo{})
+	queue := NewTaskQueue(distro, tasks, info)
 	assert.Len(queue.Queue, 3)
 	assert.NoError(queue.Save())
-	otherQueue := NewTaskQueue(otherDistro, tasks, DistroQueueInfo{})
+	otherQueue := NewTaskQueue(otherDistro, tasks, info)
 	assert.Len(otherQueue.Queue, 3)
 	assert.NoError(otherQueue.Save())
 

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -95,6 +96,7 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	}
 
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx))
 

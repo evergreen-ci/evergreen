@@ -37,6 +37,11 @@ func (c *DBStatusConnector) FindRecentTaskListProject(minutes int) (*model.APIRe
 	return apiList, errors.WithStack(err)
 }
 
+func (c *DBStatusConnector) FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(minutes, task.AgentVersionKey)
+	return apiList, errors.WithStack(err)
+}
+
 func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList, error) {
 	stats, err := task.GetRecentTaskStats(time.Duration(minutes)*time.Minute, key)
 	if err != nil {
@@ -76,6 +81,9 @@ func (c *MockStatusConnector) FindRecentTaskListDistro(minutes int) (*model.APIR
 }
 
 func (c *MockStatusConnector) FindRecentTaskListProject(minutes int) (*model.APIRecentTaskStatsList, error) {
+	return c.CachedResultCountList, nil
+}
+func (c *MockStatusConnector) FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList, error) {
 	return c.CachedResultCountList, nil
 }
 

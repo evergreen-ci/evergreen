@@ -81,80 +81,60 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
 	}
 
-	return errors.Wrapf(SetTaskActivationForBuilds(buildIDs, active, caller, false), "can't set activation for tasks in version '%s'", versionId)
+	return errors.Wrapf(SetTaskActivationForBuilds(buildIDs, active, caller), "can't set activation for tasks in version '%s'", versionId)
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func SetBuildActivation(buildId string, active bool, caller string, skipDependencies bool) error {
+func SetBuildActivation(buildId string, active bool, caller string) error {
 	if err := build.UpdateActivation([]string{buildId}, active, caller); err != nil {
 		return errors.Wrapf(err, "can't set build activation to %t for build '%s'", active, buildId)
 	}
 
-	return errors.Wrapf(SetTaskActivationForBuilds([]string{buildId}, active, caller, skipDependencies), "can't set task activation for build '%s'", buildId)
+	return errors.Wrapf(SetTaskActivationForBuilds([]string{buildId}, active, caller), "can't set task activation for build '%s'", buildId)
 }
 
 // SetTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
 // It also updates the task cache for the build document.
-func SetTaskActivationForBuilds(buildIds []string, active bool, caller string, skipDependencies bool) error {
-	var err error
+func SetTaskActivationForBuilds(buildIds []string, active bool, caller string) error {
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
-		_, err = task.UpdateAll(
-			bson.M{
-				task.BuildIdKey: bson.M{"$in": buildIds},
-				task.StatusKey:  evergreen.TaskUndispatched,
-			},
-			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller, task.ActivatedTimeKey: time.Now()}},
-		)
+		tasks, err := task.FindAll(db.Query(bson.M{
+			task.BuildIdKey: bson.M{"$in": buildIds},
+			task.StatusKey:  evergreen.TaskUndispatched,
+		}).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
+			return errors.Wrap(err, "can't get tasks to deactivate")
+		}
+		dependOn, err := task.GetRecursiveDependenciesUp(tasks, nil)
+		if err != nil {
+			return errors.Wrap(err, "can't get recursive dependencies")
+		}
+
+		if _, err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
-		if !skipDependencies {
-			var tasks []task.Task
-			tasks, err = task.FindTasksFromBuildWithDependencies(buildIds)
-			if err != nil {
-				return errors.Wrapf(err, "problem finding tasks with dependencies for builds %s", buildIds)
-			}
-			catcher := grip.NewBasicCatcher()
-			for _, t := range tasks {
-				for _, d := range t.DependsOn {
-					catcher.Add(SetActiveState(d.TaskId, caller, active))
-				}
-			}
-			grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for builds %s", buildIds))
-		}
 	} else {
-		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
-		// if the caller is the default task activator,
-		// only deactivate tasks that are activated by the default task activator
-		if evergreen.IsSystemActivator(caller) {
-			_, err = task.UpdateAll(
-				bson.M{
-					task.BuildIdKey:     bson.M{"$in": buildIds},
-					task.StatusKey:      evergreen.TaskUndispatched,
-					task.ActivatedByKey: caller,
-				},
-				bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
-			)
-
-		} else {
-			// update all tasks if the caller is not evergreen.
-			_, err = task.UpdateAll(
-				bson.M{
-					task.BuildIdKey: bson.M{"$in": buildIds},
-					task.StatusKey:  evergreen.TaskUndispatched,
-				},
-				bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
-			)
+		query := bson.M{
+			task.BuildIdKey: bson.M{"$in": buildIds},
+			task.StatusKey:  evergreen.TaskUndispatched,
 		}
-	}
-	if err != nil {
-		return err
+		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
+		if evergreen.IsSystemActivator(caller) {
+			query[task.ActivatedByKey] = caller
+		}
+
+		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrap(err, "can't get tasks to deactivate")
+		}
+		if _, err = task.DeactivateTasks(tasks, caller); err != nil {
+			return errors.Wrap(err, "can't deactivate tasks")
+		}
 	}
 
 	for _, buildId := range buildIds {
-		if err = RefreshTasksCache(buildId); err != nil {
+		if err := RefreshTasksCache(buildId); err != nil {
 			return errors.Wrapf(err, "can't refresh cache for build '%s'", buildId)
 		}
 	}
@@ -257,35 +237,119 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	return nil
 }
 
-// SetBuildPriority updates the priority field of all tasks associated with the given build id.
-func SetBuildPriority(buildId string, priority int64) error {
-	modifier := bson.M{task.PriorityKey: priority}
-	//blacklisted - these tasks should never run, so unschedule now
-	if priority < 0 {
-		modifier[task.ActivatedKey] = false
+func SetTaskPriority(t task.Task, priority int64, caller string) error {
+	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
+	if err != nil {
+		return errors.Wrap(err, "error getting task dependencies")
 	}
 
-	_, err := task.UpdateAll(
-		bson.M{task.BuildIdKey: buildId},
-		bson.M{"$set": modifier},
+	ids := append([]string{t.Id}, t.ExecutionTasks...)
+	depIDs := make([]string, 0, len(depTasks))
+	for _, depTask := range depTasks {
+		depIDs = append(depIDs, depTask.Id)
+	}
+
+	tasks, err := task.FindAll(db.Query(bson.M{
+		"$or": []bson.M{
+			{task.IdKey: bson.M{"$in": ids}},
+			{
+				task.IdKey:       bson.M{"$in": depIDs},
+				task.PriorityKey: bson.M{"$lt": priority},
+			},
+		},
+	}).WithFields(ExecutionKey))
+	if err != nil {
+		return errors.Wrap(err, "can't find matching tasks")
+	}
+
+	taskIDs := make([]string, 0, len(tasks))
+	for _, taskToUpdate := range tasks {
+		taskIDs = append(taskIDs, taskToUpdate.Id)
+	}
+	_, err = task.UpdateAll(
+		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "can't update priority")
+	}
+	for _, modifiedTask := range tasks {
+		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, caller, priority)
+	}
+
+	//blacklisted - deactivate the task
+	if priority <= evergreen.BlacklistPriority {
+		var deactivatedTasks []task.Task
+		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
+			return errors.Wrap(err, "can't deactivate task")
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't update task cache activation")
+		}
+	}
+
+	return nil
 }
 
-// SetVersionPriority updates the priority field of all tasks associated with the given build id.
-
-func SetVersionPriority(versionId string, priority int64) error {
-	modifier := bson.M{task.PriorityKey: priority}
-	//blacklisted - these tasks should never run, so unschedule now
-	if priority < 0 {
-		modifier[task.ActivatedKey] = false
+// SetBuildPriority updates the priority field of all tasks associated with the given build id.
+func SetBuildPriority(buildId string, priority int64, caller string) error {
+	_, err := task.UpdateAll(
+		bson.M{task.BuildIdKey: buildId},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
+	)
+	if err != nil {
+		return errors.Wrapf(err, "problem setting build '%s' priority", buildId)
 	}
 
+	//blacklisted - these tasks should never run, so unschedule now
+	if priority < 0 {
+		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).
+			WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
+		}
+		var deactivatedTasks []task.Task
+		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		if err != nil {
+			return errors.Wrapf(err, "can't deactivate tasks for build '%s'", buildId)
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't set cached tasks deactivated")
+		}
+	}
+
+	return nil
+}
+
+// SetVersionPriority updates the priority field of all tasks associated with the given version id.
+func SetVersionPriority(versionId string, priority int64, caller string) error {
 	_, err := task.UpdateAll(
 		bson.M{task.VersionKey: versionId},
-		bson.M{"$set": modifier},
+		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
-	return err
+	if err != nil {
+		return errors.Wrapf(err, "problem setting version '%s' priority", versionId)
+	}
+
+	//blacklisted - these tasks should never run, so unschedule now
+	if priority < 0 {
+		var tasks []task.Task
+		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
+			WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
+		}
+		var deactivatedTasks []task.Task
+		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		if err != nil {
+			return errors.Wrapf(err, "can't deactivate tasks for version '%s'", versionId)
+		}
+		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
+			return errors.Wrap(err, "can't set cached tasks deactivated")
+		}
+	}
+
+	return nil
 }
 
 // RestartVersion restarts completed tasks associated with a given versionId.

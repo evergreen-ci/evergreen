@@ -118,8 +118,8 @@ function handleResponse(result, $scope) {
           data['task_id'] = $scope.EvgUtil.generateTaskId({
             project: $scope.projectId,
             revision: resp.data.revision,
-            buildVariant: cp.time_series_info.variant,
-            task: cp.time_series_info.task,
+            buildVariant: data.variant,
+            task: data.task,
             createTime: resp.data.create_time,
           });
         }

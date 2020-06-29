@@ -86,7 +86,7 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue string) (bool, error) {
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue, user string) (bool, error) {
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't find projectRef for '%s'", id)
@@ -105,7 +105,7 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue string) (bool,
 	if err != nil {
 		return false, errors.Wrapf(err, "error verifying if version exists for issue '%s'", issue)
 	}
-	return cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, versionExists)
+	return cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, versionExists, user)
 }
 
 func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
@@ -207,7 +207,7 @@ func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.A
 	return &restModel.APICommitQueue{ProjectID: restModel.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
-func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
+func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item, user string) (bool, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return false, nil
 	}

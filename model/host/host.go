@@ -234,6 +234,8 @@ type DockerOptions struct {
 	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
 	// If PublishPorts is true, any port that's exposed in the image will be published
 	PublishPorts bool `mapstructure:"publish_ports" bson:"publish_ports,omitempty" json:"publish_ports,omitempty"`
+	// If extra hosts are provided,these will be added to /etc/hosts on the container (in the form of hostname:IP)
+	ExtraHosts []string `mapstructure:"extra_hosts" bson:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
 	// If the container is created from host create, we want to skip building the image with agent
 	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
@@ -255,11 +257,18 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 
 // Validate checks that the settings from the config file are sane.
 func (opts *DockerOptions) Validate() error {
+	catcher := grip.NewBasicCatcher()
 	if opts.Image == "" {
-		return errors.New("Image must not be empty")
+		catcher.Errorf("Image must not be empty")
 	}
 
-	return nil
+	for _, h := range opts.ExtraHosts {
+		if len(strings.Split(h, ":")) != 2 {
+			catcher.Errorf("extra host %s must be of the form hostname:IP", h)
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.

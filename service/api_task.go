@@ -809,7 +809,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
-	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
+	if err := model.MarkTaskDispatched(nextTask, h); err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
@@ -944,7 +944,7 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 
 	// if the task can be dispatched and activated dispatch it
 	if t.IsDispatchable() {
-		err = errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
+		err = errors.WithStack(model.MarkTaskDispatched(t, h))
 		if err != nil {
 			grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))

@@ -339,19 +339,23 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		spotPrice     float64
 		az            string
 	)
-	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
-		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
+	// price fetcher tool only used for the default region
+	if ec2settings.getRegion() == evergreen.DefaultEC2Region {
+		if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
+			onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
+			if err != nil {
+				return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
+			}
+		}
+		if m.provider == spotProvider || m.provider == autoProvider {
+			// passing empty zone to find the "best"
+			spotPrice, az, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h), "")
+			if err != nil {
+				return 0, errors.Wrap(err, "error getting latest lowest spot price")
+			}
 		}
 	}
-	if m.provider == spotProvider || m.provider == autoProvider {
-		// passing empty zone to find the "best"
-		spotPrice, az, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h), "")
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting latest lowest spot price")
-		}
-	}
+
 	if h.UserHost || m.provider == onDemandProvider {
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		h.ComputeCostPerHour = onDemandPrice

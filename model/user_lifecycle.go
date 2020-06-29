@@ -52,6 +52,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	}
 	setOnInsertFields := bson.M{
 		user.APIKeyKey: utility.RandomString(),
+		bsonutil.GetDottedKeyName(user.SettingsKey, user.UseSpruceOptionsKey, user.SpruceV1Key): true,
 	}
 	if roles != nil && len(roles) > 0 {
 		setOnInsertFields[user.RolesKey] = roles

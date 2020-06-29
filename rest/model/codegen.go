@@ -27,6 +27,12 @@ const (
 	tsConvertTemplatePath      = "templates/toservice_conversion.gotmpl"
 )
 
+const (
+	aliasesDirective = "aliases"
+	dbFieldNameArg   = "db"
+	jsonTagArg       = "json"
+)
+
 type fileInfo struct {
 	Package string
 	Structs string
@@ -150,7 +156,7 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 	extractedFields := extractedFields{}
 	for _, field := range gqlType.Fields {
 		fieldInfo := getFieldInfo(field)
-		extractedFields[field.Name] = fieldInfo
+		extractedFields[dbField(*field)] = fieldInfo
 		fieldData, err := output(fieldTemplate, fieldInfo)
 		if err != nil {
 			return "", "", err
@@ -176,28 +182,41 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 	return structData, code, nil
 }
 
+func dbField(gqlDefinition ast.FieldDefinition) string {
+	name := gqlDefinition.Name
+	directive := gqlDefinition.Directives.ForName(aliasesDirective)
+	if directive != nil {
+		arg := directive.Arguments.ForName(dbFieldNameArg)
+		if arg != nil {
+			name = arg.Value.String()
+		}
+	}
+	return name
+}
+
 func getTemplate(filepath string) (*template.Template, error) {
 	f, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
 	return template.New(filepath).Funcs(template.FuncMap{
-		"shortenpackage": func(pkg string) string {
-			split := strings.Split(pkg, "/")
-			return split[len(split)-1]
-		},
-		"cleanName": cleanName,
+		"shortenpackage": shortenPackage,
+		"cleanName":      cleanName,
 	}).Parse(string(f))
 }
 
-func nameAndTag(fieldName string) (string, string) {
-	pieces := words(fieldName)
-	name := ""
-	for _, piece := range pieces {
-		name += strings.Title(piece)
+func jsonTag(gqlDefinition ast.FieldDefinition) string {
+	directive := gqlDefinition.Directives.ForName(aliasesDirective)
+	if directive != nil {
+		arg := directive.Arguments.ForName(jsonTagArg)
+		if arg != nil {
+			return arg.Value.String()
+		}
 	}
-	return name, strings.Join(pieces, "_")
+	pieces := words(gqlDefinition.Name)
+	return strings.Join(pieces, "_")
 }
+
 func words(in string) []string {
 	out := []string{}
 	re := regexp.MustCompile(`[A-Za-z][^A-Z]*`)
@@ -218,13 +237,12 @@ func output(t *template.Template, data interface{}) (string, error) {
 }
 
 func getFieldInfo(f *ast.FieldDefinition) extractedField {
-	name, tag := nameAndTag(f.Name)
 	outputType := gqlTypeToGoType(f.Type.Name(), !f.Type.NonNull)
 	return extractedField{
-		OutputFieldName: name,
+		OutputFieldName: f.Name,
 		OutputFieldType: outputType,
 		Nullable:        strings.Contains(outputType, "*"),
-		JsonTag:         tag,
+		JsonTag:         jsonTag(*f),
 	}
 }
 
@@ -246,7 +264,7 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	case "Any":
 		return returntype + "interface{}"
 	default:
-		return gqlType
+		return "API" + gqlType
 	}
 }
 
@@ -307,14 +325,14 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 				fieldErrs.Add(err)
 				continue
 			}
-			converter, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
+			convertFuncs, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
 			data := conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: converter,
+				TypeConversionFunc: convertFuncs.converter,
 			}
 			lineData, err := output(bfsConvertTemplate, data)
 			if err != nil {
@@ -323,14 +341,10 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 			bfsCode = append(bfsCode, lineData)
 
 			// generate the ToService code
-			converter, err = conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions) // TODO: this is wrong, figure out how to reverse
-			if err != nil {
-				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
-			}
 			data = conversionLine{
 				ModelField:         fieldName,
 				RestField:          fieldInfo.OutputFieldName,
-				TypeConversionFunc: converter,
+				TypeConversionFunc: convertFuncs.inverter,
 			}
 			lineData, err = output(tsConvertTemplate, data)
 			if err != nil {
@@ -354,6 +368,8 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 }
 
 func validateFieldTypes(fieldName, inputType, outputType string) error {
+	inputType = stripPackage(inputType)
+	outputType = stripPackage(outputType)
 	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
 		// this should ideally be a more sophisticated check to ensure that complex types are convertible
 		// to each other, but for now we rely on the naming convention to find obvious type errors

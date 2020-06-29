@@ -90,13 +90,17 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	distro, err := distro.FindOne(distro.ById(j.DistroID))
+	distro, err := distro.FindByIdWithDefaultSettings(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Database error for find() by distro id '%s'", j.DistroID))
 		return
 	}
+	if distro == nil {
+		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
+		return
+	}
 
-	if err = scheduler.UpdateStaticDistro(distro); err != nil {
+	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
 		j.AddError(errors.Wrap(err, "problem updating static hosts"))
 		return
 	}
@@ -135,7 +139,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostAllocationBegins := time.Now()
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 	hostAllocatorData := scheduler.HostAllocatorData{
-		Distro:           distro,
+		Distro:           *distro,
 		ExistingHosts:    upHosts,
 		FreeHostFraction: config.Scheduler.FreeHostFraction,
 		UsesContainers:   (containerPool != nil),
@@ -164,7 +168,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 
 	hostSpawningBegins := time.Now()
-	hostsSpawned, err := scheduler.SpawnHosts(ctx, distro, nHosts, containerPool)
+	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, nHosts, containerPool)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "Error spawning new hosts"))
 		return

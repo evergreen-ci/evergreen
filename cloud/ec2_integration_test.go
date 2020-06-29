@@ -47,7 +47,6 @@ func fetchTestDistro() distro.Distro {
 		},
 		SetupAsSudo: true,
 		Setup:       "",
-		Teardown:    "",
 		User:        "root",
 		SSHKey:      "",
 	}

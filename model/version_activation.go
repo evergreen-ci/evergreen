@@ -74,7 +74,7 @@ func ActivateElapsedBuilds(v *Version) error {
 			})
 
 			// Don't need to set the version in here since we do it ourselves in a single update
-			if err = SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator, false); err != nil {
+			if err = SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"operation": "project-activation",
 					"message":   "problem activating build",
