@@ -197,8 +197,8 @@ func (m *Make) validateVariants() error {
 	return catcher.Resolve()
 }
 
-// GetTargets returns the resolved targets from the reference specified in the
-// given MakeTaskTarget.
+// GetTargetsFromRef returns the resolved targets from the reference specified
+// in the given MakeTaskTarget.
 func (m *Make) GetTargetsFromRef(mtt MakeTaskTarget) ([]string, error) {
 	if mtt.Name != "" {
 		return []string{mtt.Name}, nil
@@ -224,7 +224,7 @@ func (m *Make) GetTargetSequenceIndexByName(name string) (mts *MakeTargetSequenc
 	return nil, -1, errors.Errorf("target sequence with name '%s' not found", name)
 }
 
-// GetTasks returns the tasks that match the reference specified in the
+// GetTasksFromRef returns the tasks that match the reference specified in the
 // given MakeVariantTask.
 func (m *Make) GetTasksFromRef(mvt MakeVariantTask) ([]MakeTask, error) {
 	if mvt.Tag != "" {
@@ -316,8 +316,8 @@ type MakeTask struct {
 	Reports []FileReport `yaml:"reports,omitempty"`
 }
 
-// MakeTarget represents a reference to a single Make target or a sequence of
-// targets.
+// MakeTaskTarget represents a reference to a single Make target or a sequence
+// of targets.
 type MakeTaskTarget struct {
 	// Name is the name of target to run.
 	Name string `yaml:"name"`

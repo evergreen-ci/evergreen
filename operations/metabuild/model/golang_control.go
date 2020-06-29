@@ -12,7 +12,7 @@ import (
 // GolangControl represents a control file which can be used to build a Golang
 // generator from multiple files containing the necessary build configuration.
 type GolangControl struct {
-	GeneralFile  string   `yaml:"general,omitempty"`
+	GeneralFile  string   `yaml:"general"`
 	VariantFiles []string `yaml:"variants"`
 	PackageFiles []string `yaml:"packages,omitempty"`
 

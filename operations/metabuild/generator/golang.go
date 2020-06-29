@@ -9,18 +9,20 @@ import (
 )
 
 // Golang represents a configuration for generating an evergreen configuration
-// from a project that uses golang.
+// from a project that uses Golang.
 type Golang struct {
 	model.Golang
 }
 
+// NewGolang creates a new generator for Golang that wraps the given Golang
+// metabuild model.
 func NewGolang(g model.Golang) *Golang {
 	return &Golang{
 		Golang: g,
 	}
 }
 
-// Generate creates the evergreen configuration from the given golang build
+// Generate creates the Evergreen configuration from the given Golang build
 // configuration.
 func (g *Golang) Generate() (*shrub.Configuration, error) {
 	conf, err := shrub.BuildConfiguration(func(c *shrub.Configuration) {

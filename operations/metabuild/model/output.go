@@ -5,6 +5,7 @@ import "github.com/pkg/errors"
 // ReportFormat is an output format for reporting files.
 type ReportFormat string
 
+// Constants defining allowed ReportFormats.
 const (
 	Artifact      ReportFormat = "artifact"
 	EvergreenJSON ReportFormat = "evg-json"

@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli"
 )
 
+// Generate creates a cli.Command to use the Jasper metabuild system.
 func Generate() cli.Command {
 	return cli.Command{
 		Name:  "generate",
@@ -120,11 +121,11 @@ func generateMake() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  generatorFileFlagName,
-				Usage: "The build files necessary to generate the evergreen config (relative to the working directory).",
+				Usage: "The build files necessary to generate the evergreen config.",
 			},
 			cli.StringFlag{
 				Name:  controlFileFlagName,
-				Usage: "The control file referencing all the necessary build files (relative to the working directory).",
+				Usage: "The control file referencing all the necessary build files.",
 			},
 			cli.StringFlag{
 				Name:  outputFileFlagName,
@@ -135,8 +136,6 @@ func generateMake() cli.Command {
 			requireStringFlag(workingDirFlagName),
 			requireOneFlag(generatorFileFlagName, controlFileFlagName),
 			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName, workingDirFlagName),
-			requireRelativePath(generatorFileFlagName, workingDirFlagName),
-			requireRelativePath(controlFileFlagName, workingDirFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			workingDir := c.String(workingDirFlagName)

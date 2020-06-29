@@ -12,7 +12,7 @@ import (
 )
 
 // Golang represents a configuration for generating an evergreen configuration
-// from a project that uses golang.
+// from a project that uses Golang.
 type Golang struct {
 	GolangGeneralConfig `yaml:",inline"`
 	// Packages define packages that should be tested. They can be either
@@ -44,6 +44,8 @@ type GolangGeneralConfig struct {
 	DiscoverSourceFiles bool `yaml:"discover_source_files,omitempty"`
 }
 
+// Validate checks that the all the required top-level configuration is
+// specified.
 func (ggc *GolangGeneralConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(ggc.RootPackage == "", "must specify the import path of the root package of the project")
@@ -71,14 +73,14 @@ func NewGolang(file, workingDir string) (*Golang, error) {
 	g.ApplyDefaultTags()
 
 	if err := g.Validate(); err != nil {
-		return nil, errors.Wrap(err, "golang generator configuration")
+		return nil, errors.Wrap(err, "Golang generator configuration")
 	}
 
 	return &g, nil
 }
 
-// ApplyDefaultTags applies all the default tags to the existing tasks, subject
-// to package-level exclusion rules.
+// ApplyDefaultTags applies all the default tags to the existing packages,
+// subject to package-level exclusion rules.
 func (g *Golang) ApplyDefaultTags() {
 	for _, tag := range g.DefaultTags {
 		for i, gp := range g.Packages {
@@ -89,9 +91,9 @@ func (g *Golang) ApplyDefaultTags() {
 	}
 }
 
-// MergeTasks merges task definitions with the existing ones by either package
-// name or package path. For a given package name or path, existing tasks are
-// overwritten if they are already defined.
+// MergePackages merges package definitions with the existing ones by either
+// package name or package path. For a given package name or path, existing
+// packages are overwritten if they are already defined.
 func (g *Golang) MergePackages(gps ...GolangPackage) {
 	for _, gp := range gps {
 		if gp.Name != "" {
@@ -386,7 +388,7 @@ func (g *Golang) GetPackagesAndRef(gvp GolangVariantPackage) ([]GolangPackage, s
 	return nil, "", errors.New("empty package reference")
 }
 
-// GetPackageIndexByName finds the package by name and returns the task
+// GetPackageIndexByName finds the package by name and returns the package
 // definition and its index.
 func (g *Golang) GetPackageIndexByName(name string) (gp *GolangPackage, index int, err error) {
 	for i, p := range g.Packages {
@@ -398,7 +400,7 @@ func (g *Golang) GetPackageIndexByName(name string) (gp *GolangPackage, index in
 }
 
 // GetUnnamedPackageIndexByPath finds the unnamed package by path and returns
-// the task definition and its index.
+// the package definition and its index.
 func (g *Golang) GetUnnamedPackageIndexByPath(path string) (gp *GolangPackage, index int, err error) {
 	for i, p := range g.Packages {
 		if p.Name == "" && p.Path == path {
@@ -430,6 +432,7 @@ func (g *Golang) GetVariantIndexByName(name string) (gv *GolangVariant, index in
 	return nil, -1, errors.Errorf("variant with name '%s' not found", name)
 }
 
+// GolangPackage defines configuration for a package that should be tested.
 type GolangPackage struct {
 	// Name is an alias for the package.
 	Name string `yaml:"name,omitempty"`
@@ -440,7 +443,8 @@ type GolangPackage struct {
 	// Tags are labels that allow you to logically group related packages.
 	Tags []string `yaml:"tags,omitempty"`
 	// ExcludeTags allows you to specify tags that should not be applied to the
-	// task. This can be useful for excluding a package from the default tags.
+	// package. This can be useful for excluding a package from the default
+	// tags.
 	ExcludeTags []string `yaml:"exclude_tags,omitempty"`
 	// Flags are package-specific Golang flags that modify runtime execution.
 	Flags GolangFlags `yaml:"flags,omitempty"`
@@ -481,7 +485,7 @@ func (gp *GolangPackage) Validate() error {
 }
 
 // GolangVariant defines a mapping between distros that run packages and the
-// golang packages to run.
+// Golang packages to run.
 type GolangVariant struct {
 	VariantDistro `yaml:",inline"`
 	// Packages lists a package name, path or or tagged group of packages
@@ -550,7 +554,8 @@ func (gv *GolangVariant) validatePackages() error {
 	return catcher.Resolve()
 }
 
-// GolangVariantPackage is a specifier that references a golang package.
+// GolangVariantPackage is a specifier that references a Golang package or group
+// of Golang packages.
 type GolangVariantPackage struct {
 	Name string `yaml:"name,omitempty"`
 	Path string `yaml:"path,omitempty"`
@@ -596,19 +601,19 @@ func (gf GolangFlags) Validate() error {
 	return catcher.Resolve()
 }
 
-// flagIsVerbose returns whether or not the flag is the golang flag for verbose
+// flagIsVerbose returns whether or not the flag is the Golang flag for verbose
 // testing.
 func flagIsVerbose(flag string) bool {
 	flag = cleanupFlag(flag)
 	return flag == "v"
 }
 
-// golangTestPrefix is the optional prefix that each golang test flag can have.
+// golangTestPrefix is the optional prefix that each Golang test flag can have.
 // Flags with this prefix have identical meaning to their non-prefixed flag.
 // (e.g. "test.v" and "v" are identical).
 const golangTestPrefix = "test."
 
-// cleanupFlag cleans up the golang-style flag and returns just the name of the
+// cleanupFlag cleans up the Golang-style flag and returns just the name of the
 // flag. Golang flags have the form -<flag_name>[=value].
 func cleanupFlag(flag string) string {
 	flag = strings.TrimPrefix(flag, "-")

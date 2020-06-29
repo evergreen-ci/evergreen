@@ -18,6 +18,7 @@ type GeneralConfig struct {
 	WorkingDirectory string   `yaml:"-"`
 }
 
+// Validate checks that the working directory is populated.
 func (gc *GeneralConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(gc.WorkingDirectory == "", "must specify working directory")

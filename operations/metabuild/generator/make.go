@@ -11,13 +11,16 @@ type Make struct {
 	model.Make
 }
 
-// NewMake returns a generator for Make.
+// NewMake returns a generator for Make that wraps the given Make metabuild
+// model.
 func NewMake(m model.Make) *Make {
 	return &Make{
 		Make: m,
 	}
 }
 
+// Generate creates the Evergreen configuration from the given Make build
+// configuration.
 func (m *Make) Generate() (*shrub.Configuration, error) {
 	conf, err := shrub.BuildConfiguration(func(c *shrub.Configuration) {
 		for _, mv := range m.Variants {
