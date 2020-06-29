@@ -1204,10 +1204,10 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
-		if tgTask.Blocked() { // should restart if tasks are blocked
+		if tgTask.Blocked() || !tgTask.Activated { // should restart if a task won't run
 			break
 		}
-		if !tgTask.IsFinished() && tgTask.Activated { // task is not finished and not blocked so don't restart
+		if !tgTask.IsFinished() { // task in group still needs to  run
 			return nil
 		}
 	}
