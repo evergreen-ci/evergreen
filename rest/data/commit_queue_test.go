@@ -208,7 +208,6 @@ buildvariants:
     tasks:
     - name: "t0"
 `,
-		IsMBox: true,
 	}
 	s.Require().NoError(existingPatch.Insert())
 	existingPatch, err := patch.FindOne(db.Q{})

@@ -270,6 +270,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		ModuleName: moduleName,
 		Message:    message,
 		Githash:    githash,
+		IsMbox:     len(patchContent) == 0 || patch.IsMailboxDiff(patchContent),
 		PatchSet: patch.PatchSet{
 			PatchFileId: patchFileId,
 			Summary:     summaries,

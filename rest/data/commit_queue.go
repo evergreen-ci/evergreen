@@ -177,8 +177,10 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	}
 
 	// verify the patch and its modules are in mbox format
-	if !existingPatch.IsMBox { //TODO: set IsMBox on MBox patches
-		return "", errors.New("can't enqueue a non-mbox patch")
+	for _, p := range existingPatch.Patches {
+		if !p.IsMbox {
+			return "", errors.New("can't enqueue a non-mbox patch")
+		}
 	}
 
 	// verify the commit queue is on
@@ -212,7 +214,6 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		PatchedConfig: existingPatch.PatchedConfig,
 		CreateTime:    time.Now(),
 		DisplayNewUI:  existingPatch.DisplayNewUI,
-		IsMBox:        true,
 	}
 
 	// verify the commit queue has tasks/variants enabled that match the project
