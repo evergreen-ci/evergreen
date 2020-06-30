@@ -516,9 +516,6 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	if !patchFound {
 		p.Patches = append(p.Patches, modulePatch)
 	}
-	if modulePatch.Message != "" {
-		p.Description = modulePatch.Message
-	}
 
 	// check that a patch for this module exists
 	query := bson.M{
@@ -526,14 +523,10 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{PatchesKey + ".$": modulePatch}
-	if modulePatch.Message != "" {
-		update[DescriptionKey] = modulePatch.Message
-	}
 	result, err := UpdateAll(query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
-
 	// The patch already existed in the array, and it's been updated.
 	if result.Updated > 0 {
 		return nil
@@ -543,9 +536,6 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	query = bson.M{IdKey: p.Id}
 	update = bson.M{
 		"$push": bson.M{PatchesKey: modulePatch},
-	}
-	if modulePatch.Message != "" {
-		update["$set"] = bson.M{DescriptionKey: modulePatch.Message}
 	}
 	return UpdateOne(query, update)
 }

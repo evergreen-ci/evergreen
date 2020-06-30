@@ -184,6 +184,11 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
+		return
+	}
+
 	githubOauthToken, err := as.Settings.GetGithubOauthToken()
 	if err != nil {
 		gimlet.WriteJSONError(w, err)
@@ -276,15 +281,16 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			Summary:     summaries,
 		},
 	}
-
-	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
-		return
-	}
-
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
+	}
+
+	if p.Alias == evergreen.CommitQueueAlias {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, project)); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	gimlet.WriteJSON(w, "Patch module updated")

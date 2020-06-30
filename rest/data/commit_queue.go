@@ -201,10 +201,15 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return "", errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
 	}
 
+	project := &model.Project{}
+	if _, err = model.LoadProjectInto([]byte(existingPatch.PatchedConfig), existingPatch.Project, project); err != nil {
+		return "", errors.Wrap(err, "problem loading project")
+	}
+
 	patchID := mgobson.NewObjectId()
 	patchDoc := &patch.Patch{
 		Id:            patchID,
-		Description:   "", // TODO: fill in
+		Description:   model.MakeCommitQueueDescription(existingPatch.Patches, project),
 		Author:        user.Id,
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,
@@ -217,10 +222,6 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	}
 
 	// verify the commit queue has tasks/variants enabled that match the project
-	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(patchDoc.PatchedConfig), patchDoc.Project, project); err != nil {
-		return "", errors.Wrap(err, "problem loading project")
-	}
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 	if len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		return "", errors.New("commit queue has no build variants or tasks configured")

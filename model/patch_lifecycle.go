@@ -491,6 +491,36 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 	return errors.Wrap(catcher.Resolve(), "error aborting patches")
 }
 
+func MakeCommitQueueDescription(patches []patch.ModulePatch, project *Project) string {
+	commitFmtString := "'%s' into '%s/%s:%s'"
+	description := []string{}
+	for _, p := range patches {
+		owner := project.Owner
+		repo := project.Repo
+		branch := project.Branch
+		if p.ModuleName != "" {
+			module, err := project.GetModuleByName(p.ModuleName)
+			if err != nil {
+				continue
+			}
+			owner, repo = module.GetRepoOwnerAndName()
+			branch = module.Branch
+		}
+		commitMessages := make([]string, 0, len(p.PatchSet.Summary))
+		for _, summary := range p.PatchSet.Summary {
+			commitMessages = append(commitMessages, summary.Description)
+		}
+
+		description = append(description, fmt.Sprintf(commitFmtString, strings.Join(commitMessages, " <- "), owner, repo, branch))
+	}
+
+	if len(description) == 0 {
+		description = []string{"No Commits Added"}
+	}
+
+	return "Commit Queue Merge: " + strings.Join(description, " || ")
+}
+
 func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
 	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {

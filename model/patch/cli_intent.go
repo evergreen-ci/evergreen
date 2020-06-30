@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -235,7 +234,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Finalize:      params.Finalize,
 		Module:        params.Module,
 		Alias:         params.Alias,
-		IsMbox:        len(params.PatchContent) == 0 || patch.IsMailboxDiff(params.PatchContent),
+		IsMbox:        len(params.PatchContent) == 0 || IsMailboxDiff(params.PatchContent),
 	}, nil
 }
 
