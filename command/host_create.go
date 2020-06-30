@@ -109,6 +109,14 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	return nil
 }
 
+type logBatchInfo struct {
+	hostID     string
+	outFile    *os.File
+	errFile    *os.File
+	batchStart time.Time
+	batchEnd   time.Time
+}
+
 func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client.LoggerProducer, comm client.Communicator,
 	ids []string, startTime time.Time, workDir string) error {
 	var err error
@@ -116,25 +124,17 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 		return errors.New("Programmer error: no intent host ID received")
 	}
 
-	if c.CreateHost.StderrFile == "" {
-		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", ids[0])
-	}
-	if !filepath.IsAbs(c.CreateHost.StderrFile) {
-		c.CreateHost.StderrFile = filepath.Join(workDir, c.CreateHost.StderrFile)
-	}
-	if c.CreateHost.StdoutFile == "" {
-		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", ids[0])
-	}
-	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
-		c.CreateHost.StdoutFile = filepath.Join(workDir, c.CreateHost.StdoutFile)
+	info, err := c.initializeLogBatchInfo(ids[0], workDir, startTime)
+	if err != nil {
+		logger.Task().Error(err.Error())
 	}
 
 	if !c.CreateHost.Background {
-		return errors.Wrap(c.waitForLogs(ctx, comm, logger, startTime, ids[0]), "error waiting for logs")
+		return errors.Wrap(c.waitForLogs(ctx, comm, logger, info), "error waiting for logs")
 	}
 
 	go func() {
-		if err = c.waitForLogs(ctx, comm, logger, startTime, ids[0]); err != nil {
+		if err = c.waitForLogs(ctx, comm, logger, info); err != nil {
 			logger.Task().Errorf("error waiting for logs in background: %v", err)
 		}
 	}()
@@ -142,25 +142,55 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 	return nil
 }
 
-func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, logger client.LoggerProducer,
-	startTime time.Time, hostID string) error {
+func (c *createHost) initializeLogBatchInfo(id, workDir string, startTime time.Time) (*logBatchInfo, error) {
+	const permissions = os.O_APPEND | os.O_CREATE | os.O_WRONLY
+	info := &logBatchInfo{batchStart: startTime}
+
+	// initialize file names
+	if c.CreateHost.StderrFile == "" {
+		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", id)
+	}
+	if !filepath.IsAbs(c.CreateHost.StderrFile) {
+		c.CreateHost.StderrFile = filepath.Join(workDir, c.CreateHost.StderrFile)
+	}
+	if c.CreateHost.StdoutFile == "" {
+		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", id)
+	}
+	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
+		c.CreateHost.StdoutFile = filepath.Join(workDir, c.CreateHost.StdoutFile)
+	}
+
+	// initialize files
+	var err error
+	info.outFile, err = os.OpenFile(c.CreateHost.StdoutFile, permissions, 0644)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error creating file %s", c.CreateHost.StdoutFile)
+	}
+	info.errFile, err = os.OpenFile(c.CreateHost.StderrFile, permissions, 0644)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error creating file %s", c.CreateHost.StderrFile)
+	}
+	return info, nil
+}
+
+func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, info *logBatchInfo) error {
+
 	pollTicker := time.NewTicker(time.Duration(c.CreateHost.PollFrequency) * time.Second)
 	defer pollTicker.Stop()
 
 	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.ContainerWaitTimeoutSecs) * time.Second)
 	defer timeoutTimer.Stop()
 
-	batchStart := startTime
 	// get logs in batches until container exits or we timeout
 	startedCollectingLogs := false
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context cancelled waiting for host %s to exit", hostID)
+			logger.Task().Infof("context cancelled waiting for host %s to exit", info.hostID)
 			return nil
 		case <-pollTicker.C:
-			batchEnd := time.Now()
-			status, err := comm.GetDockerStatus(ctx, hostID)
+			info.batchEnd = time.Now()
+			status, err := comm.GetDockerStatus(ctx, info.hostID)
 			if err != nil {
 				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
 				if startedCollectingLogs {
@@ -170,14 +200,12 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			}
 			if status.HasStarted {
 				startedCollectingLogs = true
-				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
-					continue
-				}
-				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
+				info.getAndWriteLogBatch(ctx, comm, logger)
+				info.batchStart = info.batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
 					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
-						hostID, int(time.Since(startTime).Seconds()))
+						info.hostID, int(time.Since(info.batchStart).Seconds()))
 					return nil
 				}
 			}
@@ -187,25 +215,21 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	}
 }
 
-func (c *createHost) getAndWriteLogBatch(ctx context.Context, comm client.Communicator, hostID string,
-	startTime, endTime time.Time) error {
-
-	outLogs, err := comm.GetDockerLogs(ctx, hostID, startTime, endTime, false)
+func (info *logBatchInfo) getAndWriteLogBatch(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) {
+	outLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, false)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving docker output logs")
+		logger.Task().Errorf("error retrieving docker out logs: %s", err.Error())
 	}
-	errLogs, err := comm.GetDockerLogs(ctx, hostID, startTime, endTime, true)
+	errLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, true)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving docker error logs")
+		logger.Task().Errorf("error retrieving docker error logs: %s", err.Error())
 	}
-
-	if err = ioutil.WriteFile(c.CreateHost.StdoutFile, outLogs, 0644); err != nil {
-		return errors.Wrap(err, "error writing stdout to file")
+	if _, err = info.outFile.Write(outLogs); err != nil {
+		logger.Task().Errorf("error writing stdout to file: %s", outLogs)
 	}
-	if err = ioutil.WriteFile(c.CreateHost.StderrFile, errLogs, 0644); err != nil {
-		return errors.Wrap(err, "error writing stderr to file")
+	if _, err = info.errFile.Write(errLogs); err != nil {
+		logger.Task().Errorf("error writing stderr to file: %s", errLogs)
 	}
-	return nil
 }
 
 func (c *createHost) populateUserdata() error {
