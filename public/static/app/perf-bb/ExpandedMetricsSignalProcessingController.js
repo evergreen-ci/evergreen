@@ -5,7 +5,10 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
   $scope.pageSize = 10;
   $scope.totalPages = 1;
   $scope.projectId = $routeParams.projectId;
-  $scope.measurementRegex = 'AverageLatency|Latency50thPercentile|Latency95thPercentile';
+  $scope.measurementRegex = 'Latency50thPercentile|Latency95thPercentile';
+  $scope.taskRegex = 'mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner';
+  // This is essentially "not containing ActorFinished/ActorStarted/Setup/Cleanup"
+  $scope.testRegex = '^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))';
   $scope.hazardValues = [
     'Major Regression',
     'Moderate Regression',
@@ -41,10 +44,11 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
   }];
   // Holds currently selected items
   $scope.selection = [];
+  $scope.selectedAction = null;
 
   $scope.isNoActionSelected = function () {
-    return $scope.selectedAction == undefined
-  }
+    return $scope.selectedAction === null;
+  };
 
   $scope.triagePoints = function () {
     var cpIds = [];
@@ -61,7 +65,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
           $scope.connectionError = true
         }
       });
-  }
+  };
 
   $scope.prevPage = () => {
     if ($scope.page > 0) {
@@ -279,6 +283,9 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         enableSorting: false,
         _link: row => '/task/' + row.entity.task_id,
         cellTemplate: 'ui-grid-link',
+        filter: {
+          term: $scope.taskRegex
+        }
       },
       {
         name: 'Test',
@@ -287,6 +294,9 @@ function setupGrid($scope, CHANGE_POINTS_GRID, onFilterChanged) {
         enableSorting: false,
         _link: row => '/task/' + row.entity.task_id + '##' + row.entity.test,
         cellTemplate: 'ui-grid-link',
+        filter: {
+          term: $scope.testRegex
+        }
       },
       {
         name: 'Version',

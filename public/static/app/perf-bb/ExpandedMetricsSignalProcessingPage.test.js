@@ -235,7 +235,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     it('should set up the grid, with defaults', () => {
       makeController();
       expect($scope.triageStatusRegex).toEqual('not_triaged');
-      expect($scope.measurementRegex).toEqual('AverageLatency|Latency50thPercentile|Latency95thPercentile');
+      expect($scope.measurementRegex).toEqual('Latency50thPercentile|Latency95thPercentile');
+      expect($scope.taskRegex).toEqual('mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner');
+      expect($scope.testRegex).toEqual('^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))');
       delete $scope.gridOptions.onRegisterApi;
       for (definition of $scope.gridOptions.columnDefs) {
         delete definition["_link"];
@@ -292,6 +294,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             enableSorting: false,
             cellTemplate: 'ui-grid-link',
+            filter: {
+              term: 'mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner'
+            }
           },
           {
             name: 'Test',
@@ -299,6 +304,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             enableSorting: false,
             cellTemplate: 'ui-grid-link',
+            filter: {
+              term: '^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))'
+            }
           },
           {
             name: 'Version',
@@ -320,7 +328,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             field: 'measurement',
             type: 'string',
             filter: {
-              term: 'AverageLatency|Latency50thPercentile|Latency95thPercentile'
+              term: 'Latency50thPercentile|Latency95thPercentile'
             },
             enableSorting: false,
           },
