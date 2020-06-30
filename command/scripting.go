@@ -440,10 +440,12 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 		fmt.Sprintf("the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
 			c.WorkingDir, conf.WorkDir))
 
-	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
-	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
+	if c.WorkingDir == "" {
+		c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+		if err != nil {
+			logger.Execution().Warning(err.Error())
+			return errors.WithStack(err)
+		}
 	}
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")

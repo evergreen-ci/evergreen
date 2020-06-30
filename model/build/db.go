@@ -1,13 +1,14 @@
 package build
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -285,4 +286,35 @@ func FindProjectForBuild(buildID string) (string, error) {
 		return "", errors.New("build not found")
 	}
 	return b.Project, nil
+}
+
+func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
+	buildIdSet := map[string]bool{}
+	for _, t := range tasks {
+		buildIdSet[t.BuildId] = true
+		if err := SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+			return errors.WithStack(err)
+		}
+
+		// update the cached version of the task, in its build document
+		if err := ResetCachedTask(t.BuildId, t.Id); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	// reset the build statuses, once per build
+	buildIdList := make([]string, 0, len(buildIdSet))
+	for k := range buildIdSet {
+		buildIdList = append(buildIdList, k)
+	}
+	// Set the build status for all the builds containing the tasks that we touched
+	_, err := UpdateAllBuilds(
+		bson.M{IdKey: bson.M{"$in": buildIdList}},
+		bson.M{"$set": bson.M{StatusKey: evergreen.BuildStarted}},
+	)
+	if err != nil {
+		return errors.Wrapf(err, "error updating builds to started")
+	}
+	// update activation for all the builds
+	return errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds")
 }
