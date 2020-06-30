@@ -590,7 +590,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist"
-      - name: "staging-dist"
+      - name: "dist-staging"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
