@@ -15,16 +15,6 @@ mciModule.controller("SettingsCtrl", [
   ) {
     $scope.timezones = timeUtil.timezones;
 
-    $scope.patch_feedback_prompts = {
-      information_score:
-        "Does the new patches page have all the information you need?",
-      usability_score:
-        "How easy is it to use the new page compared to the old page?",
-      missing_things: "Is there anything you miss about the old patches page?",
-      requested_changes:
-        "Is there anything you want changed on the new patches page?",
-    };
-
     $scope.user_tz = $window.user_tz;
     $scope.new_tz = $scope.user_tz || "America/New_York";
     $scope.new_region = $window.user_region || "us-east-1";
@@ -81,64 +71,14 @@ mciModule.controller("SettingsCtrl", [
       );
     };
 
-    $scope.onOptOutChange = function () {
-      if (
-        $scope.opt_in_initially_checked &&
-        !$scope.use_spruce_options.patch_page
-      ) {
-        $scope.should_show_feedback = true;
-      } else {
-        $scope.should_show_feedback = false;
-      }
-    };
-
-    function formatFeedback(spruce_feedback) {
-      var formattedFeedback = {
-        type: "new_patches_page_feedback",
-      };
-      var allFields = [];
-      var questionAnswerArray = [];
-      Object.keys($scope.patch_feedback_prompts).forEach(function (field) {
-        var prompt = $scope.patch_feedback_prompts[field];
-        var answer =
-          spruce_feedback[field] === undefined
-            ? ""
-            : spruce_feedback[field].toString();
-        var questionAnswer = {
-          id: field,
-          prompt: prompt,
-          answer: answer,
-        };
-        questionAnswerArray.push(questionAnswer);
-      });
-      formattedFeedback["questions"] = questionAnswerArray;
-      return formattedFeedback;
-    }
-
-    $scope.updateUserSettings = function (use_spruce_options, spruce_feedback) {
-      if (
-        $scope.opt_in_initially_checked &&
-        !use_spruce_options.patch_page &&
-        (spruce_feedback.usability_score === undefined ||
-          spruce_feedback.information_score === undefined)
-      ) {
-        notifier.pushNotification(
-          "Please fill out all required fields before submitting",
-          "errorHeader"
-        );
-        return;
-      }
+    $scope.updateUserSettings = function () {
       data = {
         timezone: $scope.new_tz,
         region: $scope.new_region,
-        use_spruce_options: use_spruce_options,
         github_user: {
           last_known_as: $scope.github_user,
         },
       };
-      if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page) {
-        data.spruce_feedback = formatFeedback(spruce_feedback);
-      }
       var success = function () {
         window.location.reload();
       };

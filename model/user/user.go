@@ -67,9 +67,9 @@ type UserSettings struct {
 }
 
 type UseSpruceOptions struct {
-	PatchPage           bool `json:"patch_page" bson:"patch_page"`
-	SpruceV1            bool `json:"spruce_v1" bson:"spruce_v1"`
-	HasUsedSpruceBefore bool `json:"has_used_spruce_before" bson:"has_used_spruce_before"`
+	PatchPage           bool `json:"patch_page" bson:"patch_page"`                         // deprecated - do not use
+	SpruceV1            bool `json:"spruce_v1" bson:"spruce_v1"`                           // represents users opted into the new Evergreen UI
+	HasUsedSpruceBefore bool `json:"has_used_spruce_before" bson:"has_used_spruce_before"` // used to know whether or not to display spruce welcome modal
 }
 
 type NotificationPreferences struct {
