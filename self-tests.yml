@@ -55,7 +55,7 @@ variables:
           optional: true
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
-          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/${task_name}.tar.gz
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/dist.tar.gz
           remote_file: evergreen/${build_id}-${build_variant}/evergreen-${task_name}-${revision}.tar.gz
           bucket: mciuploads
           content_type: application/x-gzip
