@@ -391,7 +391,7 @@ tasks:
           tz: "America/New_York"
 
   - <<: *run-build
-    name: staging-dist 
+    name: dist-staging
     patch_only: true
 
   - <<: *run-smoke-test
