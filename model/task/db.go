@@ -18,7 +18,6 @@ import (
 const (
 	Collection    = "tasks"
 	OldCollection = "old_tasks"
-	TestLogPath   = "/test_log/"
 )
 
 var (
@@ -129,7 +128,6 @@ var (
 		},
 	},
 	}
-	CompletedStatuses = []string{evergreen.TaskSucceeded, evergreen.TaskFailed}
 
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
@@ -237,10 +235,9 @@ func ByVersions(versions []string) db.Q {
 }
 
 // ByIdsBuildIdAndStatus creates a query to return tasks with a certain build id and statuses
-func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db.Q {
+func ByIdsAndStatus(taskIds []string, statuses []string) db.Q {
 	return db.Query(bson.M{
-		IdKey:      bson.M{"$in": taskIds},
-		BuildIdKey: buildId,
+		IdKey: bson.M{"$in": taskIds},
 		StatusKey: bson.M{
 			"$in": statuses,
 		},
@@ -273,16 +270,6 @@ func ByCommit(revision, buildVariant, displayName, project, requester string) db
 		BuildVariantKey: buildVariant,
 		DisplayNameKey:  displayName,
 		ProjectKey:      project,
-	})
-}
-
-// ByStatusAndActivation creates a query that returns tasks of a certain status and activation state.
-func ByStatusAndActivation(status string, active bool) db.Q {
-	return db.Query(bson.M{
-		ActivatedKey: active,
-		StatusKey:    status,
-		//Filter out blacklisted tasks
-		PriorityKey: bson.M{"$gte": 0},
 	})
 }
 
@@ -518,17 +505,6 @@ func WithinTimePeriod(startedAfter, finishedBefore time.Time, project string, st
 
 	return db.Query(bson.M{
 		"$and": q,
-	})
-}
-
-func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, statuses []string) db.Q {
-	return db.Query(bson.M{
-		IdKey: bson.M{
-			"$in": taskIds,
-		},
-		VersionKey:      versionId,
-		DispatchTimeKey: bson.M{"$ne": utility.ZeroTime},
-		StatusKey:       bson.M{"$in": statuses},
 	})
 }
 
@@ -929,6 +905,17 @@ func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
 }
 
+func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
+	tasks, err := Find(db.Query(bson.M{
+		BuildIdKey:   buildId,
+		TaskGroupKey: taskGroup,
+	}).Sort([]string{TaskGroupOrderKey}))
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks in task group")
+	}
+	return tasks, nil
+}
+
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
 	return findAllTaskIDs(q)
@@ -1152,4 +1139,39 @@ func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 		}}),
 	)
 	return res.Err()
+}
+
+func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
+	q := bson.M{
+		BuildIdKey: buildId,
+		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+	}
+	if len(taskIds) > 0 {
+		q[IdKey] = bson.M{"$in": taskIds}
+	}
+	_, err := UpdateAll(
+		q,
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:   true,
+				AbortInfoKey: AbortInfo{User: caller},
+			},
+		},
+	)
+	return err
+}
+
+func AbortTasksForVersion(versionId string, taskIds []string, caller string) error {
+	_, err := UpdateAll(
+		bson.M{
+			VersionKey: versionId,
+			IdKey:      bson.M{"$in": taskIds},
+			StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		},
+		bson.M{"$set": bson.M{
+			AbortedKey:   true,
+			AbortInfoKey: AbortInfo{User: caller},
+		}},
+	)
+	return err
 }

@@ -245,7 +245,7 @@ func TestBuildRestart(t *testing.T) {
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildCreated)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
 			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskDispatched)
@@ -314,7 +314,7 @@ func TestBuildRestart(t *testing.T) {
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildCreated)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
 			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskDispatched)

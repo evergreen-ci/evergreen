@@ -48,7 +48,7 @@ func (bc *DBBuildConnector) SetBuildActivated(buildId string, user string, activ
 
 // RestartBuild wraps the service level RestartBuild
 func (bc *DBBuildConnector) RestartBuild(buildId string, user string) error {
-	return model.RestartBuildTasks(buildId, user)
+	return model.RestartAllBuildTasks(buildId, user)
 }
 
 // MockBuildConnector is a struct that implements the Build related methods
