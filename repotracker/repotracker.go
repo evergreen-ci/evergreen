@@ -356,9 +356,9 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		// to actually fetching a config. Those errors currently include:
 		// thirdparty.APIRequestError, thirdparty.FileNotFoundError and
 		// thirdparty.YAMLFormatError
-		_, apiReqErr := err.(thirdparty.APIRequestError)
-		_, ymlFmtErr := err.(thirdparty.YAMLFormatError)
-		_, noFileErr := err.(thirdparty.FileNotFoundError)
+		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
+		_, ymlFmtErr := errors.Cause(err).(thirdparty.YAMLFormatError)
+		_, noFileErr := errors.Cause(err).(thirdparty.FileNotFoundError)
 		if apiReqErr || noFileErr || ymlFmtErr {
 			// If there's an error getting the remote config, e.g. because it
 			// does not exist, we treat this the same as when the remote config
