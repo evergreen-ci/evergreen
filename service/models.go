@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"html/template"
 	"time"
 
@@ -104,54 +103,6 @@ type uiTask struct {
 ///////////////////////////////////////////////////////////////////////////
 //// Functions to create and populate the models
 ///////////////////////////////////////////////////////////////////////////
-
-func getTimelineData(projectName string, versionsToSkip, versionsPerPage int) (*timelineData, error) {
-	data := &timelineData{}
-
-	// get the total number of versions in the database (used for pagination)
-	totalVersions, err := model.VersionCount(model.VersionByProjectId(projectName))
-	if err != nil {
-		return nil, err
-	}
-	data.TotalVersions = totalVersions
-
-	q := model.VersionByMostRecentSystemRequester(projectName).WithoutFields(model.VersionConfigKey).
-		Skip(versionsToSkip * versionsPerPage).Limit(versionsPerPage)
-
-	// get the most recent versions, to display in their entirety on the page
-	versionsFromDB, err := model.VersionFind(q)
-	if err != nil {
-		return nil, err
-	}
-
-	// create the necessary uiVersion struct for each version
-	uiVersions := make([]uiVersion, len(versionsFromDB))
-	for versionIdx, version := range versionsFromDB {
-		versionAsUI := uiVersion{Version: version}
-		uiVersions[versionIdx] = versionAsUI
-
-		buildIds := version.BuildIds
-		dbBuilds, err := build.Find(build.ByIds(buildIds))
-		grip.ErrorWhen(err != nil, fmt.Sprintf("Ids:%s\n", buildIds))
-
-		buildsMap := make(map[string]build.Build)
-		for _, dbBuild := range dbBuilds {
-			buildsMap[dbBuild.Id] = dbBuild
-		}
-
-		uiBuilds := make([]uiBuild, len(dbBuilds))
-		for buildIdx, buildId := range buildIds {
-			b := buildsMap[buildId]
-			buildAsUI := uiBuild{Build: b}
-			uiBuilds[buildIdx] = buildAsUI
-		}
-		versionAsUI.Builds = uiBuilds
-		uiVersions[versionIdx] = versionAsUI
-	}
-
-	data.Versions = uiVersions
-	return data, nil
-}
 
 // getBuildVariantHistory returns a slice of builds that surround a given build.
 // As many as 'before' builds (less recent builds) plus as many as 'after' builds
