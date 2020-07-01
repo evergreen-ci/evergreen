@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -188,7 +189,7 @@ func CheckStuckHosts() ([]StuckHostInconsistency, error) {
 		{"$lookup": bson.M{"from": task.Collection, "localField": host.RunningTaskKey,
 			"foreignField": task.IdKey, "as": HostTaskKey}},
 		{"$unwind": "$" + HostTaskKey},
-		{"$match": bson.M{HostTaskKey + "." + task.StatusKey: bson.M{"$in": task.CompletedStatuses}}},
+		{"$match": bson.M{HostTaskKey + "." + task.StatusKey: bson.M{"$in": evergreen.CompletedStatuses}}},
 		{"$project": bson.M{
 			StuckHostKey:            "$" + host.IdKey,
 			StuckHostRunningTaskKey: "$" + host.RunningTaskKey,
