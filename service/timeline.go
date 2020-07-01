@@ -38,28 +38,6 @@ type TaskInfo struct {
 	Details     apimodels.TaskEndDetail `json:"status_details"`
 }
 
-func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	skip, perPage := getSkipAndLimit(r, DefaultSkip, DefaultLimit)
-	data, err := getTimelineData(project.Identifier, skip, perPage)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	gimlet.WriteJSON(w, data)
-}
-
-func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
-	uis.render.WriteResponse(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
-}
-
 func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
 	uis.patchTimelineWrapper("", w, r)
 }
