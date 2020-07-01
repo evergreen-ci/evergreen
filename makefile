@@ -35,13 +35,16 @@ endif
 
 
 # start evergreen specific configuration
+
 unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy freebsd_amd64)
 windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
+
 
 goos := $(shell $(gobin) env GOOS)
 goarch := $(shell $(gobin) env GOARCH)
 
 clientBuildDir := clients
+
 
 clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)

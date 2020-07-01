@@ -595,7 +595,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
-		statuses = CompletedStatuses
+		statuses = evergreen.CompletedStatuses
 	}
 	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + RevisionOrderNumberKey}))
@@ -1757,10 +1757,11 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	return tasks[0].LocalTestResults, nil
 }
 
-// SetResetWhenFinished requests that a display task reset itself when finished. Will mark itself as system failed
+// SetResetWhenFinished requests that a display task or single-host task group
+// reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
-	if !t.DisplayOnly {
-		return errors.Errorf("%s is not a display task", t.Id)
+	if !t.DisplayOnly && !t.IsPartOfSingleHostTaskGroup() {
+		return errors.Errorf("%s is not a display task or in a task group", t.Id)
 	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
@@ -1925,7 +1926,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 							{"$and": []bson.M{
 								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
 								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), CompletedStatuses}},
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.CompletedStatuses}},
 									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
 								}},
 							}},
@@ -2057,6 +2058,10 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 		variants = append(variants, doc["_id"])
 	}
 	return variants, nil
+}
+
+func (t *Task) IsPartOfSingleHostTaskGroup() bool {
+	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
 }
 
 func (t *Task) IsPartOfDisplay() bool {
