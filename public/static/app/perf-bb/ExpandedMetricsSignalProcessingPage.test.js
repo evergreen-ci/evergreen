@@ -1,3 +1,8 @@
+let $httpBackend;
+let $httpParamSerializer;
+let PERFORMANCE_ANALYSIS_AND_TRIAGE_API;
+let API_V2;
+
 describe('ExpandedMetricsSignalProcessingPage', () => {
 
   beforeEach(module('MCI'));
@@ -8,13 +13,10 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     let CHANGE_POINTS_GRID;
     let PerformanceAnalysisAndTriageClient;
     let $routeParams;
-    let $httpBackend;
-    let PERFORMANCE_ANALYSIS_AND_TRIAGE_API;
-    let API_V2;
 
     beforeEach(function () {
       module('MCI');
-      inject(function (_$controller_, _PerformanceAnalysisAndTriageClient_, _$window_, _CHANGE_POINTS_GRID_, _$routeParams_, _$httpBackend_, _PERFORMANCE_ANALYSIS_AND_TRIAGE_API_, _CEDAR_APP_URL_, _API_V2_) {
+      inject(function (_$controller_, _PerformanceAnalysisAndTriageClient_, _$window_, _CHANGE_POINTS_GRID_, _$routeParams_, _$httpBackend_, _PERFORMANCE_ANALYSIS_AND_TRIAGE_API_, _CEDAR_APP_URL_, _API_V2_, _$httpParamSerializer_) {
         $scope = {};
         CHANGE_POINTS_GRID = _CHANGE_POINTS_GRID_;
         PerformanceAnalysisAndTriageClient = _PerformanceAnalysisAndTriageClient_;
@@ -24,6 +26,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
         PERFORMANCE_ANALYSIS_AND_TRIAGE_API = _PERFORMANCE_ANALYSIS_AND_TRIAGE_API_;
         controller = _$controller_;
         API_V2 = _API_V2_;
+        $httpParamSerializer = _$httpParamSerializer_
       })
     });
 
@@ -38,7 +41,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should authenticate on failed requests', () => {
       makeController();
-      expectGetPageBase($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,0, 10, 511, $scope)
+      expectGetPageBase(0, 10, 511, $scope)
         .respond(function(){
           return [null, null, null, null, 'error']
         });
@@ -50,9 +53,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should refresh the data when a new page is loaded', () => {
       makeController();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,0, 10, 511, $scope);
+      expectGetPage(0, 10, 511, $scope);
       $scope.nextPage();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,1, 10, 511, $scope, {
+      expectGetPage(1, 10, 511, $scope, {
         'versions': Array(10).fill(
           {
             'version_id': 'another_version',
@@ -122,10 +125,10 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should be able to go to the previous page', () => {
       makeController();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,0, 10, 511, $scope);
+      expectGetPage(0, 10, 511, $scope);
       $scope.page = 511;
       $scope.prevPage();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,510, 10, 511, $scope);
+      expectGetPage(510, 10, 511, $scope);
       expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(510);
       expect($scope.pageSize).toEqual(10);
@@ -152,9 +155,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should be able to go to the next page', () => {
       makeController();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,0, 10, 511, $scope);
+      expectGetPage(0, 10, 511, $scope);
       $scope.nextPage();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,1, 10, 511, $scope);
+      expectGetPage(1, 10, 511, $scope);
       expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(1);
       expect($scope.pageSize).toEqual(10);
@@ -181,7 +184,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should get the first page on load', () => {
       makeController();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,0, 10, 511, $scope);
+      expectGetPage(0, 10, 511, $scope);
       expect($scope.selection).toEqual([]);
       expect($scope.page).toEqual(0);
       expect($scope.pageSize).toEqual(10);
@@ -216,7 +219,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 
     it('should apply filtering to server calls', () => {
       makeController();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, API_V2,0, 10, 511, $scope);
+      expectGetPage(0, 10, 511, $scope);
       $scope.variantRegex = 'some_variant';
       $scope.versionRegex = 'some_version';
       $scope.taskRegex = 'some_task';
@@ -227,7 +230,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
       $scope.percentChangeWindows = ["0,20"];
       $scope.calculatedOnWindow = "2020-06-09T04:00:00.000,2020-06-18T04:00:00.000";
       $scope.nextPage();
-      expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,  API_V2,1, 10, 511, $scope);
+      expectGetPage(1, 10, 511, $scope);
       $httpBackend.verifyNoOutstandingExpectation();
       $httpBackend.verifyNoOutstandingRequest();
     });
@@ -235,7 +238,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
     it('should set up the grid, with defaults', () => {
       makeController();
       expect($scope.triageStatusRegex).toEqual('not_triaged');
-      expect($scope.measurementRegex).toEqual('AverageLatency|Latency50thPercentile|Latency95thPercentile');
+      expect($scope.measurementRegex).toEqual('Latency50thPercentile|Latency95thPercentile');
+      expect($scope.taskRegex).toEqual('mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner');
+      expect($scope.testRegex).toEqual('^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))');
       delete $scope.gridOptions.onRegisterApi;
       for (definition of $scope.gridOptions.columnDefs) {
         delete definition["_link"];
@@ -292,6 +297,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             enableSorting: false,
             cellTemplate: 'ui-grid-link',
+            filter: {
+              term: 'mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner'
+            }
           },
           {
             name: 'Test',
@@ -299,6 +307,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             type: 'string',
             enableSorting: false,
             cellTemplate: 'ui-grid-link',
+            filter: {
+              term: '^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))'
+            }
           },
           {
             name: 'Version',
@@ -320,7 +331,7 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
             field: 'measurement',
             type: 'string',
             filter: {
-              term: 'AverageLatency|Latency50thPercentile|Latency95thPercentile'
+              term: 'Latency50thPercentile|Latency95thPercentile'
             },
             enableSorting: false,
           },
@@ -349,9 +360,9 @@ describe('ExpandedMetricsSignalProcessingPage', () => {
 });
 
 
-function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, API_V2, page, pageSize, totalPages, $scope, newData) {
+function expectGetPage(page, pageSize, totalPages, $scope, newData) {
   let responseData = newData || standardData(page, pageSize, totalPages);
-  expectGetPageBase($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, pageSize, totalPages, $scope, responseData);
+  expectGetPageBase(page, pageSize, totalPages, $scope, responseData);
   for (version of responseData.versions) {
     let versionUrl = `${API_V2.BASE}/${API_V2.VERSION_BY_ID}`.replace("{version_id}", version.version_id);
     $httpBackend.expectGET(versionUrl).respond(200, {
@@ -367,39 +378,47 @@ function expectGetPage($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, API_V2
   $httpBackend.flush();
 }
 
-function expectGetPageBase($httpBackend, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, page, pageSize, totalPages, $scope, responseData) {
-  let url = `${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?page_size=${pageSize}&page=${page}`;
+function expectGetPageBase( page, pageSize, totalPages, $scope, responseData) {
+  let params = {
+    page_size:pageSize,
+    page: page,
+  };
   if($scope.variantRegex) {
-    url += `&variant_regex=${encodeURI($scope.variantRegex)}`
+    params.variant_regex = $scope.variantRegex;
   }
   if($scope.versionRegex) {
-    url += `&version_regex=${encodeURI($scope.versionRegex)}`
+    params.version_regex = $scope.versionRegex;
   }
   if($scope.taskRegex) {
-    url += `&task_regex=${encodeURI($scope.taskRegex)}`
+    params.task_regex = $scope.taskRegex;
   }
   if($scope.testRegex) {
-    url += `&test_regex=${encodeURI($scope.testRegex)}`
+    params.test_regex = $scope.testRegex;
   }
   if($scope.measurementRegex) {
-    url += `&measurement_regex=${encodeURI($scope.measurementRegex)}`
+    params.measurement_regex = $scope.measurementRegex;
   }
   if($scope.triageStatusRegex) {
-    url += `&triage_status_regex=${encodeURI($scope.triageStatusRegex)}`
+    params.triage_status_regex = $scope.triageStatusRegex;
   }
   if($scope.threadLevels) {
+    params.thread_levels = [];
     $scope.threadLevels.forEach(tl => {
-      url += `&thread_levels=${tl}`
+      params.thread_levels.push(tl);
     })
   }
   if($scope.percentChangeWindows) {
+    params.percent_change = [];
     $scope.percentChangeWindows.forEach(w => {
-      url += `&percent_change=${w}`
+      params.percent_change.push(w);
     })
   }
   if($scope.calculatedOnWindow) {
-    url += `&calculated_on=${$scope.calculatedOnWindow}`
+    params.calculated_on = $scope.calculatedOnWindow;
   }
+  params = $httpParamSerializer(params);
+  let url = `${PERFORMANCE_ANALYSIS_AND_TRIAGE_API.BASE + PERFORMANCE_ANALYSIS_AND_TRIAGE_API.CHANGE_POINTS_BY_VERSION.replace("{projectId}", "some-project")}?${params}`;
+
   return $httpBackend.expectGET(url).respond(200, JSON.stringify(responseData));
 }
 

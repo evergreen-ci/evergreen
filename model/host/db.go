@@ -313,7 +313,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"as":           runningTasks,
 		}},
 		{"$unwind": "$" + runningTasks},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": evergreen.CompletedStatuses}}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
