@@ -83,6 +83,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
+	@echo $(clientBinaries)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 phony += cli clis
 # end client build directives
@@ -200,6 +201,7 @@ $(buildDir)/.npmSetup:
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
+	@echo $(clientBinaries)
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
@@ -209,8 +211,9 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@echo $(gobin) build -o $@ $<
 
 
-dist-staging: STAGING_ONLY := 1
-dist-staging:$(buildDir)/dist.tar.gz
+dist-staging: export STAGING_ONLY := 1
+dist-staging:
+	make dist
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
