@@ -126,14 +126,18 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 
 	info, err := c.initializeLogBatchInfo(ids[0], workDir, startTime)
 	if err != nil {
-		logger.Task().Error(err.Error())
+		return err
 	}
 
 	if !c.CreateHost.Background {
-		return errors.Wrap(c.waitForLogs(ctx, comm, logger, info), "error waiting for logs")
+		defer info.outFile.Close()
+		defer info.errFile.Close()
+		return errors.Wrapf(c.waitForLogs(ctx, comm, logger, info), "error waiting for logs")
 	}
 
 	go func() {
+		defer info.outFile.Close()
+		defer info.errFile.Close()
 		if err = c.waitForLogs(ctx, comm, logger, info); err != nil {
 			logger.Task().Errorf("error waiting for logs in background: %v", err)
 		}
@@ -168,6 +172,10 @@ func (c *createHost) initializeLogBatchInfo(id, workDir string, startTime time.T
 	}
 	info.errFile, err = os.OpenFile(c.CreateHost.StderrFile, permissions, 0644)
 	if err != nil {
+		// the outfile already exists, so close it
+		if fileErr := info.outFile.Close(); fileErr != nil {
+			return nil, errors.Wrapf(fileErr, "error removing stdout file after failed stderr file creation")
+		}
 		return nil, errors.Wrapf(err, "error creating file %s", c.CreateHost.StderrFile)
 	}
 	return info, nil
