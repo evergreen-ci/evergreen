@@ -35,22 +35,22 @@ endif
 
 
 # start evergreen specific configuration
-unixPlatforms ?= linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy freebsd_amd64)
-windowsPlatforms ?= windows_amd64 $(if $(STAGING_ONLY),,windows_386)
+unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy freebsd_amd64)
+windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
 
 goos := $(shell $(gobin) env GOOS)
 goarch := $(shell $(gobin) env GOARCH)
 
-clientBuildDir ?= clients
+clientBuildDir := clients
 
-clientBinaries ?= $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
+clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 clientSource := cmd/evergreen/evergreen.go
-uiFiles ?= $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
+uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
-distArtifacts ?=  ./public ./service/templates
-distContents ?= $(clientBinaries) $(distArtifacts)
+distArtifacts :=  ./public ./service/templates
+distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -83,7 +83,6 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@echo $(clientBinaries)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 phony += cli clis
 # end client build directives
@@ -201,7 +200,6 @@ $(buildDir)/.npmSetup:
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	@echo $(clientBinaries)
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
@@ -209,7 +207,6 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
-
 
 dist-staging: export STAGING_ONLY := 1
 dist-staging:
