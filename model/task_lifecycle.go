@@ -992,36 +992,64 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindWithDisplayTasks(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
 		return results, err
 	}
 
+	type taskGroupAndBuild struct {
+		Build     string
+		TaskGroup string
+	}
+	// only need to check one task per task group / build combination, and once per display task
+	taskGroupsToCheck := map[taskGroupAndBuild]string{}
+	displayTasksToCheck := map[string]bool{}
+	idsToRestart := []string{}
+	for _, t := range tasksToRestart {
+		if t.IsPartOfDisplay() {
+			displayTasksToCheck[t.DisplayTask.Id] = true
+		} else if t.DisplayOnly {
+			displayTasksToCheck[t.Id] = true
+		} else if t.IsPartOfSingleHostTaskGroup() {
+			taskGroupsToCheck[taskGroupAndBuild{
+				TaskGroup: t.TaskGroup,
+				Build:     t.BuildId,
+			}] = t.Id
+		} else {
+			idsToRestart = append(idsToRestart, t.Id)
+		}
+	}
+
+	for dt, _ := range displayTasksToCheck {
+		idsToRestart = append(idsToRestart, dt)
+	}
+	for _, tg := range taskGroupsToCheck {
+		idsToRestart = append(idsToRestart, tg)
+	}
+
 	// if this is a dry run, immediately return the tasks found
 	if opts.DryRun {
-		for _, t := range tasksToRestart {
-			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
-		}
+		results.ItemsRestarted = idsToRestart
 		return results, nil
 	}
 
-	return doRestartFailedTasks(tasksToRestart, opts.User, results), nil
+	return doRestartFailedTasks(idsToRestart, opts.User, results), nil
 }
 
-func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults) RestartResults {
+func doRestartFailedTasks(tasks []string, user string, results RestartResults) RestartResults {
 	var tasksErrored []string
 
-	for _, t := range tasks {
-		if err := TryResetTask(t.Id, user, evergreen.RESTV2Package, nil); err != nil {
-			tasksErrored = append(tasksErrored, t.Id)
+	for _, id := range tasks {
+		if err := TryResetTask(id, user, evergreen.RESTV2Package, nil); err != nil {
+			tasksErrored = append(tasksErrored, id)
 			grip.Error(message.Fields{
-				"task":    t.Id,
+				"task":    id,
 				"status":  "failed",
 				"message": "error restarting task",
 				"error":   err.Error(),
 			})
 		} else {
-			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
+			results.ItemsRestarted = append(results.ItemsRestarted, id)
 		}
 	}
 	results.ItemsErrored = tasksErrored
@@ -1190,10 +1218,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
-		if tgTask.Blocked() || !tgTask.Activated { // should restart if a task won't run
-			break
-		}
-		if !tgTask.IsFinished() { // task in group still needs to  run
+		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to  run
 			return nil
 		}
 	}
