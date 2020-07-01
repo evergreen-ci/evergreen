@@ -56,7 +56,7 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
       cpIds.push(cp.id);
     }
     PerformanceAnalysisAndTriageClient.triagePoints(cpIds, $scope.selectedAction.value)
-      .then(result => refreshGridData($scope), err => {
+      .then(() => refreshGridData($scope), err => {
         $scope.isLoading = false;
         $scope.connectionError = false;
         if (err.data) {
