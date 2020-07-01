@@ -497,7 +497,7 @@ func adminBackup() cli.Command {
 			serviceConfigFlags(),
 			addDbSettingsFlags(
 				cli.StringFlag{
-					Name:  joinFlagNames(collectionNameFlag, "c"),
+					Name:  collectionNameFlag,
 					Usage: "specify the name of the collection to backup",
 				},
 				cli.StringFlag{

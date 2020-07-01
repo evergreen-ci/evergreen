@@ -482,7 +482,7 @@ func hostStart() cli.Command {
 
 func hostSSH() cli.Command {
 	const (
-		keyFlagName = "key"
+		identityFlagName = "identity"
 	)
 
 	return cli.Command{
@@ -490,15 +490,15 @@ func hostSSH() cli.Command {
 		Usage: "ssh into a spawn host",
 		Flags: addHostFlag(
 			cli.StringFlag{
-				Name:  joinFlagNames(keyFlagName, "k"),
-				Usage: "name of a public key to use",
+				Name:  joinFlagNames(identityFlagName, "i"),
+				Usage: "Path to a specific identity (private key), for ssh -i",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
-			key := c.String(keyFlagName)
+			key := c.String(identityFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -517,10 +517,10 @@ func hostSSH() cli.Command {
 			if h == nil {
 				return errors.New("host not found")
 			}
-			if h.Status == nil || *h.Status != evergreen.HostRunning {
+			if restModel.FromStringPtr(h.Status) != evergreen.HostRunning {
 				return errors.New("host is not running")
 			}
-			if h.User == nil || h.HostURL == nil {
+			if restModel.FromStringPtr(h.User) == "" || restModel.FromStringPtr(h.HostURL) == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
 			args := []string{"ssh", "-tt", fmt.Sprintf("%s@%s", *h.User, *h.HostURL)}
