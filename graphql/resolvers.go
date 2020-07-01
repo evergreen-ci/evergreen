@@ -975,6 +975,20 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*string, error) {
+	user := route.MustHaveUser(ctx)
+	newPatchID, err := r.sc.CreatePatchForMerge(ctx, patchID, user)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
+	}
+
+	if _, err = r.sc.EnqueueItem(patchID, restModel.APICommitQueueItem{Issue: &newPatchID}, false); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
+	}
+
+	return &newPatchID, nil
+}
+
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {

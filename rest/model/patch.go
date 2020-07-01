@@ -35,6 +35,7 @@ type APIPatch struct {
 	ModuleCodeChanges []APIModulePatch `json:"module_code_changes"`
 	PatchedConfig     *string          `json:"patched_config"`
 	Project           *string          `json:"project"`
+	CanEnqueue        bool             `json:"can_enqueue"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -131,6 +132,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.ModuleCodeChanges = codeChanges
 	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = ToStringPtr(v.Project)
+	apiPatch.CanEnqueue = true
+	for _, p := range v.Patches {
+		if !p.IsMbox {
+			apiPatch.CanEnqueue = false
+			break
+		}
+	}
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }

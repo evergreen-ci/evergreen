@@ -48,6 +48,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  enqueuePatch(patchId: String!): String
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -207,6 +208,7 @@ type Patch {
   commitQueuePosition: Int
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
+  canEnqueue: Boolean!
 }
 
 type Build {

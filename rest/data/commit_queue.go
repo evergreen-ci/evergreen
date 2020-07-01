@@ -210,7 +210,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	patchDoc := &patch.Patch{
 		Id:            patchID,
 		Description:   model.MakeCommitQueueDescription(existingPatch.Patches, project),
-		Author:        user.Id,
+		Author:        user.Username(),
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,
 		Status:        evergreen.PatchCreated,
