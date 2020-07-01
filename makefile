@@ -209,11 +209,10 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@echo $(gobin) build -o $@ $<
 
 
-dist-staging: export STAGING_ONLY := 1
+dist-staging: STAGING_ONLY := 1
 dist-staging:$(buildDir)/dist.tar.gz
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
-	@echo "make-tarball"
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
