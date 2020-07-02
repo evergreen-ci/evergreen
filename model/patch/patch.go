@@ -590,6 +590,16 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
+func (p *Patch) CanEnqueue() bool {
+	for _, modulePatch := range p.Patches {
+		if !modulePatch.IsMbox {
+			return false
+		}
+	}
+
+	return true
+}
+
 // IsMailbox checks if the first line of a patch file
 // has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
 // it's a diff

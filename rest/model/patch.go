@@ -132,13 +132,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.ModuleCodeChanges = codeChanges
 	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = ToStringPtr(v.Project)
-	apiPatch.CanEnqueue = true
-	for _, p := range v.Patches {
-		if !p.IsMbox {
-			apiPatch.CanEnqueue = false
-			break
-		}
-	}
+	apiPatch.CanEnqueue = v.CanEnqueue()
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
