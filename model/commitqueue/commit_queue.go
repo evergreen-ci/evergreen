@@ -275,8 +275,8 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 			return errors.New("merge task doesn't exist")
 		}
 		event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
-		if _, err = mergeTask.SetBlockedPriority(user); err != nil {
-			return errors.Wrap(err, "can't block merge task")
+		if _, err = mergeTask.SetDisabledPriority(user); err != nil {
+			return errors.Wrap(err, "can't disable merge task")
 		}
 		if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
 			return errors.Wrap(err, "can't update build cache for deactivated ")

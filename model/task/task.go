@@ -1313,16 +1313,16 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetBlockedPriority sets the priority of a task so it will never run.
+// SetDisabledPriority sets the priority of a task so it will never run.
 // It also deactivates the task and any tasks that depend on it.
 // The build cache is not updated
-func (t *Task) SetBlockedPriority(user string) ([]Task, error) {
-	t.Priority = evergreen.BlockedTaskPriority
+func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
+	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
 	_, err := UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{PriorityKey: evergreen.BlockedTaskPriority}},
+		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't update priority")
@@ -1335,7 +1335,7 @@ func (t *Task) SetBlockedPriority(user string) ([]Task, error) {
 		return nil, errors.Wrap(err, "can't find matching tasks")
 	}
 	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.BlockedTaskPriority)
+		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
 	}
 
 	var deactivatedTasks []Task

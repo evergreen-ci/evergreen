@@ -278,7 +278,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	}
 
 	// negative priority - deactivate the task
-	if priority <= evergreen.BlockedTaskPriority {
+	if priority <= evergreen.DisabledTaskPriority {
 		var deactivatedTasks []task.Task
 		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
 			return errors.Wrap(err, "can't deactivate task")

@@ -121,7 +121,7 @@ const (
 	// maximum task priority
 	MaxTaskPriority = 100
 
-	BlockedTaskPriority = int64(-1)
+	DisabledTaskPriority = int64(-1)
 
 	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
