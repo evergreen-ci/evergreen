@@ -313,7 +313,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"as":           runningTasks,
 		}},
 		{"$unwind": "$" + runningTasks},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": evergreen.CompletedStatuses}}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
@@ -391,41 +391,12 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 			},
 		},
 	)
-	hosts, err := Find(q)
+	numHosts, err := Count(q)
 	if err != nil {
 		return 0, errors.Wrap(err, "error querying database for hosts")
 	}
-	// TODO: when we remove this debugging logic, Find can be changed to Count
-	if len(hosts) > 1 { // for single host task groups, this would indicate a race
-		type hostInfo struct {
-			Id               string
-			Status           string
-			RunningTaskGroup string
-			RunningBV        string
-			LastBV           string
-			LastGroup        string
-		}
-		info := []hostInfo{}
-		for _, h := range hosts {
-			cur := hostInfo{
-				Id:               h.Id,
-				Status:           h.Status,
-				RunningTaskGroup: h.RunningTaskGroup,
-				RunningBV:        h.RunningTaskBuildVariant,
-				LastBV:           h.LastBuildVariant,
-				LastGroup:        h.LastGroup,
-			}
-			info = append(info, cur)
-		}
-		grip.Debug(message.Fields{
-			"message":            "num hosts by task spec",
-			"task_version":       version,
-			"task_group":         group,
-			"task_build_variant": buildVariant,
-			"hosts":              info,
-		})
-	}
-	return len(hosts), nil
+
+	return numHosts, nil
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.

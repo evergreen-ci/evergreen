@@ -167,10 +167,12 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		So(theHostWhoCanBoastTheMostRoast.Insert(), ShouldBeNil)
 
 		task1 := task.Task{
-			Id:        "task1",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			Project:   "exists",
+			Id:             "task1",
+			TaskGroup:      "group1",
+			TaskGroupOrder: 1,
+			Status:         evergreen.TaskUndispatched,
+			Activated:      true,
+			Project:        "exists",
 		}
 		task2 := task.Task{
 			Id:        "task2",
@@ -341,6 +343,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				Version:           "version1",
 				Project:           "exists",
 				TaskGroupMaxHosts: 1,
+				TaskGroupOrder:    2,
 			}
 			So(task3.Insert(), ShouldBeNil)
 			task4 := task.Task{
@@ -352,6 +355,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				Version:           "version1",
 				Project:           "exists",
 				TaskGroupMaxHosts: 1,
+				TaskGroupOrder:    1,
 			}
 			So(task4.Insert(), ShouldBeNil)
 			taskQueue.Queue = []model.TaskQueueItem{
@@ -423,11 +427,13 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		So(theHostWhoCanBoastTheMostRoast.Insert(), ShouldBeNil)
 
 		task1 := task.Task{
-			Id:        "task1",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			Project:   "exists",
-			StartTime: utility.ZeroTime,
+			Id:             "task1",
+			TaskGroup:      "group1",
+			TaskGroupOrder: 1,
+			Status:         evergreen.TaskUndispatched,
+			Activated:      true,
+			Project:        "exists",
+			StartTime:      utility.ZeroTime,
 		}
 		task2 := task.Task{
 			Id:        "task2",
@@ -607,6 +613,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Version:           "version1",
 				Project:           "exists",
 				TaskGroupMaxHosts: 1,
+				TaskGroupOrder:    2,
 			}
 			So(task3.Insert(), ShouldBeNil)
 			task4 := task.Task{

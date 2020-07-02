@@ -35,15 +35,18 @@ endif
 
 
 # start evergreen specific configuration
-unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy)
+
+unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy freebsd_amd64)
 windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
+
 
 goos := $(shell $(gobin) env GOOS)
 goarch := $(shell $(gobin) env GOARCH)
 
 clientBuildDir := clients
 
-clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
+
+clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 clientSource := cmd/evergreen/evergreen.go
@@ -207,6 +210,10 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
+
+dist-staging: export STAGING_ONLY := 1
+dist-staging:
+	make dist
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"

@@ -196,8 +196,9 @@ type ComplexityRoot struct {
 	}
 
 	PatchBuildVariant struct {
-		Tasks   func(childComplexity int) int
-		Variant func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		Tasks       func(childComplexity int) int
+		Variant     func(childComplexity int) int
 	}
 
 	PatchBuildVariantTask struct {
@@ -1240,6 +1241,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Version(childComplexity), true
+
+	case "PatchBuildVariant.displayName":
+		if e.complexity.PatchBuildVariant.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.PatchBuildVariant.DisplayName(childComplexity), true
 
 	case "PatchBuildVariant.tasks":
 		if e.complexity.PatchBuildVariant.Tasks == nil {
@@ -2532,6 +2540,7 @@ type PatchTasks {
 
 type PatchBuildVariant {
   variant: String!
+  displayName: String!
   tasks: [PatchBuildVariantTask]
 }
 type PatchBuildVariantTask {
@@ -6670,6 +6679,40 @@ func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, fiel
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Variant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchBuildVariant",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13831,6 +13874,11 @@ func (ec *executionContext) _PatchBuildVariant(ctx context.Context, sel ast.Sele
 			out.Values[i] = graphql.MarshalString("PatchBuildVariant")
 		case "variant":
 			out.Values[i] = ec._PatchBuildVariant_variant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._PatchBuildVariant_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
