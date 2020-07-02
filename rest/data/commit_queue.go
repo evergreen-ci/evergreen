@@ -175,7 +175,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	}
 
 	apiPatch := &restModel.APIPatch{}
-	if err = apiPatch.BuildFromService(newPatch); err != nil {
+	if err = apiPatch.BuildFromService(*newPatch); err != nil {
 		return nil, errors.Wrap(err, "problem building API patch")
 	}
 	return apiPatch, nil
