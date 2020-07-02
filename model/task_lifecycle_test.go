@@ -1406,7 +1406,7 @@ func TestAbortTask(t *testing.T) {
 	})
 
 }
-func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
+func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 	patchID := "aabbccddeeff001122334455"
 	v := &Version{

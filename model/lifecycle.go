@@ -277,8 +277,8 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, caller, priority)
 	}
 
-	//blacklisted - deactivate the task
-	if priority <= evergreen.BlacklistPriority {
+	// negative priority - deactivate the task
+	if priority <= evergreen.BlockedTaskPriority {
 		var deactivatedTasks []task.Task
 		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
 			return errors.Wrap(err, "can't deactivate task")
@@ -301,7 +301,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		return errors.Wrapf(err, "problem setting build '%s' priority", buildId)
 	}
 
-	//blacklisted - these tasks should never run, so unschedule now
+	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).
 			WithFields(task.IdKey, task.ExecutionKey))
@@ -331,7 +331,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		return errors.Wrapf(err, "problem setting version '%s' priority", versionId)
 	}
 
-	//blacklisted - these tasks should never run, so unschedule now
+	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
 		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
