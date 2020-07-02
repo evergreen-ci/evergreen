@@ -661,7 +661,7 @@ func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
 	return result, nil
 }
 
-func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
+func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}

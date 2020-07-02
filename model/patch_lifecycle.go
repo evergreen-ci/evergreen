@@ -521,6 +521,76 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, project *Project) s
 	return "Commit Queue Merge: " + strings.Join(description, " || ")
 }
 
+func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.Patch, error) {
+	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(existingPatchID)))
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
+	}
+
+	// verify the patch and its modules are in mbox format
+	for _, p := range existingPatch.Patches {
+		if !p.IsMbox {
+			return nil, errors.New("can't enqueue a non-mbox patch")
+		}
+	}
+
+	// verify the commit queue is on
+	projectRef, err := FindOneProjectRef(existingPatch.Project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
+	}
+	if projectRef == nil {
+		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
+	}
+	if !projectRef.Enabled {
+		return nil, errors.Errorf("project '%s' is disabled", existingPatch.Project)
+	}
+	if projectRef.PatchingDisabled {
+		return nil, errors.Errorf("patching is disabled for project '%s'", existingPatch.Project)
+	}
+	if !projectRef.CommitQueue.Enabled {
+		return nil, errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
+	}
+
+	project := &Project{}
+	if _, err = LoadProjectInto([]byte(existingPatch.PatchedConfig), existingPatch.Project, project); err != nil {
+		return nil, errors.Wrap(err, "problem loading project")
+	}
+
+	patchID := mgobson.NewObjectId()
+	patchDoc := &patch.Patch{
+		Id:            patchID,
+		Description:   MakeCommitQueueDescription(existingPatch.Patches, project),
+		Author:        u.Username(),
+		Project:       existingPatch.Project,
+		Githash:       existingPatch.Githash,
+		Status:        evergreen.PatchCreated,
+		Alias:         evergreen.CommitQueueAlias,
+		Patches:       existingPatch.Patches,
+		PatchedConfig: existingPatch.PatchedConfig,
+		CreateTime:    time.Now(),
+		DisplayNewUI:  existingPatch.DisplayNewUI,
+	}
+
+	// verify the commit queue has tasks/variants enabled that match the project
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+	if len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
+		return nil, errors.New("commit queue has no build variants or tasks configured")
+	}
+
+	// get the next patch number for the user
+	patchDoc.PatchNumber, err = u.IncPatchNumber()
+	if err != nil {
+		return nil, errors.Wrap(err, "error computing patch num")
+	}
+
+	if err = patchDoc.Insert(); err != nil {
+		return nil, errors.Wrap(err, "can't insert patch")
+	}
+
+	return patchDoc, nil
+}
+
 func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
 	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {

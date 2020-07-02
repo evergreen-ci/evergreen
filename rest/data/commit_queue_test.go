@@ -214,13 +214,13 @@ buildvariants:
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
 
-	newPatchID, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), &user.DBUser{Id: "me"})
+	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), &user.DBUser{Id: "me"})
 	s.NoError(err)
-	s.NotEmpty(newPatchID)
+	s.NotNil(newPatch)
 
-	newPatch, err := patch.FindOne(patch.ById(patch.NewId(newPatchID)))
+	newPatchDB, err := patch.FindOne(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
 	s.NoError(err)
-	s.Equal(evergreen.CommitQueueAlias, newPatch.Alias)
+	s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
