@@ -20,7 +20,11 @@
       "finish_time": {
         "$date": "2020-02-21T15:29:54.869Z"
       },
-      "build_variants": ["ubuntu1604", "osx", "windows"],
+      "build_variants": [
+        "ubuntu1604",
+        "osx",
+        "windows"
+      ],
       "tasks": [
         "test-thirdparty-docker",
         "test-cloud",
@@ -40,7 +44,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "1"
     },
     {
       "_id": "2",
@@ -49,7 +54,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "build_id": "2"
     },
     {
       "_id": "4",
@@ -58,7 +64,8 @@
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "build_id": "4"
     },
     {
       "_id": "5",
@@ -67,7 +74,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "5"
     },
     {
       "_id": "7",
@@ -76,7 +84,8 @@
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "7"
     },
     {
       "_id": "9",
@@ -85,7 +94,256 @@
       "build_variant": "osx",
       "display_name": "lint-graphql",
       "r": "github_pull_request",
-      "status": "started"
+      "status": "started",
+      "build_id": "9"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "9",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "osx",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "OSX",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "7",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "windows",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Windows",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "5",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "ubuntu1604",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Ubuntu 16.04",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "4",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "windows",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Windows",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "2",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "ubuntu1604",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Ubuntu 16.04",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "1",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "osx",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "OSX",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
     }
   ]
 }

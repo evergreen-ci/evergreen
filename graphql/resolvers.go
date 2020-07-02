@@ -230,7 +230,6 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
-
 	// return nil if rounded timeTaken/makespan == 0s
 	t := timeTaken.Round(time.Second).String()
 	var tPointer *string
@@ -240,12 +239,12 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	m := makespan.Round(time.Second).String()
 	var mPointer *string
 	if m != "0s" {
-		tPointer = &m
+		mPointer = &m
 	}
 
 	return &PatchDuration{
-		Makespan:  tPointer,
-		TimeTaken: mPointer,
+		Makespan:  mPointer,
+		TimeTaken: tPointer,
 	}, nil
 }
 
@@ -770,6 +769,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
+	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
@@ -777,13 +777,22 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 			Status: task.GetDisplayStatus(),
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+		if _, ok := variantDisplayName[task.BuildVariant]; !ok {
+			build, err := r.sc.FindBuildById(task.BuildId)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
+			}
+			variantDisplayName[task.BuildVariant] = build.DisplayName
+		}
+
 	}
 
 	result := []*PatchBuildVariant{}
 	for variant, tasks := range tasksByVariant {
 		pbv := PatchBuildVariant{
-			Variant: variant,
-			Tasks:   tasks,
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
 		}
 		result = append(result, &pbv)
 	}

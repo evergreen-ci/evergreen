@@ -40,8 +40,9 @@ type GroupedProjects struct {
 }
 
 type PatchBuildVariant struct {
-	Variant string                   `json:"variant"`
-	Tasks   []*PatchBuildVariantTask `json:"tasks"`
+	Variant     string                   `json:"variant"`
+	DisplayName string                   `json:"displayName"`
+	Tasks       []*PatchBuildVariantTask `json:"tasks"`
 }
 
 type PatchBuildVariantTask struct {
