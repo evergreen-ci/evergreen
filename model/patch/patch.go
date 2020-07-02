@@ -163,7 +163,6 @@ type ModulePatch struct {
 	ModuleName string   `bson:"name"`
 	Githash    string   `bson:"githash"`
 	PatchSet   PatchSet `bson:"patch_set"`
-	Message    string   `bson:"message"`
 	IsMbox     bool     `bson:"is_mbox"`
 }
 

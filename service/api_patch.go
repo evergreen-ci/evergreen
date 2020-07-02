@@ -199,7 +199,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
 		Githash    string `json:"githash"`
-		Message    string `json:"message"`
 	}{}
 	if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -213,7 +212,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	moduleName, githash, message := data.Module, data.Githash, data.Message
+	moduleName, githash := data.Module, data.Githash
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
@@ -273,7 +272,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
-		Message:    message,
 		Githash:    githash,
 		IsMbox:     len(patchContent) == 0 || patch.IsMailboxDiff(patchContent),
 		PatchSet: patch.PatchSet{
