@@ -266,7 +266,7 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 			return errors.Wrap(err, "can't clear subscriptions")
 		}
 
-		// Blacklist the merge task
+		// Disable the merge task
 		mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
 		if err != nil {
 			return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
@@ -275,8 +275,8 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 			return errors.New("merge task doesn't exist")
 		}
 		event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
-		if _, err = mergeTask.Blacklist(user); err != nil {
-			return errors.Wrap(err, "can't blacklist merge task")
+		if _, err = mergeTask.SetDisabledPriority(user); err != nil {
+			return errors.Wrap(err, "can't disable merge task")
 		}
 		if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
 			return errors.Wrap(err, "can't update build cache for deactivated ")
