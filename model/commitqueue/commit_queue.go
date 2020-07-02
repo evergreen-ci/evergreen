@@ -266,7 +266,7 @@ func preventMergeForItem(patchType string, versionExists bool, item CommitQueueI
 			return errors.Wrap(err, "can't clear subscriptions")
 		}
 
-		// Block the merge task
+		// Disable the merge task
 		mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
 		if err != nil {
 			return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
