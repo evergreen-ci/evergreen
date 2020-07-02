@@ -1918,7 +1918,7 @@ func TestBlockList(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	deactivatedTasks, err := tasks[0].Block("")
+	deactivatedTasks, err := tasks[0].SetBlockedPriority("")
 	assert.NoError(t, err)
 	assert.Len(t, deactivatedTasks, 1)
 
