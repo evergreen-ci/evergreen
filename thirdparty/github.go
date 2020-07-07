@@ -56,7 +56,12 @@ func githubShouldRetry(index int, req *http.Request, resp *http.Response, err er
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", req.Method, url, resp.StatusCode))
+		grip.Error(message.Fields{
+			"message": "bad response code from github",
+			"method":  req.Method,
+			"url":     url,
+			"outcome": resp.StatusCode,
+		})
 	}
 
 	limit := parseGithubRateLimit(resp.Header)
