@@ -526,12 +526,13 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
 	}
+	if existingPatch == nil {
+		return nil, errors.Errorf("patch '%s' doesn't exist", existingPatchID)
+	}
 
 	// verify the patch and its modules are in mbox format
-	for _, p := range existingPatch.Patches {
-		if !p.IsMbox {
-			return nil, errors.New("can't enqueue a non-mbox patch")
-		}
+	if !existingPatch.CanEnqueue() {
+		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatchID)
 	}
 
 	// verify the commit queue is on
@@ -557,9 +558,8 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 
-	patchID := mgobson.NewObjectId()
 	patchDoc := &patch.Patch{
-		Id:            patchID,
+		Id:            mgobson.NewObjectId(),
 		Description:   MakeCommitQueueDescription(existingPatch.Patches, project),
 		Author:        u.Username(),
 		Project:       existingPatch.Project,

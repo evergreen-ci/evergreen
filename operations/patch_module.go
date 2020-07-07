@@ -51,7 +51,7 @@ func PatchSetModule() cli.Command {
 			useMbox := true
 			if uncommittedChanges {
 				if uncommittedOk || conf.UncommittedChanges {
-					grip.Info("Patches with uncommitted changes cannot be enqueued on a commit queue")
+					grip.Info("Patches with uncommitted changes cannot be enqueued on a commit queue.")
 					useMbox = false
 				} else {
 					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
