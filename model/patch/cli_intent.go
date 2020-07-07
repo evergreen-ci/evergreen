@@ -160,7 +160,6 @@ func (c *cliIntent) NewPatch() *Patch {
 			{
 				ModuleName: c.Module,
 				Githash:    c.BaseHash,
-				Message:    c.Description,
 				IsMbox:     c.IsMbox,
 				PatchSet: PatchSet{
 					PatchFileId: c.PatchFileID.Hex(),
