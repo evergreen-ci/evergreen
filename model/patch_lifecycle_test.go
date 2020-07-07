@@ -808,6 +808,59 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	}
 }
 
+func TestMakeCommitQueueDescription(t *testing.T) {
+	project := &Project{
+		Repo:   "evergreen",
+		Owner:  "evergreen-ci",
+		Branch: "master",
+		Modules: ModuleList{
+			{
+				Name:   "module",
+				Branch: "feature",
+				Repo:   "git@github.com:evergreen-ci/module_repo.git",
+			},
+		},
+	}
+
+	patches := []patch.ModulePatch{}
+	assert.Equal(t, "Commit Queue Merge: No Commits Added", MakeCommitQueueDescription(patches, project))
+
+	patches = []patch.ModulePatch{
+		{
+			ModuleName: "",
+			PatchSet: patch.PatchSet{
+				Summary: []patch.Summary{
+					{Description: "Commit"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:master'", MakeCommitQueueDescription(patches, project))
+
+	patches = []patch.ModulePatch{
+		{
+			ModuleName: "",
+			PatchSet: patch.PatchSet{
+				Summary: []patch.Summary{
+					{Description: "Commit 1"},
+					{Description: "Commit 2"},
+				},
+			},
+		},
+		{
+			ModuleName: "module",
+			PatchSet: patch.PatchSet{
+				Summary: []patch.Summary{
+					{Description: "Module Commit 1"},
+					{Description: "Module Commit 2"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:master' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, project))
+}
+
 func TestRetryCommitQueueItems(t *testing.T) {
 	projectRef := &ProjectRef{
 		Identifier: patchedProject,
