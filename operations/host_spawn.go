@@ -514,9 +514,6 @@ func hostSSH() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem getting host")
 			}
-			if h == nil {
-				return errors.New("host not found")
-			}
 			if restModel.FromStringPtr(h.Status) != evergreen.HostRunning {
 				return errors.New("host is not running")
 			}
