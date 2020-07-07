@@ -272,7 +272,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     </tr>
                     <tr ng-show="task.priority < 0">
                       <td class="icon"><i class="fa fa-ban"></i></td>
-                      <td>Blacklisted</td>
+                      <td>Disabled (priority is less than 0)</td>
                     </tr>
                     <tr ng-show="task.upstream_data">
                       <td class="icon"><i class="fa fa-arrow-left"></i></td>

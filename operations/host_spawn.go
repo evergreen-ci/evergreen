@@ -480,6 +480,57 @@ func hostStart() cli.Command {
 	}
 }
 
+func hostSSH() cli.Command {
+	const (
+		identityFlagName = "identity_file"
+	)
+
+	return cli.Command{
+		Name:  "ssh",
+		Usage: "ssh into a spawn host",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(identityFlagName, "i"),
+				Usage: "Path to a specific identity (private key), for ssh -i",
+			},
+		),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			hostID := c.String(hostFlagName)
+			key := c.String(identityFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			h, err := client.GetSpawnHost(ctx, hostID)
+			if err != nil {
+				return errors.Wrap(err, "problem getting host")
+			}
+			if restModel.FromStringPtr(h.Status) != evergreen.HostRunning {
+				return errors.New("host is not running")
+			}
+			user := restModel.FromStringPtr(h.User)
+			url := restModel.FromStringPtr(h.HostURL)
+			if user == "" || url == "" {
+				return errors.New("unable to ssh into host without user or DNS name")
+			}
+			args := []string{"ssh", "-tt", fmt.Sprintf("%s@%s", user, url)}
+			if key != "" {
+				args = append(args, "-i", key)
+			}
+			return jasper.NewCommand().Add(args).SetErrorWriter(os.Stderr).SetOutputWriter(os.Stdout).SetInput(os.Stdin).Run(ctx)
+		},
+	}
+}
+
 func hostAttach() cli.Command {
 	const (
 		volumeFlagName = "volume"

@@ -32,4 +32,4 @@ expansions:
         -----BEGIN RSA PRIVATE KEY-----
         GITHUB PRIVATE KEY GOES HERE
         -----END RSA PRIVATE KEY-----
-    github_public_key: ssh-rsa blahblahblah slave@10gen.com
+    github_public_key: ssh-rsa blahblahblah builder@10gen.com

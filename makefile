@@ -385,8 +385,13 @@ revendor:run-glide vendor-clean
 else
 revendor:
 endif
+# do not use this target - it's a workaround to be able to vendor+pin a specific version
+# of goimports when running test-rest-model in evergreen. As long as you have GOROOT
+# set to the directory containing your same version (1.9+) of the go binary, goimports
+# will work without this workaround
 get-go-imports:
 	GOPATH=$(gopath) $(gobin) get -u golang.org/x/tools/imports
+	cd $(gopath)/src/golang.org/x/tools && git reset 727c06e3f111405bd52063f6120c7d72c3ba896e --hard
 # end vendoring tooling configuration
 
 

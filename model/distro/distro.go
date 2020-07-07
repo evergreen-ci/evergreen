@@ -312,7 +312,7 @@ func (d *Distro) GenerateName() string {
 	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
 
 	if d.Provider == evergreen.ProviderNameGce {
-		// Ensure all characters in tags are on the whitelist
+		// Ensure all characters in tags are on the allowlist
 		r, _ := regexp.Compile("[^a-z0-9_-]+")
 		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
 

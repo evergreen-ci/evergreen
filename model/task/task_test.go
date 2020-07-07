@@ -1906,7 +1906,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 }
 
-func TestBlacklist(t *testing.T) {
+func TestSetDisabledPriority(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	tasks := []Task{
@@ -1918,7 +1918,7 @@ func TestBlacklist(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	deactivatedTasks, err := tasks[0].Blacklist("")
+	deactivatedTasks, err := tasks[0].SetDisabledPriority("")
 	assert.NoError(t, err)
 	assert.Len(t, deactivatedTasks, 1)
 
@@ -1927,7 +1927,7 @@ func TestBlacklist(t *testing.T) {
 	assert.Len(t, dbTasks, 3)
 
 	for _, task := range dbTasks {
-		assert.Equal(t, evergreen.BlacklistPriority, task.Priority)
+		assert.Equal(t, evergreen.DisabledTaskPriority, task.Priority)
 	}
 }
 

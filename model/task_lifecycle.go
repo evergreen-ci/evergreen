@@ -105,7 +105,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 		return errors.Wrap(err, "Error finding previous task")
 	}
 
-	// if this is the first time we're running the task, or it's finished, blacklisted, or already activated
+	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		return nil
 	}
