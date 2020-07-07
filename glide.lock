@@ -137,7 +137,7 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber
-    version: 2866ce5b9aa79dd434ddfb7ee5fff159cf197a9b
+    version: f241d47dc48b4f45a4cca54c3d72b357ac7fc6ef
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5

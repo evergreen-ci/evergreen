@@ -24,6 +24,7 @@ func TestBuildlogger(t *testing.T) {
 	conf.LoggerConfig.BuildloggerRPCPort = "7070"
 	conf.LoggerConfig.BuildloggerUser = "user"
 	conf.LoggerConfig.BuildloggerPassword = "pass"
+	conf.LoggerConfig.BuildloggerAPIKey = "api_key"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	as, err := NewAPIServer(evergreen.GetEnvironment(), queue)
 	require.NoError(t, err)
@@ -59,4 +60,5 @@ func TestBuildlogger(t *testing.T) {
 	assert.Equal(t, "7070", bi.RPCPort)
 	assert.Equal(t, "user", bi.Username)
 	assert.Equal(t, "pass", bi.Password)
+	assert.Equal(t, "api_key", bi.APIKey)
 }

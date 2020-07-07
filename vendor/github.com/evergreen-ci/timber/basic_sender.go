@@ -115,7 +115,7 @@ type LoggerOptions struct {
 	// Disable checking for new lines in messages. If this is set to true,
 	// make sure log messages do not contain new lines, otherwise the logs
 	// will be stored incorrectly.
-	DisableNewLineCheck bool `bson:"new_line_check_off" json:"new_line_check_off" yaml:"new_line_check_off"`
+	DisableNewLineCheck bool `bson:"disable_new_line_check" json:"disable_new_line_check" yaml:"disable_new_line_check"`
 
 	// The gRPC client connection. If nil, a new connection will be
 	// established with the gRPC connection configuration.

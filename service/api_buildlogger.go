@@ -13,5 +13,6 @@ func (as *APIServer) Buildlogger(w http.ResponseWriter, r *http.Request) {
 		RPCPort:  as.Settings.LoggerConfig.BuildloggerRPCPort,
 		Username: as.Settings.LoggerConfig.BuildloggerUser,
 		Password: as.Settings.LoggerConfig.BuildloggerPassword,
+		APIKey:   as.Settings.LoggerConfig.BuildloggerAPIKey,
 	})
 }
