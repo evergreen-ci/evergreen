@@ -569,7 +569,6 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 		Patches:       existingPatch.Patches,
 		PatchedConfig: existingPatch.PatchedConfig,
 		CreateTime:    time.Now(),
-		DisplayNewUI:  existingPatch.DisplayNewUI,
 	}
 
 	// verify the commit queue has tasks/variants enabled that match the project
