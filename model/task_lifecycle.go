@@ -1009,7 +1009,7 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 		if t.IsPartOfDisplay() {
 			displayTasksToCheck[t.DisplayTask.Id] = t.DisplayTask
 		} else if t.DisplayOnly {
-			displayTasksToCheck[t.Id] = t.DisplayTask
+			displayTasksToCheck[t.Id] = &t
 		} else if t.IsPartOfSingleHostTaskGroup() {
 			taskGroupsToCheck[taskGroupAndBuild{
 				TaskGroup: t.TaskGroup,
