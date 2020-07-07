@@ -482,7 +482,7 @@ func hostStart() cli.Command {
 
 func hostSSH() cli.Command {
 	const (
-		identityFlagName = "identity"
+		identityFlagName = "identity_file"
 	)
 
 	return cli.Command{
@@ -520,10 +520,12 @@ func hostSSH() cli.Command {
 			if restModel.FromStringPtr(h.Status) != evergreen.HostRunning {
 				return errors.New("host is not running")
 			}
-			if restModel.FromStringPtr(h.User) == "" || restModel.FromStringPtr(h.HostURL) == "" {
+			user := restModel.FromStringPtr(h.User)
+			url := restModel.FromStringPtr(h.HostURL)
+			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
-			args := []string{"ssh", "-tt", fmt.Sprintf("%s@%s", *h.User, *h.HostURL)}
+			args := []string{"ssh", "-tt", fmt.Sprintf("%s@%s", user, url)}
 			if key != "" {
 				args = append(args, "-i", key)
 			}
