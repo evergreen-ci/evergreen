@@ -93,8 +93,14 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
 
-			if (!params.Uncommitted && !conf.UncommittedChanges) && uncommittedChanges {
-				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
+			useMbox := true
+			if uncommittedChanges {
+				if params.Uncommitted || conf.UncommittedChanges {
+					grip.Info("Patches with uncommitted changes cannot be enqueued on a commit queue.")
+					useMbox = false
+				} else {
+					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
+				}
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
@@ -110,7 +116,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, "", false, args...)
+			diffData, err := loadGitData(ref.Branch, params.Ref, "", useMbox, args...)
 			if err != nil {
 				return err
 			}

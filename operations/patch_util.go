@@ -487,23 +487,6 @@ func gitLog(base, ref, commits string) (string, error) {
 	return gitCmd("log", revisionRange, "--oneline")
 }
 
-func gitCommitMessages(base, ref, commits string) (string, error) {
-	input := fmt.Sprintf("%s@{upstream}..%s", base, ref)
-	if commits != "" {
-		input = formatCommitRange(commits)
-	}
-	args := []string{"--no-show-signature", "--pretty=format:%s", "--reverse", input}
-	msg, err := gitCmd("log", args...)
-	if err != nil {
-		return "", errors.Wrap(err, "can't get messages")
-	}
-	// separate multiple commits with <-
-	msg = strings.TrimSpace(msg)
-	msg = strings.Replace(msg, "\n", " <- ", -1)
-
-	return msg, nil
-}
-
 // assumes base includes @{upstream}
 func gitLastCommitMessage() (string, error) {
 	args := []string{"HEAD", "--no-show-signature", "--pretty=format:%s", "-n 1"}
