@@ -170,31 +170,31 @@ type ComplexityRoot struct {
 	}
 
 	Patch struct {
-		Activated           func(childComplexity int) int
-		Alias               func(childComplexity int) int
-		Author              func(childComplexity int) int
-		BaseTaskStatuses    func(childComplexity int) int
-		BaseVersionID       func(childComplexity int) int
-		Builds              func(childComplexity int) int
-		CanEnqueue          func(childComplexity int) int
-		CommitQueuePosition func(childComplexity int) int
-		CreateTime          func(childComplexity int) int
-		Description         func(childComplexity int) int
-		Duration            func(childComplexity int) int
-		Githash             func(childComplexity int) int
-		Id                  func(childComplexity int) int
-		ModuleCodeChanges   func(childComplexity int) int
-		PatchNumber         func(childComplexity int) int
-		Project             func(childComplexity int) int
-		ProjectId           func(childComplexity int) int
-		Status              func(childComplexity int) int
-		TaskCount           func(childComplexity int) int
-		TaskStatuses        func(childComplexity int) int
-		Tasks               func(childComplexity int) int
-		Time                func(childComplexity int) int
-		Variants            func(childComplexity int) int
-		VariantsTasks       func(childComplexity int) int
-		Version             func(childComplexity int) int
+		Activated               func(childComplexity int) int
+		Alias                   func(childComplexity int) int
+		Author                  func(childComplexity int) int
+		BaseTaskStatuses        func(childComplexity int) int
+		BaseVersionID           func(childComplexity int) int
+		Builds                  func(childComplexity int) int
+		CanEnqueueToCommitQueue func(childComplexity int) int
+		CommitQueuePosition     func(childComplexity int) int
+		CreateTime              func(childComplexity int) int
+		Description             func(childComplexity int) int
+		Duration                func(childComplexity int) int
+		Githash                 func(childComplexity int) int
+		Id                      func(childComplexity int) int
+		ModuleCodeChanges       func(childComplexity int) int
+		PatchNumber             func(childComplexity int) int
+		Project                 func(childComplexity int) int
+		ProjectId               func(childComplexity int) int
+		Status                  func(childComplexity int) int
+		TaskCount               func(childComplexity int) int
+		TaskStatuses            func(childComplexity int) int
+		Tasks                   func(childComplexity int) int
+		Time                    func(childComplexity int) int
+		Variants                func(childComplexity int) int
+		VariantsTasks           func(childComplexity int) int
+		Version                 func(childComplexity int) int
 	}
 
 	PatchBuildVariant struct {
@@ -1131,12 +1131,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Builds(childComplexity), true
 
-	case "Patch.canEnqueue":
-		if e.complexity.Patch.CanEnqueue == nil {
+	case "Patch.canEnqueueToCommitQueue":
+		if e.complexity.Patch.CanEnqueueToCommitQueue == nil {
 			break
 		}
 
-		return e.complexity.Patch.CanEnqueue(childComplexity), true
+		return e.complexity.Patch.CanEnqueueToCommitQueue(childComplexity), true
 
 	case "Patch.commitQueuePosition":
 		if e.complexity.Patch.CommitQueuePosition == nil {
@@ -2626,7 +2626,7 @@ type Patch {
   commitQueuePosition: Int
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
-  canEnqueue: Boolean!
+  canEnqueueToCommitQueue: Boolean!
 }
 
 type Build {
@@ -6740,7 +6740,7 @@ func (ec *executionContext) _Patch_baseTaskStatuses(ctx context.Context, field g
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Patch_canEnqueue(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _Patch_canEnqueueToCommitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -6757,7 +6757,7 @@ func (ec *executionContext) _Patch_canEnqueue(ctx context.Context, field graphql
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.CanEnqueue, nil
+		return obj.CanEnqueueToCommitQueue, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13968,8 +13968,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				}
 				return res
 			})
-		case "canEnqueue":
-			out.Values[i] = ec._Patch_canEnqueue(ctx, field, obj)
+		case "canEnqueueToCommitQueue":
+			out.Values[i] = ec._Patch_canEnqueueToCommitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

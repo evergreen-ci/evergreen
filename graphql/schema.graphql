@@ -208,7 +208,7 @@ type Patch {
   commitQueuePosition: Int
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
-  canEnqueue: Boolean!
+  canEnqueueToCommitQueue: Boolean!
 }
 
 type Build {

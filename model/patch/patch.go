@@ -589,7 +589,7 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
-func (p *Patch) CanEnqueue() bool {
+func (p *Patch) CanEnqueueToCommitQueue() bool {
 	for _, modulePatch := range p.Patches {
 		if !modulePatch.IsMbox {
 			return false

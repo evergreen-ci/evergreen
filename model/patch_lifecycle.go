@@ -531,7 +531,7 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 	}
 
 	// verify the patch and its modules are in mbox format
-	if !existingPatch.CanEnqueue() {
+	if !existingPatch.CanEnqueueToCommitQueue() {
 		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatchID)
 	}
 
