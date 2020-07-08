@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -34,7 +35,7 @@ type tarballCreate struct {
 }
 
 func tarballCreateFactory() Command   { return &tarballCreate{} }
-func (c *tarballCreate) Name() string { return "archive.targz_pack" }
+func (c *tarballCreate) Name() string { return evergreen.ArchiveTargzPackCommandName }
 
 // ParseParams reads in the given parameters for the command.
 func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
