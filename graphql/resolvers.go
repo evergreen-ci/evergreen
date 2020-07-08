@@ -863,6 +863,19 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return regions, nil
 }
 
+func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
+	}
+	bannerTheme := string(settings.BannerTheme)
+	banner := restModel.APIBanner{
+		Text:  &settings.Banner,
+		Theme: &bannerTheme,
+	}
+	return &banner, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
