@@ -95,7 +95,7 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	catcher := grip.NewBasicCatcher()
 	structs := ""
 	serviceCode := ""
-	generatedConversions := map[string]string{}
+	generatedConversions := map[typeInfo]string{}
 
 	typeNames := []string{}
 	for key := range parsedAst.Types {
@@ -132,12 +132,12 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	formattedModelCode, err := goimports(modelFile)
 	catcher.Wrap(err, "unable to format model code")
 
-	converters := []string{}
+	converters := typeInfoSorter([]typeInfo{})
 	conversionCode := ""
 	for key := range generatedConversions {
 		converters = append(converters, key)
 	}
-	sort.Strings(converters)
+	sort.Sort(&converters)
 	for _, converterType := range converters {
 		conversionCode += generatedConversions[converterType] + "\n"
 	}
@@ -151,7 +151,7 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 
 // generateForStruct takes a specific db type and returns the code for the REST type
 // as well as BuildFromService/ToService conversion methods
-func generateForStruct(fieldTemplate, structTemplate *template.Template, typeName, dbModel string, gqlType ast.Definition, generatedConversions map[string]string) (string, string, error) {
+func generateForStruct(fieldTemplate, structTemplate *template.Template, typeName, dbModel string, gqlType ast.Definition, generatedConversions map[typeInfo]string) (string, string, error) {
 	fields := ""
 	extractedFields := extractedFields{}
 	for _, field := range gqlType.Fields {
@@ -202,6 +202,8 @@ func getTemplate(filepath string) (*template.Template, error) {
 	return template.New(filepath).Funcs(template.FuncMap{
 		"shortenpackage": shortenPackage,
 		"cleanName":      cleanName,
+		"mustBePtr":      mustBePtr,
+		"mustBeValue":    mustBeValue,
 	}).Parse(string(f))
 }
 
@@ -256,6 +258,10 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 		return returntype + "string"
 	case "Int":
 		return returntype + "int"
+	case "Boolean":
+		return returntype + "bool"
+	case "Float":
+		return returntype + "float64"
 	// the next 3 are built-in scalars from https://gqlgen.com/reference/scalars/#built-in-helpers
 	case "Time":
 		return returntype + "time.Time"
@@ -274,7 +280,7 @@ func goimports(source string) ([]byte, error) {
 	})
 }
 
-func createConversionMethods(packageName, structName string, fields extractedFields, generatedConversions map[string]string) (string, error) {
+func createConversionMethods(packageName, structName string, fields extractedFields, generatedConversions map[typeInfo]string) (string, error) {
 	pkg, err := importer.Default().Import(packageName)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to resolve package '%s'", packageName)
@@ -300,7 +306,7 @@ func createConversionMethods(packageName, structName string, fields extractedFie
 	return code, nil
 }
 
-func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields, generatedConversions map[string]string) (string, error) {
+func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields, generatedConversions map[typeInfo]string) (string, error) {
 	serviceTemplate, err := getTemplate(serviceMethodsTemplatePath)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting service methods template")
@@ -315,17 +321,21 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	}
 	bfsCode := []string{}
 	tsCode := []string{}
-	fieldErrs := grip.NewBasicCatcher()
+	fieldWarnings := grip.NewBasicCatcher()
 	for i := 0; i < structVal.NumFields(); i++ {
 		field := structVal.Field(i)
 		fieldName := field.Name()
 		if fieldInfo, shouldExtract := fields[fieldName]; shouldExtract {
 			// generate the BuildFromService code
 			if err = validateFieldTypes(fieldName, field.Type().String(), fieldInfo.OutputFieldType); err != nil {
-				fieldErrs.Add(err)
-				continue
+				fieldWarnings.Add(err)
 			}
-			convertFuncs, err := conversionFn(field.Type(), fieldInfo.Nullable, generatedConversions)
+			opts := convertFnOpts{
+				in:       field.Type(),
+				outIsPtr: fieldInfo.Nullable,
+				outType:  fieldInfo.OutputFieldType,
+			}
+			convertFuncs, err := conversionFn(opts, generatedConversions)
 			if err != nil {
 				return "", errors.Wrapf(err, "unable to find model conversion function for field %s", fieldName)
 			}
@@ -355,8 +365,8 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		sort.Strings(bfsCode)
 		sort.Strings(tsCode)
 	}
-	if fieldErrs.HasErrors() {
-		return "", fieldErrs.Resolve()
+	if fieldWarnings.HasErrors() {
+		grip.Warning(fieldWarnings.Resolve())
 	}
 	data := modelConversionInfo{
 		ModelType:      fmt.Sprintf("%s.%s", packageName, structName),
@@ -372,8 +382,8 @@ func validateFieldTypes(fieldName, inputType, outputType string) error {
 	outputType = stripPackage(outputType)
 	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
 		// this should ideally be a more sophisticated check to ensure that complex types are convertible
-		// to each other, but for now we rely on the naming convention to find obvious type errors
-		return errors.Errorf("DB model field '%s' has type '%s' which is incompatible with REST model type '%s'", fieldName, inputType, outputType)
+		// to each other, but for now we rely on the naming convention to find potential type errors
+		return errors.Errorf("DB model field '%s' has type '%s' which may be incompatible with REST model type '%s'", fieldName, inputType, outputType)
 	}
 
 	return nil

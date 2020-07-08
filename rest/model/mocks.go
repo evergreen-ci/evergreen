@@ -38,5 +38,20 @@ type MockLayerOne struct {
 }
 
 type MockLayerTwo struct {
-	SomeField string
+	SomeField *string
+}
+
+type MockTypes struct {
+	BoolType       bool
+	BoolPtrType    *bool
+	IntType        int
+	IntPtrType     *int
+	StringType     string
+	StringPtrType  *string
+	Uint64Type     uint64
+	Uint64PtrType  *uint64
+	Float64Type    float64
+	Float64PtrType *float64
+	RuneType       rune
+	RunePtrType    *rune
 }
