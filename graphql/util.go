@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -561,4 +563,11 @@ func getAllTaskStatuses(tasks []task.Task) []string {
 		return statusesArr[i] < statusesArr[j]
 	})
 	return statusesArr
+}
+
+func formatDuration(duration string) string {
+	regex := regexp.MustCompile(`\d*[dhms]`)
+	return strings.TrimSpace(regex.ReplaceAllStringFunc(duration, func(m string) string {
+		return m + " "
+	}))
 }

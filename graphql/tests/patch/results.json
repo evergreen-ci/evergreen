@@ -119,24 +119,12 @@
         "data": {
           "patch": {
             "project": {
-              "tasks": [
-                "compile",
-                "test",
-                "lint",
-                "coverage",
-                "e2e_test"
-              ],
+              "tasks": ["compile", "test", "lint", "coverage", "e2e_test"],
               "variants": [
                 {
                   "name": "ubuntu1604",
                   "displayName": "Ubuntu 16.04",
-                  "tasks": [
-                    "compile",
-                    "coverage",
-                    "e2e_test",
-                    "lint",
-                    "test"
-                  ]
+                  "tasks": ["compile", "coverage", "e2e_test", "lint", "test"]
                 }
               ]
             }
@@ -190,8 +178,8 @@
         "data": {
           "patch": {
             "duration": {
-              "timeTaken": "1m37s",
-              "makespan": "1m37s"
+              "timeTaken": "1m 37s",
+              "makespan": "1m 37s"
             }
           }
         }
