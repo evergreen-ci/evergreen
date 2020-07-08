@@ -23,22 +23,21 @@ func TestHostRsync(t *testing.T) {
 	// makeCompatiblePath converts filepaths into their rsync-compatible paths.
 	// On Windows, this must be the cygwin path since we use cygwin rsync. On
 	// other platforms, it is a no-op.
-	makeCompatiblePath := func(ctx context.Context, path string) (string, error) {
+	makeCompatiblePath := func(ctx context.Context, t *testing.T, path string) string {
 		if runtime.GOOS != "windows" {
-			return path, nil
+			return path
 		}
 
 		// Since windows tests use cygwin, we have to convert them to their
 		// cygwin (i.e. Unix) path.
 		cygpath, err := exec.LookPath("cygpath")
-		if err != nil {
-			return "", err
-		}
+		require.NoError(t, err)
 
 		output := util.NewMBCappedWriter()
 
 		err = jasper.NewCommand().Add([]string{cygpath, "-u", path}).SetCombinedWriter(output).Run(ctx)
-		return strings.TrimSpace(output.String()), err
+		require.NoError(t, err)
+		return strings.TrimSpace(output.String())
 	}
 
 	localFileContent := []byte("foo")
@@ -46,12 +45,10 @@ func TestHostRsync(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string){
 		"RemoteFileCreatedIfNonexistent": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
 			newRemoteFile := filepath.Join(remoteDir, filepath.Base(localFile))
-			compatibleLocalFile, err := makeCompatiblePath(ctx, localFile)
-			require.NoError(t, err)
-			compatibleNewRemoteFile, err := makeCompatiblePath(ctx, newRemoteFile)
-			require.NoError(t, err)
-
-			cmd, err := buildRsyncCommand(rsyncOpts{local: compatibleLocalFile, remote: compatibleNewRemoteFile})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localFile),
+				remote: makeCompatiblePath(ctx, t, newRemoteFile),
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -64,7 +61,10 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, localFileContent, remoteContent)
 		},
 		"ExistingRemoteFileMirrorsLocalFile": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localFile, remote: remoteFile})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localFile),
+				remote: makeCompatiblePath(ctx, t, remoteFile),
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -78,12 +78,11 @@ func TestHostRsync(t *testing.T) {
 		},
 		"LocalFileCreatedIfNonexistent": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
 			newLocalFile := filepath.Join(remoteDir, filepath.Base(localFile))
-			compatibleNewLocalFile, err := makeCompatiblePath(ctx, newLocalFile)
-			require.NoError(t, err)
-			compatibleRemoteFile, err := makeCompatiblePath(ctx, remoteFile)
-			require.NoError(t, err)
-
-			cmd, err := buildRsyncCommand(rsyncOpts{local: compatibleNewLocalFile, remote: compatibleRemoteFile, pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, newLocalFile),
+				remote: makeCompatiblePath(ctx, t, remoteFile),
+				pull:   true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -96,7 +95,12 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
 		"ExistingLocalFileMirrorsRemoteFile": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localFile, remote: remoteFile, pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localFile),
+				remote: makeCompatiblePath(ctx, t, remoteFile),
+				pull:   true,
+			},
+			)
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -109,7 +113,11 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, localContent)
 		},
 		"NoChangesInDryRun": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localFile, remote: remoteFile, dryRun: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localFile),
+				remote: makeCompatiblePath(ctx, t, remoteFile),
+				dryRun: true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -122,7 +130,12 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
 		"NoChangesInDryRunWithPull": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localFile, remote: remoteFile, dryRun: true, pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localFile),
+				remote: makeCompatiblePath(ctx, t, remoteFile),
+				dryRun: true,
+				pull:   true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -135,7 +148,11 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, remoteContent)
 		},
 		"RemoteDirectoryMirrorsLocalDirectoryExactly": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir + "/", remote: remoteDir + "/", shouldDelete: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:        makeCompatiblePath(ctx, t, localDir) + "/",
+				remote:       makeCompatiblePath(ctx, t, remoteDir) + "/",
+				shouldDelete: true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -148,7 +165,10 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
 		"RemoteDirectoryMirrorsLocalDirectoryWithoutDeletions": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir + "/", remote: remoteDir + "/"})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localDir) + "/",
+				remote: makeCompatiblePath(ctx, t, remoteDir) + "/",
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -162,7 +182,12 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
 		"LocalDirectoryMirrorsRemoteDirectoryExactly": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir + "/", remote: remoteDir + "/", shouldDelete: true, pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:        makeCompatiblePath(ctx, t, localDir) + "/",
+				remote:       makeCompatiblePath(ctx, t, remoteDir) + "/",
+				shouldDelete: true,
+				pull:         true,
+			})
 			require.NoError(t, err)
 
 			require.NoError(t, cmd.Run(ctx))
@@ -176,7 +201,11 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
 		"LocalDirectoryMirrorsRemoteDirectoryWithoutDeletions": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir + "/", remote: remoteDir + "/", pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localDir) + "/",
+				remote: makeCompatiblePath(ctx, t, remoteDir) + "/",
+				pull:   true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -190,7 +219,10 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
 		"RemoteDirectoryHasLocalSubdirectoryWithoutTrailingSlash": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir, remote: remoteDir})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localDir),
+				remote: makeCompatiblePath(ctx, t, remoteDir),
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -204,7 +236,11 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, localFileContent, newRemoteContent)
 		},
 		"LocalDirectoryHasRemoteSubdirectoryWithoutTrailingSlash": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir, remote: remoteDir, pull: true})
+			cmd, err := buildRsyncCommand(rsyncOpts{
+				local:  makeCompatiblePath(ctx, t, localDir),
+				remote: makeCompatiblePath(ctx, t, remoteDir),
+				pull:   true,
+			})
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(ctx))
 
@@ -218,19 +254,29 @@ func TestHostRsync(t *testing.T) {
 			assert.Equal(t, remoteFileContent, newLocalContent)
 		},
 		"ParentDirectoriesWillBeCreatedForRemoteFile": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir, remote: remoteDir, makeRemoteParentDirs: true})
+			cmd,
+				err := buildRsyncCommand(rsyncOpts{
+				local:                makeCompatiblePath(ctx, t, localDir),
+				remote:               makeCompatiblePath(ctx, t, remoteDir),
+				makeRemoteParentDirs: true,
+			})
 			require.NoError(t, err)
 			require.NotNil(t, cmd)
 			exported, err := cmd.Export()
 			require.NoError(t, err)
 			require.Len(t, exported, 1)
-			baseIndex := strings.LastIndex(localDir, "/")
+			baseIndex := strings.LastIndex(makeCompatiblePath(ctx, t, localDir), "/")
 			require.True(t, baseIndex > 0)
-			assert.Contains(t, exported[0].Args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, remoteDir[:baseIndex]))
+			assert.Contains(t, exported[0].Args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, makeCompatiblePath(ctx, t, remoteDir)[:baseIndex]))
 		},
 		"AdditionalParametersAreAdded": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {
 			params := []string{"--filter=:- .gitignore"}
-			cmd, err := buildRsyncCommand(rsyncOpts{local: localDir, remote: remoteDir, binaryParams: params})
+			cmd,
+				err := buildRsyncCommand(rsyncOpts{
+				local:        makeCompatiblePath(ctx, t, localDir),
+				remote:       makeCompatiblePath(ctx, t, remoteDir),
+				binaryParams: params,
+			})
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 			exported, err := cmd.Export()
@@ -248,8 +294,6 @@ func TestHostRsync(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.RemoveAll(localDir))
 			}()
-			compatibleLocalDir, err := makeCompatiblePath(ctx, localDir)
-			require.NoError(t, err)
 
 			localFile, err := ioutil.TempFile(localDir, "local_file")
 			require.NoError(t, err)
@@ -257,16 +301,12 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, localFileContent, n)
 			require.NoError(t, localFile.Close())
-			compatibleLocalFile, err := makeCompatiblePath(ctx, localFile.Name())
-			require.NoError(t, err)
 
 			remoteDir, err := ioutil.TempDir("", "remote_dir")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(remoteDir))
 			}()
-			compatibleRemoteDir, err := makeCompatiblePath(ctx, remoteDir)
-			require.NoError(t, err)
 
 			remoteFile, err := ioutil.TempFile(remoteDir, "remote_file")
 			require.NoError(t, err)
@@ -274,10 +314,8 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, remoteFileContent, n)
 			require.NoError(t, remoteFile.Close())
-			compatibleRemoteFile, err := makeCompatiblePath(ctx, remoteFile.Name())
-			require.NoError(t, err)
 
-			testCase(ctx, t, compatibleLocalFile, compatibleRemoteFile, compatibleLocalDir, compatibleRemoteDir)
+			testCase(ctx, t, localFile.Name(), remoteFile.Name(), localDir, remoteDir)
 		})
 	}
 }
