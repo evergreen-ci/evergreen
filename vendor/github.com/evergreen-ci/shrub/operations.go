@@ -27,19 +27,19 @@ func exportCmd(cmd Command) map[string]interface{} {
 }
 
 type CmdExec struct {
-	Background       bool   `json:"background"`
-	Silent           bool   `json:"silent"`
-	ContinueOnError  bool   `json:"continue_on_err"`
-	SystemLog        bool   `json:"system_log"`
-	CombineOutput    bool   `json:"redirect_standard_error_to_output"`
-	IgnoreStdError   bool   `json:"ignore_standard_error"`
-	IgnoreStdOut     bool   `json:"ignore_standard_out"`
-	KeepEmptyArgs    bool   `json:"keep_empty_args"`
-	WorkingDirectory string `json:"working_dir"`
-	Command          string
-	Binary           string
-	Args             []string
-	Env              map[string]string
+	Background       bool              `json:"background"`
+	Silent           bool              `json:"silent"`
+	ContinueOnError  bool              `json:"continue_on_err"`
+	SystemLog        bool              `json:"system_log"`
+	CombineOutput    bool              `json:"redirect_standard_error_to_output"`
+	IgnoreStdError   bool              `json:"ignore_standard_error"`
+	IgnoreStdOut     bool              `json:"ignore_standard_out"`
+	KeepEmptyArgs    bool              `json:"keep_empty_args"`
+	WorkingDirectory string            `json:"working_dir"`
+	Command          string            `json:"command"`
+	Binary           string            `json:"binary"`
+	Args             []string          `json:"args"`
+	Env              map[string]string `json:"env"`
 }
 
 func (c CmdExec) Name() string    { return "subprocess.exec" }
@@ -281,11 +281,17 @@ func (c CmdResultsXunit) Resolve() *CommandDefinition {
 func xunitResultsFactory() Command { return CmdResultsXunit{} }
 
 type CmdResultsGoTest struct {
-	JSONFormat   bool `json:"-"`
-	LegacyFormat bool `json:"-"`
+	JSONFormat   bool     `json:"-"`
+	LegacyFormat bool     `json:"-"`
+	Files        []string `json:"files"`
 }
 
-func (c CmdResultsGoTest) Name() string { return "gotest.parse_json" }
+func (c CmdResultsGoTest) Name() string {
+	if c.LegacyFormat {
+		return "gotest.parse_files"
+	}
+	return "gotest.parse_json"
+}
 func (c CmdResultsGoTest) Validate() error {
 	if c.JSONFormat == c.LegacyFormat {
 		return errors.New("invalid format for gotest operation")
