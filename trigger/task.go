@@ -141,7 +141,6 @@ func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notificat
 	if t.task.Aborted {
 		return nil, nil
 	}
-
 	return t.base.Process(sub)
 }
 
@@ -410,7 +409,7 @@ func GetRecordByTriggerType(subID, triggerType string, t *task.Task) (*alertreco
 }
 
 func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -422,7 +421,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -442,7 +441,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -457,7 +456,6 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-
 	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
@@ -476,7 +474,6 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-
 	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
@@ -492,10 +489,6 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
-		return nil, nil
-	}
-
 	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
@@ -511,7 +504,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -640,7 +633,7 @@ func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTas
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -661,7 +654,7 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 }
 
 func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.DisplayOnly {
+	if t.task.IsPartOfDisplay() {
 		return nil, nil
 	}
 
@@ -991,6 +984,10 @@ func detailStatusToHumanSpeak(status string) string {
 
 // this is very similar to taskRegression, but different enough
 func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
 	if t.task.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
 		return nil, nil
 	}
