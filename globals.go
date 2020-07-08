@@ -356,9 +356,9 @@ const (
 )
 
 const (
+	ArchiveTargzPackCommandName = "archive.targz_pack"
 	GenerateTasksCommandName    = "generate.tasks"
 	HostCreateCommandName       = "host.create"
-	ArchiveTargzPackCommandName = "archive.targz_pack"
 	S3PushCommandName           = "s3.push"
 	S3PullCommandName           = "s3.pull"
 )
