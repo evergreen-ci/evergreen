@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "site-banner.graphql",
+      "result": {
+        "data": {
+          "siteBanner": {
+            "text": "This is an important notification",
+            "theme": "important"
+          }
+        }
+      }
+    }
+  ]
+}
