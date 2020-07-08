@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evergreen-ci/bond"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -15,7 +16,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
-	"github.com/tychoish/bond"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

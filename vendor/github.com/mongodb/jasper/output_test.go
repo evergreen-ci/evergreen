@@ -21,7 +21,6 @@ func TestGetInMemoryLogStream(t *testing.T) {
 		"Blocking": newBlockingProcess,
 	} {
 		t.Run(procType, func(t *testing.T) {
-
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string){
 				"FailsWithNilProcess": func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string) {
 					logs, err := GetInMemoryLogStream(ctx, nil, 1)
@@ -58,7 +57,7 @@ func TestGetInMemoryLogStream(t *testing.T) {
 						},
 					}
 					config := &options.LoggerConfig{}
-					config.Set(loggerProducer)
+					require.NoError(t, config.Set(loggerProducer))
 					opts.Output.Loggers = []*options.LoggerConfig{config}
 					proc, err := makeProc(ctx, opts)
 					require.NoError(t, err)
@@ -72,19 +71,19 @@ func TestGetInMemoryLogStream(t *testing.T) {
 				},
 				"MultipleInMemoryLoggersReturnLogsFromOnlyOne": func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor, output string) {
 					config1 := &options.LoggerConfig{}
-					config1.Set(&options.InMemoryLoggerOptions{
+					require.NoError(t, config1.Set(&options.InMemoryLoggerOptions{
 						InMemoryCap: 100,
 						Base: options.BaseOptions{
 							Format: options.LogFormatPlain,
 						},
-					})
+					}))
 					config2 := &options.LoggerConfig{}
-					config2.Set(&options.InMemoryLoggerOptions{
+					require.NoError(t, config2.Set(&options.InMemoryLoggerOptions{
 						InMemoryCap: 100,
 						Base: options.BaseOptions{
 							Format: options.LogFormatPlain,
 						},
-					})
+					}))
 					opts.Output.Loggers = []*options.LoggerConfig{config1, config2}
 					proc, err := makeProc(ctx, opts)
 					require.NoError(t, err)

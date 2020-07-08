@@ -236,6 +236,11 @@ func (opts *Create) Resolve(ctx context.Context) (exe executor.Executor, t time.
 	}
 	cmd.SetEnv(env)
 
+	defer func() {
+		if resolveErr != nil {
+			grip.Error(errors.Wrap(opts.Output.Close(), "closing output"))
+		}
+	}()
 	stdout, err := opts.Output.GetOutput()
 	if err != nil {
 		return nil, time.Time{}, errors.WithStack(err)

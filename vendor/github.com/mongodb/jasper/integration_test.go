@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/bond"
+	"github.com/evergreen-ci/bond/recall"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tychoish/bond"
-	"github.com/tychoish/bond/recall"
 )
 
 // Returns path to release and to mongod

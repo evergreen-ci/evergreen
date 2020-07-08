@@ -1,6 +1,8 @@
 package options
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 // ScriptingHarness defines the interface for all types that
 // define a scripting environment.
@@ -20,20 +22,31 @@ type ScriptingHarness interface {
 	Validate() error
 }
 
+const (
+	GolangScriptingType  = "golang"
+	Python2ScriptingType = "python2"
+	Python3ScriptingType = "python3"
+	RoswellScriptingType = "roswell"
+)
+
+// AllScriptingHarnesses returns all supported scripting harnesses.
+func AllScriptingHarnesses() map[string]func() ScriptingHarness {
+	return map[string]func() ScriptingHarness{
+		GolangScriptingType:  func() ScriptingHarness { return &ScriptingGolang{} },
+		Python2ScriptingType: func() ScriptingHarness { return &ScriptingPython{LegacyPython: true} },
+		Python3ScriptingType: func() ScriptingHarness { return &ScriptingPython{} },
+		RoswellScriptingType: func() ScriptingHarness { return &ScriptingRoswell{} },
+	}
+}
+
 // NewScriptingHarness provides a factory to generate concrete
 // implementations of the ScriptingEnvironment interface for use in
 // marshaling arbitrary values for a known environment.
 func NewScriptingHarness(se string) (ScriptingHarness, error) {
-	switch se {
-	case "python2":
-		return &ScriptingPython{LegacyPython: true}, nil
-	case "python", "python3":
-		return &ScriptingPython{LegacyPython: false}, nil
-	case "go", "golang":
-		return &ScriptingGolang{}, nil
-	case "roswell", "ros", "lisp", "cl":
-		return &ScriptingRoswell{}, nil
-	default:
-		return nil, errors.Errorf("no supported scripting environment named '%s'", se)
+	for harnessName, makeHarness := range AllScriptingHarnesses() {
+		if harnessName == se {
+			return makeHarness(), nil
+		}
 	}
+	return nil, errors.Errorf("no supported scripting environment named '%s'", se)
 }

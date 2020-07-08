@@ -26,7 +26,7 @@ const (
 func Client() cli.Command {
 	return cli.Command{
 		Name:  ClientCommand,
-		Usage: "tools for making requests to Jasper services, oriented for machine use",
+		Usage: "Tools for making requests to Jasper services, intended for automation.",
 		Subcommands: []cli.Command{
 			Manager(),
 			Process(),
@@ -40,20 +40,20 @@ func clientFlags() []cli.Flag {
 	return []cli.Flag{
 		cli.StringFlag{
 			Name:  hostFlagName,
-			Usage: "the host running the Jasper service",
+			Usage: "The host running the Jasper service.",
 			Value: defaultLocalHostName,
 		},
 		cli.IntFlag{
 			Name:  portFlagName,
-			Usage: fmt.Sprintf("the port running the Jasper service (if service is '%s', default port is %d; if service is '%s', default port is %d)", RESTService, defaultRESTPort, RPCService, defaultRPCPort),
+			Usage: fmt.Sprintf("The port running the Jasper service (if service is '%s', default port is %d; if service is '%s', default port is %d).", RESTService, defaultRESTPort, RPCService, defaultRPCPort),
 		},
 		cli.StringFlag{
 			Name:  joinFlagNames(serviceFlagName, "s"),
-			Usage: fmt.Sprintf("the type of Jasper service ('%s' or '%s')", RESTService, RPCService),
+			Usage: fmt.Sprintf("The type of Jasper service ('%s' or '%s').", RESTService, RPCService),
 		},
 		cli.StringFlag{
 			Name:  credsFilePathFlagName,
-			Usage: "the path to the file containing the credentials",
+			Usage: "The path to the file containing the server credentials.",
 		},
 	}
 }
