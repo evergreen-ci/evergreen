@@ -291,10 +291,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, project)
-	}
-
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		j.gitHubError = NoTasksOrVariants
