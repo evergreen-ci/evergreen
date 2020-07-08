@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -30,7 +29,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	go func(inputChan <-chan ArchiveContentFile) {
 		defer func() {
 			errChan <- recovery.HandlePanicWithError(recover(), nil,
-				"building archive in '%s'", evergreen.ArchiveTargzPackCommandName)
+				"building archive")
 		}()
 		processed := map[string]bool{}
 	FileChanLoop:
