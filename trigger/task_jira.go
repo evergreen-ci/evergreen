@@ -315,8 +315,8 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 
 // historyURL provides a full URL to the test's task history page.
 func historyURL(t *task.Task, testName, uiRoot string) string {
-	return fmt.Sprintf("%v/task_history/%v/%v#%v=fail",
-		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.Id), url.QueryEscape(testName))
+	return fmt.Sprintf("%s/task_history/%s/%s?revision=%s#/%s=fail",
+		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.DisplayName), t.Revision, url.QueryEscape(testName))
 }
 
 // logURL returns the full URL for linking to a test's logs.
