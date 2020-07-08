@@ -100,11 +100,6 @@ type RecentTaskLogs struct {
 	AgentLogs  []*apimodels.LogMessage   `json:"agentLogs"`
 }
 
-type SiteBanner struct {
-	Text  string `json:"text"`
-	Theme string `json:"theme"`
-}
-
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`

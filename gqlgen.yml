@@ -92,3 +92,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
   UseSpruceOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  SiteBanner:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBanner

@@ -480,7 +480,7 @@ type QueryResolver interface {
 	AwsRegions(ctx context.Context) ([]string, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
-	SiteBanner(ctx context.Context) (*SiteBanner, error)
+	SiteBanner(ctx context.Context) (*model.APIBanner, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -8148,9 +8148,9 @@ func (ec *executionContext) _Query_siteBanner(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*SiteBanner)
+	res := resTmp.(*model.APIBanner)
 	fc.Result = res
-	return ec.marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSiteBanner(ctx, field.Selections, res)
+	return ec.marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -8358,7 +8358,7 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _SiteBanner_text(ctx context.Context, field graphql.CollectedField, obj *SiteBanner) (ret graphql.Marshaler) {
+func (ec *executionContext) _SiteBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIBanner) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8387,12 +8387,12 @@ func (ec *executionContext) _SiteBanner_text(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _SiteBanner_theme(ctx context.Context, field graphql.CollectedField, obj *SiteBanner) (ret graphql.Marshaler) {
+func (ec *executionContext) _SiteBanner_theme(ctx context.Context, field graphql.CollectedField, obj *model.APIBanner) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8421,9 +8421,9 @@ func (ec *executionContext) _SiteBanner_theme(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_failedTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -14612,7 +14612,7 @@ func (ec *executionContext) _RecentTaskLogs(ctx context.Context, sel ast.Selecti
 
 var siteBannerImplementors = []string{"SiteBanner"}
 
-func (ec *executionContext) _SiteBanner(ctx context.Context, sel ast.SelectionSet, obj *SiteBanner) graphql.Marshaler {
+func (ec *executionContext) _SiteBanner(ctx context.Context, sel ast.SelectionSet, obj *model.APIBanner) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, siteBannerImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -16482,11 +16482,11 @@ func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreen�
 	return res, nil
 }
 
-func (ec *executionContext) marshalNSiteBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSiteBanner(ctx context.Context, sel ast.SelectionSet, v SiteBanner) graphql.Marshaler {
+func (ec *executionContext) marshalNSiteBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx context.Context, sel ast.SelectionSet, v model.APIBanner) graphql.Marshaler {
 	return ec._SiteBanner(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSiteBanner(ctx context.Context, sel ast.SelectionSet, v *SiteBanner) graphql.Marshaler {
+func (ec *executionContext) marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx context.Context, sel ast.SelectionSet, v *model.APIBanner) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
