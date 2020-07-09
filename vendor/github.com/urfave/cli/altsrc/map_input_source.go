@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 // MapInputSource implements InputSourceContext to return
@@ -22,15 +22,15 @@ func nestedVal(name string, tree map[interface{}]interface{}) (interface{}, bool
 	if sections := strings.Split(name, "."); len(sections) > 1 {
 		node := tree
 		for _, section := range sections[:len(sections)-1] {
-			if child, ok := node[section]; !ok {
+			child, ok := node[section]
+			if !ok {
 				return nil, false
-			} else {
-				if ctype, ok := child.(map[interface{}]interface{}); !ok {
-					return nil, false
-				} else {
-					node = ctype
-				}
 			}
+			ctype, ok := child.(map[interface{}]interface{})
+			if !ok {
+				return nil, false
+			}
+			node = ctype
 		}
 		if val, ok := node[sections[len(sections)-1]]; ok {
 			return val, true
@@ -130,45 +130,59 @@ func (fsm *MapInputSource) String(name string) (string, error) {
 // StringSlice returns an []string from the map if it exists otherwise returns nil
 func (fsm *MapInputSource) StringSlice(name string) ([]string, error) {
 	otherGenericValue, exists := fsm.valueMap[name]
-	if exists {
-		otherValue, isType := otherGenericValue.([]string)
-		if !isType {
-			return nil, incorrectTypeForFlagError(name, "[]string", otherGenericValue)
+	if !exists {
+		otherGenericValue, exists = nestedVal(name, fsm.valueMap)
+		if !exists {
+			return nil, nil
 		}
-		return otherValue, nil
-	}
-	nestedGenericValue, exists := nestedVal(name, fsm.valueMap)
-	if exists {
-		otherValue, isType := nestedGenericValue.([]string)
-		if !isType {
-			return nil, incorrectTypeForFlagError(name, "[]string", nestedGenericValue)
-		}
-		return otherValue, nil
 	}
 
-	return nil, nil
+	otherValue, isType := otherGenericValue.([]interface{})
+	if !isType {
+		return nil, incorrectTypeForFlagError(name, "[]interface{}", otherGenericValue)
+	}
+
+	var stringSlice = make([]string, 0, len(otherValue))
+	for i, v := range otherValue {
+		stringValue, isType := v.(string)
+
+		if !isType {
+			return nil, incorrectTypeForFlagError(fmt.Sprintf("%s[%d]", name, i), "string", v)
+		}
+
+		stringSlice = append(stringSlice, stringValue)
+	}
+
+	return stringSlice, nil
 }
 
 // IntSlice returns an []int from the map if it exists otherwise returns nil
 func (fsm *MapInputSource) IntSlice(name string) ([]int, error) {
 	otherGenericValue, exists := fsm.valueMap[name]
-	if exists {
-		otherValue, isType := otherGenericValue.([]int)
-		if !isType {
-			return nil, incorrectTypeForFlagError(name, "[]int", otherGenericValue)
+	if !exists {
+		otherGenericValue, exists = nestedVal(name, fsm.valueMap)
+		if !exists {
+			return nil, nil
 		}
-		return otherValue, nil
-	}
-	nestedGenericValue, exists := nestedVal(name, fsm.valueMap)
-	if exists {
-		otherValue, isType := nestedGenericValue.([]int)
-		if !isType {
-			return nil, incorrectTypeForFlagError(name, "[]int", nestedGenericValue)
-		}
-		return otherValue, nil
 	}
 
-	return nil, nil
+	otherValue, isType := otherGenericValue.([]interface{})
+	if !isType {
+		return nil, incorrectTypeForFlagError(name, "[]interface{}", otherGenericValue)
+	}
+
+	var intSlice = make([]int, 0, len(otherValue))
+	for i, v := range otherValue {
+		intValue, isType := v.(int)
+
+		if !isType {
+			return nil, incorrectTypeForFlagError(fmt.Sprintf("%s[%d]", name, i), "int", v)
+		}
+
+		intSlice = append(intSlice, intValue)
+	}
+
+	return intSlice, nil
 }
 
 // Generic returns an cli.Generic from the map if it exists otherwise returns nil
