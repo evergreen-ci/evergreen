@@ -989,6 +989,38 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 	return positionResp.Position, nil
 }
 
+func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
+	info := requestInfo{
+		method:  put,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/patches/%s/merge_patch", patchID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return nil, errors.Errorf("received status code '%d' but was unable to parse error: '%s'", resp.StatusCode, string(bytes))
+		}
+		return nil, restErr
+	}
+
+	newPatch := &model.APIPatch{}
+	if err = json.Unmarshal(bytes, newPatch); err != nil {
+		return nil, errors.Wrap(err, "error parsing position response")
+	}
+
+	return newPatch, nil
+}
+
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
 	info := requestInfo{
 		method:  post,

@@ -413,3 +413,41 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(foundPatch)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for creating a new merge patch from an existing patch
+//
+//    /patches/{patch_id}/merge_patch
+type mergePatchHandler struct {
+	patchId string
+	sc      data.Connector
+}
+
+func makeMergePatch(sc data.Connector) gimlet.RouteHandler {
+	return &mergePatchHandler{
+		sc: sc,
+	}
+}
+
+func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
+	return &mergePatchHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+	return nil
+}
+
+func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
+	// If the version has not been finalized, returns NotFound
+	usr := MustHaveUser(ctx)
+
+	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId, usr)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
+	}
+	return gimlet.NewJSONResponse(apiPatch)
+}

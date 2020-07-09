@@ -37,6 +37,7 @@ func CommitQueue() cli.Command {
 			deleteItem(),
 			mergeCommand(),
 			setModuleCommand(),
+			enqueuePatch(),
 		},
 	}
 }
@@ -193,6 +194,66 @@ func setModuleCommand() cli.Command {
 			}
 
 			return errors.WithStack(params.addModule(ac, rc))
+		},
+	}
+}
+
+func enqueuePatch() cli.Command {
+	return cli.Command{
+		Name:  "enqueue-patch",
+		Usage: "enqueue an existing patch on the commit queue",
+		Flags: addPatchIDFlag(),
+		Before: mergeBeforeFuncs(
+			requirePatchIDFlag,
+			setPlainLogger,
+		),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			patchID := c.String(patchIDFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+
+			// verify the patch can be enqueued
+			existingPatch, err := ac.GetPatch(patchID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get patch '%s'", patchID)
+			}
+			if !existingPatch.CanEnqueueToCommitQueue() {
+				return errors.Errorf("patch '%s' is not eligible to be enqueued", patchID)
+			}
+
+			// create the new merge patch
+			mergePatch, err := client.CreatePatchForMerge(ctx, patchID)
+			if err != nil {
+				return errors.Wrap(err, "problem creating a commit queue patch")
+			}
+			patchDisp, err := getAPIPatchDisplay(mergePatch, false, conf.UIServerHost)
+			if err != nil {
+				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
+			}
+			grip.Info("Patch successfully created.")
+			grip.Info(patchDisp)
+
+			// enqueue the patch
+			position, err := client.EnqueueItem(ctx, restModel.FromStringPtr(mergePatch.Id), false)
+			if err != nil {
+				return errors.Wrap(err, "problem enqueueing new patch")
+			}
+			grip.Infof("Queue position is %d", position)
+
+			return nil
 		},
 	}
 }
