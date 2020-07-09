@@ -1003,13 +1003,13 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	}
 	// only need to check one task per task group / build combination, and once per display task
 	taskGroupsToCheck := map[taskGroupAndBuild]string{}
-	displayTasksToCheck := map[string]*task.Task{}
+	displayTasksToCheck := map[string]task.Task{}
 	idsToRestart := []string{}
 	for _, t := range tasksToRestart {
 		if t.IsPartOfDisplay() {
-			displayTasksToCheck[t.DisplayTask.Id] = t.DisplayTask
+			displayTasksToCheck[t.DisplayTask.Id] = *t.DisplayTask
 		} else if t.DisplayOnly {
-			displayTasksToCheck[t.Id] = &t
+			displayTasksToCheck[t.Id] = t
 		} else if t.IsPartOfSingleHostTaskGroup() {
 			taskGroupsToCheck[taskGroupAndBuild{
 				TaskGroup: t.TaskGroup,
