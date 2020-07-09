@@ -1526,13 +1526,15 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 }
 
 type APIDockerConfig struct {
-	APIVersion *string `json:"api_version"`
+	APIVersion    *string `json:"api_version"`
+	DefaultDistro *string `json:"default_distro"`
 }
 
 func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
 		a.APIVersion = ToStringPtr(v.APIVersion)
+		a.DefaultDistro = ToStringPtr(v.DefaultDistro)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1541,7 +1543,8 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
-		APIVersion: FromStringPtr(a.APIVersion),
+		APIVersion:    FromStringPtr(a.APIVersion),
+		DefaultDistro: FromStringPtr(a.DefaultDistro),
 	}, nil
 }
 
