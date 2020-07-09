@@ -120,7 +120,6 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 
 	return &shrub.CmdSubprocessScripting{
 		Harness:     "golang",
-		WorkingDir:  g.WorkingDirectory,
 		HarnessPath: gopath,
 		// It is not a problem for the environment to set a relative GOPATH
 		// here, which conflicts with the actual GOPATH (an absolute path). The
