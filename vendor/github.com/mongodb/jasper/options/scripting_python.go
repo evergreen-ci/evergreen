@@ -56,7 +56,12 @@ func NewPythonScriptingEnvironment(path, reqtxt string, packages ...string) Scri
 
 // Type is part of the options.ScriptingEnvironment interface and
 // returns the type of the interface.
-func (opts *ScriptingPython) Type() string { return "python" }
+func (opts *ScriptingPython) Type() string {
+	if opts.LegacyPython {
+		return Python2ScriptingType
+	}
+	return Python3ScriptingType
+}
 
 // Interpreter is part of the options.ScriptingEnvironment interface
 // and returns the path to the binary that will run scripts.

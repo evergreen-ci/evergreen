@@ -14,10 +14,9 @@ import:
   - package: github.com/evergreen-ci/service
   - package: github.com/evergreen-ci/shrub
   - package: github.com/evergreen-ci/utility
-  - package: github.com/tychoish/bond
-  - package: github.com/tychoish/lru
+  - package: github.com/evergreen-ci/bond
+  - package: github.com/evergreen-ci/lru
   - package: github.com/mholt/archiver
-  - package: github.com/montanaflynn/stats
   - package: github.com/containerd/cgroups
   - package: github.com/opencontainers/runtime-spec
   - package: github.com/docker/go-units
@@ -26,7 +25,6 @@ import:
   - package: github.com/godbus/dbus
   - package: github.com/gogo/protobuf
   - package: github.com/urfave/cli
-  - package: github.com/tychoish/mongorpc
   - package: golang.org/x/crypto
   - package: golang.org/x/net
   - package: golang.org/x/sys

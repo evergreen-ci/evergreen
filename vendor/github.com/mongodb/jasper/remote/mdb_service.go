@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/lru"
 	"github.com/evergreen-ci/mrpc"
 	"github.com/evergreen-ci/mrpc/mongowire"
 	"github.com/evergreen-ci/mrpc/shell"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/jasper/scripting"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
-	"github.com/tychoish/lru"
 )
 
 type mdbService struct {

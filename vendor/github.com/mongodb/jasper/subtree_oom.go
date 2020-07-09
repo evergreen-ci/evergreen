@@ -3,6 +3,7 @@ package jasper
 import (
 	"context"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -49,12 +50,12 @@ func dmesgContainsOOMKill(line string) bool {
 }
 
 func getPidFromDmesg(line string) (int, bool) {
-	split := strings.Split(line, "Killed process")
-	if len(split) <= 1 {
+	r := regexp.MustCompile(`Killed process (\d+)`)
+	matches := r.FindStringSubmatch(line)
+	if len(matches) != 2 {
 		return 0, false
 	}
-	newSplit := strings.Split(strings.TrimSpace(split[1]), " ")
-	pid, err := strconv.Atoi(newSplit[0])
+	pid, err := strconv.Atoi(matches[1])
 	if err != nil {
 		return 0, false
 	}
@@ -62,12 +63,12 @@ func getPidFromDmesg(line string) (int, bool) {
 }
 
 func getPidFromLog(line string) (int, bool) {
-	split := strings.Split(line, "pid")
-	if len(split) <= 1 {
+	r := regexp.MustCompile(`pid (\d+)`)
+	matches := r.FindStringSubmatch(line)
+	if len(matches) != 2 {
 		return 0, false
 	}
-	newSplit := strings.Split(strings.TrimSpace(split[1]), " ")
-	pid, err := strconv.Atoi(newSplit[0])
+	pid, err := strconv.Atoi(matches[1])
 	if err != nil {
 		return 0, false
 	}

@@ -71,7 +71,7 @@ const (
 func Service() cli.Command {
 	return cli.Command{
 		Name:  ServiceCommand,
-		Usage: "tools for running Jasper services",
+		Usage: "Tools for running Jasper services.",
 		Subcommands: []cli.Command{
 			serviceCommand(ForceReinstallCommand, forceReinstall),
 			serviceCommand(InstallCommand, install),
@@ -108,65 +108,65 @@ func serviceFlags() []cli.Flag {
 	return []cli.Flag{
 		cli.BoolFlag{
 			Name:  quietFlagName,
-			Usage: "quiet mode - suppress errors when running the command",
+			Usage: "Quiet mode - suppress errors when running the command.",
 		},
 		cli.StringFlag{
 			Name:  userFlagName,
-			Usage: "the user who running the service",
+			Usage: "The user who the service will run as.",
 		},
 		cli.StringFlag{
 			Name:   passwordFlagName,
-			Usage:  "the password for the user running the service",
+			Usage:  "The password for the user running the service.",
 			EnvVar: "JASPER_USER_PASSWORD",
 		},
 		cli.StringSliceFlag{
 			Name:  envFlagName,
-			Usage: "the service environment variables (format: key=value)",
+			Usage: "The service environment variables (format: key=value).",
 		},
 		cli.StringFlag{
 			Name:  logNameFlagName,
-			Usage: "the name of the logger",
+			Usage: "The name of the logger.",
 			Value: defaultLogName,
 		},
 		cli.StringFlag{
 			Name:  logLevelFlagName,
-			Usage: "the threshold visible logging level",
+			Usage: "The threshold visible logging level.",
 			Value: level.Error.String(),
 		},
 		cli.StringFlag{
 			Name:   splunkURLFlagName,
-			Usage:  "the URL of the splunk server",
+			Usage:  "The URL of the splunk server for logging.",
 			EnvVar: "GRIP_SPLUNK_SERVER_URL",
 		},
 		cli.StringFlag{
 			Name:   splunkTokenFlagName,
-			Usage:  "the splunk token",
+			Usage:  "The token used for logging to splunk.",
 			EnvVar: "GRIP_SPLUNK_CLIENT_TOKEN",
 		},
 		cli.StringFlag{
 			Name:  splunkTokenFilePathFlagName,
-			Usage: "the path to the file containing the splunk token",
+			Usage: "The path to the file containing the splunk token.",
 		},
 		cli.StringFlag{
 			Name:   splunkChannelFlagName,
-			Usage:  "the splunk channel",
+			Usage:  "The splunk channel where logs should be sent.",
 			EnvVar: "GRIP_SPLUNK_CHANNEL",
 		},
 		cli.IntFlag{
 			Name:  limitNumFilesFlagName,
-			Usage: "the maximum number of open file descriptors. Specify -1 for no limit",
+			Usage: "The maximum number of open file descriptors. Specify -1 for no limit.",
 		},
 		cli.IntFlag{
 			Name:  limitNumProcsFlagName,
-			Usage: "the maximum number of processes. Specify -1 for no limit",
+			Usage: "The maximum number of processes. Specify -1 for no limit.",
 		},
 		cli.IntFlag{
 			Name:  limitLockedMemoryFlagName,
-			Usage: "the maximum size that may be locked into memory (kB). Specify -1 for no limit",
+			Usage: "The maximum size that may be locked into memory (kB). Specify -1 for no limit.",
 		},
 		cli.IntFlag{
 			Name:  limitVirtualMemoryFlagName,
-			Usage: "the maximum available virtual memory (kB). Specify -1 for no limit",
+			Usage: "The maximum available virtual memory (kB). Specify -1 for no limit.",
 		},
 	}
 }
@@ -383,7 +383,7 @@ type serviceOperation func(daemon service.Interface, config *service.Config) err
 func serviceCommand(cmd string, operation serviceOperation) cli.Command {
 	return cli.Command{
 		Name:  cmd,
-		Usage: fmt.Sprintf("%s a daemon service", cmd),
+		Usage: fmt.Sprintf("%s a daemon service.", cmd),
 		Subcommands: []cli.Command{
 			serviceCommandREST(cmd, operation),
 			serviceCommandRPC(cmd, operation),

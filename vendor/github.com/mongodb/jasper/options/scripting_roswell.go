@@ -42,7 +42,7 @@ func NewRoswellScriptingEnvironment(path string, systems ...string) ScriptingHar
 
 // Type is part of the options.ScriptingEnvironment interface and
 // returns the type of the interface.
-func (opts *ScriptingRoswell) Type() string { return "roswell" }
+func (opts *ScriptingRoswell) Type() string { return RoswellScriptingType }
 
 // Interpreter is part of the options.ScriptingEnvironment interface
 // and returns the path to the interpreter or binary that runs scripts.

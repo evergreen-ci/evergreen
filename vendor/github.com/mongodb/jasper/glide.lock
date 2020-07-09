@@ -11,14 +11,12 @@ imports:
     version: ae76e68cb2ba6041c76c4abcd013b00cd52bacee
   - name: github.com/evergreen-ci/gimlet
     version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
-  - name: github.com/tychoish/bond
-    version: f64dbbe9148d8a2fb93ff2bbe02d7234109947b6
-  - name: github.com/tychoish/lru
-    version: f77a748d12a924cfbfcf396426dd58de5aa3a9e2
+  - name: github.com/evergreen-ci/bond
+    version: e4a29fb10c31b3651cb623b73655bc66035f83e7
+  - name: github.com/evergreen-ci/lru
+    version: d1b427740b3b78780272eb34942e4ed27e0e101d
   - name: github.com/mholt/archiver
     version: de0d89e255e17c8d75a40122055763e743ab0593
-  - name: github.com/montanaflynn/stats
-    version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
   - name: github.com/mongodb/amboy
     version: 89691c8c27abb1d0374f24fb0b645143fc043f74
   - name: github.com/google/shlex
@@ -38,11 +36,11 @@ imports:
   - name: github.com/evergreen-ci/poplar
     version: 3043bd036e01aa6abbad6af0df031a8315308ff9
   - name: github.com/evergreen-ci/utility
-    version: 3fa5718f9200847b0982978361090cb94bb6f0fd
+    version: 282a6f91af567e4826cecb85349f1cfb379ae183
   - name: github.com/evergreen-ci/service
     version: d9382e39d76857e2fe92a379d89f3c86fe507c4d
   - name: github.com/evergreen-ci/shrub
-    version: 36937cebcd32cbde53477fc167acd6f60bdd1aea
+    version: c335f3500b4c16d51a43c21533d18fb9059af8c5
 
   # cgroup/docker requirements
   - name: github.com/containerd/cgroups
@@ -83,6 +81,8 @@ imports:
     version: a6b53ec6cb22a3699387a57a161566f9402ee85b
   - name: github.com/PuerkitoBio/rehttp
     version: 3acc8749c14f0a6368ee715d142dddf24c72d632
+  - name: github.com/sabhiram/go-git-ignore
+    version: d3107576ba9425fc1c85f4b3569c4631b805a02e
   - name: golang.org/x/oauth2
     version: bf48bf16ab8d622ce64ec6ce98d2c98f916b6303
   - name: gopkg.in/yaml.v2

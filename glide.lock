@@ -129,11 +129,11 @@ imports:
   - name: github.com/evergreen-ci/gimlet
     version: a2019f5a79f3361accef8315a991dd28467e3a08
   - name: github.com/evergreen-ci/shrub
-    version: 6be7bcc0614c5a2393fb08d3991ec31c43d1b8af
+    version: c335f3500b4c16d51a43c21533d18fb9059af8c5
   - name: github.com/evergreen-ci/pail
     version: 53fb54f623858257f28f738a0d3edc7e70424c9f
   - name: github.com/mongodb/jasper
-    version: 1444ffda43ae8c8c939f3f0823a0daa3be6f4d72
+    version: faad75f91052b7ffc470849c4f746fe6036a38bc
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber
@@ -190,4 +190,4 @@ imports:
   - name: github.com/robfig/cron
     version: 70971dc81bab3671fde85647b0a1367929f92be8
   - name: github.com/evergreen-ci/utility
-    version: 0171d2f57d903bd8d30b77bd38780739ceb9d0f1
+    version: 282a6f91af567e4826cecb85349f1cfb379ae183
