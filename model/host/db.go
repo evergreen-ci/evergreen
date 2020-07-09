@@ -1,7 +1,6 @@
 package host
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -363,7 +362,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByTakSpec returns a query that finds all running hosts that are running a
+// ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func ByTaskSpec(group, buildVariant, project, version string) db.Q {
 	return db.Query(
@@ -393,9 +392,8 @@ func ByTaskSpec(group, buildVariant, project, version string) db.Q {
 // the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
-		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
-		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
-		return 0, errors.New(s)
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
 	numHosts, err := Count(ByTaskSpec(group, buildVariant, project, version))
@@ -411,9 +409,8 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 // Returns 0 in the case of missing task group order numbers or no hosts.
 func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
-		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
-		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
-		return 0, errors.New(s)
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
 	numHosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
