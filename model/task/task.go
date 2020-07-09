@@ -802,7 +802,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // operation will select tasks from all distros.
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
-	query[PriorityKey] = 0
 
 	if distroID != "" {
 		query[DistroIdKey] = distroID
