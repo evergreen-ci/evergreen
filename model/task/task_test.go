@@ -1312,8 +1312,8 @@ func TestFindVariantsWithTask(t *testing.T) {
 	bvs, err := FindVariantsWithTask("match", "p", 10, 20)
 	assert.NoError(err)
 	require.Len(t, bvs, 2)
-	assert.Equal(bvs[0], "bv2")
-	assert.Equal(bvs[1], "bv1")
+	assert.Contains(bvs, "bv1")
+	assert.Contains(bvs, "bv2")
 }
 
 func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
