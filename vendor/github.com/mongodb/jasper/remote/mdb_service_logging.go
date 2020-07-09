@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Constants representing logging cache commands.
 const (
 	LoggingCacheSizeCommand   = "logging_cache_size"
 	LoggingCacheCreateCommand = "create_logging_cache"

@@ -22,6 +22,7 @@ type ScriptingHarness interface {
 	Validate() error
 }
 
+// Constants representing recognized scripting interfaces.
 const (
 	GolangScriptingType  = "golang"
 	Python2ScriptingType = "python2"

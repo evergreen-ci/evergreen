@@ -37,7 +37,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
-	jpmapp := remote.NewRestService(agt.jasper).App(ctx)
+	jpmapp := remote.NewRESTService(agt.jasper).App(ctx)
 	jpmapp.SetPrefix("jasper")
 
 	handler, err := gimlet.MergeApplications(app, jpmapp, gimlet.GetPProfApp())

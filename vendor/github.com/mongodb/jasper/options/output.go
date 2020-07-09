@@ -238,6 +238,8 @@ func (o *Output) Close() error {
 	return catcher.Resolve()
 }
 
+// CachedLogger returns a cached logger with the given ID with its error and
+// output derived from Output.
 func (o *Output) CachedLogger(id string) *CachedLogger {
 	return &CachedLogger{
 		ID:       id,

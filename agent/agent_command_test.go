@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -53,7 +54,7 @@ func (s *CommandSuite) SetupTest() {
 			Secret: "mock_task_secret",
 		},
 		taskModel:  &task.Task{},
-		oomTracker: &jasper.OomTrackerMock{},
+		oomTracker: &mock.OOMTracker{},
 	}
 }
 

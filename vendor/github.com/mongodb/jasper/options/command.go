@@ -97,7 +97,7 @@ func MergePostHooks(fns ...CommandPostHook) CommandPostHook {
 	}
 }
 
-// MergeAbortingPostHook produces a post hook that returns the first
+// MergeAbortingPostHooks produces a post hook that returns the first
 // error returned by one of it's argument functions, and returns nil
 // if no function returns an error.
 func MergeAbortingPostHooks(fns ...CommandPostHook) CommandPostHook {

@@ -264,7 +264,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 		apps = append(apps, groupManagement)
 	}
 
-	jpm := remote.NewRestService(env.JasperManager())
+	jpm := remote.NewRESTService(env.JasperManager())
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
 	jpm.SetDisableCachePruning(true)

@@ -1092,7 +1092,7 @@ func TestManager(t *testing.T) {
 									LoggerID: "DNE",
 									Data:     "new log message",
 									Priority: level.Warning,
-									Format:   options.LoggingPayloadFormatSTRING,
+									Format:   options.LoggingPayloadFormatString,
 								}
 								assert.Error(t, client.SendMessages(ctx, payload))
 							},
@@ -1108,7 +1108,7 @@ func TestManager(t *testing.T) {
 									LoggerID: logger1.ID,
 									Data:     "new log message",
 									Priority: level.Warning,
-									Format:   options.LoggingPayloadFormatSTRING,
+									Format:   options.LoggingPayloadFormatString,
 								}
 								assert.NoError(t, client.SendMessages(ctx, payload))
 							},

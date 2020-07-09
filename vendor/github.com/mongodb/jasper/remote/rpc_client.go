@@ -27,11 +27,11 @@ type rpcClient struct {
 	clientCloser util.CloseFunc
 }
 
-// NewClient creates a connection to the RPC service with the specified address
-// addr. If creds is non-nil, the credentials will be used to establish a secure
-// TLS connection with the service; otherwise, it will establish an insecure
-// connection. The caller is responsible for closing the connection using the
-// returned jasper.CloseFunc.
+// NewRPCClient creates a connection to the RPC service with the specified
+// address addr. If creds is non-nil, the credentials will be used to establish
+// a secure TLS connection with the service; otherwise, it will establish an
+// insecure connection. The caller is responsible for closing the connection
+// using the returned jasper.CloseFunc.
 func NewRPCClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentials) (Manager, error) {
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
@@ -55,7 +55,7 @@ func NewRPCClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentia
 	return newRPCClient(conn), nil
 }
 
-// NewClientWithFile is the same as NewClient but the credentials will
+// NewRPCClientWithFile is the same as NewRPCClient but the credentials will
 // be read from the file given by filePath if the filePath is non-empty. The
 // credentials file should contain the JSON-encoded bytes from
 // (*Credentials).Export().

@@ -126,7 +126,7 @@ func (d *restDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
 // newRESTService creates a REST service around the manager serving requests on
 // the host and port.
 func newRESTService(ctx context.Context, host string, port int, manager jasper.Manager) (util.CloseFunc, error) {
-	service := remote.NewRestService(manager)
+	service := remote.NewRESTService(manager)
 	app := service.App(ctx)
 	app.SetPrefix("jasper")
 	if err := app.SetHost(host); err != nil {

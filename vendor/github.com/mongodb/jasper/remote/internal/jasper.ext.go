@@ -491,8 +491,8 @@ func (opts BuildloggerV2Info) Export() send.BuildloggerConfig {
 	}
 }
 
-// ConvertBuildloggerV2Info takes a grip send.BuildloggerConfig and returns an
-// equivalent protobuf RPC BuildloggerV2Info struct. ConvertBuildloggerV2Info
+// ConvertBuildloggerOptions takes a grip send.BuildloggerConfig and returns an
+// equivalent protobuf RPC BuildloggerV2Info struct. ConvertBuildloggerOptions
 // is the inverse of (BuildloggerV2Info) Export().
 func ConvertBuildloggerOptions(opts send.BuildloggerConfig) *BuildloggerV2Info {
 	return &BuildloggerV2Info{
@@ -515,6 +515,8 @@ func (opts BuildloggerV2Options) Export() options.LoggerProducer {
 	}
 }
 
+// Export takes the protobuf RPC BuildloggerV3Options struct and returns the
+// analogous Jasper options.LoggerConfig.
 func (opts BuildloggerV3Options) Export() (*options.LoggerConfig, error) {
 	data, err := json.Marshal(&opts)
 	if err != nil {
@@ -982,7 +984,7 @@ func (a *ScriptingHarnessTestArgs) Export() ([]scripting.TestOptions, error) {
 	return out, nil
 }
 
-// ConvertScriptingTestResults takes scripting TestOptions and returns an
+// ConvertScriptingTestOptions takes scripting TestOptions and returns an
 // equivalent protobuf RPC ScriptingHarnessTestOptions.
 func ConvertScriptingTestOptions(args []scripting.TestOptions) []*ScriptingHarnessTestOptions {
 	out := make([]*ScriptingHarnessTestOptions, len(args))
@@ -1007,7 +1009,7 @@ func (lf LoggingPayloadFormat) Export() options.LoggingPayloadFormat {
 	case LoggingPayloadFormat_FORMATJSON:
 		return options.LoggingPayloadFormatBSON
 	case LoggingPayloadFormat_FORMATSTRING:
-		return options.LoggingPayloadFormatSTRING
+		return options.LoggingPayloadFormatString
 	default:
 		return ""
 	}
@@ -1022,7 +1024,7 @@ func ConvertLoggingPayloadFormat(in options.LoggingPayloadFormat) LoggingPayload
 		return LoggingPayloadFormat_FORMATJSON
 	case options.LoggingPayloadFormatBSON:
 		return LoggingPayloadFormat_FORMATBSON
-	case options.LoggingPayloadFormatSTRING:
+	case options.LoggingPayloadFormatString:
 		return LoggingPayloadFormat_FORMATSTRING
 	default:
 		return 0
@@ -1059,7 +1061,7 @@ func convertMessage(format options.LoggingPayloadFormat, m interface{}) *Logging
 	switch m := m.(type) {
 	case message.Composer:
 		switch format {
-		case options.LoggingPayloadFormatSTRING:
+		case options.LoggingPayloadFormatString:
 			out.Data = &LoggingPayloadData_Msg{Msg: m.String()}
 		case options.LoggingPayloadFormatBSON:
 			payload, _ := bson.Marshal(m.Raw())
@@ -1079,7 +1081,7 @@ func convertMessage(format options.LoggingPayloadFormat, m interface{}) *Logging
 		}
 	case []byte:
 		switch format {
-		case options.LoggingPayloadFormatSTRING:
+		case options.LoggingPayloadFormatString:
 			out.Data = &LoggingPayloadData_Msg{Msg: string(m)}
 		default:
 			out.Data = &LoggingPayloadData_Raw{Raw: m}

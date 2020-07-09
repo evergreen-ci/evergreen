@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -62,7 +63,7 @@ func (s *AgentSuite) SetupTest() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
@@ -398,9 +399,9 @@ func (s *AgentSuite) TestAbort() {
 
 func (s *AgentSuite) TestOOMTracker() {
 	pids := []int{1, 2, 3}
-	s.tc.oomTracker = &jasper.OomTrackerMock{
+	s.tc.oomTracker = &mock.OOMTracker{
 		WasOOMKilled: true,
-		Pids:         pids,
+		PIDs:         pids,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -498,7 +499,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 				},
 			},
 		},
-		oomTracker: jasper.NewMockOOMTracker(),
+		oomTracker: &mock.OOMTracker{},
 		project:    &model.Project{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())

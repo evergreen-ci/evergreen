@@ -34,8 +34,7 @@ type basicLoggerRegistry struct {
 	factories map[string]LoggerProducerFactory
 }
 
-// NewBasicLoggerRegsitry returns a new LoggerRegistry backed by the
-// basicLoggerRegistry implementation.
+// NewBasicLoggerRegistry returns a new LoggerRegistry implementation.
 func NewBasicLoggerRegistry() LoggerRegistry {
 	return &basicLoggerRegistry{
 		factories: map[string]LoggerProducerFactory{},
