@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -184,13 +185,18 @@ func (s *createHostSuite) TestParamValidation() {
 	// Validate docker requirements
 	s.params["provider"] = apimodels.ProviderDocker
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "distro must be set")
+	s.params["distro"] = ""
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	settings.Providers.Docker.DefaultDistro = "my-default-distro"
+	s.NoError(evergreen.UpdateConfig(settings))
+
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker image must be set")
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts cannot be greater than 1")
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.params["num_hosts"] = 1
-	s.params["distro"] = "my-distro"
+	s.params["distro"] = "my-default-distro"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 }
