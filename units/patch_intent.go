@@ -292,7 +292,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if patchDoc.Alias == evergreen.CommitQueueAlias {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, project)
+		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
@@ -423,10 +423,12 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	var summaries []patch.Summary
 	if patch.IsMailboxDiff(string(patchBytes)) {
 		reader := strings.NewReader(string(patchBytes))
-		summaries, err = GetPatchSummariesByCommit(reader)
+		var commitMessages []string
+		summaries, commitMessages, err = GetPatchSummariesByCommit(reader)
 		if err != nil {
 			return errors.Wrapf(err, "error getting summaries by commit")
 		}
+		patchDoc.Patches[0].PatchSet.CommitMessages = commitMessages
 	} else {
 		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
 		if err != nil {
@@ -434,34 +436,35 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}
 	}
 
+	patchDoc.Patches[0].IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
 	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
 	return nil
 }
 
 // if commit queue then mbox format, organize summaries by commit
-func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
+func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, []string, error) {
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
 		if err == io.EOF {
-			return nil, errors.Errorf("patch is empty")
+			return nil, nil, errors.Errorf("patch is empty")
 		}
-		return nil, errors.Wrap(err, "error creating stream")
+		return nil, nil, errors.Wrap(err, "error creating stream")
 	}
 	if stream == nil {
-		return nil, errors.New("mbox stream is nil")
+		return nil, nil, errors.New("mbox stream is nil")
 	}
-	result := []patch.Summary{}
-
+	summaries := []patch.Summary{}
+	commitMessages := []string{}
 	// iterate through patches
 	for err == nil {
 		var buffer []byte
 		msg, err := stream.ReadMessage()
 		if err != nil {
 			if err == io.EOF { // no more patches
-				return result, nil
+				return summaries, commitMessages, nil
 			}
-			return nil, errors.Wrap(err, "error reading message")
+			return nil, nil, errors.Wrap(err, "error reading message")
 		}
 
 		var description string
@@ -476,24 +479,25 @@ func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
 			n, err := reader.Read(curBytes)
 			if err != nil {
 				if err == io.EOF { // finished reading body of this patch
-					var summaries []patch.Summary
-					summaries, err = thirdparty.GetPatchSummaries(string(buffer))
+					var patchSummaries []patch.Summary
+					patchSummaries, err = thirdparty.GetPatchSummaries(string(buffer))
 					if err != nil {
-						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
+						return nil, nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
 					}
-					for i := range summaries {
-						summaries[i].Description = description
+					for i := range patchSummaries {
+						patchSummaries[i].Description = description
 					}
-					result = append(result, summaries...)
+					summaries = append(summaries, patchSummaries...)
+					commitMessages = append(commitMessages, description)
 					break
 				}
-				return nil, errors.Wrap(err, "error reading body")
+				return nil, nil, errors.Wrap(err, "error reading body")
 			}
 			buffer = append(buffer, curBytes[0:n]...)
 		}
 	}
 
-	return result, nil
+	return summaries, commitMessages, nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {

@@ -236,9 +236,10 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var summaries []patch.Summary
+	var commitMessages []string
 	if patch.IsMailboxDiff(patchContent) {
 		reader := strings.NewReader(patchContent)
-		summaries, err = units.GetPatchSummariesByCommit(reader)
+		summaries, commitMessages, err = units.GetPatchSummariesByCommit(reader)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
 			return
@@ -275,8 +276,9 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Githash:    githash,
 		IsMbox:     len(patchContent) == 0 || patch.IsMailboxDiff(patchContent),
 		PatchSet: patch.PatchSet{
-			PatchFileId: patchFileId,
-			Summary:     summaries,
+			PatchFileId:    patchFileId,
+			Summary:        summaries,
+			CommitMessages: commitMessages,
 		},
 	}
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
@@ -285,7 +287,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p.Alias == evergreen.CommitQueueAlias {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, project)); err != nil {
+		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

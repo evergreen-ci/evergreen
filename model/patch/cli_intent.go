@@ -69,9 +69,6 @@ type cliIntent struct {
 
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
-
-	// IsMbox indicates if the patch content is in MBox format
-	IsMbox bool `bson:"is_mbox"`
 }
 
 // BSON fields for the patches
@@ -160,7 +157,6 @@ func (c *cliIntent) NewPatch() *Patch {
 			{
 				ModuleName: c.Module,
 				Githash:    c.BaseHash,
-				IsMbox:     c.IsMbox,
 				PatchSet: PatchSet{
 					PatchFileId: c.PatchFileID.Hex(),
 				},
@@ -233,7 +229,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Finalize:      params.Finalize,
 		Module:        params.Module,
 		Alias:         params.Alias,
-		IsMbox:        len(params.PatchContent) == 0 || IsMailboxDiff(params.PatchContent),
 	}, nil
 }
 

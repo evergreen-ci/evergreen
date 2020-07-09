@@ -491,13 +491,17 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 	return errors.Wrap(catcher.Resolve(), "error aborting patches")
 }
 
-func MakeCommitQueueDescription(patches []patch.ModulePatch, project *Project) string {
+func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project) string {
 	commitFmtString := "'%s' into '%s/%s:%s'"
 	description := []string{}
 	for _, p := range patches {
-		owner := project.Owner
-		repo := project.Repo
-		branch := project.Branch
+		// skip empty patches
+		if len(p.PatchSet.CommitMessages) == 0 {
+			continue
+		}
+		owner := projectRef.Owner
+		repo := projectRef.Repo
+		branch := projectRef.Branch
 		if p.ModuleName != "" {
 			module, err := project.GetModuleByName(p.ModuleName)
 			if err != nil {
@@ -506,12 +510,8 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, project *Project) s
 			owner, repo = module.GetRepoOwnerAndName()
 			branch = module.Branch
 		}
-		commitMessages := make([]string, 0, len(p.PatchSet.Summary))
-		for _, summary := range p.PatchSet.Summary {
-			commitMessages = append(commitMessages, summary.Description)
-		}
 
-		description = append(description, fmt.Sprintf(commitFmtString, strings.Join(commitMessages, " <- "), owner, repo, branch))
+		description = append(description, fmt.Sprintf(commitFmtString, strings.Join(p.PatchSet.CommitMessages, " <- "), owner, repo, branch))
 	}
 
 	if len(description) == 0 {
@@ -560,7 +560,7 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 
 	patchDoc := &patch.Patch{
 		Id:            mgobson.NewObjectId(),
-		Description:   MakeCommitQueueDescription(existingPatch.Patches, project),
+		Description:   MakeCommitQueueDescription(existingPatch.Patches, projectRef, project),
 		Author:        u.Username(),
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,

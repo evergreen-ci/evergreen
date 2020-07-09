@@ -168,9 +168,10 @@ type ModulePatch struct {
 
 // PatchSet stores information about the actual patch
 type PatchSet struct {
-	Patch       string    `bson:"patch,omitempty"`
-	PatchFileId string    `bson:"patch_file_id,omitempty"`
-	Summary     []Summary `bson:"summary"`
+	Patch          string    `bson:"patch,omitempty"`
+	PatchFileId    string    `bson:"patch_file_id,omitempty"`
+	CommitMessages []string  `bson:"commit_messages,omitempty"`
+	Summary        []Summary `bson:"summary"`
 }
 
 // Summary stores summary patch information

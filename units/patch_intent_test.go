@@ -606,7 +606,7 @@ index ce0542e91..718dd8099 100644
 	reader := ioutil.NopCloser(strings.NewReader(patchData))
 	defer assert.NoError(t, reader.Close())
 
-	summaries, err := GetPatchSummariesByCommit(reader)
+	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
 	assert.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
@@ -614,6 +614,10 @@ index ce0542e91..718dd8099 100644
 
 	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
 	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
+
+	require.Len(t, commitMessages, 2)
+	assert.Equal(t, "EVG-6799 remove one commit validation", commitMessages[0])
+	assert.Equal(t, "temp", commitMessages[1])
 }
 
 func TestGetPatchSummariesByCountLong(t *testing.T) {
@@ -627,7 +631,8 @@ Subject: EVG-6799 remove one commit validation
 	assert.True(t, len([]byte(str)) > 1000)
 	reader := ioutil.NopCloser(strings.NewReader(msg))
 	defer assert.NoError(t, reader.Close())
-	summaries, err := GetPatchSummariesByCommit(reader)
+	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
 	assert.NoError(t, err)
 	assert.NotNil(t, summaries)
+	assert.NotNil(t, commitMessages)
 }
