@@ -230,16 +230,19 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
+
 	// return nil if rounded timeTaken/makespan == 0s
 	t := timeTaken.Round(time.Second).String()
 	var tPointer *string
 	if t != "0s" {
-		tPointer = &t
+		tFormated := formatDuration(t)
+		tPointer = &tFormated
 	}
 	m := makespan.Round(time.Second).String()
 	var mPointer *string
 	if m != "0s" {
-		mPointer = &m
+		mFormated := formatDuration(m)
+		mPointer = &mFormated
 	}
 
 	return &PatchDuration{
