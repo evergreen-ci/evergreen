@@ -170,7 +170,7 @@ func (ch *CreateHost) ValidateDocker() error {
 	if ch.Distro == "" {
 		settings, err := evergreen.GetConfig()
 		if err != nil {
-			catcher.New("error getting docker config to get default distro")
+			catcher.New("error getting config to set default distro")
 		} else {
 			ch.Distro = settings.Providers.Docker.DefaultDistro
 		}
