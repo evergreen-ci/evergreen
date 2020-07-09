@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -17,10 +19,13 @@ import (
 )
 
 const (
-	itemFlagName    = "item"
-	pauseFlagName   = "pause"
-	resumeFlagName  = "resume"
-	commitsFlagName = "commits"
+	itemFlagName          = "item"
+	pauseFlagName         = "pause"
+	resumeFlagName        = "resume"
+	commitsFlagName       = "commits"
+	noCommits             = "No Commits Added"
+	commitQueuePatchLabel = "Commit Queue Merge:"
+	commitFmtString       = "'%s' into '%s/%s:%s'"
 )
 
 func CommitQueue() cli.Command {
@@ -351,6 +356,17 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't generate patches")
 	}
 
+	commits := noCommits
+	if commitCount > 0 {
+		var commitMessages string
+		commitMessages, err = gitCommitMessages(ref.Branch, p.ref, p.commits)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit messages")
+		}
+		commits = fmt.Sprintf(commitFmtString, commitMessages, ref.Owner, ref.Repo, ref.Branch)
+	}
+	patchParams.Description = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
+
 	patch, err := patchParams.createPatch(ac, conf, diffData)
 	if err != nil {
 		return err
@@ -395,6 +411,27 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("module patch aborted")
 	}
 
+	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "can't get owner/repo from '%s'", module.Repo)
+	}
+
+	patch, err := rc.GetPatch(p.patchID)
+	if err != nil {
+		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
+	}
+
+	commitMessages, err := gitCommitMessages(module.Branch, p.ref, p.commits)
+	if err != nil {
+		return errors.Wrap(err, "can't get module commit messages")
+	}
+	commits := fmt.Sprintf(commitFmtString, commitMessages, owner, repo, module.Branch)
+	message := fmt.Sprintf("%s || %s", patch.Description, commits)
+	// replace the description if the original patch was empty
+	if strings.HasSuffix(patch.Description, noCommits) {
+		message = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
+	}
+
 	diffData, err := loadGitData(module.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "can't get patch data")
@@ -416,6 +453,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		module:  p.module,
 		patch:   diffData.fullPatch,
 		base:    diffData.base,
+		message: message,
 	}
 	err = ac.UpdatePatchModule(params)
 	if err != nil {
