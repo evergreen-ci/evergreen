@@ -551,7 +551,7 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name %s contains unauthorized characters ('%s')",
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters ('%s')",
 						task.Name, unauthorizedTaskCharacters),
 				})
 		}
@@ -560,7 +560,7 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 		if strings.Contains(task.Name, ",") {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("task name %s should not contains commas", task.Name),
+				Message: fmt.Sprintf("task name '%s' should not contains commas", task.Name),
 			})
 		}
 		// Warn against using "*" since it is ambiguous with the
@@ -614,7 +614,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("buildvariant name %s contains unauthorized characters (%s)",
+					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
 						buildVariant.Name, unauthorizedCharacters),
 				})
 		}
@@ -624,7 +624,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if strings.Contains(buildVariant.Name, ",") {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("buildvariant name %s should not contains commas", buildVariant.Name),
+				Message: fmt.Sprintf("buildvariant name '%s' should not contains commas", buildVariant.Name),
 			})
 		}
 		// Warn against using "*" since it is ambiguous with the
