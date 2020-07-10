@@ -517,27 +517,12 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
-			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
-				"message":            "exiting early to tear down current group",
-				"details_task_group": details.TaskGroup,
-				"task_id":            nextTask.Id,
-				"task_group":         nextTask.TaskGroup,
-				"task_build_variant": nextTask.BuildVariant,
-				"task_version":       nextTask.Version,
-			})
 			return nil, true, nil
 		}
 
 		// UpdateRunningTask updates the running task in the host document
 		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
-			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
-				"message":            "failed to update running task for task group",
-				"task_id":            nextTask.Id,
-				"task_group":         nextTask.TaskGroup,
-				"task_build_variant": nextTask.BuildVariant,
-				"task_version":       nextTask.Version,
-			})
 			return nil, false, errors.WithStack(err)
 		}
 
@@ -568,13 +553,34 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		})
 
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
-			numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-			if err != nil {
-				return nil, false, errors.WithStack(err)
+			dispatchRace := ""
+			minTaskGroupOrderNum := 0
+			if nextTask.TaskGroupMaxHosts == 1 {
+				// regardless of how many hosts are running tasks, if this host is running the earliest task in the task group we should continue
+				minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+				if err != nil {
+					return nil, false, errors.WithStack(err)
+				}
+				// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
+				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
+					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
+				}
 			}
-			if numHosts > nextTask.TaskGroupMaxHosts {
+			// for multiple-host task groups and single-host task groups without order cached
+			if minTaskGroupOrderNum == 0 {
+				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+				if err != nil {
+					return nil, false, errors.WithStack(err)
+				}
+				if numHosts > nextTask.TaskGroupMaxHosts {
+					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
+				}
+			}
+
+			if dispatchRace != "" {
 				grip.Debug(message.Fields{
 					"message":              "task group race, not dispatching",
+					"dispatch_race":        dispatchRace,
 					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
@@ -583,10 +589,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					"task_version":         nextTask.Version,
 					"task_project":         nextTask.Project,
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
-					"num_hosts_found":      numHosts,
+					"task_group_order":     nextTask.TaskGroupOrder,
 				})
 				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
 					"message":              "problem clearing task group task from host after dispatch race",
+					"dispatch_race":        dispatchRace,
 					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
@@ -596,7 +603,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					"task_project":         nextTask.Project,
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 				}))
-				ok = false // continue loop after dequeueing task
+				ok = false // continue loop after dequeuing task
 			}
 		}
 

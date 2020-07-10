@@ -1,7 +1,6 @@
 package host
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -42,6 +41,7 @@ var (
 	DisplayNameKey               = bsonutil.MustHaveTag(Host{}, "DisplayName")
 	RunningTaskKey               = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey          = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
+	RunningTaskGroupOrderKey     = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
 	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
@@ -362,15 +362,10 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// NumHostsByTaskSpec returns a query that finds all running hosts that are running a
+// ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
-	if group == "" || buildVariant == "" || project == "" || version == "" {
-		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
-		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
-		return 0, errors.New(s)
-	}
-	q := db.Query(
+func ByTaskSpec(group, buildVariant, project, version string) db.Q {
+	return db.Query(
 		bson.M{
 			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
 			"$or": []bson.M{
@@ -391,41 +386,43 @@ func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, erro
 			},
 		},
 	)
-	hosts, err := Find(q)
+}
+
+// NumHostsByTaskSpec returns the number of running hosts that are running a task with
+// the given group, buildvariant, project, and version.
+func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+			"project is '%s' and version is '%s')", group, buildVariant, project, version)
+	}
+
+	numHosts, err := Count(ByTaskSpec(group, buildVariant, project, version))
+	if err != nil {
+		return 0, errors.Wrap(err, "error querying database for host count")
+	}
+
+	return numHosts, nil
+}
+
+//  MinTaskGroupOrderRunningByTaskSpec returns the smallest task group order number for tasks with the
+// given group, buildvariant, project, and version that are running on hosts.
+// Returns 0 in the case of missing task group order numbers or no hosts.
+func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+			"project is '%s' and version is '%s')", group, buildVariant, project, version)
+	}
+
+	numHosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
 	if err != nil {
 		return 0, errors.Wrap(err, "error querying database for hosts")
 	}
-	// TODO: when we remove this debugging logic, Find can be changed to Count
-	if len(hosts) > 1 { // for single host task groups, this would indicate a race
-		type hostInfo struct {
-			Id               string
-			Status           string
-			RunningTaskGroup string
-			RunningBV        string
-			LastBV           string
-			LastGroup        string
-		}
-		info := []hostInfo{}
-		for _, h := range hosts {
-			cur := hostInfo{
-				Id:               h.Id,
-				Status:           h.Status,
-				RunningTaskGroup: h.RunningTaskGroup,
-				RunningBV:        h.RunningTaskBuildVariant,
-				LastBV:           h.LastBuildVariant,
-				LastGroup:        h.LastGroup,
-			}
-			info = append(info, cur)
-		}
-		grip.Debug(message.Fields{
-			"message":            "num hosts by task spec",
-			"task_version":       version,
-			"task_group":         group,
-			"task_build_variant": buildVariant,
-			"hosts":              info,
-		})
+	minTaskGroupOrder := 0
+	//  can look at only one host because we sorted
+	if len(numHosts) > 0 {
+		minTaskGroupOrder = numHosts[0].RunningTaskGroupOrder
 	}
-	return len(hosts), nil
+	return minTaskGroupOrder, nil
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.
