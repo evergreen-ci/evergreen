@@ -1030,8 +1030,8 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
 				errs = append(errs, ValidationError{
 					Level: Warning,
-					Message: fmt.Sprintf("project '%s' contains a dependency '%s' on nonexistent buildvariant '%s'",
-						project.Identifier, dep.Name, dep.Variant,
+					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
+						project.Identifier, dep.Variant, task.Name),
 					),
 				})
 			}
