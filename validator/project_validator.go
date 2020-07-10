@@ -767,6 +767,7 @@ func validateCommands(section string, project *model.Project,
 		}
 		if cmd.Function != "" && cmd.Command != "" {
 			errs = append(errs, ValidationError{
+				Level:   Warning,
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
 			})
 		}
