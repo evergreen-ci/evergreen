@@ -39,8 +39,9 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("no error should be returned for dependencies of the same task on two variants", func() {
@@ -58,9 +59,12 @@ func TestVerifyTaskDependencies(t *testing.T) {
 						},
 					},
 				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1"},
+					{Name: "v2"},
+				},
 			}
 			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
 		})
 
 		Convey("if any dependencies have an invalid name field, an error should be returned", func() {
@@ -77,8 +81,28 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("if any dependencies have an invalid variant field, an error should be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+					},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskUnitDependency{{
+							Name:    "compile",
+							Variant: "nonexistent",
+						}},
+					},
+				},
+			}
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("if any dependencies have an invalid status field, an error should be returned", func() {
@@ -98,8 +122,9 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("if the dependencies are well-formed, no error should be returned", func() {
