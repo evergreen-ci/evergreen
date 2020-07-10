@@ -1170,6 +1170,37 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
+		Convey("an error should be thrown if both a function and a plugin command are referenced", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.parse_files",
+							Params: map[string]interface{}{
+								"files": []interface{}{"test"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+						Commands: []model.PluginCommandConf{
+							{
+								Function: "funcOne",
+								Command:  "gotest.parse_files",
+								Params: map[string]interface{}{
+									"files": []interface{}{"test"},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
 		Convey("an error should be thrown if a function plugin command doesn't have commands", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
@@ -1224,7 +1255,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 1)
+			So(len(validatePluginCommands(project)), ShouldEqual, 2)
 		})
 		Convey("errors should be thrown if a function 'a' references "+
 			"another function, 'b', which that does not exist", func() {
@@ -1242,7 +1273,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 2)
+			So(len(validatePluginCommands(project)), ShouldEqual, 3)
 		})
 
 		Convey("an error should be thrown if a referenced pre plugin command is invalid", func() {
