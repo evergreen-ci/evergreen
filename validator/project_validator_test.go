@@ -680,6 +680,26 @@ func TestValidateTaskNames(t *testing.T) {
 		validationResults := validateTaskNames(project)
 		So(len(validationResults), ShouldEqual, 4)
 	})
+	Convey("An error should be returned when a task name", t, func() {
+		Convey("Contains commas", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: "task,"}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+		Convey("Is the same as the all-dependencies syntax", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: model.AllDependencies}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+		Convey("Is 'all'", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: "all"}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+	})
 }
 
 func TestValidateBVNames(t *testing.T) {
@@ -750,6 +770,30 @@ func TestValidateBVNames(t *testing.T) {
 			}
 			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVNames(project)), ShouldEqual, 3)
+		})
+		Convey("An error should be returned when a buildvariant name", func() {
+			Convey("Contains commas", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{
+						{Name: "variant,", DisplayName: "display_name"},
+					},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
+			Convey("Is the same as the all-dependencies syntax", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{
+						{Name: model.AllVariants, DisplayName: "display_name"},
+					},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
+			Convey("Is 'all'", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
 		})
 	})
 }
