@@ -555,6 +555,30 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 						task.Name, unauthorizedTaskCharacters),
 				})
 		}
+		// Warn against commas because the CLI allows users to specify
+		// tasks separated by commas in their patches.
+		if strings.Contains(task.Name, ",") {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("task name %s should not contains commas", task.Name),
+			})
+		}
+		// Warn against using "*" since it is ambiguous with the
+		// all-dependencies specification (also "*").
+		if task.Name == model.AllDependencies {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "task should not be named '*' because it is ambiguous with the all-dependencies '*' specification",
+			})
+		}
+		// Warn against using "all" since it is ambiguous with the special "all"
+		// task specifier when creating patches.
+		if task.Name == "all" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "task should not be named 'all' because it is ambiguous in task specifications for patches",
+			})
+		}
 	}
 	return errs
 }
@@ -593,6 +617,31 @@ func validateBVNames(project *model.Project) ValidationErrors {
 					Message: fmt.Sprintf("buildvariant name %s contains unauthorized characters (%s)",
 						buildVariant.Name, unauthorizedCharacters),
 				})
+		}
+
+		// Warn against commas because the CLI allows users to specify
+		// variants separated by commas in their patches.
+		if strings.Contains(buildVariant.Name, ",") {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("buildvariant name %s should not contains commas", buildVariant.Name),
+			})
+		}
+		// Warn against using "*" since it is ambiguous with the
+		// all-dependencies specification (also "*").
+		if buildVariant.Name == model.AllVariants {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "buildvariant should not be named '*' because it is ambiguous with the all-variants '*' specification",
+			})
+		}
+		// Warn against using "all" since it is ambiguous with the special "all"
+		// task specifier when creating patches.
+		if buildVariant.Name == "all" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "buildvariant should not be named 'all' because it is ambiguous in buildvariant specifications for patches",
+			})
 		}
 	}
 	// don't bother checking for the warnings if we already found errors
