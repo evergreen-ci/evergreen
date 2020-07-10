@@ -2,8 +2,6 @@ package scheduler
 
 import (
 	"fmt"
-	"reflect"
-	"runtime"
 	"sort"
 	"time"
 
@@ -82,12 +80,6 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 	// individually and merge
 	taskQueues := comparator.splitTasksByRequester(tasks)
 	prioritizedTaskLists := make([][]task.Task, 0, 3)
-	grip.Debug(message.Fields{
-		"message":   "iterating over task list",
-		"distro":    distroId,
-		"runner":    RunnerName,
-		"operation": "prioritize tasks",
-	})
 
 	var (
 		startAt      time.Time
@@ -148,37 +140,11 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
 func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error {
-	startAt := time.Now()
-	for i, setupFunc := range self.setupFuncs {
-		startAtFunc := time.Now()
+	for _, setupFunc := range self.setupFuncs {
 		if err := setupFunc(self); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "error running sorting setup",
-				"distro":         distroId,
-				"instance":       self.runtimeID,
-				"runner":         RunnerName,
-				"operation":      "prioritize tasks",
-				"setup_func_idx": i,
-			}))
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
-		grip.Info(message.Fields{
-			"distro":        distroId,
-			"duration_secs": time.Since(startAtFunc).Seconds(),
-			"func":          runtime.FuncForPC(reflect.ValueOf(setupFunc).Pointer()).Name(),
-			"instance":      self.runtimeID,
-			"message":       "successfully ran setup func",
-			"operation":     "setupFunc",
-		})
 	}
-	grip.Debug(message.Fields{
-		"message":       "successfully ran sorting setup",
-		"distro":        distroId,
-		"runner":        RunnerName,
-		"instance":      self.runtimeID,
-		"duration_secs": time.Since(startAt).Seconds(),
-		"operation":     "prioritize tasks",
-	})
 	return nil
 }
 

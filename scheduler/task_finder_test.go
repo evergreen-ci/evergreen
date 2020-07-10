@@ -14,8 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -251,41 +249,17 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 		s.NoError(task.Insert())
 	}
 
-	grip.Info("start new")
-	s2start := time.Now()
 	s.newRunnableTasks, err = RunnableTasksPipeline(s.distro)
-	s2dur := time.Since(s2start)
 	s.NoError(err)
-	grip.Info("end db")
 
-	grip.Info("start legacy")
-	s1start := time.Now()
 	s.oldRunnableTasks, err = LegacyFindRunnableTasks(s.distro)
-	s1dur := time.Since(s1start)
 	s.NoError(err)
-	grip.Info("end legacy")
 
-	grip.Info("start alternate")
-	s3start := time.Now()
 	s.altRunnableTasks, err = AlternateTaskFinder(s.distro)
-	s3dur := time.Since(s3start)
 	s.NoError(err)
-	grip.Info("end alt")
 
-	grip.Info("start parallel")
-	s4start := time.Now()
 	s.pllRunnableTasks, err = ParallelTaskFinder(s.distro)
-	s4dur := time.Since(s4start)
 	s.NoError(err)
-	grip.Info("end parallel")
-
-	grip.Notice(message.Fields{
-		"alternative": s3dur.String(),
-		"legacy":      s1dur.String(),
-		"length":      len(s.tasks),
-		"parallel":    s4dur.String(),
-		"pipeline":    s2dur.String(),
-	})
 }
 
 func (s *TaskFinderComparisonSuite) TearDownTest() {
