@@ -259,7 +259,11 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 
 	displayName := t.task.DisplayName
 	status := t.task.Status
-	if t.task.DisplayTask != nil {
+	parentDisplayTask, err := t.task.GetDisplayTask()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting display task")
+	}
+	if parentDisplayTask != nil {
 		displayName = t.task.DisplayTask.DisplayName
 		status = t.task.DisplayTask.Status
 	}
