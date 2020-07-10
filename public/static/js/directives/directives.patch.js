@@ -46,6 +46,10 @@ directives.patch.directive('patchCommitPanel', function() {
       scope.timezone = attrs.timezone;
       scope.base = attrs.base;
       scope.baselink = attrs.baselink;
+
+      scope.showCommitTable = function(patch) {
+        return patch.patches.every((modulePatch) => modulePatch.is_mbox == true)
+      }
     }
   };
 });
