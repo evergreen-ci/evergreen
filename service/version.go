@@ -213,7 +213,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
+	if len(uis.Settings.Ui.UIv2Url) > 0 && projCtx.Version.Requester == evergreen.PatchVersionRequester {
 		newUILink = fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
