@@ -58,6 +58,10 @@ func TestVerifyTaskDependencies(t *testing.T) {
 						},
 					},
 				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1"},
+					{Name: "v2"},
+				},
 			}
 			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
@@ -74,6 +78,24 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					{
 						Name:      "testOne",
 						DependsOn: []model.TaskUnitDependency{{Name: "bad"}},
+					},
+				},
+			}
+			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
+			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+		})
+		Convey("if any dependencies have an invalid variant field, an error should be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+					},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskUnitDependency{{
+							Name:    "compile",
+							Variant: "nonexistent",
+						}},
 					},
 				},
 			}

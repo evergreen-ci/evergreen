@@ -986,11 +986,6 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 // and that the fields have valid values
 func verifyTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	// create a set of all the task names
-	taskNames := map[string]bool{}
-	for _, task := range project.Tasks {
-		taskNames[task.Name] = true
-	}
 
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
@@ -1021,15 +1016,24 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 			}
 
 			// check that name of the dependency task is valid
-			if dep.Name != model.AllDependencies && !taskNames[dep.Name] {
+			if dep.Name != model.AllDependencies && project.FindProjectTask(dep.Name) == nil {
 				errs = append(errs,
 					ValidationError{
+						Level: Warning,
 						Message: fmt.Sprintf("project '%s' contains a "+
 							"non-existent task name '%s' in dependencies for "+
 							"task '%s'", project.Identifier, dep.Name,
 							task.Name),
 					},
 				)
+			}
+			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("project '%s' contains a dependency '%s' on nonexistent buildvariant '%s'",
+						project.Identifier, dep.Name, dep.Variant,
+					),
+				})
 			}
 		}
 	}
