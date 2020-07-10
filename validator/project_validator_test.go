@@ -13,7 +13,6 @@ import (
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -793,7 +792,6 @@ func TestValidateBVNames(t *testing.T) {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
-				pp.Println(validateBVNames(project))
 				So(len(validateBVNames(project)), ShouldEqual, 1)
 			})
 		})
