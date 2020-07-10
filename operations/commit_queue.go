@@ -202,7 +202,10 @@ func enqueuePatch() cli.Command {
 	return cli.Command{
 		Name:  "enqueue-patch",
 		Usage: "enqueue an existing patch on the commit queue",
-		Flags: addPatchIDFlag(),
+		Flags: addPatchIDFlag(cli.BoolFlag{
+			Name:  forceFlagName,
+			Usage: "force item to front of queue",
+		}),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			setPlainLogger,
@@ -210,6 +213,7 @@ func enqueuePatch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)
+			force := c.Bool(forceFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -247,11 +251,11 @@ func enqueuePatch() cli.Command {
 			grip.Info(patchDisp)
 
 			// enqueue the patch
-			position, err := client.EnqueueItem(ctx, restModel.FromStringPtr(mergePatch.Id), false)
+			position, err := client.EnqueueItem(ctx, restModel.FromStringPtr(mergePatch.Id), force)
 			if err != nil {
 				return errors.Wrap(err, "problem enqueueing new patch")
 			}
-			grip.Infof("Queue position is %d", position)
+			grip.Infof("Queue position is %d.", position)
 
 			return nil
 		},
@@ -372,7 +376,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	if err != nil {
 		return err
 	}
-	grip.Infof("Queue position is %d", position)
+	grip.Infof("Queue position is %d.", position)
 
 	return nil
 }

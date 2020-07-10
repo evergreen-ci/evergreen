@@ -355,7 +355,10 @@ func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost str
 	if err != nil {
 		return "", errors.Wrap(err, "can't convert patch to service")
 	}
-	servicePatch := servicePatchIface.(patch.Patch)
+	servicePatch, ok := servicePatchIface.(patch.Patch)
+	if !ok {
+		return "", errors.New("service patch is not a Patch")
+	}
 
 	return getPatchDisplay(&servicePatch, summarize, uiHost)
 }
