@@ -108,7 +108,8 @@ func (c *S3Credentials) Validate() error {
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
-	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`
+	APIVersion    string `bson:"api_version" json:"api_version" yaml:"api_version"`
+	DefaultDistro string `bson:"default_distro" json:"default_distro" yaml:"default_distro"`
 }
 
 // OpenStackConfig stores auth info for Linaro using Identity V3. All fields required.

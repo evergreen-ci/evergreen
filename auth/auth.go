@@ -161,7 +161,7 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 	if err != nil {
 		grip.Error(err)
 	}
-	if settings.Ui.ExpireLoginCookieDomain != "" {
+	if settings != nil && settings.Ui.ExpireLoginCookieDomain != "" {
 		http.SetCookie(w, &http.Cookie{
 			Name:     evergreen.AuthTokenCookie,
 			Value:    "",

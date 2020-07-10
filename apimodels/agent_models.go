@@ -164,13 +164,18 @@ func (ch *CreateHost) ValidateDocker() error {
 	catcher.Add(ch.setNumHosts())
 	catcher.Add(ch.validateAgentOptions())
 
-	if ch.Distro == "" {
-		catcher.New("distro must be set")
-	}
 	if ch.Image == "" {
 		catcher.New("docker image must be set")
 	}
+	if ch.Distro == "" {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			catcher.New("error getting config to set default distro")
+		} else {
+			ch.Distro = settings.Providers.Docker.DefaultDistro
+		}
 
+	}
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
 	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
