@@ -38,7 +38,7 @@
           </span>
         </div>
 
-        <table class="table table-new" ng-init="patchNum=$index" ng-show="patchinfo.Patch.Alias !== '__commit_queue'">
+        <table class="table table-new" ng-init="patchNum=$index" ng-show="!showCommitTable(patchinfo.Patch)">
           <thead>
             <tr>
               <th class="col-lg-2">Additions</th>
@@ -56,7 +56,7 @@
             </tr>
           </tbody>
         </table>
-        <div class="commit-iterator" ng-repeat="(commit,summaries) in patch.formatted" ng-show="patchinfo.Patch.Alias === '__commit_queue' || showCommitTable(patchinfo.Patch)">
+        <div class="commit-iterator" ng-repeat="(commit,summaries) in patch.formatted" ng-show="showCommitTable(patchinfo.Patch)">
               <label class="one-liner patch-message">[[commit]]</label>
               <table class="table table-new" ng-init="patchNum=$index">
                 <thead>

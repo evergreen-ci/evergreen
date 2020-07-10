@@ -48,7 +48,7 @@ directives.patch.directive('patchCommitPanel', function() {
       scope.baselink = attrs.baselink;
 
       scope.showCommitTable = function(patch) {
-        return patch.patches.every((modulePatch) => modulePatch.is_mbox == true)
+        return patch.Alias === '__commit_queue' || patch.patches.every((modulePatch) => modulePatch.IsMbox == true)
       }
     }
   };
