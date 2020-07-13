@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
@@ -168,8 +167,8 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string, u *user.DBUser) (*restModel.APIPatch, error) {
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatchID, u)
+func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
+	newPatch, err := model.MakeMergePatchFromExisting(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}
@@ -265,6 +264,6 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context,
 	return true, nil
 }
 
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string, u *user.DBUser) (*restModel.APIPatch, error) {
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
 	return nil, nil
 }

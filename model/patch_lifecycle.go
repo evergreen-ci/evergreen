@@ -521,7 +521,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	return "Commit Queue Merge: " + strings.Join(description, " || ")
 }
 
-func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.Patch, error) {
+func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(existingPatchID)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
@@ -561,7 +561,7 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 	patchDoc := &patch.Patch{
 		Id:            mgobson.NewObjectId(),
 		Description:   MakeCommitQueueDescription(existingPatch.Patches, projectRef, project),
-		Author:        u.Username(),
+		Author:        existingPatch.Author,
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,
 		Status:        evergreen.PatchCreated,
@@ -577,6 +577,10 @@ func MakeMergePatchFromExisting(existingPatchID string, u *user.DBUser) (*patch.
 		return nil, errors.New("commit queue has no build variants or tasks configured")
 	}
 
+	u, err := FindUserByID(patchDoc.Author)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't find user for patch author '%s'", patchDoc.Author)
+	}
 	// get the next patch number for the user
 	patchDoc.PatchNumber, err = u.IncPatchNumber()
 	if err != nil {

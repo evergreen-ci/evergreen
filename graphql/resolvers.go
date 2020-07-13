@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 
@@ -1100,7 +1101,15 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
 	user := route.MustHaveUser(ctx)
-	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID, user)
+	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
+	}
+	if !hasPermission {
+		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
+	}
+
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -1111,6 +1120,41 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 	}
 
 	return newPatch, nil
+}
+
+func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID string) (bool, error) {
+	// patch owner
+	existingPatch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return false, err
+	}
+	if restModel.FromStringPtr(existingPatch.Author) == u.Username() {
+		return true, nil
+	}
+
+	// superuser
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if u != nil && u.HasPermission(permissions) {
+		return true, nil
+	}
+
+	// project admin
+	projectRef, err := r.sc.FindProjectById(patchID)
+	if err != nil {
+		return false, err
+	}
+	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	return isProjectAdmin, nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {

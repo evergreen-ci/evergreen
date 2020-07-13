@@ -442,10 +442,7 @@ func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	// If the version has not been finalized, returns NotFound
-	usr := MustHaveUser(ctx)
-
-	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId, usr)
+	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
 	}
