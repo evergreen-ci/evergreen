@@ -11,10 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
-	"strings"
 
-	"github.com/urfave/cli"
+	"github.com/codegangsta/cli"
 
 	"gopkg.in/yaml.v2"
 )
@@ -80,13 +78,7 @@ func loadDataFrom(filePath string) ([]byte, error) {
 			return nil, fmt.Errorf("Cannot read from file: '%s' because it does not exist.", filePath)
 		}
 		return ioutil.ReadFile(filePath)
-	} else if runtime.GOOS == "windows" && strings.Contains(u.String(), "\\") {
-		// on Windows systems u.Path is always empty, so we need to check the string directly.
-		if _, notFoundFileErr := os.Stat(filePath); notFoundFileErr != nil {
-			return nil, fmt.Errorf("Cannot read from file: '%s' because it does not exist.", filePath)
-		}
-		return ioutil.ReadFile(filePath)
+	} else {
+		return nil, fmt.Errorf("unable to determine how to load from path %s", filePath)
 	}
-
-	return nil, fmt.Errorf("unable to determine how to load from path %s", filePath)
 }

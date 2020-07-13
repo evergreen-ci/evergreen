@@ -34,7 +34,6 @@ func buildApp() *cli.App {
 	app.Name = "evergreen"
 	app.Usage = "MongoDB Continuous Integration Platform"
 	app.Version = evergreen.ClientVersion
-	app.EnableBashCompletion = true
 
 	// Register sub-commands here.
 	app.Commands = []cli.Command{

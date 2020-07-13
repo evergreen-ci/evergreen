@@ -3,24 +3,24 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
+	"time"
 )
 
 const defaultPlaceholder = "value"
 
 // BashCompletionFlag enables bash-completion for all commands and subcommands
-var BashCompletionFlag Flag = BoolFlag{
+var BashCompletionFlag = BoolFlag{
 	Name:   "generate-bash-completion",
 	Hidden: true,
 }
 
 // VersionFlag prints the version for the application
-var VersionFlag Flag = BoolFlag{
+var VersionFlag = BoolFlag{
 	Name:  "version, v",
 	Usage: "print the version",
 }
@@ -28,7 +28,7 @@ var VersionFlag Flag = BoolFlag{
 // HelpFlag prints the help for all commands and subcommands
 // Set to the zero value (BoolFlag{}) to disable flag -- keeps subcommand
 // unless HideHelp is set to true)
-var HelpFlag Flag = BoolFlag{
+var HelpFlag = BoolFlag{
 	Name:  "help, h",
 	Usage: "show help",
 }
@@ -36,33 +36,6 @@ var HelpFlag Flag = BoolFlag{
 // FlagStringer converts a flag definition to a string. This is used by help
 // to display a flag.
 var FlagStringer FlagStringFunc = stringifyFlag
-
-// FlagNamePrefixer converts a full flag name and its placeholder into the help
-// message flag prefix. This is used by the default FlagStringer.
-var FlagNamePrefixer FlagNamePrefixFunc = prefixedNames
-
-// FlagEnvHinter annotates flag help message with the environment variable
-// details. This is used by the default FlagStringer.
-var FlagEnvHinter FlagEnvHintFunc = withEnvHint
-
-// FlagFileHinter annotates flag help message with the environment variable
-// details. This is used by the default FlagStringer.
-var FlagFileHinter FlagFileHintFunc = withFileHint
-
-// FlagsByName is a slice of Flag.
-type FlagsByName []Flag
-
-func (f FlagsByName) Len() int {
-	return len(f)
-}
-
-func (f FlagsByName) Less(i, j int) bool {
-	return lexicographicLess(f[i].GetName(), f[j].GetName())
-}
-
-func (f FlagsByName) Swap(i, j int) {
-	f[i], f[j] = f[j], f[i]
-}
 
 // Flag is a common interface related to parsing flags in cli.
 // For more advanced flag parsing techniques, it is recommended that
@@ -74,53 +47,13 @@ type Flag interface {
 	GetName() string
 }
 
-// RequiredFlag is an interface that allows us to mark flags as required
-// it allows flags required flags to be backwards compatible with the Flag interface
-type RequiredFlag interface {
-	Flag
-
-	IsRequired() bool
-}
-
-// DocGenerationFlag is an interface that allows documentation generation for the flag
-type DocGenerationFlag interface {
-	Flag
-
-	// TakesValue returns true if the flag takes a value, otherwise false
-	TakesValue() bool
-
-	// GetUsage returns the usage string for the flag
-	GetUsage() string
-
-	// GetValue returns the flags value as string representation and an empty
-	// string if the flag takes no value at all.
-	GetValue() string
-}
-
-// errorableFlag is an interface that allows us to return errors during apply
-// it allows flags defined in this library to return errors in a fashion backwards compatible
-// TODO remove in v2 and modify the existing Flag interface to return errors
-type errorableFlag interface {
-	Flag
-
-	ApplyWithError(*flag.FlagSet) error
-}
-
-func flagSet(name string, flags []Flag) (*flag.FlagSet, error) {
+func flagSet(name string, flags []Flag) *flag.FlagSet {
 	set := flag.NewFlagSet(name, flag.ContinueOnError)
 
 	for _, f := range flags {
-		//TODO remove in v2 when errorableFlag is removed
-		if ef, ok := f.(errorableFlag); ok {
-			if err := ef.ApplyWithError(set); err != nil {
-				return nil, err
-			}
-		} else {
-			f.Apply(set)
-		}
+		f.Apply(set)
 	}
-	set.SetOutput(ioutil.Discard)
-	return set, nil
+	return set
 }
 
 func eachName(longName string, fn func(string)) {
@@ -131,12 +64,456 @@ func eachName(longName string, fn func(string)) {
 	}
 }
 
+// Generic is a generic parseable type identified by a specific flag
+type Generic interface {
+	Set(value string) error
+	String() string
+}
+
+// GenericFlag is the flag type for types implementing Generic
+type GenericFlag struct {
+	Name   string
+	Value  Generic
+	Usage  string
+	EnvVar string
+	Hidden bool
+}
+
+// String returns the string representation of the generic flag to display the
+// help text to the user (uses the String() method of the generic flag to show
+// the value)
+func (f GenericFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply takes the flagset and calls Set on the generic flag with the value
+// provided by the user for parsing by the flag
+func (f GenericFlag) Apply(set *flag.FlagSet) {
+	val := f.Value
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				val.Set(envVal)
+				break
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		set.Var(f.Value, name, f.Usage)
+	})
+}
+
+// GetName returns the name of a flag.
+func (f GenericFlag) GetName() string {
+	return f.Name
+}
+
+// StringSlice is an opaque type for []string to satisfy flag.Value
+type StringSlice []string
+
+// Set appends the string value to the list of values
+func (f *StringSlice) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
+// String returns a readable representation of this value (for usage defaults)
+func (f *StringSlice) String() string {
+	return fmt.Sprintf("%s", *f)
+}
+
+// Value returns the slice of strings set by this flag
+func (f *StringSlice) Value() []string {
+	return *f
+}
+
+// StringSliceFlag is a string flag that can be specified multiple times on the
+// command-line
+type StringSliceFlag struct {
+	Name   string
+	Value  *StringSlice
+	Usage  string
+	EnvVar string
+	Hidden bool
+}
+
+// String returns the usage
+func (f StringSliceFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f StringSliceFlag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				newVal := &StringSlice{}
+				for _, s := range strings.Split(envVal, ",") {
+					s = strings.TrimSpace(s)
+					newVal.Set(s)
+				}
+				f.Value = newVal
+				break
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Value == nil {
+			f.Value = &StringSlice{}
+		}
+		set.Var(f.Value, name, f.Usage)
+	})
+}
+
+// GetName returns the name of a flag.
+func (f StringSliceFlag) GetName() string {
+	return f.Name
+}
+
+// IntSlice is an opaque type for []int to satisfy flag.Value
+type IntSlice []int
+
+// Set parses the value into an integer and appends it to the list of values
+func (f *IntSlice) Set(value string) error {
+	tmp, err := strconv.Atoi(value)
+	if err != nil {
+		return err
+	}
+	*f = append(*f, tmp)
+	return nil
+}
+
+// String returns a readable representation of this value (for usage defaults)
+func (f *IntSlice) String() string {
+	return fmt.Sprintf("%d", *f)
+}
+
+// Value returns the slice of ints set by this flag
+func (f *IntSlice) Value() []int {
+	return *f
+}
+
+// IntSliceFlag is an int flag that can be specified multiple times on the
+// command-line
+type IntSliceFlag struct {
+	Name   string
+	Value  *IntSlice
+	Usage  string
+	EnvVar string
+	Hidden bool
+}
+
+// String returns the usage
+func (f IntSliceFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f IntSliceFlag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				newVal := &IntSlice{}
+				for _, s := range strings.Split(envVal, ",") {
+					s = strings.TrimSpace(s)
+					err := newVal.Set(s)
+					if err != nil {
+						fmt.Fprintf(ErrWriter, err.Error())
+					}
+				}
+				f.Value = newVal
+				break
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Value == nil {
+			f.Value = &IntSlice{}
+		}
+		set.Var(f.Value, name, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f IntSliceFlag) GetName() string {
+	return f.Name
+}
+
+// BoolFlag is a switch that defaults to false
+type BoolFlag struct {
+	Name        string
+	Usage       string
+	EnvVar      string
+	Destination *bool
+	Hidden      bool
+}
+
+// String returns a readable representation of this value (for usage defaults)
+func (f BoolFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f BoolFlag) Apply(set *flag.FlagSet) {
+	val := false
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				envValBool, err := strconv.ParseBool(envVal)
+				if err == nil {
+					val = envValBool
+				}
+				break
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.BoolVar(f.Destination, name, val, f.Usage)
+			return
+		}
+		set.Bool(name, val, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f BoolFlag) GetName() string {
+	return f.Name
+}
+
+// BoolTFlag this represents a boolean flag that is true by default, but can
+// still be set to false by --some-flag=false
+type BoolTFlag struct {
+	Name        string
+	Usage       string
+	EnvVar      string
+	Destination *bool
+	Hidden      bool
+}
+
+// String returns a readable representation of this value (for usage defaults)
+func (f BoolTFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f BoolTFlag) Apply(set *flag.FlagSet) {
+	val := true
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				envValBool, err := strconv.ParseBool(envVal)
+				if err == nil {
+					val = envValBool
+					break
+				}
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.BoolVar(f.Destination, name, val, f.Usage)
+			return
+		}
+		set.Bool(name, val, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f BoolTFlag) GetName() string {
+	return f.Name
+}
+
+// StringFlag represents a flag that takes as string value
+type StringFlag struct {
+	Name        string
+	Value       string
+	Usage       string
+	EnvVar      string
+	Destination *string
+	Hidden      bool
+}
+
+// String returns the usage
+func (f StringFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f StringFlag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				f.Value = envVal
+				break
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.StringVar(f.Destination, name, f.Value, f.Usage)
+			return
+		}
+		set.String(name, f.Value, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f StringFlag) GetName() string {
+	return f.Name
+}
+
+// IntFlag is a flag that takes an integer
+// Errors if the value provided cannot be parsed
+type IntFlag struct {
+	Name        string
+	Value       int
+	Usage       string
+	EnvVar      string
+	Destination *int
+	Hidden      bool
+}
+
+// String returns the usage
+func (f IntFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f IntFlag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				envValInt, err := strconv.ParseInt(envVal, 0, 64)
+				if err == nil {
+					f.Value = int(envValInt)
+					break
+				}
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.IntVar(f.Destination, name, f.Value, f.Usage)
+			return
+		}
+		set.Int(name, f.Value, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f IntFlag) GetName() string {
+	return f.Name
+}
+
+// DurationFlag is a flag that takes a duration specified in Go's duration
+// format: https://golang.org/pkg/time/#ParseDuration
+type DurationFlag struct {
+	Name        string
+	Value       time.Duration
+	Usage       string
+	EnvVar      string
+	Destination *time.Duration
+	Hidden      bool
+}
+
+// String returns a readable representation of this value (for usage defaults)
+func (f DurationFlag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f DurationFlag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				envValDuration, err := time.ParseDuration(envVal)
+				if err == nil {
+					f.Value = envValDuration
+					break
+				}
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.DurationVar(f.Destination, name, f.Value, f.Usage)
+			return
+		}
+		set.Duration(name, f.Value, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f DurationFlag) GetName() string {
+	return f.Name
+}
+
+// Float64Flag is a flag that takes an float value
+// Errors if the value provided cannot be parsed
+type Float64Flag struct {
+	Name        string
+	Value       float64
+	Usage       string
+	EnvVar      string
+	Destination *float64
+	Hidden      bool
+}
+
+// String returns the usage
+func (f Float64Flag) String() string {
+	return FlagStringer(f)
+}
+
+// Apply populates the flag given the flag set and environment
+func (f Float64Flag) Apply(set *flag.FlagSet) {
+	if f.EnvVar != "" {
+		for _, envVar := range strings.Split(f.EnvVar, ",") {
+			envVar = strings.TrimSpace(envVar)
+			if envVal := os.Getenv(envVar); envVal != "" {
+				envValFloat, err := strconv.ParseFloat(envVal, 10)
+				if err == nil {
+					f.Value = float64(envValFloat)
+				}
+			}
+		}
+	}
+
+	eachName(f.Name, func(name string) {
+		if f.Destination != nil {
+			set.Float64Var(f.Destination, name, f.Value, f.Usage)
+			return
+		}
+		set.Float64(name, f.Value, f.Usage)
+	})
+}
+
+// GetName returns the name of the flag.
+func (f Float64Flag) GetName() string {
+	return f.Name
+}
+
 func visibleFlags(fl []Flag) []Flag {
-	var visible []Flag
-	for _, f := range fl {
-		field := flagValue(f).FieldByName("Hidden")
-		if !field.IsValid() || !field.Bool() {
-			visible = append(visible, f)
+	visible := []Flag{}
+	for _, flag := range fl {
+		if !reflect.ValueOf(flag).FieldByName("Hidden").Bool() {
+			visible = append(visible, flag)
 		}
 	}
 	return visible
@@ -196,63 +573,30 @@ func withEnvHint(envVar, str string) string {
 			suffix = "%"
 			sep = "%, %"
 		}
-		envText = " [" + prefix + strings.Join(strings.Split(envVar, ","), sep) + suffix + "]"
+		envText = fmt.Sprintf(" [%s%s%s]", prefix, strings.Join(strings.Split(envVar, ","), sep), suffix)
 	}
 	return str + envText
 }
 
-func withFileHint(filePath, str string) string {
-	fileText := ""
-	if filePath != "" {
-		fileText = fmt.Sprintf(" [%s]", filePath)
-	}
-	return str + fileText
-}
-
-func flagValue(f Flag) reflect.Value {
-	fv := reflect.ValueOf(f)
-	for fv.Kind() == reflect.Ptr {
-		fv = reflect.Indirect(fv)
-	}
-	return fv
-}
-
 func stringifyFlag(f Flag) string {
-	fv := flagValue(f)
+	fv := reflect.ValueOf(f)
 
 	switch f.(type) {
 	case IntSliceFlag:
-		return FlagFileHinter(
-			fv.FieldByName("FilePath").String(),
-			FlagEnvHinter(
-				fv.FieldByName("EnvVar").String(),
-				stringifyIntSliceFlag(f.(IntSliceFlag)),
-			),
-		)
-	case Int64SliceFlag:
-		return FlagFileHinter(
-			fv.FieldByName("FilePath").String(),
-			FlagEnvHinter(
-				fv.FieldByName("EnvVar").String(),
-				stringifyInt64SliceFlag(f.(Int64SliceFlag)),
-			),
-		)
+		return withEnvHint(fv.FieldByName("EnvVar").String(),
+			stringifyIntSliceFlag(f.(IntSliceFlag)))
 	case StringSliceFlag:
-		return FlagFileHinter(
-			fv.FieldByName("FilePath").String(),
-			FlagEnvHinter(
-				fv.FieldByName("EnvVar").String(),
-				stringifyStringSliceFlag(f.(StringSliceFlag)),
-			),
-		)
+		return withEnvHint(fv.FieldByName("EnvVar").String(),
+			stringifyStringSliceFlag(f.(StringSliceFlag)))
 	}
 
 	placeholder, usage := unquoteUsage(fv.FieldByName("Usage").String())
 
 	needsPlaceholder := false
 	defaultValueString := ""
+	val := fv.FieldByName("Value")
 
-	if val := fv.FieldByName("Value"); val.IsValid() {
+	if val.IsValid() {
 		needsPlaceholder = true
 		defaultValueString = fmt.Sprintf(" (default: %v)", val.Interface())
 
@@ -269,33 +613,17 @@ func stringifyFlag(f Flag) string {
 		placeholder = defaultPlaceholder
 	}
 
-	usageWithDefault := strings.TrimSpace(usage + defaultValueString)
+	usageWithDefault := strings.TrimSpace(fmt.Sprintf("%s%s", usage, defaultValueString))
 
-	return FlagFileHinter(
-		fv.FieldByName("FilePath").String(),
-		FlagEnvHinter(
-			fv.FieldByName("EnvVar").String(),
-			FlagNamePrefixer(fv.FieldByName("Name").String(), placeholder)+"\t"+usageWithDefault,
-		),
-	)
+	return withEnvHint(fv.FieldByName("EnvVar").String(),
+		fmt.Sprintf("%s\t%s", prefixedNames(fv.FieldByName("Name").String(), placeholder), usageWithDefault))
 }
 
 func stringifyIntSliceFlag(f IntSliceFlag) string {
-	var defaultVals []string
+	defaultVals := []string{}
 	if f.Value != nil && len(f.Value.Value()) > 0 {
 		for _, i := range f.Value.Value() {
-			defaultVals = append(defaultVals, strconv.Itoa(i))
-		}
-	}
-
-	return stringifySliceFlag(f.Usage, f.Name, defaultVals)
-}
-
-func stringifyInt64SliceFlag(f Int64SliceFlag) string {
-	var defaultVals []string
-	if f.Value != nil && len(f.Value.Value()) > 0 {
-		for _, i := range f.Value.Value() {
-			defaultVals = append(defaultVals, strconv.FormatInt(i, 10))
+			defaultVals = append(defaultVals, fmt.Sprintf("%d", i))
 		}
 	}
 
@@ -303,11 +631,11 @@ func stringifyInt64SliceFlag(f Int64SliceFlag) string {
 }
 
 func stringifyStringSliceFlag(f StringSliceFlag) string {
-	var defaultVals []string
+	defaultVals := []string{}
 	if f.Value != nil && len(f.Value.Value()) > 0 {
 		for _, s := range f.Value.Value() {
 			if len(s) > 0 {
-				defaultVals = append(defaultVals, strconv.Quote(s))
+				defaultVals = append(defaultVals, fmt.Sprintf("%q", s))
 			}
 		}
 	}
@@ -326,21 +654,6 @@ func stringifySliceFlag(usage, name string, defaultVals []string) string {
 		defaultVal = fmt.Sprintf(" (default: %s)", strings.Join(defaultVals, ", "))
 	}
 
-	usageWithDefault := strings.TrimSpace(usage + defaultVal)
-	return FlagNamePrefixer(name, placeholder) + "\t" + usageWithDefault
-}
-
-func flagFromFileEnv(filePath, envName string) (val string, ok bool) {
-	for _, envVar := range strings.Split(envName, ",") {
-		envVar = strings.TrimSpace(envVar)
-		if envVal, ok := syscall.Getenv(envVar); ok {
-			return envVal, true
-		}
-	}
-	for _, fileVar := range strings.Split(filePath, ",") {
-		if data, err := ioutil.ReadFile(fileVar); err == nil {
-			return string(data), true
-		}
-	}
-	return "", false
+	usageWithDefault := strings.TrimSpace(fmt.Sprintf("%s%s", usage, defaultVal))
+	return fmt.Sprintf("%s\t%s", prefixedNames(name, placeholder), usageWithDefault)
 }
