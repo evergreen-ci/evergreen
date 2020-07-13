@@ -1032,7 +1032,6 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 					Level: Warning,
 					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
 						project.Identifier, dep.Variant, task.Name),
-					),
 				})
 			}
 		}
