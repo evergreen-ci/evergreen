@@ -204,6 +204,19 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(h.RunningTask, ShouldEqual, "task1")
 
 		})
+		Convey("tasks with a disabled project should be removed from the queue", func() {
+			pref.Enabled = false
+			So(pref.Upsert(), ShouldBeNil)
+
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldBeNil)
+			So(shouldTeardown, ShouldBeFalse)
+
+			currentTq, err := model.LoadTaskQueue(distroID)
+			So(err, ShouldBeNil)
+			So(currentTq.Length(), ShouldEqual, 0)
+		})
 		Convey("a completed task group should return a nil task", func() {
 			currentTq, err := model.LoadTaskQueue(distroID)
 			So(err, ShouldBeNil)

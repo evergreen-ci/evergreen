@@ -1969,7 +1969,8 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 
 	filterDisabledProjects := bson.M{
 		"$match": bson.M{
-			"project_ref.0." + "enabled": true,
+			"project_ref.0." + "enabled":              true,
+			"project_ref.0." + "dispatching_disabled": bson.M{"$ne": true},
 		},
 	}
 
