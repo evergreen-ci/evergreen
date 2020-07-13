@@ -238,6 +238,19 @@ func enqueuePatch() cli.Command {
 				return errors.Errorf("patch '%s' is not eligible to be enqueued", patchID)
 			}
 
+			// confirm multiple commits
+			multipleCommits := false
+			for _, p := range existingPatch.Patches {
+				if len(p.PatchSet.CommitMessages) > 1 {
+					multipleCommits = true
+				}
+			}
+			if multipleCommits {
+				if !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
+					return errors.New("enqueue aborted")
+				}
+			}
+
 			// create the new merge patch
 			mergePatch, err := client.CreatePatchForMerge(ctx, patchID)
 			if err != nil {
