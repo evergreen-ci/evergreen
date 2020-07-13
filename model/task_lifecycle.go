@@ -1099,6 +1099,20 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		}
 	}
 
+	// For a single-host task group, block and dequeue later tasks in that group.
+	if t.IsPartOfSingleHostTaskGroup() {
+		if err = BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
 		updates := StatusChanges{}
 		if t.DisplayOnly {
@@ -1107,6 +1121,9 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				execTask, err = task.FindOne(task.ById(etID))
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
+				}
+				if execTask == nil {
+					return errors.New("execution task not found")
 				}
 				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
