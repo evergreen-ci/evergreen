@@ -1106,6 +1106,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				"message": "problem blocking task group tasks",
 				"task_id": t.Id,
 			}))
+			return errors.Wrapf(err, "problem blocking task group tasks")
 		}
 		grip.Debug(message.Fields{
 			"message": "blocked task group tasks for task",
