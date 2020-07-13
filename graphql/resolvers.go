@@ -1095,6 +1095,9 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			idType = "project"
 			id = *s.Data
 			break
+		case "in-version":
+			id = *s.Data
+			break
 		}
 	}
 	if id == "" || idType == "" {
