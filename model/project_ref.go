@@ -717,6 +717,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefTaskSyncKey:              projectRef.TaskSync,
 				projectRefPatchingDisabledKey:      projectRef.PatchingDisabled,
 				projectRefRepotrackerDisabledKey:   projectRef.RepotrackerDisabled,
+				projectRefDispatchingDisabledKey:   projectRef.DispatchingDisabled,
 				projectRefNotifyOnFailureKey:       projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:              projectRef.Triggers,
 				projectRefPeriodicBuildsKey:        projectRef.PeriodicBuilds,
