@@ -12,8 +12,11 @@
 //     app.Usage = "say a greeting"
 //     app.Action = func(c *cli.Context) error {
 //       println("Greetings")
+//       return nil
 //     }
 //
 //     app.Run(os.Args)
 //   }
 package cli
+
+//go:generate go run flag-gen/main.go flag-gen/assets_vfsdata.go

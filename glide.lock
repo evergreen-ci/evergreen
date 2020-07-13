@@ -64,7 +64,10 @@ imports:
     version: release-branch.go1.4
 
   - name: github.com/urfave/cli
-    version: 01857ac33766ce0c93856370626f9799281c14f4
+    version: 053ba9dd02d2bfb768da2c1c50370c59d41dc04b
+  - name: github.com/cpuguy83/go-md2man
+    version: f79a8a8ca69da163eee19ab442bedad7a35bba5a
+
   - name: github.com/cheynewallace/tabby
     version: b7224f6123093cc04ce961170a360e1d22e214a5
 
