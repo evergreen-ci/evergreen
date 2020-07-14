@@ -183,6 +183,28 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	}
 }
 
+func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
+	ref := &model.ProjectRef{
+		Identifier: "exists",
+		Enabled:    false,
+	}
+	s.Require().NoError(ref.Upsert())
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 0)
+}
+
+func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned() {
+	ref := &model.ProjectRef{
+		Identifier:          "exists",
+		DispatchingDisabled: true,
+	}
+	s.Require().NoError(ref.Upsert())
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 0)
+}
+
 type TaskFinderComparisonSuite struct {
 	suite.Suite
 	tasksGenerator   func() []task.Task
