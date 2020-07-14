@@ -2,6 +2,7 @@ package model
 
 import (
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,11 @@ func TestCodegen(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(converters))
 
-			buildCmd := exec.Command("go", "build", converterFilepath)
+			gocmd := os.Getenv("GO_BIN_PATH")
+			if gocmd == "" {
+				gocmd = "go"
+			}
+			buildCmd := exec.Command(gocmd, "build", converterFilepath)
 			_, err = buildCmd.Output()
 			assert.NoError(t, err, "%s does not compile", converterFilepath)
 		})
