@@ -789,6 +789,13 @@ func FindOneId(id string) (*Task, error) {
 	return task, nil
 }
 
+func FindByIdExecution(id string, execution *int) (*Task, error) {
+	if execution == nil {
+		return FindOneId(id)
+	}
+	return FindOneIdAndExecution(id, *execution)
+}
+
 func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{
@@ -798,7 +805,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	err := db.FindOneQ(Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
-		return nil, nil
+		return FindOneOldNoMergeByIdAndExecution(id, execution)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding task by id and execution")

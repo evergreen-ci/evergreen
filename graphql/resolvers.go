@@ -344,15 +344,15 @@ func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, 
 	return &userPatches, nil
 }
 
-func (r *queryResolver) Task(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := task.FindOneId(taskID)
+func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
+	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if task == nil {
+	if dbTask == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *task)
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
 	return apiTask, err
 }
 
@@ -492,9 +492,9 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
-	task, err := task.FindOneId(taskID)
-	if task == nil || err != nil {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
+	dbTask, err := task.FindByIdExecution(taskID, execution)
+	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 
@@ -541,7 +541,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, task.Execution)
+	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, dbTask.Execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -564,11 +564,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 		testPointers = append(testPointers, &apiTest)
 	}
 
-	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, task.Execution)
+	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
 	}
-	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, task.Execution)
+	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, dbTask.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 	}
@@ -582,26 +582,17 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, sortCatego
 	return &taskTestResult, nil
 }
 
-func (r *queryResolver) TaskFiles(ctx context.Context, taskID string) (*TaskFiles, error) {
+func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
 		GroupedFiles: []*GroupedFiles{},
 	}
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindByIdExecution(taskID, execution)
 	if t == nil {
 		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	if err != nil {
 		return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if t.OldTaskId != "" {
-		t, err = task.FindOneId(t.OldTaskId)
-		if t == nil {
-			return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find old task with id %s", taskID))
-		}
-		if err != nil {
-			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-		}
 	}
 	groupedFilesList := []*GroupedFiles{}
 	fileCount := 0

@@ -7,7 +7,7 @@ type Query {
     userId: String
     includeCommitQueue: Boolean = false
   ): UserPatches!
-  task(taskId: String!): Task
+  task(taskId: String!, execution: Int): Task
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -23,6 +23,7 @@ type Query {
   ): PatchTasks!
   taskTests(
     taskId: String!
+    execution: Int
     sortCategory: TestSortCategory = TEST_NAME
     sortDirection: SortDirection = ASC
     page: Int = 0
@@ -30,7 +31,7 @@ type Query {
     testName: String = ""
     statuses: [String!]! = []
   ): TaskTestResult!
-  taskFiles(taskId: String!): TaskFiles!
+  taskFiles(taskId: String!, execution: Int): TaskFiles!
   user: User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
