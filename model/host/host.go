@@ -2462,7 +2462,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
+func GetRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{
@@ -2511,7 +2511,51 @@ func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int)
 	}
 
 	// APPLY FILTERS AND SORTERS TO PIPELINE
+	hasFilters := false
+
+	if len(hostId) > 0 {
+		hasFilters = true
+
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$match": bson.M{
+				IdKey: hostId,
+			},
+		})
+	}
+
+	if len(distro) > 0 {
+		hasFilters = true
+
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$match": bson.M{
+				DistroKey: distro,
+			},
+		})
+	}
+
+	if len(currentTask) > 0 {
+		hasFilters = true
+
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$match": bson.M{
+				RunningTaskKey: currentTask,
+			},
+		})
+	}
+
+	if len(currentTask) > 0 {
+		hasFilters = true
+
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$match": bson.M{
+				ProjectKey: owner,
+			},
+		})
+	}
+
 	if len(statuses) > 0 {
+		hasFilters = true
+
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
 				StatusKey: bson.M{"$in": statuses},
@@ -2519,6 +2563,7 @@ func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int)
 		})
 	}
 
+	// APPLY SORT
 	sorters := bson.D{}
 	if len(sortBy) > 0 {
 		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
@@ -2529,6 +2574,7 @@ func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int)
 		"$sort": sorters,
 	})
 
+	// APPLY PAGINATION
 	if limit > 0 {
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$skip": page * limit,
@@ -2551,7 +2597,6 @@ func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int)
 
 	// FILTERED HOSTS COUNT
 	var filteredHostsCount *int
-	hasFilters := len(statuses) > 0
 
 	if hasFilters == true {
 		countPipeline = []bson.M{}
