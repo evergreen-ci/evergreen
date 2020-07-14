@@ -25,7 +25,6 @@ func TestGolangGenerate(t *testing.T) {
 		scriptingCmd := task.Commands[1]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
 		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
-		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		env, ok := scriptingCmd.Params["env"].(map[string]interface{})
 		require.True(t, ok)
@@ -46,7 +45,6 @@ func TestGolangGenerate(t *testing.T) {
 		scriptingCmd := task.Commands[1]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
 		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
-		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		taskEnv, ok := scriptingCmd.Params["env"].(map[string]interface{})
 		require.True(t, ok)
@@ -60,7 +58,6 @@ func TestGolangGenerate(t *testing.T) {
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
 		gopath := g.Environment["GOPATH"]
 		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
-		assert.Equal(t, g.WorkingDirectory, scriptingCmd.Params["working_dir"])
 		projectPath := g.RelProjectPath(gopath)
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		env, ok := scriptingCmd.Params["env"].(map[string]interface{})
