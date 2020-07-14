@@ -166,7 +166,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
-		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
+		msg := fmt.Errorf("invalid end status '%s' for task %s", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
