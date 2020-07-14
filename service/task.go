@@ -479,22 +479,11 @@ const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 
 const AllLogsType = "ALL"
 
-func getTaskLogs(taskId string, execution int, limit int, logType string,
-	loggedIn bool) ([]apimodels.LogMessage, error) {
+func getTaskLogs(taskId string, execution int, limit int, logType string) ([]apimodels.LogMessage, error) {
 
 	logTypeFilter := []string{}
 	if logType != AllLogsType {
 		logTypeFilter = []string{logType}
-	}
-
-	// auth stuff
-	if !loggedIn {
-		if logType == AllLogsType {
-			logTypeFilter = []string{apimodels.TaskLogPrefix}
-		}
-		if logType == apimodels.AgentLogPrefix || logType == apimodels.SystemLogPrefix {
-			return []apimodels.LogMessage{}, nil
-		}
 	}
 
 	return model.FindMostRecentLogMessages(taskId, execution, limit, []string{},
@@ -566,8 +555,6 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logType := r.FormValue("type")
-
-	wrapper := &taskLogsWrapper{}
 	if logType == "EV" {
 		var loggedEvents []event.EventLogEntry
 		loggedEvents, err = event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
@@ -578,9 +565,14 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, loggedEvents)
 		return
 	}
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	if usr == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// check buildlogger logs first
-	var logReader io.ReadCloser
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
 		TaskID:        projCtx.Task.Id,
@@ -589,7 +581,8 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		Tail:          DefaultLogMessages,
 		LogType:       logType,
 	}
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
+	var logReader io.ReadCloser
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -597,7 +590,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 				"message": "failed to close buildlogger log ReadCloser",
 			}))
 		}()
-		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(r.Context(), projCtx.Task.Id, logReader))
+		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(ctx, projCtx.Task.Id, logReader))
 		return
 	}
 	grip.Error(message.WrapError(err, message.Fields{
@@ -605,51 +598,38 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		"message": "problem getting buildlogger logs",
 	}))
 
-	ctx := r.Context()
-	usr := gimlet.GetUser(ctx)
-	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
+	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	wrapper.LogMessages = taskLogs
+	wrapper := &taskLogsWrapper{LogMessages: taskLogs}
 	gimlet.WriteJSON(w, wrapper)
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
 	if projCtx.Task == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
+	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	grip.Warning(err)
 	logType := r.FormValue("type")
 	if logType == "" {
 		logType = AllLogsType
 	}
-	logTypeFilter := []string{}
-	if logType != AllLogsType {
-		logTypeFilter = []string{logType}
-	}
-	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 
 	// restrict access if the user is not logged in
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
-		if logType == AllLogsType {
-			logTypeFilter = []string{apimodels.TaskLogPrefix}
-		}
-		if logType == apimodels.AgentLogPrefix || logType == apimodels.SystemLogPrefix {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
-	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	var logReader io.ReadCloser
 
 	// check buildlogger logs first
@@ -675,7 +655,12 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}))
 	}
 
+	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	if logReader == nil {
+		logTypeFilter := []string{}
+		if logType != AllLogsType {
+			logTypeFilter = []string{logType}
+		}
 		data.Data, err = model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
