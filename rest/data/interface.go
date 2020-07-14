@@ -153,6 +153,9 @@ type Connector interface {
 	// FindHostWithVolume returns the host that has the given volume attached
 	FindHostWithVolume(string) (*host.Host, error)
 
+	// GetRunningHosts gets paginated running hosts and applies any filters
+	FindRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]host.Host, *int, int, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
 
