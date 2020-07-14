@@ -36,11 +36,11 @@ imports:
   - name: github.com/evergreen-ci/poplar
     version: 3043bd036e01aa6abbad6af0df031a8315308ff9
   - name: github.com/evergreen-ci/utility
-    version: 282a6f91af567e4826cecb85349f1cfb379ae183
+    version: 8a885e291da3d271f58d396ee2b313ab1aec21a8
   - name: github.com/evergreen-ci/service
     version: d9382e39d76857e2fe92a379d89f3c86fe507c4d
   - name: github.com/evergreen-ci/shrub
-    version: c335f3500b4c16d51a43c21533d18fb9059af8c5
+    version: 0efab318592de79316c35c9d40512a2f696abb28
 
   # cgroup/docker requirements
   - name: github.com/containerd/cgroups

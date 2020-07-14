@@ -557,18 +557,18 @@ func TestProcessImplementations(t *testing.T) {
 							}
 						},
 						"WaitGivesNegativeOneOnAlternativeError": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							cctx, cancel := context.WithCancel(ctx)
 							proc, err := makep(ctx, testutil.SleepCreateOpts(100))
 							require.NoError(t, err)
 							require.NotNil(t, proc)
 
 							var exitCode int
 							waitFinished := make(chan bool)
+							cctx, cancel := context.WithCancel(ctx)
+							cancel()
 							go func() {
 								exitCode, err = proc.Wait(cctx)
 								waitFinished <- true
 							}()
-							cancel()
 							select {
 							case <-waitFinished:
 								assert.Error(t, err)
@@ -576,7 +576,6 @@ func TestProcessImplementations(t *testing.T) {
 							case <-ctx.Done():
 								assert.Fail(t, "call to Wait() took too long to finish")
 							}
-							require.NoError(t, Terminate(ctx, proc)) // Clean up.
 						},
 						"InfoHasTimeoutWhenProcessTimesOut": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
 							opts := testutil.SleepCreateOpts(100)

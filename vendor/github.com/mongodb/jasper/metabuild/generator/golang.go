@@ -27,7 +27,7 @@ func NewGolang(g model.Golang) *Golang {
 func (g *Golang) Generate() (*shrub.Configuration, error) {
 	conf, err := shrub.BuildConfiguration(func(c *shrub.Configuration) {
 		for _, gv := range g.Variants {
-			variant := c.Variant(gv.Name)
+			variant := c.Variant(gv.Name).DisplayName(gv.Name)
 			variant.DistroRunOn = gv.Distros
 
 			var tasksForVariant []*shrub.Task
@@ -120,7 +120,6 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 
 	return &shrub.CmdSubprocessScripting{
 		Harness:     "golang",
-		WorkingDir:  g.WorkingDirectory,
 		HarnessPath: gopath,
 		// It is not a problem for the environment to set a relative GOPATH
 		// here, which conflicts with the actual GOPATH (an absolute path). The
