@@ -98,6 +98,7 @@ var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryProjectFields,
 	verifyTaskDependencies,
 	verifyTaskRequirements,
+	validateTaskPatchability,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
@@ -977,6 +978,20 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, bvt.Variant)})
 				}
 			}
+		}
+	}
+	return errs
+}
+
+func validateTaskPatchability(project *model.Project) ValidationErrors {
+	var errs ValidationErrors
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' will never run because it skips both patch builds and non-patch builds",
+					bvtu.Name),
+			})
 		}
 	}
 	return errs
