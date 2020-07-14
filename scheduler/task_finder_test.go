@@ -436,7 +436,7 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				Project:   "patching-disabled",
 			},
 			{
-				Id:        "runnable",
+				Id:        "also-runnable",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Requester: evergreen.RepotrackerVersionRequester,
