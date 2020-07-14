@@ -1969,7 +1969,8 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 
 	filterDisabledProjects := bson.M{
 		"$match": bson.M{
-			"project_ref.0." + "enabled": true,
+			bsonutil.GetDottedKeyName("project_ref", "0", "enabled"):              true,
+			bsonutil.GetDottedKeyName("project_ref", "0", "dispatching_disabled"): bson.M{"$ne": true},
 		},
 	}
 
@@ -1979,7 +1980,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
 			},
 			{
-				"project_ref.0." + "patching_disabled": false,
+				bsonutil.GetDottedKeyName("project_ref", "0", "patching_disabled"): false,
 			},
 		}},
 	}

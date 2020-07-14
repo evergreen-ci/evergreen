@@ -58,6 +58,7 @@ type ProjectRef struct {
 	Tracked             bool `bson:"tracked" json:"tracked"`
 	PatchingDisabled    bool `bson:"patching_disabled" json:"patching_disabled"`
 	RepotrackerDisabled bool `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled bool `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -190,6 +191,7 @@ var (
 	projectRefCommitQueueKey           = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefTaskSyncKey              = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefDispatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefNotifyOnFailureKey       = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey              = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPeriodicBuildsKey        = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
@@ -715,6 +717,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefTaskSyncKey:              projectRef.TaskSync,
 				projectRefPatchingDisabledKey:      projectRef.PatchingDisabled,
 				projectRefRepotrackerDisabledKey:   projectRef.RepotrackerDisabled,
+				projectRefDispatchingDisabledKey:   projectRef.DispatchingDisabled,
 				projectRefNotifyOnFailureKey:       projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:              projectRef.Triggers,
 				projectRefPeriodicBuildsKey:        projectRef.PeriodicBuilds,
