@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -26,6 +27,10 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	done := make(chan bool)
 	errChan := make(chan error)
 	go func(inputChan <-chan ArchiveContentFile) {
+		defer func() {
+			errChan <- recovery.HandlePanicWithError(recover(), nil,
+				"building archive")
+		}()
 		processed := map[string]bool{}
 	FileChanLoop:
 		for file := range inputChan {
@@ -140,7 +145,7 @@ func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = extractTarArcive(ctx, tarReader, rootPath, excludes)
+	err = extractTarArchive(ctx, tarReader, rootPath, excludes)
 	if err != nil {
 		return errors.Wrapf(err, "error extracting %s", rootPath)
 	}
@@ -149,7 +154,7 @@ func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 }
 
 // Extract unpacks the tar.Reader into rootPath.
-func extractTarArcive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {

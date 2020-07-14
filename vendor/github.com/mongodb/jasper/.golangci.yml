@@ -34,3 +34,7 @@ issues:
       linters:
         - gocognit
         - goconst
+
+  # Enforce doc comments on exported types.
+  include:
+    - EXC0002

@@ -48,7 +48,7 @@ func NewGolangScriptingEnvironment(gopath, goroot string, packages ...string) Sc
 
 // Type is part of the options.ScriptingEnvironment interface and
 // returns the type of the interface.
-func (opts *ScriptingGolang) Type() string { return "go" }
+func (opts *ScriptingGolang) Type() string { return GolangScriptingType }
 
 // Interpreter is part of the options.ScriptingEnvironment interface
 // and returns the path to the interpreter or binary that runs scripts.

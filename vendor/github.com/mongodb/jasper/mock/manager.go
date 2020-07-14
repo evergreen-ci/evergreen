@@ -181,6 +181,8 @@ func (m *Manager) Close(ctx context.Context) error {
 	return nil
 }
 
+// WriteFile records the options.WriteFile in WriteFileOptions. If
+// FailWrWriteFile is set, it returns an error.
 func (m *Manager) WriteFile(ctx context.Context, opts options.WriteFile) error {
 	if m.FailWriteFile {
 		return mockFail()

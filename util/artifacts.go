@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 )
 
 // ArchiveContentFile represents a tar file on disk.
@@ -42,7 +43,13 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 
 	go func() {
 		defer close(outputChan)
-
+		defer func() {
+			panicErr := recovery.HandlePanicWithError(recover(), nil,
+				"streaming archive contents")
+			if panicErr != nil {
+				outputChan <- ArchiveContentFile{err: panicErr}
+			}
+		}()
 		for _, includePattern := range includes {
 			dir, filematch := filepath.Split(includePattern)
 			dir = filepath.Join(rootPath, dir)

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/lru"
 	"github.com/golang/protobuf/ptypes"
 	empty "github.com/golang/protobuf/ptypes/empty"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
@@ -17,7 +18,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
-	"github.com/tychoish/lru"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )

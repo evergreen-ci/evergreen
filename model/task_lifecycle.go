@@ -105,7 +105,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 		return errors.Wrap(err, "Error finding previous task")
 	}
 
-	// if this is the first time we're running the task, or it's finished, blacklisted, or already activated
+	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		return nil
 	}
@@ -992,36 +992,70 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindWithDisplayTasks(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
 		return results, err
 	}
 
+	type taskGroupAndBuild struct {
+		Build     string
+		TaskGroup string
+	}
+	// only need to check one task per task group / build combination, and once per display task
+	taskGroupsToCheck := map[taskGroupAndBuild]string{}
+	displayTasksToCheck := map[string]task.Task{}
+	idsToRestart := []string{}
+	for _, t := range tasksToRestart {
+		if t.IsPartOfDisplay() {
+			displayTasksToCheck[t.DisplayTask.Id] = *t.DisplayTask
+		} else if t.DisplayOnly {
+			displayTasksToCheck[t.Id] = t
+		} else if t.IsPartOfSingleHostTaskGroup() {
+			taskGroupsToCheck[taskGroupAndBuild{
+				TaskGroup: t.TaskGroup,
+				Build:     t.BuildId,
+			}] = t.Id
+		} else {
+			idsToRestart = append(idsToRestart, t.Id)
+		}
+	}
+
+	for id, dt := range displayTasksToCheck {
+		if dt.IsFinished() {
+			idsToRestart = append(idsToRestart, id)
+		} else {
+			if err = dt.SetResetWhenFinished(); err != nil {
+				return results, errors.Wrapf(err, "error marking display task '%s' for reset", id)
+			}
+		}
+	}
+	for _, tg := range taskGroupsToCheck {
+		idsToRestart = append(idsToRestart, tg)
+	}
+
 	// if this is a dry run, immediately return the tasks found
 	if opts.DryRun {
-		for _, t := range tasksToRestart {
-			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
-		}
+		results.ItemsRestarted = idsToRestart
 		return results, nil
 	}
 
-	return doRestartFailedTasks(tasksToRestart, opts.User, results), nil
+	return doRestartFailedTasks(idsToRestart, opts.User, results), nil
 }
 
-func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults) RestartResults {
+func doRestartFailedTasks(tasks []string, user string, results RestartResults) RestartResults {
 	var tasksErrored []string
 
-	for _, t := range tasks {
-		if err := TryResetTask(t.Id, user, evergreen.RESTV2Package, nil); err != nil {
-			tasksErrored = append(tasksErrored, t.Id)
+	for _, id := range tasks {
+		if err := TryResetTask(id, user, evergreen.RESTV2Package, nil); err != nil {
+			tasksErrored = append(tasksErrored, id)
 			grip.Error(message.Fields{
-				"task":    t.Id,
+				"task":    id,
 				"status":  "failed",
 				"message": "error restarting task",
 				"error":   err.Error(),
 			})
 		} else {
-			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
+			results.ItemsRestarted = append(results.ItemsRestarted, id)
 		}
 	}
 	results.ItemsErrored = tasksErrored
@@ -1065,6 +1099,21 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		}
 	}
 
+	// For a single-host task group, block and dequeue later tasks in that group.
+	if t.IsPartOfSingleHostTaskGroup() {
+		if err = BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+			return errors.Wrapf(err, "problem blocking task group tasks")
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
 		updates := StatusChanges{}
 		if t.DisplayOnly {
@@ -1073,6 +1122,9 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				execTask, err = task.FindOne(task.ById(etID))
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
+				}
+				if execTask == nil {
+					return errors.New("execution task not found")
 				}
 				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
@@ -1190,10 +1242,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
-		if tgTask.Blocked() || !tgTask.Activated { // should restart if a task won't run
-			break
-		}
-		if !tgTask.IsFinished() { // task in group still needs to  run
+		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to  run
 			return nil
 		}
 	}

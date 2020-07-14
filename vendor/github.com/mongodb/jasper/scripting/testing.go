@@ -5,9 +5,10 @@ import (
 	"time"
 )
 
-// TestOutcome reflects the task status.
+// TestOutcome reflects the test status upon completion.
 type TestOutcome string
 
+// Constants representing test outcomes.
 const (
 	TestOutcomeSuccess = "success"
 	TestOutcomeFailure = "failure"
@@ -23,7 +24,7 @@ type TestOptions struct {
 	Count   int           `bson:"count" json:"count" yaml:"count"`
 }
 
-// TestResults capture the data about a specific test run.
+// TestResult captures the data about a specific test run.
 type TestResult struct {
 	Name     string        `bson:"name" json:"name" yaml:"name"`
 	StartAt  time.Time     `bson:"start_at" json:"start_at" yaml:"start_at"`

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,16 +20,14 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const (
-	msPerNS            = 1000 * 1000
-	maxNoteSize        = 16 * 1024 // 16KB
-	jiraSource         = "JIRA"
-	bfSuggestionSource = "BF Suggestion Server"
-	jiraIssueType      = "Build Failure"
+	msPerNS       = 1000 * 1000
+	maxNoteSize   = 16 * 1024 // 16KB
+	jiraSource    = "JIRA"
+	jiraIssueType = "Build Failure"
 )
 
 func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
@@ -77,25 +74,6 @@ func bbGetTask(taskId string, execution string) (*task.Task, error) {
 		}
 	}
 	return t, nil
-}
-
-func (uis *UIServer) bbGetTaskAndBFSuggestionClient(taskId string, execution string) (*task.Task, *bfSuggestionClient, error) {
-	t, err := bbGetTask(taskId, execution)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	bbProj, ok := uis.buildBaronProjects[t.Project]
-	if !ok {
-		return nil, nil, errors.Errorf("Build Baron project for %s not found", t.Project)
-	}
-
-	bfsc := getBFSuggestionClient(bbProj)
-	if bfsc == nil {
-		return nil, nil, errors.Errorf("No BF Suggestion Server configured for the project %s", t.Project)
-	}
-
-	return t, bfsc, err
 }
 
 // saveNote reads a request containing a note's content along with the last seen
@@ -188,80 +166,6 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 	gimlet.WriteJSON(w, results)
 }
 
-// Retrieve the user feedback for a task id that has been stored by
-// the BF Suggestion Server.
-func (uis *UIServer) bbGetFeedback(rw http.ResponseWriter, r *http.Request) {
-	vars := gimlet.GetVars(r)
-	taskId := vars["task_id"]
-	exec := vars["execution"]
-
-	// grab the user info
-	u := MustHaveUser(r)
-
-	t, bfsc, err := uis.bbGetTaskAndBFSuggestionClient(taskId, exec)
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-
-	feedbackItems, err := bfsc.getFeedback(r.Context(), t, u.Username())
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-	gimlet.WriteJSON(rw, feedbackItems)
-}
-
-func (uis *UIServer) bbSendFeedback(rw http.ResponseWriter, r *http.Request) {
-	// grab the user info
-	u := MustHaveUser(r)
-
-	var input struct {
-		FeedbackType string                 `json:"type"`
-		FeedbackData map[string]interface{} `json:"data"`
-		TaskId       string                 `json:"task_id"`
-		Execution    int                    `json:"execution"`
-	}
-
-	if err := utility.ReadJSON(r.Body, &input); err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-
-	t, bfsc, err := uis.bbGetTaskAndBFSuggestionClient(input.TaskId, strconv.Itoa(input.Execution))
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-
-	if err = bfsc.sendFeedback(r.Context(), t, u.Username(), input.FeedbackType, input.FeedbackData); err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-}
-
-func (uis *UIServer) bbRemoveFeedback(rw http.ResponseWriter, r *http.Request) {
-	vars := gimlet.GetVars(r)
-	taskId := vars["task_id"]
-	exec := vars["execution"]
-	feedbackType := vars["feedback_type"]
-
-	// grab the user info
-	u := MustHaveUser(r)
-
-	t, bfsc, err := uis.bbGetTaskAndBFSuggestionClient(taskId, exec)
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-
-	err = bfsc.removeFeedback(r.Context(), t, u.Username(), feedbackType)
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-}
-
 func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
@@ -278,14 +182,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	jira := &jiraSuggest{bbProj, uis.jiraHandler}
-	bfsc := getBFSuggestionClient(bbProj)
-	var altEndpoint suggester
-	if bfsc != nil {
-		altEndpoint = &altEndpointSuggest{bfsc, bbProj.BFSuggestionTimeoutSecs}
-	} else {
-		altEndpoint = nil
-	}
-	multiSource := &multiSourceSuggest{jira, altEndpoint}
+	multiSource := &multiSourceSuggest{jira}
 
 	var tickets []thirdparty.JiraTicket
 	var source string
@@ -413,123 +310,15 @@ func (js *jiraSuggest) GetTimeout() time.Duration {
 	return 0
 }
 
-////////////////////////////////////////////////////
-// altEndpointSuggest type (implements suggester) //
-////////////////////////////////////////////////////
-
-type altEndpointSuggest struct {
-	bfsc        *bfSuggestionClient
-	timeoutSecs int
-}
-
-func (aes *altEndpointSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
-	data, err := aes.bfsc.getSuggestions(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-
-	return aes.parseResponseData(data)
-}
-
-func (aes *altEndpointSuggest) parseResponseData(data bfSuggestionResponse) ([]thirdparty.JiraTicket, error) {
-	if data.Status != "ok" {
-		return nil, errors.Errorf("Build Baron suggestions weren't ready: status=%s", data.Status)
-	}
-
-	var tickets []thirdparty.JiraTicket
-	for _, suggestion := range data.Suggestions {
-		for _, issue := range suggestion.Issues {
-			ticket := thirdparty.JiraTicket{
-				Key: issue.Key,
-				Fields: &thirdparty.TicketFields{
-					Summary: issue.Summary,
-					Created: issue.CreatedDate,
-					Updated: issue.UpdatedDate,
-					Status:  &thirdparty.JiraStatus{Name: issue.Status},
-				},
-			}
-
-			if issue.Resolution != "" {
-				ticket.Fields.Resolution = &thirdparty.JiraResolution{Name: issue.Resolution}
-			}
-
-			tickets = append(tickets, ticket)
-		}
-	}
-
-	if len(tickets) == 0 {
-		// We treat not having suggestions as an error so that it causes fallback to occur in a
-		// unified way.
-		return nil, errors.New("no suggestions found")
-	}
-
-	return tickets, nil
-}
-
-func (aes *altEndpointSuggest) GetTimeout() time.Duration {
-	return time.Duration(aes.timeoutSecs) * time.Second
-}
-
 /////////////////////////////
 // multiSourceSuggest type //
 /////////////////////////////
 
 type multiSourceSuggest struct {
 	jiraSuggester suggester
-	altSuggester  suggester
 }
 
 func (mss *multiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
-	var tickets []thirdparty.JiraTicket
-	var source string
-	var err error
-
-	if mss.altSuggester != nil {
-		tickets, source, err = mss.raceSuggest(t)
-	} else {
-		source = jiraSource
-		tickets, err = mss.jiraSuggester.Suggest(context.TODO(), t)
-	}
-	return tickets, source, err
-}
-
-// raceSuggest returns the JIRA ticket results from the altEndpoint suggester if it returns
-// within its configured interval, and returns the JIRA ticket results from the fallback suggester
-// otherwise.
-func (mss *multiSourceSuggest) raceSuggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
-	type result struct {
-		Tickets []thirdparty.JiraTicket
-		Error   error
-	}
-
-	// thirdparty/jira.go and thirdparty/http.go do not expose an API that accepts a context.Context.
-	fallbackCtx := context.TODO()
-	fallbackChan := make(chan result, 1)
-	go func() {
-		suggestions, err := mss.jiraSuggester.Suggest(fallbackCtx, t)
-		fallbackChan <- result{suggestions, err}
-		close(fallbackChan)
-	}()
-
-	altEndpointTimeout := mss.altSuggester.GetTimeout()
-	altEndpointCtx, altEndpointCancel := context.WithTimeout(context.Background(), altEndpointTimeout)
-	defer altEndpointCancel()
-	suggestions, err := mss.altSuggester.Suggest(altEndpointCtx, t)
-
-	// If the alternative endpoint didn't respond quickly enough or didn't have results available,
-	// then we wait for the fallback results. Ideally we'd otherwise be able to cancel the request
-	// for fetching the fallback results, but we instead just return back to the caller without
-	// waiting for the associated goroutine to complete.
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":   "failed to get results from alternative endpoint",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-
-		fallbackChanRes := <-fallbackChan
-		return fallbackChanRes.Tickets, jiraSource, fallbackChanRes.Error
-	}
-
-	return suggestions, bfSuggestionSource, nil
+	tickets, err := mss.jiraSuggester.Suggest(context.TODO(), t)
+	return tickets, jiraSource, err
 }

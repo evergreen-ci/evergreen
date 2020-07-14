@@ -26,12 +26,12 @@ func Jasper() cli.Command {
 		Subcommands: []cli.Command{
 			Client(),
 			Service(),
-			RunCMD(),
-			ListCMD(),
-			ClearCMD(),
-			KillCMD(),
-			KillAllCMD(),
-			DownloadCMD(),
+			Run(),
+			List(),
+			Clear(),
+			Kill(),
+			KillAll(),
+			Download(),
 		},
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/evergreen-ci/bond/recall"
+	"github.com/evergreen-ci/lru"
 	"github.com/mholt/archiver"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
@@ -19,8 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tychoish/bond/recall"
-	"github.com/tychoish/lru"
 )
 
 func TestSetupDownloadMongoDBReleasesFailsWithZeroOptions(t *testing.T) {

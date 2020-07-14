@@ -122,7 +122,7 @@ func makeLabels(intent *host.Host) map[string]string {
 		"start-time":        intent.CreationTime.Format(evergreen.NameTimeFormat),
 	}
 
-	// Ensure all characters in tags are on the whitelist
+	// Ensure all characters in tags are on the allowlist
 	for k, v := range tags {
 		r, _ := regexp.Compile("[^a-z0-9_-]+")
 		tags[k] = string(r.ReplaceAll([]byte(strings.ToLower(v)), []byte("")))

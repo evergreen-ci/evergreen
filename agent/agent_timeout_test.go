@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -70,7 +71,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -140,7 +141,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -207,7 +208,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -274,7 +275,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -341,7 +342,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -408,7 +409,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 		},
 		taskModel:     &task.Task{},
 		runGroupSetup: true,
-		oomTracker:    &jasper.OomTrackerMock{},
+		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the

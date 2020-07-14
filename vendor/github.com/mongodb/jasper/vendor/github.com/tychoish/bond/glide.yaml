@@ -1,7 +1,0 @@
-package: github.com/tychoish/bond
-import:
-- package: github.com/mongodb/amboy
-- package: github.com/mongodb/grip
-- package: github.com/pkg/errors
-- package: github.com/stretchr/testify
-- package: github.com/mholt/archiver

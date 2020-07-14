@@ -305,20 +305,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
-	// Timeline page
-
-	app.AddRoute("/timeline/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.timeline).Get()
-	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
-	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.timelineJson).Get()
-	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
-
-	// Grid page
-	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()
-	app.AddRoute("/grid/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.grid).Get()
-	app.AddRoute("/grid/{project_id}/{version_id}").Wrap(needsContext, viewTasks).Handler(uis.grid).Get()
-	app.AddRoute("/grid/{project_id}/{version_id}/{depth}").Wrap(needsContext, viewTasks).Handler(uis.grid).Get()
-
 	// Task page (and related routes)
 	app.AddRoute("/task/{task_id}").Wrap(needsContext, viewTasks).Handler(uis.taskPage).Get()
 	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsContext, viewTasks).Handler(uis.taskPage).Get()
@@ -411,6 +397,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.projectPatchesTimeline).Get()
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin, needsContext).Handler(uis.userPatchesTimeline).Get()
 	app.AddRoute("/patches/mine").Wrap(needsLogin, needsContext).Handler(uis.myPatchesTimeline).Get()
+	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
 
 	// Spawnhost routes
 	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.spawnPage).Get()
@@ -455,9 +443,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
 	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
-	app.PrefixRoute("/plugin").Route("/buildbaron/feedback/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetFeedback).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/feedback/{task_id}/{execution}/{feedback_type}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.bbRemoveFeedback).Delete()
-	app.PrefixRoute("/plugin").Route("/buildbaron/feedback").Wrap(needsLogin, needsContext).Handler(uis.bbSendFeedback).Post()
 	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
 	app.PrefixRoute("/plugin").Route("/dashboard/tasks/project/{project_id}/version/{version_id}").Wrap(needsLogin, viewTasks).Handler(perfDashGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()

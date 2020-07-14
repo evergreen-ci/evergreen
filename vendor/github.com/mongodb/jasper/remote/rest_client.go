@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evergreen-ci/bond"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
-	"github.com/tychoish/bond"
 )
 
 // NewRestClient creates a REST client that connecst to the given address

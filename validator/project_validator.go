@@ -551,9 +551,33 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 		if strings.ContainsAny(strings.TrimSpace(task.Name), unauthorizedTaskCharacters) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task name %s contains unauthorized characters ('%s')",
+					Message: fmt.Sprintf("task name '%s' contains unauthorized characters ('%s')",
 						task.Name, unauthorizedTaskCharacters),
 				})
+		}
+		// Warn against commas because the CLI allows users to specify
+		// tasks separated by commas in their patches.
+		if strings.Contains(task.Name, ",") {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("task name '%s' should not contains commas", task.Name),
+			})
+		}
+		// Warn against using "*" since it is ambiguous with the
+		// all-dependencies specification (also "*").
+		if task.Name == model.AllDependencies {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "task should not be named '*' because it is ambiguous with the all-dependencies '*' specification",
+			})
+		}
+		// Warn against using "all" since it is ambiguous with the special "all"
+		// task specifier when creating patches.
+		if task.Name == "all" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "task should not be named 'all' because it is ambiguous in task specifications for patches",
+			})
 		}
 	}
 	return errs
@@ -590,9 +614,34 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("buildvariant name %s contains unauthorized characters (%s)",
+					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
 						buildVariant.Name, unauthorizedCharacters),
 				})
+		}
+
+		// Warn against commas because the CLI allows users to specify
+		// variants separated by commas in their patches.
+		if strings.Contains(buildVariant.Name, ",") {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("buildvariant name '%s' should not contains commas", buildVariant.Name),
+			})
+		}
+		// Warn against using "*" since it is ambiguous with the
+		// all-dependencies specification (also "*").
+		if buildVariant.Name == model.AllVariants {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "buildvariant should not be named '*' because it is ambiguous with the all-variants '*' specification",
+			})
+		}
+		// Warn against using "all" since it is ambiguous with the special "all"
+		// task specifier when creating patches.
+		if buildVariant.Name == "all" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "buildvariant should not be named 'all' because it is ambiguous in buildvariant specifications for patches",
+			})
 		}
 	}
 	// don't bother checking for the warnings if we already found errors
@@ -765,6 +814,12 @@ func validateCommands(section string, project *model.Project,
 				errs = append(errs, ValidationError{Message: msg})
 			}
 		}
+		if cmd.Function != "" && cmd.Command != "" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
+			})
+		}
 	}
 	return errs
 }
@@ -931,11 +986,6 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 // and that the fields have valid values
 func verifyTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	// create a set of all the task names
-	taskNames := map[string]bool{}
-	for _, task := range project.Tasks {
-		taskNames[task.Name] = true
-	}
 
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
@@ -966,15 +1016,23 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 			}
 
 			// check that name of the dependency task is valid
-			if dep.Name != model.AllDependencies && !taskNames[dep.Name] {
+			if dep.Name != model.AllDependencies && project.FindProjectTask(dep.Name) == nil {
 				errs = append(errs,
 					ValidationError{
+						Level: Warning,
 						Message: fmt.Sprintf("project '%s' contains a "+
 							"non-existent task name '%s' in dependencies for "+
 							"task '%s'", project.Identifier, dep.Name,
 							task.Name),
 					},
 				)
+			}
+			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
+						project.Identifier, dep.Variant, task.Name),
+				})
 			}
 		}
 	}

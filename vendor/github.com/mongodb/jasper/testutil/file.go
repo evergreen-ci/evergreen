@@ -48,6 +48,8 @@ func AddFileToDirectory(dir string, fileName string, fileContents string) error 
 	return file.Close()
 }
 
+// BuildDirectory is the project-level directory where all build artifacts are
+// put.
 func BuildDirectory() string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(filepath.Dir(file)), "build")

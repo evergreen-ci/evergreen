@@ -1,13 +1,13 @@
 name := jasper
 buildDir := build
-srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
+srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*" -not -path "./vendor/*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
-packages := $(name) cli remote remote-internal options mock testutil internal-executor buildsystem-generator
-lintPackages := $(packages) mock testutil
-testPackages := $(packages) mock
+testPackages := $(name) cli remote options mock metabuild-generator metabuild-model
+allPackages := $(testPackages) internal-executor remote-internal testutil
+lintPackages := $(allPackages)
 projectPath := github.com/mongodb/jasper
 
-_compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(testPackages),./$(target))))
+_compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(lintPackages),./$(target))))
 coverageOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage.html)
 
@@ -26,44 +26,42 @@ endif
 goEnv := GOPATH=$(gopath) GOCACHE=$(gocache)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
 # end environment setup
 
-compile $(buildDir):
+compile $(buildDir): $(srcFiles)
 	@mkdir -p $(buildDir)
+	@touch $(buildDir)
 	$(goEnv) $(gobin) build $(_compilePackages)
 compile-base:
-	$(goEnv) $(gobin) build  ./
+	$(goEnv) $(gobin) build ./
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
-test-%:$(buildDir)/output.%.test
+test-%: $(buildDir)/output.%.test
 	
-coverage-%:$(buildDir)/output.%.coverage
+coverage-%: $(buildDir)/output.%.coverage
 	
-html-coverage-%:$(buildDir)/output.%.coverage.html
+html-coverage-%: $(buildDir)/output.%.coverage.html
 	
-lint-%:$(buildDir)/output.%.lint
+lint-%: $(buildDir)/output.%.lint
 	
 # end convienence targets
 
 # start lint setup targets
-lintDeps := $(buildDir)/.lintSetup $(buildDir)/run-linter $(buildDir)/golangci-lint
-$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@touch $@
-$(buildDir)/golangci-lint:$(buildDir)
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
-$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup $(buildDir)
+lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
+$(buildDir)/golangci-lint: $(buildDir)
+	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.28.1 >/dev/null 2>&1
+$(buildDir)/run-linter: cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
 	@$(goEnv) $(gobin) build -o $@ $<
 # end lint setup targets
 
 # benchmark setup targets
-$(buildDir)/run-benchmarks:cmd/run-benchmarks/run_benchmarks.go $(buildDir)
+$(buildDir)/run-benchmarks: cmd/run-benchmarks/run_benchmarks.go $(buildDir)
 	$(goEnv) $(gobin) build -o $@ $<
 # end benchmark setup targets
 
 # cli targets
-cli: $(name)
-$(name): $(buildDir)/$(name)
-$(buildDir)/$(name): cmd/$(name)/$(name).go
-	@$(goEnv) $(gobin) build -o $@ $<
+$(name) cli: $(buildDir)/$(name)
+$(buildDir)/$(name): cmd/$(name)/$(name).go $(buildDir)
+	$(goEnv) $(gobin) build -o $@ $<
 # end cli targets
 
 # start test and coverage artifacts
@@ -87,17 +85,17 @@ ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif
 # test execution and output handlers
-$(buildDir)/output.%.test:$(buildDir) .FORCE
+$(buildDir)/output.%.test: $(buildDir) .FORCE
 	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
 	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
-$(buildDir)/output.%.coverage:$(buildDir) .FORCE
+$(buildDir)/output.%.coverage: $(buildDir) .FORCE
 	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
+$(buildDir)/output.%.coverage.html: $(buildDir)/output.%.coverage .FORCE
 	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
+$(buildDir)/output.%.lint: $(buildDir)/run-linter $(buildDir) .FORCE
 	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 #  targets to process and generate coverage reports
 # end test and coverage artifacts
@@ -117,24 +115,21 @@ docker-cleanup:
 # end Docker
 
 # user-facing targets for basic build and development operations
-$(buildDir)/:
-	@mkdir -p $@
 proto:
 	@mkdir -p remote/internal
 	protoc --go_out=plugins=grpc:remote/internal *.proto
-lint:$(buildDir) $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
-
-test:$(buildDir) $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
-
-benchmarks:$(buildDir)/run-benchmarks $(buildDir) .FORCE
+lint: $(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
+test: $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
+benchmarks: $(buildDir)/run-benchmarks .FORCE
+	@mkdir -p $(buildDir)
 	$(goEnv) ./$(buildDir)/run-benchmarks $(run-benchmark)
-coverage:$(buildDir) $(coverageOutput)
-coverage-html:$(buildDir) $(coverageHtmlOutput)
-phony += build lint $(buildDir) test coverage coverage-html docker-setup docker-cleanup $(buildDir)/$(name)
+coverage: $(coverageOutput)
+coverage-html: $(coverageHtmlOutput)
+phony += compile lint test coverage coverage-html docker-setup docker-cleanup
 .PHONY: $(phony) .FORCE
-.PRECIOUS:$(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS:$(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
-.PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+.PRECIOUS: $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS: $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
+.PRECIOUS: $(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
 # end front-ends
 
 .FORCE:
@@ -146,7 +141,6 @@ clean-results:
 	rm -rf $(buildDir)/output.*
 
 vendor-clean:
-	rm -rf vendor/github.com/evergreen-ci/utility/parsing.go
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
@@ -182,14 +176,14 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/buildscripts/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/mholt/archiver/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/mongodb/amboy/
-	rm -rf vendor/github.com/tychoish/bond/vendor/github.com/satori/go.uuid/
-	rm -rf vendor/github.com/tychoish/lru/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/tychoish/lru/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/mholt/archiver/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/mongodb/amboy/
+	rm -rf vendor/github.com/evergreen-ci/bond/vendor/github.com/satori/go.uuid/
+	rm -rf vendor/github.com/evergreen-ci/lru/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/lru/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mholt/archiver/rar.go
 	rm -rf vendor/github.com/mholt/archiver/tarbz2.go

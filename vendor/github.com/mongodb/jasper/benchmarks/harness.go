@@ -86,30 +86,33 @@ func runIteration(ctx context.Context, makeProc makeProcess, opts *options.Creat
 	return nil
 }
 
-func makeCreateOpts(timeout time.Duration, logger options.Logger) *options.Create {
+func makeCreateOpts(timeout time.Duration, logger options.LoggerConfig) *options.Create {
 	opts := testutil.YesCreateOpts(timeout)
-	opts.Output.Loggers = []options.Logger{logger}
+	opts.Output.Loggers = []*options.LoggerConfig{&logger}
 	return opts
 }
 
 func getInMemoryLoggerBenchmark(makeProc makeProcess, timeout time.Duration) poplar.Benchmark {
-	var logType options.LogType = options.LogInMemory
-	logOptions := options.Log{InMemoryCap: 1000, Format: options.LogFormatPlain}
-	opts := makeCreateOpts(timeout, options.Logger{Type: logType, Options: logOptions})
-
 	return func(ctx context.Context, r poplar.Recorder, _ int) error {
+		logger, err := jasper.NewInMemoryLogger(1000)
+		if err != nil {
+			return err
+		}
+		opts := makeCreateOpts(timeout, *logger)
+
 		startAt := time.Now()
 		r.Begin()
-		err := runIteration(ctx, makeProc, opts)
+		err = runIteration(ctx, makeProc, opts)
 		if err != nil {
 			return err
 		}
 		r.IncOps(1)
-		sender, err := opts.Output.Loggers[0].Configure()
+		sender, err := opts.Output.Loggers[0].Resolve()
 		if err != nil {
 			return err
 		}
-		rawSender := sender.(*send.InMemorySender)
+		safeSender := sender.(*options.SafeSender)
+		rawSender := safeSender.GetSender().(*send.InMemorySender)
 		r.IncSize(rawSender.TotalBytesSent())
 		r.End(time.Since(startAt))
 
@@ -119,14 +122,20 @@ func getInMemoryLoggerBenchmark(makeProc makeProcess, timeout time.Duration) pop
 
 func getFileLoggerBenchmark(makeProc makeProcess, timeout time.Duration) poplar.Benchmark {
 	return func(ctx context.Context, r poplar.Recorder, _ int) error {
-		var logType options.LogType = options.LogFile
 		file, err := ioutil.TempFile("", "bench_out.txt")
 		if err != nil {
 			return err
 		}
 		defer os.Remove(file.Name())
-		logOptions := options.Log{FileName: file.Name(), Format: options.LogFormatPlain}
-		opts := makeCreateOpts(timeout, options.Logger{Type: logType, Options: logOptions})
+		logger := options.LoggerConfig{}
+		err = logger.Set(&options.FileLoggerOptions{
+			Filename: file.Name(),
+			Base:     options.BaseOptions{Format: options.LogFormatPlain},
+		})
+		if err != nil {
+			return err
+		}
+		opts := makeCreateOpts(timeout, logger)
 
 		startAt := time.Now()
 		r.Begin()

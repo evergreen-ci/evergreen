@@ -58,6 +58,20 @@ func ReadYAMLFile(path string, target interface{}) error {
 	return errors.Wrapf(ReadYAML(file, target), "problem reading yaml from '%s'", path)
 }
 
+// ReadYAMLFileStrict is the same as ReadYAMLFile but uses strict unmarshalling.
+func ReadYAMLFileStrict(path string, target interface{}) error {
+	if !FileExists(path) {
+		return errors.Errorf("file '%s' does not exist", path)
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return errors.Wrapf(err, "invalid file: %s", path)
+	}
+
+	return errors.Wrapf(ReadYAMLStrict(file, target), "problem reading yaml from '%s'", path)
+}
+
 // ReadJSONFile parses json into the target argument from the file
 // located at the specifed path.
 func ReadJSONFile(path string, target interface{}) error {

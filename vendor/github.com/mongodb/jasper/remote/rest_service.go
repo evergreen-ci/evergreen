@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/lru"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -20,7 +21,6 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
-	"github.com/tychoish/lru"
 )
 
 // Service defines a REST service that provides a remote manager, using
@@ -34,11 +34,9 @@ type Service struct {
 	cacheMutex sync.RWMutex
 }
 
-// NewManagerService creates a service object around an existing
-// manager. You must access the application and routes via the App()
-// method separately. The constructor wraps basic managers with a
-// manager implementation that does locking.
-func NewRestService(m jasper.Manager) *Service {
+// NewRESTService creates a service object around an existing manager. You must
+// access the application and routes via the App() method separately.
+func NewRESTService(m jasper.Manager) *Service {
 	return &Service{
 		manager:   m,
 		harnesses: scripting.NewCache(),

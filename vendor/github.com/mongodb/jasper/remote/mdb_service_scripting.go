@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// Constants representing scripting commands.
 const (
 	ScriptingCreateCommand    = "create_scripting"
 	ScriptingGetCommand       = "get_scripting"

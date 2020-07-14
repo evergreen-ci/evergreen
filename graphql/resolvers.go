@@ -235,17 +235,19 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	t := timeTaken.Round(time.Second).String()
 	var tPointer *string
 	if t != "0s" {
-		tPointer = &t
+		tFormated := formatDuration(t)
+		tPointer = &tFormated
 	}
 	m := makespan.Round(time.Second).String()
 	var mPointer *string
 	if m != "0s" {
-		tPointer = &m
+		mFormated := formatDuration(m)
+		mPointer = &mFormated
 	}
 
 	return &PatchDuration{
-		Makespan:  tPointer,
-		TimeTaken: mPointer,
+		Makespan:  mPointer,
+		TimeTaken: tPointer,
 	}, nil
 }
 
@@ -761,6 +763,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
+	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
@@ -768,13 +771,22 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 			Status: task.GetDisplayStatus(),
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+		if _, ok := variantDisplayName[task.BuildVariant]; !ok {
+			build, err := r.sc.FindBuildById(task.BuildId)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
+			}
+			variantDisplayName[task.BuildVariant] = build.DisplayName
+		}
+
 	}
 
 	result := []*PatchBuildVariant{}
 	for variant, tasks := range tasksByVariant {
 		pbv := PatchBuildVariant{
-			Variant: variant,
-			Tasks:   tasks,
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
 		}
 		result = append(result, &pbv)
 	}
@@ -843,6 +855,19 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 		regions = append(regions, item.Region)
 	}
 	return regions, nil
+}
+
+func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
+	}
+	bannerTheme := string(settings.BannerTheme)
+	banner := restModel.APIBanner{
+		Text:  &settings.Banner,
+		Theme: &bannerTheme,
+	}
+	return &banner, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
@@ -1175,10 +1200,14 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 	if baseTask == nil {
 		return nil, nil
 	}
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+	}
 
 	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
 	baseTaskMetadata := BaseTaskMetadata{
-		BaseTaskLink:     fmt.Sprintf("/task/%s", baseTask.Id),
+		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
 		BaseTaskDuration: &dur,
 	}
 	if baseTask.TimeTaken == 0 {

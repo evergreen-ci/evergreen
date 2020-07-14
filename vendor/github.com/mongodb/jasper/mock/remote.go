@@ -90,8 +90,8 @@ func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDB
 	return nil
 }
 
-// GetBuildloggerURLs returns BuildloggerURLs field. If FailGetBuildloggerURLs
-// is set, it returns an error.
+// GetBuildloggerURLs returns the BuildloggerURLs field. If
+// FailGetBuildloggerURLs is set, it returns an error.
 func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
 	if c.FailGetBuildloggerURLs {
 		return nil, mockFail()

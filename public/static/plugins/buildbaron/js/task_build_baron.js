@@ -16,7 +16,6 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
         var issues = resp.data.issues;
         var searchString = resp.data.search;
         $scope.source = resp.data.source;
-        $scope.enableFeedback = ($scope.source === "BF Suggestion Server");
         $scope.JiraLink = getJqlUrl(searchString);
         $scope.featuresLink = resp.data.features_url;
         if (issues && issues.length > 0 ) {
@@ -129,75 +128,11 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
     });
   });
 
-  $scope.getFeedback = function(type, data) {
-    $http.get('/plugin/buildbaron/feedback/' + $scope.taskId + '/' + $scope.taskExec).then(
-      // Success
-      function(resp) {
-        resp.data.forEach(function (item) {
-          $scope.feedback[item.type] = item.data;
-          if (item.type == "suggestions_quality" && item.data.comment) {
-            $scope.feedbackComment = item.data.comment;
-          }
-        });
-      })
-
-  }
-
-  $scope.toggleFeedback = function(type, data) {
-    var feedback_value = $scope.feedback[type];
-    if (type === "time_spent") {
-      if (feedback_value.time_spent === data.time_spent) {
-          $scope.removeFeedback(type);
-      } else {
-          $scope.sendFeedback(type, data);
-      }
-    } else if (type === "suggestions_quality") {
-      if (feedback_value.ok === data.ok) {
-          $scope.removeFeedback(type);
-      } else if (data.ok) {
-          $scope.sendFeedback(type, data);
-      } else {
-          // We are showing the comment field instead of sending the feedback directly.
-          $scope.showComment = true;
-      }
-    }
-  }
-
-  $scope.sendFeedback = function(type, data) {
-    $http.post('/plugin/buildbaron/feedback',
-               {type: type,
-                data:  data,
-                task_id: $scope.taskId,
-                execution: $scope.taskExec}).then(
-      // Success
-      function(resp) {
-          $scope.feedback[type] = data;
-      })
-  }
-
-  $scope.removeFeedback = function(type) {
-    $http.delete('/plugin/buildbaron/feedback/' + $scope.taskId + '/' + $scope.taskExec + '/' + type).then(
-      // Success
-      function(resp) {
-          $scope.feedback[type] = {};
-      })
-  }
-
-  $scope.clearFeedbackDescriptionIfNotClicked = function() {
-    if (!$scope.showComment) {
-      $scope.feedbackDescription = "";
-    }
-  }
-
   $scope.loaded = false;
   $scope.have_user = $window.have_user;
   $scope.editing = false;
   $scope.editTime = 0;
   $scope.note = "";
-  $scope.enableFeedback = false;
-  $scope.feedback = {time_spent: {}, suggestions_quality: {}};
-  $scope.feedbackDescription = "";
-  $scope.showComment = false;
 
 
   $scope.newTicket = false;
@@ -219,7 +154,6 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
   if ( $scope.conf.enabled && $scope.have_user && $scope.task.status == "failed" ) {
     $scope.build_baron_status = "loading";
     $scope.getBuildBaronResults();
-    $scope.getFeedback();
   }
   if($scope.conf.enabled && $scope.have_user){
     $scope.getNote();

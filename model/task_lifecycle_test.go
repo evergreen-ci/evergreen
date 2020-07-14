@@ -1406,7 +1406,7 @@ func TestAbortTask(t *testing.T) {
 	})
 
 }
-func TestTryDequeueAndAbortCommitQueueVersionWithBlacklist(t *testing.T) {
+func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 	patchID := "aabbccddeeff001122334455"
 	v := &Version{
@@ -1998,6 +1998,129 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
 	assert.Equal(2, dbTask.Execution)
+}
+
+func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
+		"Error clearing task and build collections")
+	userName := "testUser"
+	b := &build.Build{
+		Id:      "buildtest",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+	}
+	v := &Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+		Config: "identifier: sample",
+	}
+	testTask1 := &task.Task{
+		Id:                "taskGroup1",
+		Activated:         false,
+		BuildId:           b.Id,
+		Execution:         1,
+		Project:           "sample",
+		StartTime:         time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:            evergreen.TaskFailed,
+		Details:           apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
+		TaskGroup:         "myTaskGroup",
+		TaskGroupMaxHosts: 1,
+		Version:           b.Version,
+	}
+	testTask2 := &task.Task{
+		Id:                "taskGroup2",
+		Activated:         false,
+		BuildId:           b.Id,
+		Execution:         1,
+		Project:           "sample",
+		StartTime:         time.Date(2017, time.June, 13, 12, 0, 0, 0, time.Local),
+		Status:            evergreen.TaskFailed,
+		Details:           apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
+		TaskGroup:         "myTaskGroup",
+		TaskGroupMaxHosts: 1,
+		Version:           b.Version,
+	}
+	testTask3 := &task.Task{
+		Id:        "dt1",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+		Details:   apimodels.TaskEndDetail{Type: "test"},
+		Version:   b.Version,
+	}
+	testTask4 := &task.Task{
+		Id:        "dt2",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+		Details:   apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
+		Version:   b.Version,
+	}
+	testTask5 := &task.Task{
+		Id:             "dt",
+		Activated:      false,
+		BuildId:        b.Id,
+		Execution:      1,
+		Project:        "sample",
+		StartTime:      time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:         evergreen.TaskFailed,
+		Details:        apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
+		DisplayOnly:    true,
+		ExecutionTasks: []string{testTask3.Id, testTask4.Id},
+		Version:        b.Version,
+	}
+	b.Tasks = []build.TaskCache{
+		{Id: testTask1.Id},
+		{Id: testTask2.Id},
+		{Id: testTask3.Id},
+		{Id: testTask4.Id},
+		{Id: testTask5.Id},
+	}
+	assert.NoError(b.Insert())
+	assert.NoError(v.Insert())
+	assert.NoError(testTask1.Insert())
+	assert.NoError(testTask2.Insert())
+	assert.NoError(testTask3.Insert())
+	assert.NoError(testTask4.Insert())
+	assert.NoError(testTask5.Insert())
+
+	opts := RestartOptions{
+		IncludeTestFailed:  false,
+		IncludeSysFailed:   true,
+		IncludeSetupFailed: false,
+		StartTime:          time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local),
+		EndTime:            time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local),
+		User:               userName,
+	}
+
+	// test that all of these tasks are restarted, even though some are out of range/wrong type, because of the group
+	results, err := RestartFailedTasks(opts)
+	assert.NoError(err)
+	assert.Nil(results.ItemsErrored)
+	assert.Equal(2, len(results.ItemsRestarted)) // not all are included in items restarted
+	// but all tasks are restarted
+	dbTask, err := task.FindOne(task.ById(testTask1.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	dbTask, err = task.FindOne(task.ById(testTask2.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	dbTask, err = task.FindOne(task.ById(testTask3.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	dbTask, err = task.FindOne(task.ById(testTask4.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	dbTask, err = task.FindOne(task.ById(testTask5.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 }
 
 func TestStepback(t *testing.T) {

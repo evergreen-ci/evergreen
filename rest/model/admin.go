@@ -1030,6 +1030,7 @@ type APILoggerConfig struct {
 	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
 	BuildloggerUser     *string          `json:"buildlogger_user"`
 	BuildloggerPassword *string          `json:"buildlogger_password"`
+	BuildloggerAPIKey   *string          `json:"buildlogger_api_key"`
 	DefaultLogger       *string          `json:"default_logger"`
 }
 
@@ -1043,6 +1044,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.BuildloggerRPCPort = ToStringPtr(v.BuildloggerRPCPort)
 		a.BuildloggerUser = ToStringPtr(v.BuildloggerUser)
 		a.BuildloggerPassword = ToStringPtr(v.BuildloggerPassword)
+		a.BuildloggerAPIKey = ToStringPtr(v.BuildloggerAPIKey)
 		a.DefaultLogger = ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
@@ -1063,6 +1065,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		BuildloggerRPCPort:  FromStringPtr(a.BuildloggerRPCPort),
 		BuildloggerUser:     FromStringPtr(a.BuildloggerUser),
 		BuildloggerPassword: FromStringPtr(a.BuildloggerPassword),
+		BuildloggerAPIKey:   FromStringPtr(a.BuildloggerAPIKey),
 		DefaultLogger:       FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
@@ -1523,13 +1526,15 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 }
 
 type APIDockerConfig struct {
-	APIVersion *string `json:"api_version"`
+	APIVersion    *string `json:"api_version"`
+	DefaultDistro *string `json:"default_distro"`
 }
 
 func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
 		a.APIVersion = ToStringPtr(v.APIVersion)
+		a.DefaultDistro = ToStringPtr(v.DefaultDistro)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1538,7 +1543,8 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 
 func (a *APIDockerConfig) ToService() (interface{}, error) {
 	return evergreen.DockerConfig{
-		APIVersion: FromStringPtr(a.APIVersion),
+		APIVersion:    FromStringPtr(a.APIVersion),
+		DefaultDistro: FromStringPtr(a.DefaultDistro),
 	}, nil
 }
 

@@ -802,7 +802,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // operation will select tasks from all distros.
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
-	query[PriorityKey] = 0
 
 	if distroID != "" {
 		query[DistroIdKey] = distroID
@@ -1313,16 +1312,16 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// Blacklist sets the priority of a task so it will never run.
+// SetDisabledPriority sets the priority of a task so it will never run.
 // It also deactivates the task and any tasks that depend on it.
 // The build cache is not updated
-func (t *Task) Blacklist(user string) ([]Task, error) {
-	t.Priority = evergreen.BlacklistPriority
+func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
+	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
 	_, err := UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{PriorityKey: evergreen.BlacklistPriority}},
+		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't update priority")
@@ -1335,13 +1334,13 @@ func (t *Task) Blacklist(user string) ([]Task, error) {
 		return nil, errors.Wrap(err, "can't find matching tasks")
 	}
 	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.BlacklistPriority)
+		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
 	}
 
 	var deactivatedTasks []Task
 	deactivatedTasks, err = t.DeactivateTask(user)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't deactivate blacklisted task")
+		return nil, errors.Wrap(err, "can't deactivate task")
 	}
 
 	return deactivatedTasks, nil

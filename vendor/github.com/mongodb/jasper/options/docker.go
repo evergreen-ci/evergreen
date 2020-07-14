@@ -45,7 +45,8 @@ func (opts *Docker) Copy() *Docker {
 	return &optsCopy
 }
 
-// DockerPlatforms returns whether or not the platform has support for Docker.
+// PlatformSupportsDocker returns whether or not the platform has support for
+// Docker.
 func PlatformSupportsDocker(platform string) bool {
 	switch platform {
 	case "darwin", "linux", "windows":

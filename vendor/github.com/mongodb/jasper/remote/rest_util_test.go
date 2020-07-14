@@ -24,7 +24,7 @@ tryStartService:
 			if err != nil {
 				return nil, -1, errors.WithStack(err)
 			}
-			srv := NewRestService(synchronizedManager)
+			srv := NewRESTService(synchronizedManager)
 			app := srv.App(ctx)
 			app.SetPrefix("jasper")
 

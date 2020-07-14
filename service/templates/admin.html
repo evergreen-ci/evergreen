@@ -1293,6 +1293,10 @@ Admin Settings
 										<label>Buildlogger Password</label>
 										<input type="text" ng-model="Settings.logger_config.buildlogger_password">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Buildlogger API Key</label>
+										<input type="text" ng-model="Settings.logger_config.buildlogger_api_key">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>
@@ -1524,6 +1528,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>API version</label>
 										<input type="text" ng-model="Settings.providers.docker.api_version">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Distro for Default Container Pool</label>
+										<input type="text" ng-model="Settings.providers.docker.default_distro">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

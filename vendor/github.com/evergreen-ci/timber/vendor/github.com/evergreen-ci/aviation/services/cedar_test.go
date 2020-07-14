@@ -20,7 +20,7 @@ func TestDialCedarOptionsValidate(t *testing.T) {
 		}
 		assert.Error(t, opts.validate())
 	})
-	t.Run("NoPassword", func(t *testing.T) {
+	t.Run("NoPasswordOrAPIKey", func(t *testing.T) {
 		opts := &DialCedarOptions{
 			BaseAddress: "base",
 			RPCPort:     "9090",
@@ -63,12 +63,27 @@ func TestDialCedarOptionsValidate(t *testing.T) {
 		assert.Equal(t, "password", opts.Password)
 		assert.Equal(t, 10, opts.Retries)
 	})
+	t.Run("ConfiguredOptionsWithAPIKey", func(t *testing.T) {
+		opts := &DialCedarOptions{
+			BaseAddress: "base",
+			RPCPort:     "9090",
+			Username:    "username",
+			APIKey:      "apiKey",
+			Retries:     10,
+		}
+		assert.NoError(t, opts.validate())
+		assert.Equal(t, "base", opts.BaseAddress)
+		assert.Equal(t, "9090", opts.RPCPort)
+		assert.Equal(t, "username", opts.Username)
+		assert.Equal(t, "apiKey", opts.APIKey)
+		assert.Equal(t, 10, opts.Retries)
+	})
 }
 
 func TestDialCedar(t *testing.T) {
 	ctx := context.TODO()
-	username := os.Getenv("LDAP_USER")
-	password := os.Getenv("LDAP_PASSWORD")
+	username := os.Getenv("AUTH_USERNAME")
+	password := os.Getenv("AUTH_PASSWORD")
 
 	t.Run("ConnectToCedar", func(t *testing.T) {
 		opts := &DialCedarOptions{

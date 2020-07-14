@@ -46,12 +46,18 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		var queue_info model.DistroQueueInfo
 		queue_info, err = model.GetDistroQueueInfo(distro.Id)
 		if err != nil {
-			grip.Error(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "cannot get distro queue information for disabled distro",
+				"distro":  distro.Id,
+			}))
 		}
 		if queue_info.Length > 0 {
 			err = model.ClearTaskQueue(distro.Id)
 			if err != nil {
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "cannot clear task queue for disabled distro",
+					"distro":  distro.Id,
+				}))
 			}
 			grip.Info(message.Fields{
 				"distro":      distro.Id,
@@ -180,6 +186,8 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			if dbHost != nil {
 				event.LogHostStatusChanged(dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
 			}
+		} else if provisioned && dbHost.Status == evergreen.HostProvisioning {
+			staticHost.Status = evergreen.HostRunning
 		} else {
 			staticHost.Status = dbHost.Status
 		}

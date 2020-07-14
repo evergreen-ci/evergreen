@@ -20,6 +20,7 @@ const (
 // documentation for grip/send for more information on the various LogFormats.
 type LogFormat string
 
+// Constants representing formats for logging.
 const (
 	LogFormatPlain   LogFormat = "plain"
 	LogFormatDefault LogFormat = "default"
@@ -59,6 +60,7 @@ func (f LogFormat) MakeFormatter() (send.MessageFormatter, error) {
 // RawLoggerConfigFormat describes the format of the raw logger configuration.
 type RawLoggerConfigFormat string
 
+// Constants representing valid formats for RawLoggerConfig.
 const (
 	RawLoggerConfigFormatBSON    RawLoggerConfigFormat = "BSON"
 	RawLoggerConfigFormatJSON    RawLoggerConfigFormat = "JSON"
@@ -98,27 +100,32 @@ func (f RawLoggerConfigFormat) Unmarshal(data []byte, out interface{}) error {
 	return nil
 }
 
-// RawLoggerConfig wraps []byte and implements the json and bson Marshaler and
+// RawLoggerConfig wraps byte slice and implements the json and bson Marshaler and
 // Unmarshaler interfaces.
 type RawLoggerConfig []byte
 
+// MarshalJSON returns the unwrapped byte slice from a RawLoggerConfig.
 func (lc *RawLoggerConfig) MarshalJSON() ([]byte, error) { return *lc, nil }
 
+// UnmarshalJSON sets the wrapped byte slice to the given byte slice.
 func (lc *RawLoggerConfig) UnmarshalJSON(b []byte) error {
 	*lc = b
 	return nil
 }
 
+// MarshalBSON returns the unwrapped byte slice from the RawLoggerConfig.
 func (lc RawLoggerConfig) MarshalBSON() ([]byte, error) { return lc, nil }
 
+// UnmarshalBSON sets the unwrapped byte slice to the given BSON byte slice.
 func (lc *RawLoggerConfig) UnmarshalBSON(b []byte) error {
 	*lc = b
 	return nil
 }
 
 // LoggerConfig represents the necessary information to construct a new grip
-// send.Sender. LoggerConfig implements the json and bson Marshaler and
-// Unmarshaler interfaces.
+// send.Sender. The Registry is the authoritative source of LoggerProducers that
+// it can use to create the send.Sender. LoggerConfig implements the JSON and
+// BSON Marshaler and Unmarshaler interfaces.
 type LoggerConfig struct {
 	Registry LoggerRegistry
 
@@ -133,7 +140,7 @@ type loggerConfigInfo struct {
 	Config RawLoggerConfig       `json:"config" bson:"config"`
 }
 
-// NewLoggerConfig returns a LoggerConfig with the given info, this function
+// NewLoggerConfig returns a LoggerConfig with the given info. This function
 // expects a raw logger config as a byte slice. When using a LoggerProducer
 // directly, use LoggerConfig's Set function.
 func NewLoggerConfig(producerType string, format RawLoggerConfigFormat, config []byte) *LoggerConfig {
@@ -161,14 +168,14 @@ func (lc *LoggerConfig) validate() error {
 	return catcher.Resolve()
 }
 
-// Set sets the logger producer and type for the logger config.
+// Set sets the logger producer and type for the LoggerConfig.
 func (lc *LoggerConfig) Set(producer LoggerProducer) error {
 	if lc.Registry == nil {
 		lc.Registry = globalLoggerRegistry
 	}
 
 	if !lc.Registry.Check(producer.Type()) {
-		return errors.New("unregistered logger producer")
+		return errors.Errorf("unregistered logger producer '%s'", producer.Type())
 	}
 
 	lc.info.Type = producer.Type()
@@ -177,7 +184,7 @@ func (lc *LoggerConfig) Set(producer LoggerProducer) error {
 	return nil
 }
 
-// Producer returns the underlying logger producer for this logger config,
+// Producer returns the underlying logger producer for this LoggerConfig,
 // which may be nil.
 func (lc *LoggerConfig) Producer() LoggerProducer { return lc.producer }
 
@@ -202,6 +209,9 @@ func (lc *LoggerConfig) Resolve() (send.Sender, error) {
 	return lc.sender, nil
 }
 
+// MarshalBSON resolves the LoggerProducer from this LoggerConfig, marshals it
+// to BSON, and returns the logger configuration information necessary to
+// reconstruct the LoggerConfig.
 func (lc *LoggerConfig) MarshalBSON() ([]byte, error) {
 	if err := lc.resolveProducer(); err != nil {
 		return nil, errors.Wrap(err, "problem resolving logger producer")
@@ -219,6 +229,8 @@ func (lc *LoggerConfig) MarshalBSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalBSON unmarshals the logger configuration information necessary to
+// reconstruct the LoggerConfig.
 func (lc *LoggerConfig) UnmarshalBSON(b []byte) error {
 	info := loggerConfigInfo{}
 	if err := bson.Unmarshal(b, &info); err != nil {
@@ -229,6 +241,9 @@ func (lc *LoggerConfig) UnmarshalBSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON resolves the LoggerProducer from this LoggerConfig, marshals it
+// to JSON, and returns the logger configuration information necessary to
+// reconstruct the LoggerConfig.
 func (lc *LoggerConfig) MarshalJSON() ([]byte, error) {
 	if err := lc.resolveProducer(); err != nil {
 		return nil, errors.Wrap(err, "problem resolving logger producer")
@@ -246,6 +261,8 @@ func (lc *LoggerConfig) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON unmarshals the logger configuration necessary to reconstruct
+// the LoggerConfig.
 func (lc *LoggerConfig) UnmarshalJSON(b []byte) error {
 	info := loggerConfigInfo{}
 	if err := json.Unmarshal(b, &info); err != nil {
@@ -360,6 +377,11 @@ func (s *SafeSender) GetSender() send.Sender {
 	return s.Sender
 }
 
+// Close closes all underlying send.Senders to provide a stronger guarantee on
+// closing its underlying send.Senders to free the resources. This resolves an
+// issue in some send.Sender implementations (particularly the buffered sender)
+// where send.Senders that wrap other senders are not guaranteed to close the
+// send.Sender that they wrap, which can be a resource leak.
 func (s *SafeSender) Close() error {
 	catcher := grip.NewBasicCatcher()
 

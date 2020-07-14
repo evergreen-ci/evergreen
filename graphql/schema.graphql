@@ -40,6 +40,7 @@ type Query {
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
+  siteBanner: SiteBanner!
 }
 
 type Mutation {
@@ -145,6 +146,7 @@ type PatchTasks {
 
 type PatchBuildVariant {
   variant: String!
+  displayName: String!
   tasks: [PatchBuildVariantTask]
 }
 type PatchBuildVariantTask {
@@ -486,6 +488,11 @@ type ClientBinary {
   os: String
   url: String
   displayName: String
+}
+
+type SiteBanner {
+  text: String!
+  theme: String!
 }
 
 scalar Time

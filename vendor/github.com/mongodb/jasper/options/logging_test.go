@@ -127,7 +127,7 @@ func TestLogging(t *testing.T) {
 				})
 			})
 			t.Run("String", func(t *testing.T) {
-				lp := &LoggingPayload{Format: LoggingPayloadFormatSTRING}
+				lp := &LoggingPayload{Format: LoggingPayloadFormatString}
 
 				msg, err := lp.produceMessage([]byte("hello world! 42!"))
 				require.NoError(t, err)

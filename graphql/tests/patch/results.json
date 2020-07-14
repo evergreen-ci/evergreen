@@ -105,7 +105,13 @@
     },
     {
       "query_file": "builds-no-builds.graphql",
-      "result": { "data": { "patch": { "builds": [] } } }
+      "result": {
+        "data": {
+          "patch": {
+            "builds": []
+          }
+        }
+      }
     },
     {
       "query_file": "projectVariantsAndTasks.graphql",
@@ -129,25 +135,54 @@
     {
       "query_file": "createTime-exists.graphql",
       "result": {
-        "data": { "patch": { "createTime": "2020-04-13T16:12:39-04:00" } }
+        "data": {
+          "patch": {
+            "createTime": "2020-04-13T16:12:39-04:00"
+          }
+        }
       }
     },
     {
       "query_file": "createTime-does-not-exist.graphql",
       "result": {
-        "data": { "patch": { "createTime": null } }
+        "data": {
+          "patch": {
+            "createTime": null
+          }
+        }
       }
     },
     {
       "query_file": "commit-queue.graphql",
       "result": {
-        "data": { "patch": { "commitQueuePosition": 0 } }
+        "data": {
+          "patch": {
+            "commitQueuePosition": 0
+          }
+        }
       }
     },
     {
       "query_file": "commit-queue-null.graphql",
       "result": {
-        "data": { "patch": { "commitQueuePosition": null } }
+        "data": {
+          "patch": {
+            "commitQueuePosition": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "correct-duration.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "timeTaken": "1m 37s",
+              "makespan": "1m 37s"
+            }
+          }
+        }
       }
     }
   ]

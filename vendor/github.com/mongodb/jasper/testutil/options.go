@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/bond"
 	"github.com/mongodb/jasper/options"
-	"github.com/tychoish/bond"
 )
 
 // YesCreateOpts creates the options to run the "yes" command for the given

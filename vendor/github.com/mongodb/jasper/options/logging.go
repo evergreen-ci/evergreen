@@ -15,9 +15,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// CachedLogger is the cached item representing a processes normal
-// output. It captures information about the cached item, as well as
-// go interfaces for sending log messages.
+// CachedLogger is the cached item representing a process's output. It captures
+// information about the cached item, as well as interfaces for sending log
+// messages.
 type CachedLogger struct {
 	ID       string    `bson:"id" json:"id" yaml:"id"`
 	Manager  string    `bson:"manager_id" json:"manager_id" yaml:"manager_id"`
@@ -54,10 +54,11 @@ type LoggingPayload struct {
 // formating or encoding of the payload data.
 type LoggingPayloadFormat string
 
+// Constants representing logging payload formats for SendMessages.
 const (
 	LoggingPayloadFormatBSON   = "bson"
 	LoggingPayloadFormatJSON   = "json"
-	LoggingPayloadFormatSTRING = "string"
+	LoggingPayloadFormatString = "string"
 )
 
 // Send resolves a sender from the cached logger (either the error or

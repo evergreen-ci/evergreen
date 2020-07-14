@@ -104,13 +104,6 @@ type distroScheduler struct {
 }
 
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
-	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"distro":    distroID,
-		"num_tasks": len(runnableTasks),
-		"instance":  s.runtimeID,
-	})
-
 	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error prioritizing tasks for distro '%s'", distroID)
@@ -120,13 +113,6 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold, s.opts)
 	distroQueueInfo.AliasQueue = isSecondaryQueue
 	distroQueueInfo.PlanCreatedAt = s.startedAt
-
-	grip.Debug(message.Fields{
-		"runner":    RunnerName,
-		"distro":    distroID,
-		"instance":  s.runtimeID,
-		"operation": "saving task queue for distro",
-	})
 
 	// persist the queue of tasks and its associated distroQueueInfo
 	err = PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)

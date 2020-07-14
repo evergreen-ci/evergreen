@@ -39,8 +39,9 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("no error should be returned for dependencies of the same task on two variants", func() {
@@ -58,9 +59,12 @@ func TestVerifyTaskDependencies(t *testing.T) {
 						},
 					},
 				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1"},
+					{Name: "v2"},
+				},
 			}
 			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
 		})
 
 		Convey("if any dependencies have an invalid name field, an error should be returned", func() {
@@ -77,8 +81,28 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("if any dependencies have an invalid variant field, an error should be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+					},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskUnitDependency{{
+							Name:    "compile",
+							Variant: "nonexistent",
+						}},
+					},
+				},
+			}
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("if any dependencies have an invalid status field, an error should be returned", func() {
@@ -98,8 +122,9 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+			errs := verifyTaskDependencies(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
 		})
 
 		Convey("if the dependencies are well-formed, no error should be returned", func() {
@@ -680,6 +705,26 @@ func TestValidateTaskNames(t *testing.T) {
 		validationResults := validateTaskNames(project)
 		So(len(validationResults), ShouldEqual, 4)
 	})
+	Convey("An error should be returned when a task name", t, func() {
+		Convey("Contains commas", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: "task,"}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+		Convey("Is the same as the all-dependencies syntax", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: model.AllDependencies}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+		Convey("Is 'all'", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{{Name: "all"}},
+			}
+			So(len(validateTaskNames(project)), ShouldEqual, 1)
+		})
+	})
 }
 
 func TestValidateBVNames(t *testing.T) {
@@ -750,6 +795,30 @@ func TestValidateBVNames(t *testing.T) {
 			}
 			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVNames(project)), ShouldEqual, 3)
+		})
+		Convey("An error should be returned when a buildvariant name", func() {
+			Convey("Contains commas", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{
+						{Name: "variant,", DisplayName: "display_name"},
+					},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
+			Convey("Is the same as the all-dependencies syntax", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{
+						{Name: model.AllVariants, DisplayName: "display_name"},
+					},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
+			Convey("Is 'all'", func() {
+				project := &model.Project{
+					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
+				}
+				So(len(validateBVNames(project)), ShouldEqual, 1)
+			})
 		})
 	})
 }
@@ -1170,6 +1239,37 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
+		Convey("an error should be thrown if both a function and a plugin command are referenced", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.parse_files",
+							Params: map[string]interface{}{
+								"files": []interface{}{"test"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+						Commands: []model.PluginCommandConf{
+							{
+								Function: "funcOne",
+								Command:  "gotest.parse_files",
+								Params: map[string]interface{}{
+									"files": []interface{}{"test"},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
 		Convey("an error should be thrown if a function plugin command doesn't have commands", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
@@ -1224,7 +1324,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 1)
+			So(len(validatePluginCommands(project)), ShouldEqual, 2)
 		})
 		Convey("errors should be thrown if a function 'a' references "+
 			"another function, 'b', which that does not exist", func() {
@@ -1242,7 +1342,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 2)
+			So(len(validatePluginCommands(project)), ShouldEqual, 3)
 		})
 
 		Convey("an error should be thrown if a referenced pre plugin command is invalid", func() {

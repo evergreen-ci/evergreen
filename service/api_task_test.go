@@ -369,6 +369,70 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
+		Convey("with many host running task group tasks", func() {
+			// In this scenario likely host1 and host2 are racing, since host2 has a later
+			// task group order number than what's in the queue, and will clear the running
+			// task when it sees that host2 is running with a smaller task group order number.
+			host1 := host.Host{
+				Id:                      "host1",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "task1",
+				RunningTaskGroup:        "group1",
+				RunningTaskBuildVariant: "variant1",
+				RunningTaskVersion:      "version1",
+				RunningTaskProject:      "exists",
+				RunningTaskGroupOrder:   2,
+			}
+			So(host1.Insert(), ShouldBeNil)
+			host2 := host.Host{
+				Id:                      "host2",
+				Status:                  evergreen.HostRunning,
+				RunningTask:             "",
+				RunningTaskGroup:        "",
+				RunningTaskBuildVariant: "",
+				RunningTaskVersion:      "",
+				RunningTaskProject:      "",
+			}
+			So(host2.Insert(), ShouldBeNil)
+			task3 := task.Task{
+				Id:                "task3",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group1",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+				TaskGroupOrder:    3,
+			}
+			So(task3.Insert(), ShouldBeNil)
+			task4 := task.Task{
+				Id:                "task4",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				TaskGroup:         "group1",
+				BuildVariant:      "variant1",
+				Version:           "version1",
+				Project:           "exists",
+				TaskGroupMaxHosts: 1,
+				TaskGroupOrder:    1,
+			}
+			So(task4.Insert(), ShouldBeNil)
+			taskQueue.Queue = []model.TaskQueueItem{
+				{Id: task3.Id},
+				{Id: task4.Id},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &host2, details)
+			So(err, ShouldBeNil)
+			So(t, ShouldNotBeNil)
+			// task 3 should not be dispatched, because it has a later task group
+			// order number than what's currently assigned to host1. Instead it should be task4.
+			So(t.Id, ShouldEqual, task4.Id)
+			h, err := host.FindOne(host.ById(host2.Id))
+			So(err, ShouldBeNil)
+			So(h.RunningTask, ShouldEqual, task4.Id)
+		})
 	})
 }
 

@@ -67,6 +67,14 @@ tasks:
     tags: ["test"]
     name: test-remote
 
+  - <<: *run-build
+    tags: ["test"]
+    name: test-metabuild-generator
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test-metabuild-model
+
   - name: compile-base
     tags: ["legacy-check"]
     commands:
@@ -76,11 +84,23 @@ tasks:
 
   - <<: *run-build
     tags: ["report"]
+    name: lint-metabuild-generator
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-metabuild-model
+
+  - <<: *run-build
+    tags: ["report"]
     name: lint-cli
 
   - <<: *run-build
     tags: ["report"]
     name: lint-internal-executor
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-jasper
 
   - <<: *run-build
     tags: ["report"]

@@ -2519,7 +2519,7 @@
         "data": {
           "patch": {
             "duration": {
-              "makespan": "3m39s",
+              "makespan": "3m 39s",
               "timeTaken": null
             }
           }

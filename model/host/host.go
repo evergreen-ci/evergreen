@@ -55,10 +55,11 @@ type Host struct {
 
 	// the task that is currently running on the host
 	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
-	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
 	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
+	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
+	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order,omitempty"`
 
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
@@ -1019,6 +1020,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 			"$unset": bson.M{
 				RunningTaskKey:             1,
 				RunningTaskGroupKey:        1,
+				RunningTaskGroupOrderKey:   1,
 				RunningTaskBuildVariantKey: 1,
 				RunningTaskVersionKey:      1,
 				RunningTaskProjectKey:      1,
@@ -1031,10 +1033,11 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 
 	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
 	h.RunningTask = ""
-	h.RunningTaskGroup = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
 	h.RunningTaskProject = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskGroupOrder = 0
 	h.LastTask = t.Id
 	h.LastGroup = t.TaskGroup
 	h.LastBuildVariant = t.BuildVariant
@@ -1055,6 +1058,7 @@ func (h *Host) ClearRunningTask() error {
 			"$unset": bson.M{
 				RunningTaskKey:             1,
 				RunningTaskGroupKey:        1,
+				RunningTaskGroupOrderKey:   1,
 				RunningTaskBuildVariantKey: 1,
 				RunningTaskVersionKey:      1,
 				RunningTaskProjectKey:      1,
@@ -1069,10 +1073,11 @@ func (h *Host) ClearRunningTask() error {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
 	}
 	h.RunningTask = ""
-	h.RunningTaskGroup = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
 	h.RunningTaskProject = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskGroupOrder = 0
 
 	return nil
 }
@@ -1105,6 +1110,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		"$set": bson.M{
 			RunningTaskKey:             t.Id,
 			RunningTaskGroupKey:        t.TaskGroup,
+			RunningTaskGroupOrderKey:   t.TaskGroupOrder,
 			RunningTaskBuildVariantKey: t.BuildVariant,
 			RunningTaskVersionKey:      t.Version,
 			RunningTaskProjectKey:      t.Project,

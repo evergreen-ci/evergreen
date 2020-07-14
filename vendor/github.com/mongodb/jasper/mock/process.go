@@ -90,7 +90,7 @@ func (p *Process) Respawn(ctx context.Context) (jasper.Process, error) {
 		return nil, mockFail()
 	}
 
-	return &(*p), nil
+	return p, nil
 }
 
 // RegisterTrigger records the trigger in Triggers. If FailRegisterTrigger is
