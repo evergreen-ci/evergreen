@@ -27,7 +27,7 @@ func NewGolang(g model.Golang) *Golang {
 func (g *Golang) Generate() (*shrub.Configuration, error) {
 	conf, err := shrub.BuildConfiguration(func(c *shrub.Configuration) {
 		for _, gv := range g.Variants {
-			variant := c.Variant(gv.Name)
+			variant := c.Variant(gv.Name).DisplayName(gv.Name)
 			variant.DistroRunOn = gv.Distros
 
 			var tasksForVariant []*shrub.Task
