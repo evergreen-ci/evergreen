@@ -98,7 +98,7 @@ var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryProjectFields,
 	verifyTaskDependencies,
 	verifyTaskRequirements,
-	validateTaskPatchability,
+	validateTaskRuns,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
@@ -983,13 +983,28 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateTaskPatchability(project *model.Project) ValidationErrors {
+func validateTaskRuns(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
 		if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' will never run because it skips both patch builds and non-patch builds",
+					bvtu.Name),
+			})
+		}
+		// Git-tag-only builds cannot run in patches.
+		if bvtu.SkipOnNonGitTagBuild() && bvtu.SkipOnNonPatchBuild() {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' will never run because it only runs for git tag builds but also is patch-only",
+					bvtu.Name),
+			})
+		}
+		if bvtu.SkipOnNonGitTagBuild() && util.IsPtrSetToTrue(bvtu.Patchable) {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' cannot be patchable if it only runs for git tag builds",
 					bvtu.Name),
 			})
 		}
