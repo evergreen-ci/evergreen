@@ -937,7 +937,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
 
 		cmd := jasper.NewCommand().Add(args).
-			SetErrorWriter(os.Stderr).
+			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
 					"directory": opts.Directory,
@@ -950,7 +950,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 			})
 
 		if !opts.Quiet {
-			cmd = cmd.SetOutputWriter(os.Stdout)
+			cmd = cmd.SetOutputWriter(utility.NopWriteCloser(os.Stdout))
 		}
 
 		cmds = append(cmds, cmd)
@@ -967,7 +967,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		commandNumber := idx + 1
 		cmdString := obj.Command
 
-		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(os.Stderr).SetInput(os.Stdin).
+		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(utility.NopWriteCloser(os.Stderr)).SetInput(os.Stdin).
 			Append(obj.Command).
 			Prerequisite(func() bool {
 				grip.Info(message.Fields{
@@ -981,7 +981,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 				return !opts.DryRun
 			})
 		if !opts.Quiet {
-			cmd = cmd.SetOutputWriter(os.Stdout)
+			cmd = cmd.SetOutputWriter(utility.NopWriteCloser(os.Stdout))
 		}
 		cmds = append(cmds, cmd)
 	}
