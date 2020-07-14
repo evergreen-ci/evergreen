@@ -2461,3 +2461,122 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 
 	return true
 }
+
+func GetRunningHosts(sortBy string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
+	// PIPELINE FOR ALL RUNNING HOSTS
+	runningHostsPipeline := []bson.M{
+		{
+			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           "task_full",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$task_full",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+
+	// CONTEXT
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	// TOTAL RUNNING HOSTS COUNT
+	countPipeline := []bson.M{}
+	for _, stage := range runningHostsPipeline {
+		countPipeline = append(countPipeline, stage)
+	}
+	countPipeline = append(countPipeline, bson.M{"$count": "count"})
+
+	tmp := []counter{}
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	err = cursor.All(ctx, &tmp)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	totalRunningHostsCount := 0
+	if len(tmp) > 0 {
+		totalRunningHostsCount = tmp[0].Count
+	}
+
+	// APPLY FILTERS AND SORTERS TO PIPELINE
+	if len(statuses) > 0 {
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$match": bson.M{
+				StatusKey: bson.M{"$in": statuses},
+			},
+		})
+	}
+
+	sorters := bson.D{}
+	if len(sortBy) > 0 {
+		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+	}
+	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
+	runningHostsPipeline = append(runningHostsPipeline, bson.M{
+		"$sort": sorters,
+	})
+
+	if limit > 0 {
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$skip": page * limit,
+		})
+		runningHostsPipeline = append(runningHostsPipeline, bson.M{
+			"$limit": limit,
+		})
+	}
+
+	hosts := []Host{}
+
+	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, runningHostsPipeline)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	err = cursor.All(ctx, &hosts)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	// FILTERED HOSTS COUNT
+	var filteredHostsCount *int
+	hasFilters := len(statuses) > 0
+
+	if hasFilters == true {
+		countPipeline = []bson.M{}
+		for _, stage := range runningHostsPipeline {
+			countPipeline = append(countPipeline, stage)
+		}
+		countPipeline = append(countPipeline, bson.M{"$count": "count"})
+
+		tmp = []counter{}
+		cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		err = cursor.All(ctx, &tmp)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		if len(tmp) > 0 {
+			filteredHostsCount = &tmp[0].Count
+		}
+	}
+
+	return hosts, filteredHostsCount, totalRunningHostsCount, err
+}
+
+type counter struct {
+	Count int `bson:"count"`
+}
