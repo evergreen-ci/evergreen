@@ -56,8 +56,16 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return err
 	}
 
-	c.Files, err = utility.BuildFileList(filepath.Join(conf.WorkDir, c.Prefix), c.Files...)
+	workDir := filepath.Join(conf.WorkDir, c.Prefix)
+	include, err := utility.NewGitignoreFileMatcher(workDir, c.Files...)
 	if err != nil {
+		return errors.Wrap(err, "building gitignore file matcher")
+	}
+	b := utility.FileListBuilder{
+		WorkingDir: workDir,
+		Include:    include,
+	}
+	if c.Files, err = b.Build(); err != nil {
 		err = errors.Wrap(err, "problem building wildcard paths")
 		logger.Task().Error(err)
 		return err
