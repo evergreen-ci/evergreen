@@ -304,7 +304,8 @@ retryLoop:
 
 			if s3pc.isMulti() {
 				workDir := filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix)
-				include, err := utility.NewGitignoreFileMatcher(workDir, s3pc.LocalFilesIncludeFilter...)
+				var include utility.FileMatcher
+				include, err = utility.NewGitignoreFileMatcher(workDir, s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
 					return errors.Wrap(err, "building gitignore file matcher")
 				}
