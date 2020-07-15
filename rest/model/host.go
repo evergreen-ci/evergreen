@@ -266,3 +266,8 @@ type APIHostParams struct {
 	UserSpawned   bool      `json:"user_spawned"`
 	Mine          bool      `json:"mine"`
 }
+
+type APIClearHostsResults struct {
+	Hosts   []string `json:"hosts"`
+	Volumes []string `json:"volumes"`
+}

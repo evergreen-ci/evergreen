@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -316,6 +318,133 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// POST /users/{user_id}/clear_hosts
+
+func makeClearHostsByUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &clearHostsHandler{
+		sc:  sc,
+		env: env,
+	}
+}
+
+type clearHostsHandler struct {
+	user   string
+	dryRun bool
+
+	env evergreen.Environment
+	sc  data.Connector
+}
+
+func (ch clearHostsHandler) Factory() gimlet.RouteHandler {
+	return &clearHostsHandler{
+		sc:  ch.sc,
+		env: ch.env,
+	}
+}
+
+func (ch *clearHostsHandler) Parse(ctx context.Context, r *http.Request) error {
+	ch.user = gimlet.GetVars(r)["user_id"]
+	if ch.user == "" {
+		return gimlet.ErrorResponse{
+			Message:    "user cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	vals := r.URL.Query()
+	ch.dryRun = vals.Get("dry_run") == "true"
+
+	return nil
+}
+
+func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
+	usr := gimlet.GetUser(ctx)
+	opts := model.APIHostParams{
+		UserSpawned: true,
+	}
+	// returns all up-hosts for user
+	hosts, err := ch.sc.FindHostsInRange(opts, ch.user)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting hosts"))
+	}
+
+	volumes, err := ch.sc.FindVolumesByUser(ch.user)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting volumes"))
+	}
+
+	toTerminate := model.APIClearHostsResults{
+		Hosts:   []string{},
+		Volumes: []string{},
+	}
+	currentTime := time.Now()
+
+	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
+	for _, v := range volumes {
+		if !v.NoExpiration && v.Expiration.Before(currentTime) { // already terminated
+			continue
+		}
+		toTerminate.Volumes = append(toTerminate.Volumes, v.ID)
+		if ch.dryRun {
+			continue
+		}
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(v.AvailabilityZone),
+		}
+		mgr, ok := mgrCache[mgrOpts]
+		if !ok {
+			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			mgrCache[mgrOpts] = mgr
+		}
+
+		// detach volume first
+		if v.Host != "" {
+			for _, h := range hosts {
+				if h.Id == v.Host {
+					if err = mgr.DetachVolume(ctx, &h, v.ID); err != nil {
+						return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+							"error detaching volume '%s' from host '%s'", v.ID, h.Id))
+					}
+					break
+				}
+			}
+		}
+		if err = mgr.DeleteVolume(ctx, &v); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+	for _, h := range hosts {
+		toTerminate.Hosts = append(toTerminate.Hosts, h.Id)
+		if !ch.dryRun {
+			// delete hosts here
+			mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+					"can't get ManagerOpts for host '%s'", h.Id))
+			}
+			mgr, ok := mgrCache[mgrOpts]
+			if !ok {
+				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+				if err != nil {
+					return gimlet.MakeJSONInternalErrorResponder(err)
+				}
+				mgrCache[mgrOpts] = mgr
+			}
+			reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
+			if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error terminating instance '%s'", h.Id))
+			}
+		}
+	}
+
+	return gimlet.NewJSONResponse(toTerminate)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /host/filter
 
 func makeFetchHostFilter(sc data.Connector) gimlet.RouteHandler {
@@ -360,7 +489,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	hosts, err := h.sc.FindHostsInRange(h.params, username)
 	if err != nil {
-		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
 
 	resp := gimlet.NewResponseBuilder()

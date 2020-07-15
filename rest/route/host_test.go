@@ -813,6 +813,56 @@ func getMockHostsConnector() *data.MockConnector {
 	return connector
 }
 
+func TestClearHostsHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	h0 := host.Host{
+		Id:           "h0",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostTerminated,
+		CreationTime: time.Now(),
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h1 := host.Host{
+		Id:           "h1",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostRunning,
+		CreationTime: time.Now(),
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h2 := host.Host{
+		Id:           "h2",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostTerminated,
+		CreationTime: time.Now(),
+		Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
+	}
+	v1 := host.Volume{
+		ID:           "v1",
+		CreatedBy:    "user0",
+		NoExpiration: true,
+	}
+	assert.NoError(t, h0.Insert())
+	assert.NoError(t, h1.Insert())
+	assert.NoError(t, h2.Insert())
+	assert.NoError(t, v1.Insert())
+	handler := clearHostsHandler{
+		sc:     &data.DBConnector{},
+		dryRun: true,
+		user:   "user0",
+	}
+	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	require.Equal(t, http.StatusOK, resp.Status())
+	res, ok := resp.Data().(model.APIClearHostsResults)
+	assert.True(t, ok)
+	require.Len(t, res.Hosts, 1)
+	assert.Equal(t, res.Hosts[0], "h1")
+	require.Len(t, res.Volumes, 1)
+	assert.Equal(t, res.Volumes[0], "v1")
+}
+
 func TestHostFilterGetHandler(t *testing.T) {
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
