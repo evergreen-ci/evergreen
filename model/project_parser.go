@@ -102,6 +102,7 @@ type parserTaskGroup struct {
 	Requires              taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	ContinueOnError       bool               `yaml:"continue_on_error,omitempty" bson:"continue_on_error,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -686,6 +687,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			MaxHosts:              ptg.MaxHosts,
 			Timeout:               ptg.Timeout,
 			ShareProcs:            ptg.ShareProcs,
+			ContinueOnError:       ptg.ContinueOnError,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1

@@ -13,6 +13,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -138,12 +139,7 @@ func TestFindTask(t *testing.T) {
 }
 
 func TestBlockTaskGroupTasks(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, VersionCollection))
-
 	projectRef := &ProjectRef{Identifier: "a"}
-	assert.Nil(projectRef.Insert())
 	yml := `
 task_groups:
 - name: foo
@@ -155,11 +151,11 @@ tasks:
 - name: one
 `
 	v := Version{
-		Id:        "b",
+		Id:        "v0",
 		Requester: evergreen.RepotrackerVersionRequester,
 		Config:    yml,
 	}
-	require.NoError(v.Insert())
+
 	tasks := []task.Task{
 		{
 			Id:                "task_id_1",
@@ -167,7 +163,7 @@ tasks:
 			TaskGroup:         "foo",
 			TaskGroupMaxHosts: 1,
 			BuildVariant:      "a",
-			Version:           "b",
+			Version:           "v0",
 			Project:           "a",
 			Revision:          "b",
 			DistroId:          "distro_1",
@@ -178,40 +174,71 @@ tasks:
 			TaskGroup:         "foo",
 			TaskGroupMaxHosts: 1,
 			BuildVariant:      "a",
-			Version:           "b",
+			Version:           "v0",
 			Project:           "a",
 			Revision:          "b",
 			DistroId:          "distro_1",
 		},
 	}
-	for _, t := range tasks {
-		require.NoError(t.Insert())
+
+	for testName, testCase := range map[string]func(*testing.T){
+		"BlockedTasks": func(t *testing.T) {
+			assert.NoError(t, BlockTaskGroupTasks("task_id_1"))
+			found, err := task.FindOneId("one_1")
+			assert.NoError(t, err)
+			require.NotNil(t, found)
+			require.NotEmpty(t, found.DependsOn)
+			assert.Equal(t, "task_id_1", found.DependsOn[0].TaskId)
+
+			queue, err := LoadTaskQueue("distro_1")
+			assert.NoError(t, err)
+			assert.Nil(t, queue)
+		},
+		"ContinueOnError": func(t *testing.T) {
+			newYml := `
+task_groups:
+- name: foo
+  continue_on_error: true
+  tasks:
+  - task_id
+  - one
+tasks:
+- name: task_id
+- name: one
+`
+			require.NoError(t, VersionUpdateOne(bson.M{VersionIdKey: "v0"}, bson.M{"$set": bson.M{VersionConfigKey: newYml}}))
+
+			assert.NoError(t, BlockTaskGroupTasks("task_id_1"))
+			found, err := task.FindOneId("one_1")
+			require.NoError(t, err)
+			require.NotNil(t, found)
+			require.Empty(t, found.DependsOn)
+
+			queue, err := LoadTaskQueue("distro_1")
+			assert.NoError(t, err)
+			assert.Len(t, queue.Queue, 1)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, VersionCollection))
+			require.NoError(t, projectRef.Insert())
+			require.NoError(t, v.Insert())
+			for _, task := range tasks {
+				require.NoError(t, task.Insert())
+			}
+
+			require.NoError(t, updateTaskQueue(
+				"distro_1",
+				[]TaskQueueItem{{Id: tasks[1].Id}},
+				DistroQueueInfo{Length: 1},
+			))
+			queue, err := LoadTaskQueue("distro_1")
+			require.NoError(t, err)
+			require.Len(t, queue.Queue, 1)
+
+			testCase(t)
+		})
 	}
-	assert.NoError(updateTaskQueue(
-		"distro_1",
-		[]TaskQueueItem{
-			{
-				Id: tasks[1].Id,
-			},
-		},
-		DistroQueueInfo{
-			Length: 1,
-		},
-	))
-	queue, err := LoadTaskQueue("distro_1")
-	assert.NoError(err)
-	assert.Len(queue.Queue, 1)
-
-	assert.NoError(BlockTaskGroupTasks("task_id_1"))
-	found, err := task.FindOneId("one_1")
-	assert.NoError(err)
-	require.NotNil(found)
-	require.NotEmpty(found.DependsOn)
-	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
-
-	queue, err = LoadTaskQueue("distro_1")
-	assert.NoError(err)
-	assert.Nil(queue)
 }
 
 func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {

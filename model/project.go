@@ -475,7 +475,8 @@ type TaskGroup struct {
 	Tasks                 []string        `yaml:"tasks" bson:"tasks"`
 	Tags                  []string        `yaml:"tags,omitempty" bson:"tags"`
 	// ShareProcs causes processes to persist between task group tasks.
-	ShareProcs bool `yaml:"share_processes" bson:"share_processes"`
+	ShareProcs      bool `yaml:"share_processes" bson:"share_processes"`
+	ContinueOnError bool `yaml:"continue_on_error" bson:"continue_on_error"`
 }
 
 // Unmarshalled from the "tasks" list in the project file

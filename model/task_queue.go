@@ -268,6 +268,10 @@ func BlockTaskGroupTasks(taskID string) error {
 	if tg == nil {
 		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
 	}
+	if tg.ContinueOnError {
+		return nil
+	}
+
 	indexOfTask := -1
 	for i, tgTask := range tg.Tasks {
 		if t.DisplayName == tgTask {
