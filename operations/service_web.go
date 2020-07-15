@@ -45,16 +45,16 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
 			grip.EmergencyFatal(errors.Wrap(commitqueue.SetupEnv(env), "problem adding commit queue sender"))
 
-			grip.Critical(message.Fields{
-				"message": "test log for Slack, please ignore",
-			})
-
 			settings := env.Settings()
 			sender, err := settings.GetSender(ctx, env)
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
 			remoteQueueGroup := env.RemoteQueueGroup()
+
+			grip.Critical(message.Fields{
+				"message": "test log for Slack, please ignore",
+			})
 
 			// Create the user manager before setting up job queues to allow
 			// background reauthorization jobs to start.
