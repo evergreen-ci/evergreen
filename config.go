@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -504,10 +503,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	if s.Splunk.Populated() {
-		grip.Info(message.Fields{
-			"message": "setting up splunk logger",
-			"context": "logging setup",
-		})
 		retryConf := utility.NewDefaultHTTPRetryConf()
 		retryConf.MaxDelay = time.Second
 		retryConf.BaseDelay = 10 * time.Millisecond
@@ -524,10 +519,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 				utility.PutHTTPClient(client)
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
-			grip.Info(message.Fields{
-				"message": "successfully configured splunk logger",
-				"context": "logging setup",
-			})
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
@@ -544,11 +535,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 
 	// the slack logging service is only for logging very high level alerts.
 	if s.Slack.Token != "" {
-		grip.Info(message.Fields{
-			"message": "setting up slack logger",
-			"level":   fmt.Sprintf("%#v", level.FromString(s.Slack.Level)),
-			"context": "logging setup",
-		})
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
@@ -568,11 +554,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 			}
 
 			senders = append(senders, logger.MakeQueueSender(ctx, env.LocalQueue(), sender))
-			grip.Info(message.Fields{
-				"message": "successfully configured slack logger",
-				"level":   fmt.Sprintf("%#v", level.FromString(s.Slack.Level)),
-				"context": "logging setup",
-			})
 		}
 		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}
