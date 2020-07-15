@@ -579,7 +579,7 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 		if s.Type == nil {
 			return "", "", InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
 		}
-		// Don't exit the loop for object and id becuase together they
+		// Don't exit the loop for object and id because together they
 		// describe the resource id and resource type for the subscription
 		switch *s.Type {
 		case "object":
