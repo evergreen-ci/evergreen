@@ -870,6 +870,25 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 	return &banner, nil
 }
 
+func (r *queryResolver) Host(ctx context.Context, limit *int, page *int, hostID *string) (*restModel.APIHost, error) {
+	host, err := host.FindOneByIdOrTag(*hostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
+	}
+
+	if host == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s", *hostID))
+	}
+
+	apiHost := &restModel.APIHost{}
+
+	err = apiHost.BuildFromService(hostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API Error converting from host.Host to model.APIHost: %s", err.Error()))
+	}
+	return apiHost, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {

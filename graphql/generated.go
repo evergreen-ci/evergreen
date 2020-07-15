@@ -93,6 +93,12 @@ type ComplexityRoot struct {
 		UILink         func(childComplexity int) int
 	}
 
+	DistroInfo struct {
+		Id       func(childComplexity int) int
+		ImageId  func(childComplexity int) int
+		Provider func(childComplexity int) int
+	}
+
 	File struct {
 		Link       func(childComplexity int) int
 		Name       func(childComplexity int) int
@@ -119,6 +125,19 @@ type ComplexityRoot struct {
 	GroupedProjects struct {
 		Name     func(childComplexity int) int
 		Projects func(childComplexity int) int
+	}
+
+	Host struct {
+		DisplayName           func(childComplexity int) int
+		Distro                func(childComplexity int) int
+		HostURL               func(childComplexity int) int
+		Id                    func(childComplexity int) int
+		LastCommunicationTime func(childComplexity int) int
+		Provider              func(childComplexity int) int
+		RunningTask           func(childComplexity int) int
+		StartedBy             func(childComplexity int) int
+		Status                func(childComplexity int) int
+		User                  func(childComplexity int) int
 	}
 
 	LogMessage struct {
@@ -255,6 +274,7 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
+		Host               func(childComplexity int, limit *int, page *int, hostID *string) int
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
@@ -357,6 +377,14 @@ type ComplexityRoot struct {
 	TaskFiles struct {
 		FileCount    func(childComplexity int) int
 		GroupedFiles func(childComplexity int) int
+	}
+
+	TaskInfo struct {
+		BuildId      func(childComplexity int) int
+		DispatchTime func(childComplexity int) int
+		Id           func(childComplexity int) int
+		Name         func(childComplexity int) int
+		VersionId    func(childComplexity int) int
 	}
 
 	TaskLogLinks struct {
@@ -481,6 +509,7 @@ type QueryResolver interface {
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	SiteBanner(ctx context.Context) (*model.APIBanner, error)
+	Host(ctx context.Context, limit *int, page *int, hostID *string) (*model.APIHost, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -691,6 +720,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Dependency.UILink(childComplexity), true
 
+	case "DistroInfo.id":
+		if e.complexity.DistroInfo.Id == nil {
+			break
+		}
+
+		return e.complexity.DistroInfo.Id(childComplexity), true
+
+	case "DistroInfo.imageId":
+		if e.complexity.DistroInfo.ImageId == nil {
+			break
+		}
+
+		return e.complexity.DistroInfo.ImageId(childComplexity), true
+
+	case "DistroInfo.provider":
+		if e.complexity.DistroInfo.Provider == nil {
+			break
+		}
+
+		return e.complexity.DistroInfo.Provider(childComplexity), true
+
 	case "File.link":
 		if e.complexity.File.Link == nil {
 			break
@@ -781,6 +831,76 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
+
+	case "Host.displayName":
+		if e.complexity.Host.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.Host.DisplayName(childComplexity), true
+
+	case "Host.distro":
+		if e.complexity.Host.Distro == nil {
+			break
+		}
+
+		return e.complexity.Host.Distro(childComplexity), true
+
+	case "Host.hostURL":
+		if e.complexity.Host.HostURL == nil {
+			break
+		}
+
+		return e.complexity.Host.HostURL(childComplexity), true
+
+	case "Host.id":
+		if e.complexity.Host.Id == nil {
+			break
+		}
+
+		return e.complexity.Host.Id(childComplexity), true
+
+	case "Host.LastCommunicationTime":
+		if e.complexity.Host.LastCommunicationTime == nil {
+			break
+		}
+
+		return e.complexity.Host.LastCommunicationTime(childComplexity), true
+
+	case "Host.provider":
+		if e.complexity.Host.Provider == nil {
+			break
+		}
+
+		return e.complexity.Host.Provider(childComplexity), true
+
+	case "Host.runningTask":
+		if e.complexity.Host.RunningTask == nil {
+			break
+		}
+
+		return e.complexity.Host.RunningTask(childComplexity), true
+
+	case "Host.startedBy":
+		if e.complexity.Host.StartedBy == nil {
+			break
+		}
+
+		return e.complexity.Host.StartedBy(childComplexity), true
+
+	case "Host.status":
+		if e.complexity.Host.Status == nil {
+			break
+		}
+
+		return e.complexity.Host.Status(childComplexity), true
+
+	case "Host.user":
+		if e.complexity.Host.User == nil {
+			break
+		}
+
+		return e.complexity.Host.User(childComplexity), true
 
 	case "LogMessage.message":
 		if e.complexity.LogMessage.Message == nil {
@@ -1457,6 +1577,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
 
+	case "Query.host":
+		if e.complexity.Query.Host == nil {
+			break
+		}
+
+		args, err := ec.field_Query_host_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Host(childComplexity, args["limit"].(*int), args["page"].(*int), args["hostId"].(*string)), true
+
 	case "Query.patch":
 		if e.complexity.Query.Patch == nil {
 			break
@@ -2064,6 +2196,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskFiles.GroupedFiles(childComplexity), true
 
+	case "TaskInfo.buildId":
+		if e.complexity.TaskInfo.BuildId == nil {
+			break
+		}
+
+		return e.complexity.TaskInfo.BuildId(childComplexity), true
+
+	case "TaskInfo.dispatchTime":
+		if e.complexity.TaskInfo.DispatchTime == nil {
+			break
+		}
+
+		return e.complexity.TaskInfo.DispatchTime(childComplexity), true
+
+	case "TaskInfo.id":
+		if e.complexity.TaskInfo.Id == nil {
+			break
+		}
+
+		return e.complexity.TaskInfo.Id(childComplexity), true
+
+	case "TaskInfo.name":
+		if e.complexity.TaskInfo.Name == nil {
+			break
+		}
+
+		return e.complexity.TaskInfo.Name(childComplexity), true
+
+	case "TaskInfo.versionId":
+		if e.complexity.TaskInfo.VersionId == nil {
+			break
+		}
+
+		return e.complexity.TaskInfo.VersionId(childComplexity), true
+
 	case "TaskLogLinks.agentLogLink":
 		if e.complexity.TaskLogLinks.AgentLogLink == nil {
 			break
@@ -2465,6 +2632,11 @@ var sources = []*ast.Source{
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
+  host(
+    limit: Int = 0
+    page: Int = 0
+    hostId: String
+  ): Host!
 }
 
 type Mutation {
@@ -2919,6 +3091,34 @@ type SiteBanner {
   theme: String!
 }
 
+type Host{
+  id: String!    
+	hostURL: String!    
+	distro: DistroInfo     
+	startedBy: String!   
+	provider: String!    
+	user: String!    
+	status: String!   
+	runningTask: TaskInfo  
+	displayName: String!
+  LastCommunicationTime: Time! 
+}
+
+
+type DistroInfo {
+  id: String! 
+	provider: String! 
+	imageId: String! 
+}
+
+type TaskInfo {
+  id: String!    
+	name: String!   
+	dispatchTime: Time! 
+	versionId: String!   
+	buildId: String! 
+}
+
 scalar Time
 scalar Duration
 scalar StringMap
@@ -3221,6 +3421,36 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["page"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["hostId"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostId"] = arg2
 	return args, nil
 }
 
@@ -4356,6 +4586,108 @@ func (ec *executionContext) _Dependency_uiLink(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _DistroInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "DistroInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DistroInfo_provider(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "DistroInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Provider, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DistroInfo_imageId(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "DistroInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4784,6 +5116,340 @@ func (ec *executionContext) _GroupedProjects_projects(ctx context.Context, field
 	res := resTmp.([]*model.UIProjectFields)
 	fc.Result = res
 	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFieldsᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_hostURL(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Distro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.DistroInfo)
+	fc.Result = res
+	return ec.marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Provider, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_status(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_runningTask(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RunningTask, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.TaskInfo)
+	fc.Result = res
+	return ec.marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_LastCommunicationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastCommunicationTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LogMessage_type(ctx context.Context, field graphql.CollectedField, obj *apimodels.LogMessage) (ret graphql.Marshaler) {
@@ -8178,6 +8844,47 @@ func (ec *executionContext) _Query_siteBanner(ctx context.Context, field graphql
 	return ec.marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_host(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_host_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Host(rctx, args["limit"].(*int), args["page"].(*int), args["hostId"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10440,6 +11147,176 @@ func (ec *executionContext) _TaskFiles_groupedFiles(ctx context.Context, field g
 	res := resTmp.([]*GroupedFiles)
 	fc.Result = res
 	return ec.marshalNGroupedFiles2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedFilesᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskInfo_dispatchTime(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DispatchTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskInfo_versionId(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskInfo_buildId(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskLogLinks_allLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
@@ -13437,6 +14314,43 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var distroInfoImplementors = []string{"DistroInfo"}
+
+func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSet, obj *model.DistroInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DistroInfo")
+		case "id":
+			out.Values[i] = ec._DistroInfo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._DistroInfo_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "imageId":
+			out.Values[i] = ec._DistroInfo_imageId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var fileImplementors = []string{"File"}
 
 func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj *model.APIFile) graphql.Marshaler {
@@ -13586,6 +14500,72 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 			}
 		case "projects":
 			out.Values[i] = ec._GroupedProjects_projects(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var hostImplementors = []string{"Host"}
+
+func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *model.APIHost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Host")
+		case "id":
+			out.Values[i] = ec._Host_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hostURL":
+			out.Values[i] = ec._Host_hostURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "distro":
+			out.Values[i] = ec._Host_distro(ctx, field, obj)
+		case "startedBy":
+			out.Values[i] = ec._Host_startedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._Host_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "user":
+			out.Values[i] = ec._Host_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "status":
+			out.Values[i] = ec._Host_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "runningTask":
+			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._Host_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "LastCommunicationTime":
+			out.Values[i] = ec._Host_LastCommunicationTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -14578,6 +15558,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "host":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_host(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -15064,6 +16058,53 @@ func (ec *executionContext) _TaskFiles(ctx context.Context, sel ast.SelectionSet
 			}
 		case "groupedFiles":
 			out.Values[i] = ec._TaskFiles_groupedFiles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var taskInfoImplementors = []string{"TaskInfo"}
+
+func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet, obj *model.TaskInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskInfo")
+		case "id":
+			out.Values[i] = ec._TaskInfo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+			out.Values[i] = ec._TaskInfo_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "dispatchTime":
+			out.Values[i] = ec._TaskInfo_dispatchTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "versionId":
+			out.Values[i] = ec._TaskInfo_versionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "buildId":
+			out.Values[i] = ec._TaskInfo_buildId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -16059,6 +17100,20 @@ func (ec *executionContext) marshalNGroupedProjects2ᚖgithubᚗcomᚋevergreen�
 	return ec._GroupedProjects(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
+	return ec._Host(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Host(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalID(v)
 }
@@ -16845,6 +17900,38 @@ func (ec *executionContext) marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._TestResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	return graphql.UnmarshalTime(v)
+}
+
+func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec.marshalNTime2timeᚐTime(ctx, sel, *v)
+}
+
 func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx context.Context, sel ast.SelectionSet, v model.APIUser) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
@@ -17293,6 +18380,10 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	return ret
 }
 
+func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
+	return ec._DistroInfo(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
 	return model.UnmarshalAPIDuration(v)
 }
@@ -17711,6 +18802,10 @@ func (ec *executionContext) marshalOTaskEventLogData2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return ec._TaskEventLogData(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
+	return ec._TaskInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v interface{}) (TaskSortCategory, error) {

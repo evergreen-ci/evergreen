@@ -41,6 +41,9 @@ type Query {
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
+  host(
+    hostId: String!
+  ): Host!
 }
 
 type Mutation {
@@ -493,6 +496,34 @@ type ClientBinary {
 type SiteBanner {
   text: String!
   theme: String!
+}
+
+type Host{
+  id: String!    
+	hostURL: String!    
+	distro: DistroInfo     
+	startedBy: String!   
+	provider: String!    
+	user: String!    
+	status: String!   
+	runningTask: TaskInfo  
+	displayName: String!
+  LastCommunicationTime: Time! 
+}
+
+
+type DistroInfo {
+  id: String! 
+	provider: String! 
+	imageId: String! 
+}
+
+type TaskInfo {
+  id: String!    
+	name: String!   
+	dispatchTime: Time! 
+	versionId: String!   
+	buildId: String! 
 }
 
 scalar Time

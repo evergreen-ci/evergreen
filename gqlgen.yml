@@ -94,3 +94,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
   SiteBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
+  Host:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  DistroInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  TaskInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
