@@ -42,7 +42,7 @@ repotracker:
 api:
   github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
-  httplistenaddr: ":8080"
+  httplistenaddr: ":9090"
   httpslistenaddr: ":8443"
   httpskey: |
     -----BEGIN RSA PRIVATE KEY-----
