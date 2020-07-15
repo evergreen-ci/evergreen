@@ -298,7 +298,7 @@ func goimports(source string) ([]byte, error) {
 }
 
 // createConversionMethods takes a given package+struct in this code base and a specification of what fields
-// are of interst, and generates the methods to convert between the REST and DB types. It does not generate
+// are of interest, and generates the methods to convert between the REST and DB types. It does not generate
 // the REST struct itself
 func createConversionMethods(packageName, structName string, fields extractedFields, generatedConversions map[typeInfo]string) (string, error) {
 	pkg, err := importer.Default().Import(packageName)

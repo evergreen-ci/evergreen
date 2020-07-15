@@ -41,6 +41,8 @@ type convertFnOpts struct {
 // and the name of the inverse conversion function
 func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) (convertFuncs, error) {
 	info := typeInfo{
+		InType:   opts.in.String(),
+		InIsPtr:  false,
 		OutType:  opts.outType,
 		OutIsPtr: opts.outIsPtr,
 	}
@@ -61,7 +63,6 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 		}
 		return convertFuncs{}, errors.New("complex pointers not implemented yet")
 	}
-	info.InType = opts.in.String()
 	if intype, inIsNamedType := opts.in.(*types.Named); inIsNamedType {
 		switch intype.String() {
 		case "time.Time":
