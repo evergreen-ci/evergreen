@@ -10,7 +10,7 @@ mutation {
         { type: "object", data: "build" }
         {
           type: "in-version"
-          data: "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
+          data: "logkeeper_3c5a8112efdb98f3710b89d553af602e355aa5c9"
         }
       ]
       owner_type: "person"
