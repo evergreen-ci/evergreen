@@ -5,11 +5,12 @@ package model
 import "time"
 
 func InterfaceInterface(in interface{}) interface{} {
-	return in
+	return interface{}(in)
 }
 
 func InterfaceInterfacePtr(in interface{}) *interface{} {
-	return &in
+	out := interface{}(in)
+	return &out
 }
 
 func InterfacePtrInterface(in *interface{}) interface{} {
@@ -17,19 +18,24 @@ func InterfacePtrInterface(in *interface{}) interface{} {
 	if in == nil {
 		return out
 	}
-	return *in
+	return interface{}(*in)
 }
 
 func InterfacePtrInterfacePtr(in *interface{}) *interface{} {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := interface{}(*in)
+	return &out
 }
 
 func MapstringinterfaceMapstringinterface(in map[string]interface{}) map[string]interface{} {
-	return in
+	return map[string]interface{}(in)
 }
 
 func MapstringinterfaceMapstringinterfacePtr(in map[string]interface{}) *map[string]interface{} {
-	return &in
+	out := map[string]interface{}(in)
+	return &out
 }
 
 func MapstringinterfacePtrMapstringinterface(in *map[string]interface{}) map[string]interface{} {
@@ -37,19 +43,24 @@ func MapstringinterfacePtrMapstringinterface(in *map[string]interface{}) map[str
 	if in == nil {
 		return out
 	}
-	return *in
+	return map[string]interface{}(*in)
 }
 
 func MapstringinterfacePtrMapstringinterfacePtr(in *map[string]interface{}) *map[string]interface{} {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := map[string]interface{}(*in)
+	return &out
 }
 
 func TimeTimeTimeTime(in time.Time) time.Time {
-	return in
+	return time.Time(in)
 }
 
 func TimeTimeTimeTimePtr(in time.Time) *time.Time {
-	return &in
+	out := time.Time(in)
+	return &out
 }
 
 func TimeTimePtrTimeTime(in *time.Time) time.Time {
@@ -57,9 +68,13 @@ func TimeTimePtrTimeTime(in *time.Time) time.Time {
 	if in == nil {
 		return out
 	}
-	return *in
+	return time.Time(*in)
 }
 
 func TimeTimePtrTimeTimePtr(in *time.Time) *time.Time {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := time.Time(*in)
+	return &out
 }

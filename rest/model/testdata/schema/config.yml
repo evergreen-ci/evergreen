@@ -15,3 +15,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.MockLayerOne
   MockLayerTwo:
     model: github.com/evergreen-ci/evergreen/rest/model.MockLayerTwo
+  AssortedTypes:
+    model: github.com/evergreen-ci/evergreen/rest/model.MockTypes
