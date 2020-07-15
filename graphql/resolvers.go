@@ -1087,6 +1087,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			id = *s.Data
 			break
 		case "in-version":
+			idType = "version"
 			id = *s.Data
 			break
 		}
