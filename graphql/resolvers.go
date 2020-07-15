@@ -1071,24 +1071,28 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 
 	var id string
 	var idType string
+	var exitLoop = false
 	for _, s := range subscription.Selectors {
 		if s.Type == nil {
 			return false, InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
 		}
+		// Don't exit the loop for object and id becuase together they
+		// describe the resource id and resource type for the subscription
 		switch *s.Type {
 		case "object":
 			idType = *s.Data
-			break
 		case "id":
 			id = *s.Data
-			break
 		case "project":
 			idType = "project"
 			id = *s.Data
-			break
+			exitLoop = true
 		case "in-version":
 			idType = "version"
 			id = *s.Data
+			exitLoop = true
+		}
+		if exitLoop {
 			break
 		}
 	}
