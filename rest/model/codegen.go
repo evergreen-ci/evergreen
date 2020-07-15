@@ -132,7 +132,7 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 	formattedModelCode, err := goimports(modelFile)
 	catcher.Wrap(err, "unable to format model code")
 
-	converters := typeInfoSorter([]typeInfo{})
+	converters := typeInfoSorter{}
 	conversionCode := ""
 	for key := range generatedConversions {
 		converters = append(converters, key)
@@ -182,6 +182,8 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 	return structData, code, nil
 }
 
+// dbField looks for the "db" schema directive, which tells us what field in the db model
+// matches up to the given field in the REST model, in case they are not named the same thing
 func dbField(gqlDefinition ast.FieldDefinition) string {
 	name := gqlDefinition.Name
 	directive := gqlDefinition.Directives.ForName(aliasesDirective)
@@ -194,6 +196,8 @@ func dbField(gqlDefinition ast.FieldDefinition) string {
 	return name
 }
 
+// getTemplate is a utility function that takes a filepath (relative to the directory of this file)
+// and returns a parsed go template from it
 func getTemplate(filepath string) (*template.Template, error) {
 	f, err := ioutil.ReadFile(filepath)
 	if err != nil {
@@ -207,6 +211,8 @@ func getTemplate(filepath string) (*template.Template, error) {
 	}).Parse(string(f))
 }
 
+// jsonTag looks for the "json" schema directive, which tells us what json tag the rest model field
+// should have, in case the user does not like the default json tag we generate
 func jsonTag(gqlDefinition ast.FieldDefinition) string {
 	directive := gqlDefinition.Directives.ForName(aliasesDirective)
 	if directive != nil {
@@ -219,6 +225,8 @@ func jsonTag(gqlDefinition ast.FieldDefinition) string {
 	return strings.Join(pieces, "_")
 }
 
+// words takes a camelCased or SentenceCased field name and separates what it thinks are the
+// separate words in the name, determined by the casing
 func words(in string) []string {
 	out := []string{}
 	re := regexp.MustCompile(`[A-Za-z][^A-Z]*`)
@@ -229,6 +237,8 @@ func words(in string) []string {
 	return out
 }
 
+// output is a utility function to apply an abitrary struct to an arbitrary template and return
+// its output as a string
 func output(t *template.Template, data interface{}) (string, error) {
 	if t == nil {
 		return "", errors.New("cannot execute nil template")
@@ -238,6 +248,8 @@ func output(t *template.Template, data interface{}) (string, error) {
 	return string(w.Bytes()), err
 }
 
+// getFieldInfo is a utility function to translate the data structure used by the third-party
+// AST parser into a structure that the rest of the code here can understand
 func getFieldInfo(f *ast.FieldDefinition) extractedField {
 	outputType := gqlTypeToGoType(f.Type.Name(), !f.Type.NonNull)
 	return extractedField{
@@ -248,6 +260,8 @@ func getFieldInfo(f *ast.FieldDefinition) extractedField {
 	}
 }
 
+// gqlTypeToGoType is a very important function that will take a built-in GraphQL type and return
+// the corresponding Go type. This is used to determine the type of the field in the REST model
 func gqlTypeToGoType(gqlType string, nullable bool) string {
 	returntype := ""
 	if nullable {
@@ -274,12 +288,18 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	}
 }
 
+// goimports is the final step to format the generated code with goimports. Note that evergreen does not
+// vendor goimports directly but relies on the version in the user's go toolchain, which can run into
+// problems if it does not match the go compiler version or is not "go got" at all
 func goimports(source string) ([]byte, error) {
 	return imports.Process("", []byte(source), &imports.Options{
 		AllErrors: true, Comments: true, TabIndent: true, TabWidth: 8,
 	})
 }
 
+// createConversionMethods takes a given package+struct in this code base and a specification of what fields
+// are of interst, and generates the methods to convert between the REST and DB types. It does not generate
+// the REST struct itself
 func createConversionMethods(packageName, structName string, fields extractedFields, generatedConversions map[typeInfo]string) (string, error) {
 	pkg, err := importer.Default().Import(packageName)
 	if err != nil {
@@ -306,6 +326,8 @@ func createConversionMethods(packageName, structName string, fields extractedFie
 	return code, nil
 }
 
+// generateServiceConversions is a utility function to generate the conversion code for a given struct,
+// assumed to be a DB model
 func generateServiceConversions(structVal *types.Struct, packageName, structName string, fields extractedFields, generatedConversions map[typeInfo]string) (string, error) {
 	serviceTemplate, err := getTemplate(serviceMethodsTemplatePath)
 	if err != nil {
@@ -321,14 +343,13 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	}
 	bfsCode := []string{}
 	tsCode := []string{}
-	fieldWarnings := grip.NewBasicCatcher()
 	for i := 0; i < structVal.NumFields(); i++ {
 		field := structVal.Field(i)
 		fieldName := field.Name()
 		if fieldInfo, shouldExtract := fields[fieldName]; shouldExtract {
 			// generate the BuildFromService code
-			if err = validateFieldTypes(fieldName, field.Type().String(), fieldInfo.OutputFieldType); err != nil {
-				fieldWarnings.Add(err)
+			if warning := validateFieldTypes(fieldName, field.Type().String(), fieldInfo.OutputFieldType); warning != "" {
+				grip.Warning(warning)
 			}
 			opts := convertFnOpts{
 				in:       field.Type(),
@@ -365,9 +386,6 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 		sort.Strings(bfsCode)
 		sort.Strings(tsCode)
 	}
-	if fieldWarnings.HasErrors() {
-		grip.Warning(fieldWarnings.Resolve())
-	}
 	data := modelConversionInfo{
 		ModelType:      fmt.Sprintf("%s.%s", packageName, structName),
 		RestType:       fmt.Sprintf("API%s", structName),
@@ -377,14 +395,17 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	return output(serviceTemplate, data)
 }
 
-func validateFieldTypes(fieldName, inputType, outputType string) error {
+// validateFieldTypes is currently just a method to compare the names of the types of two fields, and
+// potentially generate a warning if the type names are not sufficiently close to each other. Should
+// ideally be replaced with a more robust validation function
+func validateFieldTypes(fieldName, inputType, outputType string) string {
 	inputType = stripPackage(inputType)
 	outputType = stripPackage(outputType)
 	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
 		// this should ideally be a more sophisticated check to ensure that complex types are convertible
 		// to each other, but for now we rely on the naming convention to find potential type errors
-		return errors.Errorf("DB model field '%s' has type '%s' which may be incompatible with REST model type '%s'", fieldName, inputType, outputType)
+		return fmt.Sprintf("DB model field '%s' has type '%s' which may be incompatible with REST model type '%s'", fieldName, inputType, outputType)
 	}
 
-	return nil
+	return ""
 }
