@@ -111,6 +111,9 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.Secret = sub.Secret
 		payload.URL = sub.URL
 		payload.NotificationID = n.ID
+		for _, header := range sub.Headers {
+			payload.Headers.Add(header.Key, header.Value)
+		}
 
 		return util.NewWebhookMessageWithStruct(*payload), nil
 

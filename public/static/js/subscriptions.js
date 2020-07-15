@@ -254,9 +254,26 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     $scope.tempRegexSelector = {};
   }
 
+  $scope.addHeader = function () {
+    if (!$scope.newHeader || !$scope.newHeader.key) {
+      return;
+    }
+    if (!$scope.targets["evergreen-webhook"].headers) {
+      $scope.targets["evergreen-webhook"].headers = [];
+    }
+    $scope.targets["evergreen-webhook"].headers.push({
+      key: $scope.newHeader.key,
+      value: $scope.newHeader.value
+    });
+    $scope.newHeader = {};
+  }
 
   $scope.deleteRegexSelector = function (type) {
     delete $scope.regexSelectors[type];
+  }
+
+  $scope.deleteHeader = function (index) {
+    $scope.targets["evergreen-webhook"].headers.splice(index, 1);
   }
 
   $scope.selectorDisabled = function (field) {
