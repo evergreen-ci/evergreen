@@ -36,7 +36,7 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 }
 
 // SystemMetricsCollector allows for starting and stopping the collection of
-// system metrics
+// system metrics.
 type SystemMetricsCollector interface {
 	// Start begins collection of system metrics.
 	Start()
