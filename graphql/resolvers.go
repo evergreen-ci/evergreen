@@ -44,8 +44,26 @@ func (r *Resolver) Query() QueryResolver {
 func (r *Resolver) Task() TaskResolver {
 	return &taskResolver{r}
 }
+func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
+
+type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
+
+func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (string, error) {
+	return *obj.Distro.Id, nil
+}
+
+func (r *hostResolver) RunningTask(ctx context.Context, obj *restModel.APIHost) (*restModel.APITask, error) {
+	return &restModel.APITask{
+		Id:          obj.RunningTask.Id,
+		DisplayName: obj.RunningTask.Name,
+	}, nil
+}
+
+func (r *hostResolver) CreationTime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.RunningTask.StartTime, nil
+}
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
@@ -169,6 +187,29 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 type queryResolver struct{ *Resolver }
+
+func (r *queryResolver) Hosts(ctx context.Context, input *HostsInput) (*HostsResponse, error) {
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts("", "", "", "", "", []string{}, 1, 1, 10)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
+	}
+
+	apiHosts := []*restModel.APIHost{}
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+
+		apiHost.BuildFromService(host)
+
+		apiHosts = append(apiHosts, &apiHost)
+	}
+
+	return &HostsResponse{
+		Hosts:              apiHosts,
+		FilteredHostsCount: filteredHostsCount,
+		TotalHostsCount:    totalHostsCount,
+	}, nil
+}
 
 type patchResolver struct{ *Resolver }
 

@@ -39,6 +39,24 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
+type HostsInput struct {
+	HostID      *string        `json:"hostId"`
+	SortBy      *string        `json:"sortBy"`
+	Distro      *string        `json:"distro"`
+	CurrentTask *string        `json:"currentTask"`
+	Owner       *string        `json:"owner"`
+	Statuses    []*string      `json:"statuses"`
+	SortDir     *SortDirection `json:"sortDir"`
+	Page        *int           `json:"page"`
+	Limit       *int           `json:"limit"`
+}
+
+type HostsResponse struct {
+	FilteredHostsCount *int             `json:"filteredHostsCount"`
+	TotalHostsCount    int              `json:"totalHostsCount"`
+	Hosts              []*model.APIHost `json:"hosts"`
+}
+
 type PatchBuildVariant struct {
 	Variant     string                   `json:"variant"`
 	DisplayName string                   `json:"displayName"`

@@ -2462,7 +2462,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
+func GetPaginatedRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{

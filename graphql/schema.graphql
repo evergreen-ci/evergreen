@@ -41,6 +41,7 @@ type Query {
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
+  hosts(input: HostsInput): HostsResponse!
 }
 
 type Mutation {
@@ -91,6 +92,18 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+input HostsInput {
+  hostId: String
+  sortBy: String
+  distro: String
+  currentTask: String
+  owner: String
+  statuses: [String] = []
+  sortDir: SortDirection = ASC
+  page: Int = 0
+  limit: Int = 0
+}
+
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -139,6 +152,23 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+type Host {
+  id: ID!
+  hostUrl: String! #hostId / host column
+  distroId: String! #will have a resolver for this field
+  status: String! #included
+  runningTask: Task! #included
+  # totalIdleTime: Time!
+  creationTime: Time #hostObj.RunningTask.start_time / resolver for this field
+  startedBy: String! #included
+}
+
+type HostsResponse {
+  filteredHostsCount: Int
+  totalHostsCount: Int!
+  hosts: [Host!]!
+}
+
 type PatchTasks {
   tasks: [TaskResult!]!
   count: Int!
@@ -149,6 +179,7 @@ type PatchBuildVariant {
   displayName: String!
   tasks: [PatchBuildVariantTask]
 }
+
 type PatchBuildVariantTask {
   id: ID!
   name: String!
