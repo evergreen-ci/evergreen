@@ -24,7 +24,7 @@ func NewMake(m model.Make) *Make {
 func (m *Make) Generate() (*shrub.Configuration, error) {
 	conf, err := shrub.BuildConfiguration(func(c *shrub.Configuration) {
 		for _, mv := range m.Variants {
-			variant := c.Variant(mv.Name)
+			variant := c.Variant(mv.Name).DisplayName(mv.Name)
 			variant.DistroRunOn = mv.Distros
 
 			var tasksForVariant []*shrub.Task

@@ -691,6 +691,99 @@ func TestVerifyTaskRequirements(t *testing.T) {
 	})
 }
 
+func TestValidateTaskRuns(t *testing.T) {
+	makeProject := func() *model.Project {
+		return &model.Project{
+			Tasks: []model.ProjectTask{
+				{
+					Name: "task",
+				},
+			},
+			BuildVariants: []model.BuildVariant{
+				{
+					Name: "bv",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "task"},
+					},
+				},
+			},
+		}
+	}
+	Convey("When a task is patchable, not patch-only, and not git-tag-only, no error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.TruePtr()
+		project.Tasks[0].PatchOnly = util.FalsePtr()
+		project.Tasks[0].GitTagOnly = util.FalsePtr()
+	})
+	Convey("When a task is not patchable, no error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.FalsePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+	})
+	Convey("When a task is patch-only, no error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].PatchOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+	})
+	Convey("When a task is git-tag-only, no error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+	})
+	Convey("When a task is not patchable and not patch-only, no error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.FalsePtr()
+		project.Tasks[0].PatchOnly = util.FalsePtr()
+	})
+	Convey("When a task is not patchable and patch-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.FalsePtr()
+		project.Tasks[0].PatchOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patchable and git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.TruePtr()
+		project.Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patch-only and git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].PatchOnly = util.TruePtr()
+		project.Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patch-only and the build variant task unit is not patchable, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].PatchOnly = util.TruePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = util.FalsePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is not patchable and the build variant task unit is patch-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patch-only and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].PatchOnly = util.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is patchable and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].Patchable = util.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When the build variant task unit is not patchable and patch-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.BuildVariants[0].Tasks[0].Patchable = util.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = util.TruePtr()
+	})
+}
+
 func TestValidateTaskNames(t *testing.T) {
 	Convey("When a task name contains unauthorized characters, an error should be returned", t, func() {
 		project := &model.Project{

@@ -166,7 +166,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
-		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
+		msg := fmt.Errorf("invalid end status '%s' for task %s", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
@@ -504,12 +504,15 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
-		if !projectRef.Enabled {
+		if !projectRef.Enabled || projectRef.DispatchingDisabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":   "projectRef.Enabled is false, but there was an issue dequeuing the task",
-				"distro_id": nextTask.DistroId,
-				"task_id":   nextTask.Id,
-				"host_id":   currentHost.Id,
+				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
+				"distro_id":            nextTask.DistroId,
+				"task_id":              nextTask.Id,
+				"host_id":              currentHost.Id,
+				"project":              projectRef.Identifier,
+				"enabled":              projectRef.Enabled,
+				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))
 
 			continue

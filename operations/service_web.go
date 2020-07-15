@@ -52,6 +52,10 @@ func startWebService() cli.Command {
 			queue := env.RemoteQueue()
 			remoteQueueGroup := env.RemoteQueueGroup()
 
+			grip.Critical(message.Fields{
+				"message": "test log for Slack, please ignore",
+			})
+
 			// Create the user manager before setting up job queues to allow
 			// background reauthorization jobs to start.
 			if err = setupUserManager(env, settings); err != nil {

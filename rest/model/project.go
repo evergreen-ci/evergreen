@@ -219,6 +219,7 @@ type APIProjectRef struct {
 	Tracked                     bool                 `json:"tracked"`
 	PatchingDisabled            bool                 `json:"patching_disabled"`
 	RepotrackerDisabled         bool                 `json:"repotracker_disabled"`
+	DispatchingDisabled         bool                 `json:"dispatching_disabled"`
 	Admins                      []*string            `json:"admins"`
 	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
 	GitTagAuthorizedUsers       []*string            `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
@@ -273,6 +274,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Tracked:               p.Tracked,
 		PatchingDisabled:      p.PatchingDisabled,
 		RepotrackerDisabled:   p.RepotrackerDisabled,
+		DispatchingDisabled:   p.DispatchingDisabled,
 		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
 		Admins:                FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
@@ -343,6 +345,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
+	p.DispatchingDisabled = projectRef.DispatchingDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
 	p.Admins = ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)

@@ -227,6 +227,26 @@
           "no": { "canUnschedule": false }
         }
       }
+    },
+    {
+      "query_file": "previousExecution.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "status": "failed"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "currentExecution.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "status": "dispatched"
+          }
+        }
+      }
     }
   ]
 }
