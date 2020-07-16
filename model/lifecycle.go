@@ -696,7 +696,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
-			Requires:         in.Requires,
 			Distros:          in.Distros,
 			ExecTimeoutSecs:  in.ExecTimeoutSecs,
 			Stepback:         in.Stepback,

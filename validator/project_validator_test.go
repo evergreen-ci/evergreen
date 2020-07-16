@@ -21,7 +21,7 @@ import (
 
 var projectValidatorConf = tu.TestConfig()
 
-func TestVerifyTaskDependencies(t *testing.T) {
+func TestValidateTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {
 		Convey("if any task has a duplicate dependency, an error should be returned", func() {
 			project := &model.Project{
@@ -39,7 +39,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			errs := verifyTaskDependencies(project)
+			errs := validateTaskDependencies(project)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -64,7 +64,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					{Name: "v2"},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
+			So(validateTaskDependencies(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if any dependencies have an invalid name field, an error should be returned", func() {
@@ -81,7 +81,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			errs := verifyTaskDependencies(project)
+			errs := validateTaskDependencies(project)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -100,7 +100,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			errs := verifyTaskDependencies(project)
+			errs := validateTaskDependencies(project)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -122,7 +122,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			errs := verifyTaskDependencies(project)
+			errs := validateTaskDependencies(project)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -144,7 +144,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
+			So(validateTaskDependencies(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("hiding a nonexistent dependency in a task group is found", func() {
 			p := &model.Project{
@@ -160,7 +160,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
 				},
 			}
-			So(verifyTaskDependencies(p)[0].Message, ShouldResemble, "project '' contains a non-existent task name 'nonexistent' in dependencies for task '3'")
+			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "project '' contains a non-existent task name 'nonexistent' in dependencies for task '3'")
 		})
 	})
 }
@@ -549,145 +549,6 @@ func TestCheckDependencyGraph(t *testing.T) {
 			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
-	})
-}
-
-func TestVerifyTaskRequirements(t *testing.T) {
-	Convey("When validating a project's requirements", t, func() {
-		Convey("projects with requirements for non-existing tasks should error", func() {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "2"}}},
-					{Name: "X"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
-						{Name: "1"},
-						{Name: "X", Requires: []model.TaskUnitRequirement{{Name: "2"}}}},
-					},
-				},
-			}
-			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskRequirements(p)), ShouldEqual, 4)
-		})
-		Convey("projects with requirements for non-existing variants should error", func() {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "X", Variant: "$"}}},
-					{Name: "X"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
-						{Name: "1"},
-						{Name: "X", Requires: []model.TaskUnitRequirement{{Name: "1", Variant: "$"}}}},
-					},
-				},
-			}
-			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskRequirements(p)), ShouldEqual, 4)
-		})
-		Convey("projects with requirements with valid tasks but not in variant should fail", func() {
-			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "before"},
-					{Name: "1", DependsOn: beforeDep},
-					{Name: "2", DependsOn: beforeDep},
-					{Name: "3", DependsOn: beforeDep},
-					{Name: "after"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{
-						Name: "after",
-						Requires: []model.TaskUnitRequirement{{
-							Name: "before",
-						}},
-					}}},
-				},
-			}
-			So(verifyTaskRequirements(p)[0].Error(), ShouldResemble, "task 'after' requires task 'before' on variant 'v1'")
-		})
-		Convey("projects with requirements with valid tasks in wrong variant should fail", func() {
-			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "before"},
-					{Name: "1", DependsOn: beforeDep},
-					{Name: "2", DependsOn: beforeDep},
-					{Name: "3", DependsOn: beforeDep},
-					{Name: "after"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name: "after",
-							Requires: []model.TaskUnitRequirement{{
-								Name:    "before",
-								Variant: "v2",
-							}},
-						},
-						{
-							Name: "before",
-						},
-					}},
-					{Name: "v2"},
-				},
-			}
-			So(verifyTaskRequirements(p)[0].Error(), ShouldResemble, "task 'after' requires task 'before' on variant 'v2'")
-		})
-		Convey("projects with requirements for a normal project configuration should pass", func() {
-			all := []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},
-				{Name: "before"}, {Name: "after"}}
-			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "before", Requires: []model.TaskUnitRequirement{{Name: "after"}}},
-					{Name: "1", DependsOn: beforeDep},
-					{Name: "2", DependsOn: beforeDep},
-					{Name: "3", DependsOn: beforeDep},
-					{Name: "after", DependsOn: []model.TaskUnitDependency{
-						{Name: "before"},
-						{Name: "1", PatchOptional: true},
-						{Name: "2", PatchOptional: true},
-						{Name: "3", PatchOptional: true},
-					}},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: all},
-					{Name: "v2", Tasks: all},
-				},
-			}
-			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
-		})
-		Convey("a task requiring a task outside its own variant should be allowed", func() {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "2", Variant: "v2"}}},
-					{Name: "2"},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}}},
-					{Name: "v2", Tasks: []model.BuildVariantTaskUnit{{Name: "2"}}},
-				},
-			}
-			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
-		})
-		Convey("hiding a nonexistent requirement in a task group is found", func() {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
-					{Name: "1"},
-					{Name: "2"},
-					{Name: "3", Requires: []model.TaskUnitRequirement{{Name: "nonexistent"}}},
-				},
-				TaskGroups: []model.TaskGroup{
-					{Name: "tg", Tasks: []string{"3"}},
-				},
-				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
-				},
-			}
-			So(verifyTaskRequirements(p)[0].Message, ShouldResemble, "task 'tg' requires non-existent task 'nonexistent'")
-		})
 	})
 }
 
@@ -2790,10 +2651,6 @@ func TestTVToTaskUnit(t *testing.T) {
 				assert.Len(t, taskUnit.DependsOn, len(expectedTaskUnit.DependsOn))
 				for _, dep := range expectedTaskUnit.DependsOn {
 					assert.Contains(t, taskUnit.DependsOn, dep)
-				}
-				assert.Len(t, taskUnit.Requires, len(expectedTaskUnit.Requires))
-				for _, dep := range expectedTaskUnit.Requires {
-					assert.Contains(t, taskUnit.Requires, dep)
 				}
 				assert.Equal(t, expectedTaskUnit.ExecTimeoutSecs, taskUnit.ExecTimeoutSecs)
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)

@@ -99,7 +99,6 @@ type parserTaskGroup struct {
 	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
 	Tasks                 []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	DependsOn             parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires              taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
@@ -113,7 +112,6 @@ type parserTask struct {
 	Priority        int64               `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires        taskSelectors       `yaml:"requires,omitempty" bson:"requires,omitempty"`
 	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
 	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -207,7 +205,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
-// in the context of dependencies and requirements fields. //TODO no export?
+// in the context of dependencies. //TODO no export?
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
 	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant,omitempty"`
@@ -313,7 +311,6 @@ type parserBV struct {
 	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires      taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -369,7 +366,6 @@ type parserBVTaskUnit struct {
 	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Requires         taskSelectors      `yaml:"requires,omitempty" bson:"requires,omitempty"`
 	ExecTimeoutSecs  int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback         *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	Distros          parserStringSlice  `yaml:"distros,omitempty" bson:"distros,omitempty"`
@@ -646,7 +642,7 @@ func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix)
 }
 
 // evaluateTaskUnits translates intermediate tasks into true ProjectTask types,
-// evaluating any selectors in the DependsOn or Requires fields.
+// evaluating any selectors in the DependsOn field.
 func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pts []parserTask, tgs []parserTaskGroup) ([]ProjectTask, []TaskGroup, []error) {
 	tasks := []ProjectTask{}
@@ -668,8 +664,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			evalErrs = append(evalErrs, errors.Errorf("spaces are unauthorized in task names ('%s')", pt.Name))
 		}
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
-		evalErrs = append(evalErrs, errs...)
-		t.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, pt.Requires)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
 	}
@@ -840,7 +834,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 // evaluateBVTasks translates intermediate tasks into true BuildVariantTaskUnit types,
 // evaluating any selectors referencing tasks, and further evaluating any selectors
-// in the DependsOn or Requires fields of those tasks.
+// in the DependsOn field of those tasks.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbv parserBV) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error
@@ -889,23 +883,14 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			// will contain no dependencies, so dependencies will come from the task
 			// spec at task creation time.
 			var dependsOn parserDependencies
-			var requires taskSelectors
 			if len(pbv.DependsOn) > 0 {
 				dependsOn = pbv.DependsOn
 			}
 			if len(pt.DependsOn) > 0 {
 				dependsOn = pt.DependsOn
 			}
-			if len(pbv.Requires) > 0 {
-				requires = pbv.Requires
-			}
-			if len(pt.Requires) > 0 {
-				requires = pt.Requires
-			}
 
 			t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, dependsOn)
-			evalErrs = append(evalErrs, errs...)
-			t.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, requires)
 			evalErrs = append(evalErrs, errs...)
 			t.IsGroup = isGroup
 
@@ -997,50 +982,4 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
-}
-
-// evaluateRequires expands any selectors in a requirement definition.
-func evaluateRequires(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	reqs []taskSelector) ([]TaskUnitRequirement, []error) {
-	var evalErrs []error
-	newReqs := []TaskUnitRequirement{}
-	newReqsByNameAndVariant := map[TVPair]struct{}{}
-	for _, r := range reqs {
-		var names, temp []string
-		var err, err1, err2 error
-		if tse != nil {
-			temp, err1 = tse.evalSelector(ParseSelector(r.Name))
-			names = append(names, temp...)
-		}
-		if tgse != nil {
-			temp, err2 = tgse.evalSelector(ParseSelector(r.Name))
-			names = append(names, temp...)
-		}
-		if err1 != nil && err2 != nil {
-			evalErrs = append(evalErrs, err1, err2)
-			continue
-		}
-		// we default to handle the empty variant, but expand the list of variants
-		// if the variant field is set.
-		variants := []string{""}
-		if r.Variant != nil {
-			variants, err = vse.evalSelector(r.Variant)
-			if err != nil {
-				evalErrs = append(evalErrs, err)
-				continue
-			}
-		}
-		for _, name := range names {
-			for _, variant := range variants {
-				newReq := TaskUnitRequirement{Name: name, Variant: variant}
-				newReq.Name = name
-				// add the new req if it doesn't already exists (we must avoid duplicates)
-				if _, ok := newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}]; !ok {
-					newReqs = append(newReqs, newReq)
-					newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}] = struct{}{}
-				}
-			}
-		}
-	}
-	return newReqs, evalErrs
 }
