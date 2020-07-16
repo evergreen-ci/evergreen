@@ -23,6 +23,17 @@
       }
     },
     {
+      "query_file": "noBaseCommit.graphql",
+      "result": {
+        "data": {
+          "patch": {
+              "id": "5d7288d91f8c8a403bc34a7d",
+              "baseVersionID": null
+          }
+        }
+      }
+    },
+    {
       "query_file": "moduleCodeChanges.graphql",
       "result": {
         "data": {
