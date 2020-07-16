@@ -455,7 +455,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		grip.Debug(message.Fields{
 			"exec_task": t.Id,
 			"task_id":   t.DisplayTask.Id,
-			"EVG-7769":  "updating display task",
+			"EVG-7769":  "attempting to update display task from MarkEnd",
 		})
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
 			return err
@@ -750,6 +750,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		grip.Debug(message.Fields{
 			"display_task":          displayTask.Id,
 			"status_from_exec_task": t.Status,
+			"exec_task":             t.Id,
+			"cache_list":            cache.List(),
+			"stack":                 message.NewStack(1, "").Raw(),
 			"EVG-7769":              "updating display task from UpdateBuildAndVersionStatusForTask",
 		})
 		if err = UpdateDisplayTask(displayTask); err != nil {
@@ -1210,6 +1213,10 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
+	statuses := map[string]string{} // exec task to status
+	for _, et := range execTasks {
+		statuses[et.Id] = et.Status
+	}
 	if hasFinishedTasks && hasUnstartedTasks {
 		// if the display task has a mix of finished and unfinished tasks, the display task is still
 		// "started" even if there aren't currently running tasks
@@ -1251,7 +1258,8 @@ func UpdateDisplayTask(t *task.Task) error {
 			"was_finished":          wasFinished,
 			"status_from_exec_task": t.Status,
 			"exec_task_id":          execTasks[0].Id,
-			"EVG-7769":              "marking display task as finished in MarkEnd",
+			"all_statuses":          statuses,
+			"EVG-7769":              "marking display task as finished in UpdateDisplayTask",
 		})
 		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
 	}
