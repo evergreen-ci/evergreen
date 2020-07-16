@@ -390,12 +390,6 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
-	query := bson.M{IdKey: t.Id}
-	update := bson.M{
-		"$push": bson.M{
-			DependsOnKey: d,
-		},
-	}
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
@@ -407,8 +401,14 @@ func (t *Task) AddDependency(d Dependency) error {
 	}
 	t.DependsOn = append(t.DependsOn, d)
 	return UpdateOne(
-		query,
-		update,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$push": bson.M{
+				DependsOnKey: d,
+			},
+		},
 	)
 }
 
