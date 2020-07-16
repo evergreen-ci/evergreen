@@ -84,11 +84,7 @@ tasks:
 
   - <<: *run-build
     tags: ["report"]
-    name: lint-metabuild-generator
-
-  - <<: *run-build
-    tags: ["report"]
-    name: lint-metabuild-model
+    name: lint-benchmarks
 
   - <<: *run-build
     tags: ["report"]
@@ -101,6 +97,14 @@ tasks:
   - <<: *run-build
     tags: ["report"]
     name: lint-jasper
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-metabuild-generator
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-metabuild-model
 
   - <<: *run-build
     tags: ["report"]
