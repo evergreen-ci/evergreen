@@ -1218,8 +1218,12 @@ func UpdateDisplayTask(t *task.Task) error {
 		statusTask.Details = apimodels.TaskEndDetail{}
 	}
 
-	// zero out OOMTracker info
-	statusTask.Details.OOMTracker = apimodels.OOMTrackerInfo{}
+	// zero out irrelevant info
+	statusTask.Details = apimodels.TaskEndDetail{
+		Status:   statusTask.Details.Status,
+		Type:     statusTask.Details.Type,
+		TimedOut: statusTask.Details.TimedOut,
+	}
 
 	update := bson.M{
 		task.StatusKey:    statusTask.Status,
