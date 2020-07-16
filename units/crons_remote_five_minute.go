@@ -64,6 +64,8 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 	}
 	j.ErrorCount = catcher.Len()
 
+	grip.Critical(message.Fields{"explanation": "critical alert testing, ignore please"})
+
 	grip.Debug(message.Fields{
 		"queue": "service",
 		"id":    j.ID(),
