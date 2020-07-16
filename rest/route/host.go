@@ -318,16 +318,16 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /users/{user_id}/clear_hosts
+// POST /users/{user_id}/offboard_user
 
-func makeClearHostsByUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
-	return &clearHostsHandler{
+func makeOffboardUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &offboardUserHandler{
 		sc:  sc,
 		env: env,
 	}
 }
 
-type clearHostsHandler struct {
+type offboardUserHandler struct {
 	user   string
 	dryRun bool
 
@@ -335,14 +335,14 @@ type clearHostsHandler struct {
 	sc  data.Connector
 }
 
-func (ch clearHostsHandler) Factory() gimlet.RouteHandler {
-	return &clearHostsHandler{
+func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
+	return &offboardUserHandler{
 		sc:  ch.sc,
 		env: ch.env,
 	}
 }
 
-func (ch *clearHostsHandler) Parse(ctx context.Context, r *http.Request) error {
+func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	ch.user = gimlet.GetVars(r)["user_id"]
 	if ch.user == "" {
 		return gimlet.ErrorResponse{
@@ -356,7 +356,7 @@ func (ch *clearHostsHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
+func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := gimlet.GetUser(ctx)
 	opts := model.APIHostParams{
 		UserSpawned: true,
@@ -372,9 +372,9 @@ func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting volumes"))
 	}
 
-	toTerminate := model.APIClearHostsResults{
-		Hosts:   []string{},
-		Volumes: []string{},
+	toTerminate := model.APIOffboardUserResults{
+		TerminatedHosts:   []string{},
+		TerminatedVolumes: []string{},
 	}
 	currentTime := time.Now()
 
@@ -383,7 +383,7 @@ func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
 		if !v.NoExpiration && v.Expiration.Before(currentTime) { // already terminated
 			continue
 		}
-		toTerminate.Volumes = append(toTerminate.Volumes, v.ID)
+		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		if ch.dryRun {
 			continue
 		}
@@ -417,7 +417,7 @@ func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	for _, h := range hosts {
-		toTerminate.Hosts = append(toTerminate.Hosts, h.Id)
+		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 		if ch.dryRun {
 			continue
 		}

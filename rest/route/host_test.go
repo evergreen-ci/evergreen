@@ -848,19 +848,19 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, h1.Insert())
 	assert.NoError(t, h2.Insert())
 	assert.NoError(t, v1.Insert())
-	handler := clearHostsHandler{
+	handler := offboardUserHandler{
 		sc:     &data.DBConnector{},
 		dryRun: true,
 		user:   "user0",
 	}
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
-	res, ok := resp.Data().(model.APIClearHostsResults)
+	res, ok := resp.Data().(model.APIOffboardUserResults)
 	assert.True(t, ok)
-	require.Len(t, res.Hosts, 1)
-	assert.Equal(t, res.Hosts[0], "h1")
-	require.Len(t, res.Volumes, 1)
-	assert.Equal(t, res.Volumes[0], "v1")
+	require.Len(t, res.TerminatedHosts, 1)
+	assert.Equal(t, res.TerminatedHosts[0], "h1")
+	require.Len(t, res.TerminatedVolumes, 1)
+	assert.Equal(t, res.TerminatedVolumes[0], "v1")
 }
 
 func TestHostFilterGetHandler(t *testing.T) {

@@ -267,7 +267,7 @@ type APIHostParams struct {
 	Mine          bool      `json:"mine"`
 }
 
-type APIClearHostsResults struct {
-	Hosts   []string `json:"hosts"`
-	Volumes []string `json:"volumes"`
+type APIOffboardUserResults struct {
+	TerminatedHosts   []string `json:"terminated_hosts"`
+	TerminatedVolumes []string `json:"terminated_volumes"`
 }
