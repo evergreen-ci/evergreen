@@ -1110,7 +1110,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	if err = t.MarkSystemFailed(); err != nil {
+	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
 	if !t.IsPartOfDisplay() {

@@ -842,14 +842,14 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
-func (t *Task) MarkSystemFailed() error {
+func (t *Task) MarkSystemFailed(description string) error {
 	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 
 	t.Details = apimodels.TaskEndDetail{
-		Description: evergreen.TaskDescriptionStranded,
 		Status:      evergreen.TaskFailed,
 		Type:        evergreen.CommandTypeSystem,
+		Description: description,
 	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
