@@ -39,18 +39,6 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
-type HostsInput struct {
-	HostID      *string        `json:"hostId"`
-	SortBy      *string        `json:"sortBy"`
-	Distro      *string        `json:"distro"`
-	CurrentTask *string        `json:"currentTask"`
-	Owner       *string        `json:"owner"`
-	Statuses    []*string      `json:"statuses"`
-	SortDir     *SortDirection `json:"sortDir"`
-	Page        *int           `json:"page"`
-	Limit       *int           `json:"limit"`
-}
-
 type HostsResponse struct {
 	FilteredHostsCount *int             `json:"filteredHostsCount"`
 	TotalHostsCount    int              `json:"totalHostsCount"`
@@ -154,6 +142,59 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type HostSortBy string
+
+const (
+	HostSortByID          HostSortBy = "ID"
+	HostSortByDistro      HostSortBy = "DISTRO"
+	HostSortByCurrentTask HostSortBy = "CURRENT_TASK"
+	HostSortByStatus      HostSortBy = "STATUS"
+	HostSortByElapsed     HostSortBy = "ELAPSED"
+	HostSortByUptime      HostSortBy = "UPTIME"
+	HostSortByIDLeTime    HostSortBy = "IDLE_TIME"
+	HostSortByOwner       HostSortBy = "OWNER"
+)
+
+var AllHostSortBy = []HostSortBy{
+	HostSortByID,
+	HostSortByDistro,
+	HostSortByCurrentTask,
+	HostSortByStatus,
+	HostSortByElapsed,
+	HostSortByUptime,
+	HostSortByIDLeTime,
+	HostSortByOwner,
+}
+
+func (e HostSortBy) IsValid() bool {
+	switch e {
+	case HostSortByID, HostSortByDistro, HostSortByCurrentTask, HostSortByStatus, HostSortByElapsed, HostSortByUptime, HostSortByIDLeTime, HostSortByOwner:
+		return true
+	}
+	return false
+}
+
+func (e HostSortBy) String() string {
+	return string(e)
+}
+
+func (e *HostSortBy) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HostSortBy(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HostSortBy", str)
+	}
+	return nil
+}
+
+func (e HostSortBy) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type MetStatus string

@@ -50,15 +50,8 @@ type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
 
-func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (string, error) {
-	return *obj.Distro.Id, nil
-}
-
-func (r *hostResolver) RunningTask(ctx context.Context, obj *restModel.APIHost) (*restModel.APITask, error) {
-	return &restModel.APITask{
-		Id:          obj.RunningTask.Id,
-		DisplayName: obj.RunningTask.Name,
-	}, nil
+func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	return obj.Distro.Id, nil
 }
 
 func (r *hostResolver) CreationTime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
@@ -188,8 +181,69 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 type queryResolver struct{ *Resolver }
 
-func (r *queryResolver) Hosts(ctx context.Context, input *HostsInput) (*HostsResponse, error) {
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts("", "", "", "", "", []string{}, 1, 1, 10)
+func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distro *string, currentTask *string, statuses []string, owner *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
+	hostIDParam := ""
+	if hostID != nil {
+		hostIDParam = *hostID
+	}
+	distroParam := ""
+	if distro != nil {
+		distroParam = *distro
+	}
+	currentTaskParam := ""
+	if currentTask != nil {
+		currentTaskParam = *currentTask
+	}
+	ownerParam := ""
+	if owner != nil {
+		ownerParam = *owner
+	}
+	sorter := ""
+	if sortBy != nil {
+		switch *sortBy {
+		case HostSortByCurrentTask:
+			sorter = host.RunningTaskKey
+			break
+		case HostSortByDistro:
+			sorter = host.DistroKey
+			break
+		case HostSortByElapsed:
+			// sorter = host
+			break
+		case HostSortByID:
+			sorter = host.IdKey
+			break
+		case HostSortByIDLeTime:
+			sorter = host.TotalIdleTimeKey
+			break
+		case HostSortByOwner:
+			sorter = host.ProjectKey
+			break
+		case HostSortByStatus:
+			sorter = host.StatusKey
+			break
+		case HostSortByUptime:
+			// sorter = host
+			break
+		default:
+			break
+		}
+
+	}
+	sortDirParam := 1
+	if *sortDir == SortDirectionDesc {
+		sortDirParam = -1
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, ownerParam, sorter, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}

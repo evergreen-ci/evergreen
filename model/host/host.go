@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -2462,7 +2463,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetPaginatedRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
+func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []string, owner string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{
@@ -2513,12 +2514,12 @@ func GetPaginatedRunningHosts(sortBy, hostId, distro, currentTask, owner string,
 	// APPLY FILTERS AND SORTERS TO PIPELINE
 	hasFilters := false
 
-	if len(hostId) > 0 {
+	if len(hostID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				IdKey: hostId,
+				IdKey: hostID,
 			},
 		})
 	}
@@ -2618,6 +2619,9 @@ func GetPaginatedRunningHosts(sortBy, hostId, distro, currentTask, owner string,
 			filteredHostsCount = &tmp[0].Count
 		}
 	}
+
+	pp.Print("HOSTS")
+	pp.Print(hosts)
 
 	return hosts, filteredHostsCount, totalRunningHostsCount, err
 }

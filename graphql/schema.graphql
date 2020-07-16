@@ -41,7 +41,17 @@ type Query {
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
-  hosts(input: HostsInput): HostsResponse!
+  hosts(
+    hostId: String
+    distro: String
+    currentTask: String
+    statuses: [String!] = []
+    owner: String
+    sortBy: HostSortBy = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+  ): HostsResponse!
 }
 
 type Mutation {
@@ -92,16 +102,15 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
-input HostsInput {
-  hostId: String
-  sortBy: String
-  distro: String
-  currentTask: String
-  owner: String
-  statuses: [String] = []
-  sortDir: SortDirection = ASC
-  page: Int = 0
-  limit: Int = 0
+enum HostSortBy {
+  ID
+  DISTRO
+  CURRENT_TASK
+  STATUS
+  ELAPSED
+  UPTIME
+  IDLE_TIME
+  OWNER
 }
 
 input PatchReconfigure {
@@ -155,12 +164,17 @@ input UseSpruceOptionsInput {
 type Host {
   id: ID!
   hostUrl: String! #hostId / host column
-  distroId: String! #will have a resolver for this field
+  distroId: String #will have a resolver for this field
   status: String! #included
-  runningTask: Task! #included
+  runningTask: TaskInfo #included
   # totalIdleTime: Time!
   creationTime: Time #hostObj.RunningTask.start_time / resolver for this field
   startedBy: String! #included
+}
+
+type TaskInfo {
+  id: ID
+  name: String
 }
 
 type HostsResponse {

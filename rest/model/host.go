@@ -18,7 +18,7 @@ type APIHost struct {
 	Provider         *string        `json:"host_type"`
 	User             *string        `json:"user"`
 	Status           *string        `json:"status"`
-	RunningTask      taskInfo       `json:"running_task"`
+	RunningTask      TaskInfo       `json:"running_task"`
 	UserHost         bool           `json:"user_host"`
 	NoExpiration     bool           `json:"no_expiration"`
 	InstanceTags     []host.Tag     `json:"instance_tags"`
@@ -54,7 +54,7 @@ type DistroInfo struct {
 	ImageId  *string `json:"image_id"`
 }
 
-type taskInfo struct {
+type TaskInfo struct {
 	Id           *string    `json:"task_id"`
 	Name         *string    `json:"name"`
 	DispatchTime *time.Time `json:"dispatch_time"`
@@ -80,8 +80,8 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func getTaskInfo(t *task.Task) taskInfo {
-	return taskInfo{
+func getTaskInfo(t *task.Task) TaskInfo {
+	return TaskInfo{
 		Id:           ToStringPtr(t.Id),
 		Name:         ToStringPtr(t.DisplayName),
 		DispatchTime: ToTimePtr(t.DispatchTime),
