@@ -3019,8 +3019,9 @@ func TestDisplayTaskFailedExecTasks(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.TaskFailed,
 		Details: apimodels.TaskEndDetail{
-			Status: evergreen.TaskFailed,
-			Type:   evergreen.CommandTypeSystem,
+			Status:     evergreen.TaskFailed,
+			Type:       evergreen.CommandTypeSystem,
+			OOMTracker: apimodels.OOMTrackerInfo{Detected: true},
 		}}
 	assert.NoError(execTask0.Insert())
 
@@ -3032,6 +3033,7 @@ func TestDisplayTaskFailedExecTasks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(evergreen.CommandTypeSystem, dbTask.Details.Type)
+	assert.False(dbTask.Details.OOMTracker.Detected)
 	assert.True(dbTask.Activated)
 }
 
