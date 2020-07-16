@@ -418,25 +418,26 @@ func (ch *clearHostsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	for _, h := range hosts {
 		toTerminate.Hosts = append(toTerminate.Hosts, h.Id)
-		if !ch.dryRun {
-			// delete hosts here
-			mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+		if ch.dryRun {
+			continue
+		}
+		// delete hosts here
+		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+				"can't get ManagerOpts for host '%s'", h.Id))
+		}
+		mgr, ok := mgrCache[mgrOpts]
+		if !ok {
+			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
 			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-					"can't get ManagerOpts for host '%s'", h.Id))
+				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
-			mgr, ok := mgrCache[mgrOpts]
-			if !ok {
-				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
-				if err != nil {
-					return gimlet.MakeJSONInternalErrorResponder(err)
-				}
-				mgrCache[mgrOpts] = mgr
-			}
-			reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
-			if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error terminating instance '%s'", h.Id))
-			}
+			mgrCache[mgrOpts] = mgr
+		}
+		reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
+		if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error terminating instance '%s'", h.Id))
 		}
 	}
 
