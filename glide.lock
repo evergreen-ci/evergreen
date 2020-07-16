@@ -133,7 +133,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 53fb54f623858257f28f738a0d3edc7e70424c9f
   - name: github.com/mongodb/jasper
-    version: 16e144c84b897861a697e142a3f7100d755a3002
+    version: ac794c797bec09e92d1891d97b013a965a3564d9
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber

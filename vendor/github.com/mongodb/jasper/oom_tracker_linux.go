@@ -7,7 +7,6 @@ import (
 	"context"
 	"os/exec"
 
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -58,17 +57,6 @@ func analyzeDmesg(ctx context.Context) (bool, []int, error) {
 	if err = cmd.Start(); err != nil {
 		return false, nil, errors.Wrap(err, "Error starting dmesg command")
 	}
-
-	go func() {
-		defer recovery.LogStackTraceAndContinue("log analysis")
-		select {
-		case <-ctx.Done():
-			return
-		case errs <- cmd.Wait():
-			return
-		}
-	}()
-
 	pids := []int{}
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -83,7 +71,8 @@ func analyzeDmesg(ctx context.Context) (bool, []int, error) {
 	select {
 	case <-ctx.Done():
 		return false, nil, errors.New("request cancelled")
-	case err = <-errs:
+	case errs <- cmd.Wait():
+		err = <-errs
 		return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
 	}
 }

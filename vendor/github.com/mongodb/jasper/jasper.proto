@@ -114,9 +114,8 @@ message BuildloggerV3Info {
   bool disable_new_line_check = 16;
   string rpc_address = 17;
   bool insecure = 18;
-  string ca_file = 19;
-  string cert_file = 20;
-  string key_file = 21;
+  string username = 19;
+  string api_key = 20;
 }
 
 message BuildloggerV3Options {

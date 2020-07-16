@@ -76,16 +76,21 @@ func (m *Make) generateVariantTasksForRef(c *shrub.Configuration, mv model.MakeV
 		if err != nil {
 			return nil, errors.Wrap(err, "generating commands to run")
 		}
-		tasks = append(tasks, c.Task(getTaskName(mv.Name, mt.Name)).Command(cmds...))
+		task := c.Task(getTaskName(mv.Name, mt.Name))
+		for _, cmd := range cmds {
+			cmdDef := task.AddCommand()
+			*cmdDef = cmd
+		}
+		tasks = append(tasks, task)
 	}
 	return tasks, nil
 }
 
 // taskCmds returns the commands that should be executed for the given task
 // within the given variant.
-func (m *Make) taskCmds(mv model.MakeVariant, mt model.MakeTask) ([]shrub.Command, error) {
+func (m *Make) taskCmds(mv model.MakeVariant, mt model.MakeTask) ([]shrub.CommandDefinition, error) {
 	env := model.MergeEnvironments(m.Environment, mv.Environment, mt.Environment)
-	var cmds []shrub.Command
+	var cmds []shrub.CommandDefinition
 	for _, target := range mt.Targets {
 		targetNames, err := m.GetTargetsFromRef(target)
 		if err != nil {
@@ -93,12 +98,14 @@ func (m *Make) taskCmds(mv model.MakeVariant, mt model.MakeTask) ([]shrub.Comman
 		}
 		flags := target.Flags.Merge(mt.Flags, mv.Flags)
 		for _, targetName := range targetNames {
-			cmds = append(cmds, &shrub.CmdExec{
+			cmd := &shrub.CmdExec{
 				Binary:           "make",
 				Args:             append(flags, targetName),
 				Env:              env,
 				WorkingDirectory: m.WorkingDirectory,
-			})
+				ContinueOnError:  true,
+			}
+			cmds = append(cmds, *cmd.Resolve())
 		}
 		reportCmds, err := fileReportCmds(target.Reports...)
 		if err != nil {
