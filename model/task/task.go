@@ -399,7 +399,10 @@ func (t *Task) AddDependency(d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
-			return nil
+			if existingDependency.Unattainable == d.Unattainable {
+				return nil // nothing to be done
+			}
+			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, true)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -844,8 +847,9 @@ func (t *Task) MarkSystemFailed() error {
 	t.FinishTime = time.Now()
 
 	t.Details = apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionStranded,
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
 	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
