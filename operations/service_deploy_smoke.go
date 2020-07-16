@@ -61,7 +61,7 @@ func smokeStartEvergreen() cli.Command {
 		clientURLFlagName = "client_url"
 
 		// apiPort is the local port the API will listen on.
-		apiPort = ":9090"
+		apiPort = ":8080"
 
 		hostId     = "localhost"
 		hostSecret = "de249183582947721fdfb2ea1796574b"
