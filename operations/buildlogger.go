@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/timber/fetcher"
+	"github.com/evergreen-ci/timber/buildlogger/fetcher"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )

@@ -1,7 +1,7 @@
 buildDir := build
 
-packages := ./ ./internal ./fetcher
-lintPackages := timber fetcher
+packages := ./ ./internal ./buildlogger ./buildlogger/fetcher ./system_metrics
+lintPackages := timber buildlogger buildlogger-fetcher system_metrics
 # override the go binary path if set
 ifneq ($(GO_BIN_PATH),)
 gobin := $(GO_BIN_PATH)
@@ -74,18 +74,27 @@ $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 .FORCE:
 
 
-proto:vendor/cedar.proto
+proto:proto-buildlogger proto-system-metrics
+proto-buildlogger:buildlogger.proto
 	@mkdir -p internal
-	protoc --go_out=plugins=grpc:internal vendor/cedar.proto
-	mv internal/vendor/cedar.pb.go internal/cedar.pb.go
+	protoc --go_out=plugins=grpc:internal buildlogger.proto
 	rm -rf internal/vendor
+proto-system-metrics:formats.proto system_metrics.proto
+	@mkdir -p internal
+	protoc --go_out=plugins=grpc:internal formats.proto
+	protoc --go_out=plugins=grpc:internal system_metrics.proto
+
 clean:
 	rm -rf internal/*.pb.go
-	rm -f vendor/cedar.proto
+	rm -f vendor/*.proto
 	rm -rf $(lintDeps)
 
-vendor/cedar.proto:
+buildlogger.proto:
 	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/buildlogger.proto -o $@
+system_metrics.proto:
+	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/system_metrics.proto -o $@
+formats.proto:
+	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/formats.proto -o $@
 vendor:
 	glide install -s
 
