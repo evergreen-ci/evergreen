@@ -11,7 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/timber/fetcher"
+	"github.com/evergreen-ci/timber/buildlogger/fetcher"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"

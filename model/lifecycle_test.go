@@ -1898,7 +1898,6 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		GroupName:       "task_group",
 		Priority:        0,
 		DependsOn:       []TaskUnitDependency{{Name: "new_dependency"}},
-		Requires:        nil,
 		Distros:         []string{},
 		ExecTimeoutSecs: 0,
 	}

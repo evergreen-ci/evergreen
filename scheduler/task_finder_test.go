@@ -183,6 +183,28 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	}
 }
 
+func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
+	ref := &model.ProjectRef{
+		Identifier: "exists",
+		Enabled:    false,
+	}
+	s.Require().NoError(ref.Upsert())
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 0)
+}
+
+func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned() {
+	ref := &model.ProjectRef{
+		Identifier:          "exists",
+		DispatchingDisabled: true,
+	}
+	s.Require().NoError(ref.Upsert())
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
+	s.NoError(err)
+	s.Len(runnableTasks, 0)
+}
+
 type TaskFinderComparisonSuite struct {
 	suite.Suite
 	tasksGenerator   func() []task.Task
@@ -214,6 +236,14 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Identifier:       "patching-disabled",
 		PatchingDisabled: true,
 		Enabled:          true,
+	}
+
+	s.NoError(ref.Insert())
+
+	ref = &model.ProjectRef{
+		Identifier:          "dispatching-disabled",
+		DispatchingDisabled: true,
+		Enabled:             true,
 	}
 
 	s.NoError(ref.Insert())
@@ -330,12 +360,12 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 	s.tasksGenerator = func() []task.Task {
 		return []task.Task{
 			// Successful parent
-			task.Task{
+			{
 				Id:        "parent0",
 				Status:    evergreen.TaskSucceeded,
 				Activated: true,
 			},
-			task.Task{
+			{
 				Id:        "parent0-child0",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
@@ -349,7 +379,7 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				},
 			},
 
-			task.Task{
+			{
 				Id:        "parent0-child1",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
@@ -362,12 +392,12 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 			},
 
 			// Failed parent
-			task.Task{
+			{
 				Id:        "parent1",
 				Status:    evergreen.TaskFailed,
 				Activated: true,
 			},
-			task.Task{
+			{
 				Id:        "parent1-child1-child1",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
@@ -379,7 +409,7 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				},
 			},
 
-			task.Task{
+			{
 				Id:        "parent0+parent1-child0",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
@@ -395,37 +425,44 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				},
 			},
 
-			task.Task{
+			{
 				Id:        "parent2",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 			},
-			task.Task{
+			{
 				Id:        "foo",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Project:   "disabled",
 			},
-			task.Task{
+			{
 				Id:        "bar",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Requester: evergreen.PatchVersionRequester,
 				Project:   "patching-disabled",
 			},
-			task.Task{
+			{
 				Id:        "baz",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Requester: evergreen.GithubPRRequester,
 				Project:   "patching-disabled",
 			},
-			task.Task{
+			{
 				Id:        "runnable",
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Requester: evergreen.RepotrackerVersionRequester,
 				Project:   "patching-disabled",
+			},
+			{
+				Id:        "also-runnable",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
+				Requester: evergreen.RepotrackerVersionRequester,
+				Project:   "dispatching-disabled",
 			},
 		}
 	}
@@ -502,7 +539,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 	depTasks := []task.Task{}
 	for i, parentTask := range *parentTasks {
 		dependsOn := []task.Dependency{
-			task.Dependency{
+			{
 				TaskId: parentTask.Id,
 				Status: getRandomDependsOnStatus(),
 			},

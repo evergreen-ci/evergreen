@@ -35,6 +35,15 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 	}
 }
 
+// SystemMetricsCollector allows for starting and stopping the collection of
+// system metrics.
+type SystemMetricsCollector interface {
+	// Start begins collection of system metrics.
+	Start()
+	// Close ends collection of system metrics.
+	Close()
+}
+
 func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	expandedCmds := []string{}
 	for _, cmd := range sc.Cmds {

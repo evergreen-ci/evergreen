@@ -2,6 +2,8 @@ package model
 
 import (
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,9 +42,18 @@ func TestCodegen(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(generated))
 
-			expected, err = ioutil.ReadFile(filepath.Join("testdata", "expected", name+"__converters.go"))
+			converterFilepath := filepath.Join("testdata", "expected", name+"__converters.go")
+			expected, err = ioutil.ReadFile(converterFilepath)
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(converters))
+
+			gocmd := os.Getenv("GO_BIN_PATH")
+			if gocmd == "" {
+				gocmd = "go"
+			}
+			buildCmd := exec.Command(gocmd, "build", converterFilepath)
+			_, err = buildCmd.Output()
+			assert.NoError(t, err, "%s does not compile", converterFilepath)
 		})
 	}
 }
@@ -50,13 +61,4 @@ func TestCodegen(t *testing.T) {
 func TestWords(t *testing.T) {
 	s := "thisIsAFieldName"
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
-}
-
-func TestCreateConversionMethodsError(t *testing.T) {
-	fields := extractedFields{
-		"Author": extractedField{OutputFieldName: "One", OutputFieldType: "int", Nullable: true},
-	}
-	generatedConversions := map[string]string{}
-	_, err := createConversionMethods("github.com/evergreen-ci/evergreen/model", "Revision", fields, generatedConversions)
-	assert.EqualError(t, err, `DB model field 'Author' has type 'string' which is incompatible with REST model type 'int'`)
 }

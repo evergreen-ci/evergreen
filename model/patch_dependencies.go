@@ -10,14 +10,14 @@ type dependencyIncluder struct {
 }
 
 // Include crawls the tasks represented by the combination of variants and tasks and
-// add or removes tasks based on the dependency graph. Required and dependent tasks
+// add or removes tasks based on the dependency graph. Dependent tasks
 // are added; tasks that depend on unpatchable tasks are pruned. New slices
 // of variants and tasks are returned.
 func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 	di.included = map[TVPair]bool{}
 
 	// handle each pairing, recursively adding and pruning based
-	// on the task's requirements and dependencies
+	// on the task's dependencies
 	for _, d := range initialDeps {
 		di.handle(d)
 	}
@@ -31,9 +31,9 @@ func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 	return outPairs
 }
 
-// handle finds and includes all tasks that the given task/variant pair
-// requires or depends on. Returns true if the task and all of its
-// dependent/required tasks are patchable, false if they are not.
+// handle finds and includes all tasks that the given task/variant pair depends
+// on. Returns true if the task and all of its dependent tasks are patchable,
+// false if they are not.
 func (di *dependencyIncluder) handle(pair TVPair) bool {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
@@ -67,10 +67,8 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	}
 	di.included[pair] = true
 
-	// queue up all requirements and dependencies for recursive inclusion
-	deps := append(
-		di.expandRequirements(pair, bvt.Requires),
-		di.expandDependencies(pair, bvt.DependsOn)...)
+	// queue up all dependencies for recursive inclusion
+	deps := di.expandDependencies(pair, bvt.DependsOn)
 	for _, dep := range deps {
 		if ok := di.handle(dep); !ok {
 			di.included[pair] = false
@@ -82,31 +80,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	return true
 }
 
-// expandRequirements finds all tasks required by the current task/variant pair.
-func (di *dependencyIncluder) expandRequirements(pair TVPair, reqs []TaskUnitRequirement) []TVPair {
-	deps := []TVPair{}
-	for _, r := range reqs {
-		if r.Variant == AllVariants {
-			// the case where we depend on all variants for a task
-			for _, v := range di.Project.FindVariantsWithTask(r.Name) {
-				if v != pair.Variant { // skip current variant
-					deps = append(deps, TVPair{TaskName: r.Name, Variant: v})
-				}
-			}
-		} else {
-			// otherwise we're depending on a single task for a single variant
-			// We simply add a single task/variant and its dependencies.
-			v := r.Variant
-			if v == "" {
-				v = pair.Variant
-			}
-			deps = append(deps, TVPair{TaskName: r.Name, Variant: v})
-		}
-	}
-	return deps
-}
-
-// expandRequirements finds all tasks depended on by the current task/variant pair.
+// expandDependencies finds all tasks depended on by the current task/variant pair.
 func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnitDependency) []TVPair {
 	deps := []TVPair{}
 	for _, d := range depends {

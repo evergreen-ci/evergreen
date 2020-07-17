@@ -442,9 +442,21 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	status := t.ResultStatus()
+	if t.DisplayOnly {
+		grip.Debug(message.Fields{
+			"task_id":  t.Id,
+			"status":   t.Status,
+			"EVG-7769": "marking display task as finished in MarkEnd",
+		})
+	}
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
+		grip.Debug(message.Fields{
+			"exec_task": t.Id,
+			"task_id":   t.DisplayTask.Id,
+			"EVG-7769":  "updating display task",
+		})
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
 			return err
 		}
@@ -672,12 +684,18 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", taskId)
+	}
 
 	finishTime := time.Now()
 	// get all of the tasks in the same build
 	b, err := build.FindOne(build.ById(t.BuildId))
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if b == nil {
+		return errors.Errorf("build '%s' not found", b.Id)
 	}
 
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
@@ -729,6 +747,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	cachedTasks := buildTasks
 	for _, displayTask := range cache.List() {
+		grip.Debug(message.Fields{
+			"display_task":          displayTask.Id,
+			"status_from_exec_task": t.Status,
+			"EVG-7769":              "updating display task from UpdateBuildAndVersionStatusForTask",
+		})
 		if err = UpdateDisplayTask(displayTask); err != nil {
 			return errors.Wrap(errors.WithStack(err), "error updating display task")
 		}
@@ -1084,13 +1107,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	t.Details = apimodels.TaskEndDetail{
-		Description: evergreen.TaskDescriptionStranded,
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-	}
-
-	if err = t.MarkSystemFailed(); err != nil {
+	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
 	if !t.IsPartOfDisplay() {
@@ -1152,6 +1169,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	var timeTaken time.Duration
 	var statusTask task.Task
 	wasFinished := t.IsFinished()
+	originalStatus := t.Status
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
@@ -1221,6 +1239,14 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
+		grip.Debug(message.Fields{
+			"task_id":               t.Id,
+			"original_status":       originalStatus,
+			"was_finished":          wasFinished,
+			"status_from_exec_task": t.Status,
+			"exec_task_id":          execTasks[0].Id,
+			"EVG-7769":              "marking display task as finished in MarkEnd",
+		})
 		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
 	}
 	return nil

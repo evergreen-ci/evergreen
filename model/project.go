@@ -85,12 +85,11 @@ type BuildVariantTaskUnit struct {
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
-	Patchable  *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly  *bool                 `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	GitTagOnly *bool                 `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Priority   int64                 `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn  []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires   []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+	Patchable  *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly  *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	GitTagOnly *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Priority   int64                `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn  []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
 	Distros []string `yaml:"distros,omitempty" bson:"distros"`
@@ -141,9 +140,6 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	// We never update "Name" or "Commands"
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
-	}
-	if len(bvt.Requires) == 0 {
-		bvt.Requires = pt.Requires
 	}
 	if bvt.Priority == 0 {
 		bvt.Priority = pt.Priority
@@ -431,13 +427,6 @@ type TaskUnitDependency struct {
 	PatchOptional bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
 }
 
-// TaskUnitRequirement represents tasks/groups that must exist along with
-// the requirement's holder. This is only used when configuring patches.
-type TaskUnitRequirement struct {
-	Name    string `yaml:"name,omitempty" bson:"name"`
-	Variant string `yaml:"variant,omitempty" bson:"variant,omitempty"`
-}
-
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the TaskUnitDependency struct.
@@ -480,13 +469,12 @@ type TaskGroup struct {
 
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
-	Name            string                `yaml:"name,omitempty" bson:"name"`
-	Priority        int64                 `yaml:"priority,omitempty" bson:"priority"`
-	ExecTimeoutSecs int                   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	DependsOn       []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires        []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
-	Commands        []PluginCommandConf   `yaml:"commands,omitempty" bson:"commands"`
-	Tags            []string              `yaml:"tags,omitempty" bson:"tags"`
+	Name            string               `yaml:"name,omitempty" bson:"name"`
+	Priority        int64                `yaml:"priority,omitempty" bson:"priority"`
+	ExecTimeoutSecs int                  `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Commands        []PluginCommandConf  `yaml:"commands,omitempty" bson:"commands"`
+	Tags            []string             `yaml:"tags,omitempty" bson:"tags"`
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true

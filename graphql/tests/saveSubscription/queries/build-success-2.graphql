@@ -1,0 +1,19 @@
+mutation {
+  saveSubscription(
+    subscription: {
+      subscriber: { type: "slack", target: "@arjun.patel" }
+      resource_type: "BUILD"
+      trigger: "success"
+      trigger_data: {}
+      regex_selectors: [{ type: "build-variant", data: "3234" }]
+      selectors: [
+        { type: "object", data: "build" }
+        {
+          type: "in-version"
+          data: "logkeeper_3c5a8112efdb98f3710b89d553af602e355aa5c9"
+        }
+      ]
+      owner_type: "person"
+    }
+  )
+}

@@ -48,7 +48,15 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "error expanding params")
 	}
 
-	if c.Files, err = utility.BuildFileList(conf.WorkDir, c.Files...); err != nil {
+	include, err := utility.NewGitignoreFileMatcher(conf.WorkDir, c.Files...)
+	if err != nil {
+		return errors.Wrap(err, "building gitignore file matcher")
+	}
+	b := utility.FileListBuilder{
+		WorkingDir: conf.WorkDir,
+		Include:    include,
+	}
+	if c.Files, err = b.Build(); err != nil {
 		return errors.Wrap(err, "problem building wildcard paths")
 	}
 

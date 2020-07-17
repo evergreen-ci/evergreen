@@ -179,9 +179,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	buildsWithAllActiveTasksComplete := 0
 	activeBuilds := 0
 	finished := true
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
+
 	startPhaseAt := time.Now()
 	tasks, err := task.Find(task.ByVersion(versionId).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
 	if err != nil {
@@ -698,7 +696,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
-			Requires:         in.Requires,
 			Distros:          in.Distros,
 			ExecTimeoutSecs:  in.ExecTimeoutSecs,
 			Stepback:         in.Stepback,
