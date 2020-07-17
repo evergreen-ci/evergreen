@@ -95,7 +95,6 @@ type ComplexityRoot struct {
 
 	DistroInfo struct {
 		Id       func(childComplexity int) int
-		ImageId  func(childComplexity int) int
 		Provider func(childComplexity int) int
 	}
 
@@ -274,7 +273,7 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
-		Host               func(childComplexity int, limit *int, page *int, hostID *string) int
+		Host               func(childComplexity int, hostID string) int
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
@@ -380,11 +379,8 @@ type ComplexityRoot struct {
 	}
 
 	TaskInfo struct {
-		BuildId      func(childComplexity int) int
-		DispatchTime func(childComplexity int) int
-		Id           func(childComplexity int) int
-		Name         func(childComplexity int) int
-		VersionId    func(childComplexity int) int
+		Id   func(childComplexity int) int
+		Name func(childComplexity int) int
 	}
 
 	TaskLogLinks struct {
@@ -509,7 +505,7 @@ type QueryResolver interface {
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	SiteBanner(ctx context.Context) (*model.APIBanner, error)
-	Host(ctx context.Context, limit *int, page *int, hostID *string) (*model.APIHost, error)
+	Host(ctx context.Context, hostID string) (*model.APIHost, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -727,13 +723,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.DistroInfo.Id(childComplexity), true
 
-	case "DistroInfo.imageId":
-		if e.complexity.DistroInfo.ImageId == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.ImageId(childComplexity), true
-
 	case "DistroInfo.provider":
 		if e.complexity.DistroInfo.Provider == nil {
 			break
@@ -860,7 +849,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Id(childComplexity), true
 
-	case "Host.LastCommunicationTime":
+	case "Host.lastCommunicationTime":
 		if e.complexity.Host.LastCommunicationTime == nil {
 			break
 		}
@@ -1587,7 +1576,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Host(childComplexity, args["limit"].(*int), args["page"].(*int), args["hostId"].(*string)), true
+		return e.complexity.Query.Host(childComplexity, args["hostId"].(string)), true
 
 	case "Query.patch":
 		if e.complexity.Query.Patch == nil {
@@ -2196,20 +2185,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskFiles.GroupedFiles(childComplexity), true
 
-	case "TaskInfo.buildId":
-		if e.complexity.TaskInfo.BuildId == nil {
-			break
-		}
-
-		return e.complexity.TaskInfo.BuildId(childComplexity), true
-
-	case "TaskInfo.dispatchTime":
-		if e.complexity.TaskInfo.DispatchTime == nil {
-			break
-		}
-
-		return e.complexity.TaskInfo.DispatchTime(childComplexity), true
-
 	case "TaskInfo.id":
 		if e.complexity.TaskInfo.Id == nil {
 			break
@@ -2223,13 +2198,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskInfo.Name(childComplexity), true
-
-	case "TaskInfo.versionId":
-		if e.complexity.TaskInfo.VersionId == nil {
-			break
-		}
-
-		return e.complexity.TaskInfo.VersionId(childComplexity), true
 
 	case "TaskLogLinks.agentLogLink":
 		if e.complexity.TaskLogLinks.AgentLogLink == nil {
@@ -2633,9 +2601,7 @@ var sources = []*ast.Source{
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
   host(
-    limit: Int = 0
-    page: Int = 0
-    hostId: String
+    hostId: String!
   ): Host!
 }
 
@@ -3092,31 +3058,27 @@ type SiteBanner {
 }
 
 type Host{
-  id: String!    
-	hostURL: String!    
-	distro: DistroInfo     
-	startedBy: String!   
-	provider: String!    
-	user: String!    
-	status: String!   
-	runningTask: TaskInfo  
+  id: String!
+  hostURL: String!
+  distro: DistroInfo
+	startedBy: String!
+	provider: String!
+	user: String!
+	status: String!
+	runningTask: TaskInfo
 	displayName: String!
-  LastCommunicationTime: Time! 
+  lastCommunicationTime: Time!
 }
 
 
 type DistroInfo {
   id: String! 
-	provider: String! 
-	imageId: String! 
+	provider: String!
 }
 
 type TaskInfo {
-  id: String!    
-	name: String!   
-	dispatchTime: Time! 
-	versionId: String!   
-	buildId: String! 
+  id: String!  
+	name: String!
 }
 
 scalar Time
@@ -3427,30 +3389,14 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg1
-	var arg2 *string
+	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["hostId"] = arg2
+	args["hostId"] = arg0
 	return args, nil
 }
 
@@ -4654,40 +4600,6 @@ func (ec *executionContext) _DistroInfo_provider(ctx context.Context, field grap
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _DistroInfo_imageId(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "DistroInfo",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ImageId, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5418,7 +5330,7 @@ func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Host_LastCommunicationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_lastCommunicationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8868,7 +8780,7 @@ func (ec *executionContext) _Query_host(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Host(rctx, args["limit"].(*int), args["page"].(*int), args["hostId"].(*string))
+		return ec.resolvers.Query().Host(rctx, args["hostId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11201,108 +11113,6 @@ func (ec *executionContext) _TaskInfo_name(ctx context.Context, field graphql.Co
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Name, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TaskInfo_dispatchTime(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TaskInfo",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DispatchTime, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TaskInfo_versionId(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TaskInfo",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.VersionId, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TaskInfo_buildId(ctx context.Context, field graphql.CollectedField, obj *model.TaskInfo) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "TaskInfo",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BuildId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14335,11 +14145,6 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "imageId":
-			out.Values[i] = ec._DistroInfo_imageId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14564,8 +14369,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "LastCommunicationTime":
-			out.Values[i] = ec._Host_LastCommunicationTime(ctx, field, obj)
+		case "lastCommunicationTime":
+			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -16090,21 +15895,6 @@ func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "name":
 			out.Values[i] = ec._TaskInfo_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "dispatchTime":
-			out.Values[i] = ec._TaskInfo_dispatchTime(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "versionId":
-			out.Values[i] = ec._TaskInfo_versionId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "buildId":
-			out.Values[i] = ec._TaskInfo_buildId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -17912,24 +17702,6 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec.marshalNTime2timeᚐTime(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx context.Context, sel ast.SelectionSet, v model.APIUser) graphql.Marshaler {

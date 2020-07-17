@@ -870,14 +870,14 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 	return &banner, nil
 }
 
-func (r *queryResolver) Host(ctx context.Context, limit *int, page *int, hostID *string) (*restModel.APIHost, error) {
-	host, err := host.FindOneByIdOrTag(*hostID)
+func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
+	host, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
 
 	if host == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s", *hostID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s", hostID))
 	}
 
 	apiHost := &restModel.APIHost{}
