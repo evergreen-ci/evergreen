@@ -134,9 +134,9 @@ func globFiles(patterns ...string) ([]string, error) {
 	}
 
 	// Uniquify the matches
-	asSet := map[string]struct{}{}
+	asSet := map[string]bool{}
 	for _, match := range matchedFiles {
-		asSet[match] = struct{}{}
+		asSet[match] = true
 	}
 	matchedFiles = []string{}
 	for match := range asSet {
