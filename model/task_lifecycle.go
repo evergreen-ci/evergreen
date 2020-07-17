@@ -442,21 +442,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	status := t.ResultStatus()
-	if t.DisplayOnly {
-		grip.Debug(message.Fields{
-			"task_id":  t.Id,
-			"status":   t.Status,
-			"EVG-7769": "marking display task as finished in MarkEnd",
-		})
-	}
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
-		grip.Debug(message.Fields{
-			"exec_task": t.Id,
-			"task_id":   t.DisplayTask.Id,
-			"EVG-7769":  "updating display task",
-		})
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
 			return err
 		}
@@ -1249,14 +1237,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.Details = statusTask.Details
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
-		grip.Debug(message.Fields{
-			"task_id":               t.Id,
-			"original_status":       originalStatus,
-			"was_finished":          wasFinished,
-			"status_from_exec_task": t.Status,
-			"exec_task_id":          execTasks[0].Id,
-			"EVG-7769":              "marking display task as finished in MarkEnd",
-		})
 		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
 	}
 	return nil
