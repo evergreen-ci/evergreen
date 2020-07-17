@@ -1,15 +1,17 @@
-package timber
+package buildlogger
 
 import (
 	"context"
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/timber/internal"
+	"github.com/evergreen-ci/timber/testutil"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -172,15 +174,15 @@ func TestLoggerOptionsValidate(t *testing.T) {
 		}
 		assert.Error(t, opts.validate())
 	})
-	t.Run("ClientConnNilAndNoRPCAddress", func(t *testing.T) {
+	t.Run("ClientConnNilAndNoAddressOrPort", func(t *testing.T) {
 		opts := &LoggerOptions{
 			Insecure: true,
 		}
 		assert.Error(t, opts.validate())
 	})
-	t.Run("InsecureFalseAndNoAuthFiles", func(t *testing.T) {
+	t.Run("InsecureFalseAndNoCreds", func(t *testing.T) {
 		opts := &LoggerOptions{
-			RPCAddress: "address",
+			BaseAddress: "cedar.mongodb.com",
 		}
 		assert.Error(t, opts.validate())
 	})
@@ -190,8 +192,9 @@ func TestNewLogger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := &mockService{}
-	require.NoError(t, startRPCService(ctx, srv, 4000))
-	addr := fmt.Sprintf("localhost:%d", 4000)
+	port := testutil.GetPortNumber(4000)
+	require.NoError(t, startRPCService(ctx, srv, port))
+	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	require.NoError(t, err)
 
@@ -232,9 +235,10 @@ func TestNewLogger(t *testing.T) {
 		name := "test2"
 		l := send.LevelInfo{Default: level.Trace, Threshold: level.Alert}
 		opts := &LoggerOptions{
-			Local:      &mockSender{Base: send.NewBase("test")},
-			Insecure:   true,
-			RPCAddress: addr,
+			Local:       &mockSender{Base: send.NewBase("test")},
+			Insecure:    true,
+			BaseAddress: "localhost",
+			RPCPort:     strconv.Itoa(port),
 		}
 
 		s, err := NewLoggerWithContext(ctx, name, l, opts)
