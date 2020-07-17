@@ -884,8 +884,17 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 
 	err = apiHost.BuildFromService(hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API Error converting from host.Host to model.APIHost: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 	}
+
+
+	if host.RunningTask != "" {
+		// Add the task information to the host document.
+		if err = apiHost.BuildFromService(host.RunningTask); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+		}
+	}
+
 	return apiHost, nil
 }
 
