@@ -96,8 +96,7 @@ var projectSyntaxValidators = []projectValidator{
 	checkDependencyGraph,
 	validatePluginCommands,
 	ensureHasNecessaryProjectFields,
-	verifyTaskDependencies,
-	verifyTaskRequirements,
+	validateTaskDependencies,
 	validateTaskRuns,
 	validateTaskNames,
 	validateBVNames,
@@ -946,43 +945,6 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Makes sure that the dependencies for the tasks have the correct fields,
-// and that the fields reference valid tasks.
-func verifyTaskRequirements(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, bvt := range project.FindAllBuildVariantTasks() {
-		for _, r := range bvt.Requires {
-			if project.FindProjectTask(r.Name) == nil {
-				if r.Name == model.AllDependencies {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s': * is not supported for requirement selectors", bvt.Name)})
-				} else {
-					errs = append(errs,
-						ValidationError{Message: fmt.Sprintf(
-							"task '%s' requires non-existent task '%s'", bvt.Name, r.Name)})
-				}
-			}
-			if r.Variant != "" && r.Variant != model.AllVariants && project.FindBuildVariant(r.Variant) == nil {
-				errs = append(errs, ValidationError{Message: fmt.Sprintf(
-					"task '%s' requires non-existent variant '%s'", bvt.Name, r.Variant)})
-			}
-			vs := project.FindVariantsWithTask(r.Name)
-			if r.Variant != "" && r.Variant != model.AllVariants {
-				if !utility.StringSliceContains(vs, r.Variant) {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, r.Variant)})
-				}
-			} else {
-				if !utility.StringSliceContains(vs, bvt.Variant) {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, bvt.Variant)})
-				}
-			}
-		}
-	}
-	return errs
-}
-
 func validateTaskRuns(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
@@ -1012,9 +974,9 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Makes sure that the dependencies for the tasks have the correct fields,
-// and that the fields have valid values
-func verifyTaskDependencies(project *model.Project) ValidationErrors {
+// validateTaskDependencies ensures that the dependencies for the tasks have the
+// correct fields, and that the fields have valid values
+func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, task := range project.Tasks {
