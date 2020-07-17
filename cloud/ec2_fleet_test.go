@@ -206,7 +206,7 @@ func TestFleet(t *testing.T) {
 }
 
 func TestAzInstanceTypeCache(t *testing.T) {
-	cache := azInstanceTypeCache{azToInstanceTypes: make(map[string][]string)}
+	cache := instanceTypeAZCache{instanceTypeToAZs: make(map[string][]string)}
 	client := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
@@ -216,15 +216,17 @@ func TestAzInstanceTypeCache(t *testing.T) {
 			},
 		},
 	}
-	supported, err := cache.azSupportsInstanceType(context.Background(), client, "az0", "instanceType0")
+	azsWithInstanceType, err := cache.azsWithInstanceType(context.Background(), client, "instanceType0", []string{"az0"})
 	assert.NoError(t, err)
-	assert.True(t, supported)
+	assert.Len(t, azsWithInstanceType, 1)
+	assert.Equal(t, "az0", azsWithInstanceType[0])
 
-	supported, err = cache.azSupportsInstanceType(context.Background(), client, "az0", "not_supported")
+	azsWithInstanceType, err = cache.azsWithInstanceType(context.Background(), client, "not_supported", []string{"az0"})
 	assert.NoError(t, err)
-	assert.False(t, supported)
+	assert.Empty(t, azsWithInstanceType)
 
-	az, ok := cache.azToInstanceTypes["az0"]
+	assert.Len(t, cache.knownAZs, 1)
+	az, ok := cache.instanceTypeToAZs["instanceType0"]
 	assert.True(t, ok)
-	assert.Len(t, az, 3)
+	assert.Len(t, az, 1)
 }
