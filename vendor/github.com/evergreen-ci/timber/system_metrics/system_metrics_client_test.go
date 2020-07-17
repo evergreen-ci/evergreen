@@ -375,9 +375,9 @@ func TestAddSystemMetrics(t *testing.T) {
 		}
 		require.NoError(t, s.AddSystemMetrics(ctx, "ID", "Test", []byte("Test byte string")))
 		assert.Equal(t, &internal.SystemMetricsData{
-			Id:         "ID",
+			Id:   "ID",
 			Type: "Test",
-			Data:       []byte("Test byte string"),
+			Data: []byte("Test byte string"),
 		}, mc.data)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
