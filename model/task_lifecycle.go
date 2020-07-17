@@ -1170,7 +1170,6 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	var timeTaken time.Duration
 	var statusTask task.Task
-	wasFinished := t.IsFinished()
 	originalStatus := t.Status
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
@@ -1227,6 +1226,15 @@ func UpdateDisplayTask(t *task.Task) error {
 		update[task.FinishTimeKey] = endTime
 	}
 
+	// refresh task status from db in case of race
+	taskWithStatus, err := task.FindOneNoMerge(task.ById(t.Id).WithFields(t.Status))
+	if err != nil {
+		return errors.Wrap(err, "error refreshing task status from db")
+	}
+	if taskWithStatus == nil {
+		return errors.Wrap(err, "task not found")
+	}
+	wasFinished := taskWithStatus.IsFinished()
 	err = task.UpdateOne(
 		bson.M{
 			task.IdKey: t.Id,
