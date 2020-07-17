@@ -725,7 +725,7 @@
         "$oid": "5d7288d91f8c8a403bc34a7d"
       },
       "desc": "NO BASE COMMIT PATCH",
-      "branch": "mongodb-mongo-master",
+      "branch": "mongodb-mongo-master"
     }
   ],
   "commit_queue": [
