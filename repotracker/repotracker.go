@@ -818,7 +818,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		activateAt := time.Now()
-		if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
+		if metadata.TriggerID == "" && evergreen.ShouldConsiderBatchtime(v.Requester) {
 			res, err := projectInfo.Ref.GetActivationTime(&buildvariant)
 			if err == nil {
 				activateAt = res
