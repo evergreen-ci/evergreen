@@ -1131,9 +1131,9 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		if len(tg.Tasks) == 1 {
 			continue
 		}
-		if tg.MaxHosts > (len(tg.Tasks) / 2) {
+		if tg.MaxHosts > len(tg.Tasks) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
+				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}
