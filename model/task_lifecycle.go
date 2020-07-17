@@ -746,12 +746,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	cachedTasks := buildTasks
-	for _, displayTask := range cache.List() {
-		grip.Debug(message.Fields{
-			"display_task":          displayTask.Id,
-			"status_from_exec_task": t.Status,
-			"EVG-7769":              "updating display task from UpdateBuildAndVersionStatusForTask",
-		})
+
+	// update the display task for the given task
+	var displayTask *task.Task
+	displayTask, err = cache.Get(t)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if displayTask != nil {
 		if err = UpdateDisplayTask(displayTask); err != nil {
 			return errors.Wrap(errors.WithStack(err), "error updating display task")
 		}
