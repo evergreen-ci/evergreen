@@ -2462,7 +2462,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses []string, sortDir, page, limit int) ([]Host, *int, int, error) {
+func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{
@@ -2510,45 +2510,45 @@ func GetRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses
 		totalRunningHostsCount = tmp[0].Count
 	}
 
-	// APPLY FILTERS AND SORTERS TO PIPELINE
+	// APPLY FILTERS TO PIPELINE
 	hasFilters := false
 
-	if len(hostId) > 0 {
+	if len(hostID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				IdKey: hostId,
+				IdKey: hostID,
 			},
 		})
 	}
 
-	if len(distro) > 0 {
+	if len(distroID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				DistroKey: distro,
+				"distro._id": distroID,
 			},
 		})
 	}
 
-	if len(currentTask) > 0 {
+	if len(currentTaskID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				RunningTaskKey: currentTask,
+				RunningTaskKey: currentTaskID,
 			},
 		})
 	}
 
-	if len(currentTask) > 0 {
+	if len(startedBy) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				ProjectKey: owner,
+				StartedByKey: startedBy,
 			},
 		})
 	}
@@ -2563,7 +2563,7 @@ func GetRunningHosts(sortBy, hostId, distro, currentTask, owner string, statuses
 		})
 	}
 
-	// APPLY SORT
+	// APPLY SORTERS TO PIPELINE
 	sorters := bson.D{}
 	if len(sortBy) > 0 {
 		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
