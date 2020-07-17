@@ -1220,7 +1220,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}
 	if taskWithStatus == nil {
-		return errors.Wrap(err, "task not found")
+		return errors.New("task not found")
 	}
 	wasFinished := taskWithStatus.IsFinished()
 	err = task.UpdateOne(
