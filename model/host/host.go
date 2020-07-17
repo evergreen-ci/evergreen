@@ -2598,7 +2598,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	// FILTERED HOSTS COUNT
 	var filteredHostsCount *int
 
-	if hasFilters == true {
+	if hasFilters {
 		countPipeline = []bson.M{}
 		for _, stage := range runningHostsPipeline {
 			countPipeline = append(countPipeline, stage)
