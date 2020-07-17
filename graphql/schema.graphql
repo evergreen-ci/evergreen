@@ -167,8 +167,8 @@ type Host {
   distroId: String #will have a resolver for this field
   status: String! #included
   runningTask: TaskInfo #included
-  # totalIdleTime: Time!
-  creationTime: Time #hostObj.RunningTask.start_time / resolver for this field
+  totalIdleTime: Duration
+  creationTime: Time #host.runningTask.start_time = elapsed column
   startedBy: String! #included
 }
 

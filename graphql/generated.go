@@ -123,13 +123,14 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
-		CreationTime func(childComplexity int) int
-		DistroID     func(childComplexity int) int
-		HostURL      func(childComplexity int) int
-		Id           func(childComplexity int) int
-		RunningTask  func(childComplexity int) int
-		StartedBy    func(childComplexity int) int
-		Status       func(childComplexity int) int
+		CreationTime  func(childComplexity int) int
+		DistroID      func(childComplexity int) int
+		HostURL       func(childComplexity int) int
+		Id            func(childComplexity int) int
+		RunningTask   func(childComplexity int) int
+		StartedBy     func(childComplexity int) int
+		Status        func(childComplexity int) int
+		TotalIdleTime func(childComplexity int) int
 	}
 
 	HostsResponse struct {
@@ -859,6 +860,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Status(childComplexity), true
+
+	case "Host.totalIdleTime":
+		if e.complexity.Host.TotalIdleTime == nil {
+			break
+		}
+
+		return e.complexity.Host.TotalIdleTime(childComplexity), true
 
 	case "HostsResponse.filteredHostsCount":
 		if e.complexity.HostsResponse.FilteredHostsCount == nil {
@@ -2716,8 +2724,8 @@ type Host {
   distroId: String #will have a resolver for this field
   status: String! #included
   runningTask: TaskInfo #included
-  # totalIdleTime: Time!
-  creationTime: Time #hostObj.RunningTask.start_time / resolver for this field
+  totalIdleTime: Duration
+  creationTime: Time #host.runningTask.start_time
   startedBy: String! #included
 }
 
@@ -5196,6 +5204,37 @@ func (ec *executionContext) _Host_runningTask(ctx context.Context, field graphql
 	res := resTmp.(model.TaskInfo)
 	fc.Result = res
 	return ec.marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_totalIdleTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalIdleTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_creationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -14318,6 +14357,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "runningTask":
 			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
+		case "totalIdleTime":
+			out.Values[i] = ec._Host_totalIdleTime(ctx, field, obj)
 		case "creationTime":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

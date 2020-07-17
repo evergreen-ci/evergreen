@@ -2619,6 +2619,11 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		}
 	}
 
+	grip.Info(message.Fields{
+		"message": "hosts paginated results",
+		"hosts":   hosts,
+	})
+
 	return hosts, filteredHostsCount, totalRunningHostsCount, err
 }
 
