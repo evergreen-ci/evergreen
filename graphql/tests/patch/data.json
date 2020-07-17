@@ -726,7 +726,6 @@
       },
       "desc": "NO BASE COMMIT PATCH",
       "branch": "mongodb-mongo-master",
-      "alias": "__no_base_id"
     }
   ],
   "commit_queue": [
