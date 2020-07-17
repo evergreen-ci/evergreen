@@ -138,7 +138,7 @@ func globFiles(patterns ...string) ([]string, error) {
 	for _, match := range matchedFiles {
 		asSet[match] = struct{}{}
 	}
-	matchedFiles = nil
+	matchedFiles = []string{}
 	for match := range asSet {
 		matchedFiles = append(matchedFiles, match)
 	}
