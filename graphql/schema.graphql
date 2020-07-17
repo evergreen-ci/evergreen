@@ -499,31 +499,27 @@ type SiteBanner {
 }
 
 type Host{
-  id: String!    
-	hostURL: String!    
-	distro: DistroInfo     
-	startedBy: String!   
-	provider: String!    
-	user: String!    
-	status: String!   
-	runningTask: TaskInfo  
+  id: String!
+  hostURL: String!
+  distro: DistroInfo
+	startedBy: String!
+	provider: String!
+	user: String!
+	status: String!
+	runningTask: TaskInfo
 	displayName: String!
-  LastCommunicationTime: Time! 
+  lastCommunicationTime: Time!
 }
 
 
 type DistroInfo {
   id: String! 
-	provider: String! 
-	imageId: String! 
+	provider: String!
 }
 
 type TaskInfo {
-  id: String!    
-	name: String!   
-	dispatchTime: Time! 
-	versionId: String!   
-	buildId: String! 
+  id: String!  
+	name: String!
 }
 
 scalar Time
