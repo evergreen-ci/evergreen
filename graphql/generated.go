@@ -272,7 +272,7 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
-		Hosts              func(childComplexity int, hostID *string, distro *string, currentTask *string, statuses []string, owner *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		Patch              func(childComplexity int, id string) int
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
@@ -509,7 +509,7 @@ type QueryResolver interface {
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	SiteBanner(ctx context.Context) (*model.APIBanner, error)
-	Hosts(ctx context.Context, hostID *string, distro *string, currentTask *string, statuses []string, owner *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
+	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -1566,7 +1566,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Hosts(childComplexity, args["hostId"].(*string), args["distro"].(*string), args["currentTask"].(*string), args["statuses"].([]string), args["owner"].(*string), args["sortBy"].(*HostSortBy), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.Hosts(childComplexity, args["hostId"].(*string), args["distroId"].(*string), args["currentTaskId"].(*string), args["statuses"].([]string), args["startedBy"].(*string), args["sortBy"].(*HostSortBy), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int)), true
 
 	case "Query.patch":
 		if e.complexity.Query.Patch == nil {
@@ -2592,10 +2592,10 @@ var sources = []*ast.Source{
   siteBanner: SiteBanner!
   hosts(
     hostId: String
-    distro: String
-    currentTask: String
+    distroId: String
+    currentTaskId: String
     statuses: [String!] = []
-    owner: String
+    startedBy: String
     sortBy: HostSortBy = STATUS
     sortDir: SortDirection = ASC
     page: Int = 0
@@ -3406,21 +3406,21 @@ func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs 
 	}
 	args["hostId"] = arg0
 	var arg1 *string
-	if tmp, ok := rawArgs["distro"]; ok {
+	if tmp, ok := rawArgs["distroId"]; ok {
 		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["distro"] = arg1
+	args["distroId"] = arg1
 	var arg2 *string
-	if tmp, ok := rawArgs["currentTask"]; ok {
+	if tmp, ok := rawArgs["currentTaskId"]; ok {
 		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["currentTask"] = arg2
+	args["currentTaskId"] = arg2
 	var arg3 []string
 	if tmp, ok := rawArgs["statuses"]; ok {
 		arg3, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
@@ -3430,13 +3430,13 @@ func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs 
 	}
 	args["statuses"] = arg3
 	var arg4 *string
-	if tmp, ok := rawArgs["owner"]; ok {
+	if tmp, ok := rawArgs["startedBy"]; ok {
 		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["owner"] = arg4
+	args["startedBy"] = arg4
 	var arg5 *HostSortBy
 	if tmp, ok := rawArgs["sortBy"]; ok {
 		arg5, err = ec.unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx, tmp)
@@ -8778,7 +8778,7 @@ func (ec *executionContext) _Query_hosts(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Hosts(rctx, args["hostId"].(*string), args["distro"].(*string), args["currentTask"].(*string), args["statuses"].([]string), args["owner"].(*string), args["sortBy"].(*HostSortBy), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int))
+		return ec.resolvers.Query().Hosts(rctx, args["hostId"].(*string), args["distroId"].(*string), args["currentTaskId"].(*string), args["statuses"].([]string), args["startedBy"].(*string), args["sortBy"].(*HostSortBy), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

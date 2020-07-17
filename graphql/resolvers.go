@@ -181,22 +181,22 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 type queryResolver struct{ *Resolver }
 
-func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distro *string, currentTask *string, statuses []string, owner *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
+func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
 	hostIDParam := ""
 	if hostID != nil {
 		hostIDParam = *hostID
 	}
 	distroParam := ""
-	if distro != nil {
-		distroParam = *distro
+	if distroID != nil {
+		distroParam = *distroID
 	}
 	currentTaskParam := ""
-	if currentTask != nil {
-		currentTaskParam = *currentTask
+	if currentTaskID != nil {
+		currentTaskParam = *currentTaskID
 	}
-	ownerParam := ""
-	if owner != nil {
-		ownerParam = *owner
+	startedByParam := ""
+	if startedBy != nil {
+		startedByParam = *startedBy
 	}
 	sorter := ""
 	if sortBy != nil {
@@ -243,7 +243,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distro *strin
 		limitParam = *limit
 	}
 
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, ownerParam, sorter, sortDirParam, pageParam, limitParam)
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, startedByParam, sorter, sortDirParam, pageParam, limitParam)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}

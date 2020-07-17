@@ -43,10 +43,10 @@ type Query {
   siteBanner: SiteBanner!
   hosts(
     hostId: String
-    distro: String
-    currentTask: String
+    distroId: String
+    currentTaskId: String
     statuses: [String!] = []
-    owner: String
+    startedBy: String
     sortBy: HostSortBy = STATUS
     sortDir: SortDirection = ASC
     page: Int = 0

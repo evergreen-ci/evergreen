@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -2463,7 +2462,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []string, owner string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
+func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{
@@ -2511,7 +2510,7 @@ func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []str
 		totalRunningHostsCount = tmp[0].Count
 	}
 
-	// APPLY FILTERS AND SORTERS TO PIPELINE
+	// APPLY FILTERS TO PIPELINE
 	hasFilters := false
 
 	if len(hostID) > 0 {
@@ -2524,32 +2523,32 @@ func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []str
 		})
 	}
 
-	if len(distro) > 0 {
+	if len(distroID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				DistroKey: distro,
+				"distro._id": distroID,
 			},
 		})
 	}
 
-	if len(currentTask) > 0 {
+	if len(currentTaskID) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				RunningTaskKey: currentTask,
+				RunningTaskKey: currentTaskID,
 			},
 		})
 	}
 
-	if len(currentTask) > 0 {
+	if len(startedBy) > 0 {
 		hasFilters = true
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				ProjectKey: owner,
+				StartedByKey: startedBy,
 			},
 		})
 	}
@@ -2564,7 +2563,7 @@ func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []str
 		})
 	}
 
-	// APPLY SORT
+	// APPLY SORTERS TO PIPELINE
 	sorters := bson.D{}
 	if len(sortBy) > 0 {
 		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
@@ -2619,9 +2618,6 @@ func GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []str
 			filteredHostsCount = &tmp[0].Count
 		}
 	}
-
-	pp.Print("HOSTS")
-	pp.Print(hosts)
 
 	return hosts, filteredHostsCount, totalRunningHostsCount, err
 }

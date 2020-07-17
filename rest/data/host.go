@@ -82,8 +82,8 @@ func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error)
 	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
 }
 
-func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []string, owner string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
-	hosts, filterdHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distro, currentTask, statuses, owner, sortBy, sortDir, page, limit)
+func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
+	hosts, filterdHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distroID, currentTaskID, statuses, startedBy, sortBy, sortDir, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -424,7 +424,7 @@ func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
 	return nil
 }
 
-func (hc *MockConnector) GetPaginatedRunningHosts(hostID, distro, currentTask string, statuses []string, owner string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
+func (hc *MockConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
 	return nil, nil, 0, nil
 }
 
