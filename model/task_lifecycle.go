@@ -1158,7 +1158,6 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	var timeTaken time.Duration
 	var statusTask task.Task
-	originalStatus := t.Status
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
