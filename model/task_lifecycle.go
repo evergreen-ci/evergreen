@@ -1214,7 +1214,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 
 	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOneNoMerge(task.ById(t.Id).WithFields(t.Status))
+	taskWithStatus, err := task.FindOneNoMerge(task.ById(t.Id).WithFields(task.StatusKey))
 	if err != nil {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}
