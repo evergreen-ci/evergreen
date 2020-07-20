@@ -257,7 +257,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 		if host.RunningTask != "" {
 			// Add the task information to the host document.
-			if err = apiHost.BuildFromService(host.RunningTask); err != nil {
+			if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 			}
 		}
