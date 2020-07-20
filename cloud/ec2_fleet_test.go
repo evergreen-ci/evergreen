@@ -188,7 +188,7 @@ func TestFleet(t *testing.T) {
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {
-	cache := instanceTypeAZCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
+	cache := instanceTypeSubnetCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
 	client := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{

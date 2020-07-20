@@ -322,7 +322,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 					"host_provider": h.Distro.Provider,
 					"distro":        h.Distro.Id,
 				}))
-				return errors.New(msg)
+				return errors.Wrap(err, msg)
 			} else {
 				grip.Error(message.WrapError(subnetErr, message.Fields{
 					"message":       "couldn't increment subnet",
@@ -404,6 +404,10 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 	ec2Settings := EC2ProviderSettings{}
 	if err = ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
 		return errors.Wrap(err, "can't get provider settings")
+	}
+
+	if len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId {
+		return errors.Errorf("no other subnets support '%s'", h.InstanceType)
 	}
 
 	nextSubnetIndex := 0

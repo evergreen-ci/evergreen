@@ -1385,6 +1385,9 @@ func (s *EC2Suite) TestSetNextSubnet() {
 			{SubnetID: "sn0", AZ: "az0"},
 			{SubnetID: "sn1", AZ: "az1"},
 		},
+		"instance-type1": {
+			{SubnetID: "sn0", AZ: "az0"},
+		},
 	}
 
 	h := &host.Host{
@@ -1393,7 +1396,7 @@ func (s *EC2Suite) TestSetNextSubnet() {
 		Distro: distro.Distro{
 			ProviderSettingsList: []*birch.Document{
 				birch.NewDocument(
-					birch.EC.String("subnet_id", "sn0"),
+					birch.EC.String("subnet_id", "not-supporting"),
 					birch.EC.String("region", evergreen.DefaultEC2Region),
 				),
 				birch.NewDocument(
@@ -1406,12 +1409,20 @@ func (s *EC2Suite) TestSetNextSubnet() {
 	s.Require().NoError(h.Insert())
 	s.impl.region = evergreen.DefaultEC2Region
 
+	// set to the first supporting subnet
+	s.NoError(s.impl.setNextSubnet(context.Background(), h))
+	s.Equal("sn0", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
+
 	s.NoError(s.impl.setNextSubnet(context.Background(), h))
 	s.Equal("sn1", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
 
 	// wrap around
 	s.NoError(s.impl.setNextSubnet(context.Background(), h))
 	s.Equal("sn0", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
+
+	// only supported by one subnet
+	h.InstanceType = "instance-type1"
+	s.Error(s.impl.setNextSubnet(context.Background(), h))
 }
 
 func (s *EC2Suite) TestCreateVolume() {

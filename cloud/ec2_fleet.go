@@ -19,19 +19,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-type instanceTypeAZCache struct {
+type instanceTypeSubnetCache struct {
 	instanceTypeToSubnets map[string][]evergreen.Subnet
 	built                 bool
 }
 
-var typeCache *instanceTypeAZCache
+var typeCache *instanceTypeSubnetCache
 
 func init() {
-	typeCache = &instanceTypeAZCache{}
+	typeCache = &instanceTypeSubnetCache{}
 	typeCache.instanceTypeToSubnets = make(map[string][]evergreen.Subnet)
 }
 
-func (c *instanceTypeAZCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType string) ([]evergreen.Subnet, error) {
+func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType string) ([]evergreen.Subnet, error) {
 	if !c.built {
 		if err := c.Build(ctx, settings, client); err != nil {
 			return nil, errors.Wrap(err, "can't build AZ cache")
@@ -41,7 +41,7 @@ func (c *instanceTypeAZCache) subnetsWithInstanceType(ctx context.Context, setti
 	return c.instanceTypeToSubnets[instanceType], nil
 }
 
-func (c *instanceTypeAZCache) Build(ctx context.Context, settings *evergreen.Settings, client AWSClient) error {
+func (c *instanceTypeSubnetCache) Build(ctx context.Context, settings *evergreen.Settings, client AWSClient) error {
 	subnets := settings.Providers.AWS.Subnets
 	if len(subnets) == 0 {
 		return errors.New("no AWS subnets were configured")
