@@ -27,6 +27,7 @@ type APIHost struct {
 	DisplayName      *string     `json:"display_name"`
 	HomeVolumeID     *string     `json:"home_volume_id"`
 	TotalIdleTime    APIDuration `json:"total_idle_time"`
+	CreationTime     *time.Time  `json:"creation_time"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -117,6 +118,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
+	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {

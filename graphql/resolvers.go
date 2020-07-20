@@ -54,7 +54,11 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 	return obj.Distro.Id, nil
 }
 
-func (r *hostResolver) CreationTime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.CreationTime, nil
+}
+
+func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
 }
 
@@ -198,7 +202,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	if startedBy != nil {
 		startedByParam = *startedBy
 	}
-	sorter := ""
+	sorter := host.StatusKey
 	if sortBy != nil {
 		switch *sortBy {
 		case HostSortByCurrentTask:
@@ -208,7 +212,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			sorter = host.DistroKey
 			break
 		case HostSortByElapsed:
-			// sorter = host
+			sorter = "task_full.start_time"
 			break
 		case HostSortByID:
 			sorter = host.IdKey
@@ -222,10 +226,11 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByStatus:
 			sorter = host.StatusKey
 			break
-		case HostSortByUptime: // SORT BY TASK START TIME
-			// sorter = host
+		case HostSortByUptime:
+			sorter = host.CreateTimeKey
 			break
 		default:
+			sorter = host.StatusKey
 			break
 		}
 

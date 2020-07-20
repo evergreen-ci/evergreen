@@ -123,14 +123,15 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
-		CreationTime  func(childComplexity int) int
 		DistroID      func(childComplexity int) int
+		Elapsed       func(childComplexity int) int
 		HostURL       func(childComplexity int) int
 		Id            func(childComplexity int) int
 		RunningTask   func(childComplexity int) int
 		StartedBy     func(childComplexity int) int
 		Status        func(childComplexity int) int
 		TotalIdleTime func(childComplexity int) int
+		Uptime        func(childComplexity int) int
 	}
 
 	HostsResponse struct {
@@ -463,7 +464,8 @@ type ComplexityRoot struct {
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 
-	CreationTime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -813,19 +815,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
 
-	case "Host.creationTime":
-		if e.complexity.Host.CreationTime == nil {
-			break
-		}
-
-		return e.complexity.Host.CreationTime(childComplexity), true
-
 	case "Host.distroId":
 		if e.complexity.Host.DistroID == nil {
 			break
 		}
 
 		return e.complexity.Host.DistroID(childComplexity), true
+
+	case "Host.elapsed":
+		if e.complexity.Host.Elapsed == nil {
+			break
+		}
+
+		return e.complexity.Host.Elapsed(childComplexity), true
 
 	case "Host.hostUrl":
 		if e.complexity.Host.HostURL == nil {
@@ -868,6 +870,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.TotalIdleTime(childComplexity), true
+
+	case "Host.uptime":
+		if e.complexity.Host.Uptime == nil {
+			break
+		}
+
+		return e.complexity.Host.Uptime(childComplexity), true
 
 	case "HostsResponse.filteredHostsCount":
 		if e.complexity.HostsResponse.FilteredHostsCount == nil {
@@ -2607,15 +2616,15 @@ var sources = []*ast.Source{
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
   hosts(
-    hostId: String
-    distroId: String
-    currentTaskId: String
+    hostId: String = ""
+    distroId: String = ""
+    currentTaskId: String = ""
     statuses: [String!] = []
-    startedBy: String
+    startedBy: String = ""
     sortBy: HostSortBy = STATUS
     sortDir: SortDirection = ASC
     page: Int = 0
-    limit: Int = 0
+    limit: Int = 10
   ): HostsResponse!
 }
 
@@ -2728,13 +2737,14 @@ input UseSpruceOptionsInput {
 
 type Host {
   id: ID!
-  hostUrl: String! #hostId / host column
-  distroId: String #will have a resolver for this field
-  status: String! #included
-  runningTask: TaskInfo #included
+  hostUrl: String!
+  distroId: String
+  status: String!
+  runningTask: TaskInfo
   totalIdleTime: Duration
-  creationTime: Time #host.runningTask.start_time
-  startedBy: String! #included
+  uptime: Time # host creation time
+  elapsed: Time # running task start time
+  startedBy: String!
 }
 
 type TaskInfo {
@@ -5246,7 +5256,7 @@ func (ec *executionContext) _Host_totalIdleTime(ctx context.Context, field graph
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Host_creationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_uptime(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5263,7 +5273,38 @@ func (ec *executionContext) _Host_creationTime(ctx context.Context, field graphq
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().CreationTime(rctx, obj)
+		return ec.resolvers.Host().Uptime(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_elapsed(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Elapsed(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14399,7 +14440,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
 		case "totalIdleTime":
 			out.Values[i] = ec._Host_totalIdleTime(ctx, field, obj)
-		case "creationTime":
+		case "uptime":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -14407,7 +14448,18 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Host_creationTime(ctx, field, obj)
+				res = ec._Host_uptime(ctx, field, obj)
+				return res
+			})
+		case "elapsed":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_elapsed(ctx, field, obj)
 				return res
 			})
 		case "startedBy":
