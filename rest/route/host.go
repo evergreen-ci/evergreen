@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -376,54 +377,73 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		TerminatedVolumes: []string{},
 	}
 	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
+	catcher := grip.NewBasicCatcher()
+
+	// only return errors for unexpirable hosts and volumes
 	for _, h := range hosts {
-		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
-		if ch.dryRun {
-			continue
-		}
-		// delete hosts here
-		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-				"can't get ManagerOpts for host '%s'", h.Id))
-		}
-		mgr, ok := mgrCache[mgrOpts]
-		if !ok {
-			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+		if !ch.dryRun {
+			// delete hosts here
+			mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
+				if h.NoExpiration {
+					catcher.Wrapf(err, "can't get ManagerOpts for unexpirable host '%s'", h.Id)
+				}
+				continue
 			}
-			mgrCache[mgrOpts] = mgr
+			mgr, ok := mgrCache[mgrOpts]
+			if !ok {
+				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+				if err != nil {
+					if h.NoExpiration {
+						catcher.Wrapf(err, "can't get manager for unexpirable host '%s'", h.Id)
+					}
+					continue
+				}
+				mgrCache[mgrOpts] = mgr
+			}
+			reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
+			if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
+				if h.NoExpiration {
+					catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
+				}
+				continue
+			}
 		}
-		reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
-		if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error terminating instance '%s'", h.Id))
-		}
+		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 	}
 
 	for _, v := range volumes {
 		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
-		if ch.dryRun {
-			continue
-		}
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(v.AvailabilityZone),
-		}
-		mgr, ok := mgrCache[mgrOpts]
-		if !ok {
-			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
+		if !ch.dryRun {
+			mgrOpts := cloud.ManagerOpts{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+				Region:   cloud.AztoRegion(v.AvailabilityZone),
 			}
-			mgrCache[mgrOpts] = mgr
-		}
+			mgr, ok := mgrCache[mgrOpts]
+			if !ok {
+				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+				if err != nil {
+					if v.NoExpiration {
+						catcher.Wrapf(err, "can't get manager for unexpirable volume '%s'", v.ID)
+					}
+					continue
+				}
+				mgrCache[mgrOpts] = mgr
+			}
 
-		if err = mgr.DeleteVolume(ctx, &v); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+			if err = mgr.DeleteVolume(ctx, &v); err != nil {
+				if v.NoExpiration {
+					catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
+				}
+				continue
+			}
 		}
+		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 	}
 
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
+	}
 	return gimlet.NewJSONResponse(toTerminate)
 }
 
