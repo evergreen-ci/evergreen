@@ -99,36 +99,18 @@ func TestFleet(t *testing.T) {
 		},
 		"MakeOverrides": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "vpc-123456",
 				InstanceType: "instanceType0",
 			}
-
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
 			assert.Len(t, overrides, 1)
 			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
-
-			m.settings.Providers.AWS.Subnets = nil
-			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
-			assert.NoError(t, err)
-			assert.Len(t, overrides, 1)
-			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
-			mockClient := m.client.(*awsClientMock)
-			assert.Len(t, mockClient.DescribeVpcsInput.Filters, 1)
-			assert.Equal(t, "tag:Name", *mockClient.DescribeVpcsInput.Filters[0].Name)
-			assert.Len(t, mockClient.DescribeVpcsInput.Filters[0].Values, 1)
-			assert.Equal(t, ec2Settings.VpcName, *mockClient.DescribeVpcsInput.Filters[0].Values[0])
-
-			assert.Len(t, mockClient.DescribeSubnetsInput.Filters, 1)
-			assert.Equal(t, "vpc-id", *mockClient.DescribeSubnetsInput.Filters[0].Name)
-			assert.Len(t, mockClient.DescribeSubnetsInput.Filters[0].Values, 1)
-			assert.Equal(t, "vpc-123456", *mockClient.DescribeSubnetsInput.Filters[0].Values[0])
 		},
 		"SubnetMatchesAz": func(*testing.T) {
 			subnet := &ec2.Subnet{
 				Tags: []*ec2.Tag{
-					&ec2.Tag{Key: aws.String("key1"), Value: aws.String("value1")},
-					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
+					{Key: aws.String("key1"), Value: aws.String("value1")},
+					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
 				},
 				AvailabilityZone: aws.String("us-east-1a"),
 			}
@@ -136,8 +118,8 @@ func TestFleet(t *testing.T) {
 
 			subnet = &ec2.Subnet{
 				Tags: []*ec2.Tag{
-					&ec2.Tag{Key: aws.String("key1"), Value: aws.String("value1")},
-					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
+					{Key: aws.String("key1"), Value: aws.String("value1")},
+					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
 				},
 				AvailabilityZone: aws.String("us-east-1a"),
 			}
@@ -205,8 +187,8 @@ func TestFleet(t *testing.T) {
 	}
 }
 
-func TestAzInstanceTypeCache(t *testing.T) {
-	cache := instanceTypeAZCache{instanceTypeToAZs: make(map[string][]string)}
+func TestInstanceTypeAZCache(t *testing.T) {
+	cache := instanceTypeAZCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
 	client := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
@@ -216,17 +198,20 @@ func TestAzInstanceTypeCache(t *testing.T) {
 			},
 		},
 	}
-	azsWithInstanceType, err := cache.azsWithInstanceType(context.Background(), client, "instanceType0", []string{"az0"})
+	settings := &evergreen.Settings{}
+	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: "az0"}}
+
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0")
 	assert.NoError(t, err)
 	assert.Len(t, azsWithInstanceType, 1)
-	assert.Equal(t, "az0", azsWithInstanceType[0])
+	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
 
-	azsWithInstanceType, err = cache.azsWithInstanceType(context.Background(), client, "not_supported", []string{"az0"})
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported")
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
 
-	assert.Len(t, cache.knownAZs, 1)
-	az, ok := cache.instanceTypeToAZs["instanceType0"]
+	assert.True(t, cache.built)
+	subnet, ok := cache.instanceTypeToSubnets["instanceType0"]
 	assert.True(t, ok)
-	assert.Len(t, az, 1)
+	assert.Len(t, subnet, 1)
 }

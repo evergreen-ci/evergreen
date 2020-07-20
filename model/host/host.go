@@ -794,6 +794,23 @@ func (h *Host) SetPortMapping(portsMap PortMap) error {
 	return nil
 }
 
+func (h *Host) UpdateCachedDistro(distro distro.Distro) error {
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{
+			"$set": bson.M{
+				DistroKey: distro,
+			},
+		},
+	)
+	if err != nil {
+		return errors.Wrap(err, "can't set distro")
+	}
+
+	h.Distro = distro
+	return nil
+}
+
 func (h *Host) MarkAsProvisioned() error {
 	now := time.Now()
 	err := UpdateOne(
