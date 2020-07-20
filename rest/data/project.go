@@ -312,7 +312,7 @@ func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*mod
 	return &projectSettingsEvent, nil
 }
 
-func (pc *DBProjectConnector) TestProjectAlias(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
+func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
 	projectAliases, err := model.FindAliasInProject(p.Identifier, alias)
 	if err != nil {
 		return nil, err
@@ -559,6 +559,6 @@ func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*m
 	return &model.ProjectSettingsEvent{}, nil
 }
 
-func (pc *MockProjectConnector) TestProjectAlias(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {
+func (pc *MockProjectConnector) GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {
 	return nil, nil
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type projectGetHandler struct {
@@ -751,28 +750,27 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-type testProjectAliasHandler struct {
+type GetProjectAliasResultsHandler struct {
 	sc data.Connector
 
 	version             string
 	alias               string
 	includeDependencies bool
-	project             *dbModel.Project
 }
 
-func makeTestProjectAliasHandler(sc data.Connector) gimlet.RouteHandler {
-	return &testProjectAliasHandler{
+func makeGetProjectAliasResultsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &GetProjectAliasResultsHandler{
 		sc: sc,
 	}
 }
 
-func (h *testProjectAliasHandler) Factory() gimlet.RouteHandler {
-	return &testProjectAliasHandler{
+func (h *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
+	return &GetProjectAliasResultsHandler{
 		sc: h.sc,
 	}
 }
 
-func (h *testProjectAliasHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	params := r.URL.Query()
 
 	h.version = params.Get("version")
@@ -783,40 +781,21 @@ func (h *testProjectAliasHandler) Parse(ctx context.Context, r *http.Request) er
 	if h.alias == "" {
 		return errors.New("'alias' parameter must be specified")
 	}
-	h.includeDependencies = (params.Get("include_deps") != "")
-
-	v, err := dbModel.VersionFindOneId(h.version)
-	if err != nil {
-		return errors.Errorf("version %s not found", h.version)
-	}
-	pp, err := dbModel.ParserProjectFindOneById(h.version)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting parser project",
-		}))
-		return errors.New("unexpected error when retrieving version config")
-	}
-	projData, err := bson.Marshal(pp)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error parsing parser project",
-		}))
-		return errors.New("unexpected error when parsing version config")
-	}
-
-	_, err = dbModel.LoadProjectInto(projData, v.Identifier, h.project)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error loading parser project",
-		}))
-		return errors.New("unexpected error when parsing version config")
-	}
+	h.includeDependencies = (params.Get("include_deps") == "true")
 
 	return nil
 }
 
-func (h *testProjectAliasHandler) Run(ctx context.Context) gimlet.Responder {
-	variantTasks, err := h.sc.TestProjectAlias(h.project, h.alias, h.includeDependencies)
+func (h *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	proj, err := dbModel.FindProjectFromVersionID(h.version)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting project for version",
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get project from version"))
+	}
+
+	variantTasks, err := h.sc.GetProjectAliasResults(proj, h.alias, h.includeDependencies)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
