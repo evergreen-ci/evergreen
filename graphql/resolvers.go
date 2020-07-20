@@ -258,7 +258,10 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	for _, host := range hosts {
 		apiHost := restModel.APIHost{}
 
-		apiHost.BuildFromService(host)
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API Host from Service: %s", err.Error()))
+		}
 
 		if host.RunningTask != "" {
 			// Add the task information to the host document.
