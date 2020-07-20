@@ -124,7 +124,7 @@ func (s *EC2Suite) SetupTest() {
 		Id:     "h1",
 		Distro: s.distro,
 		InstanceTags: []host.Tag{
-			host.Tag{
+			{
 				Key:           "key-1",
 				Value:         "val-1",
 				CanBeModified: true,
@@ -1375,6 +1375,43 @@ func (s *EC2Suite) TestGetEC2Key() {
 	s.Equal("test-secret", secret)
 	s.NoError(err)
 
+}
+
+func (s *EC2Suite) TestSetNextSubnet() {
+	s.Require().NoError(db.Clear(host.Collection))
+	typeCache.built = true
+	typeCache.instanceTypeToSubnets = map[string][]evergreen.Subnet{
+		"instance-type0": {
+			{SubnetID: "sn0", AZ: "az0"},
+			{SubnetID: "sn1", AZ: "az1"},
+		},
+	}
+
+	h := &host.Host{
+		Id:           "h0",
+		InstanceType: "instance-type0",
+		Distro: distro.Distro{
+			ProviderSettingsList: []*birch.Document{
+				birch.NewDocument(
+					birch.EC.String("subnet_id", "sn0"),
+					birch.EC.String("region", evergreen.DefaultEC2Region),
+				),
+				birch.NewDocument(
+					birch.EC.String("subnet_id", "sn-other"),
+					birch.EC.String("region", "us-west-1"),
+				),
+			},
+		},
+	}
+	s.Require().NoError(h.Insert())
+	s.impl.region = evergreen.DefaultEC2Region
+
+	s.NoError(s.impl.setNextSubnet(context.Background(), h))
+	s.Equal("sn1", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
+
+	// wrap around
+	s.NoError(s.impl.setNextSubnet(context.Background(), h))
+	s.Equal("sn0", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
 }
 
 func (s *EC2Suite) TestCreateVolume() {

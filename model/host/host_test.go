@@ -4824,6 +4824,27 @@ func TestSetNewSSHKeys(t *testing.T) {
 	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
 }
 
+func TestUpdateCachedDistro(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	h := &Host{
+		Id:     "h0",
+		Distro: distro.Distro{Id: "d0"},
+	}
+	require.NoError(t, h.Insert())
+
+	newDistro := distro.Distro{Id: "d1"}
+	assert.NoError(t, h.UpdateCachedDistro(newDistro))
+
+	assert.Equal(t, "d1", h.Distro.Id)
+
+	h, err := FindOneId("h0")
+	require.NoError(t, err)
+	require.NotNil(t, h)
+
+	assert.Equal(t, "d1", h.Distro.Id)
+}
+
 func TestPartitionParents(t *testing.T) {
 	assert := assert.New(t)
 	const distroId = "match"

@@ -493,6 +493,33 @@ func TestAddPermissions(t *testing.T) {
 	assert.Contains(t, dbUser.Roles(), "admin_distro_myDistro")
 }
 
+func TestReplaceProviderSetting(t *testing.T) {
+	d := Distro{
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument(
+				birch.EC.String("subnet_id", "subnet-123456"),
+				birch.EC.String("region", evergreen.DefaultEC2Region),
+			),
+			birch.NewDocument(
+				birch.EC.String("subnet_id", "subnet-987654"),
+				birch.EC.String("region", "us-west-1"),
+			),
+		},
+	}
+
+	newSettings := birch.NewDocument(
+		birch.EC.String("subnet_id", "replacement"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
+
+	assert.Error(t, d.ReplaceProviderSetting("non-existent region", newSettings))
+	assert.NoError(t, d.ReplaceProviderSetting(evergreen.DefaultEC2Region, newSettings))
+
+	regionSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
+	assert.NoError(t, err)
+	assert.Equal(t, "replacement", regionSettings.Lookup("subnet_id").StringValue())
+}
+
 func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.AllLogCollection))
 
