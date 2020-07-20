@@ -65,14 +65,16 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled {
+		if !ref.Enabled || ref.DispatchingDisabled {
 			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"planner": d.PlannerSettings.Version,
-				"project": t.Project,
+				"runner":               RunnerName,
+				"message":              "project disabled",
+				"outcome":              "skipping",
+				"task":                 t.Id,
+				"planner":              d.PlannerSettings.Version,
+				"project":              t.Project,
+				"enabled":              ref.Enabled,
+				"dispatching_disabled": ref.DispatchingDisabled,
 			})
 			continue
 		}
@@ -179,14 +181,16 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled {
+		if !ref.Enabled || ref.DispatchingDisabled {
 			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"planner": d.PlannerSettings.Version,
-				"project": t.Project,
+				"runner":               RunnerName,
+				"message":              "project disabled",
+				"outcome":              "skipping",
+				"task":                 t.Id,
+				"planner":              d.PlannerSettings.Version,
+				"project":              t.Project,
+				"enabled":              ref.Enabled,
+				"dispatching_disabled": ref.DispatchingDisabled,
 			})
 			continue
 		}
@@ -300,13 +304,15 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled {
+		if !ref.Enabled || ref.DispatchingDisabled {
 			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"project": t.Project,
+				"runner":               RunnerName,
+				"message":              "project disabled",
+				"outcome":              "skipping",
+				"task":                 t.Id,
+				"project":              t.Project,
+				"enabled":              ref.Enabled,
+				"dispatching_disabled": ref.DispatchingDisabled,
 			})
 			continue
 		}

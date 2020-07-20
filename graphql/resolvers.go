@@ -390,7 +390,7 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
 	if baseVersion == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find base version ID for patch %s", *obj.Id))
+		return nil, nil
 	}
 	return &baseVersion.Id, nil
 }
@@ -1170,61 +1170,42 @@ func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commi
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
-
-	var id string
-	var idType string
-	for _, s := range subscription.Selectors {
-		if s.Type == nil {
-			return false, InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
-		}
-		switch *s.Type {
-		case "object":
-			idType = *s.Data
-			break
-		case "id":
-			id = *s.Data
-			break
-		case "project":
-			idType = "project"
-			id = *s.Data
-			break
-		}
-	}
-	if id == "" || idType == "" {
-		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	idType, id, err := getResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
+	if err != nil {
+		return false, err
 	}
 	switch idType {
 	case "task":
-		t, err := r.sc.FindTaskById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, err.Error()))
+		t, taskErr := r.sc.FindTaskById(id)
+		if taskErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, taskErr.Error()))
 		}
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
 		break
 	case "build":
-		b, err := r.sc.FindBuildById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, err.Error()))
+		b, buildErr := r.sc.FindBuildById(id)
+		if buildErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, buildErr.Error()))
 		}
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
 		break
 	case "version":
-		v, err := r.sc.FindVersionById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, err.Error()))
+		v, versionErr := r.sc.FindVersionById(id)
+		if versionErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, versionErr.Error()))
 		}
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
 		break
 	case "project":
-		p, err := r.sc.FindProjectById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, err.Error()))
+		p, projectErr := r.sc.FindProjectById(id)
+		if projectErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
 		}
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
@@ -1233,7 +1214,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
-	err := r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
+	err = r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
 	}

@@ -3,11 +3,12 @@
 package model
 
 func IntInt(in int) int {
-	return in
+	return int(in)
 }
 
 func IntIntPtr(in int) *int {
-	return &in
+	out := int(in)
+	return &out
 }
 
 func IntPtrInt(in *int) int {
@@ -15,19 +16,24 @@ func IntPtrInt(in *int) int {
 	if in == nil {
 		return out
 	}
-	return *in
+	return int(*in)
 }
 
 func IntPtrIntPtr(in *int) *int {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := int(*in)
+	return &out
 }
 
 func StringString(in string) string {
-	return in
+	return string(in)
 }
 
 func StringStringPtr(in string) *string {
-	return &in
+	out := string(in)
+	return &out
 }
 
 func StringPtrString(in *string) string {
@@ -35,9 +41,13 @@ func StringPtrString(in *string) string {
 	if in == nil {
 		return out
 	}
-	return *in
+	return string(*in)
 }
 
 func StringPtrStringPtr(in *string) *string {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := string(*in)
+	return &out
 }

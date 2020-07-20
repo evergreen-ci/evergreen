@@ -57,45 +57,117 @@ func WriteFile(path string, data string) error {
 	return errors.WithStack(WriteRawFile(path, []byte(data)))
 }
 
-// fileListBuilder contains the information for building a list of files in the given directory.
+// gitignoreFileMatcher contains the information for building a list of files in the given directory.
 // It adds the files to include in the fileNames array and uses the ignorer to determine if a given
 // file matches and should be added.
-type fileListBuilder struct {
-	fileNames []string
-	ignorer   *ignore.GitIgnore
-	prefix    string
+type gitignoreFileMatcher struct {
+	ignorer *ignore.GitIgnore
+	prefix  string
 }
 
-func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, err error) error {
+// NewGitignoreFileMatcher returns a FileMatcher that matches the
+// expressions rooted at the given prefix. The expressions should be gitignore
+// ignore expressions: antyhing that would be matched - and therefore ignored by
+// git - is matched.
+func NewGitignoreFileMatcher(prefix string, exprs ...string) (FileMatcher, error) {
+	ignorer, err := ignore.CompileIgnoreLines(exprs...)
 	if err != nil {
-		return errors.Wrapf(err, "Error received by walkFunc for path %s", path)
+		return nil, errors.Wrap(err, "compiling gitignore expressions")
 	}
-	path = strings.TrimPrefix(path, fb.prefix)
-	path = strings.TrimLeft(path, string(os.PathSeparator))
-	if !info.IsDir() && fb.ignorer.MatchesPath(path) {
-		fb.fileNames = append(fb.fileNames, path)
+	m := &gitignoreFileMatcher{
+		ignorer: ignorer,
+		prefix:  prefix,
 	}
+	return m, nil
+}
+
+func (m *gitignoreFileMatcher) Match(file string, info os.FileInfo) bool {
+	file = strings.TrimLeft(strings.TrimPrefix(file, m.prefix), string(os.PathSeparator))
+	return !info.IsDir() && m.ignorer.MatchesPath(file)
+}
+
+// FileMatcher represents a type that can match against files and file
+// information to determine if it should be included.
+type FileMatcher interface {
+	Match(file string, info os.FileInfo) bool
+}
+
+// AlwaysMatch provides a FileMatcher implementation that will always match a
+// file or directory.
+type AlwaysMatch struct{}
+
+// Match always returns true.
+func (m AlwaysMatch) Match(string, os.FileInfo) bool { return true }
+
+// FileFileAlwaysMatch provides a FileMatcher implementation that will always
+// match a file, but not a directory.
+type FileAlwaysMatch struct{}
+
+func (m FileAlwaysMatch) Match(_ string, info os.FileInfo) bool {
+	return !info.IsDir()
+}
+
+// NeverMatch provides a FileMatcher implementation that will never match a
+// file or directory.
+type NeverMatch struct{}
+
+// Match always returns false.
+func (m NeverMatch) Match(string, os.FileInfo) bool { return false }
+
+// FileListBuilder provides options to find files within a directory.
+type FileListBuilder struct {
+	// Include determines which files should be included. This has lower
+	// precedence than the Exclude filter.
+	Include FileMatcher
+	// Exclude determines which files should be excluded from the file list.
+	// This has higher precedence than the Include filter.
+	Exclude FileMatcher
+	// WorkingDir is the base working directory from which to start searching
+	// for files.
+	WorkingDir string
+	files      []string
+}
+
+// NewFileListBuilder returns a default FileListBuilder that will match all
+// files (but not directory names) within the given directory dir.
+func NewFileListBuilder(dir string) *FileListBuilder {
+	return &FileListBuilder{
+		Include:    FileAlwaysMatch{},
+		Exclude:    NeverMatch{},
+		WorkingDir: dir,
+	}
+}
+
+// Build finds all files that pass the include and exclude filters within the
+// working directory. It does not follow symlinks. All files returned are
+// relative to the working directory.
+func (b *FileListBuilder) Build() ([]string, error) {
+	if b.Include == nil {
+		return nil, errors.New("cannot build file list without an include filter")
+	}
+	if err := filepath.Walk(b.WorkingDir, b.visitPath); err != nil {
+		return nil, errors.Wrap(err, "building file list")
+	}
+
+	return b.files, nil
+}
+
+func (b *FileListBuilder) visitPath(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return errors.Wrapf(err, "path '%s'", path)
+	}
+
+	if b.Exclude != nil && b.Exclude.Match(path, info) {
+		return nil
+	}
+
+	if b.Include == nil || !b.Include.Match(path, info) {
+		return nil
+	}
+
+	// All accumulated paths are relative to the working directory.
+	toAdd := strings.TrimPrefix(strings.TrimPrefix(path, b.WorkingDir), string(os.PathSeparator))
+	b.files = append(b.files, toAdd)
+
 	return nil
-}
-
-// BuildFileList returns a list of files that match the given list of expressions
-// rooted at the given startPath. The expressions correspond to gitignore ignore
-// expressions: anything that would be matched - and therefore ignored by git - is included
-// in the returned list of file paths. BuildFileList does not follow symlinks as
-// it uses filpath.Walk, which does not follow symlinks.
-func BuildFileList(startPath string, expressions ...string) ([]string, error) {
-	ignorer, err := ignore.CompileIgnoreLines(expressions...)
-	if err != nil {
-		return nil, err
-	}
-	fb := &fileListBuilder{
-		fileNames: []string{},
-		ignorer:   ignorer,
-		prefix:    startPath,
-	}
-	err = filepath.Walk(startPath, fb.walkFunc)
-	if err != nil {
-		return nil, err
-	}
-	return fb.fileNames, nil
 }

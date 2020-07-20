@@ -3,11 +3,12 @@
 package model
 
 func StringString(in string) string {
-	return in
+	return string(in)
 }
 
 func StringStringPtr(in string) *string {
-	return &in
+	out := string(in)
+	return &out
 }
 
 func StringPtrString(in *string) string {
@@ -15,9 +16,13 @@ func StringPtrString(in *string) string {
 	if in == nil {
 		return out
 	}
-	return *in
+	return string(*in)
 }
 
 func StringPtrStringPtr(in *string) *string {
-	return in
+	if in == nil {
+		return nil
+	}
+	out := string(*in)
+	return &out
 }

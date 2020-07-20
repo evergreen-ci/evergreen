@@ -96,8 +96,8 @@ var projectSyntaxValidators = []projectValidator{
 	checkDependencyGraph,
 	validatePluginCommands,
 	ensureHasNecessaryProjectFields,
-	verifyTaskDependencies,
-	verifyTaskRequirements,
+	validateTaskDependencies,
+	validateTaskRuns,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
@@ -945,46 +945,38 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Makes sure that the dependencies for the tasks have the correct fields,
-// and that the fields reference valid tasks.
-func verifyTaskRequirements(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, bvt := range project.FindAllBuildVariantTasks() {
-		for _, r := range bvt.Requires {
-			if project.FindProjectTask(r.Name) == nil {
-				if r.Name == model.AllDependencies {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s': * is not supported for requirement selectors", bvt.Name)})
-				} else {
-					errs = append(errs,
-						ValidationError{Message: fmt.Sprintf(
-							"task '%s' requires non-existent task '%s'", bvt.Name, r.Name)})
-				}
-			}
-			if r.Variant != "" && r.Variant != model.AllVariants && project.FindBuildVariant(r.Variant) == nil {
-				errs = append(errs, ValidationError{Message: fmt.Sprintf(
-					"task '%s' requires non-existent variant '%s'", bvt.Name, r.Variant)})
-			}
-			vs := project.FindVariantsWithTask(r.Name)
-			if r.Variant != "" && r.Variant != model.AllVariants {
-				if !utility.StringSliceContains(vs, r.Variant) {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, r.Variant)})
-				}
-			} else {
-				if !utility.StringSliceContains(vs, bvt.Variant) {
-					errs = append(errs, ValidationError{Message: fmt.Sprintf(
-						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, bvt.Variant)})
-				}
-			}
+func validateTaskRuns(project *model.Project) ValidationErrors {
+	var errs ValidationErrors
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' will never run because it skips both patch builds and non-patch builds",
+					bvtu.Name),
+			})
+		}
+		// Git-tag-only builds cannot run in patches.
+		if bvtu.SkipOnNonGitTagBuild() && bvtu.SkipOnNonPatchBuild() {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' will never run because it only runs for git tag builds but also is patch-only",
+					bvtu.Name),
+			})
+		}
+		if bvtu.SkipOnNonGitTagBuild() && util.IsPtrSetToTrue(bvtu.Patchable) {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' cannot be patchable if it only runs for git tag builds",
+					bvtu.Name),
+			})
 		}
 	}
 	return errs
 }
 
-// Makes sure that the dependencies for the tasks have the correct fields,
-// and that the fields have valid values
-func verifyTaskDependencies(project *model.Project) ValidationErrors {
+// validateTaskDependencies ensures that the dependencies for the tasks have the
+// correct fields, and that the fields have valid values
+func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, task := range project.Tasks {
@@ -1042,7 +1034,16 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
+	names := map[string]bool{}
 	for _, tg := range p.TaskGroups {
+		if _, ok := names[tg.Name]; ok {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("task group '%s' is defined multiple times", tg.Name),
+			})
+		}
+		names[tg.Name] = true
+
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{
@@ -1101,9 +1102,9 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		if len(tg.Tasks) == 1 {
 			continue
 		}
-		if tg.MaxHosts > (len(tg.Tasks) / 2) {
+		if tg.MaxHosts > len(tg.Tasks) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
+				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}
@@ -1111,20 +1112,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 			tasksInTaskGroups[t] = tg.Name
 		}
 	}
-	for t, tg := range tasksInTaskGroups {
-		spec := p.GetSpecForTask(t)
-		if len(spec.DependsOn) > 0 {
-			dependencies := make([]string, 0, len(spec.DependsOn))
-			for _, dependsOn := range spec.DependsOn {
-				dependencies = append(dependencies, dependsOn.Name)
-			}
-			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task %s in task group %s has a dependency on another task (%s), "+
-					"which can cause task group tasks to be scheduled out of order", t, tg, dependencies),
-				Level: Warning,
-			})
-		}
-	}
+
 	return errs
 }
 

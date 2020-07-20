@@ -303,7 +303,17 @@ retryLoop:
 			filesList = []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
-				filesList, err = utility.BuildFileList(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), s3pc.LocalFilesIncludeFilter...)
+				workDir := filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix)
+				var include utility.FileMatcher
+				include, err = utility.NewGitignoreFileMatcher(workDir, s3pc.LocalFilesIncludeFilter...)
+				if err != nil {
+					return errors.Wrap(err, "building gitignore file matcher")
+				}
+				b := utility.FileListBuilder{
+					WorkingDir: workDir,
+					Include:    include,
+				}
+				filesList, err = b.Build()
 				if err != nil {
 					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))

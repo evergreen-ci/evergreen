@@ -38,12 +38,12 @@ func APIMockLayerOneToService(m APIMockLayerOne) *model.MockLayerOne {
 }
 func APIMockLayerTwoBuildFromService(t model.MockLayerTwo) *APIMockLayerTwo {
 	m := APIMockLayerTwo{}
-	m.SomeField = StringStringPtr(t.SomeField)
+	m.SomeField = StringPtrStringPtr(t.SomeField)
 	return &m
 }
 
 func APIMockLayerTwoToService(m APIMockLayerTwo) *model.MockLayerTwo {
 	out := &model.MockLayerTwo{}
-	out.SomeField = StringPtrString(m.SomeField)
+	out.SomeField = StringPtrStringPtr(m.SomeField)
 	return out
 }

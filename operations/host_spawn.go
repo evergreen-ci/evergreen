@@ -360,8 +360,10 @@ func hostConfigure() cli.Command {
 			})
 
 			for idx, cmd := range cmds {
-				if err := makeWorkingDir(cmd); err != nil {
-					return errors.Wrap(err, "problem making working directory")
+				if !dryRun {
+					if err := makeWorkingDir(cmd); err != nil {
+						return errors.Wrap(err, "problem making working directory")
+					}
 				}
 
 				if err := cmd.Run(ctx); err != nil {

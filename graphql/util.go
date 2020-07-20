@@ -571,3 +571,33 @@ func formatDuration(duration string) string {
 		return m + " "
 	}))
 }
+
+func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {
+	var id string
+	var idType string
+	for _, s := range selectors {
+		if s.Type == nil {
+			return "", "", InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
+		}
+		// Don't exit the loop for object and id because together they
+		// describe the resource id and resource type for the subscription
+		switch *s.Type {
+		case "object":
+			idType = *s.Data
+		case "id":
+			id = *s.Data
+		case "project":
+			idType = "project"
+			id = *s.Data
+			return idType, id, nil
+		case "in-version":
+			idType = "version"
+			id = *s.Data
+			return idType, id, nil
+		}
+	}
+	if idType == "" || id == "" {
+		return "", "", InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	}
+	return idType, id, nil
+}

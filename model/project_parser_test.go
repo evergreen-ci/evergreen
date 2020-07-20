@@ -113,65 +113,6 @@ tasks:
 	})
 }
 
-func TestCreateIntermediateProjectRequirements(t *testing.T) {
-	Convey("Testing different project files", t, func() {
-		Convey("a simple project file should parse", func() {
-			simple := `
-tasks:
-- name: task0
-- name: task1
-  requires:
-  - name: "task0"
-    variant: "v1"
-  - "task2"
-`
-			p, err := createIntermediateProject([]byte(simple))
-			So(p, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(p.Tasks[1].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[1].Requires[0].Variant.StringSelector, ShouldEqual, "v1")
-			So(p.Tasks[1].Requires[1].Name, ShouldEqual, "task2")
-			So(p.Tasks[1].Requires[1].Variant, ShouldBeNil)
-		})
-		Convey("a single requirement should parse", func() {
-			simple := `
-tasks:
-- name: task1
-  requires:
-    name: "task0"
-    variant: "v1"
-`
-			p, err := createIntermediateProject([]byte(simple))
-			So(p, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[0].Requires[0].Variant.StringSelector, ShouldEqual, "v1")
-		})
-		Convey("a single requirement with a matrix selector should parse", func() {
-			simple := `
-tasks:
-- name: task1
-  requires:
-    name: "task0"
-    variant:
-     cool: "shoes"
-     colors:
-      - red
-      - green
-      - blue
-`
-			p, err := createIntermediateProject([]byte(simple))
-			So(err, ShouldBeNil)
-			So(p, ShouldNotBeNil)
-			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[0].Requires[0].Variant.StringSelector, ShouldEqual, "")
-			So(p.Tasks[0].Requires[0].Variant.MatrixSelector, ShouldResemble, matrixDefinition{
-				"cool": []string{"shoes"}, "colors": []string{"red", "green", "blue"},
-			})
-		})
-	})
-}
-
 func TestCreateIntermediateProjectBuildVariants(t *testing.T) {
 	Convey("Testing different project files", t, func() {
 		Convey("a file with multiple BVTs should parse", func() {
@@ -190,8 +131,6 @@ buildvariants:
     depends_on:
     - name: "t3"
       variant: "v0"
-    requires:
-    - name: "t4"
     stepback: false
     priority: 77
 `
@@ -208,7 +147,6 @@ buildvariants:
 			So(*bv.Tasks[1].PatchOnly, ShouldBeTrue)
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{StringSelector: "v0"}})
-			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
 			So(bv.Tasks[1].Priority, ShouldEqual, 77)
 		})
@@ -220,7 +158,6 @@ buildvariants:
   - "t1"
   - name: "t2"
     depends_on: "t3"
-    requires: "t4"
 `
 			p, err := createIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
@@ -230,7 +167,6 @@ buildvariants:
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble, taskSelector{Name: "t3"})
-			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 		})
 		Convey("a file with single BVTs should parse", func() {
 			simple := `
@@ -402,51 +338,6 @@ func TestTranslateDependsOn(t *testing.T) {
 	})
 }
 
-func TestTranslateRequires(t *testing.T) {
-	Convey("With an intermediate parseProject", t, func() {
-		pp := &ParserProject{}
-		Convey("a task with valid requirements should succeed", func() {
-			pp.BuildVariants = []parserBV{
-				{Name: "v1"},
-			}
-			pp.Tasks = []parserTask{
-				{Name: "t1"},
-				{Name: "t2"},
-				{Name: "t3", Requires: taskSelectors{
-					{Name: "t1"},
-					{Name: "t2", Variant: &variantSelector{StringSelector: "v1"}},
-				}},
-			}
-			out, err := TranslateProject(pp)
-			So(out, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			reqs := out.Tasks[2].Requires
-			So(reqs[0].Name, ShouldEqual, "t1")
-			So(reqs[1].Name, ShouldEqual, "t2")
-			So(reqs[1].Variant, ShouldEqual, "v1")
-		})
-		Convey("a task with erroneous requirements should fail", func() {
-			pp.BuildVariants = []parserBV{
-				{Name: "v1"},
-			}
-			pp.Tasks = []parserTask{
-				{Name: "t1"},
-				{Name: "t2", Tags: []string{"taggy"}},
-				{Name: "t3", Requires: taskSelectors{
-					{Name: "!!!!!"}, //illegal selector
-					{Name: ".taggy !t2", Variant: &variantSelector{StringSelector: "v1"}}, //nothing returned
-					{Name: "t1", Variant: &variantSelector{StringSelector: "!v1"}},        //no variants returned
-					{Name: "t1 t2"}, //nothing returned
-				}},
-			}
-			out, err := TranslateProject(pp)
-			So(out, ShouldNotBeNil)
-			So(err, ShouldNotBeNil)
-			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 7)
-		})
-	})
-}
-
 func TestTranslateBuildVariants(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
 		pp := &ParserProject{}
@@ -462,35 +353,19 @@ func TestTranslateBuildVariants(t *testing.T) {
 					{Name: "t1", CommitQueueMerge: true},
 					{Name: ".z", DependsOn: parserDependencies{
 						{TaskSelector: taskSelector{Name: ".b"}}}},
-					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
 				},
 			}}
 
 			out, err := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
+			So(len(out.BuildVariants), ShouldEqual, 1)
 			bvts := out.BuildVariants[0].Tasks
+			So(len(bvts), ShouldEqual, 2)
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
-			So(bvts[2].Name, ShouldEqual, "t3")
 			So(bvts[0].CommitQueueMerge, ShouldBeTrue)
 			So(bvts[1].DependsOn[0].Name, ShouldEqual, "t3")
-			So(bvts[2].Requires[0].Name, ShouldEqual, "t1")
-		})
-		Convey("a bvtask with erroneous requirements should fail", func() {
-			pp.Tasks = []parserTask{
-				{Name: "t1"},
-			}
-			pp.BuildVariants = []parserBV{{
-				Name: "v1",
-				Tasks: parserBVTaskUnits{
-					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
-				},
-			}}
-			out, err := TranslateProject(pp)
-			So(out, ShouldNotBeNil)
-			So(err, ShouldNotBeNil)
-			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 2)
 		})
 	})
 }
@@ -1204,8 +1079,6 @@ buildvariants:
     - name: task_3
 - name: bv_3
   display_name: "bv_display"
-  requires:
-    - name: task_3
   tasks:
     - name: task_4
     - name: task_5
@@ -1233,8 +1106,6 @@ buildvariants:
 	assert.Len(proj.BuildVariants[2].Tasks, 2)
 	assert.Equal("task_4", proj.BuildVariants[2].Tasks[0].Name)
 	assert.Equal("task_5", proj.BuildVariants[2].Tasks[1].Name)
-	assert.Equal("task_3", proj.BuildVariants[2].Tasks[0].Requires[0].Name)
-	assert.Equal("task_3", proj.BuildVariants[2].Tasks[1].Requires[0].Name)
 }
 
 func TestPatchOnlyTasks(t *testing.T) {

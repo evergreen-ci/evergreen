@@ -52,15 +52,15 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return err
 	}
 
-	// make sure the file patterns are relative to the task's working directory
-	for idx, file := range c.Files {
-		c.Files[idx] = filepath.Join(conf.WorkDir, file)
+	// All file patterns should be relative to the task's working directory.
+	for i, file := range c.Files {
+		c.Files[i] = filepath.Join(conf.WorkDir, file)
 	}
 
 	// will be all files containing test results
-	outputFiles, err := c.allOutputFiles()
+	outputFiles, err := globFiles(c.Files...)
 	if err != nil {
-		return errors.Wrap(err, "error obtaining names of output files")
+		return errors.Wrap(err, "obtaining names of output files")
 	}
 
 	// make sure we're parsing something
@@ -121,33 +121,29 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return nil
 }
 
-// AllOutputFiles creates a list of all test output files that will be parsed, by expanding
-// all of the file patterns specified to the command.
-func (c *goTestResults) allOutputFiles() ([]string, error) {
+// globFiles returns a unique set of files that match the given glob patterns.
+func globFiles(patterns ...string) ([]string, error) {
+	var matchedFiles []string
 
-	outputFiles := []string{}
-
-	// walk through all specified file patterns
-	for _, pattern := range c.Files {
+	for _, pattern := range patterns {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			return nil, errors.Wrap(err, "error expanding file patterns")
+			return nil, errors.Wrapf(err, "globbing file pattern '%s'", pattern)
 		}
-		outputFiles = append(outputFiles, matches...)
+		matchedFiles = append(matchedFiles, matches...)
 	}
 
-	// uniquify the list
+	// Uniquify the matches
 	asSet := map[string]bool{}
-	for _, file := range outputFiles {
-		asSet[file] = true
+	for _, match := range matchedFiles {
+		asSet[match] = true
 	}
-	outputFiles = []string{}
-	for file := range asSet {
-		outputFiles = append(outputFiles, file)
+	matchedFiles = []string{}
+	for match := range asSet {
+		matchedFiles = append(matchedFiles, match)
 	}
 
-	return outputFiles, nil
-
+	return matchedFiles, nil
 }
 
 // parseTestOutput parses the test results and logs from a single output source.

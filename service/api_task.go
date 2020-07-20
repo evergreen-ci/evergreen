@@ -504,12 +504,15 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
-		if !projectRef.Enabled {
+		if !projectRef.Enabled || projectRef.DispatchingDisabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":   "projectRef.Enabled is false, but there was an issue dequeuing the task",
-				"distro_id": nextTask.DistroId,
-				"task_id":   nextTask.Id,
-				"host_id":   currentHost.Id,
+				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
+				"distro_id":            nextTask.DistroId,
+				"task_id":              nextTask.Id,
+				"host_id":              currentHost.Id,
+				"project":              projectRef.Identifier,
+				"enabled":              projectRef.Enabled,
+				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))
 
 			continue

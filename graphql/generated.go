@@ -320,6 +320,7 @@ type ComplexityRoot struct {
 		DisplayName       func(childComplexity int) int
 		DisplayOnly       func(childComplexity int) int
 		DistroId          func(childComplexity int) int
+		EstimatedStart    func(childComplexity int) int
 		Execution         func(childComplexity int) int
 		ExecutionTasks    func(childComplexity int) int
 		ExpectedDuration  func(childComplexity int) int
@@ -1875,6 +1876,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.DistroId(childComplexity), true
 
+	case "Task.estimatedStart":
+		if e.complexity.Task.EstimatedStart == nil {
+			break
+		}
+
+		return e.complexity.Task.EstimatedStart(childComplexity), true
+
 	case "Task.execution":
 		if e.complexity.Task.Execution == nil {
 			break
@@ -2958,6 +2966,7 @@ type Task {
   canSchedule: Boolean!
   canUnschedule: Boolean!
   canSetPriority: Boolean!
+  estimatedStart: Duration
 }
 
 type Projects {
@@ -10590,6 +10599,37 @@ func (ec *executionContext) _Task_canSetPriority(ctx context.Context, field grap
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EstimatedStart, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -15769,6 +15809,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		case "estimatedStart":
+			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

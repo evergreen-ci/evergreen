@@ -1393,7 +1393,7 @@ func TestAddDependency(t *testing.T) {
 	updated, err = FindOneId(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, len(depTaskIds), len(updated.DependsOn))
-	assert.False(t, updated.DependsOn[0].Unattainable) // don't change attainability
+	assert.True(t, updated.DependsOn[0].Unattainable)
 
 	assert.NoError(t, t1.AddDependency(Dependency{TaskId: "td1", Status: evergreen.TaskFailed}))
 
