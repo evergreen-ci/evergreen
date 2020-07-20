@@ -1791,6 +1791,23 @@ func TestTaskGroupValidation(t *testing.T) {
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group 2 times")
 
+	proj = model.Project{
+		Tasks: []model.ProjectTask{
+			{Name: "task1"},
+		},
+		TaskGroups: []model.TaskGroup{
+			{
+				Name:  "tg1",
+				Tasks: []string{"task1"},
+			},
+			{
+				Name:  "tg1",
+				Tasks: []string{"task1"},
+			},
+		},
+	}
+	assert.Len(validateTaskGroups(&proj), 1)
+
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
   tasks:
