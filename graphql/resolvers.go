@@ -1133,8 +1133,15 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	return true, nil
 }
 
-func (r *queryResolver) User(ctx context.Context) (*restModel.APIUser, error) {
+func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
+	var err error
+	if userIdParam != nil {
+		usr, err = model.FindUserByID(*userIdParam)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+		}
+	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
 	user := restModel.APIUser{
