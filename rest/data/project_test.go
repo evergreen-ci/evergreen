@@ -410,7 +410,7 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	s.Equal(origProj.Vars, newProj.Vars)
 }
 
-func TestProjectAlias(t *testing.T) {
+func TestGetProjectAliasResults(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 	p := model.Project{
 		Identifier: "helloworld",
@@ -440,12 +440,12 @@ func TestProjectAlias(t *testing.T) {
 	require.NoError(t, alias2.Upsert())
 
 	dc := &DBProjectConnector{}
-	variantTasks, err := dc.TestProjectAlias(&p, alias1.Alias, false)
+	variantTasks, err := dc.GetProjectAliasResults(&p, alias1.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 1)
 	assert.Equal(t, "task1", variantTasks[0].Tasks[0])
-	variantTasks, err = dc.TestProjectAlias(&p, alias2.Alias, false)
+	variantTasks, err = dc.GetProjectAliasResults(&p, alias2.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)
