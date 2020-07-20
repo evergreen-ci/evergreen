@@ -204,7 +204,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
 			break
-		case HostSortByDistro:
+		case HostSortByDistro: // SORT BY DISTRO DISPLAY NAME - requires sorting by nested attribute
 			sorter = host.DistroKey
 			break
 		case HostSortByElapsed:
@@ -217,12 +217,12 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			sorter = host.TotalIdleTimeKey
 			break
 		case HostSortByOwner:
-			sorter = host.ProjectKey
+			sorter = host.StartedByKey
 			break
 		case HostSortByStatus:
 			sorter = host.StatusKey
 			break
-		case HostSortByUptime:
+		case HostSortByUptime: // SORT BY TASK START TIME
 			// sorter = host
 			break
 		default:
@@ -254,6 +254,13 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		apiHost := restModel.APIHost{}
 
 		apiHost.BuildFromService(host)
+
+		if host.RunningTask != "" {
+			// Add the task information to the host document.
+			if err = apiHost.BuildFromService(host.RunningTask); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+			}
+		}
 
 		apiHosts = append(apiHosts, &apiHost)
 	}
