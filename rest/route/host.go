@@ -379,43 +379,6 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	currentTime := time.Now()
 
 	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
-	for _, v := range volumes {
-		if !v.NoExpiration && v.Expiration.Before(currentTime) { // already terminated
-			continue
-		}
-		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
-		if ch.dryRun {
-			continue
-		}
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(v.AvailabilityZone),
-		}
-		mgr, ok := mgrCache[mgrOpts]
-		if !ok {
-			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
-			}
-			mgrCache[mgrOpts] = mgr
-		}
-
-		// detach volume first
-		if v.Host != "" {
-			for _, h := range hosts {
-				if h.Id == v.Host {
-					if err = mgr.DetachVolume(ctx, &h, v.ID); err != nil {
-						return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-							"error detaching volume '%s' from host '%s'", v.ID, h.Id))
-					}
-					break
-				}
-			}
-		}
-		if err = mgr.DeleteVolume(ctx, &v); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
-	}
 	for _, h := range hosts {
 		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 		if ch.dryRun {
@@ -438,6 +401,32 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
 		if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error terminating instance '%s'", h.Id))
+		}
+	}
+
+	for _, v := range volumes {
+		if !v.NoExpiration && v.Expiration.Before(currentTime) { // already terminated
+			continue
+		}
+		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
+		if ch.dryRun {
+			continue
+		}
+		mgrOpts := cloud.ManagerOpts{
+			Provider: evergreen.ProviderNameEc2OnDemand,
+			Region:   cloud.AztoRegion(v.AvailabilityZone),
+		}
+		mgr, ok := mgrCache[mgrOpts]
+		if !ok {
+			mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			mgrCache[mgrOpts] = mgr
+		}
+
+		if err = mgr.DeleteVolume(ctx, &v); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
