@@ -163,13 +163,13 @@ input UseSpruceOptionsInput {
 
 type Host {
   id: ID!
-  hostUrl: String! #hostId / host column
-  distroId: String #will have a resolver for this field
-  status: String! #included
-  runningTask: TaskInfo #included
+  hostUrl: String!
+  distroId: String
+  status: String!
+  runningTask: TaskInfo
   totalIdleTime: Duration
   creationTime: Time #host.runningTask.start_time = elapsed column
-  startedBy: String! #included
+  startedBy: String!
 }
 
 type TaskInfo {
