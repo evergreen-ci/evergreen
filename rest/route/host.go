@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -376,8 +375,6 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		TerminatedHosts:   []string{},
 		TerminatedVolumes: []string{},
 	}
-	currentTime := time.Now()
-
 	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
 	for _, h := range hosts {
 		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
@@ -405,9 +402,6 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	for _, v := range volumes {
-		if !v.NoExpiration && v.Expiration.Before(currentTime) { // already terminated
-			continue
-		}
 		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		if ch.dryRun {
 			continue
