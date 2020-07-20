@@ -420,7 +420,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "can't convert provider settings to document")
 	}
 
-	if err = h.Distro.ReplaceProviderSetting(ec2Settings.getRegion(), newSettingsDocument); err != nil {
+	if err = h.Distro.ReplaceProviderSetting(ec2Settings.Region, newSettingsDocument); err != nil {
 		return errors.Wrap(err, "couldn't update cached distro")
 	}
 

@@ -581,6 +581,7 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
+// ReplaceProviderSetting replaces the region's settings document in-memory
 func (d *Distro) ReplaceProviderSetting(region string, newSettings *birch.Document) error {
 	index := -1
 	for i, s := range d.ProviderSettingsList {
@@ -592,6 +593,7 @@ func (d *Distro) ReplaceProviderSetting(region string, newSettings *birch.Docume
 	if index == -1 {
 		return errors.Errorf("region '%s' wasn't found in provider settings list", region)
 	}
+
 	d.ProviderSettingsList[index] = newSettings
 
 	return nil
