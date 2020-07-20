@@ -1,0 +1,10 @@
+{
+  hosts(sortBy: STATUS, sortDir: DESC) {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      status
+    }
+  }
+}
