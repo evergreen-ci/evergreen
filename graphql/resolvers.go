@@ -877,7 +877,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	if host == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s", hostID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s: %s", hostID, err.Error()))
 	}
 
 	apiHost := &restModel.APIHost{}
@@ -887,10 +887,9 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 	}
 
-
 	if host.RunningTask != "" {
 		// Add the task information to the host document.
-		if err = apiHost.BuildFromService(host.RunningTask); err != nil {
+		if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 		}
 	}

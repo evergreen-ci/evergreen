@@ -502,12 +502,12 @@ type Host{
   id: String!
   hostURL: String!
   distro: DistroInfo
-	startedBy: String!
-	provider: String!
-	user: String!
-	status: String!
-	runningTask: TaskInfo
-	displayName: String!
+  startedBy: String!
+  provider: String!
+  user: String!
+  status: String!
+  runningTask: TaskInfo
+  displayName: String!
   lastCommunicationTime: Time!
 }
 
