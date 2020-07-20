@@ -383,7 +383,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, h := range hosts {
 		if !ch.dryRun {
 			// delete hosts here
-			mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+			var mgrOpts cloud.ManagerOpts
+			mgrOpts, err = cloud.GetManagerOptions(h.Distro)
 			if err != nil {
 				if h.NoExpiration {
 					catcher.Wrapf(err, "can't get ManagerOpts for unexpirable host '%s'", h.Id)
