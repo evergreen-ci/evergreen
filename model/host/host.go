@@ -2490,24 +2490,9 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	defer cancel()
 
 	// TOTAL RUNNING HOSTS COUNT
-	countPipeline := []bson.M{}
-	for _, stage := range runningHostsPipeline {
-		countPipeline = append(countPipeline, stage)
-	}
-	countPipeline = append(countPipeline, bson.M{"$count": "count"})
-
-	tmp := []counter{}
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	totalRunningHostsCount, err := Count(db.Query(runningHostsPipeline))
 	if err != nil {
 		return nil, nil, 0, err
-	}
-	err = cursor.All(ctx, &tmp)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	totalRunningHostsCount := 0
-	if len(tmp) > 0 {
-		totalRunningHostsCount = tmp[0].Count
 	}
 
 	// APPLY FILTERS TO PIPELINE
@@ -2565,26 +2550,12 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	// FILTERED HOSTS COUNT
 	var filteredHostsCount *int
-
 	if hasFilters {
-		countPipeline = []bson.M{}
-		for _, stage := range runningHostsPipeline {
-			countPipeline = append(countPipeline, stage)
-		}
-		countPipeline = append(countPipeline, bson.M{"$count": "count"})
-
-		tmp = []counter{}
-		cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+		count, err := Count(db.Query(runningHostsPipeline))
 		if err != nil {
 			return nil, nil, 0, err
 		}
-		err = cursor.All(ctx, &tmp)
-		if err != nil {
-			return nil, nil, 0, err
-		}
-		if len(tmp) > 0 {
-			filteredHostsCount = &tmp[0].Count
-		}
+		filteredHostsCount = &count
 	}
 
 	// APPLY SORTERS TO PIPELINE
@@ -2610,7 +2581,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	hosts := []Host{}
 
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, runningHostsPipeline)
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, runningHostsPipeline)
 	if err != nil {
 		return nil, nil, 0, err
 	}
