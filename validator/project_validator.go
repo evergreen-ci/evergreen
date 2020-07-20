@@ -1034,7 +1034,16 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
+	names := map[string]bool{}
 	for _, tg := range p.TaskGroups {
+		if _, ok := names[tg.Name]; ok {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("task group '%s' is defined multiple times", tg.Name),
+			})
+		}
+		names[tg.Name] = true
+
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{
