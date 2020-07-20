@@ -16,16 +16,16 @@ type APIMockScalars struct {
 
 func APIMockScalarsBuildFromService(t model.MockScalars) *APIMockScalars {
 	m := APIMockScalars{}
-	m.AnyType = InterfaceInterface(t.AnyType)
-	m.MapType = MapstringinterfaceMapstringinterface(t.MapType)
 	m.TimeType = TimeTimeTimeTimePtr(t.TimeType)
+	m.MapType = MapstringinterfaceMapstringinterface(t.MapType)
+	m.AnyType = InterfaceInterface(t.AnyType)
 	return &m
 }
 
 func APIMockScalarsToService(m APIMockScalars) *model.MockScalars {
 	out := &model.MockScalars{}
-	out.AnyType = InterfaceInterface(m.AnyType)
-	out.MapType = MapstringinterfaceMapstringinterface(m.MapType)
 	out.TimeType = TimeTimePtrTimeTime(m.TimeType)
+	out.MapType = MapstringinterfaceMapstringinterface(m.MapType)
+	out.AnyType = InterfaceInterface(m.AnyType)
 	return out
 }

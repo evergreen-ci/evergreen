@@ -1,0 +1,4 @@
+type SortOfDisplayTask {
+  Name: String!
+  ExecTasks: [String!]
+}
