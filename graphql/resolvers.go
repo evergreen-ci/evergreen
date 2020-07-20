@@ -288,7 +288,7 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
 	if baseVersion == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find base version ID for patch %s", *obj.Id))
+		return nil, nil
 	}
 	return &baseVersion.Id, nil
 }
