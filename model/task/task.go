@@ -2071,6 +2071,10 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 func (t *Task) IsPartOfDisplay() bool {
 	dt, err := t.GetDisplayTask()
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "unable to get display task",
+			"execution_task": t.Id,
+		}))
 		return false
 	}
 	return dt != nil
