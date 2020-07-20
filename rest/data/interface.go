@@ -87,6 +87,7 @@ type Connector interface {
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
+	TestProjectAlias(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	// GetProjectFromFile finds the file for the projectRef and returns the translated project, using the given token
 	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (*model.Project, *model.ParserProject, error)

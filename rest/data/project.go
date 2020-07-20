@@ -312,6 +312,22 @@ func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*mod
 	return &projectSettingsEvent, nil
 }
 
+func (pc *DBProjectConnector) TestProjectAlias(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
+	projectAliases, err := model.FindAliasInProject(p.Identifier, alias)
+	if err != nil {
+		return nil, err
+	}
+	matches := []restModel.APIVariantTasks{}
+	for _, projectAlias := range projectAliases {
+		_, _, variantTasks := p.ResolvePatchVTs(nil, nil, projectAlias.Alias, includeDeps)
+		for _, variantTask := range variantTasks {
+			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
+		}
+	}
+
+	return matches, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -541,4 +557,8 @@ func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*m
 		return nil, errors.New("Owner and repository must not be empty strings")
 	}
 	return &model.ProjectSettingsEvent{}, nil
+}
+
+func (pc *MockProjectConnector) TestProjectAlias(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {
+	return nil, nil
 }
