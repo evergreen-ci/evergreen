@@ -413,7 +413,6 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	for _, v := range volumes {
-		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		if !ch.dryRun {
 			mgrOpts := cloud.ManagerOpts{
 				Provider: evergreen.ProviderNameEc2OnDemand,
