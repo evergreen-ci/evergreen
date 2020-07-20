@@ -882,7 +882,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 
 	apiHost := &restModel.APIHost{}
 
-	err = apiHost.BuildFromService(hostID)
+	err = apiHost.BuildFromHostStruct(host, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 	}

@@ -81,7 +81,7 @@ func TestHostBuildFromService(t *testing.T) {
 		Convey("running BuildFromService() should produce the equivalent model", func() {
 			for _, hc := range modelPairs {
 				apiHost := &APIHost{}
-				err := apiHost.BuildFromService(hc.st)
+				err := apiHost.BuildFromService(hc.st, false)
 				So(err, ShouldBeNil)
 				err = apiHost.BuildFromService(hc.sh)
 				So(err, ShouldBeNil)

@@ -68,7 +68,7 @@ type TaskInfo struct {
 func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host, *host.Host:
-		return apiHost.buildFromHostStruct(h)
+		return apiHost.BuildFromHostStruct(h, false)
 	case *task.Task:
 		apiHost.RunningTask = getTaskInfo(v)
 	case task.Task:
@@ -89,7 +89,7 @@ func getTaskInfo(t *task.Task) TaskInfo {
 	}
 }
 
-func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
+func (apiHost *APIHost) BuildFromHostStruct(h interface{}, graphQL bool) error {
 	var v *host.Host
 	switch h.(type) {
 	case host.Host:
@@ -115,14 +115,16 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 
-	imageId, err := v.Distro.GetImageID()
-	if err != nil {
-		return errors.Wrap(err, "problem getting image ID")
-	}
 	di := DistroInfo{
 		Id:       ToStringPtr(v.Distro.Id),
 		Provider: ToStringPtr(v.Distro.Provider),
-		ImageId:  ToStringPtr(imageId),
+	}
+	if !graphQL {
+		imageId, err := v.Distro.GetImageID()
+		if err != nil {
+			return errors.Wrap(err, "problem getting image ID")
+		}
+		di.ImageId = ToStringPtr(imageId)
 	}
 	apiHost.Distro = di
 	return nil
