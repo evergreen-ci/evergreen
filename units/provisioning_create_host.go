@@ -405,11 +405,11 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	}
 
 	if parent.Status != evergreen.HostRunning {
-		e := grip.Info(message.Fields{
+		e := message.Fields{
 			"message":       "parent for host not running",
 			"host_id":       j.host.Id,
 			"parent_status": parent.Status,
-		})
+		}
 		return false, e
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
