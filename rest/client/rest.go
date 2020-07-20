@@ -25,20 +25,22 @@ import (
 // HTTP status code and the formatted error message. Otherwise, it returns an
 // error message with the HTTP status and raw response body.
 func respErrorf(resp *http.Response, format string, args ...interface{}) error {
+	wrapError := func(err error) error {
+		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
+		return errors.Wrapf(err, format, args...)
+	}
+
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = errors.Wrapf(err, "status code %d", resp.StatusCode)
-		return errors.Wrap(err, "could not read response body")
+		return wrapError(errors.Wrap(err, "could not read response body"))
 	}
 
 	respErr := gimlet.ErrorResponse{}
 	if err = json.Unmarshal(b, &respErr); err != nil {
-		err = errors.Errorf("received HTTP status code %s with response: %s", resp.Status, string(b))
-		return errors.Wrapf(err, format, args...)
+		return wrapError(errors.Errorf("received response: %s", string(b)))
 	}
 
-	err = errors.Wrapf(respErr, "status code %d", resp.StatusCode)
-	return errors.Wrapf(err, format, args...)
+	return wrapError(respErr)
 }
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
