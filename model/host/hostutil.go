@@ -237,10 +237,8 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 }
 
 func (h *Host) RunSpawnHostSetupScript(ctx context.Context) error {
-	if h.ProvisionOptions != nil && h.ProvisionOptions.SetupScript != "" {
-		if output, err := h.RunSSHShellScript(ctx, h.ProvisionOptions.SetupScript, false, ""); err != nil {
-			return errors.Wrapf(err, "error running setup script for spawn host: %s", output)
-		}
+	if output, err := h.RunSSHShellScript(ctx, h.ProvisionOptions.SetupScript, false, ""); err != nil {
+		return errors.Wrapf(err, "error running setup script for spawn host: %s", output)
 	}
 	return nil
 }
