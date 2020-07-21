@@ -2,21 +2,19 @@ import json
 import argparse
 import hashlib
 
-# this script takes a json file as input and destructively hashes all string values in it
 def main():
+    '''takes a json file as input and destructively hashes all string values in it'''
     args = argparse.ArgumentParser()
     args.add_argument("file")
     flags = args.parse_args()
 
     with open(flags.file, "r") as f:
         data = json.load(f)
-        f.close()
 
     traverse(data)
     
     with open(flags.file, "w") as f:
         json.dump(data, f)
-        f.close()
 
 def traverse(obj):
     if isinstance(obj, dict):
@@ -35,4 +33,5 @@ def traverse(obj):
             return hashlib.sha256(obj).hexdigest()
 
 
-main()
+if __name__ == "__main__":
+    main()

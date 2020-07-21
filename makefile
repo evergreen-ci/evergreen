@@ -484,6 +484,8 @@ gqlgen:
 	go run vendor/github.com/99designs/gqlgen/main.go
 # end dependency targets
 
+# sanitizes a json file by hashing string values. Note that this will not work well with
+# string data that only has a subset of valid values
 scramble:
 	python cmd/scrambled-eggs/scramble.py $(file)
 
