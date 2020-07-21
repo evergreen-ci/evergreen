@@ -178,7 +178,7 @@ type Host {
   startedBy: String!
   provider: String!
   user: String!
-  lastCommunicationTime: Time!
+  lastCommunicationTime: Time
 }
 
 type TaskInfo {
