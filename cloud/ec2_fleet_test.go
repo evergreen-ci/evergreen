@@ -199,14 +199,14 @@ func TestInstanceTypeAZCache(t *testing.T) {
 		},
 	}
 	settings := &evergreen.Settings{}
-	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: "az0"}}
+	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"}}
 
-	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0")
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0", evergreen.DefaultEC2Region)
 	assert.NoError(t, err)
 	assert.Len(t, azsWithInstanceType, 1)
 	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
 
-	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported")
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported", evergreen.DefaultEC2Region)
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
 
