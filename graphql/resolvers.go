@@ -45,8 +45,23 @@ func (r *Resolver) Query() QueryResolver {
 func (r *Resolver) Task() TaskResolver {
 	return &taskResolver{r}
 }
+func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
+
+type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
+
+func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	return obj.Distro.Id, nil
+}
+
+func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.CreationTime, nil
+}
+
+func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.RunningTask.StartTime, nil
+}
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
@@ -170,6 +185,101 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 type queryResolver struct{ *Resolver }
+
+func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
+	hostIDParam := ""
+	if hostID != nil {
+		hostIDParam = *hostID
+	}
+	distroParam := ""
+	if distroID != nil {
+		distroParam = *distroID
+	}
+	currentTaskParam := ""
+	if currentTaskID != nil {
+		currentTaskParam = *currentTaskID
+	}
+	startedByParam := ""
+	if startedBy != nil {
+		startedByParam = *startedBy
+	}
+	sorter := host.StatusKey
+	if sortBy != nil {
+		switch *sortBy {
+		case HostSortByCurrentTask:
+			sorter = host.RunningTaskKey
+			break
+		case HostSortByDistro:
+			sorter = host.DistroKey
+			break
+		case HostSortByElapsed:
+			sorter = "task_full.start_time"
+			break
+		case HostSortByID:
+			sorter = host.IdKey
+			break
+		case HostSortByIDLeTime:
+			sorter = host.TotalIdleTimeKey
+			break
+		case HostSortByOwner:
+			sorter = host.StartedByKey
+			break
+		case HostSortByStatus:
+			sorter = host.StatusKey
+			break
+		case HostSortByUptime:
+			sorter = host.CreateTimeKey
+			break
+		default:
+			sorter = host.StatusKey
+			break
+		}
+
+	}
+	sortDirParam := 1
+	if *sortDir == SortDirectionDesc {
+		sortDirParam = -1
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, startedByParam, sorter, sortDirParam, pageParam, limitParam)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
+	}
+
+	apiHosts := []*restModel.APIHost{}
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API Host from Service: %s", err.Error()))
+		}
+
+		if host.RunningTask != "" {
+			// Add the task information to the host document.
+			if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+			}
+		}
+
+		apiHosts = append(apiHosts, &apiHost)
+	}
+
+	return &HostsResponse{
+		Hosts:              apiHosts,
+		FilteredHostsCount: filteredHostsCount,
+		TotalHostsCount:    totalHostsCount,
+	}, nil
+}
 
 type patchResolver struct{ *Resolver }
 

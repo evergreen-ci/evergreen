@@ -35,7 +35,7 @@ func TestHostBuildFromService(t *testing.T) {
 					InstanceType: ToStringPtr("testType"),
 					User:         ToStringPtr("testUser"),
 					Status:       ToStringPtr("testStatus"),
-					RunningTask: taskInfo{
+					RunningTask: TaskInfo{
 						Id:           ToStringPtr("testRunningTaskId"),
 						Name:         ToStringPtr("testRTName"),
 						DispatchTime: &timeNow,
@@ -66,7 +66,7 @@ func TestHostBuildFromService(t *testing.T) {
 			// Empty on purpose to ensure zero values are correctly converted
 			{
 				ah: APIHost{
-					RunningTask: taskInfo{
+					RunningTask: TaskInfo{
 						DispatchTime: &time.Time{},
 					},
 				},

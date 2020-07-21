@@ -1,63 +1,69 @@
-mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) {
+mciModule.controller("HostsCtrl", function (
+  $scope,
+  $filter,
+  $window,
+  $location
+) {
   $scope.selectedHeader = {};
-  $scope.headerFields = [{
-      name: 'Id',
-      by: 'host',
+  $scope.headerFields = [
+    {
+      name: "Id",
+      by: "host",
       order: false,
     },
     {
-      name: 'Distro',
-      by: 'distro._id',
+      name: "Distro",
+      by: "distro._id",
       order: false,
     },
     {
-      name: 'Status',
-      by: 'status',
+      name: "Status",
+      by: "status",
       order: false,
     },
     {
-      name: 'Current task',
-      by: 'task',
+      name: "Current task",
+      by: "task",
       order: false,
     },
     {
-      name: 'Elapsed',
-      by: 'start_time',
+      name: "Elapsed",
+      by: "start_time",
       order: false,
     },
     {
-      name: 'Uptime',
-      by: 'uptime_raw',
+      name: "Uptime",
+      by: "uptime_raw",
       order: false,
     },
     {
-      name: 'Idle Time',
-      by: 'idle_time',
+      name: "Idle Time",
+      by: "idle_time",
       order: false,
     },
     {
-      name: 'Owner',
-      by: 'started_by',
+      name: "Owner",
+      by: "started_by",
       order: false,
     },
-  ]
+  ];
 
-  $scope.toggleIncludeSpawnedHosts = function(includeSpawnedHosts) {
-      $window.location.href = "/hosts?includeSpawnedHosts=" + includeSpawnedHosts;
+  $scope.toggleIncludeSpawnedHosts = function (includeSpawnedHosts) {
+    $window.location.href = "/hosts?includeSpawnedHosts=" + includeSpawnedHosts;
   };
 
-  $scope.selectedClass = function(headerField) {
-    var newIcon = 'fa-sort';
+  $scope.selectedClass = function (headerField) {
+    var newIcon = "fa-sort";
     if (headerField.name == $scope.selectedHeader.name) {
-      newIcon = 'fa-sort-up';
+      newIcon = "fa-sort-up";
       if ($scope.selectedHeader.order) {
-        newIcon = 'fa-sort-down';
+        newIcon = "fa-sort-down";
       }
     }
     return newIcon;
-  }
+  };
 
-  $scope.setSelectedHeader = function(headerField) {
+  $scope.setSelectedHeader = function (headerField) {
     if ($scope.selectedHeader.name == headerField.name) {
       $scope.selectedHeader.order = !$scope.selectedHeader.order;
     } else {
@@ -69,19 +75,19 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
   // format displayed uptime and task elapsed time
   var allHosts = $window.hosts.Hosts;
   $scope.hosts = [];
-  var filterOpts = $location.path().split('/');
+  var filterOpts = $location.path().split("/");
   $scope.filter = {
-    hosts : filterOpts[2] || ''
+    hosts: filterOpts[2] || "",
   };
   $scope.filterText = $scope.filter.hosts;
   $scope.selectAll = false;
   $scope.filteredHosts = $scope.hosts;
 
-  $scope.$watch('filter.hosts', function() {
-    $location.path('filter/' + $scope.filter.hosts);
+  $scope.$watch("filter.hosts", function () {
+    $location.path("filter/" + $scope.filter.hosts);
   });
 
-  _.forEach(allHosts, function(hostObj) {
+  _.forEach(allHosts, function (hostObj) {
     var host = {};
     var hostDoc = hostObj.Host;
     host.host_type = hostDoc.host_type;
@@ -93,19 +99,21 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     host.started_by = hostDoc.started_by;
     host.task = "";
     host.running_task = hostObj.RunningTask;
-    host.idle_time = hostObj.IdleTime
-    host.idle_time_readable = moment.duration(hostObj.IdleTime, 'seconds').humanize()
+    host.idle_time = hostObj.IdleTime;
+    host.idle_time_readable = moment
+      .duration(hostObj.IdleTime, "seconds")
+      .humanize();
 
     if (hostDoc.host_type !== "static") {
-      var uptime = moment().diff(hostDoc.creation_time, 'seconds');
-      host.uptime_raw = moment.duration(uptime, 'seconds')
+      var uptime = moment().diff(hostDoc.creation_time, "seconds");
+      host.uptime_raw = moment.duration(uptime, "seconds");
       host.uptime = host.uptime_raw.humanize();
     } else {
       host.creation_time = "N/A";
       host.uptime = "N/A";
     }
     if (hostObj.RunningTask) {
-      host.start_time = hostObj.RunningTask.start_time
+      host.start_time = hostObj.RunningTask.start_time;
       var dispatchTimeDiffedPrefix = "";
       // in case the task is dispatched but not yet marked as
       // started, use the task's 'dispatch_time' in lieu of
@@ -119,9 +127,11 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
         startTime = hostObj.RunningTask.dispatch_time;
         dispatchTimeDiffedPrefix = "*";
       }
-      var elapsedTime = moment().diff(startTime, 'seconds');
+      var elapsedTime = moment().diff(startTime, "seconds");
       host.task = hostObj.RunningTask.display_name;
-      host.elapsed = dispatchTimeDiffedPrefix + moment.duration(elapsedTime, 'seconds').humanize();
+      host.elapsed =
+        dispatchTimeDiffedPrefix +
+        moment.duration(elapsedTime, "seconds").humanize();
     } else {
       host.start_time = "N/A";
       host.elapsed = "N/A";
@@ -129,43 +139,46 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     $scope.hosts.push(host);
   });
 
-  $scope.selectedHosts = function() {
-    return $filter('filter')($scope.hosts, {checked: true});
+  $scope.selectedHosts = function () {
+    return $filter("filter")($scope.hosts, { checked: true });
   };
 
-  $scope.toggleHostCheck = function(host) {
+  $scope.toggleHostCheck = function (host) {
     host.checked = !host.checked;
   };
 
-  $scope.toggleSelectAll = function() {
+  $scope.toggleSelectAll = function () {
     $scope.selectAll = !$scope.selectAll;
     $scope.setCheckBoxes($scope.selectAll);
   };
 
-  $scope.clearSelectAll = function() {
+  $scope.clearSelectAll = function () {
     $scope.selectAll = false;
     $scope.setCheckBoxes($scope.selectAll);
   };
 
-  $scope.setCheckBoxes = function(val) {
+  $scope.setCheckBoxes = function (val) {
     for (idx in $scope.filteredHosts) {
-        $scope.filteredHosts[idx].checked = val;
+      $scope.filteredHosts[idx].checked = val;
     }
   };
 
-  $scope.onFilterKeyDown = function(event) {
+  $scope.onFilterKeyDown = function (event) {
     if (event.key === "Enter") {
       $scope.filter.hosts = $scope.filterText;
     }
-  }
+  };
 
-  $scope.$watch('hosts', function(hosts) {
-    $scope.hostCount = 0;
-    _.forEach(hosts, function(host) {
-      if(host.checked){
-        $scope.hostCount += 1;
-      }
-    });
-  }, true);
-
+  $scope.$watch(
+    "hosts",
+    function (hosts) {
+      $scope.hostCount = 0;
+      _.forEach(hosts, function (host) {
+        if (host.checked) {
+          $scope.hostCount += 1;
+        }
+      });
+    },
+    true
+  );
 });
