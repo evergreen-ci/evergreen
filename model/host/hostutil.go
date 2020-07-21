@@ -385,7 +385,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating command to start agent monitor")
 		}
-	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
+	} else if h.ProvisionOptions != nil {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating commands to load task data")

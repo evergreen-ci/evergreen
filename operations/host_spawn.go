@@ -36,6 +36,7 @@ func hostCreate() cli.Command {
 		instanceTypeFlagName = "type"
 		noExpireFlagName     = "no-expire"
 		fileFlagName         = "file"
+		setupFlagName        = "setup"
 	)
 
 	return cli.Command{
@@ -53,6 +54,10 @@ func hostCreate() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(scriptFlagName, "s"),
 				Usage: "path to userdata script to run",
+			},
+			cli.StringFlag{
+				Name:  setupFlagName,
+				Usage: "path to a setup script to run",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(instanceTypeFlagName, "i"),
@@ -79,7 +84,8 @@ func hostCreate() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
-			fn := c.String(scriptFlagName)
+			userdataFile := c.String(scriptFlagName)
+			setupFile := c.String(setupFlagName)
 			tagSlice := c.StringSlice(tagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
 			region := c.String(regionFlagName)
@@ -110,8 +116,8 @@ func hostCreate() cli.Command {
 					spawnRequest.InstanceTags = tags
 				}
 
-				fn = spawnRequest.UserData
-
+				userdataFile = spawnRequest.UserData
+				setupFile = spawnRequest.SetupScript
 			} else {
 				tags, err = host.MakeHostTags(tagSlice)
 				if err != nil {
@@ -127,13 +133,21 @@ func hostCreate() cli.Command {
 				}
 			}
 
-			if fn != "" {
+			if userdataFile != "" {
 				var out []byte
-				out, err = ioutil.ReadFile(fn)
+				out, err = ioutil.ReadFile(userdataFile)
 				if err != nil {
-					return errors.Wrapf(err, "problem reading userdata file '%s'", fn)
+					return errors.Wrapf(err, "problem reading userdata file '%s'", userdataFile)
 				}
 				spawnRequest.UserData = string(out)
+			}
+			if setupFile != "" {
+				var out []byte
+				out, err = ioutil.ReadFile(userdataFile)
+				if err != nil {
+					return errors.Wrapf(err, "problem reading userdata file '%s'", userdataFile)
+				}
+				spawnRequest.SetupScript = string(out)
 			}
 
 			host, err := client.CreateSpawnHost(ctx, spawnRequest)

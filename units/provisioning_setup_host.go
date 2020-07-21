@@ -561,7 +561,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	}
 
 	// If this is a spawn host
-	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.LoadCLI {
+	if j.host.ProvisionOptions != nil && j.host.UserHost {
 		grip.Infof("Uploading client binary to host %s", j.host.Id)
 		if err = j.setupSpawnHost(ctx, settings); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -607,7 +607,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings),
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx),
 				message.Fields{
 					"message":   "failed to fetch data onto host",
 					"task":      j.host.ProvisionOptions.TaskId,
@@ -616,6 +616,17 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 					"job":       j.ID(),
 				}))
 		}
+
+		grip.Error(message.WrapError(j.runSpawnHostSetupScript(ctx),
+			message.Fields{
+				"message":      "failed to run setup script",
+				"task":         j.host.ProvisionOptions.TaskId,
+				"setup_script": j.host.ProvisionOptions.SetupScript,
+				"user":         j.host.StartedBy,
+				"host_id":      j.host.Id,
+				"job":          j.ID(),
+			},
+		))
 	}
 
 	grip.Info(message.Fields{
@@ -657,7 +668,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	defer cancel()
 	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
 	if err != nil {
-		return errors.Wrapf(err, "error running command to get evergreen binary on  spawn host: %s", output)
+		return errors.Wrapf(err, "error running command to get evergreen binary on spawn host: %s", output)
 	}
 	if curlCtx.Err() != nil {
 		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
@@ -672,7 +683,16 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	return nil
 }
 
-func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergreen.Settings) error {
+func (j *setupHostJob) runSpawnHostSetupScript(ctx context.Context) error {
+	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
+		if output, err := j.host.RunSSHShellScript(ctx, j.host.ProvisionOptions.SetupScript, false, ""); err != nil {
+			return errors.Wrapf(err, "error running setup script for spawn host: %s", output)
+		}
+	}
+	return nil
+}
+
+func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	var cmd string
 	if j.host.ProvisionOptions.TaskSync {
 		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
