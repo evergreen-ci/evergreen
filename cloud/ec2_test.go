@@ -1382,11 +1382,11 @@ func (s *EC2Suite) TestSetNextSubnet() {
 	typeCache.built = true
 	typeCache.instanceTypeToSubnets = map[string][]evergreen.Subnet{
 		"instance-type0": {
-			{SubnetID: "sn0", AZ: "az0"},
-			{SubnetID: "sn1", AZ: "az1"},
+			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
+			{SubnetID: "sn1", AZ: evergreen.DefaultEC2Region + "b"},
 		},
 		"instance-type1": {
-			{SubnetID: "sn0", AZ: "az0"},
+			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
 		},
 	}
 
@@ -1398,10 +1398,6 @@ func (s *EC2Suite) TestSetNextSubnet() {
 				birch.NewDocument(
 					birch.EC.String("subnet_id", "not-supporting"),
 					birch.EC.String("region", evergreen.DefaultEC2Region),
-				),
-				birch.NewDocument(
-					birch.EC.String("subnet_id", "sn-other"),
-					birch.EC.String("region", "us-west-1"),
 				),
 			},
 		},
