@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -353,6 +354,11 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+	start, err := model.GetEstimatedStartTime(*dbTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
+	}
+	apiTask.EstimatedStart = restModel.NewAPIDuration(start)
 	return apiTask, err
 }
 
