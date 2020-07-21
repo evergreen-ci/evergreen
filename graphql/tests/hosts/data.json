@@ -290,7 +290,6 @@
           }
         ],
         "setup_as_sudo": true,
-        "setup": "#!/bin/bash\nset -o errexit\nset -o verbose\n\n# DNS tweak for drivers Kerberos tests\n# echo \"`host ldaptest.10gen.cc | awk '/has address/ { print $4 ; exit }'` ldaptest.10gen.cc\" | tee -a /etc/hosts\n\numount /mnt || true\numount /dev/xvdd || true\n/sbin/mkfs.xfs -f /dev/xvdd\nmkdir -p /data\necho \"/dev/xvdd /data auto noatime 0 0\" | tee -a /etc/fstab\nmount /data\n\nchown -R ubuntu:ubuntu /data\n\necho \"github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==\" | tee -a /home/ubuntu/.ssh/known_hosts\necho \"${github_private_key}\" | tee /home/ubuntu/.ssh/id_rsa\necho \"${github_public_key}\" | tee /home/ubuntu/.ssh/id_rsa.pub\nchmod 600 /home/ubuntu/.ssh/*\nchown -R ubuntu:ubuntu /data\nchown -R ubuntu:ubuntu /home/ubuntu/.ssh\n\n# /tmp will be a symlink to this\n#\nmkdir -p /data/var/lib/docker\nsystemctl restart docker\nmkdir /data/tmp\nchmod 1777 /data/tmp",
         "user": "ubuntu",
         "bootstrap_settings": {
           "method": "user-data",
@@ -470,13 +469,6 @@
         "arch": "linux_amd64",
         "work_dir": "/tmp/build",
         "provider": "docker",
-        "provider_settings": [
-          {
-            "docker_registry_pw": "RkjEE.3Be;p30#!%4n(3c(Jd",
-            "image_url": "https://s3.amazonaws.com/build-push-testing/buildhost-configuration/buildhost_configuration_ubuntu1604_container_197eab6630e75e406201286ed628af58cb8a110f_20_01_07_16_00_06/ubuntu1604-container.tgz",
-            "build_type": "import"
-          }
-        ],
         "user": "ubuntu",
         "bootstrap_settings": {
           "method": "legacy-ssh",
