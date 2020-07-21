@@ -571,11 +571,6 @@
       "parent_id": "i-025830c3d17d6c1b2",
       "container_build_attempt": 0,
       "spawn_options": {},
-      "docker_options": {
-        "docker_registry_pw": "RkjEE.3Be;p30#!%4n(3c(Jd",
-        "image_url": "https://s3.amazonaws.com/build-push-testing/buildhost-configuration/buildhost_configuration_ubuntu1604_container_197eab6630e75e406201286ed628af58cb8a110f_20_01_07_16_00_06/ubuntu1604-container.tgz",
-        "build_type": "import"
-      },
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
