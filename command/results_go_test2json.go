@@ -45,13 +45,18 @@ func (c *goTest2JSONCommand) Execute(ctx context.Context,
 		return errors.Wrap(err, "failed to expand files")
 	}
 
-	catcher := grip.NewBasicCatcher()
-	for i := range c.Files {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
-		}
+	// All file patterns should be relative to the task's working directory.
+	for i, file := range c.Files {
+		c.Files[i] = filepath.Join(conf.WorkDir, file)
+	}
 
-		catcher.Add(c.executeOneFile(ctx, c.Files[i], comm, logger, conf))
+	files, err := globFiles(c.Files...)
+	if err != nil {
+		return errors.Wrapf(err, "obtaining names of output files")
+	}
+	catcher := grip.NewBasicCatcher()
+	for _, file := range files {
+		catcher.Add(c.executeOneFile(ctx, file, comm, logger, conf))
 	}
 
 	return catcher.Resolve()

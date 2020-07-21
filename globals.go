@@ -589,6 +589,10 @@ func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }
 
+func ShouldConsiderBatchtime(requester string) bool {
+	return requester != AdHocRequester && requester != GitTagRequester
+}
+
 // Permissions-related constants
 func PermissionsDisabledForTests() bool {
 	return PermissionSystemDisabled

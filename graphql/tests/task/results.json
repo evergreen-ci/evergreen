@@ -247,6 +247,16 @@
           }
         }
       }
+    },
+    {
+      "query_file": "estimatedStart.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "estimatedStart": 0
+          }
+        }
+      }
     }
   ]
 }
