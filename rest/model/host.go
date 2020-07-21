@@ -114,6 +114,7 @@ func (apiHost *APIHost) BuildFromHostStruct(h interface{}, graphQL bool) error {
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
+	apiHost.LastCommunicationTime = v.LastCommunicationTime
 
 	di := DistroInfo{
 		Id:       ToStringPtr(v.Distro.Id),
