@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -794,20 +795,20 @@ func (h *Host) SetPortMapping(portsMap PortMap) error {
 	return nil
 }
 
-func (h *Host) UpdateCachedDistro(distro distro.Distro) error {
+func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Document) error {
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
 		bson.M{
 			"$set": bson.M{
-				DistroKey: distro,
+				bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey): settingsDocuments,
 			},
 		},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't set distro")
+		return errors.Wrap(err, "can't set distro provider settings")
 	}
 
-	h.Distro = distro
+	h.Distro.ProviderSettingsList = settingsDocuments
 	return nil
 }
 

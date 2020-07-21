@@ -4824,25 +4824,40 @@ func TestSetNewSSHKeys(t *testing.T) {
 	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
 }
 
-func TestUpdateCachedDistro(t *testing.T) {
+func TestUpdateCachedDistroProviderSettings(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 
 	h := &Host{
-		Id:     "h0",
-		Distro: distro.Distro{Id: "d0"},
+		Id: "h0",
+		Distro: distro.Distro{
+			Id: "d0",
+			ProviderSettingsList: []*birch.Document{
+				birch.NewDocument(
+					birch.EC.String("subnet_id", "subnet-123456"),
+					birch.EC.String("region", evergreen.DefaultEC2Region),
+				),
+			},
+		},
 	}
 	require.NoError(t, h.Insert())
 
-	newDistro := distro.Distro{Id: "d1"}
-	assert.NoError(t, h.UpdateCachedDistro(newDistro))
+	newProviderSettings := []*birch.Document{
+		birch.NewDocument(
+			birch.EC.String("subnet_id", "new_subnet"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		),
+	}
+	assert.NoError(t, h.UpdateCachedDistroProviderSettings(newProviderSettings))
 
-	assert.Equal(t, "d1", h.Distro.Id)
+	// updated in memory
+	assert.Equal(t, "new_subnet", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
 
 	h, err := FindOneId("h0")
 	require.NoError(t, err)
 	require.NotNil(t, h)
 
-	assert.Equal(t, "d1", h.Distro.Id)
+	// updated in the db
+	assert.Equal(t, "new_subnet", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
 }
 
 func TestPartitionParents(t *testing.T) {

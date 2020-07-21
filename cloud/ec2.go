@@ -314,14 +314,14 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if err == EC2InsufficientCapacityError {
 			// try again in another AZ
 			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
-				msg := "RunInstances API call returned an error"
-				grip.Error(message.WrapError(err, message.Fields{
+				msg := "got EC2InsufficientCapacityError"
+				grip.Info(message.Fields{
 					"message":       msg,
 					"action":        "retrying",
 					"host_id":       h.Id,
 					"host_provider": h.Distro.Provider,
 					"distro":        h.Distro.Id,
-				}))
+				})
 				return errors.Wrap(err, msg)
 			} else {
 				grip.Error(message.WrapError(subnetErr, message.Fields{
@@ -390,20 +390,20 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	return nil
 }
 
-// setNextSubnet sets the subnet in the host's cached distro to the next one that supports this instance type
-// if the current subnet doesn't support this instance type it's set to the first that does
+// setNextSubnet sets the subnet in the host's cached distro to the next one that supports this instance type.
+// If the current subnet doesn't support this instance type it's set to the first that does.
 func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, h.InstanceType)
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
+		return errors.Wrap(err, "can't get provider settings")
+	}
+
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, h.InstanceType, ec2Settings.getRegion())
 	if err != nil {
 		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
 	}
 	if len(supportingSubnets) == 0 {
 		return errors.Errorf("instance type '%s' is not supported by any configured subnet", h.InstanceType)
-	}
-
-	ec2Settings := EC2ProviderSettings{}
-	if err = ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
-		return errors.Wrap(err, "can't get provider settings")
 	}
 
 	if len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId {
@@ -424,11 +424,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "can't convert provider settings to document")
 	}
 
-	if err = h.Distro.ReplaceProviderSetting(ec2Settings.Region, newSettingsDocument); err != nil {
-		return errors.Wrap(err, "couldn't update cached distro")
-	}
-
-	return h.UpdateCachedDistro(h.Distro)
+	return h.UpdateCachedDistroProviderSettings([]*birch.Document{newSettingsDocument})
 }
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {

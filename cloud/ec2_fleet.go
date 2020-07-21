@@ -31,14 +31,20 @@ func init() {
 	typeCache.instanceTypeToSubnets = make(map[string][]evergreen.Subnet)
 }
 
-func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType string) ([]evergreen.Subnet, error) {
+func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType, region string) ([]evergreen.Subnet, error) {
 	if !c.built {
 		if err := c.Build(ctx, settings, client); err != nil {
 			return nil, errors.Wrap(err, "can't build AZ cache")
 		}
 	}
 
-	return c.instanceTypeToSubnets[instanceType], nil
+	subnets := make([]evergreen.Subnet, 0, len(c.instanceTypeToSubnets[instanceType]))
+	for _, subnet := range c.instanceTypeToSubnets[instanceType] {
+		if AztoRegion(subnet.AZ) == region {
+			subnets = append(subnets, subnet)
+		}
+	}
+	return subnets, nil
 }
 
 func (c *instanceTypeSubnetCache) Build(ctx context.Context, settings *evergreen.Settings, client AWSClient) error {
@@ -58,7 +64,7 @@ func (c *instanceTypeSubnetCache) Build(ctx context.Context, settings *evergreen
 			return errors.Wrapf(err, "can't get instance types for '%s'", subnet.AZ)
 		}
 		if output == nil {
-			return errors.Wrapf(err, "DescribeInstanceTypeOfferings returned nil output for AZ '%s'", subnet.AZ)
+			return errors.Errorf("DescribeInstanceTypeOfferings returned nil output for AZ '%s'", subnet.AZ)
 		}
 		for _, offering := range output.InstanceTypeOfferings {
 			if offering != nil && offering.InstanceType != nil {
@@ -542,7 +548,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	}
 
 	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, ec2Settings.InstanceType)
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, ec2Settings.InstanceType, ec2Settings.getRegion())
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}
