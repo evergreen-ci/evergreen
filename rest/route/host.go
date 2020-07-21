@@ -8,12 +8,14 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -316,6 +318,137 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// POST /users/{user_id}/offboard_user
+
+func makeOffboardUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &offboardUserHandler{
+		sc:  sc,
+		env: env,
+	}
+}
+
+type offboardUserHandler struct {
+	user   string
+	dryRun bool
+
+	env evergreen.Environment
+	sc  data.Connector
+}
+
+func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
+	return &offboardUserHandler{
+		sc:  ch.sc,
+		env: ch.env,
+	}
+}
+
+func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error {
+	ch.user = gimlet.GetVars(r)["user_id"]
+	if ch.user == "" {
+		return gimlet.ErrorResponse{
+			Message:    "user cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	vals := r.URL.Query()
+	ch.dryRun = vals.Get("dry_run") == "true"
+
+	return nil
+}
+
+func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
+	usr := gimlet.GetUser(ctx)
+	opts := model.APIHostParams{
+		UserSpawned: true,
+	}
+	// returns all up-hosts for user
+	hosts, err := ch.sc.FindHostsInRange(opts, ch.user)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting hosts"))
+	}
+
+	volumes, err := ch.sc.FindVolumesByUser(ch.user)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting volumes"))
+	}
+
+	toTerminate := model.APIOffboardUserResults{
+		TerminatedHosts:   []string{},
+		TerminatedVolumes: []string{},
+	}
+	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
+	catcher := grip.NewBasicCatcher()
+
+	// only return errors for unexpirable hosts and volumes
+	for _, h := range hosts {
+		if !ch.dryRun {
+			// delete hosts here
+			var mgrOpts cloud.ManagerOpts
+			mgrOpts, err = cloud.GetManagerOptions(h.Distro)
+			if err != nil {
+				if h.NoExpiration {
+					catcher.Wrapf(err, "can't get ManagerOpts for unexpirable host '%s'", h.Id)
+				}
+				continue
+			}
+			mgr, ok := mgrCache[mgrOpts]
+			if !ok {
+				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+				if err != nil {
+					if h.NoExpiration {
+						catcher.Wrapf(err, "can't get manager for unexpirable host '%s'", h.Id)
+					}
+					continue
+				}
+				mgrCache[mgrOpts] = mgr
+			}
+			reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
+			if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
+				if h.NoExpiration {
+					catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
+				}
+				continue
+			}
+		}
+		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
+	}
+
+	for _, v := range volumes {
+		if !ch.dryRun {
+			mgrOpts := cloud.ManagerOpts{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+				Region:   cloud.AztoRegion(v.AvailabilityZone),
+			}
+			mgr, ok := mgrCache[mgrOpts]
+			if !ok {
+				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
+				if err != nil {
+					if v.NoExpiration {
+						catcher.Wrapf(err, "can't get manager for unexpirable volume '%s'", v.ID)
+					}
+					continue
+				}
+				mgrCache[mgrOpts] = mgr
+			}
+
+			if err = mgr.DeleteVolume(ctx, &v); err != nil {
+				if v.NoExpiration {
+					catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
+				}
+				continue
+			}
+		}
+		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
+	}
+	return gimlet.NewJSONResponse(toTerminate)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /host/filter
 
 func makeFetchHostFilter(sc data.Connector) gimlet.RouteHandler {
@@ -360,7 +493,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	hosts, err := h.sc.FindHostsInRange(h.params, username)
 	if err != nil {
-		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
 
 	resp := gimlet.NewResponseBuilder()

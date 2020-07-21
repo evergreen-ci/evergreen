@@ -273,3 +273,8 @@ type APIHostParams struct {
 	UserSpawned   bool      `json:"user_spawned"`
 	Mine          bool      `json:"mine"`
 }
+
+type APIOffboardUserResults struct {
+	TerminatedHosts   []string `json:"terminated_hosts"`
+	TerminatedVolumes []string `json:"terminated_volumes"`
+}
