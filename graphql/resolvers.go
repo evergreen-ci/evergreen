@@ -208,7 +208,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
 			break
-		case HostSortByDistro: // SORT BY DISTRO DISPLAY NAME - requires sorting by nested attribute
+		case HostSortByDistro:
 			sorter = host.DistroKey
 			break
 		case HostSortByElapsed:
