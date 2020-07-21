@@ -518,8 +518,8 @@ type DistroInfo {
 }
 
 type TaskInfo {
-  id: String!  
-	name: String!
+  id: String  
+	name: String
 }
 
 scalar Time
