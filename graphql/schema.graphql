@@ -166,19 +166,29 @@ input UseSpruceOptionsInput {
 
 type Host {
   id: ID!
+  displayName: String!
   hostUrl: String!
   distroId: String
+  distro: DistroInfo!
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
   uptime: Time # host creation time
   elapsed: Time # running task start time
   startedBy: String!
+  provider: String!
+  user: String!
+  lastCommunicationTime: Time!
 }
 
 type TaskInfo {
   id: ID
   name: String
+}
+
+type DistroInfo {
+  id: ID!
+  provider: String!
 }
 
 type HostsResponse {
@@ -543,30 +553,6 @@ type ClientBinary {
 type SiteBanner {
   text: String!
   theme: String!
-}
-
-type Host{
-  id: String!
-  hostURL: String!
-  distro: DistroInfo
-  startedBy: String!
-  provider: String!
-  user: String!
-  status: String!
-  runningTask: TaskInfo
-  displayName: String!
-  lastCommunicationTime: Time!
-}
-
-
-type DistroInfo {
-  id: String! 
-	provider: String!
-}
-
-type TaskInfo {
-  id: String  
-	name: String
 }
 
 scalar Time
