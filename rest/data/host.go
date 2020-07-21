@@ -103,9 +103,6 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-	if user == nil {
-		return nil, errors.New("user cannot be nil")
-	}
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:             options.DistroID,
 		Userdata:             options.UserData,

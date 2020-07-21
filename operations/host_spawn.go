@@ -143,9 +143,9 @@ func hostCreate() cli.Command {
 			}
 			if setupFile != "" {
 				var out []byte
-				out, err = ioutil.ReadFile(userdataFile)
+				out, err = ioutil.ReadFile(setupFile)
 				if err != nil {
-					return errors.Wrapf(err, "problem reading userdata file '%s'", userdataFile)
+					return errors.Wrapf(err, "problem reading setup file '%s'", setupFile)
 				}
 				spawnRequest.SetupScript = string(out)
 			}

@@ -236,6 +236,15 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
+func (h *Host) RunSpawnHostSetupScript(ctx context.Context) error {
+	if h.ProvisionOptions != nil && h.ProvisionOptions.SetupScript != "" {
+		if output, err := h.RunSSHShellScript(ctx, h.ProvisionOptions.SetupScript, false, ""); err != nil {
+			return errors.Wrapf(err, "error running setup script for spawn host: %s", output)
+		}
+	}
+	return nil
+}
+
 // FetchAndReinstallJasperCommands returns the command to fetch Jasper and
 // restart the service with the latest version.
 func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {
@@ -385,7 +394,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating command to start agent monitor")
 		}
-	} else if h.ProvisionOptions != nil {
+	} else if h.ProvisionOptions != nil && h.UserHost {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating commands to load task data")

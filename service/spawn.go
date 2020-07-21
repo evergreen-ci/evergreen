@@ -244,6 +244,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		if t == nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("task not found"))
+			return
 		}
 		err = hc.CreateHostsFromTask(t, *authedUser, putParams.PublicKey)
 		if err != nil {

@@ -1689,6 +1689,7 @@ func TestHostUpsert(t *testing.T) {
 		Id:             hostID,
 		Host:           "dns",
 		User:           "user",
+		UserHost:       true,
 		Distro:         distro.Distro{Id: "distro1"},
 		Provisioned:    true,
 		StartedBy:      "started_by",
@@ -1699,7 +1700,6 @@ func TestHostUpsert(t *testing.T) {
 		Zone:           "zone",
 		Project:        "project",
 		ProvisionOptions: &ProvisionOptions{
-			LoadCLI:  true,
 			TaskId:   "task_id",
 			TaskSync: true,
 		},

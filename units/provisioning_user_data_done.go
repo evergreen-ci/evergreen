@@ -130,6 +130,17 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		}
 	}
 
+	grip.Error(message.WrapError(j.host.RunSpawnHostSetupScript(ctx),
+		message.Fields{
+			"message":      "failed to run setup script",
+			"task":         j.host.ProvisionOptions.TaskId,
+			"setup_script": j.host.ProvisionOptions.SetupScript,
+			"user":         j.host.StartedBy,
+			"host_id":      j.host.Id,
+			"job":          j.ID(),
+		},
+	))
+
 	j.finishJob()
 }
 

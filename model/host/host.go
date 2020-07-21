@@ -285,7 +285,7 @@ type ProvisionOptions struct {
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 
-	// UserData specifies configuration that runs during setup, after data is loaded.
+	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 }
 
@@ -1320,6 +1320,7 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		// caller will insert the zero value into the document
 		DNSKey:               h.Host,
 		UserKey:              h.User,
+		UserHostKey:          h.UserHost,
 		DistroKey:            h.Distro,
 		StartedByKey:         h.StartedBy,
 		ExpirationTimeKey:    h.ExpirationTime,
