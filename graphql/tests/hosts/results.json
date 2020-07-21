@@ -10,7 +10,7 @@
             "hosts": [
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -368,7 +368,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -577,7 +577,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -702,7 +702,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -827,7 +827,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -980,7 +980,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distroId": null,
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
