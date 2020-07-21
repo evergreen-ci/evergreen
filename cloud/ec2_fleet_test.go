@@ -175,7 +175,7 @@ func TestFleet(t *testing.T) {
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
 						DefaultSecurityGroup: "sg-default",
-						Subnets:              []evergreen.Subnet{{AZ: "az1", SubnetID: "subnet-654321"}},
+						Subnets:              []evergreen.Subnet{{AZ: evergreen.DefaultEC2Region + "a", SubnetID: "subnet-654321"}},
 					},
 				},
 			},
