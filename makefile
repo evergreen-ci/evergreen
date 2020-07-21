@@ -484,6 +484,8 @@ gqlgen:
 	go run vendor/github.com/99designs/gqlgen/main.go
 # end dependency targets
 
+scramble:
+	python cmd/scrambled-eggs/scramble.py $(file)
 
 # mongodb utility targets
 mongodb/.get-mongodb:
