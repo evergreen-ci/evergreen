@@ -574,8 +574,7 @@
       "docker_options": {
         "docker_registry_pw": "RkjEE.3Be;p30#!%4n(3c(Jd",
         "image_url": "https://s3.amazonaws.com/build-push-testing/buildhost-configuration/buildhost_configuration_ubuntu1604_container_197eab6630e75e406201286ed628af58cb8a110f_20_01_07_16_00_06/ubuntu1604-container.tgz",
-        "build_type": "import",
-        "command": "/evergreen\nagent\n--api_server=https://evergreen.mongodb.com\n--host_id=container-9052158885435053467\n--host_secret=32da2ca12e74b74181431360d3cf1f8c\n--log_prefix=/tmp/build/agent\n--working_directory=/tmp/build\n--cleanup"
+        "build_type": "import"
       },
       "is_virtual_workstation": false,
       "home_volume_size": 0,
