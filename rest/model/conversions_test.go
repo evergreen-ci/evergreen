@@ -7,9 +7,10 @@ import (
 )
 
 func TestCleanName(t *testing.T) {
-	assert.Equal(t, "Int", cleanName("int"))
-	assert.Equal(t, "Arrint", cleanName("[]int"))
-	assert.Equal(t, "Mapstringstring", cleanName("map[string]string"))
-	assert.Equal(t, "Interface", cleanName("interface{}"))
-	assert.Equal(t, "Mapstringinterface", cleanName("map[string]interface{}"))
+	assert.Equal(t, "Int", cleanName("int", false))
+	assert.Equal(t, "IntPtr", cleanName("int", true))
+	assert.Equal(t, "Arrint", cleanName("[]int", false))
+	assert.Equal(t, "Mapstringstring", cleanName("map[string]string", false))
+	assert.Equal(t, "Interface", cleanName("interface{}", false))
+	assert.Equal(t, "Mapstringinterface", cleanName("map[string]interface{}", false))
 }

@@ -511,15 +511,6 @@ func expandParserBVTask(pbvt parserBVTaskUnit, exp util.Expansions) (parserBVTas
 		newDeps = append(newDeps, newDep)
 	}
 	newTask.DependsOn = newDeps
-	var newReqs taskSelectors
-	for i, r := range pbvt.Requires {
-		newReq, err := expandTaskSelector(r, exp)
-		if err != nil {
-			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding requires[%d/%d]", i, len(pbvt.Requires))
-		}
-		newReqs = append(newReqs, newReq)
-	}
-	newTask.Requires = newReqs
 	return newTask, nil
 }
 

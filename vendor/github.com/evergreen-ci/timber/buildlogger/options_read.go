@@ -1,4 +1,4 @@
-package timber
+package buildlogger
 
 import (
 	"encoding/json"

@@ -3,7 +3,7 @@ buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*" -not -path "./vendor/*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 testPackages := $(name) cli remote options mock metabuild-generator metabuild-model
-allPackages := $(testPackages) internal-executor remote-internal testutil
+allPackages := $(testPackages) internal-executor remote-internal testutil benchmarks
 lintPackages := $(allPackages)
 projectPath := github.com/mongodb/jasper
 
@@ -107,11 +107,16 @@ ifeq ($(docker_image),)
 endif
 
 docker-setup:
+ifeq (,$(SKIP_DOCKER_TESTS))
 	docker pull $(docker_image)
+endif
 
 docker-cleanup:
+ifeq (,$(SKIP_DOCKER_TESTS))
 	docker rm -f $(docker ps -a -q)
 	docker rmi -f $(docker_image)
+endif
+
 # end Docker
 
 # user-facing targets for basic build and development operations

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -296,7 +297,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				}
 			}
 
-			timberOpts := &timber.LoggerOptions{
+			timberOpts := &buildlogger.LoggerOptions{
 				Project:       tk.Project,
 				Version:       tk.Version,
 				Variant:       tk.BuildVariant,
@@ -306,12 +307,12 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				Tags:          append(tk.Tags, utility.RandomString()),
 				ProcessName:   logType,
 				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
-				Storage:       timber.LogStorageS3,
+				Storage:       buildlogger.LogStorageS3,
 				MaxBufferSize: opt.BufferSize,
 				FlushInterval: opt.BufferDuration,
 				ClientConn:    c.cedarGRPCClient,
 			}
-			sender, err = timber.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
+			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating buildlogger logger")
 			}

@@ -602,19 +602,6 @@ func (s *projectSuite) SetupTest() {
 						Name: "b_task_2",
 					},
 					{
-						Name: "wow_task",
-						Requires: []TaskUnitRequirement{
-							{
-								Name:    "a_task_1",
-								Variant: "bv_1",
-							},
-							{
-								Name:    "a_task_1",
-								Variant: "bv_2",
-							},
-						},
-					},
-					{
 						Name: "9001_task",
 						DependsOn: []TaskUnitDependency{
 							{
@@ -634,7 +621,7 @@ func (s *projectSuite) SetupTest() {
 				DisplayTasks: []DisplayTask{
 					{
 						Name:           "memes",
-						ExecutionTasks: []string{"wow_task", "9001_task", "very_task", "another_disabled_task"},
+						ExecutionTasks: []string{"9001_task", "very_task", "another_disabled_task"},
 					},
 				},
 			},
@@ -704,14 +691,11 @@ func (s *projectSuite) SetupTest() {
 				Tags: []string{"b", "2"},
 			},
 			{
-				Name: "wow_task",
-				Tags: []string{"part_of_memes"},
-			},
-			{
 				Name: "9001_task",
 			},
 			{
 				Name: "very_task",
+				Tags: []string{"part_of_memes"},
 			},
 			{
 				Name: "disabled_task",
@@ -743,7 +727,7 @@ func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
 	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
 	s.NoError(err)
-	s.Len(pairs, 12)
+	s.Len(pairs, 11)
 	pairStrs := make([]string, len(pairs))
 	for i, p := range pairs {
 		pairStrs[i] = p.String()
@@ -752,7 +736,6 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Contains(pairStrs, "bv_1/a_task_2")
 	s.Contains(pairStrs, "bv_1/b_task_1")
 	s.Contains(pairStrs, "bv_1/b_task_2")
-	s.Contains(pairStrs, "bv_1/wow_task")
 	s.Contains(pairStrs, "bv_1/9001_task")
 	s.Contains(pairStrs, "bv_1/very_task")
 	s.Contains(pairStrs, "bv_2/a_task_1")
@@ -831,7 +814,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 
 	s.Len(patchDoc.BuildVariants, 2)
-	s.Len(patchDoc.Tasks, 7)
+	s.Len(patchDoc.Tasks, 6)
 
 	// test all tasks expansion with named buildvariant expands unnamed buildvariant
 	patchDoc.BuildVariants = []string{"bv_1"}
@@ -841,17 +824,16 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 
 	s.Len(patchDoc.BuildVariants, 2)
-	s.Len(patchDoc.Tasks, 7)
+	s.Len(patchDoc.Tasks, 6)
 
 	// test all variants expansion with named task
 	patchDoc.BuildVariants = []string{"all"}
-	patchDoc.Tasks = []string{"wow_task"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 
 	s.Len(patchDoc.BuildVariants, 2)
-	s.Len(patchDoc.Tasks, 5)
+	s.Len(patchDoc.Tasks, 6)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
@@ -933,24 +915,16 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 5)
+	s.Len(patchDoc.Tasks, 3)
 	s.Contains(patchDoc.Tasks, "very_task")
-	s.Contains(patchDoc.Tasks, "wow_task")
-	s.Contains(patchDoc.Tasks, "a_task_1")
-	s.Contains(patchDoc.Tasks, "9001_task")
-	s.Contains(patchDoc.Tasks, "a_task_2")
 	s.Require().Len(patchDoc.VariantsTasks, 2)
 	for _, vt := range patchDoc.VariantsTasks {
 		if vt.Variant == "bv_1" {
 			s.Contains(vt.Tasks, "very_task")
-			s.Contains(vt.Tasks, "wow_task")
-			s.Contains(vt.Tasks, "a_task_1")
-			s.Contains(vt.Tasks, "9001_task")
 			s.Require().Len(vt.DisplayTasks, 1)
 			s.Equal("memes", vt.DisplayTasks[0].Name)
 
 		} else if vt.Variant == "bv_2" {
-			s.Contains(vt.Tasks, "a_task_1")
 			s.Contains(vt.Tasks, "a_task_2")
 			s.Empty(vt.DisplayTasks)
 
@@ -996,28 +970,20 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 5)
-	s.Contains(patchDoc.Tasks, "wow_task")
-	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Len(patchDoc.Tasks, 3)
 	s.Contains(patchDoc.Tasks, "very_task")
-	s.Contains(patchDoc.Tasks, "a_task_1")
 	s.Contains(patchDoc.Tasks, "a_task_2")
 	s.Require().Len(patchDoc.VariantsTasks, 2)
 
 	for _, vt := range patchDoc.VariantsTasks {
 		if vt.Variant == "bv_1" {
-			s.Require().Len(vt.Tasks, 4)
-			s.Contains(vt.Tasks, "a_task_1")
+			s.Len(vt.Tasks, 2)
 			s.Contains(vt.Tasks, "very_task")
-			s.Contains(vt.Tasks, "9001_task")
-			s.Contains(vt.Tasks, "wow_task")
 			s.Require().Len(vt.DisplayTasks, 1)
 			s.Equal("memes", vt.DisplayTasks[0].Name)
 			s.Empty(vt.DisplayTasks[0].ExecTasks)
-
 		} else if vt.Variant == "bv_2" {
-			s.Require().Len(vt.Tasks, 2)
-			s.Contains(vt.Tasks, "a_task_1")
+			s.Len(vt.Tasks, 1)
 			s.Contains(vt.Tasks, "a_task_2")
 			s.Empty(vt.DisplayTasks)
 
@@ -1030,25 +996,16 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
 	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
-	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.BuildVariants, 1)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
-	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 2)
-	s.Contains(patchDoc.Tasks, "wow_task")
-	s.Contains(patchDoc.Tasks, "a_task_1")
-	s.Require().Len(patchDoc.VariantsTasks, 2)
+	s.Len(patchDoc.Tasks, 1)
+	s.Contains(patchDoc.Tasks, "very_task")
+	s.Len(patchDoc.VariantsTasks, 1)
 	for _, vt := range patchDoc.VariantsTasks {
 		if vt.Variant == "bv_1" {
-			s.Require().Len(vt.Tasks, 2)
-			s.Contains(vt.Tasks, "a_task_1")
-			s.Contains(vt.Tasks, "wow_task")
+			s.Len(vt.Tasks, 1)
+			s.Contains(vt.Tasks, "very_task")
 			s.Empty(vt.DisplayTasks, 1)
-
-		} else if vt.Variant == "bv_2" {
-			s.Require().Len(vt.Tasks, 1)
-			s.Contains(vt.Tasks, "a_task_1")
-			s.Empty(vt.DisplayTasks)
-
 		} else {
 			s.T().Fail()
 		}
@@ -1059,16 +1016,15 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 	patchDoc := patch.Patch{
 		BuildVariants: []string{"bv_1"},
-		Tasks:         []string{"wow_task"},
+		Tasks:         []string{"9001_task"},
 	}
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 5)
-	s.Contains(patchDoc.Tasks, "wow_task")
-	s.Contains(patchDoc.Tasks, "a_task_1")
-	s.Require().Len(patchDoc.VariantsTasks, 2)
+	s.Len(patchDoc.Tasks, 3)
+	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Len(patchDoc.VariantsTasks, 2)
 }
 
 func (s *projectSuite) TestNewPatchTaskIdTable() {
@@ -1200,7 +1156,6 @@ func (s *projectSuite) TestIsGenerateTask() {
 	s.True(s.project.IsGenerateTask("a_task_2"))
 	s.True(s.project.IsGenerateTask("b_task_1"))
 	s.False(s.project.IsGenerateTask("b_task_2"))
-	s.False(s.project.IsGenerateTask("wow_task"))
 	s.False(s.project.IsGenerateTask("9001_task"))
 	s.False(s.project.IsGenerateTask("very_task"))
 	s.False(s.project.IsGenerateTask("disabled_task"))

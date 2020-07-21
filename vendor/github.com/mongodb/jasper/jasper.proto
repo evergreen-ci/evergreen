@@ -112,11 +112,11 @@ message BuildloggerV3Info {
   int64 max_buffer_size = 14;
   int64 flush_interval = 15;
   bool disable_new_line_check = 16;
-  string rpc_address = 17;
-  bool insecure = 18;
-  string ca_file = 19;
-  string cert_file = 20;
-  string key_file = 21;
+  string base_address = 17;
+  string rpc_port = 18;
+  bool insecure = 19;
+  string username = 20;
+  string api_key = 21;
 }
 
 message BuildloggerV3Options {

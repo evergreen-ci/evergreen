@@ -10,22 +10,24 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id               *string    `json:"host_id"`
-	HostURL          *string    `json:"host_url"`
-	Distro           DistroInfo `json:"distro"`
-	Provisioned      bool       `json:"provisioned"`
-	StartedBy        *string    `json:"started_by"`
-	Provider         *string    `json:"host_type"`
-	User             *string    `json:"user"`
-	Status           *string    `json:"status"`
-	RunningTask      taskInfo   `json:"running_task"`
-	UserHost         bool       `json:"user_host"`
-	NoExpiration     bool       `json:"no_expiration"`
-	InstanceTags     []host.Tag `json:"instance_tags"`
-	InstanceType     *string    `json:"instance_type"`
-	AvailabilityZone *string    `json:"zone"`
-	DisplayName      *string    `json:"display_name"`
-	HomeVolumeID     *string    `json:"home_volume_id"`
+	Id               *string     `json:"host_id"`
+	HostURL          *string     `json:"host_url"`
+	Distro           DistroInfo  `json:"distro"`
+	Provisioned      bool        `json:"provisioned"`
+	StartedBy        *string     `json:"started_by"`
+	Provider         *string     `json:"host_type"`
+	User             *string     `json:"user"`
+	Status           *string     `json:"status"`
+	RunningTask      TaskInfo    `json:"running_task"`
+	UserHost         bool        `json:"user_host"`
+	NoExpiration     bool        `json:"no_expiration"`
+	InstanceTags     []host.Tag  `json:"instance_tags"`
+	InstanceType     *string     `json:"instance_type"`
+	AvailabilityZone *string     `json:"zone"`
+	DisplayName      *string     `json:"display_name"`
+	HomeVolumeID     *string     `json:"home_volume_id"`
+	TotalIdleTime    APIDuration `json:"total_idle_time"`
+	CreationTime     *time.Time  `json:"creation_time"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -53,12 +55,13 @@ type DistroInfo struct {
 	ImageId  *string `json:"image_id"`
 }
 
-type taskInfo struct {
+type TaskInfo struct {
 	Id           *string    `json:"task_id"`
 	Name         *string    `json:"name"`
 	DispatchTime *time.Time `json:"dispatch_time"`
 	VersionId    *string    `json:"version_id"`
 	BuildId      *string    `json:"build_id"`
+	StartTime    *time.Time `json:"start_time"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. It can
@@ -78,13 +81,14 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func getTaskInfo(t *task.Task) taskInfo {
-	return taskInfo{
+func getTaskInfo(t *task.Task) TaskInfo {
+	return TaskInfo{
 		Id:           ToStringPtr(t.Id),
 		Name:         ToStringPtr(t.DisplayName),
 		DispatchTime: ToTimePtr(t.DispatchTime),
 		VersionId:    ToStringPtr(t.Version),
 		BuildId:      ToStringPtr(t.BuildId),
+		StartTime:    ToTimePtr(t.StartTime),
 	}
 }
 
@@ -113,10 +117,13 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
+	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
+	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
-		return errors.Wrap(err, "problem getting image ID")
+		// report error but do not fail function because of a bad imageId
+		errors.Wrap(err, "problem getting image ID")
 	}
 	di := DistroInfo{
 		Id:       ToStringPtr(v.Distro.Id),

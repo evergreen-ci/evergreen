@@ -68,9 +68,7 @@ func TestFileReportCmds(t *testing.T) {
 				}
 				cmd, err := fileReportCmd(fr)
 				require.NoError(t, err)
-				cmdDef := cmd.Resolve()
-				require.NotNil(t, cmdDef)
-				testParams.testCase(t, fr, cmdDef)
+				testParams.testCase(t, fr, cmd)
 			})
 		}
 		t.Run("FailsWithEvergreenJSONWithInvalidNumFiles", func(t *testing.T) {
