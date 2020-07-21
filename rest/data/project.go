@@ -315,7 +315,10 @@ func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*mod
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
 	projectAliases, err := model.FindAliasInProject(p.Identifier, alias)
 	if err != nil {
-		return nil, err
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("no alias named '%s' for project '%s'", alias, p.Identifier),
+		}
 	}
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
