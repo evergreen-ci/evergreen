@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -44,8 +45,23 @@ func (r *Resolver) Query() QueryResolver {
 func (r *Resolver) Task() TaskResolver {
 	return &taskResolver{r}
 }
+func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
+
+type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
+
+func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	return obj.Distro.Id, nil
+}
+
+func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.CreationTime, nil
+}
+
+func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	return obj.RunningTask.StartTime, nil
+}
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
@@ -170,6 +186,101 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 type queryResolver struct{ *Resolver }
 
+func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
+	hostIDParam := ""
+	if hostID != nil {
+		hostIDParam = *hostID
+	}
+	distroParam := ""
+	if distroID != nil {
+		distroParam = *distroID
+	}
+	currentTaskParam := ""
+	if currentTaskID != nil {
+		currentTaskParam = *currentTaskID
+	}
+	startedByParam := ""
+	if startedBy != nil {
+		startedByParam = *startedBy
+	}
+	sorter := host.StatusKey
+	if sortBy != nil {
+		switch *sortBy {
+		case HostSortByCurrentTask:
+			sorter = host.RunningTaskKey
+			break
+		case HostSortByDistro:
+			sorter = host.DistroKey
+			break
+		case HostSortByElapsed:
+			sorter = "task_full.start_time"
+			break
+		case HostSortByID:
+			sorter = host.IdKey
+			break
+		case HostSortByIDLeTime:
+			sorter = host.TotalIdleTimeKey
+			break
+		case HostSortByOwner:
+			sorter = host.StartedByKey
+			break
+		case HostSortByStatus:
+			sorter = host.StatusKey
+			break
+		case HostSortByUptime:
+			sorter = host.CreateTimeKey
+			break
+		default:
+			sorter = host.StatusKey
+			break
+		}
+
+	}
+	sortDirParam := 1
+	if *sortDir == SortDirectionDesc {
+		sortDirParam = -1
+	}
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostIDParam, distroParam, currentTaskParam, statuses, startedByParam, sorter, sortDirParam, pageParam, limitParam)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
+	}
+
+	apiHosts := []*restModel.APIHost{}
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API Host from Service: %s", err.Error()))
+		}
+
+		if host.RunningTask != "" {
+			// Add the task information to the host document.
+			if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+			}
+		}
+
+		apiHosts = append(apiHosts, &apiHost)
+	}
+
+	return &HostsResponse{
+		Hosts:              apiHosts,
+		FilteredHostsCount: filteredHostsCount,
+		TotalHostsCount:    totalHostsCount,
+	}, nil
+}
+
 type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
@@ -288,7 +399,7 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting base version ID for patch %s: %s", *obj.Id, err.Error()))
 	}
 	if baseVersion == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find base version ID for patch %s", *obj.Id))
+		return nil, nil
 	}
 	return &baseVersion.Id, nil
 }
@@ -353,6 +464,11 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+	start, err := model.GetEstimatedStartTime(*dbTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
+	}
+	apiTask.EstimatedStart = restModel.NewAPIDuration(start)
 	return apiTask, err
 }
 
@@ -1095,61 +1211,42 @@ func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commi
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := route.MustHaveUser(ctx)
 	username := usr.Username()
-
-	var id string
-	var idType string
-	for _, s := range subscription.Selectors {
-		if s.Type == nil {
-			return false, InputValidationError.Send(ctx, "Found nil for selector type. Selector type must be a string and not nil.")
-		}
-		switch *s.Type {
-		case "object":
-			idType = *s.Data
-			break
-		case "id":
-			id = *s.Data
-			break
-		case "project":
-			idType = "project"
-			id = *s.Data
-			break
-		}
-	}
-	if id == "" || idType == "" {
-		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+	idType, id, err := getResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
+	if err != nil {
+		return false, err
 	}
 	switch idType {
 	case "task":
-		t, err := r.sc.FindTaskById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, err.Error()))
+		t, taskErr := r.sc.FindTaskById(id)
+		if taskErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, taskErr.Error()))
 		}
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
 		break
 	case "build":
-		b, err := r.sc.FindBuildById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, err.Error()))
+		b, buildErr := r.sc.FindBuildById(id)
+		if buildErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, buildErr.Error()))
 		}
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
 		break
 	case "version":
-		v, err := r.sc.FindVersionById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, err.Error()))
+		v, versionErr := r.sc.FindVersionById(id)
+		if versionErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, versionErr.Error()))
 		}
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
 		break
 	case "project":
-		p, err := r.sc.FindProjectById(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, err.Error()))
+		p, projectErr := r.sc.FindProjectById(id)
+		if projectErr != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
 		}
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
@@ -1158,7 +1255,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
-	err := r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
+	err = r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
 	}

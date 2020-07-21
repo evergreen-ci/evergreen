@@ -2,7 +2,9 @@
 
 package evergreen
 
-import "github.com/mongodb/grip/send"
+import (
+	"github.com/mongodb/grip/send"
+)
 
 func getSystemLogger() send.Sender {
 	sender, err := send.MakeSystemdLogger()

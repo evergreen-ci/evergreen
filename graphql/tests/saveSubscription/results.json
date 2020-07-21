@@ -35,6 +35,10 @@
       "result": { "data": { "saveSubscription": true } }
     },
     {
+      "query_file": "build-success-2.graphql",
+      "result": { "data": { "saveSubscription": true } }
+    },
+    {
       "query_file": "build-not-found-error.graphql",
       "result": {
         "errors": [

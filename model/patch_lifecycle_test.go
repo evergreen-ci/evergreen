@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -489,62 +488,13 @@ func TestIncludePatchDependencies(t *testing.T) {
 		})
 	})
 
-	Convey("With a project task config with required tasks", t, func() {
-		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},
-			{Name: "before"}, {Name: "after"}}
-		beforeDep := []TaskUnitDependency{{Name: "before"}}
-		p := &Project{
-			Tasks: []ProjectTask{
-				{Name: "before", Requires: []TaskUnitRequirement{{Name: "after"}}},
-				{Name: "1", DependsOn: beforeDep},
-				{Name: "2", DependsOn: beforeDep},
-				{Name: "3", DependsOn: beforeDep},
-				{Name: "after", DependsOn: []TaskUnitDependency{
-					{Name: "before"},
-					{Name: "1", PatchOptional: true},
-					{Name: "2", PatchOptional: true},
-					{Name: "3", PatchOptional: true},
-				}},
-			},
-			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: all},
-				{Name: "v2", Tasks: all},
-			},
-		}
-
-		Convey("scheduling the 'before' task should also schedule 'after'", func() {
-			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "before"}})
-			So(len(pairs), ShouldEqual, 2)
-			So(pairs, shouldContainPair, TVPair{"v1", "before"})
-			So(pairs, shouldContainPair, TVPair{"v1", "after"})
-		})
-		Convey("scheduling the middle tasks should include 'before' and 'after'", func() {
-			Convey("for '1'", func() {
-				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
-				So(len(pairs), ShouldEqual, 3)
-				So(pairs, shouldContainPair, TVPair{"v1", "before"})
-				So(pairs, shouldContainPair, TVPair{"v1", "after"})
-				So(pairs, shouldContainPair, TVPair{"v1", "1"})
-			})
-			Convey("for '1' '2' '3'", func() {
-				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}, {"v1", "2"}, {"v1", "3"}})
-
-				So(len(pairs), ShouldEqual, 5)
-				So(pairs, shouldContainPair, TVPair{"v1", "before"})
-				So(pairs, shouldContainPair, TVPair{"v1", "1"})
-				So(pairs, shouldContainPair, TVPair{"v1", "2"})
-				So(pairs, shouldContainPair, TVPair{"v1", "3"})
-				So(pairs, shouldContainPair, TVPair{"v1", "after"})
-			})
-		})
-	})
 	Convey("With a project task config with cyclical requirements", t, func() {
 		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"}}
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "3"}}},
-				{Name: "2", Requires: []TaskUnitRequirement{{Name: "1"}, {Name: "3"}}},
-				{Name: "3", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "1"}}},
+				{Name: "1", DependsOn: []TaskUnitDependency{{Name: "2"}, {Name: "3"}}},
+				{Name: "2", DependsOn: []TaskUnitDependency{{Name: "1"}, {Name: "3"}}},
+				{Name: "3", DependsOn: []TaskUnitDependency{{Name: "2"}, {Name: "1"}}},
 			},
 			BuildVariants: []BuildVariant{
 				{Name: "v1", Tasks: all},
@@ -576,38 +526,6 @@ func TestIncludePatchDependencies(t *testing.T) {
 				So(pairs, shouldContainPair, TVPair{"v2", "2"})
 				So(pairs, shouldContainPair, TVPair{"v2", "3"})
 			})
-		})
-	})
-	Convey("With a project task config that requires a non-patchable task", t, func() {
-		p := &Project{
-			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
-				{Name: "2", Patchable: util.FalsePtr()},
-			},
-			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
-			},
-		}
-		Convey("the non-patchable task should not be added", func() {
-			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
-
-			So(len(pairs), ShouldEqual, 0)
-		})
-	})
-	Convey("With a project task config that requires a git-tag-only task", t, func() {
-		p := &Project{
-			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
-				{Name: "2", GitTagOnly: util.TruePtr()},
-			},
-			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
-			},
-		}
-		Convey("the git-tag-only task should not be added", func() {
-			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
-
-			So(len(pairs), ShouldEqual, 0)
 		})
 	})
 	Convey("With a task that depends on task groups", t, func() {

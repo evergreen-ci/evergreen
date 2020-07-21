@@ -1,4 +1,4 @@
-package timber
+package buildlogger
 
 import (
 	"encoding/json"
@@ -42,11 +42,11 @@ func TestLoadLoggerOptions(t *testing.T) {
 
 		DisableNewLineCheck: true,
 
-		RPCAddress: "mongodb.cedar.com",
-		Insecure:   false,
-		CAFile:     "ca.crt",
-		CertFile:   "user.crt",
-		KeyFile:    "user.key",
+		BaseAddress: "cedar.mongodb.com",
+		RPCPort:     "8080",
+		Insecure:    false,
+		Username:    "user",
+		APIKey:      "key",
 	}
 
 	for _, test := range []struct {

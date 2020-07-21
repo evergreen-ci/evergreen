@@ -10,23 +10,25 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id                    *string    `json:"host_id"`
-	HostURL               *string    `json:"host_url"`
-	Distro                DistroInfo `json:"distro"`
-	Provisioned           bool       `json:"provisioned"`
-	StartedBy             *string    `json:"started_by"`
-	Provider              *string    `json:"host_type"`
-	User                  *string    `json:"user"`
-	Status                *string    `json:"status"`
-	RunningTask           TaskInfo   `json:"running_task"`
-	UserHost              bool       `json:"user_host"`
-	NoExpiration          bool       `json:"no_expiration"`
-	InstanceTags          []host.Tag `json:"instance_tags"`
-	InstanceType          *string    `json:"instance_type"`
-	AvailabilityZone      *string    `json:"zone"`
-	DisplayName           *string    `json:"display_name"`
-	HomeVolumeID          *string    `json:"home_volume_id"`
-	LastCommunicationTime time.Time  `json:"last_communication"`
+	Id                    *string     `json:"host_id"`
+	HostURL               *string     `json:"host_url"`
+	Distro                DistroInfo  `json:"distro"`
+	Provisioned           bool        `json:"provisioned"`
+	StartedBy             *string     `json:"started_by"`
+	Provider              *string     `json:"host_type"`
+	User                  *string     `json:"user"`
+	Status                *string     `json:"status"`
+	RunningTask           TaskInfo    `json:"running_task"`
+	UserHost              bool        `json:"user_host"`
+	NoExpiration          bool        `json:"no_expiration"`
+	InstanceTags          []host.Tag  `json:"instance_tags"`
+	InstanceType          *string     `json:"instance_type"`
+	AvailabilityZone      *string     `json:"zone"`
+	DisplayName           *string     `json:"display_name"`
+	HomeVolumeID          *string     `json:"home_volume_id"`
+	LastCommunicationTime time.Time   `json:"last_communication"`
+	TotalIdleTime         APIDuration `json:"total_idle_time"`
+	CreationTime          *time.Time  `json:"creation_time"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -60,6 +62,7 @@ type TaskInfo struct {
 	DispatchTime *time.Time `json:"dispatch_time"`
 	VersionId    *string    `json:"version_id"`
 	BuildId      *string    `json:"build_id"`
+	StartTime    *time.Time `json:"start_time"`
 }
 
 // BuildFromService converts from service level structs to an APIHost. It can
@@ -86,6 +89,7 @@ func getTaskInfo(t *task.Task) TaskInfo {
 		DispatchTime: ToTimePtr(t.DispatchTime),
 		VersionId:    ToStringPtr(t.Version),
 		BuildId:      ToStringPtr(t.BuildId),
+		StartTime:    ToTimePtr(t.StartTime),
 	}
 }
 
@@ -115,6 +119,8 @@ func (apiHost *APIHost) BuildFromHostStruct(h interface{}, graphQL bool) error {
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 	apiHost.LastCommunicationTime = v.LastCommunicationTime
+	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
+	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 
 	di := DistroInfo{
 		Id:       ToStringPtr(v.Distro.Id),

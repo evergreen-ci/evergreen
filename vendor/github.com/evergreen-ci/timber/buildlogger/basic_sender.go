@@ -1,14 +1,15 @@
-package timber
+package buildlogger
 
 import (
 	"context"
-	"crypto/tls"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
 	"github.com/evergreen-ci/aviation"
+	"github.com/evergreen-ci/aviation/services"
 	"github.com/evergreen-ci/timber/internal"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/mongodb/grip"
@@ -17,7 +18,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -122,11 +122,12 @@ type LoggerOptions struct {
 	ClientConn *grpc.ClientConn `bson:"-" json:"-" yaml:"-"`
 
 	// Configuration for gRPC client connection.
-	RPCAddress string `bson:"rpc_address" json:"rpc_address" yaml:"rpc_address"`
-	Insecure   bool   `bson:"insecure" json:"insecure" yaml:"insecure"`
-	CAFile     string `bson:"ca_file" json:"ca_file" yaml:"ca_file"`
-	CertFile   string `bson:"cert_file" json:"cert_file" yaml:"cert_file"`
-	KeyFile    string `bson:"key_file" json:"key_file" yaml:"key_file"`
+	HTTPClient  *http.Client `bson:"-" json:"-" yaml:"-"`
+	BaseAddress string       `bson:"base_address" json:"base_address" yaml:"base_address"`
+	RPCPort     string       `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
+	Insecure    bool         `bson:"insecure" json:"insecure" yaml:"insecure"`
+	Username    string       `bson:"username" json:"username" yaml:"username"`
+	APIKey      string       `bson:"api_key" json:"api_key" yaml:"api_key"`
 
 	logID    string
 	exitCode int32
@@ -141,12 +142,16 @@ func (opts *LoggerOptions) validate() error {
 	}
 
 	if opts.ClientConn == nil {
-		if opts.RPCAddress == "" {
-			return errors.New("must specify a RPC address when a client connection is not provided")
+		if opts.BaseAddress == "" || opts.RPCPort == "" {
+			return errors.New("must specify a base address and rpc port when a client connection is not provided")
 		}
-		if !opts.Insecure && (opts.CAFile == "" || opts.CertFile == "" || opts.KeyFile == "") {
-			return errors.New("must specify credential files when making a secure connection over RPC")
+		if !opts.Insecure && (opts.Username == "" || opts.APIKey == "") {
+			return errors.New("must specify username and API key when making a secure connection over RPC")
 		}
+	}
+
+	if opts.HTTPClient == nil {
+		opts.HTTPClient = &http.Client{}
 	}
 
 	if opts.Local == nil {
@@ -208,27 +213,26 @@ func MakeLoggerWithContext(ctx context.Context, name string, opts *LoggerOptions
 	var conn *grpc.ClientConn
 	var err error
 	if opts.ClientConn == nil {
-		rpcOpts := []grpc.DialOption{
-			grpc.WithUnaryInterceptor(aviation.MakeRetryUnaryClientInterceptor(10)),
-			grpc.WithStreamInterceptor(aviation.MakeRetryStreamClientInterceptor(10)),
-		}
 		if opts.Insecure {
-			rpcOpts = append(rpcOpts, grpc.WithInsecure())
-		} else {
-			var tlsConf *tls.Config
-			tlsConf, err = aviation.GetClientTLSConfigFromFiles(opts.CAFile, opts.CertFile, opts.KeyFile)
-			if err != nil {
-				return nil, errors.Wrap(err, "problem getting client TLS config")
+			rpcOpts := []grpc.DialOption{
+				grpc.WithUnaryInterceptor(aviation.MakeRetryUnaryClientInterceptor(10)),
+				grpc.WithStreamInterceptor(aviation.MakeRetryStreamClientInterceptor(10)),
+				grpc.WithInsecure(),
 			}
-
-			rpcOpts = append(rpcOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+			opts.ClientConn, err = grpc.DialContext(ctx, opts.BaseAddress+":"+opts.RPCPort, rpcOpts...)
+		} else {
+			dialOpts := &services.DialCedarOptions{
+				BaseAddress: opts.BaseAddress,
+				RPCPort:     opts.RPCPort,
+				Username:    opts.Username,
+				APIKey:      opts.APIKey,
+				Retries:     10,
+			}
+			opts.ClientConn, err = services.DialCedar(ctx, opts.HTTPClient, dialOpts)
 		}
-
-		conn, err = grpc.DialContext(ctx, opts.RPCAddress, rpcOpts...)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem dialing rpc server")
 		}
-		opts.ClientConn = conn
 	}
 
 	b := &buildlogger{

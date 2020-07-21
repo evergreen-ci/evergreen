@@ -389,8 +389,7 @@ func (s *taskSuite) TestAllTriggers() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Empty(n)
-
+	s.Len(n, 3)
 }
 
 func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
@@ -417,9 +416,7 @@ func (s *taskSuite) TestExecutionTask() {
 	s.NoError(t.Insert())
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Require().Len(n, 1)
-	s.Contains(*n[0].Payload.(*string), "displaytask")
-	s.Contains(*n[0].Payload.(*string), "https://evergreen.mongodb.com/task/test/0")
+	s.Len(n, 0)
 }
 
 func (s *taskSuite) TestSuccess() {

@@ -390,22 +390,25 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 }
 
 func (t *Task) AddDependency(d Dependency) error {
-	query := bson.M{IdKey: t.Id}
-	update := bson.M{
-		"$push": bson.M{
-			DependsOnKey: d,
-		},
-	}
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if existingDependency.TaskId == d.TaskId && existingDependency.Status == d.Status {
-			return nil
+			if existingDependency.Unattainable == d.Unattainable {
+				return nil // nothing to be done
+			}
+			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, true)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
 	return UpdateOne(
-		query,
-		update,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$push": bson.M{
+				DependsOnKey: d,
+			},
+		},
 	)
 }
 
@@ -839,13 +842,14 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
-func (t *Task) MarkSystemFailed() error {
+func (t *Task) MarkSystemFailed(description string) error {
 	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
 
 	t.Details = apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   evergreen.CommandTypeSystem,
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: description,
 	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
@@ -2067,6 +2071,10 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 func (t *Task) IsPartOfDisplay() bool {
 	dt, err := t.GetDisplayTask()
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "unable to get display task",
+			"execution_task": t.Id,
+		}))
 		return false
 	}
 	return dt != nil

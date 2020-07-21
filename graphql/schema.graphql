@@ -44,6 +44,17 @@ type Query {
   host(
     hostId: String!
   ): Host!
+  hosts(
+    hostId: String = ""
+    distroId: String = ""
+    currentTaskId: String = ""
+    statuses: [String!] = []
+    startedBy: String = ""
+    sortBy: HostSortBy = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 10
+  ): HostsResponse!
 }
 
 type Mutation {
@@ -94,6 +105,17 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+enum HostSortBy {
+  ID
+  DISTRO
+  CURRENT_TASK
+  STATUS
+  ELAPSED
+  UPTIME
+  IDLE_TIME
+  OWNER
+}
+
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -142,6 +164,29 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+type Host {
+  id: ID!
+  hostUrl: String!
+  distroId: String
+  status: String!
+  runningTask: TaskInfo
+  totalIdleTime: Duration
+  uptime: Time # host creation time
+  elapsed: Time # running task start time
+  startedBy: String!
+}
+
+type TaskInfo {
+  id: ID
+  name: String
+}
+
+type HostsResponse {
+  filteredHostsCount: Int
+  totalHostsCount: Int!
+  hosts: [Host!]!
+}
+
 type PatchTasks {
   tasks: [TaskResult!]!
   count: Int!
@@ -152,6 +197,7 @@ type PatchBuildVariant {
   displayName: String!
   tasks: [PatchBuildVariantTask]
 }
+
 type PatchBuildVariantTask {
   id: ID!
   name: String!
@@ -359,6 +405,7 @@ type Task {
   canSchedule: Boolean!
   canUnschedule: Boolean!
   canSetPriority: Boolean!
+  estimatedStart: Duration
 }
 
 type Projects {
