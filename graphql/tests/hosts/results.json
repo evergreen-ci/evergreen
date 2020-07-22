@@ -6,7 +6,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "i-06f80fa6e28f93b7d",
@@ -89,8 +89,22 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
               {
                 "id": "i-0d0ae8b83366d22be",
                 "distroId": "ubuntu1604-small",
@@ -120,27 +134,27 @@
                 }
               },
               {
-                "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "id": "localhost",
+                "distroId": "localhost",
                 "status": "running",
                 "startedBy": "mci",
-                "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
+                "hostUrl": "localhost",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
                 "runningTask": {
-                  "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
-                  "name": "foliage"
+                  "id": null,
+                  "name": null
                 }
               },
               {
-                "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "id": "localhost2",
+                "distroId": "localhost2",
                 "status": "running",
                 "startedBy": "mci",
-                "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+                "hostUrl": "localhost2",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2017-12-01T14:48:16-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -158,7 +172,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": 1,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
@@ -185,7 +199,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": 1,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
@@ -212,7 +226,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": 1,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
@@ -238,8 +252,8 @@
       "result": {
         "data": {
           "hosts": {
-            "filteredHostsCount": 7,
-            "totalHostsCount": 9,
+            "filteredHostsCount": 10,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
@@ -284,6 +298,20 @@
                 }
               },
               {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
                 "id": "i-0d0ae8b83366d22be",
                 "distroId": "ubuntu1604-small",
                 "status": "running",
@@ -309,6 +337,34 @@
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
+                }
+              },
+              {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
                 }
               },
               {
@@ -350,7 +406,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
@@ -378,6 +434,20 @@
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
+                }
+              },
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
                 }
               },
               {
@@ -423,6 +493,34 @@
                 }
               },
               {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
                 "distroId": "macos-1014",
                 "status": "quarantined",
@@ -448,34 +546,6 @@
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
-                }
-              },
-              {
-                "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
-              },
-              {
-                "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
-                "status": "quarantined",
-                "startedBy": "mci",
-                "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
                 }
               }
             ]
@@ -489,7 +559,7 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
@@ -517,6 +587,48 @@
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
+                }
+              },
+              {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
                 }
               },
               {
@@ -587,34 +699,6 @@
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
-                }
-              },
-              {
-                "id": "i-0d0ae8b83366d22be",
-                "distroId": "ubuntu1604-small",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
-                "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
-              },
-              {
-                "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
-                "status": "quarantined",
-                "startedBy": "mci",
-                "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
                 }
               }
             ]
@@ -628,8 +712,22 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
               {
                 "id": "i-0d0ae8b83366d22be",
                 "distroId": "ubuntu1604-small",
@@ -638,6 +736,34 @@
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05-04:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -726,34 +852,6 @@
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
-                }
-              },
-              {
-                "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
-                "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
-                "runningTask": {
-                  "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "jepsen_set_linearizableRead_WT"
-                }
-              },
-              {
-                "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "build10.ny.cbi.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
-                "runningTask": {
-                  "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "misc"
                 }
               }
             ]
@@ -767,8 +865,22 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
               {
                 "id": "i-0d0ae8b83366d22be",
                 "distroId": "ubuntu1604-small",
@@ -777,6 +889,34 @@
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
                 "uptime": "2020-07-20T10:48:05-04:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -865,34 +1005,6 @@
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
-                }
-              },
-              {
-                "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
-                "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
-                "runningTask": {
-                  "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "jepsen_set_linearizableRead_WT"
-                }
-              },
-              {
-                "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
-                "runningTask": {
-                  "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
-                  "name": "foliage"
                 }
               }
             ]
@@ -906,8 +1018,50 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
+              {
+                "id": "i-092593689871a50dc",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost",
+                "distroId": "localhost",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
+              {
+                "id": "localhost2",
+                "distroId": "localhost2",
+                "status": "running",
+                "startedBy": "mci",
+                "hostUrl": "localhost2",
+                "totalIdleTime": 0,
+                "uptime": "2017-12-01T14:48:16-05:00",
+                "elapsed": null,
+                "runningTask": {
+                  "id": null,
+                  "name": null
+                }
+              },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "distroId": "ubuntu1604-power8-large",
@@ -1004,34 +1158,6 @@
                 "runningTask": {
                   "id": null,
                   "name": null
-                }
-              },
-              {
-                "id": "i-0f81a2d39744003dd",
-                "distroId": "ubuntu1604-large",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
-                "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
-                "runningTask": {
-                  "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "jepsen_set_linearizableRead_WT"
-                }
-              },
-              {
-                "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
-                "status": "provisioning",
-                "startedBy": "mci",
-                "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
-                "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
-                "runningTask": {
-                  "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "sharding_auth"
                 }
               }
             ]
@@ -1094,10 +1220,14 @@
         "data": {
           "hosts": {
             "filteredHostsCount": null,
-            "totalHostsCount": 9,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
+                "status": "running"
+              },
+              {
+                "id": "i-092593689871a50dc",
                 "status": "running"
               },
               {
@@ -1106,6 +1236,14 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
+                "status": "running"
+              },
+              {
+                "id": "localhost",
+                "status": "running"
+              },
+              {
+                "id": "localhost2",
                 "status": "running"
               },
               {
@@ -1123,14 +1261,6 @@
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "status": "quarantined"
-              },
-              {
-                "id": "i-06f80fa6e28f93b7d",
-                "status": "provisioning"
-              },
-              {
-                "id": "i-0fb9fe0592ea38150",
-                "status": "provisioning"
               }
             ]
           }
@@ -1142,8 +1272,8 @@
       "result": {
         "data": {
           "hosts": {
-            "filteredHostsCount": 5,
-            "totalHostsCount": 9,
+            "filteredHostsCount": 8,
+            "totalHostsCount": 12,
             "hosts": [
               {
                 "id": "i-0f81a2d39744003dd",
@@ -1163,6 +1293,18 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+                "status": "running"
+              },
+              {
+                "id": "i-092593689871a50dc",
+                "status": "running"
+              },
+              {
+                "id": "localhost",
+                "status": "running"
+              },
+              {
+                "id": "localhost2",
                 "status": "running"
               }
             ]
