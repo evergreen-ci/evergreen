@@ -71,7 +71,7 @@ type TaskInfo struct {
 func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host, *host.Host:
-		return apiHost.buildFromHostStruct(h, false)
+		return apiHost.buildFromHostStruct(h)
 	case *task.Task:
 		apiHost.RunningTask = getTaskInfo(v)
 	case task.Task:
