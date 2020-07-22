@@ -1005,9 +1005,9 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 
 	if host.RunningTask != "" {
 		task, err := r.sc.FindTaskById(host.RunningTask)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", host.RunningTask, err.Error()))
-	}
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", host.RunningTask, err.Error()))
+		}
 		// Add the task information to the host document.
 		if err = apiHost.BuildFromService(task); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
