@@ -135,7 +135,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -149,7 +151,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -343,7 +347,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -357,7 +363,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -480,7 +488,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -494,7 +504,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -585,7 +597,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -615,7 +629,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -722,7 +738,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -752,7 +770,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -875,7 +895,9 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -969,7 +991,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -996,7 +1020,9 @@
             "hosts": [
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distroId": "ubuntu1604-power8-large",
+                "distro": {
+                  "id": "ubuntu1604-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -1010,7 +1036,9 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distroId": "rhel71-power8-large",
+                "distro": {
+                  "id": "rhel71-power8-large"
+                },
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
