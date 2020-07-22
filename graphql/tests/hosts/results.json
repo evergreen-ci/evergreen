@@ -120,7 +120,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -332,7 +332,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -441,7 +441,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -614,7 +614,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -819,7 +819,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -976,7 +976,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
@@ -1133,7 +1133,7 @@
               {
                 "id": "i-0f81a2d39744003dd",
                 "distro": {
-                  "id": "ubuntu1604-small"
+                  "id": "ubuntu1604-large"
                 },
                 "status": "running",
                 "startedBy": "mci",
