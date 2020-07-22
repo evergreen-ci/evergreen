@@ -403,7 +403,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
 	}
 	if len(supportingSubnets) == 0 {
-		return errors.Errorf("instance type '%s' is not supported by any configured subnet", h.InstanceType)
+		return errors.Errorf("instance type '%s' is not supported by any configured subnet for region '%s'", h.InstanceType, ec2Settings.getRegion())
 	}
 
 	if len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId {
