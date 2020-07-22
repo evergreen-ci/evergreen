@@ -586,7 +586,8 @@ func diffToMbox(diffData *localDiff, subject string) (string, error) {
 }
 
 func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
-	mboxTemplate, err := template.New("mbox").Parse(`From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+	mboxTemplate, err := template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: {{.Metadata.Username}} <{{.Metadata.Email}}>
 Date: {{.Metadata.CurrentTime}}
 Subject: {{.Metadata.Subject}}
 

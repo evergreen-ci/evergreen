@@ -163,7 +163,8 @@ func (s *PatchUtilTestSuite) TestaddMetadataToDiff() {
 
 	mboxDiff, err := addMetadataToDiff(diffData, metadata)
 	s.NoError(err)
-	s.Equal(`From: octocat <octocat@github.com>
+	s.Equal(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
 Date: Tue, 7 Jul 2020 16:50:42 -0400
 Subject: EVG-12345 diff to mbox
 
