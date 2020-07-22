@@ -628,23 +628,28 @@ type GitMetadata struct {
 func getGitConfigMetadata() (GitMetadata, error) {
 	var err error
 	metadata := GitMetadata{}
-	metadata.Username, err = gitCmd("config", "user.name")
+	username, err := gitCmd("config", "user.name")
 	if err != nil {
 		return metadata, errors.Wrap(err, "can't get git user.name")
 	}
-	metadata.Email, err = gitCmd("config", "user.email")
+	metadata.Username = strings.TrimSpace(username)
+
+	email, err := gitCmd("config", "user.email")
 	if err != nil {
 		return metadata, errors.Wrap(err, "can't get git user.email")
 	}
+	metadata.Email = strings.TrimSpace(email)
+
 	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
 
 	versionString, err := gitCmd("version")
 	if err != nil {
 		return metadata, errors.Wrap(err, "can't get git version")
 	}
-	r := regexp.MustCompile(`^git version (\d+)$`)
-	matches := r.FindStringSubmatch(versionString)
-	if len(matches) != 2 {
+	versionString = strings.TrimSpace(versionString)
+	matches := regexp.MustCompile(`^git version (\d+(\.\d+)+)$`).FindStringSubmatch(versionString)
+	if len(matches) < 2 {
+		grip.Info(matches)
 		return metadata, errors.Errorf("can't get version number from version string '%s'", versionString)
 	}
 	metadata.GitVersion = matches[1]
