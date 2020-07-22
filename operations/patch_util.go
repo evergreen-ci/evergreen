@@ -576,14 +576,19 @@ func gitUncommittedChanges() (bool, error) {
 }
 
 func diffToMbox(diffData *localDiff, subject string) (string, error) {
-	metadata, err := getGitMetadata()
+	metadata, err := getGitConfigMetadata()
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting git metadata")
 	}
+	metadata.Subject = subject
 
+	return addMetadataToDiff(diffData, metadata)
+}
+
+func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
 	mboxTemplate, err := template.New("mbox").Parse(`From: {{.Metadata.Username}} <{{.Metadata.Email}}>
 Date: {{.Metadata.CurrentTime}}
-Subject: {{.Subject}}
+Subject: {{.Metadata.Subject}}
 
 ---
 {{.DiffStat}}
@@ -600,12 +605,10 @@ Subject: {{.Subject}}
 		Metadata    GitMetadata
 		DiffStat    string
 		DiffContent string
-		Subject     string
 	}{
 		Metadata:    metadata,
 		DiffStat:    diffData.log,
 		DiffContent: diffData.fullPatch,
-		Subject:     subject,
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "problem parsing mbox template")
@@ -619,9 +622,10 @@ type GitMetadata struct {
 	Email       string
 	CurrentTime string
 	GitVersion  string
+	Subject     string
 }
 
-func getGitMetadata() (GitMetadata, error) {
+func getGitConfigMetadata() (GitMetadata, error) {
 	var err error
 	metadata := GitMetadata{}
 	metadata.Username, err = gitCmd("config", "user.name")
