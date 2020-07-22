@@ -51,10 +51,6 @@ type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
 
-func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	return obj.Distro.Id, nil
-}
-
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
