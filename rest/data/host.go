@@ -90,6 +90,14 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 	return hosts, filterdHostsCount, totalHostsCount, nil
 }
 
+func (hc *DBConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	host, err := host.GetHostByIdWithTask(hostID)
+	if err != nil {
+		return nil, err
+	}
+	return host, nil
+}
+
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
@@ -426,6 +434,10 @@ func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
 
 func (hc *MockConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
 	return nil, nil, 0, nil
+}
+
+func (hc *MockConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	return nil, nil
 }
 
 func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {

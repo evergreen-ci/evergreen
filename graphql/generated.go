@@ -130,7 +130,6 @@ type ComplexityRoot struct {
 	Host struct {
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
-		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		HostURL               func(childComplexity int) int
 		Id                    func(childComplexity int) int
@@ -473,8 +472,6 @@ type ComplexityRoot struct {
 }
 
 type HostResolver interface {
-	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
-
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 }
@@ -854,13 +851,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Distro(childComplexity), true
-
-	case "Host.distroId":
-		if e.complexity.Host.DistroID == nil {
-			break
-		}
-
-		return e.complexity.Host.DistroID(childComplexity), true
 
 	case "Host.elapsed":
 		if e.complexity.Host.Elapsed == nil {
@@ -2813,7 +2803,6 @@ type Host {
   id: ID!
   displayName: String!
   hostUrl: String!
-  distroId: String
   distro: DistroInfo!
   status: String!
   runningTask: TaskInfo
@@ -5327,37 +5316,6 @@ func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.Col
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Host",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().DistroID(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -14831,17 +14789,6 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "distroId":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_distroId(ctx, field, obj)
-				return res
-			})
 		case "distro":
 			out.Values[i] = ec._Host_distro(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

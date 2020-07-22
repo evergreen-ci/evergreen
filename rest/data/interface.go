@@ -156,6 +156,9 @@ type Connector interface {
 	// GetRunningHosts gets paginated running hosts and applies any filters
 	GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error)
 
+	// Find a host by ID and queries for full running task
+	GetHostByIdWithTask(hostID string) (*host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
 

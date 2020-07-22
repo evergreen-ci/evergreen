@@ -166,7 +166,6 @@ type Host {
   id: ID!
   displayName: String!
   hostUrl: String!
-  distroId: String
   distro: DistroInfo!
   status: String!
   runningTask: TaskInfo
