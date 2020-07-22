@@ -29,7 +29,7 @@
           {
             "message": "Error getting user from user ID: user nonexistent-userid not found",
             "path": ["user"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
