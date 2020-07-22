@@ -1,0 +1,10 @@
+{
+  hosts(statuses: ["running"], sortBy: UPTIME, sortDir: DESC) {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      status
+    }
+  }
+}
