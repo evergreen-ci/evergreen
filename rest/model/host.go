@@ -120,7 +120,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
-
+	apiHost.LastCommunicationTime = v.LastCommunicationTime
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
