@@ -71,7 +71,7 @@ type TaskInfo struct {
 func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host, *host.Host:
-		return apiHost.BuildFromHostStruct(h, false)
+		return apiHost.buildFromHostStruct(h, false)
 	case *task.Task:
 		apiHost.RunningTask = getTaskInfo(v)
 	case task.Task:
@@ -93,7 +93,7 @@ func getTaskInfo(t *task.Task) TaskInfo {
 	}
 }
 
-func (apiHost *APIHost) BuildFromHostStruct(h interface{}, graphQL bool) error {
+func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	var v *host.Host
 	switch h.(type) {
 	case host.Host:
@@ -118,20 +118,18 @@ func (apiHost *APIHost) BuildFromHostStruct(h interface{}, graphQL bool) error {
 	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
 	apiHost.DisplayName = ToStringPtr(v.DisplayName)
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
-	apiHost.LastCommunicationTime = v.LastCommunicationTime
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 
+	imageId, err := v.Distro.GetImageID()
+	if err != nil {
+		// report error but do not fail function because of a bad imageId
+		errors.Wrap(err, "problem getting image ID")
+	}
 	di := DistroInfo{
 		Id:       ToStringPtr(v.Distro.Id),
 		Provider: ToStringPtr(v.Distro.Provider),
-	}
-	if !graphQL {
-		imageId, err := v.Distro.GetImageID()
-		if err != nil {
-			return errors.Wrap(err, "problem getting image ID")
-		}
-		di.ImageId = ToStringPtr(imageId)
+		ImageId:  ToStringPtr(imageId),
 	}
 	apiHost.Distro = di
 	return nil

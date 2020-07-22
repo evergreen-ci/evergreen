@@ -2688,9 +2688,7 @@ var sources = []*ast.Source{
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
-  host(
-    hostId: String!
-  ): Host!
+  host(hostId: String!): Host!
   hosts(
     hostId: String = ""
     distroId: String = ""
