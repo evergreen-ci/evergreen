@@ -10,6 +10,30 @@
           }
         }
       }
+    },
+    {
+      "query_file": "user-with-param.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "displayName": "Bob Smith",
+            "userId": "bob.smith"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "user-error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error getting user from user ID: user nonexistent-userid not found",
+            "path": ["user"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
     }
   ]
 }
