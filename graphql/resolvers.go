@@ -1139,7 +1139,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	if userIdParam != nil {
 		usr, err = model.FindUserByID(*userIdParam)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
 		}
 	}
 	displayName := usr.DisplayName()
