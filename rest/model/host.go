@@ -138,17 +138,18 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
-		Id:           FromStringPtr(apiHost.Id),
-		Provisioned:  apiHost.Provisioned,
-		NoExpiration: apiHost.NoExpiration,
-		StartedBy:    FromStringPtr(apiHost.StartedBy),
-		Provider:     FromStringPtr(apiHost.Provider),
-		InstanceType: FromStringPtr(apiHost.InstanceType),
-		User:         FromStringPtr(apiHost.User),
-		Status:       FromStringPtr(apiHost.Status),
-		Zone:         FromStringPtr(apiHost.AvailabilityZone),
-		DisplayName:  FromStringPtr(apiHost.DisplayName),
-		HomeVolumeID: FromStringPtr(apiHost.HomeVolumeID),
+		Id:                    FromStringPtr(apiHost.Id),
+		Provisioned:           apiHost.Provisioned,
+		NoExpiration:          apiHost.NoExpiration,
+		StartedBy:             FromStringPtr(apiHost.StartedBy),
+		Provider:              FromStringPtr(apiHost.Provider),
+		InstanceType:          FromStringPtr(apiHost.InstanceType),
+		User:                  FromStringPtr(apiHost.User),
+		Status:                FromStringPtr(apiHost.Status),
+		Zone:                  FromStringPtr(apiHost.AvailabilityZone),
+		DisplayName:           FromStringPtr(apiHost.DisplayName),
+		HomeVolumeID:          FromStringPtr(apiHost.HomeVolumeID),
+		LastCommunicationTime: apiHost.LastCommunicationTime,
 	}
 	return interface{}(h), nil
 }
