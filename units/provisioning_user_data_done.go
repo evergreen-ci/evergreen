@@ -131,16 +131,8 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	}
 
 	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
-		grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, *j.host),
-			message.Fields{
-				"message":      "failed to run setup script",
-				"task":         j.host.ProvisionOptions.TaskId,
-				"setup_script": j.host.ProvisionOptions.SetupScript,
-				"user":         j.host.StartedBy,
-				"host_id":      j.host.Id,
-				"job":          j.ID(),
-			},
-		))
+		// Don't wait on setup script to finish, particularly for hosts waiting on task data.
+		j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host))
 	}
 
 	j.finishJob()

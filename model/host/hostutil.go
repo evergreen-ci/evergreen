@@ -403,7 +403,8 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			}
 			var getTaskDataCmd string
-			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				&options.Command{Commands: [][]string{fetchCmd}})
 			if err != nil {
 				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
@@ -990,6 +991,37 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 	}
 
 	return handleTaggedProcs(procs)
+}
+
+func (h *Host) CheckProvisioningHostFinished(ctx context.Context, env evergreen.Environment) error {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	return h.withTaggedProcs(ctx, env, evergreen.ProvisioningHostTag, func(procs []jasper.Process) error {
+		grip.WarningWhen(len(procs) > 1, message.Fields{
+			"message":   fmt.Sprintf("host is attempting to provision host multiple times"),
+			"num_procs": len(procs),
+			"host_id":   h.Id,
+			"distro":    h.Distro.Id,
+		})
+		catcher := grip.NewBasicCatcher()
+		for _, proc := range procs {
+			err := util.Retry(
+				ctx,
+				func() (bool, error) {
+					if proc.Complete(ctx) {
+						return false, nil
+					}
+					return true, errors.New("provisioning host not finished")
+				}, 1000, time.Second, 15*time.Second)
+			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
+			if err == nil {
+				return nil
+			}
+			catcher.Add(err)
+		}
+		return catcher.Resolve()
+	})
 }
 
 // WithAgentMonitor runs the given handler on all agent monitor processes

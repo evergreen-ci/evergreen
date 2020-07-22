@@ -617,16 +617,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				}))
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
-			grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, *j.host),
-				message.Fields{
-					"message":      "failed to run setup script",
-					"task":         j.host.ProvisionOptions.TaskId,
-					"setup_script": j.host.ProvisionOptions.SetupScript,
-					"user":         j.host.StartedBy,
-					"host_id":      j.host.Id,
-					"job":          j.ID(),
-				},
-			))
+			// Don't wait on setup script to finish, particularly for hosts waiting on task data.
+			j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host))
 		}
 	}
 
@@ -704,6 +696,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		// use the correct SSH key when using fetch instead of pull.
 		logs, err = j.host.RunJasperProcess(getTaskDataCtx, j.env, &options.Create{
 			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
+			Tags: []string{evergreen.ProvisioningHostTag},
 		})
 		output = strings.Join(logs, " ")
 	}
