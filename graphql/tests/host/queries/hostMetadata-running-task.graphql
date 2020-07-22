@@ -1,8 +1,8 @@
 {
-	host(hostId: "rhel71-ppc-1.pic.build.10gen.cc"){
+  host(hostId: "rhel71-ppc-1.pic.build.10gen.cc") {
     id
     hostUrl
-    distro{
+    distro {
       id
       provider
     }
@@ -10,7 +10,7 @@
     user
     status
     displayName
-    runningTask{
+    runningTask {
       id
       name
     }

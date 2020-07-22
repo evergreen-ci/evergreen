@@ -243,7 +243,7 @@
     }
   ],
   "tasks": [
-    { 
+    {
       "_id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
       "create_time": { "$date": "2020-07-20T14:37:05Z" },
       "injest_time": { "$date": "2020-07-20T15:02:06.764Z" },
