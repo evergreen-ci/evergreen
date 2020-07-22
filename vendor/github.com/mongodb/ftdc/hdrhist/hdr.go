@@ -48,7 +48,7 @@ func New(minValue, maxValue int64, sigfigs int) *Histogram {
 	}
 
 	largestValueWithSingleUnitResolution := 2 * math.Pow10(sigfigs)
-	subBucketCountMagnitude := int32(math.Ceil(math.Log2(float64(largestValueWithSingleUnitResolution))))
+	subBucketCountMagnitude := int32(math.Ceil(math.Log2(largestValueWithSingleUnitResolution)))
 
 	subBucketHalfCountMagnitude := subBucketCountMagnitude
 	if subBucketHalfCountMagnitude < 1 {
@@ -440,12 +440,11 @@ func (h *Histogram) countsIndex(bucketIdx, subBucketIdx int32) int32 {
 
 func (h *Histogram) getBucketIndex(v int64) int32 {
 	pow2Ceiling := bitLen(v | h.subBucketMask)
-	return int32(pow2Ceiling - int64(h.unitMagnitude) -
-		int64(h.subBucketHalfCountMagnitude+1))
+	return int32(pow2Ceiling - h.unitMagnitude - int64(h.subBucketHalfCountMagnitude+1))
 }
 
 func (h *Histogram) getSubBucketIdx(v int64, idx int32) int32 {
-	return int32(v >> uint(int64(idx)+int64(h.unitMagnitude)))
+	return int32(v >> uint(int64(idx)+h.unitMagnitude))
 }
 
 func (h *Histogram) countsIndexFor(v int64) int {

@@ -3,9 +3,9 @@ package hdrhist
 import (
 	"encoding/json"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // A Snapshot is an exported view of a Histogram, useful for serializing them.
@@ -17,9 +17,17 @@ type Snapshot struct {
 	Counts                []int64 `bson:"counts" json:"counts" yaml:"counts"`
 }
 
-func (h *Histogram) MarshalBSON() ([]byte, error)  { return bson.Marshal(h.Export()) }
-func (h *Histogram) MarshalJSON() ([]byte, error)  { return json.Marshal(h.Export()) }
-func (h *Histogram) GetBSON() (interface{}, error) { return h.Export(), nil }
+func (h *Histogram) MarshalDocument() (*birch.Document, error) {
+	return birch.DC.Make(5).Append(
+		birch.EC.Int64("lowest", h.lowestTrackableValue),
+		birch.EC.Int64("highest", h.highestTrackableValue),
+		birch.EC.Int64("figures", h.significantFigures),
+		birch.EC.SliceInt64("counts", h.counts),
+	), nil
+}
+
+func (h *Histogram) MarshalBSON() ([]byte, error) { return birch.MarshalDocumentBSON(h) }
+func (h *Histogram) MarshalJSON() ([]byte, error) { return json.Marshal(h.Export()) }
 
 func (h *Histogram) UnmarshalBSON(in []byte) error {
 	s := &Snapshot{}
@@ -34,16 +42,6 @@ func (h *Histogram) UnmarshalBSON(in []byte) error {
 func (h *Histogram) UnmarshalJSON(in []byte) error {
 	s := &Snapshot{}
 	if err := json.Unmarshal(in, s); err != nil {
-		return errors.WithStack(err)
-	}
-
-	*h = *Import(s)
-	return nil
-}
-
-func (h *Histogram) SetBSON(raw mgobson.Raw) error {
-	s := &Snapshot{}
-	if err := raw.Unmarshal(s); err != nil {
 		return errors.WithStack(err)
 	}
 

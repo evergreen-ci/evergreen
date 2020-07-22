@@ -1,4 +1,4 @@
-package ftdc
+package metrics
 
 import (
 	"bytes"
@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/ftdc"
+	"github.com/mongodb/ftdc/testutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,7 +82,7 @@ func makeJSONRandComplex(num int) ([][]byte, error) {
 	out := [][]byte{}
 
 	for i := 0; i < num; i++ {
-		doc := randComplexDocument(100, 2)
+		doc := testutil.RandComplexDocument(100, 2)
 		data, err := json.Marshal(doc)
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -107,15 +109,17 @@ func writeStream(docs [][]byte, writer io.Writer) error {
 }
 
 func TestCollectJSON(t *testing.T) {
-	t.Parallel()
-
-	dir, err := ioutil.TempDir("build", "ftdc-")
+	buildDir, err := filepath.Abs(filepath.Join("..", "build"))
+	require.NoError(t, err)
+	dir, err := ioutil.TempDir(buildDir, "ftdc-")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	defer func() {
-		require.NoError(t, os.RemoveAll(dir))
+		if err = os.RemoveAll(dir); err != nil {
+			fmt.Println(err)
+		}
 	}()
 
 	hundredDocs, err := makeJSONRandComplex(100)
@@ -123,7 +127,6 @@ func TestCollectJSON(t *testing.T) {
 
 	t.Run("SingleReaderIdealCase", func(t *testing.T) {
 		buf := &bytes.Buffer{}
-
 		err = writeStream(hundredDocs, buf)
 		require.NoError(t, err)
 
@@ -138,16 +141,17 @@ func TestCollectJSON(t *testing.T) {
 			InputSource:   reader,
 		}
 
-		err = CollectJSONStream(ctx, opts)
+		_, err = CollectJSONStream(ctx, opts)
 		assert.NoError(t, err)
 	})
 	t.Run("SingleReaderBotchedDocument", func(t *testing.T) {
 		buf := &bytes.Buffer{}
 
-		docs, err := makeJSONRandComplex(10)
+		var docs [][]byte
+		docs, err = makeJSONRandComplex(10)
 		require.NoError(t, err)
 
-		docs[2] = docs[len(docs)-1][1:] // break the last document docuemnt
+		docs[2] = docs[len(docs)-1][1:] // break the last document
 
 		err = writeStream(docs, buf)
 		require.NoError(t, err)
@@ -163,12 +167,13 @@ func TestCollectJSON(t *testing.T) {
 			SampleCount:   100,
 		}
 
-		err = CollectJSONStream(ctx, opts)
+		_, err = CollectJSONStream(ctx, opts)
 		assert.Error(t, err)
 	})
 	t.Run("ReadFromFile", func(t *testing.T) {
 		fn := filepath.Join(dir, "json-read-file-one")
-		f, err := os.Create(fn)
+		var f *os.File
+		f, err = os.Create(fn)
 		require.NoError(t, err)
 
 		require.NoError(t, writeStream(hundredDocs, f))
@@ -182,12 +187,40 @@ func TestCollectJSON(t *testing.T) {
 			SampleCount: 100,
 		}
 
-		err = CollectJSONStream(ctx, opts)
+		_, err = CollectJSONStream(ctx, opts)
+		assert.NoError(t, err)
+	})
+	t.Run("NoOutputFilePrefix", func(t *testing.T) {
+		fn := filepath.Join(dir, "json-read-file-two")
+		var f *os.File
+		f, err = os.Create(fn)
+		require.NoError(t, err)
+
+		require.NoError(t, writeStream(hundredDocs, f))
+		require.NoError(t, f.Close())
+
+		opts := CollectJSONOptions{
+			FileName:      fn,
+			SampleCount:   100,
+			FlushInterval: 10 * time.Second,
+		}
+
+		var output []byte
+		output, err = CollectJSONStream(ctx, opts)
+
+		iter := ftdc.ReadMetrics(ctx, bytes.NewReader(output))
+		i := 0
+		for iter.Next() {
+			i++
+		}
+
+		assert.Equal(t, 100, i)
 		assert.NoError(t, err)
 	})
 	t.Run("FollowFile", func(t *testing.T) {
-		fn := filepath.Join(dir, "json-read-file-two")
-		f, err := os.Create(fn)
+		fn := filepath.Join(dir, "json-read-file-three")
+		var f *os.File
+		f, err = os.Create(fn)
 		require.NoError(t, err)
 
 		go func() {
@@ -208,7 +241,9 @@ func TestCollectJSON(t *testing.T) {
 			Follow:        true,
 		}
 
-		err = CollectJSONStream(ctx, opts)
+		var output []byte
+		output, err = CollectJSONStream(ctx, opts)
+		assert.Nil(t, output)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "operation aborted")
 	})
@@ -254,15 +289,16 @@ func TestCollectJSON(t *testing.T) {
 		}
 		ctx := context.Background()
 
-		err = CollectJSONStream(ctx, opts)
+		output, err := CollectJSONStream(ctx, opts)
+		assert.Equal(t, []byte{}, output)
 		assert.NoError(t, err)
-		_, err := os.Stat(filepath.Join(dir, "roundtrip.0"))
+		_, err = os.Stat(filepath.Join(dir, "roundtrip.0"))
 		require.False(t, os.IsNotExist(err))
 
 		fn, err := os.Open(filepath.Join(dir, "roundtrip.0"))
 		require.NoError(t, err)
 
-		iter := ReadMetrics(ctx, fn)
+		iter := ftdc.ReadMetrics(ctx, fn)
 		idx := -1
 		for iter.Next() {
 			idx++

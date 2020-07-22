@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/birch/bsontype"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +28,7 @@ func extractMetricsFromDocument(doc *birch.Document) (extractedMetrics, error) {
 		data extractedMetrics
 	)
 
-	catcher := grip.NewBasicCatcher()
+	catcher := util.NewCatcher()
 
 	for iter.Next() {
 		data, err = extractMetricsFromValue(iter.Element().Value())
@@ -58,7 +58,7 @@ func extractMetricsFromArray(array *birch.Array) (extractedMetrics, error) {
 		data extractedMetrics
 	)
 
-	catcher := grip.NewBasicCatcher()
+	catcher := util.NewCatcher()
 	iter := array.Iterator()
 
 	for iter.Next() {

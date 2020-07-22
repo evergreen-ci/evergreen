@@ -1,4 +1,4 @@
-package ftdc
+package metrics
 
 import (
 	"bufio"
@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/mongodb/ftdc"
 	"github.com/papertrail/go-tail/follower"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -46,7 +45,7 @@ func (opts CollectJSONOptions) validate() error {
 
 func (opts CollectJSONOptions) getSource() (<-chan *birch.Document, <-chan error) {
 	out := make(chan *birch.Document)
-	errs := make(chan error)
+	errs := make(chan error, 2)
 
 	switch {
 	case opts.InputSource != nil:
@@ -72,7 +71,7 @@ func (opts CollectJSONOptions) getSource() (<-chan *birch.Document, <-chan error
 				errs <- errors.Wrapf(err, "problem opening data file %s", opts.FileName)
 				return
 			}
-			defer f.Close()
+			defer func() { errs <- f.Close() }()
 			stream := bufio.NewScanner(f)
 
 			for stream.Scan() {
@@ -96,7 +95,10 @@ func (opts CollectJSONOptions) getSource() (<-chan *birch.Document, <-chan error
 				errs <- errors.Wrapf(err, "problem setting up file follower of '%s'", opts.FileName)
 				return
 			}
-			defer tail.Close()
+			defer func() {
+				tail.Close()
+				errs <- tail.Err()
+			}()
 
 			for line := range tail.Lines() {
 				doc := birch.NewDocument()
@@ -116,7 +118,7 @@ func (opts CollectJSONOptions) getSource() (<-chan *birch.Document, <-chan error
 }
 
 // CollectJSONStream provides a blocking process that reads new-line
-// seperated JSON documents from a file and creates FTDC data from
+// separated JSON documents from a file and creates FTDC data from
 // these sources.
 //
 // The Options structure allows you to define the collection intervals
@@ -124,48 +126,42 @@ func (opts CollectJSONOptions) getSource() (<-chan *birch.Document, <-chan error
 // directly from an arbitrary IO reader, or from a file. The "follow"
 // option allows you to watch the end of a file for new JSON
 // documents, a la "tail -f".
-func CollectJSONStream(ctx context.Context, opts CollectJSONOptions) error {
+func CollectJSONStream(ctx context.Context, opts CollectJSONOptions) ([]byte, error) {
 	if err := opts.validate(); err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	outputCount := 0
-	collector := NewDynamicCollector(opts.SampleCount)
+	collector := ftdc.NewDynamicCollector(opts.SampleCount)
 	flushTimer := time.NewTimer(opts.FlushInterval)
 	defer flushTimer.Stop()
 
-	flusher := func() error {
-		startAt := time.Now()
-		fn := fmt.Sprintf("%s.%d", opts.OutputFilePrefix, outputCount)
+	flusher := func() ([]byte, error) {
+		defer flushTimer.Reset(opts.FlushInterval)
 		info := collector.Info()
 
 		if info.SampleCount == 0 {
 			flushTimer.Reset(opts.FlushInterval)
-			return nil
+			return []byte{}, nil
 		}
 
 		output, err := collector.Resolve()
+		defer collector.Reset()
 		if err != nil {
-			return errors.Wrap(err, "problem resolving ftdc data")
+			return nil, errors.Wrap(err, "problem resolving ftdc data")
 		}
 
-		if err = ioutil.WriteFile(fn, output, 0600); err != nil {
-			return errors.Wrapf(err, "problem writing data to file %s", fn)
+		if opts.OutputFilePrefix == "" {
+			return output, nil
+		} else {
+			fn := fmt.Sprintf("%s.%d", opts.OutputFilePrefix, outputCount)
+			if err = ioutil.WriteFile(fn, output, 0600); err != nil {
+				return nil, errors.Wrapf(err, "problem writing data to file %s", fn)
+			}
 		}
-
-		grip.Debug(message.Fields{
-			"op":            "writing ftdc data from stream",
-			"samples":       info.SampleCount,
-			"metrics":       info.MetricsCount,
-			"file":          fn,
-			"duration_secs": time.Since(startAt).Seconds(),
-		})
 
 		outputCount++
-		collector.Reset()
-		flushTimer.Reset(opts.FlushInterval)
-
-		return nil
+		return []byte{}, nil
 	}
 
 	docs, errs := opts.getSource()
@@ -173,18 +169,21 @@ func CollectJSONStream(ctx context.Context, opts CollectJSONOptions) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("operation aborted")
+			return nil, errors.New("operation aborted")
 		case err := <-errs:
 			if err == nil || errors.Cause(err) == io.EOF {
-				return errors.Wrap(flusher(), "problem flushing results at the end of the file")
+				var output []byte
+				output, err = flusher()
+				return output, errors.Wrap(err, "problem flushing results at the end of the file")
 			}
-			return errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		case doc := <-docs:
 			if err := collector.Add(doc); err != nil {
-				return errors.Wrap(err, "problem collecting results")
+				return nil, errors.Wrap(err, "problem collecting results")
 			}
 		case <-flushTimer.C:
-			return errors.Wrap(flusher(), "problem flushing results at the end of the file")
+			output, err := flusher()
+			return output, errors.Wrap(err, "problem flushing results")
 		}
 	}
 }
