@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -44,4 +45,12 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "error disabling poisoned host")
 	}
 	return env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, &h, nil, reason))
+}
+
+func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h host.Host) error {
+	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+	j := NewHostExecuteJob(env, h, h.ProvisionOptions.SetupScript, false, "", ts)
+	j.Run(ctx)
+
+	return errors.Wrapf(j.Error(), "error running setup script for spawn host")
 }

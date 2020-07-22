@@ -236,13 +236,6 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
 
-func (h *Host) RunSpawnHostSetupScript(ctx context.Context) error {
-	if output, err := h.RunSSHShellScript(ctx, h.ProvisionOptions.SetupScript, false, ""); err != nil {
-		return errors.Wrapf(err, "error running setup script for spawn host: %s", output)
-	}
-	return nil
-}
-
 // FetchAndReinstallJasperCommands returns the command to fetch Jasper and
 // restart the service with the latest version.
 func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {

@@ -617,7 +617,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				}))
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
-			grip.Error(message.WrapError(j.host.RunSpawnHostSetupScript(ctx),
+			grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, *j.host),
 				message.Fields{
 					"message":      "failed to run setup script",
 					"task":         j.host.ProvisionOptions.TaskId,
