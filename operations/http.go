@@ -271,7 +271,7 @@ func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 
 }
 
-// GetProjct fetches the project details from the API server for a given project ID.
+// GetProject fetches the project details from the API server for a given project ID.
 func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	resp, err := ac.get(fmt.Sprintf("versions/%v/parser_project", versionId), nil)
 	if err != nil {

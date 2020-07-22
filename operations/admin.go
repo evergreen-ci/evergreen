@@ -151,6 +151,9 @@ func adminServiceChange(disable bool) cli.ActionFunc {
 		client := conf.setupRestCommunicator(ctx)
 		defer client.Close()
 
+		// kim: TODO: remove flags because they don't even get populated by the
+		// route.
+		// flags := &model.APIServiceFlags{}
 		flags, err := client.GetServiceFlags(ctx)
 		if err != nil {
 			return errors.Wrap(err, "problem getting current service flag state")
@@ -194,6 +197,7 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 	return catcher.Resolve()
 }
 
+// kim: TODO: remove because it doesn't even work.
 func viewSettings() cli.Command {
 	return cli.Command{
 		Name:   "get-settings",
