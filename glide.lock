@@ -172,7 +172,7 @@ imports:
   - name: github.com/mongodb/anser
     version: c65a2d95b0615d79b53ef467c2f836a576972857
   - name: github.com/mongodb/ftdc
-    version: 7e505d9a86240264dd35b1d900c2e88ce74f6066
+    version: fd0bfc553fcbcdfdb56f202df39992382971c3a1
 
   # GraphQL deps
   - name: github.com/99designs/gqlgen

@@ -1,6 +1,7 @@
 package ftdc
 
 import (
+	"fmt"
 	"hash/fnv"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 	"github.com/evergreen-ci/birch/bsontype"
 	"github.com/evergreen-ci/birch/decimal"
 	"github.com/evergreen-ci/birch/types"
-	"github.com/mongodb/grip/message"
+	"github.com/mongodb/ftdc/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -161,33 +162,24 @@ func TestReadDocument(t *testing.T) {
 			len: 1,
 		},
 		{
-			name:        "BSONMap",
-			in:          bson.M{},
-			shouldError: true,
-		},
-		{
-			name:        "BSONMapPopulated",
-			in:          bson.M{"foo": "bar"},
-			shouldError: true,
-		},
-		{
-			name:        "MessageFieldsMap",
-			in:          message.Fields{},
-			shouldError: true,
-		},
-		{
-			name:        "MessageFieldsMapPopulated",
-			in:          message.Fields{"foo": "bar"},
-			shouldError: true,
-		},
-		{
 			name:        "Map",
 			in:          map[string]interface{}{},
-			shouldError: true,
+			shouldError: false,
 		},
 		{
 			name:        "MapPopulated",
 			in:          map[string]interface{}{"foo": "bar"},
+			shouldError: false,
+			len:         1,
+		},
+		{
+			name:        "StringMapEmpty",
+			in:          map[string]string{},
+			shouldError: true,
+		},
+		{
+			name:        "StringMap",
+			in:          map[string]string{"foo": "bar"},
 			shouldError: true,
 		},
 	} {
@@ -623,7 +615,7 @@ func TestExtractingMetrics(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, test.NumEncodedValues, len(metrics.values))
 
-			keys, num := isMetricsValue("keyname", test.Value)
+			keys, num := testutil.IsMetricsValue("keyname", test.Value)
 			if test.NumEncodedValues > 0 {
 				assert.EqualValues(t, test.FirstEncodedValue, metrics.values[0].Interface())
 				assert.True(t, len(keys) >= 1)
@@ -931,7 +923,7 @@ func TestMetricsHashValue(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Run("Legacy", func(t *testing.T) {
-				keys, num := isMetricsValue("key", test.value)
+				keys, num := testutil.IsMetricsValue("key", test.value)
 				assert.Equal(t, test.expectedNum, num)
 				assert.Equal(t, test.keyElems, len(keys))
 			})
@@ -1084,7 +1076,7 @@ func TestMetricsToElement(t *testing.T) {
 			if !test.isDocument {
 				assert.Equal(t, test.expected, elem)
 			} else {
-				assert.True(t, test.expected.Value().MutableDocument().Equal(elem.Value().MutableDocument()))
+				assert.Equal(t, fmt.Sprint(test.expected.Value().Interface()), fmt.Sprint(elem.Value().Interface()))
 			}
 
 		})

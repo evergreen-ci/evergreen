@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/birch/bsontype"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -46,9 +46,7 @@ func (m *Metric) getSeries() interface{} {
 	switch m.originalType {
 	case bsontype.Int64, bsontype.Timestamp:
 		out := make([]int64, len(m.Values))
-		for idx, p := range m.Values {
-			out[idx] = p
-		}
+		copy(out, m.Values)
 		return out
 	case bsontype.Int32:
 		out := make([]int32, len(m.Values))
@@ -85,7 +83,7 @@ type matrixIterator struct {
 	metadata *birch.Document
 	document *birch.Document
 	pipe     chan *birch.Document
-	catcher  grip.Catcher
+	catcher  util.Catcher
 	reflect  bool
 }
 

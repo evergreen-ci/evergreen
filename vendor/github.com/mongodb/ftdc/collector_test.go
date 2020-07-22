@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,9 +19,7 @@ func TestCollectorInterface(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	t.Parallel()
-	collectors := createCollectors()
-	for _, collect := range collectors {
+	for _, collect := range createCollectors(ctx) {
 		t.Run(collect.name, func(t *testing.T) {
 			tests := createTests()
 
@@ -37,9 +35,7 @@ func TestCollectorInterface(t *testing.T) {
 				t.Run(test.name, func(t *testing.T) {
 					collector := collect.factory()
 
-					assert.NotPanics(t, func() {
-						collector.SetMetadata(createEventRecord(42, int64(time.Minute), rand.Int63n(7), 4))
-					})
+					assert.NoError(t, collector.SetMetadata(testutil.CreateEventRecord(42, int64(time.Minute), rand.Int63n(7), 4)))
 
 					info := collector.Info()
 					assert.Zero(t, info)
@@ -83,10 +79,10 @@ func TestCollectorInterface(t *testing.T) {
 				}
 				for name, docs := range map[string][]*birch.Document{
 					"Integers": []*birch.Document{
-						randFlatDocument(5),
-						randFlatDocument(5),
-						randFlatDocument(5),
-						randFlatDocument(5),
+						testutil.RandFlatDocument(5),
+						testutil.RandFlatDocument(5),
+						testutil.RandFlatDocument(5),
+						testutil.RandFlatDocument(5),
 					},
 					"DecendingHandIntegers": []*birch.Document{
 						birch.NewDocument(birch.EC.Int64("one", 43), birch.EC.Int64("two", 5)),
@@ -102,6 +98,7 @@ func TestCollectorInterface(t *testing.T) {
 							count++
 							assert.NoError(t, collector.Add(d))
 						}
+						time.Sleep(time.Millisecond) // force context switch so that the buffered collector flushes
 						info := collector.Info()
 						require.Equal(t, info.SampleCount, count)
 
@@ -116,7 +113,7 @@ func TestCollectorInterface(t *testing.T) {
 							t.Run(fmt.Sprintf("DocumentNumber_%d", idx), func(t *testing.T) {
 								s := iter.Document()
 
-								if !assert.True(t, s.Equal(docs[idx])) {
+								if !assert.Equal(t, fmt.Sprint(s), fmt.Sprint(docs[idx])) {
 									fmt.Println("---", idx)
 									fmt.Println("in: ", docs[idx])
 									fmt.Println("out:", s)
@@ -180,10 +177,7 @@ func TestStreamingEncoding(t *testing.T) {
 						}
 						require.NoError(t, iter.Err())
 						require.Equal(t, len(test.dataset), len(res))
-						if !assert.Equal(t, test.dataset, res) {
-							grip.Infoln("in:", test.dataset)
-							grip.Infoln("out:", res)
-						}
+						assert.Equal(t, test.dataset, res)
 					})
 					t.Run("MultipleValues", func(t *testing.T) {
 						collector, buf := impl.factory()
@@ -213,7 +207,7 @@ func TestStreamingEncoding(t *testing.T) {
 							res = append(res, val)
 							idx := len(res) - 1
 
-							assert.True(t, doc.Equal(docs[idx]))
+							assert.Equal(t, fmt.Sprint(doc), fmt.Sprint(docs[idx]))
 						}
 
 						require.NoError(t, iter.Err())
@@ -258,7 +252,7 @@ func TestStreamingEncoding(t *testing.T) {
 							res = append(res, val)
 							idx := len(res) - 1
 
-							assert.True(t, doc.Equal(docs[idx]))
+							assert.Equal(t, fmt.Sprint(doc), fmt.Sprint(docs[idx]))
 						}
 
 						require.NoError(t, iter.Err())
@@ -305,7 +299,7 @@ func TestStreamingEncoding(t *testing.T) {
 							res = append(res, val)
 							idx := len(res) - 1
 
-							assert.True(t, doc.Equal(docs[idx]))
+							assert.Equal(t, fmt.Sprint(doc), fmt.Sprint(docs[idx]))
 						}
 						require.NoError(t, iter.Err())
 						require.Equal(t, len(test.dataset), len(res), "%v -> %v", test.dataset, res)
@@ -320,7 +314,6 @@ func TestStreamingEncoding(t *testing.T) {
 func TestFixedEncoding(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	t.Parallel()
 
 	for _, impl := range []struct {
 		name    string
@@ -363,10 +356,7 @@ func TestFixedEncoding(t *testing.T) {
 						}
 						require.NoError(t, iter.Err())
 						require.Equal(t, len(test.dataset), len(res))
-						if !assert.Equal(t, test.dataset, res) {
-							grip.Infoln("in:", test.dataset)
-							grip.Infoln("out:", res)
-						}
+						assert.Equal(t, test.dataset, res)
 					})
 					t.Run("MultipleValues", func(t *testing.T) {
 						collector := impl.factory()
@@ -395,7 +385,7 @@ func TestFixedEncoding(t *testing.T) {
 							res = append(res, val)
 							idx := len(res) - 1
 
-							assert.True(t, doc.Equal(docs[idx]))
+							assert.Equal(t, fmt.Sprint(doc), fmt.Sprint(docs[idx]))
 						}
 
 						require.NoError(t, iter.Err())

@@ -33,6 +33,7 @@ func (c *betterCollector) SetMetadata(in interface{}) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	c.metadata = doc
 	return nil
 }
@@ -45,14 +46,13 @@ func (c *betterCollector) Reset() {
 
 func (c *betterCollector) Info() CollectorInfo {
 	var num int
+
 	if c.reference != nil {
 		num++
 	}
 
 	var metricsCount int
-	if c.lastSample == nil {
-		metricsCount = 0
-	} else {
+	if c.lastSample != nil {
 		metricsCount = len(c.lastSample.values)
 	}
 
@@ -127,7 +127,7 @@ func (c *betterCollector) Resolve() ([]byte, error) {
 
 	buf := bytes.NewBuffer([]byte{})
 	if c.metadata != nil {
-		_, err := birch.NewDocument(
+		_, err = birch.NewDocument(
 			birch.EC.Time("_id", c.startedAt),
 			birch.EC.Int32("type", 0),
 			birch.EC.SubDocument("doc", c.metadata)).WriteTo(buf)

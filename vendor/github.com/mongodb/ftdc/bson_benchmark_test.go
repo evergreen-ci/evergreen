@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/mongodb/ftdc/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,20 +18,8 @@ func BenchmarkHashBSON(b *testing.B) {
 		HashFunc metricHashFunc
 	}{
 		{
-			Name:     "Legacy",
-			HashFunc: metricsHash,
-		},
-		{
 			Name:     "FNVChecksum",
 			HashFunc: metricKeyHash,
-		},
-		{
-			Name:     "SHA1Checksum",
-			HashFunc: metricKeySHA1,
-		},
-		{
-			Name:     "MD5Checksum",
-			HashFunc: metricKeyMD5,
 		},
 	} {
 		b.Run(impl.Name, func(b *testing.B) {
@@ -40,31 +29,31 @@ func BenchmarkHashBSON(b *testing.B) {
 			}{
 				{
 					Name: "FlatSmall",
-					Doc:  randFlatDocument(10),
+					Doc:  testutil.RandFlatDocument(10),
 				},
 				{
 					Name: "FlatLarge",
-					Doc:  randFlatDocument(100),
+					Doc:  testutil.RandFlatDocument(100),
 				},
 				{
 					Name: "ComplexSmall",
-					Doc:  randComplexDocument(10, 5),
+					Doc:  testutil.RandComplexDocument(10, 5),
 				},
 				{
 					Name: "ComplexLarge",
-					Doc:  randComplexDocument(100, 5),
+					Doc:  testutil.RandComplexDocument(100, 5),
 				},
 				{
 					Name: "MoreComplexSmall",
-					Doc:  randComplexDocument(10, 2),
+					Doc:  testutil.RandComplexDocument(10, 2),
 				},
 				{
 					Name: "MoreComplexLarge",
-					Doc:  randComplexDocument(100, 2),
+					Doc:  testutil.RandComplexDocument(100, 2),
 				},
 				{
 					Name: "EventMock",
-					Doc:  createEventRecord(2, 2, 2, 2),
+					Doc:  testutil.CreateEventRecord(2, 2, 2, 2),
 				},
 			} {
 				b.Run(test.Name, func(b *testing.B) {
@@ -98,36 +87,36 @@ func BenchmarkDocumentCreation(b *testing.B) {
 			Name:      "Flat",
 			Samples:   1000,
 			Length:    15,
-			Reference: randFlatDocument(15),
-			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return randFlatDocument(15) }),
+			Reference: testutil.RandFlatDocument(15),
+			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return testutil.RandFlatDocument(15) }),
 		},
 		{
 			Name:      "SmallFlat",
 			Samples:   1000,
 			Length:    5,
-			Reference: randFlatDocument(5),
-			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return randFlatDocument(5) }),
+			Reference: testutil.RandFlatDocument(5),
+			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return testutil.RandFlatDocument(5) }),
 		},
 		{
 			Name:      "LargeFlat",
 			Samples:   1000,
 			Length:    15,
-			Reference: randFlatDocument(15),
-			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return randFlatDocument(100) }),
+			Reference: testutil.RandFlatDocument(15),
+			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return testutil.RandFlatDocument(100) }),
 		},
 		{
 			Name:      "Complex",
 			Samples:   1000,
 			Length:    60,
-			Reference: randComplexDocument(20, 3),
-			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return randComplexDocument(20, 3) }),
+			Reference: testutil.RandComplexDocument(20, 3),
+			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return testutil.RandComplexDocument(20, 3) }),
 		},
 		{
 			Name:      "SmallComplex",
 			Samples:   1000,
 			Length:    10,
-			Reference: randComplexDocument(5, 1),
-			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return randComplexDocument(5, 1) }),
+			Reference: testutil.RandComplexDocument(5, 1),
+			Metrics:   produceMockMetrics(ctx, 1000, func() *birch.Document { return testutil.RandComplexDocument(5, 1) }),
 		},
 	} {
 		var doc *birch.Document
