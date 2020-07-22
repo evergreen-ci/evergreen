@@ -620,11 +620,10 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 }
 
 func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings, error) {
-	// kim: TODO: replace with GET admin/settings since that's the new route
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/settings",
 	}
 
 	resp, err := c.request(ctx, info, "")
