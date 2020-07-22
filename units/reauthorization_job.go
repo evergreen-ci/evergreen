@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -120,17 +121,34 @@ func (j *reauthorizationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = um.ReauthorizeUser(j.user); err != nil {
+	err = um.ReauthorizeUser(j.user)
+
+	// This handles a special Okta case in which the user's refresh token from
+	// Okta has expired, in which case they should be logged out, so that they
+	// are forced to log in to get a new refresh token.
+	if err != nil && strings.Contains(err.Error(), "invalid_grant") {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "user's refresh token is invalid, logging them out",
+			"user":    j.UserID,
+			"job":     j.ID(),
+		}))
+		if err = user.ClearLoginCache(j.user, false); err != nil {
+			j.AddError(errors.Wrapf(err, "clearing login cache for user '%s'", j.UserID))
+		}
+		return
+	}
+
+	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not reauthorize user",
-			"user":    j.user.Username(),
+			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
 		j.AddError(err)
 		if err := j.user.IncReauthAttempts(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to modify user reauth attempts",
-				"user":    j.user.Username(),
+				"user":    j.UserID,
 				"job":     j.ID(),
 			}))
 		}
