@@ -36,6 +36,7 @@ const (
 	quietFlagName             = "quiet"
 	dirFlagName               = "dir"
 	uncommittedChangesFlag    = "uncommitted"
+	preserveCommitsFlag       = "preserve-commits"
 	subscriptionTypeFlag      = "subscription-type"
 
 	anserDryRunFlagName      = "dry-run"
@@ -271,6 +272,13 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(uncommittedChangesFlag, "u"),
 		Usage: "include uncommitted changes",
+	})
+}
+
+func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  preserveCommitsFlag,
+		Usage: "preserve separate commits",
 	})
 }
 

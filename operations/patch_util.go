@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -68,6 +69,7 @@ type patchParams struct {
 	Large             bool
 	ShowSummary       bool
 	Uncommitted       bool
+	PreserveCommits   bool
 	Ref               string
 }
 
@@ -571,6 +573,79 @@ func gitUncommittedChanges() (bool, error) {
 		return false, errors.Wrap(err, "can't run git status")
 	}
 	return len(out) != 0, nil
+}
+
+func diffToMbox(diffData *localDiff, subject string) (string, error) {
+	metadata, err := getGitMetadata()
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting git metadata")
+	}
+
+	mboxTemplate, err := template.New("mbox").Parse(`From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+Date: {{.Metadata.CurrentTime}}
+Subject: {{.Subject}}
+
+---
+{{.DiffStat}}
+
+{{.DiffContent}}
+--
+{{.Metadata.GitVersion}}
+`)
+	if err != nil {
+		return "", errors.New("problem parsing mbox template")
+	}
+	out := bytes.Buffer{}
+	err = mboxTemplate.Execute(&out, struct {
+		Metadata    GitMetadata
+		DiffStat    string
+		DiffContent string
+		Subject     string
+	}{
+		Metadata:    metadata,
+		DiffStat:    diffData.log,
+		DiffContent: diffData.fullPatch,
+		Subject:     subject,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "problem parsing mbox template")
+	}
+
+	return out.String(), nil
+}
+
+type GitMetadata struct {
+	Username    string
+	Email       string
+	CurrentTime string
+	GitVersion  string
+}
+
+func getGitMetadata() (GitMetadata, error) {
+	var err error
+	metadata := GitMetadata{}
+	metadata.Username, err = gitCmd("config", "user.name")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git user.name")
+	}
+	metadata.Email, err = gitCmd("config", "user.email")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git user.email")
+	}
+	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
+
+	versionString, err := gitCmd("version")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git version")
+	}
+	r := regexp.MustCompile(`^git version (\d+)$`)
+	matches := r.FindStringSubmatch(versionString)
+	if len(matches) != 2 {
+		return metadata, errors.Errorf("can't get version number from version string '%s'", versionString)
+	}
+	metadata.GitVersion = matches[1]
+
+	return metadata, nil
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {

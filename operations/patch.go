@@ -46,15 +46,19 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 func Patch() cli.Command {
 	return cli.Command{
 		Name: "patch",
-		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
-			catcher := grip.NewBasicCatcher()
-			for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
-				if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
-					catcher.Errorf("invalid sync status '%s'", status)
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
+			func(c *cli.Context) error {
+				catcher := grip.NewBasicCatcher()
+				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
+					if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
+						catcher.Errorf("invalid sync status '%s'", status)
+					}
 				}
-			}
-			return catcher.Resolve()
-		}),
+				return catcher.Resolve()
+			},
+		),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to evergreen",
 		Flags:   getPatchFlags(),
@@ -78,6 +82,7 @@ func Patch() cli.Command {
 				Alias:             c.String(patchAliasFlagName),
 				Ref:               c.String(refFlagName),
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
+				PreserveCommits:   c.Bool(preserveCommitsFlag),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -93,12 +98,10 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
 
-			useMbox := true
 			if uncommittedChanges {
-				if params.Uncommitted || conf.UncommittedChanges {
-					grip.Info("Patches with uncommitted changes cannot be enqueued on a commit queue.")
-					useMbox = false
-				} else {
+				if params.PreserveCommits {
+					grip.Infof("Uncommitted changes are omitted from patches when commits are preserved")
+				} else if !params.Uncommitted && !conf.UncommittedChanges {
 					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
 				}
 			}
@@ -116,15 +119,21 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, "", useMbox, args...)
-			if err != nil {
-				return err
-			}
-
 			if params.Description == "" {
 				params.Description, err = getDefaultDescription()
 				if err != nil {
 					grip.Error(err)
+				}
+			}
+
+			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
+			if err != nil {
+				return err
+			}
+			if !params.PreserveCommits {
+				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
+				if err != nil {
+					return err
 				}
 			}
 
