@@ -63,6 +63,7 @@ func (aws *awsSns) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (aws *awsSns) Run(ctx context.Context) gimlet.Responder {
+	// Subscription/Unsubscription is a rare action that we will handle manually and will be logged to splunk given the logging level.
 	switch aws.messageType {
 	case messageTypeSubscriptionConfirmation:
 		grip.Alert(message.Fields{
