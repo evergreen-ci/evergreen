@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -54,11 +55,6 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			existingPatch, err := ac.GetPatch(patchID)
-			if err != nil {
-				return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
-			}
-
 			uncommittedChanges, err := gitUncommittedChanges()
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
@@ -102,6 +98,10 @@ func PatchSetModule() cli.Command {
 				return err
 			}
 			if !preserveCommits {
+				var existingPatch *patch.Patch
+				if existingPatch, err = ac.GetPatch(patchID); err != nil {
+					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
+				}
 				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
 				if err != nil {
 					return err

@@ -100,7 +100,7 @@ func Patch() cli.Command {
 
 			if uncommittedChanges {
 				if params.PreserveCommits {
-					grip.Infof("Uncommitted changes are omitted from patches when commits are preserved")
+					grip.Infof("Uncommitted changes are omitted from patches when commits are preserved.")
 				} else if !params.Uncommitted && !conf.UncommittedChanges {
 					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
 				}

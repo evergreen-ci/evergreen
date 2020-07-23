@@ -586,7 +586,7 @@ func diffToMbox(diffData *localDiff, subject string) (string, error) {
 }
 
 func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
-	mboxTemplate, err := template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
 From: {{.Metadata.Username}} <{{.Metadata.Email}}>
 Date: {{.Metadata.CurrentTime}}
 Subject: {{.Metadata.Subject}}
@@ -597,12 +597,10 @@ Subject: {{.Metadata.Subject}}
 {{.DiffContent}}
 --
 {{.Metadata.GitVersion}}
-`)
-	if err != nil {
-		return "", errors.New("problem parsing mbox template")
-	}
+`))
+
 	out := bytes.Buffer{}
-	err = mboxTemplate.Execute(&out, struct {
+	err := mboxTemplate.Execute(&out, struct {
 		Metadata    GitMetadata
 		DiffStat    string
 		DiffContent string
@@ -612,7 +610,7 @@ Subject: {{.Metadata.Subject}}
 		DiffContent: diffData.fullPatch,
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "problem parsing mbox template")
+		return "", errors.Wrap(err, "problem executing mbox template")
 	}
 
 	return out.String(), nil
@@ -643,6 +641,8 @@ func getGitConfigMetadata() (GitMetadata, error) {
 
 	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
 
+	// We need the just version number, but git gives it as part of a larger string.
+	// Parse the version number out of the version string.
 	versionString, err := gitCmd("version")
 	if err != nil {
 		return metadata, errors.Wrap(err, "can't get git version")
@@ -650,7 +650,6 @@ func getGitConfigMetadata() (GitMetadata, error) {
 	versionString = strings.TrimSpace(versionString)
 	matches := regexp.MustCompile(`^git version (\d+(\.\d+)+)$`).FindStringSubmatch(versionString)
 	if len(matches) < 2 {
-		grip.Info(matches)
 		return metadata, errors.Errorf("can't get version number from version string '%s'", versionString)
 	}
 	metadata.GitVersion = matches[1]
