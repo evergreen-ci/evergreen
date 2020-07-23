@@ -403,8 +403,13 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			}
 			var getTaskDataCmd string
-			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{fetchCmd}})
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
+				settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				options.Create{
+					Args: fetchCmd,
+					Tags: []string{evergreen.HostFetchTag},
+				})
 			if err != nil {
 				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
@@ -654,10 +659,9 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	if err != nil {
 		return "", errors.Wrap(err, "could not marshal input")
 	}
+	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath))
-
-	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	return strings.Join([]string{
 		strings.Join(jcli.BuildClientCommand(h.JasperBinaryFilePath(config)), " "),
@@ -997,7 +1001,7 @@ func (h *Host) CheckProvisioningHostFinished(ctx context.Context, env evergreen.
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	return h.withTaggedProcs(ctx, env, evergreen.ProvisioningHostTag, func(procs []jasper.Process) error {
+	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
 		grip.WarningWhen(len(procs) > 1, message.Fields{
 			"message":   fmt.Sprintf("host is attempting to provision host multiple times"),
 			"num_procs": len(procs),

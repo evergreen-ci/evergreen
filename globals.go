@@ -150,8 +150,8 @@ const (
 	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
 
-	AgentMonitorTag     = "agent-monitor"
-	ProvisioningHostTag = "ProvisioningHostTag"
+	AgentMonitorTag = "agent-monitor"
+	HostFetchTag    = "HostFetchTag"
 
 	DegradedLoggingPercent = 10
 

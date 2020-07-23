@@ -696,7 +696,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		// use the correct SSH key when using fetch instead of pull.
 		logs, err = j.host.RunJasperProcess(getTaskDataCtx, j.env, &options.Create{
 			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
-			Tags: []string{evergreen.ProvisioningHostTag},
+			Tags: []string{evergreen.HostFetchTag},
 		})
 		output = strings.Join(logs, " ")
 	}
