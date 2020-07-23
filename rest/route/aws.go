@@ -78,7 +78,7 @@ func (aws *awsSns) Run(ctx context.Context) gimlet.Responder {
 		})
 	case messageTypeNotification:
 		// TODO: handle the message
-		grip.Alert(message.Fields{
+		grip.Info(message.Fields{
 			"message":         "got an AWS SNS notification",
 			"payload_subject": aws.payload.Subject,
 			"payload_message": aws.payload.Message,
