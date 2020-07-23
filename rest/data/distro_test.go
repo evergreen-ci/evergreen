@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
@@ -57,6 +58,39 @@ func TestFindAllDistros(t *testing.T) {
 	found, err := sc.FindAllDistros()
 	assert.NoError(err)
 	assert.Len(found, numDistros)
+}
+
+func TestDeleteDistroById(t *testing.T) {
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	require.NoError(t, err)
+	defer session.Close()
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
+	defer func() {
+		assert.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
+	}()
+
+	sc := &DBConnector{}
+
+	d := distro.Distro{
+		Id: "distro",
+	}
+	require.NoError(t, d.Insert())
+
+	queue := model.TaskQueue{
+		Distro: d.Id,
+		Queue:  []model.TaskQueueItem{{Id: "task"}},
+	}
+	require.NoError(t, queue.Save())
+
+	require.NoError(t, sc.DeleteDistroById(d.Id))
+
+	dbDistro, err := sc.FindDistroById(d.Id)
+	assert.Error(t, err)
+	assert.Zero(t, dbDistro)
+
+	dbQueue, err := model.LoadTaskQueue(queue.Distro)
+	assert.Error(t, err)
+	assert.Empty(t, dbQueue.Queue)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
