@@ -9,11 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -106,8 +104,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	// For missing (likely deleted) distros, decommission hosts and clear the
-	// task queues.
 	if len(distroIDsToFind) > len(distrosFound) {
 		distroIDsFound := make([]string, 0, len(distrosFound))
 		for _, d := range distrosFound {
@@ -121,10 +117,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		}
 		for _, h := range hosts {
 			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, "distro is missing"), "could not set host '%s' as decommissioned", h.Id))
-		}
-		for _, distroID := range missingDistroIDs {
-			pp.Println("clearing task queue:", distroID)
-			j.AddError(errors.Wrapf(model.ClearTaskQueue(distroID), "clearing task queue for missing distro '%s'", distroID))
 		}
 
 		if j.HasErrors() {
