@@ -641,7 +641,7 @@ func getGitConfigMetadata() (GitMetadata, error) {
 
 	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
 
-	// We need the just version number, but git gives it as part of a larger string.
+	// We need just the version number, but git gives it as part of a larger string.
 	// Parse the version number out of the version string.
 	versionString, err := gitCmd("version")
 	if err != nil {
