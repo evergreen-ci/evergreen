@@ -7,19 +7,20 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	system_metrics "github.com/evergreen-ci/timber/system_metrics"
-
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/ftdc/metrics"
+	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/process"
 )
 
 type MetricCollector interface {
 	Name() string
-	Metadata() interface{}
+	SetMetadata() interface{}
 	Collect() (interface{}, error)
 }
 
@@ -38,19 +39,79 @@ type SystemMetricCollector struct {
 	closed      bool
 }
 
-func (collector MetricCollector) Collect(ctx context.Context, metricType string) {
-	diskUsage, _ := disk.Usage("/")
-	diskJson, _ := json.Marshal(diskUsage)
+type DiskUsageCollector struct {
+	collector SystemMetricCollector
+	metadata  *birch.Document
+}
+
+type UptimeCollector struct {
+	collector SystemMetricCollector
+	metadata  *birch.Document
+}
+
+type ProcessCollector struct {
+	collector SystemMetricCollector
+	metadata  *birch.Document
+}
+
+func (collector *DiskUsageCollector) Name() string {
+	return "disk_usage"
+}
+
+func (collector *UptimeCollector) Name() string {
+	return "uptime"
+}
+
+func (collector *ProcessCollector) Name() string {
+	return "process"
+}
+
+func (collector *DiskUsageCollector) Metadata(metadata interface{}) {
+	//collector.metadata = metadata
+}
+
+func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
+	metric, err := disk.Usage("/")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+
+	return convertJSONToFTDC(ctx, metric)
+}
+
+func (collector *UptimeCollector) Collect(ctx context.Context) ([]byte, error) {
+	metric, err := host.Uptime()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+
+	return convertJSONToFTDC(ctx, metric)
+}
+
+func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) {
+	metric, err := process.Processes()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+
+	return convertJSONToFTDC(ctx, metric)
+}
+
+func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
+	jsonMetrics, err := json.Marshal(metric)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting metrics to JSON")
+	}
 
 	opts := metrics.CollectJSONOptions{
-		OutputFilePrefix: "test",
-		InputSource:      bytes.NewReader(diskJson),
-		SampleCount:      100,
-		FlushInterval:    100 * time.Millisecond,
+		InputSource:   bytes.NewReader(jsonMetrics),
+		SampleCount:   100,
+		FlushInterval: 100 * time.Millisecond,
 	}
 
-	err := metrics.CollectJSONStream(ctx, opts)
+	output, err := metrics.CollectJSONStream(ctx, opts)
 	if err != nil {
-		pp.Println("error in CollectJSONStream")
+		return nil, errors.Wrap(err, "problem converting FTDC to JSON")
 	}
+	return output, nil
 }
