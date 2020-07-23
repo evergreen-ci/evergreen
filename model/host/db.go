@@ -1081,7 +1081,6 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	if params.Region != "" {
 		filter[bsonutil.GetDottedKeyName(DistroKey, distro.ProviderSettingsListKey, awsRegionKey)] = params.Region
 	}
-
 	hosts, err := Find(db.Query(filter))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")

@@ -1,0 +1,10 @@
+{
+  hosts(sortBy: IDLE_TIME) {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      uptime
+    }
+  }
+}

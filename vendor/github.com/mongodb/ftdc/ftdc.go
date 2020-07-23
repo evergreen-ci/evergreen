@@ -24,7 +24,7 @@ func (c *Chunk) Len() int                     { return len(c.Metrics) }
 
 // Iterator returns an iterator that you can use to read documents for
 // each sample period in the chunk. Documents are returned in collection
-// order, with keys flattened and dot-seperated fully qualified
+// order, with keys flattened and dot-separated fully qualified
 // paths.
 //
 // The documents are constructed from the metrics data lazily.

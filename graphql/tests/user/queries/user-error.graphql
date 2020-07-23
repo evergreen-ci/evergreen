@@ -1,0 +1,6 @@
+{
+  user(userId: "nonexistent-userid") {
+    displayName
+    userId
+  }
+}

@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/mongodb/ftdc"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
+	"github.com/pkg/errors"
 )
 
 type intervalStream struct {
-	point     Performance
+	point     *Performance
 	started   time.Time
 	collector ftdc.Collector
-	catcher   grip.Catcher
+	catcher   util.Catcher
 	sync.Mutex
 
 	interval time.Duration
@@ -21,19 +22,20 @@ type intervalStream struct {
 	canceler context.CancelFunc
 }
 
-// NewIntervalRecorder has similar semantics to the collapsed
-// recorder, but has a background process that persists data on the
-// specified interval.
+// NewIntervalRecorder has similar semantics to histogram Grouped recorder,
+// but has a background process that persists data on the specified on the
+// specified interval rather than as a side effect of the EndTest call.
 //
-// The background thread is started if it doesn't exist in the Begin
-// operation  and is terminated by the Flush operation.
+// The background thread is started in the BeginIteration operation if it
+// does not already exist and is terminated by the EndTest operation.
 //
 // The interval recorder is safe for concurrent use.
 func NewIntervalRecorder(ctx context.Context, collector ftdc.Collector, interval time.Duration) Recorder {
 	return &intervalStream{
 		collector: collector,
 		rootCtx:   ctx,
-		catcher:   grip.NewExtendedCatcher(),
+		point:     &Performance{Timestamp: time.Time{}},
+		catcher:   util.NewCatcher(),
 		interval:  interval,
 	}
 }
@@ -48,23 +50,20 @@ func (r *intervalStream) worker(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			r.Lock()
-			if r.point.Timestamp.IsZero() {
-				r.point.Timestamp = r.started
+			// check context error in case in between the time when
+			// the lock is requested and when the lock is obtained,
+			// the context has been canceled
+			if ctx.Err() != nil {
+				return
 			}
-
+			r.point.setTimestamp(r.started)
 			r.catcher.Add(r.collector.Add(r.point))
-			r.point = Performance{
+			r.point = &Performance{
 				Gauges: r.point.Gauges,
 			}
 			r.Unlock()
 		}
 	}
-}
-
-func (r *intervalStream) Reset() {
-	r.Lock()
-	r.started = time.Time{}
-	r.Unlock()
 }
 
 func (r *intervalStream) SetTime(t time.Time) {
@@ -79,7 +78,7 @@ func (r *intervalStream) SetID(id int64) {
 	r.Unlock()
 }
 
-func (r *intervalStream) Begin() {
+func (r *intervalStream) BeginIteration() {
 	r.Lock()
 	if r.canceler == nil {
 		// start new background ticker
@@ -90,12 +89,14 @@ func (r *intervalStream) Begin() {
 	}
 
 	r.started = time.Now()
+	r.point.setTimestamp(r.started)
 	r.Unlock()
 }
 
-func (r *intervalStream) End(dur time.Duration) {
+func (r *intervalStream) EndIteration(dur time.Duration) {
 	r.Lock()
 
+	r.point.setTimestamp(r.started)
 	if !r.started.IsZero() {
 		r.point.Timers.Total += time.Since(r.started)
 		r.started = time.Time{}
@@ -105,30 +106,35 @@ func (r *intervalStream) End(dur time.Duration) {
 	r.Unlock()
 }
 
-func (r *intervalStream) Flush() error {
+func (r *intervalStream) EndTest() error {
 	r.Lock()
-	r.canceler()
-	r.canceler = nil
 
-	if r.point.Timestamp.IsZero() {
-		if !r.started.IsZero() {
-			r.point.Timestamp = r.started
-		} else {
-			r.point.Timestamp = time.Now()
-		}
+	if !r.point.Timestamp.IsZero() {
+		r.catcher.Add(r.collector.Add(r.point))
 	}
-
-	r.catcher.Add(r.collector.Add(r.point))
 	err := r.catcher.Resolve()
-	r.catcher = grip.NewExtendedCatcher()
-	r.point = Performance{
+	r.reset()
+
+	r.Unlock()
+	return errors.WithStack(err)
+}
+
+func (r *intervalStream) Reset() {
+	r.Lock()
+	r.reset()
+	r.Unlock()
+}
+
+func (r *intervalStream) reset() {
+	if r.canceler != nil {
+		r.canceler()
+		r.canceler = nil
+	}
+	r.catcher = util.NewCatcher()
+	r.point = &Performance{
 		Gauges: r.point.Gauges,
 	}
 	r.started = time.Time{}
-
-	r.Unlock()
-
-	return err
 }
 
 func (r *intervalStream) SetTotalDuration(dur time.Duration) {
@@ -149,7 +155,7 @@ func (r *intervalStream) IncIterations(val int64) {
 	r.Unlock()
 }
 
-func (r *intervalStream) IncOps(val int64) {
+func (r *intervalStream) IncOperations(val int64) {
 	r.Lock()
 	r.point.Counters.Operations += val
 	r.Unlock()
