@@ -89,7 +89,7 @@ func TestDeleteDistroById(t *testing.T) {
 	assert.Zero(t, dbDistro)
 
 	dbQueue, err := model.LoadTaskQueue(queue.Distro)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Empty(t, dbQueue.Queue)
 }
 
