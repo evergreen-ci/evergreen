@@ -47,7 +47,7 @@ func makeHostSetupScriptJob() *hostSetupScriptJob {
 
 // NewHostSetupScriptJob creates a job that executes the setup script after task data is loaded onto the host.
 func NewHostSetupScriptJob(env evergreen.Environment, h host.Host) amboy.Job {
-	j := makeHostExecuteJob()
+	j := makeHostSetupScriptJob()
 	j.env = env
 	j.host = &h
 	j.HostID = h.Id
