@@ -253,9 +253,13 @@ func TestJasperCommands(t *testing.T) {
 			require.NoError(t, err)
 
 			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
-			pullTaskSync, err := h.buildLocalJasperClientRequest(settings.HostJasper,
+			pullTaskSync, err := h.buildLocalJasperClientRequest(
+				settings.HostJasper,
 				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{bashPullTaskSync}})
+				options.Create{
+					Args: bashPullTaskSync,
+					Tags: []string{evergreen.HostFetchTag},
+				})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
