@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/shrub"
@@ -24,7 +23,6 @@ func TestGolangGenerate(t *testing.T) {
 
 		scriptingCmd := task.Commands[1]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
-		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		env, ok := scriptingCmd.Params["env"].(map[string]interface{})
 		require.True(t, ok)
@@ -44,7 +42,6 @@ func TestGolangGenerate(t *testing.T) {
 
 		scriptingCmd := task.Commands[1]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
-		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		taskEnv, ok := scriptingCmd.Params["env"].(map[string]interface{})
 		require.True(t, ok)
@@ -57,7 +54,6 @@ func TestGolangGenerate(t *testing.T) {
 		scriptingCmd := task.Commands[0]
 		assert.Equal(t, shrub.CmdSubprocessScripting{}.Name(), scriptingCmd.CommandName)
 		gopath := g.Environment["GOPATH"]
-		assert.Equal(t, gopath, scriptingCmd.Params["harness_path"])
 		projectPath := g.RelProjectPath(gopath)
 		assert.Equal(t, projectPath, scriptingCmd.Params["test_dir"])
 		env, ok := scriptingCmd.Params["env"].(map[string]interface{})
@@ -266,7 +262,7 @@ func TestGolangGenerate(t *testing.T) {
 							"GOPATH": gopath,
 							"GOROOT": "some_goroot",
 						},
-						WorkingDirectory: util.ConsistentFilepath(filepath.Dir(gopath)),
+						WorkingDirectory: util.ConsistentFilepath(gopath, rootPackage),
 					},
 					RootPackage: rootPackage,
 				},

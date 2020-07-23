@@ -15,14 +15,7 @@ type GeneralConfig struct {
 	Environment map[string]string `yaml:"env,omitempty"`
 	// DefaultTags are tags that apply to all units of work.
 	DefaultTags      []string `yaml:"default_tags,omitempty"`
-	WorkingDirectory string   `yaml:"-"`
-}
-
-// Validate checks that the working directory is populated.
-func (gc *GeneralConfig) Validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(gc.WorkingDirectory == "", "must specify working directory")
-	return nil
+	WorkingDirectory string   `yaml:"working_dir,omitempty"`
 }
 
 // VariantDistro represents a mapping between a variant name and the distros

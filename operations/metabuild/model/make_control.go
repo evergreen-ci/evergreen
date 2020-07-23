@@ -16,16 +16,14 @@ type MakeControl struct {
 	VariantFiles []string `yaml:"variants"`
 	TaskFiles    []string `yaml:"tasks"`
 
-	WorkingDirectory string `yaml:"-"`
 	ControlDirectory string `yaml:"-"`
 }
 
 // NewMakeControl creates a new representation of a Make control file from the
 // given file.
-func NewMakeControl(file, workingDir string) (*MakeControl, error) {
+func NewMakeControl(file string) (*MakeControl, error) {
 	mc := MakeControl{
 		ControlDirectory: util.ConsistentFilepath(filepath.Dir(file)),
-		WorkingDirectory: workingDir,
 	}
 	if err := utility.ReadYAMLFileStrict(file, &mc); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling from YAML file")
@@ -50,7 +48,7 @@ func (mc *MakeControl) Build() (*Make, error) {
 	}
 	m.MergeVariants(mvs...)
 
-	gc, err := mc.buildGeneral(mc.WorkingDirectory)
+	gc, err := mc.buildGeneral()
 	if err != nil {
 		return nil, errors.Wrap(err, "building top-level configuration")
 	}
@@ -134,7 +132,7 @@ func (mc *MakeControl) buildVariants() ([]MakeVariant, error) {
 	return all, nil
 }
 
-func (mc *MakeControl) buildGeneral(workingDir string) (GeneralConfig, error) {
+func (mc *MakeControl) buildGeneral() (GeneralConfig, error) {
 	gcv := struct {
 		GeneralConfig    `yaml:"general"`
 		VariablesSection `yaml:",inline"`
@@ -142,13 +140,7 @@ func (mc *MakeControl) buildGeneral(workingDir string) (GeneralConfig, error) {
 	if err := utility.ReadYAMLFileStrict(mc.GeneralFile, &gcv); err != nil {
 		return GeneralConfig{}, nil
 	}
-
 	gc := gcv.GeneralConfig
-	gc.WorkingDirectory = workingDir
-
-	if err := gc.Validate(); err != nil {
-		return GeneralConfig{}, errors.Wrap(err, "invalid general config")
-	}
 
 	return gc, nil
 }

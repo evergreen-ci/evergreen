@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/shrub"
@@ -47,7 +46,6 @@ func generatedConfigFormatter(format string) (func(*shrub.Configuration) ([]byte
 }
 
 const (
-	workingDirFlagName    = "working_dir"
 	generatorFileFlagName = "generator_file"
 	controlFileFlagName   = "control_file"
 	outputFileFlagName    = "output_file"
@@ -55,13 +53,16 @@ const (
 )
 
 func generateGolang() cli.Command {
+	const (
+		discoveryDirFlagName = "discovery_dir"
+	)
 	return cli.Command{
 		Name:  "golang",
 		Usage: "Generate JSON evergreen config from golang build file(s).",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  workingDirFlagName,
-				Usage: "The directory that contains the GOPATH as a subdirectory.",
+				Name:  discoveryDirFlagName,
+				Usage: "The directory where package discovery should start.",
 			},
 			cli.StringFlag{
 				Name:  generatorFileFlagName,
@@ -82,31 +83,26 @@ func generateGolang() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(workingDirFlagName),
+			requireStringFlag(discoveryDirFlagName),
 			requireOneFlag(generatorFileFlagName, controlFileFlagName),
 			checkGeneratedConfigFormat,
+			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName, discoveryDirFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			workingDir := c.String(workingDirFlagName)
+			discoveryDir := c.String(discoveryDirFlagName)
 			genFile := c.String(generatorFileFlagName)
 			ctrlFile := c.String(controlFileFlagName)
 			outputFile := c.String(outputFileFlagName)
 			var err error
-			if !filepath.IsAbs(workingDir) {
-				workingDir, err = filepath.Abs(workingDir)
-				if err != nil {
-					return errors.Wrapf(err, "getting working directory '%s' as absolute path", workingDir)
-				}
-			}
 
 			var g *model.Golang
 			if genFile != "" {
-				g, err = model.NewGolang(genFile, workingDir)
+				g, err = model.NewGolang(genFile, discoveryDir)
 				if err != nil {
 					return errors.Wrapf(err, "creating generator from build file '%s'", genFile)
 				}
 			} else if ctrlFile != "" {
-				gc, err := model.NewGolangControl(ctrlFile, workingDir)
+				gc, err := model.NewGolangControl(ctrlFile, discoveryDir)
 				if err != nil {
 					return errors.Wrapf(err, "creating builder from control file '%s'", ctrlFile)
 				}
@@ -137,10 +133,6 @@ func generateMake() cli.Command {
 		Usage: "Generate JSON evergreen config from make build file(s).",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  workingDirFlagName,
-				Usage: "The directory containing the project and build files.",
-			},
-			cli.StringFlag{
 				Name:  generatorFileFlagName,
 				Usage: "The build files necessary to generate the evergreen config.",
 			},
@@ -159,13 +151,11 @@ func generateMake() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(workingDirFlagName),
 			requireOneFlag(generatorFileFlagName, controlFileFlagName),
 			checkGeneratedConfigFormat,
-			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName, workingDirFlagName),
+			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			workingDir := c.String(workingDirFlagName)
 			genFile := c.String(generatorFileFlagName)
 			ctrlFile := c.String(controlFileFlagName)
 			outputFile := c.String(outputFileFlagName)
@@ -173,13 +163,13 @@ func generateMake() cli.Command {
 			var m *model.Make
 			var err error
 			if genFile != "" {
-				m, err = model.NewMake(genFile, workingDir)
+				m, err = model.NewMake(genFile)
 				if err != nil {
 					return errors.Wrapf(err, "creating model from build file '%s'", genFile)
 				}
 			} else if ctrlFile != "" {
 				var mc *model.MakeControl
-				mc, err = model.NewMakeControl(ctrlFile, workingDir)
+				mc, err = model.NewMakeControl(ctrlFile)
 				if err != nil {
 					return errors.Wrapf(err, "creating builder from control file '%s'", ctrlFile)
 				}

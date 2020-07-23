@@ -383,54 +383,12 @@ func TestGolangValidate(t *testing.T) {
 			g.RootPackage = ""
 			assert.Error(t, g.Validate())
 		},
-		"SucceedsWithGOROOTInEnvironment": func(t *testing.T, g *Golang) {
-			goroot := util.ConsistentFilepath(os.Getenv("GOROOT"))
-			if goroot == "" {
-				t.Skip("GOROOT is not defined in environment")
-			}
-			delete(g.Environment, "GOROOT")
-			assert.NoError(t, g.Validate())
-			assert.Equal(t, goroot, g.Environment["GOROOT"])
+		"FailsWithoutGOPATHEnvVar": func(t *testing.T, g *Golang) {
+			delete(g.Environment, "GOPATH")
+			assert.Error(t, g.Validate())
 		},
 		"FailsWithoutGOROOTEnvVar": func(t *testing.T, g *Golang) {
-			if goroot, ok := os.LookupEnv("GOROOT"); ok {
-				defer func() {
-					os.Setenv("GOROOT", goroot)
-				}()
-				require.NoError(t, os.Unsetenv("GOROOT"))
-			}
 			delete(g.Environment, "GOROOT")
-			assert.Error(t, g.Validate())
-		},
-		"SucceedsIfGOPATHInEnvironmentAndIsWithinWorkingDirectory": func(t *testing.T, g *Golang) {
-			gopath := os.Getenv("GOPATH")
-			if gopath == "" {
-				t.Skip("GOPATH not defined in environment")
-			}
-			g.WorkingDirectory = util.ConsistentFilepath(filepath.Dir(gopath))
-			delete(g.Environment, "GOPATH")
-			assert.NoError(t, g.Validate())
-			relGopath, err := filepath.Rel(g.WorkingDirectory, gopath)
-			require.NoError(t, err)
-			assert.Equal(t, util.ConsistentFilepath(relGopath), util.ConsistentFilepath(g.Environment["GOPATH"]))
-		},
-		"FailsIfGOPATHNotWithinWorkingDirectory": func(t *testing.T, g *Golang) {
-			if runtime.GOOS == "windows" {
-				g.Environment["GOPATH"] = util.ConsistentFilepath("C:", "/gopath")
-			} else {
-				g.Environment["GOPATH"] = util.ConsistentFilepath("/gopath")
-			}
-			g.WorkingDirectory = util.ConsistentFilepath("/working", "directory")
-			assert.Error(t, g.Validate())
-		},
-		"FailsWithoutGOPATHEnvVar": func(t *testing.T, g *Golang) {
-			if gopath, ok := os.LookupEnv("GOPATH"); ok {
-				defer func() {
-					os.Setenv("GOPATH", gopath)
-				}()
-				require.NoError(t, os.Unsetenv("GOPATH"))
-			}
-			delete(g.Environment, "GOPATH")
 			assert.Error(t, g.Validate())
 		},
 		"FailsWithoutPackages": func(t *testing.T, g *Golang) {
@@ -690,17 +648,8 @@ func TestGolangValidate(t *testing.T) {
 
 func TestDiscoverPackages(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, g *Golang, rootPath string){
-		"FailsIfEnvVarsMissing": func(t *testing.T, g *Golang, rootPath string) {
-			g.Environment = map[string]string{}
-			assert.Error(t, g.DiscoverPackages())
-		},
-		"FailsIfGOPATHIsOutsideWorkingDirectory": func(t *testing.T, g *Golang, rootPath string) {
-			g.Environment["GOPATH"] = util.ConsistentFilepath("/gopath")
-			g.WorkingDirectory = util.ConsistentFilepath("/working", "directory")
-			assert.Error(t, g.DiscoverPackages())
-		},
-		"FailsIfPackageNotFound": func(t *testing.T, g *Golang, rootPath string) {
-			g.RootPackage = "foo"
+		"FailsWithNonexistentDiscoveryDirectory": func(t *testing.T, g *Golang, rootPath string) {
+			g.DiscoveryDirectory = "foo"
 			assert.Error(t, g.DiscoverPackages())
 		},
 		"DoesNotDiscoverPackageWithoutFiles": func(t *testing.T, g *Golang, rootPath string) {
@@ -796,9 +745,9 @@ func TestDiscoverPackages(t *testing.T) {
 							"GOPATH": gopath,
 							"GOROOT": "some_goroot",
 						},
-						WorkingDirectory: util.ConsistentFilepath(filepath.Dir(gopath)),
 					},
-					RootPackage: rootPackage,
+					RootPackage:        rootPackage,
+					DiscoveryDirectory: rootPath,
 				},
 			}
 			testCase(t, &g, rootPath)

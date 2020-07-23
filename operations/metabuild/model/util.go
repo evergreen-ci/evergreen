@@ -1,9 +1,6 @@
 package model
 
 import (
-	"path/filepath"
-	"strings"
-
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
@@ -31,33 +28,4 @@ func withMatchingFiles(workDir string, patterns []string, op func(file string) e
 	}
 
 	return nil
-}
-
-var errNotRelativeToWorkingDir = errors.New("converting to path relative to working directory")
-
-// relPathToWorkingDir attempts to make the given path relative to the working
-// directory if possible. If the path is already non-absolute, it is returned
-// unchanged and assumed to be relative to the working directory. If it is
-// absolute and can be successfully converted to a relative path, it returns the
-// relative path and nil error. Otherwise, if path is absolute and cannot be
-// made relative to the working directory, it returns the path and
-// errNotRelativeToWorkingDir.
-func relToPath(path, workingDir string) (string, error) {
-	workingDir = util.ConsistentFilepath(workingDir)
-	path = util.ConsistentFilepath(path)
-
-	if !filepath.IsAbs(path) {
-		return path, nil
-	}
-
-	if workingDir == "" || !strings.HasPrefix(path, workingDir) {
-		return path, errNotRelativeToWorkingDir
-	}
-
-	relPath, err := filepath.Rel(workingDir, path)
-	if err != nil {
-		return path, errors.Wrap(err, errNotRelativeToWorkingDir.Error())
-	}
-
-	return util.ConsistentFilepath(relPath), nil
 }

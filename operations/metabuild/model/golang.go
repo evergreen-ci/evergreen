@@ -26,10 +26,11 @@ type Golang struct {
 // GolangGeneralConfig defines general top-level configuration for Golang.
 type GolangGeneralConfig struct {
 	// GeneralConfig defines generic top-level configuration.
-	// WorkingDirectory is the absolute path to the base directory where the
-	// GOPATH directory is located.
+	// WorkingDirectory is the path relative to the task working directory where
+	// the project will be cloned, which is only required if operating outside
+	// of the typical GOPATH (i.e. for modules outside the GOPATH).
 	// Environment requires that GOPATH and GOROOT be defined globally.
-	// GOPATH must be specified as a subdirectory of the working directory.
+	// GOPATH must be specified as a subdirectory of the task working directory.
 	// These can be overridden the the package or variant level.
 	// DefaultTags are applied to all packages (discovered or explicitly
 	// defined) unless explicitly excluded.
@@ -42,20 +43,21 @@ type GolangGeneralConfig struct {
 	// default, packages will only be discovered if they contain test files
 	// (i.e. file that ends in "_test.go").
 	DiscoverSourceFiles bool `yaml:"discover_source_files,omitempty"`
+	// DiscoveryDirectory is the directory where package discovery should occur.
+	DiscoveryDirectory string `yaml:"-"`
 }
 
 // Validate checks that the all the required top-level configuration is
 // specified.
 func (ggc *GolangGeneralConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(ggc.RootPackage == "", "must specify the import path of the root package of the project")
-	catcher.Wrap(ggc.GeneralConfig.Validate(), "invalid general config")
+	catcher.NewWhen(ggc.WorkingDirectory == "" && ggc.RootPackage == "", "must specify either the project clone directory or the import path of the root package of the project")
 	return catcher.Resolve()
 }
 
 // NewGolang returns a model of a Golang build configuration from a single file
-// and working directory where the GOPATH directory is located.
-func NewGolang(file, workingDir string) (*Golang, error) {
+// and directory where packages should be discovered.
+func NewGolang(file, discoveryDir string) (*Golang, error) {
 	gv := struct {
 		Golang           `yaml:",inline"`
 		VariablesSection `yaml:",inline"`
@@ -64,7 +66,7 @@ func NewGolang(file, workingDir string) (*Golang, error) {
 		return nil, errors.Wrap(err, "unmarshalling from YAML file")
 	}
 	g := gv.Golang
-	g.WorkingDirectory = workingDir
+	gv.DiscoveryDirectory = discoveryDir
 
 	if err := g.DiscoverPackages(); err != nil {
 		return nil, errors.Wrap(err, "automatically discovering test packages")
@@ -139,16 +141,12 @@ func (g *Golang) Validate() error {
 
 // validateEnvVars checks that:
 // - GOROOT is defined at the top-level global environment.
-// - GOPATH is defined at the top-level global environment and can be converted
-//   to a path relative to the working directory.
+// - GOPATH is defined at the top-level global environment and is a relative
+//   path.
 func (g *Golang) validateEnvVars() error {
 	catcher := grip.NewBasicCatcher()
 	for _, name := range []string{"GOPATH", "GOROOT"} {
 		if val := g.Environment[name]; val != "" {
-			g.Environment[name] = util.ConsistentFilepath(val)
-			continue
-		}
-		if val := os.Getenv(name); val != "" {
 			g.Environment[name] = util.ConsistentFilepath(val)
 			continue
 		}
@@ -159,47 +157,20 @@ func (g *Golang) validateEnvVars() error {
 	}
 
 	// According to the semantics of this GOPATH, it must be relative to the
-	// working directory.
-	relGopath, err := g.relGopath()
-	if err != nil {
-		catcher.Wrap(err, "getting GOPATH as relative path")
-	} else {
-		g.Environment["GOPATH"] = relGopath
+	// task working directory.
+	if gopath := g.Environment["GOPATH"]; filepath.IsAbs(gopath) {
+		catcher.Errorf("global GOPATH '%s' is absolute path, but should be relative to the task working directory", gopath)
 	}
 
 	return catcher.Resolve()
 }
 
-// absGopath converts the relative GOPATH in the global environment into an
-// absolute path based on the working directory.
-func (ggc *GolangGeneralConfig) absGopath() (string, error) {
-	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
-	relGopath, err := relToPath(gopath, ggc.WorkingDirectory)
-	if err != nil {
-		return "", errors.Wrap(err, "global GOPATH cannot be made relative to the working directory")
-	}
-	return util.ConsistentFilepath(ggc.WorkingDirectory, relGopath), nil
-}
-
-// relGopath returns the global GOPATH in the environment relative to the
-// working directory.
-func (ggc *GolangGeneralConfig) relGopath() (string, error) {
-	gopath := util.ConsistentFilepath(ggc.Environment["GOPATH"])
-	relGopath, err := relToPath(gopath, ggc.WorkingDirectory)
-	if err != nil {
-		return "", errors.Wrap(err, "global GOPATH cannot be made relative to the working directory")
-	}
-	return relGopath, nil
-}
-
-// absProjectPath returns the absolute path to the project based on the given
-// gopath.
-func (ggc *GolangGeneralConfig) absProjectPath(gopath string) string {
-	return util.ConsistentFilepath(gopath, "src", ggc.RootPackage)
-}
-
-// RelProjectPath returns the path to the project based on the given gopath.
+// RelProjectPath returns the path to the project based either the working
+// directory if it's set or on the given gopath.
 func (g *Golang) RelProjectPath(gopath string) string {
+	if g.WorkingDirectory != "" {
+		return g.WorkingDirectory
+	}
 	return util.ConsistentFilepath(gopath, "src", g.RootPackage)
 }
 
@@ -302,29 +273,27 @@ const (
 // DiscoverPackages discovers directories containing tests in the local file
 // system and adds them if they are not already defined.
 func (g *Golang) DiscoverPackages() error {
-	if err := g.validateEnvVars(); err != nil {
-		return errors.Wrap(err, "invalid environment variables")
+	if !filepath.IsAbs(g.DiscoveryDirectory) {
+		discoveryDir, err := filepath.Abs(g.DiscoveryDirectory)
+		if err != nil {
+			return errors.Wrapf(err, "converting package discovery root directory '%s' into absolute path", g.DiscoveryDirectory)
+		}
+		g.DiscoveryDirectory = discoveryDir
 	}
 
-	gopath, err := g.absGopath()
-	if err != nil {
-		return errors.Wrap(err, "getting GOPATH as an absolute path")
-	}
-	projectPath := g.absProjectPath(gopath)
-
-	if err := filepath.Walk(projectPath, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(g.DiscoveryDirectory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		fileName := filepath.Base(info.Name())
-		if fileName == golangVendorDir {
-			return filepath.SkipDir
-		}
-		if fileName == golangTestDataDir {
-			return filepath.SkipDir
-		}
 		if info.IsDir() {
+			if fileName == golangVendorDir {
+				return filepath.SkipDir
+			}
+			if fileName == golangTestDataDir {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if g.DiscoverSourceFiles && !strings.HasSuffix(fileName, golangFileSuffix) {
@@ -333,7 +302,7 @@ func (g *Golang) DiscoverPackages() error {
 			return nil
 		}
 		dir := filepath.Dir(path)
-		dir, err = filepath.Rel(projectPath, dir)
+		dir, err = filepath.Rel(g.DiscoveryDirectory, dir)
 		if err != nil {
 			return errors.Wrapf(err, "making package path '%s' relative to root package", path)
 		}
@@ -353,7 +322,7 @@ func (g *Golang) DiscoverPackages() error {
 
 		return nil
 	}); err != nil {
-		return errors.Wrapf(err, "walking the file system tree starting from path '%s'", projectPath)
+		return errors.Wrapf(err, "walking the file system tree starting from path '%s'", g.DiscoveryDirectory)
 	}
 
 	return nil
@@ -517,7 +486,7 @@ func (gv *GolangVariant) Validate() error {
 	}
 
 	if gopath := gv.Environment["GOPATH"]; gopath != "" && filepath.IsAbs(gopath) {
-		catcher.Errorf("variant-level GOPATH '%s' must be relative to the working directory", gopath)
+		catcher.Errorf("variant-level GOPATH '%s' is absolute path, but should be relative to the task working directory", gopath)
 	}
 
 	return catcher.Resolve()

@@ -16,14 +16,13 @@ type GolangControl struct {
 	VariantFiles []string `yaml:"variants"`
 	PackageFiles []string `yaml:"packages,omitempty"`
 
-	ControlDirectory string `yaml:"-"`
-	WorkingDirectory string `yaml:"-"`
+	ControlDirectory   string `yaml:"-"`
+	DiscoveryDirectory string `yaml:"-"`
 }
 
 // NewGolangControl creates a new representation of a Golang control file from
-// the given file. The working directory is the directory where the project
-// will be cloned.
-func NewGolangControl(file, workingDir string) (*GolangControl, error) {
+// the given file.
+func NewGolangControl(file string, discoveryDir string) (*GolangControl, error) {
 	gcv := struct {
 		GolangControl    `yaml:",inline"`
 		VariablesSection `yaml:",inline"`
@@ -33,7 +32,7 @@ func NewGolangControl(file, workingDir string) (*GolangControl, error) {
 	}
 	gc := gcv.GolangControl
 	gc.ControlDirectory = util.ConsistentFilepath(filepath.Dir(file))
-	gc.WorkingDirectory = workingDir
+	gc.DiscoveryDirectory = util.ConsistentFilepath(discoveryDir)
 	return &gc, nil
 }
 
@@ -53,11 +52,13 @@ func (gc *GolangControl) Build() (*Golang, error) {
 	}
 	g.MergeVariants(gvs...)
 
-	ggc, err := gc.buildGeneral(gc.WorkingDirectory)
+	ggc, err := gc.buildGeneral()
 	if err != nil {
 		return nil, errors.Wrap(err, "building top-level configuration")
 	}
 	g.GolangGeneralConfig = ggc
+
+	g.DiscoveryDirectory = gc.DiscoveryDirectory
 
 	if err := g.DiscoverPackages(); err != nil {
 		return nil, errors.Wrap(err, "automatically discovering test packages")
@@ -132,7 +133,7 @@ func (gc *GolangControl) buildVariants() ([]GolangVariant, error) {
 	return all, nil
 }
 
-func (gc *GolangControl) buildGeneral(workingDir string) (GolangGeneralConfig, error) {
+func (gc *GolangControl) buildGeneral() (GolangGeneralConfig, error) {
 	ggcv := struct {
 		GolangGeneralConfig `yaml:"general"`
 		VariablesSection    `yaml:",inline"`
@@ -142,10 +143,6 @@ func (gc *GolangControl) buildGeneral(workingDir string) (GolangGeneralConfig, e
 		return GolangGeneralConfig{}, errors.Wrap(err, "unmarshalling from YAML file")
 	}
 	ggc := ggcv.GolangGeneralConfig
-	ggc.WorkingDirectory = workingDir
-	if err := ggc.Validate(); err != nil {
-		return GolangGeneralConfig{}, errors.Wrap(err, "invalid top-level configuration")
-	}
 
 	return ggc, nil
 }

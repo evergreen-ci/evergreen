@@ -12,8 +12,8 @@ type Make struct {
 	// Environment defines global environment variables. Definitions can be
 	// overridden at the task or variant level.
 	// DefaultTags are applied to all defined tasks unless explicitly excluded.
-	// WorkingDirectory determines the directory where the project will be
-	// cloned.
+	// WorkingDirectory is the path relative to the task working directory where
+	// the project will be cloned.
 	GeneralConfig   `yaml:",inline"`
 	TargetSequences []MakeTargetSequence `yaml:"sequences,omitempty"`
 	Tasks           []MakeTask           `yaml:"tasks,omitempty"`
@@ -22,7 +22,7 @@ type Make struct {
 
 // NewMake creates a new evergreen config generator for Make from a single file
 // that contains all the necessary generation information.
-func NewMake(file, workingDir string) (*Make, error) {
+func NewMake(file string) (*Make, error) {
 	mv := struct {
 		Make      `yaml:",inline"`
 		Variables interface{} `yaml:"variables,omitempty"`
@@ -31,7 +31,6 @@ func NewMake(file, workingDir string) (*Make, error) {
 		return nil, errors.Wrap(err, "unmarshalling from YAML file")
 	}
 	m := mv.Make
-	m.WorkingDirectory = workingDir
 
 	m.ApplyDefaultTags()
 
@@ -114,7 +113,6 @@ func (m *Make) MergeDefaultTags(tags ...string) *Make {
 // Validate checks that the entire Make build configuration is valid.
 func (m *Make) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Wrap(m.GeneralConfig.Validate(), "invalid general config")
 	catcher.Wrap(m.validateTargetSequences(), "invalid target sequence definition(s)")
 	catcher.Wrap(m.validateTasks(), "invalid task definition(s)")
 	catcher.Wrap(m.validateVariants(), "invalid variant definition(s)")

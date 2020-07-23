@@ -48,8 +48,7 @@ func (g *Golang) Generate() (*shrub.Configuration, error) {
 			}
 
 			env := model.MergeEnvironments(g.Environment, gv.Environment)
-			gopath := env["GOPATH"]
-			projectPath := g.RelProjectPath(gopath)
+			projectPath := g.RelProjectPath(env["GOPATH"])
 			getProjectCmd := shrub.CmdGetProject{
 				Directory: projectPath,
 			}
@@ -104,8 +103,7 @@ func (g *Golang) generateVariantTasksForRef(c *shrub.Configuration, gv model.Gol
 
 func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangPackage) *shrub.CmdSubprocessScripting {
 	env := model.MergeEnvironments(g.Environment, gp.Environment, gv.Environment)
-	gopath := env["GOPATH"]
-	projectPath := g.RelProjectPath(gopath)
+	projectPath := g.RelProjectPath(env["GOPATH"])
 
 	testOpts := gp.Flags
 	if gv.Flags != nil {
@@ -119,8 +117,7 @@ func (g *Golang) subprocessScriptingCmd(gv model.GolangVariant, gp model.GolangP
 	testOpts = append(testOpts, relPath)
 
 	return &shrub.CmdSubprocessScripting{
-		Harness:     "golang",
-		HarnessPath: gopath,
+		Harness: "golang",
 		// It is not a problem for the environment to set a relative GOPATH
 		// here, which conflicts with the actual GOPATH (an absolute path). The
 		// GOPATH in the environment will be overridden when
