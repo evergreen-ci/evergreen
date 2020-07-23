@@ -130,20 +130,21 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
-		Distro        func(childComplexity int) int
-		DistroID      func(childComplexity int) int
-		Elapsed       func(childComplexity int) int
-		HomeVolumeID  func(childComplexity int) int
-		HostURL       func(childComplexity int) int
-		Id            func(childComplexity int) int
-		InstanceType  func(childComplexity int) int
-		NoExpiration  func(childComplexity int) int
-		RunningTask   func(childComplexity int) int
-		StartedBy     func(childComplexity int) int
-		Status        func(childComplexity int) int
-		TotalIdleTime func(childComplexity int) int
-		Uptime        func(childComplexity int) int
-		User          func(childComplexity int) int
+		AvailabilityZone func(childComplexity int) int
+		Distro           func(childComplexity int) int
+		DistroID         func(childComplexity int) int
+		Elapsed          func(childComplexity int) int
+		HomeVolumeID     func(childComplexity int) int
+		HostURL          func(childComplexity int) int
+		Id               func(childComplexity int) int
+		InstanceType     func(childComplexity int) int
+		NoExpiration     func(childComplexity int) int
+		RunningTask      func(childComplexity int) int
+		StartedBy        func(childComplexity int) int
+		Status           func(childComplexity int) int
+		TotalIdleTime    func(childComplexity int) int
+		Uptime           func(childComplexity int) int
+		User             func(childComplexity int) int
 	}
 
 	HostsResponse struct {
@@ -864,6 +865,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
+
+	case "Host.AvailabilityZone":
+		if e.complexity.Host.AvailabilityZone == nil {
+			break
+		}
+
+		return e.complexity.Host.AvailabilityZone(childComplexity), true
 
 	case "Host.distro":
 		if e.complexity.Host.Distro == nil {
@@ -2869,6 +2877,7 @@ type Host {
   homeVolumeID: String
   user: String
   distro: Distro
+  AvailabilityZone: String
 }
 
 type InstanceTag {
@@ -5782,6 +5791,37 @@ func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.Coll
 	res := resTmp.(*model.APIDistro)
 	fc.Result = res
 	return ec.marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_AvailabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvailabilityZone, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HostsResponse_filteredHostsCount(ctx context.Context, field graphql.CollectedField, obj *HostsResponse) (ret graphql.Marshaler) {
@@ -15082,6 +15122,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Host_distro(ctx, field, obj)
 				return res
 			})
+		case "AvailabilityZone":
+			out.Values[i] = ec._Host_AvailabilityZone(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
