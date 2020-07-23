@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	legacyBSON "gopkg.in/mgo.v2/bson"
 )
 
 func TestRollupRoundTrip(t *testing.T) {
@@ -34,21 +33,5 @@ func TestRollupRoundTrip(t *testing.T) {
 		assert.Equal(t, 1.2, rt[0].Value)
 		assert.Equal(t, 45.0, rt[1].Value)
 		assert.EqualValues(t, 100, rt[3].Value)
-	})
-	t.Run("LegacyBSON", func(t *testing.T) {
-		payload, err := legacyBSON.Marshal(data)
-		require.NoError(t, err)
-
-		rt := Custom{}
-		err = legacyBSON.Unmarshal(payload, &rt)
-		require.NoError(t, err)
-
-		require.Len(t, rt, 4)
-		assert.Equal(t, "a", rt[0].Name)
-		assert.Equal(t, "b", rt[1].Name)
-		assert.Equal(t, "d", rt[2].Name)
-		assert.Equal(t, 1.2, rt[0].Value)
-		assert.Equal(t, 45.0, rt[1].Value)
-		assert.Equal(t, 100, rt[3].Value)
 	})
 }

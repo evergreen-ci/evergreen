@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/mongodb/ftdc"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
+	"github.com/pkg/errors"
 )
 
 type intervalHistogramStream struct {
 	point     *PerformanceHDR
 	started   time.Time
 	collector ftdc.Collector
-	catcher   grip.Catcher
+	catcher   util.Catcher
 	sync.Mutex
 
 	interval time.Duration
@@ -21,20 +22,19 @@ type intervalHistogramStream struct {
 	canceler context.CancelFunc
 }
 
-// NewIntervalHistogramRecorder has similar semantics to histogram
-// computer recorder, but has a background process that persists data
-// on the specified interval rather than as a side effect of the Begin
-// call.
+// NewIntervalHistogramRecorder has similar semantics to histogram Grouped
+// recorder, but has a background process that persists data on the specified
+// on the specified interval rather than as a side effect of the EndTest call.
 //
-// The background thread is started if it doesn't exist in the Begin
-// operation  and is terminated by the Flush operation.
+// The background thread is started if it doesn't exist in the BeginIteration
+// operation and is terminated by the EndTest operation.
 //
 // The interval histogram recorder is safe for concurrent use.
 func NewIntervalHistogramRecorder(ctx context.Context, collector ftdc.Collector, interval time.Duration) Recorder {
 	return &intervalHistogramStream{
 		collector: collector,
 		rootCtx:   ctx,
-		catcher:   grip.NewExtendedCatcher(),
+		catcher:   util.NewCatcher(),
 		interval:  interval,
 		point:     NewHistogramMillisecond(PerformanceGauges{}),
 	}
@@ -50,7 +50,14 @@ func (r *intervalHistogramStream) worker(ctx context.Context, interval time.Dura
 			return
 		case <-ticker.C:
 			r.Lock()
-			r.catcher.Add(r.collector.Add(*r.point))
+			// check context error in case in between the time when
+			// the lock is requested and when the lock is obtained,
+			// the context has been canceled
+			if ctx.Err() != nil {
+				return
+			}
+			r.point.setTimestamp(r.started)
+			r.catcher.Add(r.collector.Add(r.point))
 			r.point.Timestamp = time.Time{}
 			r.point = NewHistogramMillisecond(r.point.Gauges)
 			r.Unlock()
@@ -58,7 +65,7 @@ func (r *intervalHistogramStream) worker(ctx context.Context, interval time.Dura
 	}
 }
 
-func (r *intervalHistogramStream) Begin() {
+func (r *intervalHistogramStream) BeginIteration() {
 	r.Lock()
 	if r.canceler == nil {
 		// start new background ticker
@@ -69,11 +76,13 @@ func (r *intervalHistogramStream) Begin() {
 	}
 
 	r.started = time.Now()
+	r.point.setTimestamp(r.started)
 	r.Unlock()
 }
 
-func (r *intervalHistogramStream) End(dur time.Duration) {
+func (r *intervalHistogramStream) EndIteration(dur time.Duration) {
 	r.Lock()
+	r.point.setTimestamp(r.started)
 	r.catcher.Add(r.point.Counters.Number.RecordValue(1))
 	r.catcher.Add(r.point.Timers.Duration.RecordValue(int64(dur)))
 
@@ -81,12 +90,6 @@ func (r *intervalHistogramStream) End(dur time.Duration) {
 		r.catcher.Add(r.point.Timers.Total.RecordValue(int64(time.Since(r.started))))
 	}
 
-	r.Unlock()
-}
-
-func (r *intervalHistogramStream) Reset() {
-	r.Lock()
-	r.started = time.Now()
 	r.Unlock()
 }
 
@@ -114,27 +117,40 @@ func (r *intervalHistogramStream) SetDuration(dur time.Duration) {
 	r.Unlock()
 }
 
-func (r *intervalHistogramStream) Flush() error {
+func (r *intervalHistogramStream) EndTest() error {
 	r.Lock()
-	r.canceler()
-	r.canceler = nil
 
-	// capture the current point and reset error tracking
 	if !r.started.IsZero() {
 		r.catcher.Add(r.point.Timers.Total.RecordValue(int64(time.Since(r.started))))
+		r.started = time.Time{}
 	}
-
-	r.catcher.Add(r.collector.Add(*r.point))
+	if !r.point.Timestamp.IsZero() {
+		r.catcher.Add(r.collector.Add(r.point))
+	}
 	err := r.catcher.Resolve()
-	r.catcher = grip.NewExtendedCatcher()
-	r.point = NewHistogramMillisecond(r.point.Gauges)
-	r.started = time.Time{}
+	r.reset()
 
 	r.Unlock()
-	return err
+	return errors.WithStack(err)
 }
 
-func (r *intervalHistogramStream) IncOps(val int64) {
+func (r *intervalHistogramStream) Reset() {
+	r.Lock()
+	r.reset()
+	r.Unlock()
+}
+
+func (r *intervalHistogramStream) reset() {
+	if r.canceler != nil {
+		r.canceler()
+		r.canceler = nil
+	}
+	r.catcher = util.NewCatcher()
+	r.point = NewHistogramMillisecond(r.point.Gauges)
+	r.started = time.Time{}
+}
+
+func (r *intervalHistogramStream) IncOperations(val int64) {
 	r.Lock()
 	r.catcher.Add(r.point.Counters.Operations.RecordValue(val))
 	r.Unlock()

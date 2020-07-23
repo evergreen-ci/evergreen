@@ -99,36 +99,18 @@ func TestFleet(t *testing.T) {
 		},
 		"MakeOverrides": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{
-				VpcName:      "vpc-123456",
 				InstanceType: "instanceType0",
 			}
-
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
 			assert.Len(t, overrides, 1)
 			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
-
-			m.settings.Providers.AWS.Subnets = nil
-			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
-			assert.NoError(t, err)
-			assert.Len(t, overrides, 1)
-			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
-			mockClient := m.client.(*awsClientMock)
-			assert.Len(t, mockClient.DescribeVpcsInput.Filters, 1)
-			assert.Equal(t, "tag:Name", *mockClient.DescribeVpcsInput.Filters[0].Name)
-			assert.Len(t, mockClient.DescribeVpcsInput.Filters[0].Values, 1)
-			assert.Equal(t, ec2Settings.VpcName, *mockClient.DescribeVpcsInput.Filters[0].Values[0])
-
-			assert.Len(t, mockClient.DescribeSubnetsInput.Filters, 1)
-			assert.Equal(t, "vpc-id", *mockClient.DescribeSubnetsInput.Filters[0].Name)
-			assert.Len(t, mockClient.DescribeSubnetsInput.Filters[0].Values, 1)
-			assert.Equal(t, "vpc-123456", *mockClient.DescribeSubnetsInput.Filters[0].Values[0])
 		},
 		"SubnetMatchesAz": func(*testing.T) {
 			subnet := &ec2.Subnet{
 				Tags: []*ec2.Tag{
-					&ec2.Tag{Key: aws.String("key1"), Value: aws.String("value1")},
-					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
+					{Key: aws.String("key1"), Value: aws.String("value1")},
+					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-extra")},
 				},
 				AvailabilityZone: aws.String("us-east-1a"),
 			}
@@ -136,8 +118,8 @@ func TestFleet(t *testing.T) {
 
 			subnet = &ec2.Subnet{
 				Tags: []*ec2.Tag{
-					&ec2.Tag{Key: aws.String("key1"), Value: aws.String("value1")},
-					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
+					{Key: aws.String("key1"), Value: aws.String("value1")},
+					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
 				},
 				AvailabilityZone: aws.String("us-east-1a"),
 			}
@@ -193,7 +175,7 @@ func TestFleet(t *testing.T) {
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
 						DefaultSecurityGroup: "sg-default",
-						Subnets:              []evergreen.Subnet{{AZ: "az1", SubnetID: "subnet-654321"}},
+						Subnets:              []evergreen.Subnet{{AZ: evergreen.DefaultEC2Region + "a", SubnetID: "subnet-654321"}},
 					},
 				},
 			},
@@ -205,8 +187,8 @@ func TestFleet(t *testing.T) {
 	}
 }
 
-func TestAzInstanceTypeCache(t *testing.T) {
-	cache := azInstanceTypeCache{azToInstanceTypes: make(map[string][]string)}
+func TestInstanceTypeAZCache(t *testing.T) {
+	cache := instanceTypeSubnetCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
 	client := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
@@ -216,15 +198,20 @@ func TestAzInstanceTypeCache(t *testing.T) {
 			},
 		},
 	}
-	supported, err := cache.azSupportsInstanceType(context.Background(), client, "az0", "instanceType0")
-	assert.NoError(t, err)
-	assert.True(t, supported)
+	settings := &evergreen.Settings{}
+	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"}}
 
-	supported, err = cache.azSupportsInstanceType(context.Background(), client, "az0", "not_supported")
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0", evergreen.DefaultEC2Region)
 	assert.NoError(t, err)
-	assert.False(t, supported)
+	assert.Len(t, azsWithInstanceType, 1)
+	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
 
-	az, ok := cache.azToInstanceTypes["az0"]
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported", evergreen.DefaultEC2Region)
+	assert.NoError(t, err)
+	assert.Empty(t, azsWithInstanceType)
+
+	assert.True(t, cache.built)
+	subnet, ok := cache.instanceTypeToSubnets["instanceType0"]
 	assert.True(t, ok)
-	assert.Len(t, az, 3)
+	assert.Len(t, subnet, 1)
 }

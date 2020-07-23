@@ -33,6 +33,8 @@ const (
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 )
 
+var EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
+
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`

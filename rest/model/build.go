@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -120,4 +121,34 @@ type APITaskCache struct {
 	TimeTaken       time.Duration           `json:"time_taken"`
 	Activated       bool                    `json:"activated"`
 	FailedTestNames []string                `json:"failed_test_names,omitempty"`
+}
+
+type APIVariantTasks struct {
+	Variant      *string
+	Tasks        []string
+	DisplayTasks []APIDisplayTask
+}
+
+func APIVariantTasksBuildFromService(v patch.VariantTasks) APIVariantTasks {
+	out := APIVariantTasks{}
+	out.Variant = &v.Variant
+	out.Tasks = v.Tasks
+	for _, e := range v.DisplayTasks {
+		n := APIDisplayTaskBuildFromService(e)
+		out.DisplayTasks = append(out.DisplayTasks, n)
+	}
+	return out
+}
+
+func APIVariantTasksToService(v APIVariantTasks) patch.VariantTasks {
+	out := patch.VariantTasks{}
+	if v.Variant != nil {
+		out.Variant = *v.Variant
+	}
+	out.Tasks = v.Tasks
+	for _, e := range v.DisplayTasks {
+		n := APIDisplayTaskToService(e)
+		out.DisplayTasks = append(out.DisplayTasks, n)
+	}
+	return out
 }

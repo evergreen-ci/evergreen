@@ -1260,14 +1260,14 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.resolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, alias, true)
 }
 
-// resolvePatchVTs resolves a list of build variants and tasks into a list of
+// ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
-func (p *Project) resolvePatchVTs(bvs, tasks []string, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(bvs, tasks []string, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
