@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -61,6 +62,29 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+// func (r *hostResolver) InstanceTags(ctx context.Context, obj *restModel.APIHost) ([]*InstanceTag, error) {
+// 	return obj.InstanceTags, nil
+// }
+
+func (r *hostResolver) Distro(ctx context.Context, obj *restModel.APIHost) (*restModel.APIDistro, error) {
+
+	hostDistro, err := distro.FindByID(*obj.Distro.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding distro by id for %s : %s", *obj.Distro.Id, err.Error()))
+	}
+
+	if hostDistro == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldnt find distro with id: %s", *obj.Distro.Id))
+	}
+	var currentDistro *restModel.APIDistro
+	err = currentDistro.BuildFromService(hostDistro)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIDistro from service: %s", err.Error()))
+
+	}
+	return currentDistro, nil
 }
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
@@ -279,6 +303,26 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		FilteredHostsCount: filteredHostsCount,
 		TotalHostsCount:    totalHostsCount,
 	}, nil
+}
+
+func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
+	usr := route.MustHaveUser(ctx)
+	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx,
+			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
+	}
+	var apiHosts []*restModel.APIHost
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIHost from service: %s", err.Error()))
+		}
+		apiHosts = append(apiHosts, &apiHost)
+	}
+	return apiHosts, nil
 }
 
 type patchResolver struct{ *Resolver }

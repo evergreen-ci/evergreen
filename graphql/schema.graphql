@@ -52,6 +52,7 @@ type Query {
     page: Int = 0
     limit: Int = 10
   ): HostsResponse!
+  myHosts: [Host!]
 }
 
 type Mutation {
@@ -171,8 +172,25 @@ type Host {
   uptime: Time # host creation time
   elapsed: Time # running task start time
   startedBy: String!
+  noExpiration: Boolean!
+  instanceType: String
+  homeVolumeID: String
+  user: String
+  distro: Distro
 }
 
+type InstanceTag {
+  key: String
+  value: String
+  canBeModified: Boolean
+}
+
+type Distro {
+  name: String
+  workDir: String
+  isVirtualWorkStation: Boolean
+  user: String
+}
 type TaskInfo {
   id: ID
   name: String
