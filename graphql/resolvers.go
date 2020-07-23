@@ -78,13 +78,13 @@ func (r *hostResolver) Distro(ctx context.Context, obj *restModel.APIHost) (*res
 	if hostDistro == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldnt find distro with id: %s", *obj.Distro.Id))
 	}
-	var currentDistro *restModel.APIDistro
+	currentDistro := restModel.APIDistro{}
 	err = currentDistro.BuildFromService(hostDistro)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIDistro from service: %s", err.Error()))
 
 	}
-	return currentDistro, nil
+	return &currentDistro, nil
 }
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
