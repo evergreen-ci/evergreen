@@ -7,9 +7,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
@@ -418,6 +420,47 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		assert.Contains(t, hosts, "h3")
 		assert.Contains(t, hosts, "h4")
 		assert.Contains(t, hosts, "h5")
+	})
+	t.Run("ClearsTaskQueuesForMissingDistros", func(t *testing.T) {
+		testFlaggingIdleHostsSetupTest(t)
+		distro2 := distro.Distro{
+			Id:       "distro2",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				MinimumHosts: 1,
+			},
+		}
+		require.NoError(t, distro2.Insert(), "error inserting distro '%s'", distro2.Id)
+		nonexistentDistroID := "nonexistent"
+
+		queue1 := model.TaskQueue{
+			Distro: nonexistentDistroID,
+			Queue:  []model.TaskQueueItem{{Id: "task"}},
+			DistroQueueInfo: model.DistroQueueInfo{
+				Length:               1,
+				ExpectedDuration:     time.Minute,
+				CountOverThreshold:   1,
+				MaxDurationThreshold: time.Minute,
+				TaskGroupInfos:       []model.TaskGroupInfo{},
+				PlanCreatedAt:        time.Now(),
+			},
+		}
+		require.NoError(t, queue1.Save())
+		queue2 := queue1
+		queue2.Distro = distro2.Id
+		require.NoError(t, queue2.Save())
+
+		num, hosts := numIdleHostsFound(ctx, env, t)
+		assert.Zero(t, num)
+		assert.Empty(t, hosts)
+
+		dbQueue1, err := model.LoadTaskQueue(nonexistentDistroID)
+		require.NoError(t, err)
+		pp.Println(dbQueue1)
+		assert.Empty(t, dbQueue1.Queue)
+		dbQueue2, err := model.LoadTaskQueue(distro2.Id)
+		require.NoError(t, err)
+		assert.Len(t, dbQueue2.Queue, 1)
 	})
 }
 

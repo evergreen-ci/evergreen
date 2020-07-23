@@ -399,7 +399,7 @@ func ClearTaskQueue(distroId string) error {
 		catcher.Add(errors.Wrap(err, "error getting task queue info"))
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
-	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	err = clearTaskQueue(distroId, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task queue"))
 	}
@@ -426,30 +426,23 @@ func ClearTaskQueue(distroId string) error {
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
-	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	err = clearTaskQueue(distroId, distroQueueInfo)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error clearing task alias queue"))
 	}
 	return catcher.Resolve()
 }
 
-// clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
-func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
-	new_distroQueueInfo := DistroQueueInfo{
-		Length:               0,
-		ExpectedDuration:     time.Duration(0),
-		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
-		PlanCreatedAt:        distroQueueInfo.PlanCreatedAt,
-		CountOverThreshold:   0,
-		TaskGroupInfos:       []TaskGroupInfo{},
-		AliasQueue:           distroQueueInfo.AliasQueue,
-	}
-
-	return new_distroQueueInfo
+// clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields.
+func clearQueueInfo(info DistroQueueInfo) DistroQueueInfo {
+	info.Length = 0
+	info.CountOverThreshold = 0
+	info.ExpectedDuration = 0
+	info.TaskGroupInfos = []TaskGroupInfo{}
+	return info
 }
 
-func clearTaskQueueCollection(distroId string, distroQueueInfo DistroQueueInfo) error {
-
+func clearTaskQueue(distroId string, distroQueueInfo DistroQueueInfo) error {
 	_, err := db.Upsert(
 		distroQueueInfo.GetQueueCollection(),
 		bson.M{
