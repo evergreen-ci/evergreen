@@ -102,6 +102,12 @@ func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
 		}
 	}
+	if err = model.ClearTaskQueue(distroId); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("failed to clear task queue for distro '%s'", distroId),
+		}
+	}
 	return nil
 }
 
