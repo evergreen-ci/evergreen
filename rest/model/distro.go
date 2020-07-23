@@ -418,7 +418,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	default:
 		return errors.Errorf("%T is not a supported expansion type", h)
 	}
-
+	// Throws the error on this line when trying to convert toStringPtr
 	apiDistro.Name = ToStringPtr(d.Id)
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
