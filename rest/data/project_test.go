@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -406,4 +408,45 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 
 	s.Equal(origProj.PrivateVars, newProj.PrivateVars)
 	s.Equal(origProj.Vars, newProj.Vars)
+}
+
+func TestGetProjectAliasResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
+	p := model.Project{
+		Identifier: "helloworld",
+		BuildVariants: model.BuildVariants{
+			{Name: "bv1", Tasks: []model.BuildVariantTaskUnit{{Name: "task1"}}},
+			{Name: "bv2", Tasks: []model.BuildVariantTaskUnit{{Name: "task2"}, {Name: "task3"}}},
+		},
+		Tasks: []model.ProjectTask{
+			{Name: "task1"},
+			{Name: "task2"},
+			{Name: "task3"},
+		},
+	}
+	alias1 := model.ProjectAlias{
+		Alias:     "select_bv1",
+		ProjectID: p.Identifier,
+		Variant:   "^bv1$",
+		Task:      ".*",
+	}
+	require.NoError(t, alias1.Upsert())
+	alias2 := model.ProjectAlias{
+		Alias:     "select_bv2",
+		ProjectID: p.Identifier,
+		Variant:   "^bv2$",
+		Task:      ".*",
+	}
+	require.NoError(t, alias2.Upsert())
+
+	dc := &DBProjectConnector{}
+	variantTasks, err := dc.GetProjectAliasResults(&p, alias1.Alias, false)
+	assert.NoError(t, err)
+	assert.Len(t, variantTasks, 1)
+	assert.Len(t, variantTasks[0].Tasks, 1)
+	assert.Equal(t, "task1", variantTasks[0].Tasks[0])
+	variantTasks, err = dc.GetProjectAliasResults(&p, alias2.Alias, false)
+	assert.NoError(t, err)
+	assert.Len(t, variantTasks, 1)
+	assert.Len(t, variantTasks[0].Tasks, 2)
 }

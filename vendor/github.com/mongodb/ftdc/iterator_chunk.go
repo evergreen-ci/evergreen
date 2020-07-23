@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
 )
 
 // ChunkIterator is a simple iterator for reading off of an FTDC data
@@ -37,15 +37,14 @@ type ChunkIterator struct {
 	next    *Chunk
 	cancel  context.CancelFunc
 	closed  bool
-	catcher grip.Catcher
-	count   int
+	catcher util.Catcher
 }
 
 // ReadChunks creates a ChunkIterator from an underlying FTDC data
 // source.
 func ReadChunks(ctx context.Context, r io.Reader) *ChunkIterator {
 	iter := &ChunkIterator{
-		catcher: grip.NewBasicCatcher(),
+		catcher: util.NewCatcher(),
 		pipe:    make(chan *Chunk, 2),
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +15,7 @@ type combinedIterator struct {
 	metadata *birch.Document
 	document *birch.Document
 	pipe     chan *birch.Document
-	catcher  grip.Catcher
+	catcher  util.Catcher
 	flatten  bool
 }
 

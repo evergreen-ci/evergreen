@@ -15,7 +15,7 @@ func rehydrateMatrix(metrics []Metric, sample int) (*birch.Element, int, error) 
 	}
 
 	// the birch library's representation of arrays is more
-	// efficent when constructing arrays from documents,
+	// efficient when constructing arrays from documents,
 	// otherwise.
 	array := birch.MakeArray(len(metrics[sample].Values))
 	key := metrics[sample].Key()

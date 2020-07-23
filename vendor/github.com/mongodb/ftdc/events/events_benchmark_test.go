@@ -77,8 +77,8 @@ func BenchmarkEventCollection(b *testing.B) {
 					Generator: func() interface{} {
 						point := MakeCustom(20)
 						for i := int64(1); i <= 10; i++ {
-							point.Add(fmt.Sprintln("stat", i), rand.Int63n(i))
-							point.Add(fmt.Sprintln("stat", i), float64(i)+rand.Float64())
+							point.Add(fmt.Sprintln("stat", i), rand.Int63n(i))            // nolint
+							point.Add(fmt.Sprintln("stat", i), float64(i)+rand.Float64()) // nolint
 						}
 						return point
 					},
@@ -88,8 +88,8 @@ func BenchmarkEventCollection(b *testing.B) {
 					Generator: func() interface{} {
 						point := MakeCustom(4)
 						for i := int64(1); i <= 2; i++ {
-							point.Add(fmt.Sprintln("stat", i), rand.Int63n(i))
-							point.Add(fmt.Sprintln("stat", i), float64(i)+rand.Float64())
+							point.Add(fmt.Sprintln("stat", i), rand.Int63n(i))            // nolint
+							point.Add(fmt.Sprintln("stat", i), float64(i)+rand.Float64()) // nolint
 						}
 						return point
 					},
@@ -99,12 +99,12 @@ func BenchmarkEventCollection(b *testing.B) {
 				b.Run(test.Name, func(b *testing.B) {
 					b.Run("Add", func(b *testing.B) {
 						for n := 0; n < b.N; n++ {
-							collector.Add(test.Generator())
+							collector.Add(test.Generator()) // nolint
 						}
 					})
 					b.Run("Resolve", func(b *testing.B) {
 						for n := 0; n < b.N; n++ {
-							collector.Resolve()
+							collector.Resolve() // nolint
 						}
 					})
 				})
