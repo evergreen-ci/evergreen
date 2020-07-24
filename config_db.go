@@ -47,7 +47,7 @@ var (
 	loggerConfigKey       = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
-	bugsnagKey            = bsonutil.MustHaveTag(Settings{}, "Bugsnag")
+	googleAnalyticsKey    = bsonutil.MustHaveTag(Settings{}, "GoogleAnalyticsID")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	githubOrgsKey         = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")

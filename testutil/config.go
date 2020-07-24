@@ -168,7 +168,7 @@ func MockConfig() *evergreen.Settings {
 		Credentials:        map[string]string{"k1": "v1"},
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
-		Bugsnag:            "u-12345",
+		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle: 64,
