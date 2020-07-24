@@ -142,7 +142,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		ApiUrl:             "api",
 		Banner:             "banner",
 		BannerTheme:        Important,
-		Bugsnag:            "u-12345",
 		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
@@ -171,7 +170,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ApiUrl, settings.ApiUrl)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
-	s.Equal(config.Bugsnag, settings.Bugsnag)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)

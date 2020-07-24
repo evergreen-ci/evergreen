@@ -62,7 +62,6 @@ type ViewData struct {
 	BannerTheme         string
 	Csrf                htmlTemplate.HTML
 	JiraHost            string
-	Bugsnag             string
 	NewRelic            evergreen.NewRelicConfig
 	IsAdmin             bool
 	NewUILink           string
@@ -232,7 +231,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
-	viewData.Bugsnag = settings.Bugsnag
 	viewData.NewRelic = settings.NewRelic
 	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
 	return viewData
