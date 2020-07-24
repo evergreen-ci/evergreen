@@ -64,10 +64,6 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 	return obj.RunningTask.StartTime, nil
 }
 
-func (r *hostResolver) InstanceTags(ctx context.Context, obj *restModel.APIHost) ([]host.Tag, error) {
-	return obj.InstanceTags, nil
-}
-
 func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	if !obj.NoExpiration {
 		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
