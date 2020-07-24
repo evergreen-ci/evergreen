@@ -46,6 +46,10 @@ directives.patch.directive('patchCommitPanel', function() {
       scope.timezone = attrs.timezone;
       scope.base = attrs.base;
       scope.baselink = attrs.baselink;
+
+      scope.showCommitTable = function(patch) {
+        return patch.Alias === '__commit_queue' || patch.Patches.some((modulePatch) => Array.isArray(modulePatch.PatchSet.CommitMessages) && modulePatch.PatchSet.CommitMessages.length > 1)
+      }
     }
   };
 });
