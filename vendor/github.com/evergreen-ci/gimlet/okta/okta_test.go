@@ -232,12 +232,12 @@ func (s *mockAuthorizationServer) root(rw http.ResponseWriter, r *http.Request) 
 func (s *mockAuthorizationServer) authorize(rw http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		gimlet.WriteJSONError(rw, &tokenResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &tokenResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.AuthorizeParameters, err = url.ParseQuery(string(body))
 	if err != nil {
-		gimlet.WriteJSONError(rw, &tokenResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &tokenResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.AuthorizeHeaders = r.Header
@@ -250,12 +250,12 @@ func (s *mockAuthorizationServer) authorize(rw http.ResponseWriter, r *http.Requ
 func (s *mockAuthorizationServer) token(rw http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		gimlet.WriteJSONError(rw, &tokenResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &tokenResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.TokenParameters, err = url.ParseQuery(string(body))
 	if err != nil {
-		gimlet.WriteJSONError(rw, &tokenResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &tokenResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.TokenHeaders = r.Header
@@ -278,12 +278,12 @@ func (s *mockAuthorizationServer) userinfo(rw http.ResponseWriter, r *http.Reque
 func (s *mockAuthorizationServer) introspect(rw http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		gimlet.WriteJSONError(rw, &introspectResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &introspectResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.IntrospectParameters, err = url.ParseQuery(string(body))
 	if err != nil {
-		gimlet.WriteJSONError(rw, &introspectResponse{ErrorCode: "invalid_request"})
+		gimlet.WriteJSONError(rw, &introspectResponse{responseError: responseError{ErrorCode: "invalid_request"}})
 		return
 	}
 	s.IntrospectHeaders = r.Header
@@ -321,25 +321,27 @@ func TestRequestHelpers(t *testing.T) {
 			userInfo, err := um.getUserInfo(ctx, "access_token")
 			require.NoError(t, err)
 			mapContains(t, s.UserInfoHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Authorization": []string{"Bearer access_token"},
+				"Accept":        {"application/json"},
+				"Authorization": {"Bearer access_token"},
 			})
 			require.NotNil(t, userInfo)
 			assert.Equal(t, *s.UserInfoResponse, *userInfo)
 		},
 		"GetUserInfoError": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			s.UserInfoResponse = &userInfoResponse{
-				Name:             "name",
-				Email:            "email",
-				Groups:           []string{"group"},
-				ErrorCode:        "error_code",
-				ErrorDescription: "error_description",
+				Name:   "name",
+				Email:  "email",
+				Groups: []string{"group"},
+				responseError: responseError{
+					ErrorCode:        "error_code",
+					ErrorDescription: "error_description",
+				},
 			}
 			userInfo, err := um.getUserInfo(ctx, "access_token")
 			assert.Error(t, err)
 			mapContains(t, s.UserInfoHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Authorization": []string{"Bearer access_token"},
+				"Accept":        {"application/json"},
+				"Authorization": {"Bearer access_token"},
 			})
 			require.NotNil(t, userInfo)
 			assert.Equal(t, *s.UserInfoResponse, *userInfo)
@@ -357,41 +359,43 @@ func TestRequestHelpers(t *testing.T) {
 			tokens, err := um.exchangeCodeForTokens(ctx, code)
 			require.NoError(t, err)
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Content-Type":  []string{"application/x-www-form-urlencoded"},
-				"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
+				"Accept":        {"application/json"},
+				"Content-Type":  {"application/x-www-form-urlencoded"},
+				"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
 			})
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":   []string{"authorization_code"},
-				"code":         []string{code},
-				"redirect_uri": []string{um.redirectURI},
+				"grant_type":   {"authorization_code"},
+				"code":         {code},
+				"redirect_uri": {um.redirectURI},
 			})
 			require.NotNil(t, tokens)
 			assert.Equal(t, *s.TokenResponse, *tokens)
 		},
 		"ExchangeCodeForTokensError": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			s.TokenResponse = &tokenResponse{
-				AccessToken:      "access_token",
-				IDToken:          "id_token",
-				RefreshToken:     "refresh_token",
-				TokenType:        "token_type",
-				ExpiresIn:        3600,
-				Scope:            "scope",
-				ErrorCode:        "error_code",
-				ErrorDescription: "error_description",
+				AccessToken:  "access_token",
+				IDToken:      "id_token",
+				RefreshToken: "refresh_token",
+				TokenType:    "token_type",
+				ExpiresIn:    3600,
+				Scope:        "scope",
+				responseError: responseError{
+					ErrorCode:        "error_code",
+					ErrorDescription: "error_description",
+				},
 			}
 			code := "some_code"
 			tokens, err := um.exchangeCodeForTokens(ctx, code)
 			assert.Error(t, err)
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Content-Type":  []string{"application/x-www-form-urlencoded"},
-				"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
+				"Accept":        {"application/json"},
+				"Content-Type":  {"application/x-www-form-urlencoded"},
+				"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
 			})
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":   []string{"authorization_code"},
-				"code":         []string{code},
-				"redirect_uri": []string{um.redirectURI},
+				"grant_type":   {"authorization_code"},
+				"code":         {code},
+				"redirect_uri": {um.redirectURI},
 			})
 			require.NotNil(t, tokens)
 			assert.Equal(t, *s.TokenResponse, *tokens)
@@ -744,12 +748,6 @@ func TestClearUser(t *testing.T) {
 				assert.Error(t, err)
 			}
 		})
-	}
-}
-
-func mapContainsKeys(t *testing.T, set map[string]string, subset []string) {
-	for _, name := range subset {
-		assert.Contains(t, set, name)
 	}
 }
 
@@ -1122,22 +1120,25 @@ func TestReauthorization(t *testing.T) {
 			_, err = um.cache.GetOrCreate(user)
 			require.NoError(t, err)
 
-			s.IntrospectResponse = &introspectResponse{Active: true}
+			s.IntrospectResponse = &introspectResponse{
+				Active:      true,
+				ExpiresUnix: int(time.Now().Add(time.Hour).Unix()),
+			}
 			s.UserInfoResponse = &userInfoResponse{Name: "foo", Email: "foo@bar.com", Groups: []string{um.userGroup}}
 
 			require.NoError(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
-				"token":           []string{accessToken},
-				"token_type_hint": []string{"access_token"},
+				"token":           {accessToken},
+				"token_type_hint": {"access_token"},
 			})
 			mapContains(t, s.IntrospectHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
+				"Content-Type": {"application/x-www-form-urlencoded"},
+				"Accept":       {"application/json"},
 			})
 			mapContains(t, s.UserInfoHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Authorization": []string{"Bearer " + accessToken},
+				"Accept":        {"application/json"},
+				"Authorization": {"Bearer " + accessToken},
 			})
 			assert.Empty(t, s.TokenParameters, "reauthorization should succeed without requesting new tokens")
 			assert.Empty(t, s.TokenHeaders, "reauthorization should succeed without requesting new tokens")
@@ -1167,7 +1168,10 @@ func TestReauthorization(t *testing.T) {
 				}, nil
 			}
 
-			s.IntrospectResponse = &introspectResponse{Active: true}
+			s.IntrospectResponse = &introspectResponse{
+				Active:      true,
+				ExpiresUnix: int(time.Now().Add(time.Hour).Unix()),
+			}
 			s.UserInfoResponse = &userInfoResponse{Name: "foo", Email: "foo@bar.com", Groups: []string{um.userGroup}}
 			s.TokenResponse = &tokenResponse{
 				AccessToken:  newAccessToken,
@@ -1181,16 +1185,16 @@ func TestReauthorization(t *testing.T) {
 			require.NoError(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":    []string{"refresh_token"},
-				"refresh_token": []string{refreshToken},
-				"scope":         []string{"openid email profile offline_access groups"},
+				"grant_type":    {"refresh_token"},
+				"refresh_token": {refreshToken},
+				"scope":         {"openid email profile offline_access groups"},
 			})
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
+				"Content-Type": {"application/x-www-form-urlencoded"},
+				"Accept":       {"application/json"},
 			})
-			assert.Empty(t, s.IntrospectParameters, "should not check access token if not validating groups")
-			assert.Empty(t, s.IntrospectHeaders, "should not check access token if not validating groups")
+			assert.Empty(t, s.IntrospectParameters, "should not introspect access token if not validating groups")
+			assert.Empty(t, s.IntrospectHeaders, "should not introspect access token if not validating groups")
 			assert.Empty(t, s.UserInfoHeaders, "should not get user info if not validating groups")
 
 			cachedUser, _, err := um.cache.Find(user.Username())
@@ -1223,7 +1227,7 @@ func TestReauthorization(t *testing.T) {
 			assert.Empty(t, s.IntrospectParameters, "should not check access token if not validating groups")
 			assert.Empty(t, s.UserInfoHeaders, "should not get user info if not validating groups")
 		},
-		"FailsIfAccessTokenExpiredAndTokensCannotRefresh": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
+		"FailsIfAccessTokenAndTokensCannotRefresh": func(t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			um.validateGroups = true
 
 			accessToken := "access_token"
@@ -1235,30 +1239,26 @@ func TestReauthorization(t *testing.T) {
 			_, err = um.cache.GetOrCreate(user)
 			require.NoError(t, err)
 
-			s.IntrospectResponse = &introspectResponse{Active: false}
+			s.IntrospectResponse = &introspectResponse{
+				Active:      false,
+				ExpiresUnix: int(time.Now().Add(-time.Hour).Unix()),
+			}
 			s.TokenResponse = &tokenResponse{
-				ErrorCode:        "error",
-				ErrorDescription: "error_description",
+				responseError: responseError{
+					ErrorCode:        "error",
+					ErrorDescription: "error_description",
+				},
 			}
 
 			assert.Error(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
-				"token":           []string{accessToken},
-				"token_type_hint": []string{"access_token"},
+				"token":           {accessToken},
+				"token_type_hint": {"access_token"},
 			})
 			mapContains(t, s.IntrospectHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
-			})
-			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":    []string{"refresh_token"},
-				"refresh_token": []string{refreshToken},
-				"scope":         []string{"openid email profile offline_access groups"},
-			})
-			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
+				"Content-Type": {"application/x-www-form-urlencoded"},
+				"Accept":       {"application/json"},
 			})
 			assert.Empty(t, s.UserInfoHeaders)
 
@@ -1272,7 +1272,10 @@ func TestReauthorization(t *testing.T) {
 			accessToken := "access_token"
 			refreshToken := "refresh_token"
 			newAccessToken := "new_access_token"
-			s.IntrospectResponse = &introspectResponse{Active: true}
+			s.IntrospectResponse = &introspectResponse{
+				Active:      true,
+				ExpiresUnix: int(time.Now().Add(time.Hour).Unix()),
+			}
 			s.TokenResponse = &tokenResponse{
 				AccessToken:  newAccessToken,
 				IDToken:      "new_id_token",
@@ -1291,25 +1294,25 @@ func TestReauthorization(t *testing.T) {
 			assert.Error(t, um.ReauthorizeUser(user))
 
 			mapContains(t, s.IntrospectParameters, map[string][]string{
-				"token":           []string{newAccessToken},
-				"token_type_hint": []string{"access_token"},
+				"token":           {newAccessToken},
+				"token_type_hint": {"access_token"},
 			})
 			mapContains(t, s.IntrospectHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
+				"Content-Type": {"application/x-www-form-urlencoded"},
+				"Accept":       {"application/json"},
 			})
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":    []string{"refresh_token"},
-				"refresh_token": []string{refreshToken},
-				"scope":         []string{"openid email profile offline_access groups"},
+				"grant_type":    {"refresh_token"},
+				"refresh_token": {refreshToken},
+				"scope":         {"openid email profile offline_access groups"},
 			})
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Content-Type": []string{"application/x-www-form-urlencoded"},
-				"Accept":       []string{"application/json"},
+				"Content-Type": {"application/x-www-form-urlencoded"},
+				"Accept":       {"application/json"},
 			})
 			mapContains(t, s.UserInfoHeaders, map[string][]string{
-				"Accept":        []string{"application/json"},
-				"Authorization": []string{"Bearer " + newAccessToken},
+				"Accept":        {"application/json"},
+				"Authorization": {"Bearer " + newAccessToken},
 			})
 
 			cachedUser, _, err := um.cache.Find(user.Username())
