@@ -84,12 +84,12 @@ func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *t
 // interval and streaming to cedar using the provided client connection. The task
 // is used to set the cedar metadata of for the collected metrics.
 func NewSystemMetricsCollectorWithClientConn(ctx context.Context, interval time.Duration, t *task.Task,
+	collectors []MetricCollector, conn *grpc.ClientConn) (*SystemMetricsCollector, error) {
 	s, err := systemMetricsCollectorSetup(ctx, interval, t, collectors)
 	if err != nil {
 		return nil, err
 	}
 
-	collectors []MetricCollector, conn *grpc.ClientConn) (*SystemMetricsCollector, error) {
 	mc, err := metrics.NewSystemMetricsClientWithExistingConnection(ctx, conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
