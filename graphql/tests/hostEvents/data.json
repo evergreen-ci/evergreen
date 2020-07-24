@@ -1,0 +1,61 @@
+{
+    "event_log": [
+        {
+            "_id": "5412f498b14ed69l84645p07",
+            "ts": {
+                "$date": "2014-09-12T13:25:44.451Z"
+            },
+            "r_id": "i-092593689871a50dc",
+            "e_type": "HOST_PROVISIONED",
+            "data": {},
+            "processed_at": {
+                "$date": "2015-10-21T23:29:00Z"
+            },
+            "r_type": "HOST"
+        },
+        {
+            "_id": "8912kcddj14td81d8454c8dn",
+            "ts": {
+                "$date": "2014-09-12T14:02:05.272Z"
+            },
+            "r_id": "i-092593689871a50dc",
+            "e_type": "HOST_RUNNING_TASK_SET",
+            "data": {},
+            "processed_at": {
+                "$date": "2015-10-21T23:29:00Z"
+            },
+            "r_type": "HOST"
+        },
+        {
+            "_id": "5419fd1bb17ed89d1464abff",
+            "ts": {
+                "$date": "2014-09-12T14:03:07.838Z"
+            },
+            "r_id": "i-092593689871a50dc",
+            "e_type": "HOST_TASK_PID_SET",
+            "data": {
+                "t_pid": "123"
+            },
+            "processed_at": {
+                "$date": "2015-10-21T23:29:00Z"
+            },
+            "r_type": "HOST"
+        },
+        {
+            "_id": "58aded494a1426f15c051955",
+            "r_type": "HOST",
+            "processed_at": {
+                "$date": "2015-10-21T23:29:00Z"
+            },
+            "ts": {
+                "$date": "2017-02-22T19:58:17.252Z"
+            },
+            "r_id": "i-092593689871a50dc",
+            "e_type": "HOST_STATUS_CHANGED",
+            "data": {
+                "o_s": "running",
+                "n_s": "unreachable"
+            }
+        }
+    ]
+}
