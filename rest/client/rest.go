@@ -1066,7 +1066,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 	}
 
 	positionResp := model.APICommitQueuePosition{}
-	if err = utility.ReadJSON(resp.Body, positionResp); err != nil {
+	if err = utility.ReadJSON(resp.Body, &positionResp); err != nil {
 		return 0, errors.Wrap(err, "parsing position response")
 	}
 
