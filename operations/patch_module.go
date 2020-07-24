@@ -55,17 +55,12 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			uncommittedChanges, err := gitUncommittedChanges()
+			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
-
-			if uncommittedChanges {
-				if preserveCommits {
-					grip.Infof("Uncommitted changes are omitted from patches when commits are preserved")
-				} else if !uncommittedOk && !conf.UncommittedChanges {
-					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
-				}
+			if !keepGoing {
+				return nil
 			}
 
 			proj, err := rc.GetPatchedConfig(patchID)

@@ -409,6 +409,28 @@ func isValidCommitsFormat(commits string) error {
 	return nil
 }
 
+func confirmUncommittedChanges(preserveCommits, includeUncommitedChanges bool) (bool, error) {
+	uncommittedChanges, err := gitUncommittedChanges()
+	if err != nil {
+		return false, errors.Wrap(err, "can't test for uncommitted changes")
+	}
+	if !uncommittedChanges {
+		return true, nil
+	}
+
+	if preserveCommits {
+		return confirm("Uncommitted changes are omitted from patches when commits are preserved. Continue? (y/N)", false), nil
+	}
+
+	if !includeUncommitedChanges {
+		return confirm(fmt.Sprintf(`Uncommitted changes are omitted from patches by default.
+Use the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.
+Continue? (Y/n)`, uncommittedChangesFlag), true), nil
+	}
+
+	return true, nil
+}
+
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.

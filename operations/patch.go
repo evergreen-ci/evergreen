@@ -93,17 +93,12 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			uncommittedChanges, err := gitUncommittedChanges()
+			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
-
-			if uncommittedChanges {
-				if params.PreserveCommits {
-					grip.Infof("Uncommitted changes are omitted from patches when commits are preserved.")
-				} else if !params.Uncommitted && !conf.UncommittedChanges {
-					grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
-				}
+			if !keepGoing {
+				return nil
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
