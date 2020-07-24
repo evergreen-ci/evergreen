@@ -152,6 +152,12 @@ func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", high.hostID))
 	}
+	if foundHost == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id '%s' not found", high.hostID),
+		})
+	}
 
 	hostModel := &model.APIHost{}
 	if err = hostModel.BuildFromService(*foundHost); err != nil {

@@ -126,13 +126,13 @@ func (aws *awsSns) handleNotification(ctx context.Context) gimlet.Responder {
 	switch notification.DetailType {
 	case interruptionWarningType:
 		if err := aws.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem processing interruption warning"))
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem processing interruption warning"))
 		}
 
 	case instanceStateChangeType:
 		if notification.Detail.State == ec2.InstanceStateNameTerminated {
 			if err := aws.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
-				return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem processing instance termination"))
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem processing instance termination"))
 			}
 		}
 
@@ -147,6 +147,10 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 	h, err := aws.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
+	}
+	// don't make AWS keep retrying if we haven't heard of the host
+	if h == nil {
+		return nil
 	}
 
 	if h.Status != evergreen.HostRunning {
@@ -183,6 +187,10 @@ func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID stri
 	h, err := aws.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
+	}
+	// don't make AWS keep retrying if we haven't heard of the host
+	if h == nil {
+		return nil
 	}
 
 	if h.Status == evergreen.HostTerminated {
