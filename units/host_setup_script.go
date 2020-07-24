@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -123,8 +122,6 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-
-	event.LogHostSetupScriptFinished(j.HostID)
 }
 
 func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {

@@ -47,7 +47,6 @@ const (
 	EventHostProvisionError              = "HOST_PROVISION_ERROR"
 	EventHostProvisionFailed             = "HOST_PROVISION_FAILED"
 	EventHostProvisioned                 = "HOST_PROVISIONED"
-	EventHostScriptFinished              = "HOST_SCRIPT_FINISHED"
 	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
 	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
 	EventHostTaskPidSet                  = "HOST_TASK_PID_SET"
@@ -194,10 +193,6 @@ func LogHostDNSNameSet(hostId string, dnsName string) {
 
 func LogHostProvisioned(hostId string) {
 	LogHostEvent(hostId, EventHostProvisioned, HostEventData{})
-}
-
-func LogHostSetupScriptFinished(hostId string) {
-	LogHostEvent(hostId, EventHostScriptFinished, HostEventData{})
 }
 
 func LogHostRunningTaskSet(hostId string, taskId string) {
