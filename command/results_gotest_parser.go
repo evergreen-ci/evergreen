@@ -32,7 +32,7 @@ var (
 	gocheckEndRegex = regexp.MustCompile(`(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9\.m]+[ ]*s)?`)
 
 	// Match the failing status prefix for go build.
-	goTestFailedStatusRegex = regexp.MustCompile(`FAIL[^:]\s+(\S+) .*`)
+	goTestFailedStatusRegex = regexp.MustCompile(`FAIL\s+(\S+)\s+\[build failed\]`)
 )
 
 // This test result implementation maps more idiomatically to Go's test output

@@ -64,9 +64,18 @@ func TestParserRegex(t *testing.T) {
 			})
 			Convey("go test build lines", func() {
 				path, err := pathNameFromLogLine(
-					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go [build failed]")
+					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go     [build failed] ")
 				So(err, ShouldBeNil)
 				So(path, ShouldEqual, "github.go/evergreen-ci/evergreen/model/patch.go")
+
+				path, err = pathNameFromLogLine(
+					"FAIL github.go/evergreen-ci/evergreen/model/patch.go [build failed]")
+				So(err, ShouldBeNil)
+				So(path, ShouldEqual, "github.go/evergreen-ci/evergreen/model/patch.go")
+
+				_, err = pathNameFromLogLine(
+					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
+				So(err, ShouldNotBeNil)
 
 				_, err = pathNameFromLogLine(
 					"ok     github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
