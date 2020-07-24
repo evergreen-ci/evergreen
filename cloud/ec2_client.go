@@ -201,7 +201,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					if strings.Contains(ec2err.Code(), EC2InsufficientCapacity) {
-						return false, err
+						return false, EC2InsufficientCapacityError
 					}
 					grip.Debug(message.WrapError(ec2err, msg))
 				}

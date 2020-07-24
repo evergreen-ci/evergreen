@@ -151,11 +151,10 @@ func adminServiceChange(disable bool) cli.ActionFunc {
 		client := conf.setupRestCommunicator(ctx)
 		defer client.Close()
 
-		flags, err := client.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "problem getting current service flag state")
-		}
-
+		// TODO: fix this so that there's a route that actually returns the
+		// current service flags correctly (the legacy admin config route
+		// returns empty).
+		flags := &model.APIServiceFlags{}
 		if err := setServiceFlagValues(flagsToSet, disable, flags); err != nil {
 			return errors.Wrap(err, "invalid service flags")
 		}

@@ -269,7 +269,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
-			&ec2.InstanceNetworkInterfaceSpecification{
+			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
@@ -311,6 +311,28 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	})
 	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
+		if err == EC2InsufficientCapacityError {
+			// try again in another AZ
+			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
+				msg := "got EC2InsufficientCapacityError"
+				grip.Info(message.Fields{
+					"message":       msg,
+					"action":        "retrying",
+					"host_id":       h.Id,
+					"host_provider": h.Distro.Provider,
+					"distro":        h.Distro.Id,
+				})
+				return errors.Wrap(err, msg)
+			} else {
+				grip.Error(message.WrapError(subnetErr, message.Fields{
+					"message":       "couldn't increment subnet",
+					"host_id":       h.Id,
+					"host_provider": h.Distro.Provider,
+					"distro":        h.Distro.Id,
+				}))
+			}
+		}
+
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 				"message": "problem cleaning up user data credentials",
@@ -321,6 +343,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		msg := "RunInstances API call returned an error"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
+			"action":        "removing",
 			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
@@ -367,6 +390,43 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	return nil
 }
 
+// setNextSubnet sets the subnet in the host's cached distro to the next one that supports this instance type.
+// If the current subnet doesn't support this instance type it's set to the first that does.
+func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
+		return errors.Wrap(err, "can't get provider settings")
+	}
+
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, h.InstanceType, ec2Settings.getRegion())
+	if err != nil {
+		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
+	}
+	if len(supportingSubnets) == 0 {
+		return errors.Errorf("instance type '%s' is not supported by any configured subnet for region '%s'", h.InstanceType, ec2Settings.getRegion())
+	}
+
+	if len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId {
+		return errors.Errorf("no other subnets support '%s'", h.InstanceType)
+	}
+
+	nextSubnetIndex := 0
+	for i, subnet := range supportingSubnets {
+		if subnet.SubnetID == ec2Settings.SubnetId {
+			nextSubnetIndex = i + 1
+			break
+		}
+	}
+
+	ec2Settings.SubnetId = supportingSubnets[nextSubnetIndex%len(supportingSubnets)].SubnetID
+	newSettingsDocument, err := ec2Settings.ToDocument()
+	if err != nil {
+		return errors.Wrap(err, "can't convert provider settings to document")
+	}
+
+	return h.UpdateCachedDistroProviderSettings([]*birch.Document{newSettingsDocument})
+}
+
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
 	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     aws.String(fmt.Sprintf("%v", ec2Settings.BidPrice)),
@@ -381,7 +441,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 
 	if ec2Settings.IsVpc {
 		spotRequest.LaunchSpecification.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
-			&ec2.InstanceNetworkInterfaceSpecification{
+			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
