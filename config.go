@@ -59,7 +59,6 @@ type Settings struct {
 	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
 	Banner             string                    `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Bugsnag            string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
 	Backup             BackupConfig              `bson:"backup" json:"backup" yaml:"backup"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -135,7 +134,6 @@ func (c *Settings) Set() error {
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
-			bugsnagKey:            c.Bugsnag,
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
