@@ -91,6 +91,22 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
+	tc.systemMetricsCollector, err = NewSystemMetricsCollector(
+		ctx,
+		defaultStatsInterval,
+		tc.taskModel,
+		[]MetricCollector{},
+		a.comm,
+	)
+	if err != nil {
+		tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
+	} else {
+		err = tc.systemMetricsCollector.Start(ctx)
+		if err != nil {
+			tc.logger.System().Error(errors.Wrap(err, "error starting system metrics collection"))
+		}
+	}
+
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("task canceled")
 		return
