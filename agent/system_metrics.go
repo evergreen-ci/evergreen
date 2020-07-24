@@ -170,7 +170,7 @@ func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricColl
 	defer timer.Stop()
 	defer s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.Name())))
 	defer s.catcher.Add(errors.Wrap(ftdc.FlushCollector(collector, stream), fmt.Sprintf("problem flushing system metrics data collector for id %s and metricType %s", s.id, mc.Name())))
-	defer s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name()), "")))
+	defer s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name())), ""))
 
 	for {
 		select {
@@ -179,12 +179,12 @@ func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricColl
 		case <-timer.C:
 			data, err := mc.Collect()
 			if err != nil {
-				s.catcher.Add(errors.Wrap(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name()))
+				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name()))
 				return
 			}
 			err = collector.Add(data)
 			if err != nil {
-				s.catcher.Add(errors.Wrap(err, "problem adding system metrics data to collector for id %s and metricType %s", s.id, mc.Name()))
+				s.catcher.Add(errors.Wrapf(err, "problem adding system metrics data to collector for id %s and metricType %s", s.id, mc.Name()))
 				return
 			}
 			_ = timer.Reset(s.interval)
