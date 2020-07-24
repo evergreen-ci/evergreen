@@ -12,6 +12,7 @@ import (
 type APIHost struct {
 	Id               *string     `json:"host_id"`
 	HostURL          *string     `json:"host_url"`
+	Tag              *string     `json:"tag"`
 	Distro           DistroInfo  `json:"distro"`
 	Provisioned      bool        `json:"provisioned"`
 	StartedBy        *string     `json:"started_by"`
@@ -105,6 +106,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	}
 	apiHost.Id = ToStringPtr(v.Id)
 	apiHost.HostURL = ToStringPtr(v.Host)
+	apiHost.Tag = ToStringPtr(v.Tag)
 	apiHost.Provisioned = v.Provisioned
 	apiHost.StartedBy = ToStringPtr(v.StartedBy)
 	apiHost.Provider = ToStringPtr(v.Provider)
@@ -148,6 +150,7 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Zone:         FromStringPtr(apiHost.AvailabilityZone),
 		DisplayName:  FromStringPtr(apiHost.DisplayName),
 		HomeVolumeID: FromStringPtr(apiHost.HomeVolumeID),
+		Tag:          FromStringPtr(apiHost.Tag),
 	}
 	return interface{}(h), nil
 }

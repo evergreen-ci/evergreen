@@ -39,6 +39,20 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
+func FindPaginated(coll string, query db.Q, skip int) ([]EventLogEntry, error) {
+	events := []EventLogEntry{}
+	if skip > 0 {
+		query = query.Skip(skip)
+	}
+
+	err := db.FindAllQ(coll, query, &events)
+	if err != nil || adb.ResultsNotFound(err) {
+		return nil, errors.WithStack(err)
+	}
+
+	return events, nil
+}
+
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
 func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {

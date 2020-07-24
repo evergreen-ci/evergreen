@@ -39,6 +39,10 @@ type GroupedProjects struct {
 	Projects []*model.UIProjectFields `json:"projects"`
 }
 
+type HostEvents struct {
+	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
+}
+
 type HostsResponse struct {
 	FilteredHostsCount *int             `json:"filteredHostsCount"`
 	TotalHostsCount    int              `json:"totalHostsCount"`
@@ -100,10 +104,10 @@ type Projects struct {
 }
 
 type RecentTaskLogs struct {
-	EventLogs  []*model.APIEventLogEntry `json:"eventLogs"`
-	TaskLogs   []*apimodels.LogMessage   `json:"taskLogs"`
-	SystemLogs []*apimodels.LogMessage   `json:"systemLogs"`
-	AgentLogs  []*apimodels.LogMessage   `json:"agentLogs"`
+	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
+	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
+	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type TaskFiles struct {
