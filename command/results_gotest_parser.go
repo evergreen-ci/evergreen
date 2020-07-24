@@ -30,6 +30,9 @@ var (
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
 	gocheckEndRegex = regexp.MustCompile(`(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9\.m]+[ ]*s)?`)
+
+	// Match the failing status prefix for go build.
+	goTestFailedStatusRegex = regexp.MustCompile(`FAIL[^:]\s+(\S+) .*`)
 )
 
 // This test result implementation maps more idiomatically to Go's test output
@@ -139,6 +142,8 @@ func (vp *goTestParser) handleLine(line string) error {
 		return vp.handleEnd(line, endRegex)
 	case gocheckEndRegex.MatchString(line):
 		return vp.handleEnd(line, gocheckEndRegex)
+	case goTestFailedStatusRegex.MatchString(line):
+		return vp.handleFailedBuild(line)
 	}
 	return nil
 }
@@ -192,6 +197,14 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 	return nil
 }
 
+func (vp *goTestParser) handleFailedBuild(line string) error {
+	path, err := pathNameFromLogLine(line)
+	if err != nil {
+		return errors.Wrapf(err, "error parsing start line '%s'", line)
+	}
+	return errors.Errorf("go test failed for path '%s'", path)
+}
+
 // newTestResult populates a test result type with the given
 // test name and current line number.
 func (vp *goTestParser) newTestResult(name string) *goTestResult {
@@ -237,4 +250,13 @@ func endInfoFromLogLine(line string, rgx *regexp.Regexp) (string, string, time.D
 		}
 	}
 	return name, status, duration, nil
+}
+
+// pathNameFromLogLine returns the test name from a go test log line.
+func pathNameFromLogLine(line string) (string, error) {
+	matches := goTestFailedStatusRegex.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return "", errors.Errorf("unable to match build line to regular expression on line: %s", line)
+	}
+	return matches[1], nil
 }

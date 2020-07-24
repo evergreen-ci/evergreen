@@ -62,6 +62,16 @@ func TestParserRegex(t *testing.T) {
 				So(status, ShouldEqual, PASS)
 				So(dur, ShouldEqual, time.Duration(900)*time.Millisecond)
 			})
+			Convey("go test build lines", func() {
+				path, err := pathNameFromLogLine(
+					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go [build failed]")
+				So(err, ShouldBeNil)
+				So(path, ShouldEqual, "github.go/evergreen-ci/evergreen/model/patch.go")
+
+				_, err = pathNameFromLogLine(
+					"ok     github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
+				So(err, ShouldNotBeNil)
+			})
 		})
 	})
 
@@ -212,5 +222,14 @@ func TestParserFunctionality(t *testing.T) {
 			So(outcome, ShouldBeTrue)
 
 		}
+	})
+
+	Convey("gotest log with failed build", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "8_simple.log"))
+		So(err, ShouldBeNil)
+
+		parser := &goTestParser{}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldNotBeNil)
 	})
 }
