@@ -142,7 +142,6 @@ func (c *Settings) Set() error {
 			domainNameKey:         c.DomainName,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
-			googleAnalyticsKey:    c.GoogleAnalyticsID,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			githubOrgsKey:         c.GithubOrgs,
 			keysKey:               c.Keys,
