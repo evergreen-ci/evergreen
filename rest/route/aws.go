@@ -153,7 +153,7 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
-	if h.Status != evergreen.HostRunning {
+	if h.Status == evergreen.HostTerminated {
 		return nil
 	}
 
