@@ -49,7 +49,7 @@ func makeHostSetupScriptJob() *hostSetupScriptJob {
 }
 
 // NewHostSetupScriptJob creates a job that executes the setup script after task data is loaded onto the host.
-func NewHostSetupScriptJob(env evergreen.Environment, attempt int, h host.Host) amboy.Job {
+func NewHostSetupScriptJob(env evergreen.Environment, h host.Host, attempt int) amboy.Job {
 	j := makeHostSetupScriptJob()
 	j.env = env
 	j.host = &h
@@ -127,5 +127,5 @@ func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
 	if j.CurrentAttempt >= setupScriptRetryLimit {
 		return errors.Errorf("exceeded max retries for setup script (%d)", setupScriptRetryLimit)
 	}
-	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.CurrentAttempt+1, *j.host))
+	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host, j.CurrentAttempt+1))
 }

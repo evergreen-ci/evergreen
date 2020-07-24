@@ -405,7 +405,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
 				settings.HostJasper,
-				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
 				options.Create{
 					Args: fetchCmd,
 					Tags: []string{evergreen.HostFetchTag},

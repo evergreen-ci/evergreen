@@ -255,7 +255,7 @@ func TestJasperCommands(t *testing.T) {
 			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
 			pullTaskSync, err := h.buildLocalJasperClientRequest(
 				settings.HostJasper,
-				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
 				options.Create{
 					Args: bashPullTaskSync,
 					Tags: []string{evergreen.HostFetchTag},
