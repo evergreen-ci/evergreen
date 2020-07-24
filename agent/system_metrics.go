@@ -51,6 +51,11 @@ type SystemMetricsCollector struct {
 // The task is used to set the cedar metadata of for the collected metrics.
 func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *task.Task,
 	collectors []MetricCollector, c client.Communicator) (*SystemMetricsCollector, error) {
+	s, err := systemMetricsCollectorSetup(ctx, interval, t, collectors)
+	if err != nil {
+		return nil, err
+	}
+
 	bi, err := c.GetBuildloggerInfo(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cedar dial options")
@@ -66,11 +71,12 @@ func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *t
 	connOpts := metrics.ConnectionOptions{
 		DialOpts: dialOpts,
 	}
-	client, err = metrics.NewSystemMetricsClient(ctx, s.connOpts)
+	mc, err := metrics.NewSystemMetricsClient(ctx, connOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}
-	return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
+	s.client = mc
+	return s, nil
 }
 
 // NewSystemMetricsCollectorWithClientConn returns a SystemMetricsCollector ready
@@ -78,16 +84,22 @@ func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *t
 // interval and streaming to cedar using the provided client connection. The task
 // is used to set the cedar metadata of for the collected metrics.
 func NewSystemMetricsCollectorWithClientConn(ctx context.Context, interval time.Duration, t *task.Task,
+	s, err := systemMetricsCollectorSetup(ctx, interval, t, collectors)
+	if err != nil {
+		return nil, err
+	}
+
 	collectors []MetricCollector, conn *grpc.ClientConn) (*SystemMetricsCollector, error) {
-	client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, conn)
+	mc, err := metrics.NewSystemMetricsClientWithExistingConnection(ctx, conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}
-	return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
+	s.client = mc
+	return s, nil
 }
 
 func systemMetricsCollectorSetup(ctx context.Context, interval time.Duration, t *task.Task,
-	collectors []MetricCollector, client *metrics.SystemMetricsClient) (*SystemMetricsCollector, error) {
+	collectors []MetricCollector) (*SystemMetricsCollector, error) {
 	if interval < 0 {
 		return nil, errors.New("interval cannot be negative")
 	}
@@ -108,7 +120,6 @@ func systemMetricsCollectorSetup(ctx context.Context, interval time.Duration, t 
 		interval:   interval,
 		collectors: collectors,
 		taskOpts:   taskOpts,
-		client:     client,
 		catcher:    grip.NewBasicCatcher(),
 	}, nil
 }
@@ -119,15 +130,6 @@ func systemMetricsCollectorSetup(ctx context.Context, interval time.Duration, t 
 // errors. This can also be handled by cancelling the provided context, but
 // any errors will only be logged to the global error logs in this case.
 func (s *SystemMetricsCollector) Start(ctx context.Context) error {
-	defer func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if s.catcher.HasErrors() {
-			returnedErr = s.cleanup()
-		}
-		return
-	}()
-
 	var err error
 	s.id, err = s.client.CreateSystemMetricRecord(ctx, *s.taskOpts)
 	if err != nil {
@@ -168,7 +170,7 @@ func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricColl
 	defer timer.Stop()
 	defer s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.Name())))
 	defer s.catcher.Add(errors.Wrap(ftdc.FlushCollector(collector, stream), fmt.Sprintf("problem flushing system metrics data collector for id %s and metricType %s", s.id, mc.Name())))
-	defer s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name())), ""))
+	defer s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name()), "")))
 
 	for {
 		select {
