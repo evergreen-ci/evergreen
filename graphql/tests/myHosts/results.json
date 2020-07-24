@@ -1,0 +1,48 @@
+{
+  "tests": [
+    {
+      "query_file": "hosts.graphql",
+      "result": {
+        "data": {
+          "myHosts": [
+            {
+              "id": "i-06f80fa6e28f93b7d",
+              "distroId": "ubuntu1604-small",
+              "distro": {
+                "workDir": "/data/mci",
+                "name": "ubuntu1604-small"
+              }
+            },
+            {
+              "id": "i-0f81a2d39744003dd",
+              "distroId": "ubuntu1604-large",
+              "distro": {
+                "workDir": "/data/mci",
+                "name": "ubuntu1604-large"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "expired-time.graphql",
+      "result": {
+        "data": {
+          "myHosts": [
+            {
+              "id": "i-06f80fa6e28f93b7d",
+              "expiration": "2020-07-21T10:48:05-04:00",
+              "noExpiration": false
+            },
+            {
+              "id": "i-0f81a2d39744003dd",
+              "expiration": null,
+              "noExpiration": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

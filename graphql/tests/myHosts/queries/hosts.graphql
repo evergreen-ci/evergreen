@@ -1,0 +1,10 @@
+{
+  myHosts {
+    id
+    distroId
+    distro {
+      workDir
+      name
+    }
+  }
+}
