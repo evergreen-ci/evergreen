@@ -231,5 +231,6 @@ func TestParserFunctionality(t *testing.T) {
 		parser := &goTestParser{}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "github.com/evergreen-ci/evergreen/model/host")
 	})
 }
