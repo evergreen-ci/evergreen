@@ -14,6 +14,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -134,9 +135,11 @@ type ComplexityRoot struct {
 		Distro           func(childComplexity int) int
 		DistroID         func(childComplexity int) int
 		Elapsed          func(childComplexity int) int
+		Expiration       func(childComplexity int) int
 		HomeVolumeID     func(childComplexity int) int
 		HostURL          func(childComplexity int) int
 		Id               func(childComplexity int) int
+		InstanceTags     func(childComplexity int) int
 		InstanceType     func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
 		RunningTask      func(childComplexity int) int
@@ -488,6 +491,8 @@ type HostResolver interface {
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
 	Distro(ctx context.Context, obj *model.APIHost) (*model.APIDistro, error)
+
+	Expiration(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -866,7 +871,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
 
-	case "Host.AvailabilityZone":
+	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
 			break
 		}
@@ -894,6 +899,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Elapsed(childComplexity), true
 
+	case "Host.expiration":
+		if e.complexity.Host.Expiration == nil {
+			break
+		}
+
+		return e.complexity.Host.Expiration(childComplexity), true
+
 	case "Host.homeVolumeID":
 		if e.complexity.Host.HomeVolumeID == nil {
 			break
@@ -914,6 +926,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Id(childComplexity), true
+
+	case "Host.instanceTags":
+		if e.complexity.Host.InstanceTags == nil {
+			break
+		}
+
+		return e.complexity.Host.InstanceTags(childComplexity), true
 
 	case "Host.instanceType":
 		if e.complexity.Host.InstanceType == nil {
@@ -2877,7 +2896,9 @@ type Host {
   homeVolumeID: String
   user: String
   distro: Distro
-  AvailabilityZone: String
+  availabilityZone: String
+  instanceTags: [InstanceTag]
+  expiration: Time
 }
 
 type InstanceTag {
@@ -5793,7 +5814,7 @@ func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.Coll
 	return ec.marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Host_AvailabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5822,6 +5843,68 @@ func (ec *executionContext) _Host_AvailabilityZone(ctx context.Context, field gr
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_instanceTags(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InstanceTags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]host.Tag)
+	fc.Result = res
+	return ec.marshalOInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Expiration(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HostsResponse_filteredHostsCount(ctx context.Context, field graphql.CollectedField, obj *HostsResponse) (ret graphql.Marshaler) {
@@ -5923,7 +6006,7 @@ func (ec *executionContext) _HostsResponse_hosts(ctx context.Context, field grap
 	return ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _InstanceTag_key(ctx context.Context, field graphql.CollectedField, obj *InstanceTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _InstanceTag_key(ctx context.Context, field graphql.CollectedField, obj *host.Tag) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5949,12 +6032,12 @@ func (ec *executionContext) _InstanceTag_key(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _InstanceTag_value(ctx context.Context, field graphql.CollectedField, obj *InstanceTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _InstanceTag_value(ctx context.Context, field graphql.CollectedField, obj *host.Tag) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5980,12 +6063,12 @@ func (ec *executionContext) _InstanceTag_value(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, field graphql.CollectedField, obj *InstanceTag) (ret graphql.Marshaler) {
+func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, field graphql.CollectedField, obj *host.Tag) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -6011,9 +6094,9 @@ func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LogMessage_type(ctx context.Context, field graphql.CollectedField, obj *apimodels.LogMessage) (ret graphql.Marshaler) {
@@ -15122,8 +15205,21 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Host_distro(ctx, field, obj)
 				return res
 			})
-		case "AvailabilityZone":
-			out.Values[i] = ec._Host_AvailabilityZone(ctx, field, obj)
+		case "availabilityZone":
+			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
+		case "instanceTags":
+			out.Values[i] = ec._Host_instanceTags(ctx, field, obj)
+		case "expiration":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_expiration(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15171,7 +15267,7 @@ func (ec *executionContext) _HostsResponse(ctx context.Context, sel ast.Selectio
 
 var instanceTagImplementors = []string{"InstanceTag"}
 
-func (ec *executionContext) _InstanceTag(ctx context.Context, sel ast.SelectionSet, obj *InstanceTag) graphql.Marshaler {
+func (ec *executionContext) _InstanceTag(ctx context.Context, sel ast.SelectionSet, obj *host.Tag) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, instanceTagImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -19198,6 +19294,50 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 		return graphql.Null
 	}
 	return ec.marshalOID2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {
+	return ec._InstanceTag(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v []host.Tag) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {

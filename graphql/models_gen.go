@@ -45,12 +45,6 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
-type InstanceTag struct {
-	Key           *string `json:"key"`
-	Value         *string `json:"value"`
-	CanBeModified *bool   `json:"canBeModified"`
-}
-
 type PatchBuildVariant struct {
 	Variant     string                   `json:"variant"`
 	DisplayName string                   `json:"displayName"`

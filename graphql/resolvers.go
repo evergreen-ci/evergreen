@@ -64,9 +64,17 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 	return obj.RunningTask.StartTime, nil
 }
 
-// func (r *hostResolver) InstanceTags(ctx context.Context, obj *restModel.APIHost) ([]*InstanceTag, error) {
-// 	return obj.InstanceTags, nil
-// }
+func (r *hostResolver) InstanceTags(ctx context.Context, obj *restModel.APIHost) ([]host.Tag, error) {
+	return obj.InstanceTags, nil
+}
+
+func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	if !obj.NoExpiration {
+		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
+		return &expirationTime, nil
+	}
+	return nil, nil
+}
 
 func (r *hostResolver) Distro(ctx context.Context, obj *restModel.APIHost) (*restModel.APIDistro, error) {
 
@@ -76,7 +84,7 @@ func (r *hostResolver) Distro(ctx context.Context, obj *restModel.APIHost) (*res
 	}
 
 	if hostDistro == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldnt find distro with id: %s", *obj.Distro.Id))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Couldnt find distro with id: %s", *obj.Distro.Id))
 	}
 	currentDistro := restModel.APIDistro{}
 	err = currentDistro.BuildFromService(hostDistro)

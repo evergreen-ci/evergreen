@@ -177,7 +177,9 @@ type Host {
   homeVolumeID: String
   user: String
   distro: Distro
-  AvailabilityZone: String
+  availabilityZone: String
+  instanceTags: [InstanceTag]
+  expiration: Time
 }
 
 type InstanceTag {

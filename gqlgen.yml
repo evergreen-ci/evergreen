@@ -100,3 +100,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+  InstanceTag:
+    model: github.com/evergreen-ci/evergreen/model/host.Tag
