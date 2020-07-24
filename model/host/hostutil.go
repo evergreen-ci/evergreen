@@ -1003,7 +1003,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
 		grip.WarningWhen(len(procs) > 1, message.Fields{
-			"message":   fmt.Sprintf("host is attempting to fetch task data multiple times"),
+			"message":   "host is attempting to fetch task data multiple times",
 			"num_procs": len(procs),
 			"host_id":   h.Id,
 			"distro":    h.Distro.Id,

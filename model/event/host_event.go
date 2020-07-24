@@ -196,8 +196,8 @@ func LogHostProvisioned(hostId string) {
 	LogHostEvent(hostId, EventHostProvisioned, HostEventData{})
 }
 
-func LogHostSetupScriptFinished(hostId string, logs string) {
-	LogHostEvent(hostId, EventHostScriptFinished, HostEventData{Logs: logs})
+func LogHostSetupScriptFinished(hostId string) {
+	LogHostEvent(hostId, EventHostScriptFinished, HostEventData{})
 }
 
 func LogHostRunningTaskSet(hostId string, taskId string) {

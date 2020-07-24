@@ -54,15 +54,7 @@
     <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
     <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
     <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
-    <span ng-switch-when="HOST_SCRIPT_FINISHED">
-      <div>Finished running defined setup script.</div>
-      <div ng-show="!!eventLogObj.data.logs">
-        <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] script logs</div>
-        <div ng-show="showlogs">
-          <pre>[[eventLogObj.data.logs]]</pre>
-        </div>
-      </div>
-    </span>
+    <span ng-switch-when="HOST_SCRIPT_FINISHED">Finished running defined setup script.</span>
 
     <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because:
       <span ng-switch="eventLogObj.data.monitor">

@@ -49,10 +49,10 @@ func makeHostSetupScriptJob() *hostSetupScriptJob {
 }
 
 // NewHostSetupScriptJob creates a job that executes the setup script after task data is loaded onto the host.
-func NewHostSetupScriptJob(env evergreen.Environment, h host.Host, attempt int) amboy.Job {
+func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host, attempt int) amboy.Job {
 	j := makeHostSetupScriptJob()
 	j.env = env
-	j.host = &h
+	j.host = h
 	j.HostID = h.Id
 	j.CurrentAttempt = attempt
 	j.SetPriority(1)
@@ -76,6 +76,11 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			}
 		}
 	}()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	if j.host == nil {
 		var err error
 		j.host, err = host.FindOneByIdOrTag(j.HostID)
@@ -84,7 +89,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.ID()))
+			j.AddError(fmt.Errorf("could not find host '%s' for job '%s'", j.HostID, j.ID()))
 			return
 		}
 		if j.host.ProvisionOptions == nil || j.host.ProvisionOptions.SetupScript == "" {
@@ -106,7 +111,6 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	logs := ""
 	if err := runSpawnHostSetupScript(ctx, j.env, *j.host); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "failed to run setup script",
@@ -117,15 +121,16 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			"job":          j.ID(),
 		}))
 		j.AddError(err)
-		logs = err.Error()
+		return
 	}
 
-	event.LogHostSetupScriptFinished(j.HostID, logs)
+	event.LogHostSetupScriptFinished(j.HostID)
 }
 
 func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
 	if j.CurrentAttempt >= setupScriptRetryLimit {
 		return errors.Errorf("exceeded max retries for setup script (%d)", setupScriptRetryLimit)
 	}
-	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host, j.CurrentAttempt+1))
+	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, j.CurrentAttempt+1))
+
 }
