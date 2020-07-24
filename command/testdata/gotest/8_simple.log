@@ -1,0 +1,10 @@
+=== RUN   TestClientSuite
+=== RUN   TestClientSuite/TestClientGetter
+=== RUN   TestClientSuite/TestCopyeConstructorUsesDifferentHTTPClient
+--- PASS: TestClientSuite (0.01s)
+    --- PASS: TestClientSuite/TestClientGetter (0.00s)
+    --- PASS: TestClientSuite/TestCopyeConstructorUsesDifferentHTTPClient (0.00s)
+ok      github.com/evergreen-ci/evergreen/model/patch	1.785s
+FAIL    github.com/evergreen-ci/evergreen/model/host  [build failed]
+
+PASS
