@@ -132,7 +132,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 		// Don't wait on setup script to finish, particularly for hosts waiting on task data.
-		j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host))
+		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, *j.host)))
 	}
 
 	j.finishJob()

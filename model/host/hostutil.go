@@ -659,9 +659,9 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	if err != nil {
 		return "", errors.Wrap(err, "could not marshal input")
 	}
-	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath))
+	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	return strings.Join([]string{
 		strings.Join(jcli.BuildClientCommand(h.JasperBinaryFilePath(config)), " "),
@@ -997,13 +997,13 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 	return handleTaggedProcs(procs)
 }
 
-func (h *Host) CheckProvisioningHostFinished(ctx context.Context, env evergreen.Environment) error {
+func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environment) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
 		grip.WarningWhen(len(procs) > 1, message.Fields{
-			"message":   fmt.Sprintf("host is attempting to provision host multiple times"),
+			"message":   fmt.Sprintf("host is attempting to fetch task data multiple times"),
 			"num_procs": len(procs),
 			"host_id":   h.Id,
 			"distro":    h.Distro.Id,
@@ -1016,7 +1016,7 @@ func (h *Host) CheckProvisioningHostFinished(ctx context.Context, env evergreen.
 					if proc.Complete(ctx) {
 						return false, nil
 					}
-					return true, errors.New("provisioning host not finished")
+					return true, errors.New("fetching task data not finished")
 				}, 1000, time.Second, 15*time.Second)
 			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
 			if err == nil {
