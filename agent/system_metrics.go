@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 // MetricCollector is an interface representing an object that can collect
@@ -48,28 +49,28 @@ type SystemMetricsCollector struct {
 // collecting from the provided set of MetricCollectors at the provided interval
 // and streaming to cedar using the connection defaults from the provided communicator.
 // The task is used to set the cedar metadata of for the collected metrics.
-func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *task.Task, 
+func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *task.Task,
 	collectors []MetricCollector, c client.Communicator) (*SystemMetricsCollector, error) {
-		bi, err := c.GetBuildloggerInfo(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "error getting cedar dial options")
-		}
-		dialOpts := timber.DialCedarOptions{
-			BaseAddress: bi.BaseURL,
-			RPCPort:     bi.RPCPort,
-			Username:    bi.Username,
-			Password:    bi.Password,
-			APIKey:      bi.APIKey,
-			Retries:     10,
-		}
-		connOpts := metrics.ConnectionOptions{
-			DialOpts: dialOpts,
-		}
-		client, err = metrics.NewSystemMetricsClient(ctx, s.connOpts)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem creating new system metrics client")
-		}
-		return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
+	bi, err := c.GetBuildloggerInfo(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting cedar dial options")
+	}
+	dialOpts := timber.DialCedarOptions{
+		BaseAddress: bi.BaseURL,
+		RPCPort:     bi.RPCPort,
+		Username:    bi.Username,
+		Password:    bi.Password,
+		APIKey:      bi.APIKey,
+		Retries:     10,
+	}
+	connOpts := metrics.ConnectionOptions{
+		DialOpts: dialOpts,
+	}
+	client, err = metrics.NewSystemMetricsClient(ctx, s.connOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem creating new system metrics client")
+	}
+	return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
 }
 
 // NewSystemMetricsCollectorWithClientConn returns a SystemMetricsCollector ready
@@ -78,38 +79,38 @@ func NewSystemMetricsCollector(ctx context.Context, interval time.Duration, t *t
 // is used to set the cedar metadata of for the collected metrics.
 func NewSystemMetricsCollectorWithClientConn(ctx context.Context, interval time.Duration, t *task.Task,
 	collectors []MetricCollector, conn *grpc.ClientConn) (*SystemMetricsCollector, error) {
-		client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, conn)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem creating new system metrics client")
-		}
-		return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
+	client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, conn)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem creating new system metrics client")
+	}
+	return systemMetricsCollectorSetup(ctx, interval, t, collectors, client)
 }
 
-func systemMetricsCollectorSetup(ctx context.Context, interval time.Duration, t *task.Task, 
+func systemMetricsCollectorSetup(ctx context.Context, interval time.Duration, t *task.Task,
 	collectors []MetricCollector, client *metrics.SystemMetricsClient) (*SystemMetricsCollector, error) {
-		if interval < 0 {
-			return nil, errors.New("interval cannot be negative")
-		}
-		if interval == 0 {
-			interval = time.Minute
-		}
-	
-		taskOpts, err := getTaskInfo(t)
-		if err != nil {
-			return nil, errors.Wrap(err, "incomplete task metadata")
-		}
-	
-		if len(collectors) == 0 {
-			return nil, errors.New("must provide at least one MetricCollector")
-		}
-	
-		return &SystemMetricsCollector{
-			interval:   interval,
-			collectors: collectors,
-			taskOpts:   taskOpts,
-			client:   client,
-			catcher:    grip.NewBasicCatcher(),
-		}, nil
+	if interval < 0 {
+		return nil, errors.New("interval cannot be negative")
+	}
+	if interval == 0 {
+		interval = time.Minute
+	}
+
+	taskOpts, err := getTaskInfo(t)
+	if err != nil {
+		return nil, errors.Wrap(err, "incomplete task metadata")
+	}
+
+	if len(collectors) == 0 {
+		return nil, errors.New("must provide at least one MetricCollector")
+	}
+
+	return &SystemMetricsCollector{
+		interval:   interval,
+		collectors: collectors,
+		taskOpts:   taskOpts,
+		client:     client,
+		catcher:    grip.NewBasicCatcher(),
+	}, nil
 }
 
 // Start commences collecting metrics using each of the provided MetricCollectors.
@@ -143,7 +144,7 @@ func (s *SystemMetricsCollector) Start(ctx context.Context) error {
 			s.streamingCancel = nil
 			return errors.Wrap(err, fmt.Sprintf("problem creating system metrics stream for id %s and metricType %s", s.id, collector.Name()))
 		}
-		
+
 		ftdcCollector := ftdc.NewStreamingCollector(1, stream)
 		err = ftdcCollector.SetMetadata(collector.Metadata())
 		if err != nil {
@@ -176,7 +177,7 @@ func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricColl
 		case <-timer.C:
 			data, err := mc.Collect()
 			if err != nil {
-				s.catcher.Add(errors.Wrap(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name())))
+				s.catcher.Add(errors.Wrap(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name()))
 				return
 			}
 			err = collector.Add(data)
