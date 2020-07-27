@@ -4,7 +4,7 @@
     distroId
     distro {
       workDir
-      name
+      id
     }
   }
 }

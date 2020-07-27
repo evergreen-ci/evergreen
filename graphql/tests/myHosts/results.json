@@ -10,7 +10,7 @@
               "distroId": "ubuntu1604-small",
               "distro": {
                 "workDir": "/data/mci",
-                "name": "ubuntu1604-small"
+                "id": "ubuntu1604-small"
               }
             },
             {
@@ -18,7 +18,7 @@
               "distroId": "ubuntu1604-large",
               "distro": {
                 "workDir": "/data/mci",
-                "name": "ubuntu1604-large"
+                "id": "ubuntu1604-large"
               }
             }
           ]
