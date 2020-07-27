@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -171,7 +172,7 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 // See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html#billing-for-interrupted-spot-instances
 func skipEarlyTermination(h *host.Host) bool {
 	// Let AWS terminate if we're within the first hour
-	if time.Now().Sub(h.StartTime) < time.Hour {
+	if utility.IsZeroTime(h.StartTime) || time.Now().Sub(h.StartTime) < time.Hour {
 		return true
 	}
 
