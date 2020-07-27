@@ -117,8 +117,14 @@ func (s *Subscriber) Validate() error {
 }
 
 type WebhookSubscriber struct {
-	URL    string `bson:"url"`
-	Secret []byte `bson:"secret"`
+	URL     string          `bson:"url"`
+	Secret  []byte          `bson:"secret"`
+	Headers []WebhookHeader `bson:"headers"`
+}
+
+type WebhookHeader struct {
+	Key   string `bson:"key"`
+	Value string `bson:"value"`
 }
 
 func (s *WebhookSubscriber) String() string {

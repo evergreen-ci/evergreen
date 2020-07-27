@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 
@@ -57,6 +58,14 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	if !obj.NoExpiration {
+		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
+		return &expirationTime, nil
+	}
+	return nil, nil
 }
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
@@ -277,6 +286,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}, nil
 }
 
+<<<<<<< HEAD
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdWithTask(hostID)
 	if err != nil {
@@ -302,6 +312,26 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	return apiHost, nil
+=======
+func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
+	usr := route.MustHaveUser(ctx)
+	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx,
+			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
+	}
+	var apiHosts []*restModel.APIHost
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIHost from service: %s", err.Error()))
+		}
+		apiHosts = append(apiHosts, &apiHost)
+	}
+	return apiHosts, nil
+>>>>>>> master
 }
 
 type patchResolver struct{ *Resolver }
@@ -1119,6 +1149,64 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 		return nil, err
 	}
 	return &patchID, nil
+}
+
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+	user := route.MustHaveUser(ctx)
+	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
+	}
+	if !hasPermission {
+		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
+	}
+
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
+	}
+
+	_, err = r.sc.EnqueueItem(restModel.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id}, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
+	}
+
+	return newPatch, nil
+}
+
+func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID string) (bool, error) {
+	// patch owner
+	existingPatch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return false, err
+	}
+	if restModel.FromStringPtr(existingPatch.Author) == u.Username() {
+		return true, nil
+	}
+
+	// superuser
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if u != nil && u.HasPermission(permissions) {
+		return true, nil
+	}
+
+	// project admin
+	projectRef, err := r.sc.FindProjectById(patchID)
+	if err != nil {
+		return false, err
+	}
+	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectRef.Identifier,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	return isProjectAdmin, nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
