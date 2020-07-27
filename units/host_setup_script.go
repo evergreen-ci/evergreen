@@ -56,7 +56,7 @@ func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host, attempt int)
 	j.CurrentAttempt = attempt
 	j.SetPriority(1)
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
-	j.SetID(fmt.Sprintf("%s.%s.%s.%s", hostSetupScriptJobName, j.HostID, ts, j.CurrentAttempt))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", hostSetupScriptJobName, j.HostID, ts, j.CurrentAttempt))
 	return j
 }
 
