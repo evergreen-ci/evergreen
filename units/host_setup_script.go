@@ -110,17 +110,14 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if err := runSpawnHostSetupScript(ctx, j.env, j.host); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "failed to run setup script",
-			"task":         j.host.ProvisionOptions.TaskId,
-			"setup_script": j.host.ProvisionOptions.SetupScript,
-			"user":         j.host.StartedBy,
-			"host_id":      j.host.Id,
-			"job":          j.ID(),
-		}))
-		j.AddError(err)
-	}
+	grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, j.host), message.Fields{
+		"message":      "failed to run setup script",
+		"task":         j.host.ProvisionOptions.TaskId,
+		"setup_script": j.host.ProvisionOptions.SetupScript,
+		"user":         j.host.StartedBy,
+		"host_id":      j.host.Id,
+		"job":          j.ID(),
+	}))
 }
 
 func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
