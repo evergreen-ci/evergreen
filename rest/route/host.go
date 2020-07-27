@@ -446,12 +446,14 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
 	}
 
-	if err := ch.clearLogin(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not clear user's login cache",
-			"context": "user offboarding",
-			"user":    ch.user,
-		}))
+	if !ch.dryRun {
+		if err := ch.clearLogin(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not clear user's login cache",
+				"context": "user offboarding",
+				"user":    ch.user,
+			}))
+		}
 	}
 
 	return gimlet.NewJSONResponse(toTerminate)
