@@ -1016,8 +1016,7 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag string, limit *int, page *int) (*HostEvents, error) {
-	skip := *page * *limit
-	events, err := event.FindPaginated(event.AllLogCollection, event.MostRecentHostEvents(hostID, hostTag, *limit), skip)
+	events, err := event.FindPaginated(hostID, hostTag, event.AllLogCollection, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}
