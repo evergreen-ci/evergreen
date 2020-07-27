@@ -50,9 +50,12 @@ type HostRequestOptions struct {
 }
 
 type DistroInfo struct {
-	Id       *string `json:"distro_id"`
-	Provider *string `json:"provider"`
-	ImageId  *string `json:"image_id"`
+	Id                   *string `json:"distro_id"`
+	Provider             *string `json:"provider"`
+	ImageId              *string `json:"image_id"`
+	WorkDir              *string `json:"work_dir`
+	IsVirtualWorkstation bool    `json:"is_virtual_workstation`
+	User                 *string `json:user"`
 }
 
 type TaskInfo struct {
@@ -126,9 +129,12 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 		errors.Wrap(err, "problem getting image ID")
 	}
 	di := DistroInfo{
-		Id:       ToStringPtr(v.Distro.Id),
-		Provider: ToStringPtr(v.Distro.Provider),
-		ImageId:  ToStringPtr(imageId),
+		Id:                   ToStringPtr(v.Distro.Id),
+		Provider:             ToStringPtr(v.Distro.Provider),
+		ImageId:              ToStringPtr(imageId),
+		WorkDir:              ToStringPtr(v.Distro.WorkDir),
+		IsVirtualWorkstation: v.Distro.IsVirtualWorkstation,
+		User:                 ToStringPtr(v.Distro.User),
 	}
 	apiHost.Distro = di
 	return nil

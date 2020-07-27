@@ -95,9 +95,9 @@ type ComplexityRoot struct {
 		UILink         func(childComplexity int) int
 	}
 
-	Distro struct {
+	DistroInfo struct {
+		Id                   func(childComplexity int) int
 		IsVirtualWorkstation func(childComplexity int) int
-		Name                 func(childComplexity int) int
 		User                 func(childComplexity int) int
 		WorkDir              func(childComplexity int) int
 	}
@@ -490,8 +490,6 @@ type HostResolver interface {
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
-	Distro(ctx context.Context, obj *model.APIHost) (*model.APIDistro, error)
-
 	Expiration(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 }
 type MutationResolver interface {
@@ -752,33 +750,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Dependency.UILink(childComplexity), true
 
-	case "Distro.isVirtualWorkStation":
-		if e.complexity.Distro.IsVirtualWorkstation == nil {
+	case "DistroInfo.id":
+		if e.complexity.DistroInfo.Id == nil {
 			break
 		}
 
-		return e.complexity.Distro.IsVirtualWorkstation(childComplexity), true
+		return e.complexity.DistroInfo.Id(childComplexity), true
 
-	case "Distro.name":
-		if e.complexity.Distro.Name == nil {
+	case "DistroInfo.isVirtualWorkStation":
+		if e.complexity.DistroInfo.IsVirtualWorkstation == nil {
 			break
 		}
 
-		return e.complexity.Distro.Name(childComplexity), true
+		return e.complexity.DistroInfo.IsVirtualWorkstation(childComplexity), true
 
-	case "Distro.user":
-		if e.complexity.Distro.User == nil {
+	case "DistroInfo.user":
+		if e.complexity.DistroInfo.User == nil {
 			break
 		}
 
-		return e.complexity.Distro.User(childComplexity), true
+		return e.complexity.DistroInfo.User(childComplexity), true
 
-	case "Distro.workDir":
-		if e.complexity.Distro.WorkDir == nil {
+	case "DistroInfo.workDir":
+		if e.complexity.DistroInfo.WorkDir == nil {
 			break
 		}
 
-		return e.complexity.Distro.WorkDir(childComplexity), true
+		return e.complexity.DistroInfo.WorkDir(childComplexity), true
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -2895,7 +2893,7 @@ type Host {
   instanceType: String
   homeVolumeID: String
   user: String
-  distro: Distro
+  distro: DistroInfo
   availabilityZone: String
   instanceTags: [InstanceTag]
   expiration: Time
@@ -2907,8 +2905,8 @@ type InstanceTag {
   canBeModified: Boolean
 }
 
-type Distro {
-  name: String
+type DistroInfo {
+  id: String
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
@@ -4811,7 +4809,7 @@ func (ec *executionContext) _Dependency_uiLink(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+func (ec *executionContext) _DistroInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4819,7 +4817,7 @@ func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.Coll
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "Distro",
+		Object:   "DistroInfo",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -4828,7 +4826,7 @@ func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.Coll
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
+		return obj.Id, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4842,7 +4840,7 @@ func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.Coll
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+func (ec *executionContext) _DistroInfo_workDir(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4850,7 +4848,7 @@ func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.C
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "Distro",
+		Object:   "DistroInfo",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -4873,7 +4871,7 @@ func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.C
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Distro_isVirtualWorkStation(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+func (ec *executionContext) _DistroInfo_isVirtualWorkStation(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4881,7 +4879,7 @@ func (ec *executionContext) _Distro_isVirtualWorkStation(ctx context.Context, fi
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "Distro",
+		Object:   "DistroInfo",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -4904,7 +4902,7 @@ func (ec *executionContext) _Distro_isVirtualWorkStation(ctx context.Context, fi
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Distro_user(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+func (ec *executionContext) _DistroInfo_user(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4912,7 +4910,7 @@ func (ec *executionContext) _Distro_user(ctx context.Context, field graphql.Coll
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "Distro",
+		Object:   "DistroInfo",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -5794,13 +5792,13 @@ func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.Coll
 		Object:   "Host",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Distro(rctx, obj)
+		return obj.Distro, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5809,9 +5807,9 @@ func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIDistro)
+	res := resTmp.(model.DistroInfo)
 	fc.Result = res
-	return ec.marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
+	return ec.marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_availabilityZone(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -14922,25 +14920,25 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
-var distroImplementors = []string{"Distro"}
+var distroInfoImplementors = []string{"DistroInfo"}
 
-func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, obj *model.APIDistro) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, distroImplementors)
+func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSet, obj *model.DistroInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("Distro")
-		case "name":
-			out.Values[i] = ec._Distro_name(ctx, field, obj)
+			out.Values[i] = graphql.MarshalString("DistroInfo")
+		case "id":
+			out.Values[i] = ec._DistroInfo_id(ctx, field, obj)
 		case "workDir":
-			out.Values[i] = ec._Distro_workDir(ctx, field, obj)
+			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 		case "isVirtualWorkStation":
-			out.Values[i] = ec._Distro_isVirtualWorkStation(ctx, field, obj)
+			out.Values[i] = ec._DistroInfo_isVirtualWorkStation(ctx, field, obj)
 		case "user":
-			out.Values[i] = ec._Distro_user(ctx, field, obj)
+			out.Values[i] = ec._DistroInfo_user(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15195,16 +15193,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 		case "user":
 			out.Values[i] = ec._Host_user(ctx, field, obj)
 		case "distro":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_distro(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._Host_distro(ctx, field, obj)
 		case "availabilityZone":
 			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
 		case "instanceTags":
@@ -19104,15 +19093,8 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	return ret
 }
 
-func (ec *executionContext) marshalODistro2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v model.APIDistro) graphql.Marshaler {
-	return ec._Distro(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v *model.APIDistro) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Distro(ctx, sel, v)
+func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
+	return ec._DistroInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {

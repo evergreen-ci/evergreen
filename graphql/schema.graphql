@@ -176,7 +176,7 @@ type Host {
   instanceType: String
   homeVolumeID: String
   user: String
-  distro: Distro
+  distro: DistroInfo
   availabilityZone: String
   instanceTags: [InstanceTag]
   expiration: Time
@@ -188,8 +188,8 @@ type InstanceTag {
   canBeModified: Boolean
 }
 
-type Distro {
-  name: String
+type DistroInfo {
+  id: String
   workDir: String
   isVirtualWorkStation: Boolean
   user: String

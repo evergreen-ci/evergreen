@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -70,25 +69,6 @@ func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (
 		return &expirationTime, nil
 	}
 	return nil, nil
-}
-
-func (r *hostResolver) Distro(ctx context.Context, obj *restModel.APIHost) (*restModel.APIDistro, error) {
-
-	hostDistro, err := distro.FindByID(*obj.Distro.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding distro by id for %s : %s", *obj.Distro.Id, err.Error()))
-	}
-
-	if hostDistro == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Couldnt find distro with id: %s", *obj.Distro.Id))
-	}
-	currentDistro := restModel.APIDistro{}
-	err = currentDistro.BuildFromService(hostDistro)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIDistro from service: %s", err.Error()))
-
-	}
-	return &currentDistro, nil
 }
 
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
