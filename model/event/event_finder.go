@@ -39,8 +39,10 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(coll string, query db.Q, skip int) ([]EventLogEntry, error) {
+func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
+	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
+	skip := page * limit
 	if skip > 0 {
 		query = query.Skip(skip)
 	}

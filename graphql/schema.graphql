@@ -43,7 +43,7 @@ type Query {
   siteBanner: SiteBanner!
   hostEvents(
     hostId: String!
-    hostTag: String!
+    hostTag: String = ""
     limit: Int = 0
     page: Int = 0
   ): HostEvents!
@@ -457,7 +457,7 @@ type TaskEventLogData {
 }
 
 type TaskEventLogEntry {
-  id: String
+  id: String!
   resourceType: String!
   processedAt: Time!
   timestamp: Time
@@ -557,7 +557,7 @@ type HostEvents {
 }
 
 type HostEventLogEntry {
-  id: String
+  id: String!
   resourceType: String!
   processedAt: Time!
   timestamp: Time
