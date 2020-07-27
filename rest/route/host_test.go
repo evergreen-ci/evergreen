@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -18,8 +19,11 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/cached"
+	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -814,7 +818,8 @@ func getMockHostsConnector() *data.MockConnector {
 }
 
 func TestClearHostsHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
+
 	h0 := host.Host{
 		Id:           "h0",
 		StartedBy:    "user0",
@@ -848,11 +853,45 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, h1.Insert())
 	assert.NoError(t, h2.Insert())
 	assert.NoError(t, v1.Insert())
+
+	usr := &user.DBUser{
+		Id: "user0",
+		LoginCache: user.LoginCache{
+			Token: "token",
+		},
+	}
+	require.NoError(t, usr.Insert())
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(context.Background()))
+	opts := usercache.ExternalOptions{
+		PutUserGetToken: func(gimlet.User) (string, error) {
+			return "", errors.New("fail")
+		},
+		GetUserByToken: func(string) (gimlet.User, bool, error) {
+			return nil, false, errors.New("fail")
+		},
+		ClearUserToken: user.ClearLoginCache,
+		GetUserByID: func(id string) (gimlet.User, bool, error) {
+			return usr, true, nil
+		},
+		GetOrCreateUser: func(u gimlet.User) (gimlet.User, error) {
+			return nil, errors.New("fail")
+		},
+	}
+	cache, err := usercache.NewExternal(opts)
+	require.NoError(t, err)
+	um, err := cached.NewUserManager(cache)
+	require.NoError(t, err)
+	env.SetUserManager(um)
+
 	handler := offboardUserHandler{
+		env:    env,
 		sc:     &data.DBConnector{},
 		dryRun: true,
-		user:   "user0",
+		user:   usr.Id,
 	}
+
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
 	res, ok := resp.Data().(model.APIOffboardUserResults)
@@ -861,6 +900,10 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.Equal(t, res.TerminatedHosts[0], "h1")
 	require.Len(t, res.TerminatedVolumes, 1)
 	assert.Equal(t, res.TerminatedVolumes[0], "v1")
+
+	dbUser, err := user.FindOneById(usr.Id)
+	assert.NoError(t, err)
+	assert.Zero(t, dbUser.LoginCache)
 }
 
 func TestHostFilterGetHandler(t *testing.T) {

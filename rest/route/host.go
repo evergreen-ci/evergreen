@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -447,7 +446,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
 	}
 
-	if err := ch.clearLoginCache(); err != nil {
+	if err := ch.clearLogin(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not clear user's login cache",
 			"context": "user offboarding",
@@ -458,8 +457,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(toTerminate)
 }
 
-// clearLoginCache invalidates the user's login session.
-func (ch *offboardUserHandler) clearLoginCache() error {
+// clearLogin invalidates the user's login session.
+func (ch *offboardUserHandler) clearLogin() error {
 	usrMngr := ch.env.UserManager()
 	if usrMngr == nil {
 		return errors.New("no user manager found in environment")
@@ -468,7 +467,7 @@ func (ch *offboardUserHandler) clearLoginCache() error {
 	if err != nil {
 		return errors.Wrap(err, "finding user")
 	}
-	return errors.Wrap(user.ClearLoginCache(usr, false), "clearing login cache")
+	return errors.Wrap(usrMngr.ClearUser(usr, false), "clearing login cache")
 }
 
 ////////////////////////////////////////////////////////////////////////
