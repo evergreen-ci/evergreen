@@ -203,7 +203,11 @@ func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.V
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {
-		return errors.New("This instance type has not been allowed by admins")
+		// if it's not in the settings list, check the distro
+		originalInstanceType, ok := d.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		if !ok || originalInstanceType != requestedType {
+			return errors.New("This instance type has not been allowed by admins")
+		}
 	}
 	env := evergreen.GetEnvironment()
 	opts, err := GetManagerOptions(d)

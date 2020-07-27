@@ -145,7 +145,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           error: function (resp) {
             // Avoid errors when leaving the page because of a background refresh
             if ($scope.hosts == null && !$scope.errorFetchingHosts) {
-              notificationService.pushNotification('Error fetching spawned hosts: ' + resp.data.error, 'errorHeader');
+              notificationService.pushNotification('Error fetching spawned hosts: ' + resp.data, 'errorHeader');
               $scope.errorFetchingHosts = true;
             }
           }
@@ -206,7 +206,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           error: function (resp) {
             // Avoid errors when leaving the page because of a background refresh
             if ($scope.volumes == null && !$scope.errorFetchingVolumes) {
-              notificationService.pushNotification('Error fetching volumes: ' + resp.data.error, 'errorHeader');
+              notificationService.pushNotification('Error fetching volumes: ' + resp.data, 'errorHeader');
               $scope.errorFetchingVolumes = true;
             }
           }
@@ -387,7 +387,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             }
           },
           error: function (resp) {
-            notificationService.pushNotification('Error fetching spawnable distros: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error fetching spawnable distros: ' + resp.data, 'errorHeader');
           }
         }
       );
@@ -395,12 +395,12 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.fetchAllowedInstanceTypes = function () {
       mciSpawnRestService.getAllowedInstanceTypes(
-        'types', $scope.curHostData.host_type, {}, {
+        'types', $scope.curHostData.host_type, $scope.curHostData.distro.provider_settings[0].instance_type,{}, {
           success: function (resp) {
             $scope.allowedInstanceTypes = resp.data;
           },
           error: function (resp) {
-            notificationService.pushNotification('Error fetching allowed instance types: ' + resp.data.error, 'errorHeader')
+            notificationService.pushNotification('Error fetching allowed instance types: ' + resp.data, 'errorHeader')
           }
         }
       )
@@ -413,7 +413,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             $scope.setUserKeys(resp.data);
           },
           error: function (resp) {
-            notificationService.pushNotification('Error fetching user keys: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error fetching user keys: ' + resp.data, 'errorHeader');
           }
         }
       );
@@ -426,7 +426,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             host.originalDisplayName = host.display_name;
           },
           error: function (resp) {
-            notificationService.pushNotification('Error setting host display name: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error setting host display name: ' + resp.data, 'errorHeader');
           }
         }
       );
@@ -443,7 +443,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             volume.originalDisplayName = volume.display_name;
           },
           error: function (resp) {
-            notificationService.pushNotification('Error setting volume display name: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error setting volume display name: ' + resp.data, 'errorHeader');
           }
         }
       );
@@ -529,7 +529,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
           },
           error: function (resp) {
             $scope.spawnReqSent = false;
-            notificationService.pushNotification('Error spawning host: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error spawning host: ' + resp.data, 'errorHeader');
           }
         }
       );
@@ -657,7 +657,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
             $window.location.reload();
           },
           error: function (resp) {
-            notificationService.pushNotification('Error editing volume: ' + resp.data.error, 'errorHeader');
+            notificationService.pushNotification('Error editing volume: ' + resp.data, 'errorHeader');
           }
         }
       );

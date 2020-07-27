@@ -113,9 +113,14 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Request) {
 	provider := r.FormValue("provider")
+	originalInstanceType := r.FormValue("original_type")
 	if len(provider) > 0 {
 		if cloud.IsEc2Provider(provider) {
-			gimlet.WriteJSON(w, uis.Settings.Providers.AWS.AllowedInstanceTypes)
+			allowedTypes := uis.Settings.Providers.AWS.AllowedInstanceTypes
+			if originalInstanceType != "" && !utility.StringSliceContains(allowedTypes, originalInstanceType) {
+				allowedTypes = append(allowedTypes, originalInstanceType)
+			}
+			gimlet.WriteJSON(w, allowedTypes)
 			return
 		}
 	}
