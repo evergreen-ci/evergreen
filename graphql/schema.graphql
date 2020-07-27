@@ -41,7 +41,7 @@ type Query {
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
-  host(hostId: String!): Host!
+  host(hostId: String!): Host
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -168,7 +168,7 @@ type Host {
   id: ID!
   displayName: String!
   hostUrl: String!
-  distro: DistroInfo!
+  distroId: String
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
@@ -176,7 +176,6 @@ type Host {
   elapsed: Time # running task start time
   startedBy: String!
   provider: String!
-  user: String!
   lastCommunicationTime: Time
   noExpiration: Boolean!
   instanceType: String
@@ -203,11 +202,6 @@ type DistroInfo {
 type TaskInfo {
   id: ID
   name: String
-}
-
-type DistroInfo {
-  id: ID!
-  provider: String!
 }
 
 type HostsResponse {

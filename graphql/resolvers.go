@@ -52,6 +52,10 @@ type hostResolver struct{ *Resolver }
 
 type mutationResolver struct{ *Resolver }
 
+func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	return obj.Distro.Id, nil
+}
+
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
@@ -286,7 +290,6 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}, nil
 }
 
-<<<<<<< HEAD
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdWithTask(hostID)
 	if err != nil {
@@ -312,7 +315,8 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	return apiHost, nil
-=======
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
@@ -331,7 +335,6 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil
->>>>>>> master
 }
 
 type patchResolver struct{ *Resolver }

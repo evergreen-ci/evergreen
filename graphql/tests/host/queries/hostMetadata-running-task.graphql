@@ -2,10 +2,7 @@
   host(hostId: "rhel71-ppc-1.pic.build.10gen.cc") {
     id
     hostUrl
-    distro {
-      id
-      provider
-    }
+    distroId
     startedBy
     user
     status

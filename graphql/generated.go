@@ -96,15 +96,10 @@ type ComplexityRoot struct {
 	}
 
 	DistroInfo struct {
-<<<<<<< HEAD
-		Id       func(childComplexity int) int
-		Provider func(childComplexity int) int
-=======
 		Id                   func(childComplexity int) int
 		IsVirtualWorkstation func(childComplexity int) int
 		User                 func(childComplexity int) int
 		WorkDir              func(childComplexity int) int
->>>>>>> master
 	}
 
 	File struct {
@@ -136,13 +131,19 @@ type ComplexityRoot struct {
 	}
 
 	Host struct {
-<<<<<<< HEAD
+		AvailabilityZone      func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
+		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
+		Expiration            func(childComplexity int) int
+		HomeVolumeID          func(childComplexity int) int
 		HostURL               func(childComplexity int) int
 		Id                    func(childComplexity int) int
+		InstanceTags          func(childComplexity int) int
+		InstanceType          func(childComplexity int) int
 		LastCommunicationTime func(childComplexity int) int
+		NoExpiration          func(childComplexity int) int
 		Provider              func(childComplexity int) int
 		RunningTask           func(childComplexity int) int
 		StartedBy             func(childComplexity int) int
@@ -150,25 +151,6 @@ type ComplexityRoot struct {
 		TotalIdleTime         func(childComplexity int) int
 		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
-=======
-		AvailabilityZone func(childComplexity int) int
-		Distro           func(childComplexity int) int
-		DistroID         func(childComplexity int) int
-		Elapsed          func(childComplexity int) int
-		Expiration       func(childComplexity int) int
-		HomeVolumeID     func(childComplexity int) int
-		HostURL          func(childComplexity int) int
-		Id               func(childComplexity int) int
-		InstanceTags     func(childComplexity int) int
-		InstanceType     func(childComplexity int) int
-		NoExpiration     func(childComplexity int) int
-		RunningTask      func(childComplexity int) int
-		StartedBy        func(childComplexity int) int
-		Status           func(childComplexity int) int
-		TotalIdleTime    func(childComplexity int) int
-		Uptime           func(childComplexity int) int
-		User             func(childComplexity int) int
->>>>>>> master
 	}
 
 	HostsResponse struct {
@@ -509,6 +491,8 @@ type ComplexityRoot struct {
 }
 
 type HostResolver interface {
+	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
+
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
@@ -781,14 +765,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.DistroInfo.Id(childComplexity), true
 
-<<<<<<< HEAD
-	case "DistroInfo.provider":
-		if e.complexity.DistroInfo.Provider == nil {
-			break
-		}
-
-		return e.complexity.DistroInfo.Provider(childComplexity), true
-=======
 	case "DistroInfo.isVirtualWorkStation":
 		if e.complexity.DistroInfo.IsVirtualWorkstation == nil {
 			break
@@ -809,7 +785,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.WorkDir(childComplexity), true
->>>>>>> master
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -902,10 +877,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
 
-<<<<<<< HEAD
-	case "Host.displayName":
-		if e.complexity.Host.DisplayName == nil {
-=======
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
 			break
@@ -913,16 +884,8 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.AvailabilityZone(childComplexity), true
 
-	case "Host.distro":
-		if e.complexity.Host.Distro == nil {
-			break
-		}
-
-		return e.complexity.Host.Distro(childComplexity), true
-
-	case "Host.distroId":
-		if e.complexity.Host.DistroID == nil {
->>>>>>> master
+	case "Host.displayName":
+		if e.complexity.Host.DisplayName == nil {
 			break
 		}
 
@@ -934,6 +897,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Distro(childComplexity), true
+
+	case "Host.distroId":
+		if e.complexity.Host.DistroID == nil {
+			break
+		}
+
+		return e.complexity.Host.DistroID(childComplexity), true
 
 	case "Host.elapsed":
 		if e.complexity.Host.Elapsed == nil {
@@ -970,21 +940,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Id(childComplexity), true
 
-<<<<<<< HEAD
-	case "Host.lastCommunicationTime":
-		if e.complexity.Host.LastCommunicationTime == nil {
-			break
-		}
-
-		return e.complexity.Host.LastCommunicationTime(childComplexity), true
-
-	case "Host.provider":
-		if e.complexity.Host.Provider == nil {
-			break
-		}
-
-		return e.complexity.Host.Provider(childComplexity), true
-=======
 	case "Host.instanceTags":
 		if e.complexity.Host.InstanceTags == nil {
 			break
@@ -999,13 +954,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.InstanceType(childComplexity), true
 
+	case "Host.lastCommunicationTime":
+		if e.complexity.Host.LastCommunicationTime == nil {
+			break
+		}
+
+		return e.complexity.Host.LastCommunicationTime(childComplexity), true
+
 	case "Host.noExpiration":
 		if e.complexity.Host.NoExpiration == nil {
 			break
 		}
 
 		return e.complexity.Host.NoExpiration(childComplexity), true
->>>>>>> master
+
+	case "Host.provider":
+		if e.complexity.Host.Provider == nil {
+			break
+		}
+
+		return e.complexity.Host.Provider(childComplexity), true
 
 	case "Host.runningTask":
 		if e.complexity.Host.RunningTask == nil {
@@ -2850,7 +2818,7 @@ var sources = []*ast.Source{
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
-  host(hostId: String!): Host!
+  host(hostId: String!): Host
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -2977,18 +2945,15 @@ type Host {
   id: ID!
   displayName: String!
   hostUrl: String!
-  distro: DistroInfo!
+  distroId: String
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
   uptime: Time # host creation time
   elapsed: Time # running task start time
   startedBy: String!
-<<<<<<< HEAD
   provider: String!
-  user: String!
   lastCommunicationTime: Time
-=======
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
@@ -3003,7 +2968,6 @@ type InstanceTag {
   key: String
   value: String
   canBeModified: Boolean
->>>>>>> master
 }
 
 type DistroInfo {
@@ -3015,11 +2979,6 @@ type DistroInfo {
 type TaskInfo {
   id: ID
   name: String
-}
-
-type DistroInfo {
-  id: ID!
-  provider: String!
 }
 
 type HostsResponse {
@@ -4968,11 +4927,6 @@ func (ec *executionContext) _DistroInfo_id(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-<<<<<<< HEAD
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-=======
 		return graphql.Null
 	}
 	res := resTmp.(*string)
@@ -5004,22 +4958,14 @@ func (ec *executionContext) _DistroInfo_workDir(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
->>>>>>> master
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-<<<<<<< HEAD
-	return ec.marshalNID2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _DistroInfo_provider(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
-=======
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _DistroInfo_isVirtualWorkStation(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
->>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5036,22 +4982,13 @@ func (ec *executionContext) _DistroInfo_isVirtualWorkStation(ctx context.Context
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-<<<<<<< HEAD
-		return obj.Provider, nil
-=======
 		return obj.IsVirtualWorkstation, nil
->>>>>>> master
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-<<<<<<< HEAD
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-=======
 		return graphql.Null
 	}
 	res := resTmp.(bool)
@@ -5083,16 +5020,11 @@ func (ec *executionContext) _DistroInfo_user(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
->>>>>>> master
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-<<<<<<< HEAD
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-=======
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
->>>>>>> master
 }
 
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
@@ -5627,7 +5559,7 @@ func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.Col
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5638,27 +5570,24 @@ func (ec *executionContext) _Host_distro(ctx context.Context, field graphql.Coll
 		Object:   "Host",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Distro, nil
+		return ec.resolvers.Host().DistroID(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(model.DistroInfo)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNDistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_status(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -5853,7 +5782,6 @@ func (ec *executionContext) _Host_startedBy(ctx context.Context, field graphql.C
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-<<<<<<< HEAD
 func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5872,40 +5800,6 @@ func (ec *executionContext) _Host_provider(ctx context.Context, field graphql.Co
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Provider, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Host",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.User, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5953,10 +5847,7 @@ func (ec *executionContext) _Host_lastCommunicationTime(ctx context.Context, fie
 	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _HostsResponse_filteredHostsCount(ctx context.Context, field graphql.CollectedField, obj *HostsResponse) (ret graphql.Marshaler) {
-=======
 func (ec *executionContext) _Host_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
->>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -9904,14 +9795,11 @@ func (ec *executionContext) _Query_host(ctx context.Context, field graphql.Colle
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.APIHost)
 	fc.Result = res
-	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_hosts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -15351,23 +15239,12 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("DistroInfo")
 		case "id":
 			out.Values[i] = ec._DistroInfo_id(ctx, field, obj)
-<<<<<<< HEAD
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "provider":
-			out.Values[i] = ec._DistroInfo_provider(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-=======
 		case "workDir":
 			out.Values[i] = ec._DistroInfo_workDir(ctx, field, obj)
 		case "isVirtualWorkStation":
 			out.Values[i] = ec._DistroInfo_isVirtualWorkStation(ctx, field, obj)
 		case "user":
 			out.Values[i] = ec._DistroInfo_user(ctx, field, obj)
->>>>>>> master
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15568,11 +15445,17 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "distro":
-			out.Values[i] = ec._Host_distro(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "distroId":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_distroId(ctx, field, obj)
+				return res
+			})
 		case "status":
 			out.Values[i] = ec._Host_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15609,20 +15492,13 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-<<<<<<< HEAD
 		case "provider":
 			out.Values[i] = ec._Host_provider(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "user":
-			out.Values[i] = ec._Host_user(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "lastCommunicationTime":
 			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
-=======
 		case "noExpiration":
 			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15651,7 +15527,6 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Host_expiration(ctx, field, obj)
 				return res
 			})
->>>>>>> master
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -16722,9 +16597,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_host(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "hosts":
@@ -18088,10 +17960,6 @@ func (ec *executionContext) unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑ
 	}
 	res, err := ec.unmarshalNDisplayTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, v)
 	return &res, err
-}
-
-func (ec *executionContext) marshalNDistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
-	return ec._DistroInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
@@ -19662,6 +19530,10 @@ func (ec *executionContext) unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergree
 	return &res, err
 }
 
+func (ec *executionContext) marshalOHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
+	return ec._Host(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalOHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIHost) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -19700,6 +19572,13 @@ func (ec *executionContext) marshalOHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋe
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Host(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostSortBy2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (HostSortBy, error) {
