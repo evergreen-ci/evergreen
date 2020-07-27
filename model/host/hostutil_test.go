@@ -229,17 +229,17 @@ func TestJasperCommands(t *testing.T) {
 			}
 		},
 		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
 			}()
+			h.StartedBy = "started_by_user"
+			h.UserHost = true
 			userID := "user"
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 
 			h.ProvisionOptions = &ProvisionOptions{
-				LoadCLI:  true,
 				OwnerId:  userID,
 				TaskId:   "task_id",
 				TaskSync: true,
@@ -253,9 +253,13 @@ func TestJasperCommands(t *testing.T) {
 			require.NoError(t, err)
 
 			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
-			pullTaskSync, err := h.buildLocalJasperClientRequest(settings.HostJasper,
-				strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "),
-				&options.Command{Commands: [][]string{bashPullTaskSync}})
+			pullTaskSync, err := h.buildLocalJasperClientRequest(
+				settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
+				options.Create{
+					Args: bashPullTaskSync,
+					Tags: []string{evergreen.HostFetchTag},
+				})
 			require.NoError(t, err)
 
 			markDone, err := h.MarkUserDataDoneCommands()
@@ -453,16 +457,16 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			h.StartedBy = "started_by_user"
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
 			}()
+			h.StartedBy = "started_by_user"
+			h.UserHost = true
 			userID := "user"
 			user := &user.DBUser{Id: userID}
 			require.NoError(t, user.Insert())
 			h.ProvisionOptions = &ProvisionOptions{
-				LoadCLI: true,
 				OwnerId: userID,
 			}
 			require.NoError(t, h.Insert())

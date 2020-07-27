@@ -28,9 +28,7 @@ type SpawnOptions struct {
 	Userdata             string
 	UserName             string
 	PublicKey            string
-	TaskId               string
-	TaskSync             bool
-	Owner                *user.DBUser
+	ProvisionOptions     *host.ProvisionOptions
 	InstanceTags         []host.Tag
 	InstanceType         string
 	Region               string
@@ -45,10 +43,6 @@ type SpawnOptions struct {
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
 func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
-	if so.Owner == nil {
-		return errors.New("spawn options include nil user")
-	}
-
 	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
 		return errors.Errorf("error finding distro '%s'", so.DistroId)
@@ -164,18 +158,12 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 
 	// spawn the host
-	provisionOptions := &host.ProvisionOptions{
-		LoadCLI:  true,
-		TaskId:   so.TaskId,
-		TaskSync: so.TaskSync,
-		OwnerId:  so.Owner.Id,
-	}
 	expiration := evergreen.DefaultSpawnHostExpiration
 	if so.NoExpiration {
 		expiration = evergreen.SpawnHostNoExpirationDuration
 	}
 	hostOptions := host.CreateOptions{
-		ProvisionOptions:     provisionOptions,
+		ProvisionOptions:     so.ProvisionOptions,
 		UserName:             so.UserName,
 		ExpirationDuration:   &expiration,
 		UserHost:             true,

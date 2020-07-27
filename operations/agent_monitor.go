@@ -373,7 +373,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 	return proc, nil
 }
 
-// waitUntilComplete waits until the given process to complete or the context
+// waitUntilComplete waits until the given process has completed or the context
 // times out. maxDelay determines the time between checks on the process.
 func waitUntilComplete(ctx context.Context, proc jasper.Process, maxDelay time.Duration) (exitCode int, err error) {
 	timer := time.NewTimer(0)
