@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -442,9 +443,11 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
-		if err := ch.clearLogin(); err != nil {
-			catcher.Wrapf(err, "clearing user login cache")
-		}
+		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
+			"message": "could not clear login token",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
 	}
 
 	if catcher.HasErrors() {
