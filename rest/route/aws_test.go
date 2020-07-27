@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -66,7 +67,10 @@ func TestHandlers(t *testing.T) {
 	hostID := "h0"
 	messageID := "m0"
 	aws := awsSns{}
-	aws.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{CachedHosts: []host.Host{{Id: hostID}}}}
+	aws.payload.MessageId = messageID
+	aws.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{
+		CachedHosts: []host.Host{{Id: hostID, StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}}},
+	}
 
 	for name, test := range map[string]func(*testing.T){
 		"InstanceInterruptionWarning": func(t *testing.T) {
