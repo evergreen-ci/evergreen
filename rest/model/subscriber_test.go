@@ -106,8 +106,9 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	assert := assert.New(t)
 
 	target := event.WebhookSubscriber{
-		URL:    "foo",
-		Secret: []byte("bar"),
+		URL:     "foo",
+		Secret:  []byte("bar"),
+		Headers: []event.WebhookHeader{},
 	}
 	webhookSubscriber := event.Subscriber{
 		Type:   event.EvergreenWebhookSubscriberType,

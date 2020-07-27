@@ -37,8 +37,14 @@ type APIPRInfo struct {
 }
 
 type APIWebhookSubscriber struct {
-	URL    *string `json:"url" mapstructure:"url"`
-	Secret *string `json:"secret" mapstructure:"secret"`
+	URL     *string            `json:"url" mapstructure:"url"`
+	Secret  *string            `json:"secret" mapstructure:"secret"`
+	Headers []APIWebhookHeader `json:"headers" mapstructure:"headers"`
+}
+
+type APIWebhookHeader struct {
+	Key   *string `json:"key" mapstructure:"key"`
+	Value *string `json:"value" mapstructure:"value"`
 }
 
 func (s *APISubscriber) BuildFromService(h interface{}) error {
@@ -291,6 +297,12 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	case *event.WebhookSubscriber:
 		s.URL = ToStringPtr(v.URL)
 		s.Secret = ToStringPtr(string(v.Secret))
+		s.Headers = []APIWebhookHeader{}
+		for _, header := range v.Headers {
+			apiHeader := APIWebhookHeader{}
+			apiHeader.BuildFromService(header)
+			s.Headers = append(s.Headers, apiHeader)
+		}
 
 	default:
 		return errors.Errorf("type '%T' does not match subscriber type APIWebhookSubscriber", v)
@@ -300,10 +312,27 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 }
 
 func (s *APIWebhookSubscriber) ToService() (interface{}, error) {
-	return event.WebhookSubscriber{
-		URL:    FromStringPtr(s.URL),
-		Secret: []byte(FromStringPtr(s.Secret)),
-	}, nil
+	sub := event.WebhookSubscriber{
+		URL:     FromStringPtr(s.URL),
+		Secret:  []byte(FromStringPtr(s.Secret)),
+		Headers: []event.WebhookHeader{},
+	}
+	for _, apiHeader := range s.Headers {
+		sub.Headers = append(sub.Headers, apiHeader.ToService())
+	}
+	return sub, nil
+}
+
+func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
+	s.Key = &h.Key
+	s.Value = &h.Value
+}
+
+func (s *APIWebhookHeader) ToService() event.WebhookHeader {
+	return event.WebhookHeader{
+		Key:   *s.Key,
+		Value: *s.Value,
+	}
 }
 
 type APIJIRAIssueSubscriber struct {
