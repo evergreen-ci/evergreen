@@ -1,0 +1,7 @@
+{
+  myHosts {
+    id
+    expiration
+    noExpiration
+  }
+}

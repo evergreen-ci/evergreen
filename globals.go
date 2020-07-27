@@ -151,6 +151,7 @@ const (
 	APIRoutePrefixV2 = "/rest/v2"
 
 	AgentMonitorTag = "agent-monitor"
+	HostFetchTag    = "host-fetch"
 
 	DegradedLoggingPercent = 10
 

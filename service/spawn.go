@@ -176,6 +176,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PublicKey            string     `json:"public_key"`
 		SaveKey              bool       `json:"save_key"`
 		UserData             string     `json:"userdata"`
+		SetupScript          string     `json:"setup_script"`
 		UseTaskConfig        bool       `json:"use_task_config"`
 		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
 		IsCluster            bool       `json:"is_cluster"`
@@ -213,6 +214,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		KeyName:              putParams.PublicKey,
 		TaskID:               putParams.Task,
 		TaskSync:             putParams.TaskSync,
+		SetupScript:          putParams.SetupScript,
 		UserData:             putParams.UserData,
 		InstanceTags:         putParams.InstanceTags,
 		InstanceType:         putParams.InstanceType,
@@ -235,16 +237,20 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if putParams.UseTaskConfig {
-		task, err := task.FindOneNoMerge(task.ById(putParams.Task))
+		t, err := task.FindOneNoMerge(task.ById(putParams.Task))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
 			return
 		}
-		err = hc.CreateHostsFromTask(task, *authedUser, putParams.PublicKey)
+		if t == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("task not found"))
+			return
+		}
+		err = hc.CreateHostsFromTask(t, *authedUser, putParams.PublicKey)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error creating hosts from task",
-				"task":    task.Id,
+				"task":    t.Id,
 			}))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error creating hosts from task"))
 			return

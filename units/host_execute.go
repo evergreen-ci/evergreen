@@ -99,11 +99,12 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		if err != nil {
 			event.LogHostScriptExecuteFailed(j.host.Id, err)
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "script failed during execution",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"logs":    logs,
-				"job":     j.ID(),
+				"message":          "script failed during execution",
+				"legacy_bootstrap": j.host.Distro.LegacyBootstrap(),
+				"host_id":          j.host.Id,
+				"distro":           j.host.Distro.Id,
+				"logs":             logs,
+				"job":              j.ID(),
 			}))
 			j.AddError(err)
 			return

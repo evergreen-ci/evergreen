@@ -60,7 +60,6 @@ type APIAdminSettings struct {
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	DomainName         *string                           `json:"domain_name,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
-	Bugsnag            *string                           `json:"bugsnag,omitempty"`
 	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs         []string                          `json:"github_orgs,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
@@ -122,7 +121,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.DomainName = ToStringPtr(v.DomainName)
-		as.Bugsnag = ToStringPtr(v.Bugsnag)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
@@ -171,7 +169,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		settings.ConfigDir = *as.ConfigDir
 	}
 	settings.DomainName = FromStringPtr(as.DomainName)
-	settings.Bugsnag = FromStringPtr(as.Bugsnag)
 
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg

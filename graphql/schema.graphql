@@ -58,6 +58,7 @@ type Query {
     page: Int = 0
     limit: Int = 10
   ): HostsResponse!
+  myHosts: [Host!]
 }
 
 type Mutation {
@@ -67,6 +68,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  enqueuePatch(patchId: String!): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -177,8 +179,28 @@ type Host {
   uptime: Time # host creation time
   elapsed: Time # running task start time
   startedBy: String!
+  noExpiration: Boolean!
+  instanceType: String
+  homeVolumeID: String
+  user: String
+  distro: DistroInfo
+  availabilityZone: String
+  instanceTags: [InstanceTag]
+  expiration: Time
 }
 
+type InstanceTag {
+  key: String
+  value: String
+  canBeModified: Boolean
+}
+
+type DistroInfo {
+  id: String
+  workDir: String
+  isVirtualWorkStation: Boolean
+  user: String
+}
 type TaskInfo {
   id: ID
   name: String
@@ -261,6 +283,7 @@ type Patch {
   commitQueuePosition: Int
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
+  canEnqueueToCommitQueue: Boolean!
 }
 
 type Build {

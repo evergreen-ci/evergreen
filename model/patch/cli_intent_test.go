@@ -54,7 +54,24 @@ func (s *CliIntentSuite) SetupTest() {
 }
 
 func (s *CliIntentSuite) TestNewCliIntent() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.NotNil(intent)
 	s.NoError(err)
 	s.Implements((*Intent)(nil), intent)
@@ -83,7 +100,12 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, "", []string{}, []string{}, []string{}, 0)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		PatchContent: s.patchContent,
+	})
 	s.NotNil(intent)
 	s.NoError(err)
 
@@ -100,35 +122,145 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Empty(cIntent.Module)
 	s.Empty(cIntent.Alias)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:        s.user,
+		Project:     s.projectID,
+		BaseGitHash: s.hash,
+		Module:      s.module,
+		Description: s.description,
+		Finalize:    true,
+		Variants:    s.variants,
+		Tasks:       s.tasks,
+		Alias:       s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.NotNil(intent)
 	s.NoError(err)
 }
 
 func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
-	intent, err := NewCliIntent("", s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, "", s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, "", s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, []string{}, s.tasks, "", s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Tasks:        s.tasks,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, []string{}, "", s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err = NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Nil(intent)
 	s.Error(err)
 }
 
 func (s *CliIntentSuite) TestFindIntentSpecifically() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:        s.user,
+		Project:     s.projectID,
+		BaseGitHash: s.hash,
+		Module:      s.module,
+		Description: s.description,
+		Finalize:    true,
+		Variants:    s.variants,
+		Tasks:       s.tasks,
+		Alias:       s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
 	s.Require().NoError(intent.Insert())
@@ -145,7 +277,24 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 }
 
 func (s *CliIntentSuite) TestInsert() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
 
@@ -159,7 +308,24 @@ func (s *CliIntentSuite) TestInsert() {
 }
 
 func (s *CliIntentSuite) TestSetProcessed() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
 	s.Require().NoError(intent.Insert())
@@ -185,7 +351,24 @@ func findCliIntents(processed bool) ([]*cliIntent, error) {
 }
 
 func (s *CliIntentSuite) TestNewPatch() {
-	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias, s.syncBVs, s.syncTasks, s.syncStatuses, s.syncTimeout)
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:         s.user,
+		Project:      s.projectID,
+		BaseGitHash:  s.hash,
+		Module:       s.module,
+		PatchContent: s.patchContent,
+		Description:  s.description,
+		Finalize:     true,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+		Alias:        s.alias,
+		SyncParams: SyncAtEndOptions{
+			BuildVariants: s.syncBVs,
+			Tasks:         s.syncTasks,
+			Statuses:      s.syncStatuses,
+			Timeout:       s.syncTimeout,
+		},
+	})
 	s.NoError(err)
 	s.NotNil(intent)
 

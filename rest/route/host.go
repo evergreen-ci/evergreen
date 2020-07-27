@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -441,10 +442,32 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 	}
 
+	if !ch.dryRun {
+		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
+			"message": "could not clear login token",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
+	}
+
 	if catcher.HasErrors() {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
 	}
+
 	return gimlet.NewJSONResponse(toTerminate)
+}
+
+// clearLogin invalidates the user's login session.
+func (ch *offboardUserHandler) clearLogin() error {
+	usrMngr := ch.env.UserManager()
+	if usrMngr == nil {
+		return errors.New("no user manager found in environment")
+	}
+	usr, err := usrMngr.GetUserByID(ch.user)
+	if err != nil {
+		return errors.Wrap(err, "finding user")
+	}
+	return errors.Wrap(usrMngr.ClearUser(usr, false), "clearing login cache")
 }
 
 ////////////////////////////////////////////////////////////////////////
