@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	system_metrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/mongodb/ftdc/metrics"
@@ -20,7 +19,7 @@ import (
 
 type MetricCollector interface {
 	Name() string
-	SetMetadata() interface{}
+	Metadata() interface{}
 	Collect() (interface{}, error)
 }
 
@@ -39,19 +38,26 @@ type SystemMetricCollector struct {
 	closed      bool
 }
 
-type DiskUsageCollector struct {
-	collector SystemMetricCollector
-	metadata  *birch.Document
+type DiskUsageCollector struct{}
+
+type UptimeCollector struct{}
+
+type ProcessCollector struct{}
+
+type DiskUsageWithTimestamp struct {
+	Timestamp time.Time `json:"ts"`
+	// DiskUsageStat *disk.UsageStat
+	*disk.UsageStat
 }
 
-type UptimeCollector struct {
-	collector SystemMetricCollector
-	metadata  *birch.Document
+type UptimeWithTimestamp struct {
+	Timestamp time.Time `json:"ts"`
+	uint64
 }
 
-type ProcessCollector struct {
-	collector SystemMetricCollector
-	metadata  *birch.Document
+type ProcessesWithTimestamp struct {
+	Timestamp time.Time `json:"ts"`
+	process.Process
 }
 
 func (collector *DiskUsageCollector) Name() string {
@@ -66,8 +72,16 @@ func (collector *ProcessCollector) Name() string {
 	return "process"
 }
 
-func (collector *DiskUsageCollector) Metadata(metadata interface{}) {
-	//collector.metadata = metadata
+func (collector *DiskUsageCollector) Metadata() interface{} {
+	return nil
+}
+
+func (collector *UptimeCollector) Metadata() interface{} {
+	return nil
+}
+
+func (collector *ProcessCollector) Metadata() interface{} {
+	return nil
 }
 
 func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
@@ -76,7 +90,12 @@ func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	return convertJSONToFTDC(ctx, metric)
+	diskUsageWithTimestamp := DiskUsageWithTimestamp{time.Now(), metric}
+	// 	Timestamp:     time.Now(),
+	// 	DiskUsageStat: metric,
+	// }
+
+	return convertJSONToFTDC(ctx, diskUsageWithTimestamp)
 }
 
 func (collector *UptimeCollector) Collect(ctx context.Context) ([]byte, error) {
@@ -103,6 +122,7 @@ func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) 
 		return nil, errors.Wrap(err, "problem converting metrics to JSON")
 	}
 
+	//should samplecount actually be 100?
 	opts := metrics.CollectJSONOptions{
 		InputSource:   bytes.NewReader(jsonMetrics),
 		SampleCount:   100,
