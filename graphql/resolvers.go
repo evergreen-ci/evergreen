@@ -64,6 +64,14 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 	return obj.RunningTask.StartTime, nil
 }
 
+func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
+	if !obj.NoExpiration {
+		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
+		return &expirationTime, nil
+	}
+	return nil, nil
+}
+
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {
@@ -280,6 +288,26 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		FilteredHostsCount: filteredHostsCount,
 		TotalHostsCount:    totalHostsCount,
 	}, nil
+}
+
+func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
+	usr := route.MustHaveUser(ctx)
+	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx,
+			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
+	}
+	var apiHosts []*restModel.APIHost
+
+	for _, host := range hosts {
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIHost from service: %s", err.Error()))
+		}
+		apiHosts = append(apiHosts, &apiHost)
+	}
+	return apiHosts, nil
 }
 
 type patchResolver struct{ *Resolver }
