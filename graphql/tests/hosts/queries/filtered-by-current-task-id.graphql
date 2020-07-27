@@ -6,9 +6,7 @@
     totalHostsCount
     hosts {
       id
-      distro {
-        id
-      }
+      distroId
       status
       startedBy
       hostUrl

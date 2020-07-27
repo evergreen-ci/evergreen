@@ -10,9 +10,7 @@
             "hosts": [
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -26,9 +24,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -42,9 +38,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -58,9 +52,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -74,9 +66,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -103,9 +93,7 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -119,9 +107,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -135,9 +121,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -151,9 +135,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -180,9 +162,7 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -209,9 +189,7 @@
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -238,9 +216,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -267,9 +243,7 @@
             "hosts": [
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -283,9 +257,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -299,9 +271,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -315,9 +285,7 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -331,9 +299,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -347,9 +313,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -363,9 +327,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -392,9 +354,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -408,9 +368,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -424,9 +382,7 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -440,9 +396,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -456,9 +410,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -472,9 +424,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -488,9 +438,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -504,9 +452,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -520,9 +466,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -549,9 +493,7 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -565,9 +507,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -581,9 +521,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -597,9 +535,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -613,9 +549,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -629,9 +563,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -645,9 +577,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -661,9 +591,7 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -677,9 +605,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -706,9 +632,7 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -722,9 +646,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -738,9 +660,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -754,9 +674,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -770,9 +688,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -786,9 +702,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -802,9 +716,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -818,9 +730,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -834,9 +744,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -863,9 +771,7 @@
             "hosts": [
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -879,9 +785,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -895,9 +799,7 @@
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -911,9 +813,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -927,9 +827,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -943,9 +841,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
@@ -959,9 +855,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -975,9 +869,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -991,9 +883,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -1020,9 +910,7 @@
             "hosts": [
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1604-power8-large"
-                },
+                "distroId": "ubuntu1604-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
@@ -1036,9 +924,7 @@
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "distro": {
-                  "id": "rhel71-power8-large"
-                },
+                "distroId": "rhel71-power8-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
@@ -1052,9 +938,7 @@
               },
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "distro": {
-                  "id": "centos6-perf"
-                },
+                "distroId": "centos6-perf",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
@@ -1068,9 +952,7 @@
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distro": {
-                  "id": "ubuntu1804-power8-small"
-                },
+                "distroId": "ubuntu1804-power8-small",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
@@ -1084,9 +966,7 @@
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distro": {
-                  "id": "macos-1014"
-                },
+                "distroId": "macos-1014",
                 "status": "quarantined",
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
@@ -1100,9 +980,7 @@
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
@@ -1116,9 +994,7 @@
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "distro": {
-                  "id": "ubuntu1604-small"
-                },
+                "distroId": "ubuntu1604-small",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
@@ -1132,9 +1008,7 @@
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "distro": {
-                  "id": "ubuntu1604-large"
-                },
+                "distroId": "ubuntu1604-large",
                 "status": "running",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
@@ -1148,9 +1022,7 @@
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "distro": {
-                  "id": "debian92-small"
-                },
+                "distroId": "debian92-small",
                 "status": "provisioning",
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
