@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -442,18 +441,14 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 	}
 
-	if catcher.HasErrors() {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
-	}
-
 	if !ch.dryRun {
 		if err := ch.clearLogin(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not clear user's login cache",
-				"context": "user offboarding",
-				"user":    ch.user,
-			}))
+			catcher.Wrapf(err, "clearing user login cache")
 		}
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
 	}
 
 	return gimlet.NewJSONResponse(toTerminate)
