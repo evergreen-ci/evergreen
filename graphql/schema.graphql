@@ -166,7 +166,6 @@ input UseSpruceOptionsInput {
 
 type Host {
   id: ID!
-  displayName: String!
   hostUrl: String!
   distroId: String
   status: String!

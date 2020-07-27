@@ -6,7 +6,6 @@
     startedBy
     user
     status
-    displayName
     runningTask {
       id
       name
