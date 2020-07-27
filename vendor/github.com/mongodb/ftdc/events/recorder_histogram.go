@@ -4,32 +4,33 @@ import (
 	"time"
 
 	"github.com/mongodb/ftdc"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/util"
+	"github.com/pkg/errors"
 )
 
 type histogramStream struct {
 	point     *PerformanceHDR
 	started   time.Time
 	collector ftdc.Collector
-	catcher   grip.Catcher
+	catcher   util.Catcher
 }
 
-// NewHistogramRecorder collects data and stores them with a histogram
-// format. Like the Collapsed recorder, the system saves each data
-// point after a call to Begin.
+// NewHistogramRecorder collects data and stores them with a histogram format.
+// Like the Raw recorder, the system saves each data point after each call to
+// EndIteration.
 //
-// The timer histgrams have a minimum value of 1 microsecond, and a
-// maximum value of 20 minutes, with 5 significant digits. The counter
-// histograms store between 0 and 1 million, with 5 significant
-// digits. The gauges are not stored as integers.
+// The timer histgrams have a minimum value of 1 microsecond, and a maximum
+// value of 20 minutes, with 5 significant digits. The counter histograms store
+// between 0 and 1 million, with 5 significant digits. The gauges are stored as
+// integers.
 //
-// The histogram reporter is not safe for concurrent use without a
-// synchronixed wrapper.
+// The histogram reporter is not safe for concurrent use without a synchronized
+// wrapper.
 func NewHistogramRecorder(collector ftdc.Collector) Recorder {
 	return &histogramStream{
 		point:     NewHistogramMillisecond(PerformanceGauges{}),
 		collector: collector,
-		catcher:   grip.NewExtendedCatcher(),
+		catcher:   util.NewCatcher(),
 	}
 }
 
@@ -37,7 +38,7 @@ func (r *histogramStream) SetID(id int64)       { r.point.ID = id }
 func (r *histogramStream) SetState(val int64)   { r.point.Gauges.State = val }
 func (r *histogramStream) SetWorkers(val int64) { r.point.Gauges.Workers = val }
 func (r *histogramStream) SetFailed(val bool)   { r.point.Gauges.Failed = val }
-func (r *histogramStream) IncOps(val int64) {
+func (r *histogramStream) IncOperations(val int64) {
 	r.catcher.Add(r.point.Counters.Operations.RecordValue(val))
 }
 func (r *histogramStream) IncSize(val int64) {
@@ -46,25 +47,16 @@ func (r *histogramStream) IncSize(val int64) {
 func (r *histogramStream) IncError(val int64) {
 	r.catcher.Add(r.point.Counters.Errors.RecordValue(val))
 }
-func (r *histogramStream) End(dur time.Duration) {
+func (r *histogramStream) EndIteration(dur time.Duration) {
+	r.point.setTimestamp(r.started)
 	r.catcher.Add(r.point.Counters.Number.RecordValue(1))
 	r.catcher.Add(r.point.Timers.Duration.RecordValue(int64(dur)))
 	if !r.started.IsZero() {
 		r.catcher.Add(r.point.Timers.Total.RecordValue(int64(time.Since(r.started))))
-	}
-}
-
-func (r *histogramStream) Begin() {
-	if r.point.Timestamp.IsZero() {
-		r.point.Timestamp = r.started
+		r.started = time.Time{}
 	}
 
-	if !r.started.IsZero() {
-		r.catcher.Add(r.collector.Add(*r.point))
-		r.point.Timestamp = time.Time{}
-	}
-
-	r.started = time.Now()
+	r.catcher.Add(r.collector.Add(r.point))
 }
 
 func (r *histogramStream) SetDuration(dur time.Duration) {
@@ -80,13 +72,19 @@ func (r *histogramStream) IncIterations(val int64) {
 }
 
 func (r *histogramStream) SetTime(t time.Time) { r.point.Timestamp = t }
-func (r *histogramStream) Reset()              { r.started = time.Now() }
+func (r *histogramStream) BeginIteration()     { r.started = time.Now(); r.point.setTimestamp(r.started) }
 
-func (r *histogramStream) Flush() error {
-	r.Begin()
+func (r *histogramStream) EndTest() error {
+	if !r.point.Timestamp.IsZero() {
+		r.catcher.Add(r.collector.Add(r.point))
+	}
+	err := r.catcher.Resolve()
+	r.Reset()
+	return errors.WithStack(err)
+}
+
+func (r *histogramStream) Reset() {
+	r.catcher = util.NewCatcher()
 	r.point = NewHistogramMillisecond(r.point.Gauges)
 	r.started = time.Time{}
-	err := r.catcher.Resolve()
-	r.catcher = grip.NewBasicCatcher()
-	return err
 }

@@ -3,13 +3,11 @@ package ftdc
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
-	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/ftdc/testutil"
 	"github.com/pkg/errors"
 )
 
@@ -28,41 +26,23 @@ type customTest struct {
 	skipBench bool
 }
 
-func createEventRecord(count, duration, size, workers int64) *birch.Document {
-	return birch.NewDocument(
-		birch.EC.Int64("count", count),
-		birch.EC.Int64("duration", duration),
-		birch.EC.Int64("size", size),
-		birch.EC.Int64("workers", workers),
-	)
-}
-
-func randStr() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
-func randFlatDocument(numKeys int) *birch.Document {
-	doc := birch.NewDocument()
-	for i := 0; i < numKeys; i++ {
-		doc.Append(birch.EC.Int64(fmt.Sprint(i), rand.Int63n(int64(numKeys)*1)))
+func panicIfError(err error) {
+	if err != nil {
+		panic(err)
 	}
-
-	return doc
 }
 
 func newChunk(num int64) []byte {
 	collector := NewBaseCollector(int(num) * 2)
 	for i := int64(0); i < num; i++ {
-		doc := createEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
+		doc := testutil.CreateEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
 		doc.Append(birch.EC.Time("time", time.Now().Add(time.Duration(i)*time.Hour)))
 		err := collector.Add(doc)
-		grip.EmergencyPanic(err)
+		panicIfError(err)
 	}
 
 	out, err := collector.Resolve()
-	grip.EmergencyPanic(err)
+	panicIfError(err)
 
 	return out
 }
@@ -70,22 +50,22 @@ func newChunk(num int64) []byte {
 func newMixedChunk(num int64) []byte {
 	collector := NewDynamicCollector(int(num) * 2)
 	for i := int64(0); i < num; i++ {
-		doc := createEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
+		doc := testutil.CreateEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
 		doc.Append(birch.EC.Time("time", time.Now().Add(time.Duration(i)*time.Hour)))
 		err := collector.Add(doc)
-		grip.EmergencyPanic(err)
+		panicIfError(err)
 	}
 	for i := int64(0); i < num; i++ {
-		doc := createEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
+		doc := testutil.CreateEventRecord(i, i+rand.Int63n(num-1), i+i*rand.Int63n(num-1), 1)
 		doc.Append(
 			birch.EC.Time("time", time.Now().Add(time.Duration(i)*time.Hour)),
 			birch.EC.Int64("addition", i+i))
 		err := collector.Add(doc)
-		grip.EmergencyPanic(err)
+		panicIfError(err)
 	}
 
 	out, err := collector.Resolve()
-	grip.EmergencyPanic(err)
+	panicIfError(err)
 
 	return out
 
@@ -94,14 +74,10 @@ func newMixedChunk(num int64) []byte {
 func produceMockChunkIter(ctx context.Context, samples int, newDoc func() *birch.Document) *ChunkIterator {
 	collector := NewBaseCollector(samples)
 	for i := 0; i < samples; i++ {
-		if err := collector.Add(newDoc()); err != nil {
-			panic(err)
-		}
+		panicIfError(collector.Add(newDoc()))
 	}
 	payload, err := collector.Resolve()
-	if err != nil {
-		panic(err)
-	}
+	panicIfError(err)
 
 	return ReadChunks(ctx, bytes.NewBuffer(payload))
 
@@ -119,47 +95,17 @@ func produceMockMetrics(ctx context.Context, samples int, newDoc func() *birch.D
 	return metrics
 }
 
-func randFlatDocumentWithFloats(numKeys int) *birch.Document {
-	doc := birch.NewDocument()
-	for i := 0; i < numKeys; i++ {
-		doc.Append(birch.EC.Double(fmt.Sprintf("%d_float", i), rand.Float64()))
-		doc.Append(birch.EC.Int64(fmt.Sprintf("%d_long", i), rand.Int63()))
-	}
-	return doc
-}
-
-func randComplexDocument(numKeys, otherNum int) *birch.Document {
-	doc := birch.NewDocument()
-
-	for i := 0; i < numKeys; i++ {
-		doc.Append(birch.EC.Int64(fmt.Sprintln(numKeys, otherNum), rand.Int63n(int64(numKeys)*1)))
-		doc.Append(birch.EC.Double(fmt.Sprintln("float", numKeys, otherNum), rand.Float64()))
-
-		if otherNum%5 == 0 {
-			ar := birch.NewArray()
-			for ii := int64(0); i < otherNum; i++ {
-				ar.Append(birch.VC.Int64(rand.Int63n(1 + ii*int64(numKeys))))
-			}
-			doc.Append(birch.EC.Array(fmt.Sprintln("first", numKeys, otherNum), ar))
-		}
-
-		if otherNum%3 == 0 {
-			doc.Append(birch.EC.SubDocument(fmt.Sprintln("second", numKeys, otherNum), randFlatDocument(otherNum)))
-		}
-
-		if otherNum%12 == 0 {
-			doc.Append(birch.EC.SubDocument(fmt.Sprintln("third", numKeys, otherNum), randComplexDocument(otherNum, 10)))
-		}
-	}
-
-	return doc
-}
-
-func createCollectors() []*customCollector {
+func createCollectors(ctx context.Context) []*customCollector {
 	collectors := []*customCollector{
 		{
 			name:    "Better",
 			factory: func() Collector { return NewBaseCollector(1000) },
+		},
+		{
+			name: "Buffered",
+			factory: func() Collector {
+				return NewBufferedCollector(ctx, 0, NewSynchronizedCollector(NewBaseCollector(1000)))
+			},
 		},
 		{
 			name:      "SmallBatch",
@@ -338,45 +284,6 @@ func createCollectors() []*customCollector {
 func createTests() []customTest {
 	return []customTest{
 		{
-			name: "OneDocNoStats",
-			docs: []*birch.Document{
-				birch.NewDocument(birch.EC.String("foo", "bar")),
-			},
-			skipBench: true,
-		},
-		{
-			name: "OneDocumentOneStat",
-			docs: []*birch.Document{
-				birch.NewDocument(birch.EC.Int32("foo", 42)),
-			},
-			skipBench: true,
-			numStats:  1,
-		},
-		{
-			name: "OneSmallFlat",
-			docs: []*birch.Document{
-				randFlatDocument(12),
-			},
-			numStats:  12,
-			skipBench: true,
-		},
-		{
-			name: "OneLargeFlat",
-			docs: []*birch.Document{
-				randFlatDocument(360),
-			},
-			numStats:  360,
-			skipBench: true,
-		},
-		{
-			name: "OneHugeFlat",
-			docs: []*birch.Document{
-				randFlatDocument(36000),
-			},
-			numStats:  36000,
-			skipBench: true,
-		},
-		{
 			name: "SeveralDocNoStats",
 			docs: []*birch.Document{
 				birch.NewDocument(birch.EC.String("foo", "bar")),
@@ -401,14 +308,14 @@ func createTests() []customTest {
 		{
 			name: "SeveralSmallFlat",
 			docs: []*birch.Document{
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
-				randFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
+				testutil.RandFlatDocument(10),
 			},
 			randStats: true,
 			numStats:  10,
@@ -416,16 +323,16 @@ func createTests() []customTest {
 		{
 			name: "SeveralLargeFlat",
 			docs: []*birch.Document{
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
-				randFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
+				testutil.RandFlatDocument(200),
 			},
 			randStats: true,
 			numStats:  200,
@@ -433,67 +340,40 @@ func createTests() []customTest {
 		{
 			name: "SeveralHugeFlat",
 			docs: []*birch.Document{
-				randFlatDocument(2000),
-				randFlatDocument(2000),
-				randFlatDocument(2000),
-				randFlatDocument(2000),
+				testutil.RandFlatDocument(2000),
+				testutil.RandFlatDocument(2000),
+				testutil.RandFlatDocument(2000),
+				testutil.RandFlatDocument(2000),
 			},
 			randStats: true,
 			skipBench: true,
 			numStats:  2000,
 		},
 		{
-			name: "OneSmallComplex",
-			docs: []*birch.Document{
-				randComplexDocument(4, 10),
-			},
-			randStats: true,
-			numStats:  11,
-			skipBench: true,
-		},
-		{
-			name: "OneLargeComplex",
-			docs: []*birch.Document{
-				randComplexDocument(100, 100),
-			},
-			randStats: true,
-			skipBench: true,
-			numStats:  101,
-		},
-		{
 			name: "SeveralSmallComplex",
 			docs: []*birch.Document{
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
-				randComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
+				testutil.RandComplexDocument(4, 100),
 			},
 			numStats:  101,
 			randStats: true,
-		},
-		{
-			name: "OneHugeComplex",
-			docs: []*birch.Document{
-				randComplexDocument(10000, 10000),
-			},
-			randStats: true,
-			numStats:  1000,
-			skipBench: true,
 		},
 		{
 			name: "SeveralHugeComplex",
 			docs: []*birch.Document{
-				randComplexDocument(10000, 10000),
-				randComplexDocument(10000, 10000),
-				randComplexDocument(10000, 10000),
-				randComplexDocument(10000, 10000),
-				randComplexDocument(10000, 10000),
+				testutil.RandComplexDocument(10000, 10000),
+				testutil.RandComplexDocument(10000, 10000),
+				testutil.RandComplexDocument(10000, 10000),
+				testutil.RandComplexDocument(10000, 10000),
+				testutil.RandComplexDocument(10000, 10000),
 			},
 			randStats: true,
 			skipBench: true,
@@ -502,8 +382,8 @@ func createTests() []customTest {
 		{
 			name: "SingleFloats",
 			docs: []*birch.Document{
-				randFlatDocumentWithFloats(1),
-				randFlatDocumentWithFloats(1),
+				testutil.RandFlatDocumentWithFloats(1),
+				testutil.RandFlatDocumentWithFloats(1),
 			},
 			skipBench: true,
 			randStats: true,
@@ -512,8 +392,8 @@ func createTests() []customTest {
 		{
 			name: "MultiFloats",
 			docs: []*birch.Document{
-				randFlatDocumentWithFloats(50),
-				randFlatDocumentWithFloats(50),
+				testutil.RandFlatDocumentWithFloats(50),
+				testutil.RandFlatDocumentWithFloats(50),
 			},
 			randStats: true,
 			skipBench: true,

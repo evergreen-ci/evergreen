@@ -19,43 +19,62 @@ import (
 	"github.com/pkg/errors"
 )
 
-type azInstanceTypeCache struct {
-	azToInstanceTypes map[string][]string
+type instanceTypeSubnetCache struct {
+	instanceTypeToSubnets map[string][]evergreen.Subnet
+	built                 bool
 }
 
-var typeCache *azInstanceTypeCache
+var typeCache *instanceTypeSubnetCache
 
 func init() {
-	typeCache = new(azInstanceTypeCache)
-	typeCache.azToInstanceTypes = make(map[string][]string)
+	typeCache = &instanceTypeSubnetCache{}
+	typeCache.instanceTypeToSubnets = make(map[string][]evergreen.Subnet)
 }
 
-func (c *azInstanceTypeCache) azSupportsInstanceType(ctx context.Context, client AWSClient, az, instanceType string) (bool, error) {
-	if _, ok := c.azToInstanceTypes[az]; !ok {
-		// refresh cache
+func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType, region string) ([]evergreen.Subnet, error) {
+	if !c.built {
+		if err := c.Build(ctx, settings, client); err != nil {
+			return nil, errors.Wrap(err, "can't build AZ cache")
+		}
+	}
+
+	subnets := make([]evergreen.Subnet, 0, len(c.instanceTypeToSubnets[instanceType]))
+	for _, subnet := range c.instanceTypeToSubnets[instanceType] {
+		if AztoRegion(subnet.AZ) == region {
+			subnets = append(subnets, subnet)
+		}
+	}
+	return subnets, nil
+}
+
+func (c *instanceTypeSubnetCache) Build(ctx context.Context, settings *evergreen.Settings, client AWSClient) error {
+	subnets := settings.Providers.AWS.Subnets
+	if len(subnets) == 0 {
+		return errors.New("no AWS subnets were configured")
+	}
+
+	for _, subnet := range subnets {
 		output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 			LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
 			Filters: []*ec2.Filter{
-				{Name: aws.String("location"), Values: []*string{aws.String(az)}},
+				{Name: aws.String("location"), Values: []*string{aws.String(subnet.AZ)}},
 			},
 		})
 		if err != nil {
-			return false, errors.Wrapf(err, "can't get instance types for '%s'", az)
+			return errors.Wrapf(err, "can't get instance types for '%s'", subnet.AZ)
 		}
 		if output == nil {
-			return false, errors.Wrap(err, "DescribeInstanceTypeOfferings returned nil output")
+			return errors.Errorf("DescribeInstanceTypeOfferings returned nil output for AZ '%s'", subnet.AZ)
 		}
-
-		instanceTypes := make([]string, 0, len(output.InstanceTypeOfferings))
 		for _, offering := range output.InstanceTypeOfferings {
 			if offering != nil && offering.InstanceType != nil {
-				instanceTypes = append(instanceTypes, *offering.InstanceType)
+				c.instanceTypeToSubnets[*offering.InstanceType] = append(c.instanceTypeToSubnets[*offering.InstanceType], subnet)
 			}
 		}
-		c.azToInstanceTypes[az] = instanceTypes
 	}
 
-	return utility.StringSliceContains(c.azToInstanceTypes[az], instanceType), nil
+	c.built = true
+	return nil
 }
 
 type EC2FleetManagerOptions struct {
@@ -524,69 +543,17 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 
 func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
 	subnets := m.settings.Providers.AWS.Subnets
-	if len(subnets) > 0 {
-		overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
-		for _, subnet := range subnets {
-			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, subnet.AZ, ec2Settings.InstanceType)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", subnet.AZ)
-			}
-			if supported {
-				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
-			}
-		}
-
-		return overrides, nil
+	if len(subnets) == 0 {
+		return nil, errors.New("no AWS subnets were configured")
 	}
 
-	describeVpcsOutput, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name: aws.String("tag:Name"),
-				Values: []*string{
-					aws.String(ec2Settings.VpcName),
-				},
-			},
-		},
-	})
+	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, ec2Settings.InstanceType, ec2Settings.getRegion())
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding vpc id")
+		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}
-	err = validateEc2DescribeVpcsOutput(describeVpcsOutput)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid describe VPCs response")
-	}
-
-	describeSubnetsOutput, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("vpc-id"),
-				Values: []*string{describeVpcsOutput.Vpcs[0].VpcId},
-			},
-		},
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't get subnets for vpc '%s'", ec2Settings.VpcName)
-	}
-	err = validateEc2DescribeSubnetsOutput(describeSubnetsOutput)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid describe subnets response")
-	}
-
-	AZSet := make(map[string]bool)
-	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(describeSubnetsOutput.Subnets))
-	for _, subnet := range describeSubnetsOutput.Subnets {
-		// AWS only allows one override per AZ
-		if !AZSet[*subnet.AvailabilityZone] && subnetMatchesAz(subnet) {
-			supported, err := typeCache.azSupportsInstanceType(ctx, m.client, *subnet.AvailabilityZone, ec2Settings.InstanceType)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get supported instance types for AZ '%s'", *subnet.AvailabilityZone)
-			}
-			if supported {
-				overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
-			}
-			AZSet[*subnet.AvailabilityZone] = true
-		}
+	for _, subnet := range supportingSubnets {
+		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
 	}
 
 	return overrides, nil

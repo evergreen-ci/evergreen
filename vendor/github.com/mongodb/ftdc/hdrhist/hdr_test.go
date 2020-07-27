@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/ftdc/hdrhist"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHighSigFig(t *testing.T) {
@@ -16,7 +17,7 @@ func TestHighSigFig(t *testing.T) {
 
 	hist := hdrhist.New(459876, 12718782, 5)
 	for _, sample := range input {
-		hist.RecordValue(sample)
+		assert.NoError(t, hist.RecordValue(sample))
 	}
 
 	if v, want := hist.ValueAtQuantile(50), int64(1048575); v != want {
@@ -292,7 +293,7 @@ func BenchmarkHistRecordValue(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		h.RecordValue(100)
+		h.RecordValue(100) // nolint
 	}
 }
 
@@ -314,7 +315,7 @@ func TestUnitMagnitudeOverflow(t *testing.T) {
 func TestSubBucketMaskOverflow(t *testing.T) {
 	hist := hdrhist.New(2e7, 1e8, 5)
 	for _, sample := range [...]int64{1e8, 2e7, 3e7} {
-		hist.RecordValue(sample)
+		assert.NoError(t, hist.RecordValue(sample))
 	}
 
 	for q, want := range map[float64]int64{

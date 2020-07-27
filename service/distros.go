@@ -245,6 +245,11 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	if err = model.ClearTaskQueue(id); err != nil {
+		message := fmt.Sprintf("clearing task queue for distro '%s': %s", id, err.Error())
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
 
 	event.LogDistroRemoved(id, u.Username(), d.NewDistroData())
 

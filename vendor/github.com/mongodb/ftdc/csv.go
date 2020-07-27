@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/birch/bsontype"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -115,7 +114,7 @@ func DumpCSV(ctx context.Context, iter *ChunkIterator, prefix string) error {
 		chunk := iter.Chunk()
 		if numFields == 0 {
 			fieldNames := chunk.getFieldNames()
-			if err := csvw.Write(fieldNames); err != nil {
+			if err = csvw.Write(fieldNames); err != nil {
 				return errors.Wrap(err, "problem writing field names")
 			}
 			numFields = len(fieldNames)
@@ -180,26 +179,36 @@ func ConvertFromCSV(ctx context.Context, bucketSize int, input io.Reader, output
 	}
 
 	collector := NewStreamingDynamicCollector(bucketSize, output)
-	defer func() { grip.Error(FlushCollector(collector, output)) }()
 
-	record := make([]string, 0, len(header))
+	defer func() {
+		if err != nil && (errors.Cause(err) != context.Canceled || errors.Cause(err) != context.DeadlineExceeded) {
+			err = errors.Wrap(err, "omitting final flush, because of prior error")
+		}
+		err = FlushCollector(collector, output)
+	}()
+
+	var record []string
 	for {
 		if ctx.Err() != nil {
-			return errors.New("operation aborted")
+			// this is weird so that the defer can work
+			err = errors.Wrap(err, "operation aborted")
+			return err
 		}
 
 		record, err = csvr.Read()
 		if err == io.EOF {
-			return nil
+			// this is weird so that the defer can work
+			err = nil
+			return err
 		}
 
 		if err != nil {
 			if pr, ok := err.(*csv.ParseError); ok && pr.Err == csv.ErrFieldCount {
 				header = record
-				record = make([]string, 0, len(header))
 				continue
 			}
-			return errors.Wrap(err, "problem parsing csv")
+			err = errors.Wrap(err, "problem parsing csv")
+			return err
 		}
 		if len(record) != len(header) {
 			return errors.New("unexpected field count change")
@@ -207,15 +216,16 @@ func ConvertFromCSV(ctx context.Context, bucketSize int, input io.Reader, output
 
 		elems := make([]*birch.Element, 0, len(header))
 		for idx := range record {
-			val, err := strconv.Atoi(record[idx])
+			var val int
+			val, err = strconv.Atoi(record[idx])
 			if err != nil {
 				continue
 			}
 			elems = append(elems, birch.EC.Int64(header[idx], int64(val)))
 		}
 
-		if err := collector.Add(birch.NewDocument(elems...)); err != nil {
-			return err
+		if err = collector.Add(birch.NewDocument(elems...)); err != nil {
+			return errors.WithStack(err)
 		}
 	}
 }

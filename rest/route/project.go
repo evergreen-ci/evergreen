@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -747,4 +748,57 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+type GetProjectAliasResultsHandler struct {
+	sc data.Connector
+
+	version             string
+	alias               string
+	includeDependencies bool
+}
+
+func makeGetProjectAliasResultsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &GetProjectAliasResultsHandler{
+		sc: sc,
+	}
+}
+
+func (h *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
+	return &GetProjectAliasResultsHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	params := r.URL.Query()
+
+	h.version = params.Get("version")
+	if h.version == "" {
+		return errors.New("'version' parameter must be specified")
+	}
+	h.alias = params.Get("alias")
+	if h.alias == "" {
+		return errors.New("'alias' parameter must be specified")
+	}
+	h.includeDependencies = (params.Get("include_deps") == "true")
+
+	return nil
+}
+
+func (h *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	proj, err := dbModel.FindProjectFromVersionID(h.version)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting project for version",
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get project from version"))
+	}
+
+	variantTasks, err := h.sc.GetProjectAliasResults(proj, h.alias, h.includeDependencies)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(variantTasks)
 }

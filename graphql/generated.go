@@ -294,7 +294,7 @@ type ComplexityRoot struct {
 		TaskFiles          func(childComplexity int, taskID string, execution *int) int
 		TaskLogs           func(childComplexity int, taskID string) int
 		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
-		User               func(childComplexity int) int
+		User               func(childComplexity int, userID *string) int
 		UserConfig         func(childComplexity int) int
 		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
 		UserSettings       func(childComplexity int) int
@@ -512,7 +512,7 @@ type QueryResolver interface {
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
-	User(ctx context.Context) (*model.APIUser, error)
+	User(ctx context.Context, userID *string) (*model.APIUser, error)
 	TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error)
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
@@ -1752,7 +1752,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.User(childComplexity), true
+		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.User(childComplexity, args["userId"].(*string)), true
 
 	case "Query.userConfig":
 		if e.complexity.Query.UserConfig == nil {
@@ -2669,7 +2674,7 @@ var sources = []*ast.Source{
     statuses: [String!]! = []
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
-  user: User!
+  user(userId: String): User!
   taskLogs(taskId: String!): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
@@ -3871,6 +3876,20 @@ func (ec *executionContext) field_Query_userPatches_args(ctx context.Context, ra
 		}
 	}
 	args["includeCommitQueue"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["userId"]; ok {
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userId"] = arg0
 	return args, nil
 }
 
@@ -8834,9 +8853,16 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_user_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().User(rctx)
+		return ec.resolvers.Query().User(rctx, args["userId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
