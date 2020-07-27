@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -47,9 +48,10 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 	return env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, &h, nil, reason))
 }
 
-func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h host.Host) error {
+func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	script := fmt.Sprintf("cd /home/%s\n%s", h.User, h.ProvisionOptions.SetupScript)
 	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
-	j := NewHostExecuteJob(env, h, h.ProvisionOptions.SetupScript, false, "", ts)
+	j := NewHostExecuteJob(env, *h, script, false, "", ts)
 	j.Run(ctx)
 
 	return errors.Wrapf(j.Error(), "error running setup script for spawn host")

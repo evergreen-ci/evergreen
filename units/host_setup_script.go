@@ -56,7 +56,7 @@ func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host, attempt int)
 	j.CurrentAttempt = attempt
 	j.SetPriority(1)
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
-	j.SetID(fmt.Sprintf("%s.%s.%s", hostSetupScriptJobName, j.HostID, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%s", hostSetupScriptJobName, j.HostID, ts, j.CurrentAttempt))
 	return j
 }
 
@@ -110,7 +110,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if err := runSpawnHostSetupScript(ctx, j.env, *j.host); err != nil {
+	if err := runSpawnHostSetupScript(ctx, j.env, j.host); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "failed to run setup script",
 			"task":         j.host.ProvisionOptions.TaskId,
@@ -120,7 +120,6 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			"job":          j.ID(),
 		}))
 		j.AddError(err)
-		return
 	}
 }
 
