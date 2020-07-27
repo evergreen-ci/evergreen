@@ -76,6 +76,31 @@
                                 <label for="webhook-secret">Webhook Secret</label>
                                 <input id="webhook-secret" ng-model="targets['evergreen-webhook'].secret" ng-disabled="true"></input>
                             </md-list-item>
+                            <md-list-item>
+                              <label>HTTP Headers:</label>
+                            </md-list-item>
+                            <md-list-item ng-repeat="header in targets['evergreen-webhook'].headers track by $index">
+                              <div>
+                                <label>Key:</label>
+                                <input ng-model="header.key"/>
+                                <label>Value:</label>
+                                <input ng-model="header.value"/>
+                                <md-button ng-click="deleteHeader($index)">
+                                  <i class="fa fa-trash"></i>
+                                </md-button>
+                              </div>
+                            </md-list-item>
+                            <md-list-item>
+                              <div>
+                                <label>Key:</label>
+                                <input ng-model="newHeader.key"/>
+                                <label>Value:</label>
+                                <input ng-model="newHeader.value"/>
+                              </div>
+                              <md-button ng-click="addHeader()">
+                                <i class="fa fa-plus"></i>
+                              </md-button>
+                            </md-list-item>
                         </md-list>
                     </div>
                 </div>
