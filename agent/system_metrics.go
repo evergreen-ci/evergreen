@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -47,17 +48,17 @@ type ProcessCollector struct{}
 type DiskUsageWithTimestamp struct {
 	Timestamp time.Time `json:"ts"`
 	*disk.UsageStat
-	// DiskUsageStat *disk.UsageStat
 }
 
 type UptimeWithTimestamp struct {
 	Timestamp time.Time `json:"ts"`
-	uint64
+	Uptime    uint64    `json:"uptime"`
+	Hello     string    `json:"hello"`
 }
 
 type ProcessesWithTimestamp struct {
 	Timestamp time.Time `json:"ts"`
-	process.Process
+	Processes []*process.Process
 }
 
 func (collector *DiskUsageCollector) Name() string {
@@ -91,20 +92,6 @@ func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error
 	}
 
 	diskUsageWithTimestamp := DiskUsageWithTimestamp{time.Now(), metric}
-
-	// diskUsageWithTimestamp := DiskUsageWithTimestamp{
-	// 	Timestamp: time.Now(),
-	// 	// UsageStat: metric,
-	// 	DiskUsageStat: metric,
-	// }
-	// fmt.Println(metric)
-	// fmt.Print("\n")
-	// fmt.Println(diskUsageWithTimestamp)
-
-	// x, err := convertJSONToFTDC(ctx, diskUsageWithTimestamp)
-	// fmt.Println("\nftdc output:", x)
-	//fmt.Println(x)
-	// return x, err
 	return convertJSONToFTDC(ctx, diskUsageWithTimestamp)
 }
 
@@ -114,7 +101,10 @@ func (collector *UptimeCollector) Collect(ctx context.Context) ([]byte, error) {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	return convertJSONToFTDC(ctx, metric)
+	uptimeWithTimestamp := UptimeWithTimestamp{time.Now(), metric, "hello"}
+	fmt.Println(uptimeWithTimestamp)
+
+	return convertJSONToFTDC(ctx, uptimeWithTimestamp)
 }
 
 func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) {
@@ -123,17 +113,17 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	return convertJSONToFTDC(ctx, metric)
+	processesWithTimestamp := ProcessesWithTimestamp{time.Now(), metric}
+	return convertJSONToFTDC(ctx, processesWithTimestamp)
 }
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
 	jsonMetrics, err := json.Marshal(metric)
-	// fmt.Println("\njsonMetrics:", string(jsonMetrics))
+	fmt.Println("\njsonMetrics:", string(jsonMetrics))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem converting metrics to JSON")
 	}
 
-	//should samplecount actually be 100?
 	opts := metrics.CollectJSONOptions{
 		InputSource:   bytes.NewReader(jsonMetrics),
 		SampleCount:   100,

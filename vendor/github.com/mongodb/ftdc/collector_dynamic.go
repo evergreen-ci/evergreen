@@ -71,7 +71,6 @@ func (c *dynamicCollector) Add(in interface{}) error {
 
 	chunk := newBatchCollector(c.maxSamples)
 	c.chunks = append(c.chunks, chunk)
-
 	return errors.WithStack(chunk.Add(doc))
 }
 

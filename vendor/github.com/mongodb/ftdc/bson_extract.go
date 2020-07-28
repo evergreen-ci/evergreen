@@ -29,7 +29,6 @@ func extractMetricsFromDocument(doc *birch.Document) (extractedMetrics, error) {
 	)
 
 	catcher := util.NewCatcher()
-
 	for iter.Next() {
 		data, err = extractMetricsFromValue(iter.Element().Value())
 		catcher.Add(err)
@@ -46,7 +45,6 @@ func extractMetricsFromDocument(doc *birch.Document) (extractedMetrics, error) {
 	if metrics.ts.IsZero() {
 		metrics.ts = time.Now()
 	}
-
 	return metrics, catcher.Resolve()
 }
 
