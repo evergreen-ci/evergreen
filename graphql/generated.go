@@ -132,7 +132,6 @@ type ComplexityRoot struct {
 
 	Host struct {
 		AvailabilityZone      func(childComplexity int) int
-		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
@@ -334,11 +333,8 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
-<<<<<<< HEAD
 		Host               func(childComplexity int, hostID string) int
-=======
 		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
->>>>>>> master
 		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		MyHosts            func(childComplexity int) int
 		Patch              func(childComplexity int, id string) int
@@ -586,11 +582,8 @@ type QueryResolver interface {
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	SiteBanner(ctx context.Context) (*model.APIBanner, error)
-<<<<<<< HEAD
 	Host(ctx context.Context, hostID string) (*model.APIHost, error)
-=======
 	HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error)
->>>>>>> master
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 }
@@ -928,13 +921,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.AvailabilityZone(childComplexity), true
-
-	case "Host.displayName":
-		if e.complexity.Host.DisplayName == nil {
-			break
-		}
-
-		return e.complexity.Host.DisplayName(childComplexity), true
 
 	case "Host.distro":
 		if e.complexity.Host.Distro == nil {
@@ -1966,30 +1952,29 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
 
-<<<<<<< HEAD
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
 		}
 
 		args, err := ec.field_Query_host_args(context.TODO(), rawArgs)
-=======
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Host(childComplexity, args["hostId"].(string)), true
+
 	case "Query.hostEvents":
 		if e.complexity.Query.HostEvents == nil {
 			break
 		}
 
 		args, err := ec.field_Query_hostEvents_args(context.TODO(), rawArgs)
->>>>>>> master
 		if err != nil {
 			return 0, false
 		}
 
-<<<<<<< HEAD
-		return e.complexity.Query.Host(childComplexity, args["hostId"].(string)), true
-=======
 		return e.complexity.Query.HostEvents(childComplexity, args["hostId"].(string), args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int)), true
->>>>>>> master
 
 	case "Query.hosts":
 		if e.complexity.Query.Hosts == nil {
@@ -3072,16 +3057,13 @@ var sources = []*ast.Source{
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
-<<<<<<< HEAD
   host(hostId: String!): Host
-=======
   hostEvents(
     hostId: String!
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
   ): HostEvents!
->>>>>>> master
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -3206,7 +3188,6 @@ input UseSpruceOptionsInput {
 
 type Host {
   id: ID!
-  displayName: String!
   hostUrl: String!
   distroId: String
   status: String!
@@ -3965,11 +3946,7 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 	return args, nil
 }
 
-<<<<<<< HEAD
-func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-=======
 func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
->>>>>>> master
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -3980,8 +3957,6 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 		}
 	}
 	args["hostId"] = arg0
-<<<<<<< HEAD
-=======
 	var arg1 *string
 	if tmp, ok := rawArgs["hostTag"]; ok {
 		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
@@ -4006,7 +3981,20 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 		}
 	}
 	args["page"] = arg3
->>>>>>> master
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["hostId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostId"] = arg0
 	return args, nil
 }
 
@@ -5820,40 +5808,6 @@ func (ec *executionContext) _Host_id(ctx context.Context, field graphql.Collecte
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNID2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Host",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayName, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -10905,11 +10859,7 @@ func (ec *executionContext) _Query_siteBanner(ctx context.Context, field graphql
 	return ec.marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx, field.Selections, res)
 }
 
-<<<<<<< HEAD
 func (ec *executionContext) _Query_host(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-=======
-func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
->>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10925,11 +10875,7 @@ func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-<<<<<<< HEAD
 	args, err := ec.field_Query_host_args(ctx, rawArgs)
-=======
-	args, err := ec.field_Query_hostEvents_args(ctx, rawArgs)
->>>>>>> master
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -10937,24 +10883,51 @@ func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-<<<<<<< HEAD
 		return ec.resolvers.Query().Host(rctx, args["hostId"].(string))
-=======
-		return ec.resolvers.Query().HostEvents(rctx, args["hostId"].(string), args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int))
->>>>>>> master
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-<<<<<<< HEAD
 		return graphql.Null
 	}
 	res := resTmp.(*model.APIHost)
 	fc.Result = res
 	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
-=======
+}
+
+func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_hostEvents_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostEvents(rctx, args["hostId"].(string), args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
 			ec.Errorf(ctx, "must not be null")
 		}
@@ -10963,7 +10936,6 @@ func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql
 	res := resTmp.(*HostEvents)
 	fc.Result = res
 	return ec.marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx, field.Selections, res)
->>>>>>> master
 }
 
 func (ec *executionContext) _Query_hosts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -16790,6 +16762,13 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "provider":
+			out.Values[i] = ec._Host_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "lastCommunicationTime":
+			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
 		case "noExpiration":
 			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -16992,84 +16971,9 @@ func (ec *executionContext) _HostEvents(ctx context.Context, sel ast.SelectionSe
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-<<<<<<< HEAD
-			out.Values[i] = graphql.MarshalString("Host")
-		case "id":
-			out.Values[i] = ec._Host_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "displayName":
-			out.Values[i] = ec._Host_displayName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "hostUrl":
-			out.Values[i] = ec._Host_hostUrl(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "distroId":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_distroId(ctx, field, obj)
-				return res
-			})
-		case "status":
-			out.Values[i] = ec._Host_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "runningTask":
-			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
-		case "totalIdleTime":
-			out.Values[i] = ec._Host_totalIdleTime(ctx, field, obj)
-		case "uptime":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_uptime(ctx, field, obj)
-				return res
-			})
-		case "elapsed":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_elapsed(ctx, field, obj)
-				return res
-			})
-		case "startedBy":
-			out.Values[i] = ec._Host_startedBy(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "provider":
-			out.Values[i] = ec._Host_provider(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "lastCommunicationTime":
-			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
-		case "noExpiration":
-			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
-=======
 			out.Values[i] = graphql.MarshalString("HostEvents")
 		case "eventLogEntries":
 			out.Values[i] = ec._HostEvents_eventLogEntries(ctx, field, obj)
->>>>>>> master
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -18134,11 +18038,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-<<<<<<< HEAD
 		case "host":
-=======
-		case "hostEvents":
->>>>>>> master
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -18146,14 +18046,21 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-<<<<<<< HEAD
 				res = ec._Query_host(ctx, field)
-=======
+				return res
+			})
+		case "hostEvents":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
 				res = ec._Query_hostEvents(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
->>>>>>> master
 				return res
 			})
 		case "hosts":
