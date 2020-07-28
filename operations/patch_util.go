@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -67,6 +69,7 @@ type patchParams struct {
 	Large             bool
 	ShowSummary       bool
 	Uncommitted       bool
+	PreserveCommits   bool
 	Ref               string
 }
 
@@ -349,6 +352,19 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	return out.String(), nil
 }
 
+func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
+	servicePatchIface, err := apiPatch.ToService()
+	if err != nil {
+		return "", errors.Wrap(err, "can't convert patch to service")
+	}
+	servicePatch, ok := servicePatchIface.(patch.Patch)
+	if !ok {
+		return "", errors.New("service patch is not a Patch")
+	}
+
+	return getPatchDisplay(&servicePatch, summarize, uiHost)
+}
+
 func isCommitRange(commits string) bool {
 	return strings.Contains(commits, "..")
 }
@@ -391,6 +407,28 @@ func isValidCommitsFormat(commits string) error {
 	}
 
 	return nil
+}
+
+func confirmUncommittedChanges(preserveCommits, includeUncommitedChanges bool) (bool, error) {
+	uncommittedChanges, err := gitUncommittedChanges()
+	if err != nil {
+		return false, errors.Wrap(err, "can't test for uncommitted changes")
+	}
+	if !uncommittedChanges {
+		return true, nil
+	}
+
+	if preserveCommits {
+		return confirm("Uncommitted changes are omitted from patches when commits are preserved. Continue? (y/N)", false), nil
+	}
+
+	if !includeUncommitedChanges {
+		return confirm(fmt.Sprintf(`Uncommitted changes are omitted from patches by default.
+Use the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.
+Continue? (Y/n)`, uncommittedChangesFlag), true), nil
+	}
+
+	return true, nil
 }
 
 // loadGitData inspects the current git working directory and returns a patch and its summary.
@@ -557,6 +595,101 @@ func gitUncommittedChanges() (bool, error) {
 		return false, errors.Wrap(err, "can't run git status")
 	}
 	return len(out) != 0, nil
+}
+
+func diffToMbox(diffData *localDiff, subject string) (string, error) {
+	metadata, err := getGitConfigMetadata()
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting git metadata")
+	}
+	metadata.Subject = subject
+
+	return addMetadataToDiff(diffData, metadata)
+}
+
+func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
+	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+Date: {{.Metadata.CurrentTime}}
+Subject: {{.Metadata.Subject}}
+
+---
+{{.DiffStat}}
+
+{{.DiffContent}}
+--
+{{.Metadata.GitVersion}}
+`))
+
+	out := bytes.Buffer{}
+	err := mboxTemplate.Execute(&out, struct {
+		Metadata    GitMetadata
+		DiffStat    string
+		DiffContent string
+	}{
+		Metadata:    metadata,
+		DiffStat:    diffData.log,
+		DiffContent: diffData.fullPatch,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "problem executing mbox template")
+	}
+
+	return out.String(), nil
+}
+
+type GitMetadata struct {
+	Username    string
+	Email       string
+	CurrentTime string
+	GitVersion  string
+	Subject     string
+}
+
+func getGitConfigMetadata() (GitMetadata, error) {
+	var err error
+	metadata := GitMetadata{}
+	username, err := gitCmd("config", "user.name")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git user.name")
+	}
+	metadata.Username = strings.TrimSpace(username)
+
+	email, err := gitCmd("config", "user.email")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git user.email")
+	}
+	metadata.Email = strings.TrimSpace(email)
+
+	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
+
+	// We need just the version number, but git gives it as part of a larger string.
+	// Parse the version number out of the version string.
+	versionString, err := gitCmd("version")
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git version")
+	}
+	versionString = strings.TrimSpace(versionString)
+	metadata.GitVersion, err = parseGitVersion(versionString)
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git version")
+	}
+
+	return metadata, nil
+}
+
+func parseGitVersion(version string) (string, error) {
+	matches := regexp.MustCompile(`^git version ` +
+		// capture the version major.minor(.patch(.build(.etc...)))
+		`(\d+(?:\.\d+)+)` +
+		// match and discard Apple git's addition to the version string
+		`(?: \(Apple Git-\d+\))?$`,
+	).FindStringSubmatch(version)
+	if len(matches) != 2 {
+		return "", errors.Errorf("can't parse git version number from version string '%s'", version)
+	}
+
+	return matches[1], nil
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {

@@ -505,6 +505,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
+      $scope.spawnInfo.setup_script = $scope.setup_script;
       $scope.spawnInfo.is_virtual_workstation = $scope.isVirtualWorkstation;
       if ($scope.isVirtualWorkstation) {
           $scope.spawnInfo.no_expiration = $scope.noExpiration;

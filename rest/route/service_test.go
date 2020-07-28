@@ -88,9 +88,12 @@ func TestHostPaginator(t *testing.T) {
 						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
 						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToStringPtr(""),
-							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:  model.ToStringPtr(""),
+							Id:                   model.ToStringPtr(""),
+							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              model.ToStringPtr(""),
+							WorkDir:              model.ToStringPtr(""),
+							IsVirtualWorkstation: false,
+							User:                 model.ToStringPtr(""),
 						},
 						StartedBy:        model.ToStringPtr(""),
 						Provider:         model.ToStringPtr(""),
@@ -100,6 +103,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -130,9 +134,12 @@ func TestHostPaginator(t *testing.T) {
 						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
 						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToStringPtr(""),
-							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:  model.ToStringPtr(""),
+							Id:                   model.ToStringPtr(""),
+							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              model.ToStringPtr(""),
+							WorkDir:              model.ToStringPtr(""),
+							IsVirtualWorkstation: false,
+							User:                 model.ToStringPtr(""),
 						},
 						StartedBy:        model.ToStringPtr(""),
 						Provider:         model.ToStringPtr(""),
@@ -142,6 +149,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -173,9 +181,12 @@ func TestHostPaginator(t *testing.T) {
 						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
 						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToStringPtr(""),
-							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:  model.ToStringPtr(""),
+							Id:                   model.ToStringPtr(""),
+							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              model.ToStringPtr(""),
+							WorkDir:              model.ToStringPtr(""),
+							IsVirtualWorkstation: false,
+							User:                 model.ToStringPtr(""),
 						},
 						StartedBy:        model.ToStringPtr(""),
 						Provider:         model.ToStringPtr(""),
@@ -185,6 +196,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -215,9 +227,12 @@ func TestHostPaginator(t *testing.T) {
 						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
 						HostURL: model.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:       model.ToStringPtr(""),
-							Provider: model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:  model.ToStringPtr(""),
+							Id:                   model.ToStringPtr(""),
+							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              model.ToStringPtr(""),
+							WorkDir:              model.ToStringPtr(""),
+							IsVirtualWorkstation: false,
+							User:                 model.ToStringPtr(""),
 						},
 						StartedBy:        model.ToStringPtr(""),
 						Provider:         model.ToStringPtr(""),
@@ -227,6 +242,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}

@@ -385,7 +385,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating command to start agent monitor")
 		}
-	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
+	} else if h.ProvisionOptions != nil && h.UserHost {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
 			return nil, errors.Wrap(err, "error creating commands to load task data")
@@ -403,7 +403,13 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			}
 			var getTaskDataCmd string
-			getTaskDataCmd, err = h.buildLocalJasperClientRequest(settings.HostJasper, strings.Join([]string{jcli.ManagerCommand, jcli.CreateCommand}, " "), &options.Command{Commands: [][]string{fetchCmd}})
+			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
+				settings.HostJasper,
+				strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
+				options.Create{
+					Args: fetchCmd,
+					Tags: []string{evergreen.HostFetchTag},
+				})
 			if err != nil {
 				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
@@ -655,7 +661,6 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	}
 
 	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jcli.RPCService, config.Port, h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath))
-
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
 	return strings.Join([]string{
@@ -990,6 +995,37 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 	}
 
 	return handleTaggedProcs(procs)
+}
+
+func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environment) error {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
+		grip.WarningWhen(len(procs) > 1, message.Fields{
+			"message":   "host is attempting to fetch task data multiple times",
+			"num_procs": len(procs),
+			"host_id":   h.Id,
+			"distro":    h.Distro.Id,
+		})
+		catcher := grip.NewBasicCatcher()
+		for _, proc := range procs {
+			err := util.Retry(
+				ctx,
+				func() (bool, error) {
+					if proc.Complete(ctx) {
+						return false, nil
+					}
+					return true, errors.New("fetching task data not finished")
+				}, 5, time.Second, 15*time.Second)
+			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
+			if err == nil {
+				return nil
+			}
+			catcher.Add(err)
+		}
+		return catcher.Resolve()
+	})
 }
 
 // WithAgentMonitor runs the given handler on all agent monitor processes
