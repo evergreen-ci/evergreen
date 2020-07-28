@@ -94,7 +94,13 @@ func (aws *awsSns) Run(ctx context.Context) gimlet.Responder {
 			"topic_arn":       aws.payload.TopicArn,
 		})
 	case messageTypeNotification:
-		return aws.handleNotification(ctx)
+		if err := aws.handleNotification(ctx); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "problem handling SNS notification",
+				"notification": aws.payload.Message,
+			}))
+			return gimlet.NewJSONResponse(err)
+		}
 	default:
 		grip.Error(message.Fields{
 			"message":         "got an unknown message type",
@@ -118,30 +124,42 @@ type eventDetail struct {
 	State      string `json:"state"`
 }
 
-func (aws *awsSns) handleNotification(ctx context.Context) gimlet.Responder {
+func (aws *awsSns) handleNotification(ctx context.Context) error {
 	notification := &eventBridgeNotification{}
 	if err := json.Unmarshal([]byte(aws.payload.Message), notification); err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem unmarshalling notification"))
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem unmarshalling notification").Error(),
+		}
 	}
 
 	switch notification.DetailType {
 	case interruptionWarningType:
 		if err := aws.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem processing interruption warning"))
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, "problem processing interruption warning").Error(),
+			}
 		}
 
 	case instanceStateChangeType:
 		if notification.Detail.State == ec2.InstanceStateNameTerminated {
 			if err := aws.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
-				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem processing instance termination"))
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
+				}
 			}
 		}
 
 	default:
-		return gimlet.NewJSONErrorResponse(errors.Errorf("unknown detail type '%s'", notification.DetailType))
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("unknown detail type '%s'", notification.DetailType),
+		}
 	}
 
-	return gimlet.NewJSONResponse(struct{}{})
+	return nil
 }
 
 func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
