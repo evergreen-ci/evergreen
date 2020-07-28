@@ -1,0 +1,8 @@
+{
+  ami_exists: task(taskId: "taskity_task") {
+    ami
+  }
+  no_ami: task(taskId: "some_task") {
+    ami
+  }
+}

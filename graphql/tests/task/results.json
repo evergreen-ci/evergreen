@@ -28,7 +28,13 @@
     },
     {
       "query_file": "baseTaskMetadata-no-base-task.graphql",
-      "result": { "data": { "task": { "baseTaskMetadata": null } } }
+      "result": {
+        "data": {
+          "task": {
+            "baseTaskMetadata": null
+          }
+        }
+      }
     },
     {
       "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
@@ -167,55 +173,113 @@
     },
     {
       "query_file": "spawnHostLink-no-host.graphql",
-      "result": { "data": { "task": { "spawnHostLink": null } } }
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
     },
     {
       "query_file": "spawnHostLink-distro-provider-static.graphql",
-      "result": { "data": { "task": { "spawnHostLink": null } } }
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
     },
     {
       "query_file": "spawnHostLink-spawn-not-allowed.graphql",
-      "result": { "data": { "task": { "spawnHostLink": null } } }
+      "result": {
+        "data": {
+          "task": {
+            "spawnHostLink": null
+          }
+        }
+      }
     },
     {
       "query_file": "failedTestCount.graphql",
-      "result": { "data": { "task": { "failedTestCount": 2 } } }
+      "result": {
+        "data": {
+          "task": {
+            "failedTestCount": 2
+          }
+        }
+      }
     },
     {
       "query_file": "failedTestCount-no-tests.graphql",
-      "result": { "data": { "task": { "failedTestCount": 0 } } }
+      "result": {
+        "data": {
+          "task": {
+            "failedTestCount": 0
+          }
+        }
+      }
     },
     {
       "query_file": "patchNumber.graphql",
-      "result": { "data": { "task": { "patchNumber": 2567 } } }
+      "result": {
+        "data": {
+          "task": {
+            "patchNumber": 2567
+          }
+        }
+      }
     },
     {
       "query_file": "canAbort.graphql",
       "result": {
-        "data": { "yes": { "canAbort": true }, "no": { "canAbort": false } }
+        "data": {
+          "yes": {
+            "canAbort": true
+          },
+          "no": {
+            "canAbort": false
+          }
+        }
       }
     },
     {
       "query_file": "canSchedule.graphql",
       "result": {
         "data": {
-          "yes": { "canSchedule": true },
-          "no": { "canSchedule": false }
+          "yes": {
+            "canSchedule": true
+          },
+          "no": {
+            "canSchedule": false
+          }
         }
       }
     },
     {
       "query_file": "canRestart.graphql",
       "result": {
-        "data": { "yes": { "canRestart": true }, "no": { "canRestart": false } }
+        "data": {
+          "yes": {
+            "canRestart": true
+          },
+          "no": {
+            "canRestart": false
+          }
+        }
       }
     },
     {
       "query_file": "canSetPriority.graphql",
       "result": {
         "data": {
-          "yes": { "canSetPriority": true },
-          "no": { "canSetPriority": false }
+          "yes": {
+            "canSetPriority": true
+          },
+          "no": {
+            "canSetPriority": false
+          }
         }
       }
     },
@@ -223,8 +287,12 @@
       "query_file": "canUnschedule.graphql",
       "result": {
         "data": {
-          "yes": { "canUnschedule": true },
-          "no": { "canUnschedule": false }
+          "yes": {
+            "canUnschedule": true
+          },
+          "no": {
+            "canUnschedule": false
+          }
         }
       }
     },
@@ -254,6 +322,21 @@
         "data": {
           "task": {
             "estimatedStart": 0
+          }
+        }
+      }
+    },
+    {
+      "query_file": "ami.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "ami_exists": {
+              "ami": "ami-049df09df40fc2c1c"
+            },
+            "no_ami": {
+              "ami": null
+            }
           }
         }
       }
