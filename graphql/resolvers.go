@@ -290,6 +290,33 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}, nil
 }
 
+func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
+	host, err := host.GetHostByIdWithTask(hostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
+	}
+
+	if host == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s: %s", hostID, err.Error()))
+	}
+
+	apiHost := &restModel.APIHost{}
+
+	err = apiHost.BuildFromService(host)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+	}
+
+	if host.RunningTask != "" {
+		// Add the task information to the host document.
+		if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+		}
+	}
+
+	return apiHost, nil
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
