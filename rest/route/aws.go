@@ -23,11 +23,14 @@ import (
 )
 
 const (
+	// SNS message types
+	// See https://docs.aws.amazon.com/sns/latest/dg/sns-message-and-json-formats.html#http-header
 	messageTypeSubscriptionConfirmation = "SubscriptionConfirmation"
 	messageTypeNotification             = "Notification"
 	messageTypeUnsubscribeConfirmation  = "UnsubscribeConfirmation"
-	interruptionWarningType             = "EC2 Spot Instance Interruption Warning"
-	instanceStateChangeType             = "EC2 Instance State-change Notification"
+
+	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
+	instanceStateChangeType = "EC2 Instance State-change Notification"
 )
 
 type awsSns struct {
