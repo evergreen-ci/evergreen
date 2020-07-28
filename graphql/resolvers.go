@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -140,6 +142,24 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 	return dependencies, nil
 }
 
+func (r *taskResolver) Ami(ctx context.Context, at *restModel.APITask) (*string, error) {
+	d, err := distro.FindByID(*at.DistroId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while searching for distro: '%s", *at.DistroId))
+	}
+	if d == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find distro with id: '%s", *at.DistroId))
+	}
+	var ami *string = nil
+	for _, providerSetting := range d.ProviderSettingsList {
+		providerSettingAmi := providerSetting.Lookup("ami")
+		if providerSettingAmi != nil {
+			amiString := providerSettingAmi.StringValue()
+			ami = &amiString
+		}
+	}
+	return ami, nil
+}
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {

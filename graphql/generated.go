@@ -332,6 +332,7 @@ type ComplexityRoot struct {
 		Activated         func(childComplexity int) int
 		ActivatedBy       func(childComplexity int) int
 		ActivatedTime     func(childComplexity int) int
+		Ami               func(childComplexity int) int
 		BaseTaskMetadata  func(childComplexity int) int
 		BuildId           func(childComplexity int) int
 		BuildVariant      func(childComplexity int) int
@@ -561,6 +562,8 @@ type TaskResolver interface {
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
+
+	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 }
 
 type executableSchema struct {
@@ -1952,6 +1955,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ActivatedTime(childComplexity), true
 
+	case "Task.ami":
+		if e.complexity.Task.Ami == nil {
+			break
+		}
+
+		return e.complexity.Task.Ami(childComplexity), true
+
 	case "Task.baseTaskMetadata":
 		if e.complexity.Task.BaseTaskMetadata == nil {
 			break
@@ -3165,6 +3175,7 @@ type Task {
   canUnschedule: Boolean!
   canSetPriority: Boolean!
   estimatedStart: Duration
+  ami: String
 }
 
 type Projects {
@@ -11468,6 +11479,37 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Ami(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -16767,6 +16809,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			})
 		case "estimatedStart":
 			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
+		case "ami":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_ami(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
