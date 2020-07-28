@@ -103,6 +103,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -148,6 +149,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -194,6 +196,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -239,6 +242,7 @@ func TestHostPaginator(t *testing.T) {
 						AvailabilityZone: model.ToStringPtr(""),
 						DisplayName:      model.ToStringPtr(""),
 						HomeVolumeID:     model.ToStringPtr(""),
+						Tag:              model.ToStringPtr(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}

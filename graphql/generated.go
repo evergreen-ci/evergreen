@@ -153,6 +153,39 @@ type ComplexityRoot struct {
 		User                  func(childComplexity int) int
 	}
 
+	HostEventLogData struct {
+		AgentBuild         func(childComplexity int) int
+		AgentRevision      func(childComplexity int) int
+		Duration           func(childComplexity int) int
+		Execution          func(childComplexity int) int
+		Hostname           func(childComplexity int) int
+		JasperRevision     func(childComplexity int) int
+		Logs               func(childComplexity int) int
+		MonitorOp          func(childComplexity int) int
+		NewStatus          func(childComplexity int) int
+		OldStatus          func(childComplexity int) int
+		ProvisioningMethod func(childComplexity int) int
+		Successful         func(childComplexity int) int
+		TaskId             func(childComplexity int) int
+		TaskPid            func(childComplexity int) int
+		TaskStatus         func(childComplexity int) int
+		User               func(childComplexity int) int
+	}
+
+	HostEventLogEntry struct {
+		Data         func(childComplexity int) int
+		EventType    func(childComplexity int) int
+		ID           func(childComplexity int) int
+		ProcessedAt  func(childComplexity int) int
+		ResourceId   func(childComplexity int) int
+		ResourceType func(childComplexity int) int
+		Timestamp    func(childComplexity int) int
+	}
+
+	HostEvents struct {
+		EventLogEntries func(childComplexity int) int
+	}
+
 	HostsResponse struct {
 		FilteredHostsCount func(childComplexity int) int
 		Hosts              func(childComplexity int) int
@@ -301,7 +334,11 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
+<<<<<<< HEAD
 		Host               func(childComplexity int, hostID string) int
+=======
+		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+>>>>>>> master
 		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		MyHosts            func(childComplexity int) int
 		Patch              func(childComplexity int, id string) int
@@ -399,9 +436,13 @@ type ComplexityRoot struct {
 	}
 
 	TaskEventLogEntry struct {
-		Data      func(childComplexity int) int
-		EventType func(childComplexity int) int
-		Timestamp func(childComplexity int) int
+		Data         func(childComplexity int) int
+		EventType    func(childComplexity int) int
+		ID           func(childComplexity int) int
+		ProcessedAt  func(childComplexity int) int
+		ResourceId   func(childComplexity int) int
+		ResourceType func(childComplexity int) int
+		Timestamp    func(childComplexity int) int
 	}
 
 	TaskFiles struct {
@@ -545,7 +586,11 @@ type QueryResolver interface {
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	SiteBanner(ctx context.Context) (*model.APIBanner, error)
+<<<<<<< HEAD
 	Host(ctx context.Context, hostID string) (*model.APIHost, error)
+=======
+	HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error)
+>>>>>>> master
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 }
@@ -1016,6 +1061,174 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.User(childComplexity), true
+
+	case "HostEventLogData.agentBuild":
+		if e.complexity.HostEventLogData.AgentBuild == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.AgentBuild(childComplexity), true
+
+	case "HostEventLogData.agentRevision":
+		if e.complexity.HostEventLogData.AgentRevision == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.AgentRevision(childComplexity), true
+
+	case "HostEventLogData.duration":
+		if e.complexity.HostEventLogData.Duration == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.Duration(childComplexity), true
+
+	case "HostEventLogData.execution":
+		if e.complexity.HostEventLogData.Execution == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.Execution(childComplexity), true
+
+	case "HostEventLogData.hostname":
+		if e.complexity.HostEventLogData.Hostname == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.Hostname(childComplexity), true
+
+	case "HostEventLogData.jasperRevision":
+		if e.complexity.HostEventLogData.JasperRevision == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.JasperRevision(childComplexity), true
+
+	case "HostEventLogData.logs":
+		if e.complexity.HostEventLogData.Logs == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.Logs(childComplexity), true
+
+	case "HostEventLogData.monitorOp":
+		if e.complexity.HostEventLogData.MonitorOp == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.MonitorOp(childComplexity), true
+
+	case "HostEventLogData.newStatus":
+		if e.complexity.HostEventLogData.NewStatus == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.NewStatus(childComplexity), true
+
+	case "HostEventLogData.oldStatus":
+		if e.complexity.HostEventLogData.OldStatus == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.OldStatus(childComplexity), true
+
+	case "HostEventLogData.provisioningMethod":
+		if e.complexity.HostEventLogData.ProvisioningMethod == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.ProvisioningMethod(childComplexity), true
+
+	case "HostEventLogData.successful":
+		if e.complexity.HostEventLogData.Successful == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.Successful(childComplexity), true
+
+	case "HostEventLogData.taskId":
+		if e.complexity.HostEventLogData.TaskId == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.TaskId(childComplexity), true
+
+	case "HostEventLogData.taskPid":
+		if e.complexity.HostEventLogData.TaskPid == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.TaskPid(childComplexity), true
+
+	case "HostEventLogData.taskStatus":
+		if e.complexity.HostEventLogData.TaskStatus == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.TaskStatus(childComplexity), true
+
+	case "HostEventLogData.user":
+		if e.complexity.HostEventLogData.User == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogData.User(childComplexity), true
+
+	case "HostEventLogEntry.data":
+		if e.complexity.HostEventLogEntry.Data == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.Data(childComplexity), true
+
+	case "HostEventLogEntry.eventType":
+		if e.complexity.HostEventLogEntry.EventType == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.EventType(childComplexity), true
+
+	case "HostEventLogEntry.id":
+		if e.complexity.HostEventLogEntry.ID == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.ID(childComplexity), true
+
+	case "HostEventLogEntry.processedAt":
+		if e.complexity.HostEventLogEntry.ProcessedAt == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.ProcessedAt(childComplexity), true
+
+	case "HostEventLogEntry.resourceId":
+		if e.complexity.HostEventLogEntry.ResourceId == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.ResourceId(childComplexity), true
+
+	case "HostEventLogEntry.resourceType":
+		if e.complexity.HostEventLogEntry.ResourceType == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.ResourceType(childComplexity), true
+
+	case "HostEventLogEntry.timestamp":
+		if e.complexity.HostEventLogEntry.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.HostEventLogEntry.Timestamp(childComplexity), true
+
+	case "HostEvents.eventLogEntries":
+		if e.complexity.HostEvents.EventLogEntries == nil {
+			break
+		}
+
+		return e.complexity.HostEvents.EventLogEntries(childComplexity), true
 
 	case "HostsResponse.filteredHostsCount":
 		if e.complexity.HostsResponse.FilteredHostsCount == nil {
@@ -1753,17 +1966,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
 
+<<<<<<< HEAD
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
 		}
 
 		args, err := ec.field_Query_host_args(context.TODO(), rawArgs)
+=======
+	case "Query.hostEvents":
+		if e.complexity.Query.HostEvents == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostEvents_args(context.TODO(), rawArgs)
+>>>>>>> master
 		if err != nil {
 			return 0, false
 		}
 
+<<<<<<< HEAD
 		return e.complexity.Query.Host(childComplexity, args["hostId"].(string)), true
+=======
+		return e.complexity.Query.HostEvents(childComplexity, args["hostId"].(string), args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int)), true
+>>>>>>> master
 
 	case "Query.hosts":
 		if e.complexity.Query.Hosts == nil {
@@ -2382,6 +2608,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEventLogEntry.EventType(childComplexity), true
 
+	case "TaskEventLogEntry.id":
+		if e.complexity.TaskEventLogEntry.ID == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogEntry.ID(childComplexity), true
+
+	case "TaskEventLogEntry.processedAt":
+		if e.complexity.TaskEventLogEntry.ProcessedAt == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogEntry.ProcessedAt(childComplexity), true
+
+	case "TaskEventLogEntry.resourceId":
+		if e.complexity.TaskEventLogEntry.ResourceId == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogEntry.ResourceId(childComplexity), true
+
+	case "TaskEventLogEntry.resourceType":
+		if e.complexity.TaskEventLogEntry.ResourceType == nil {
+			break
+		}
+
+		return e.complexity.TaskEventLogEntry.ResourceType(childComplexity), true
+
 	case "TaskEventLogEntry.timestamp":
 		if e.complexity.TaskEventLogEntry.Timestamp == nil {
 			break
@@ -2818,7 +3072,16 @@ var sources = []*ast.Source{
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
+<<<<<<< HEAD
   host(hostId: String!): Host
+=======
+  hostEvents(
+    hostId: String!
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents!
+>>>>>>> master
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -3255,9 +3518,13 @@ type TaskEventLogData {
 }
 
 type TaskEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
   timestamp: Time
   eventType: String
-  data: TaskEventLogData
+  data: TaskEventLogData!
+  resourceId: String!
 }
 
 type LogMessage {
@@ -3344,6 +3611,39 @@ type ClientBinary {
 type SiteBanner {
   text: String!
   theme: String!
+}
+
+type HostEvents {
+  eventLogEntries: [HostEventLogEntry!]!
+}
+
+type HostEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
+  timestamp: Time
+  eventType: String
+  data: HostEventLogData!
+  resourceId: String!
+}
+
+type HostEventLogData {
+  agentRevision: String!
+  agentBuild: String!
+  jasperRevision: String!
+  oldStatus: String!
+  newStatus: String!
+  logs: String!
+  hostname: String!
+  provisioningMethod: String!
+  taskId: String!
+  taskPid: String!
+  taskStatus: String!
+  execution: String!
+  monitorOp: String!
+  user: String!
+  successful: Boolean!
+  duration: Duration!
 }
 
 scalar Time
@@ -3665,7 +3965,11 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 	return args, nil
 }
 
+<<<<<<< HEAD
 func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+=======
+func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+>>>>>>> master
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -3676,6 +3980,33 @@ func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["hostId"] = arg0
+<<<<<<< HEAD
+=======
+	var arg1 *string
+	if tmp, ok := rawArgs["hostTag"]; ok {
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostTag"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["page"]; ok {
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg3
+>>>>>>> master
 	return args, nil
 }
 
@@ -6096,6 +6427,816 @@ func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_agentRevision(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AgentRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_agentBuild(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AgentBuild, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_jasperRevision(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JasperRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_oldStatus(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_newStatus(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NewStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_logs(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Logs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_hostname(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hostname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_provisioningMethod(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProvisioningMethod, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_taskId(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_taskPid(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskPid, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_taskStatus(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_execution(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_monitorOp(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MonitorOp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_user(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_successful(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Successful, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogData_duration(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogData",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIDuration)
+	fc.Result = res
+	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_processedAt(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProcessedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_eventType(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_data(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.HostAPIEventData)
+	fc.Result = res
+	return ec.marshalNHostEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventData(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEventLogEntry_resourceId(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEvents_eventLogEntries(ctx context.Context, field graphql.CollectedField, obj *HostEvents) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEvents",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogEntries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.HostAPIEventLogEntry)
+	fc.Result = res
+	return ec.marshalNHostEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntryᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HostsResponse_filteredHostsCount(ctx context.Context, field graphql.CollectedField, obj *HostsResponse) (ret graphql.Marshaler) {
@@ -9764,7 +10905,11 @@ func (ec *executionContext) _Query_siteBanner(ctx context.Context, field graphql
 	return ec.marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx, field.Selections, res)
 }
 
+<<<<<<< HEAD
 func (ec *executionContext) _Query_host(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+=======
+func (ec *executionContext) _Query_hostEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+>>>>>>> master
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -9780,7 +10925,11 @@ func (ec *executionContext) _Query_host(ctx context.Context, field graphql.Colle
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
+<<<<<<< HEAD
 	args, err := ec.field_Query_host_args(ctx, rawArgs)
+=======
+	args, err := ec.field_Query_hostEvents_args(ctx, rawArgs)
+>>>>>>> master
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -9788,18 +10937,33 @@ func (ec *executionContext) _Query_host(ctx context.Context, field graphql.Colle
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
+<<<<<<< HEAD
 		return ec.resolvers.Query().Host(rctx, args["hostId"].(string))
+=======
+		return ec.resolvers.Query().HostEvents(rctx, args["hostId"].(string), args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int))
+>>>>>>> master
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+<<<<<<< HEAD
 		return graphql.Null
 	}
 	res := resTmp.(*model.APIHost)
 	fc.Result = res
 	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+=======
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*HostEvents)
+	fc.Result = res
+	return ec.marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx, field.Selections, res)
+>>>>>>> master
 }
 
 func (ec *executionContext) _Query_hosts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9972,9 +11136,9 @@ func (ec *executionContext) _RecentTaskLogs_eventLogs(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIEventLogEntry)
+	res := resTmp.([]*model.TaskAPIEventLogEntry)
 	fc.Result = res
-	return ec.marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntryᚄ(ctx, field.Selections, res)
+	return ec.marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskAPIEventLogEntryᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RecentTaskLogs_taskLogs(ctx context.Context, field graphql.CollectedField, obj *RecentTaskLogs) (ret graphql.Marshaler) {
@@ -12008,7 +13172,109 @@ func (ec *executionContext) _TaskEventLogData_userId(ctx context.Context, field 
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskEventLogEntry_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskEventLogEntry_id(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEventLogEntry_resourceType(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEventLogEntry_processedAt(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProcessedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEventLogEntry_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -12039,7 +13305,7 @@ func (ec *executionContext) _TaskEventLogEntry_timestamp(ctx context.Context, fi
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskEventLogEntry_eventType(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskEventLogEntry_eventType(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -12070,7 +13336,7 @@ func (ec *executionContext) _TaskEventLogEntry_eventType(ctx context.Context, fi
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskEventLogEntry_data(ctx context.Context, field graphql.CollectedField, obj *model.APIEventLogEntry) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskEventLogEntry_data(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -12094,11 +13360,48 @@ func (ec *executionContext) _TaskEventLogEntry_data(ctx context.Context, field g
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.TaskEventData)
 	fc.Result = res
-	return ec.marshalOTaskEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx, field.Selections, res)
+	return ec.marshalNTaskEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEventLogEntry_resourceId(ctx context.Context, field graphql.CollectedField, obj *model.TaskAPIEventLogEntry) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEventLogEntry",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskFiles_fileCount(ctx context.Context, field graphql.CollectedField, obj *TaskFiles) (ret graphql.Marshaler) {
@@ -15435,6 +16738,267 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "hostUrl":
+			out.Values[i] = ec._Host_hostUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "distroId":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_distroId(ctx, field, obj)
+				return res
+			})
+		case "status":
+			out.Values[i] = ec._Host_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "runningTask":
+			out.Values[i] = ec._Host_runningTask(ctx, field, obj)
+		case "totalIdleTime":
+			out.Values[i] = ec._Host_totalIdleTime(ctx, field, obj)
+		case "uptime":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_uptime(ctx, field, obj)
+				return res
+			})
+		case "elapsed":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_elapsed(ctx, field, obj)
+				return res
+			})
+		case "startedBy":
+			out.Values[i] = ec._Host_startedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "noExpiration":
+			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "instanceType":
+			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
+		case "homeVolumeID":
+			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
+		case "user":
+			out.Values[i] = ec._Host_user(ctx, field, obj)
+		case "distro":
+			out.Values[i] = ec._Host_distro(ctx, field, obj)
+		case "availabilityZone":
+			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
+		case "instanceTags":
+			out.Values[i] = ec._Host_instanceTags(ctx, field, obj)
+		case "expiration":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_expiration(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var hostEventLogDataImplementors = []string{"HostEventLogData"}
+
+func (ec *executionContext) _HostEventLogData(ctx context.Context, sel ast.SelectionSet, obj *model.HostAPIEventData) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostEventLogDataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HostEventLogData")
+		case "agentRevision":
+			out.Values[i] = ec._HostEventLogData_agentRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "agentBuild":
+			out.Values[i] = ec._HostEventLogData_agentBuild(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "jasperRevision":
+			out.Values[i] = ec._HostEventLogData_jasperRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "oldStatus":
+			out.Values[i] = ec._HostEventLogData_oldStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "newStatus":
+			out.Values[i] = ec._HostEventLogData_newStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "logs":
+			out.Values[i] = ec._HostEventLogData_logs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hostname":
+			out.Values[i] = ec._HostEventLogData_hostname(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "provisioningMethod":
+			out.Values[i] = ec._HostEventLogData_provisioningMethod(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskId":
+			out.Values[i] = ec._HostEventLogData_taskId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskPid":
+			out.Values[i] = ec._HostEventLogData_taskPid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskStatus":
+			out.Values[i] = ec._HostEventLogData_taskStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "execution":
+			out.Values[i] = ec._HostEventLogData_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "monitorOp":
+			out.Values[i] = ec._HostEventLogData_monitorOp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "user":
+			out.Values[i] = ec._HostEventLogData_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "successful":
+			out.Values[i] = ec._HostEventLogData_successful(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "duration":
+			out.Values[i] = ec._HostEventLogData_duration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var hostEventLogEntryImplementors = []string{"HostEventLogEntry"}
+
+func (ec *executionContext) _HostEventLogEntry(ctx context.Context, sel ast.SelectionSet, obj *model.HostAPIEventLogEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostEventLogEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HostEventLogEntry")
+		case "id":
+			out.Values[i] = ec._HostEventLogEntry_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceType":
+			out.Values[i] = ec._HostEventLogEntry_resourceType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "processedAt":
+			out.Values[i] = ec._HostEventLogEntry_processedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._HostEventLogEntry_timestamp(ctx, field, obj)
+		case "eventType":
+			out.Values[i] = ec._HostEventLogEntry_eventType(ctx, field, obj)
+		case "data":
+			out.Values[i] = ec._HostEventLogEntry_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceId":
+			out.Values[i] = ec._HostEventLogEntry_resourceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var hostEventsImplementors = []string{"HostEvents"}
+
+func (ec *executionContext) _HostEvents(ctx context.Context, sel ast.SelectionSet, obj *HostEvents) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostEventsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+<<<<<<< HEAD
+			out.Values[i] = graphql.MarshalString("Host")
+		case "id":
+			out.Values[i] = ec._Host_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "displayName":
 			out.Values[i] = ec._Host_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15501,32 +17065,14 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_lastCommunicationTime(ctx, field, obj)
 		case "noExpiration":
 			out.Values[i] = ec._Host_noExpiration(ctx, field, obj)
+=======
+			out.Values[i] = graphql.MarshalString("HostEvents")
+		case "eventLogEntries":
+			out.Values[i] = ec._HostEvents_eventLogEntries(ctx, field, obj)
+>>>>>>> master
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
-		case "instanceType":
-			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
-		case "homeVolumeID":
-			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
-		case "user":
-			out.Values[i] = ec._Host_user(ctx, field, obj)
-		case "distro":
-			out.Values[i] = ec._Host_distro(ctx, field, obj)
-		case "availabilityZone":
-			out.Values[i] = ec._Host_availabilityZone(ctx, field, obj)
-		case "instanceTags":
-			out.Values[i] = ec._Host_instanceTags(ctx, field, obj)
-		case "expiration":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Host_expiration(ctx, field, obj)
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -16588,7 +18134,11 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+<<<<<<< HEAD
 		case "host":
+=======
+		case "hostEvents":
+>>>>>>> master
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -16596,7 +18146,14 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
+<<<<<<< HEAD
 				res = ec._Query_host(ctx, field)
+=======
+				res = ec._Query_hostEvents(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+>>>>>>> master
 				return res
 			})
 		case "hosts":
@@ -17068,7 +18625,7 @@ func (ec *executionContext) _TaskEventLogData(ctx context.Context, sel ast.Selec
 
 var taskEventLogEntryImplementors = []string{"TaskEventLogEntry"}
 
-func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.SelectionSet, obj *model.APIEventLogEntry) graphql.Marshaler {
+func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.SelectionSet, obj *model.TaskAPIEventLogEntry) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, taskEventLogEntryImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -17077,12 +18634,35 @@ func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskEventLogEntry")
+		case "id":
+			out.Values[i] = ec._TaskEventLogEntry_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceType":
+			out.Values[i] = ec._TaskEventLogEntry_resourceType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "processedAt":
+			out.Values[i] = ec._TaskEventLogEntry_processedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "timestamp":
 			out.Values[i] = ec._TaskEventLogEntry_timestamp(ctx, field, obj)
 		case "eventType":
 			out.Values[i] = ec._TaskEventLogEntry_eventType(ctx, field, obj)
 		case "data":
 			out.Values[i] = ec._TaskEventLogEntry_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceId":
+			out.Values[i] = ec._TaskEventLogEntry_resourceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -18184,6 +19764,85 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Host(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHostEventLogData2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventData(ctx context.Context, sel ast.SelectionSet, v model.HostAPIEventData) graphql.Marshaler {
+	return ec._HostEventLogData(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventData(ctx context.Context, sel ast.SelectionSet, v *model.HostAPIEventData) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._HostEventLogData(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNHostEventLogEntry2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v model.HostAPIEventLogEntry) graphql.Marshaler {
+	return ec._HostEventLogEntry(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.HostAPIEventLogEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNHostEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.HostAPIEventLogEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._HostEventLogEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNHostEvents2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx context.Context, sel ast.SelectionSet, v HostEvents) graphql.Marshaler {
+	return ec._HostEvents(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx context.Context, sel ast.SelectionSet, v *HostEvents) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._HostEvents(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNHostsResponse2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostsResponse(ctx context.Context, sel ast.SelectionSet, v HostsResponse) graphql.Marshaler {
 	return ec._HostsResponse(ctx, sel, &v)
 }
@@ -18795,11 +20454,25 @@ func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Task(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNTaskEventLogEntry2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v model.APIEventLogEntry) graphql.Marshaler {
+func (ec *executionContext) marshalNTaskEventLogData2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx context.Context, sel ast.SelectionSet, v model.TaskEventData) graphql.Marshaler {
+	return ec._TaskEventLogData(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx context.Context, sel ast.SelectionSet, v *model.TaskEventData) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._TaskEventLogData(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTaskEventLogEntry2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v model.TaskAPIEventLogEntry) graphql.Marshaler {
 	return ec._TaskEventLogEntry(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIEventLogEntry) graphql.Marshaler {
+func (ec *executionContext) marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskAPIEventLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TaskAPIEventLogEntry) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -18823,7 +20496,7 @@ func (ec *executionContext) marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋeverg
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTaskEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntry(ctx, sel, v[i])
+			ret[i] = ec.marshalNTaskEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskAPIEventLogEntry(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -18836,7 +20509,7 @@ func (ec *executionContext) marshalNTaskEventLogEntry2ᚕᚖgithubᚗcomᚋeverg
 	return ret
 }
 
-func (ec *executionContext) marshalNTaskEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.APIEventLogEntry) graphql.Marshaler {
+func (ec *executionContext) marshalNTaskEventLogEntry2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskAPIEventLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.TaskAPIEventLogEntry) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -18982,6 +20655,38 @@ func (ec *executionContext) marshalNTestResult2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._TestResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	return graphql.UnmarshalTime(v)
+}
+
+func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec.marshalNTime2timeᚐTime(ctx, sel, *v)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx context.Context, sel ast.SelectionSet, v model.APIUser) graphql.Marshaler {
@@ -19985,17 +21690,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTaskEventLogData2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx context.Context, sel ast.SelectionSet, v model.TaskEventData) graphql.Marshaler {
-	return ec._TaskEventLogData(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTaskEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx context.Context, sel ast.SelectionSet, v *model.TaskEventData) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._TaskEventLogData(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {

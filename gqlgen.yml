@@ -61,7 +61,7 @@ models:
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUser
   TaskEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIEventLogEntry
+    model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
   LogMessage:
@@ -96,6 +96,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
   Host:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  HostEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
+  HostEventLogData:
+    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   TaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   InstanceTag:

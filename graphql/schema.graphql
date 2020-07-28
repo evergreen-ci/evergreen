@@ -42,6 +42,12 @@ type Query {
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
   host(hostId: String!): Host
+  hostEvents(
+    hostId: String!
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents!
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -477,9 +483,13 @@ type TaskEventLogData {
 }
 
 type TaskEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
   timestamp: Time
   eventType: String
-  data: TaskEventLogData
+  data: TaskEventLogData!
+  resourceId: String!
 }
 
 type LogMessage {
@@ -566,6 +576,39 @@ type ClientBinary {
 type SiteBanner {
   text: String!
   theme: String!
+}
+
+type HostEvents {
+  eventLogEntries: [HostEventLogEntry!]!
+}
+
+type HostEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
+  timestamp: Time
+  eventType: String
+  data: HostEventLogData!
+  resourceId: String!
+}
+
+type HostEventLogData {
+  agentRevision: String!
+  agentBuild: String!
+  jasperRevision: String!
+  oldStatus: String!
+  newStatus: String!
+  logs: String!
+  hostname: String!
+  provisioningMethod: String!
+  taskId: String!
+  taskPid: String!
+  taskStatus: String!
+  execution: String!
+  monitorOp: String!
+  user: String!
+  successful: Boolean!
+  duration: Duration!
 }
 
 scalar Time
