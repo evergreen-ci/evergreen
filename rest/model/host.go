@@ -10,24 +10,26 @@ import (
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
-	Id               *string     `json:"host_id"`
-	HostURL          *string     `json:"host_url"`
-	Distro           DistroInfo  `json:"distro"`
-	Provisioned      bool        `json:"provisioned"`
-	StartedBy        *string     `json:"started_by"`
-	Provider         *string     `json:"host_type"`
-	User             *string     `json:"user"`
-	Status           *string     `json:"status"`
-	RunningTask      TaskInfo    `json:"running_task"`
-	UserHost         bool        `json:"user_host"`
-	NoExpiration     bool        `json:"no_expiration"`
-	InstanceTags     []host.Tag  `json:"instance_tags"`
-	InstanceType     *string     `json:"instance_type"`
-	AvailabilityZone *string     `json:"zone"`
-	DisplayName      *string     `json:"display_name"`
-	HomeVolumeID     *string     `json:"home_volume_id"`
-	TotalIdleTime    APIDuration `json:"total_idle_time"`
-	CreationTime     *time.Time  `json:"creation_time"`
+	Id                    *string     `json:"host_id"`
+	HostURL               *string     `json:"host_url"`
+	Tag                   *string     `json:"tag"`
+	Distro                DistroInfo  `json:"distro"`
+	Provisioned           bool        `json:"provisioned"`
+	StartedBy             *string     `json:"started_by"`
+	Provider              *string     `json:"host_type"`
+	User                  *string     `json:"user"`
+	Status                *string     `json:"status"`
+	RunningTask           TaskInfo    `json:"running_task"`
+	UserHost              bool        `json:"user_host"`
+	NoExpiration          bool        `json:"no_expiration"`
+	InstanceTags          []host.Tag  `json:"instance_tags"`
+	InstanceType          *string     `json:"instance_type"`
+	AvailabilityZone      *string     `json:"zone"`
+	DisplayName           *string     `json:"display_name"`
+	HomeVolumeID          *string     `json:"home_volume_id"`
+	LastCommunicationTime time.Time   `json:"last_communication"`
+	TotalIdleTime         APIDuration `json:"total_idle_time"`
+	CreationTime          *time.Time  `json:"creation_time"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -39,6 +41,7 @@ type HostRequestOptions struct {
 	Region               string     `json:"region" yaml:"region"`
 	KeyName              string     `json:"keyname" yaml:"key"`
 	UserData             string     `json:"userdata" yaml:"userdata_file"`
+	SetupScript          string     `json:"setup_script" yaml:"setup_file"`
 	Tag                  string     `yaml:"tag"`
 	InstanceTags         []host.Tag `json:"instance_tags" yaml:"instance_tags"`
 	InstanceType         string     `json:"instance_type" yaml:"type"`
@@ -108,6 +111,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	}
 	apiHost.Id = ToStringPtr(v.Id)
 	apiHost.HostURL = ToStringPtr(v.Host)
+	apiHost.Tag = ToStringPtr(v.Tag)
 	apiHost.Provisioned = v.Provisioned
 	apiHost.StartedBy = ToStringPtr(v.StartedBy)
 	apiHost.Provider = ToStringPtr(v.Provider)
@@ -122,7 +126,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
-
+	apiHost.LastCommunicationTime = v.LastCommunicationTime
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
@@ -143,17 +147,19 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
-		Id:           FromStringPtr(apiHost.Id),
-		Provisioned:  apiHost.Provisioned,
-		NoExpiration: apiHost.NoExpiration,
-		StartedBy:    FromStringPtr(apiHost.StartedBy),
-		Provider:     FromStringPtr(apiHost.Provider),
-		InstanceType: FromStringPtr(apiHost.InstanceType),
-		User:         FromStringPtr(apiHost.User),
-		Status:       FromStringPtr(apiHost.Status),
-		Zone:         FromStringPtr(apiHost.AvailabilityZone),
-		DisplayName:  FromStringPtr(apiHost.DisplayName),
-		HomeVolumeID: FromStringPtr(apiHost.HomeVolumeID),
+		Id:                    FromStringPtr(apiHost.Id),
+		Tag:                   FromStringPtr(apiHost.Tag),
+		Provisioned:           apiHost.Provisioned,
+		NoExpiration:          apiHost.NoExpiration,
+		StartedBy:             FromStringPtr(apiHost.StartedBy),
+		Provider:              FromStringPtr(apiHost.Provider),
+		InstanceType:          FromStringPtr(apiHost.InstanceType),
+		User:                  FromStringPtr(apiHost.User),
+		Status:                FromStringPtr(apiHost.Status),
+		Zone:                  FromStringPtr(apiHost.AvailabilityZone),
+		DisplayName:           FromStringPtr(apiHost.DisplayName),
+		HomeVolumeID:          FromStringPtr(apiHost.HomeVolumeID),
+		LastCommunicationTime: apiHost.LastCommunicationTime,
 	}
 	return interface{}(h), nil
 }

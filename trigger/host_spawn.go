@@ -53,7 +53,7 @@ func (t *spawnHostProvisioningTriggers) slack() *notification.SlackPayload {
 			},
 		},
 	}
-	if t.host.ProvisionOptions != nil && len(t.host.ProvisionOptions.TaskId) != 0 {
+	if t.host.ProvisionOptions != nil && t.host.ProvisionOptions.TaskId != "" {
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
 				Title: "With data from task",

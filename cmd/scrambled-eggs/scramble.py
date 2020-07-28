@@ -34,6 +34,7 @@ def traverse(obj):
     else:
         if (isinstance(obj, str) or isinstance(obj, unicode)):
             return hashlib.sha256(obj).hexdigest()
+    return obj
 
 def is_numeric(s):
     try:

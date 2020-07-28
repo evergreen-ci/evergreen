@@ -90,6 +90,14 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 	return hosts, filterdHostsCount, totalHostsCount, nil
 }
 
+func (hc *DBConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	host, err := host.GetHostByIdWithTask(hostID)
+	if err != nil {
+		return nil, err
+	}
+	return host, nil
+}
+
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
@@ -103,15 +111,11 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	if keyVal == "" {
 		return nil, errors.New("invalid key")
 	}
-
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:             options.DistroID,
 		Userdata:             options.UserData,
 		UserName:             user.Username(),
 		PublicKey:            keyVal,
-		TaskId:               options.TaskID,
-		TaskSync:             options.TaskSync,
-		Owner:                user,
 		InstanceTags:         options.InstanceTags,
 		InstanceType:         options.InstanceType,
 		NoExpiration:         options.NoExpiration,
@@ -120,8 +124,13 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		HomeVolumeSize:       options.HomeVolumeSize,
 		HomeVolumeID:         options.HomeVolumeID,
 		Region:               options.Region,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId:      options.TaskID,
+			TaskSync:    options.TaskSync,
+			SetupScript: options.SetupScript,
+			OwnerId:     user.Id,
+		},
 	}
-
 	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating spawn host")
@@ -321,10 +330,14 @@ func (hc *MockHostConnector) NewIntentHost(ctx context.Context, options *restmod
 		Userdata:     options.UserData,
 		UserName:     user.Username(),
 		PublicKey:    keyVal,
-		TaskId:       options.TaskID,
-		Owner:        user,
 		InstanceTags: options.InstanceTags,
 		InstanceType: options.InstanceType,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId:      options.TaskID,
+			TaskSync:    options.TaskSync,
+			SetupScript: options.SetupScript,
+			OwnerId:     user.Id,
+		},
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
@@ -426,6 +439,10 @@ func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
 
 func (hc *MockConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
 	return nil, nil, 0, nil
+}
+
+func (hc *MockConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	return nil, nil
 }
 
 func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {

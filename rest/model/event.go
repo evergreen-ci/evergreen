@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type APIEventLogEntry struct {
+type TaskAPIEventLogEntry struct {
 	ID           *string        `bson:"_id" json:"-"`
 	ResourceType *string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  *time.Time     `bson:"processed_at" json:"processed_at"`
@@ -28,6 +28,35 @@ type TaskEventData struct {
 	JiraLink  *string    `bson:"jira_link,omitempty" json:"jira_link,omitempty"`
 	Timestamp *time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
+}
+
+type HostAPIEventLogEntry struct {
+	ID           *string           `bson:"_id" json:"-"`
+	ResourceType *string           `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  *time.Time        `bson:"processed_at" json:"processed_at"`
+	Timestamp    *time.Time        `bson:"ts" json:"timestamp"`
+	ResourceId   *string           `bson:"r_id" json:"resource_id"`
+	EventType    *string           `bson:"e_type" json:"event_type"`
+	Data         *HostAPIEventData `bson:"data" json:"data"`
+}
+
+type HostAPIEventData struct {
+	AgentRevision      *string     `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
+	AgentBuild         *string     `bson:"a_build,omitempty" json:"agent_build,omitempty"`
+	JasperRevision     *string     `bson:"j_rev,omitempty" json:"jasper_revision,omitempty"`
+	OldStatus          *string     `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus          *string     `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	Logs               *string     `bson:"log,omitempty" json:"logs,omitempty"`
+	Hostname           *string     `bson:"hn,omitempty" json:"hostname,omitempty"`
+	ProvisioningMethod *string     `bson:"prov_method" json:"provisioning_method,omitempty"`
+	TaskId             *string     `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskPid            *string     `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus         *string     `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	Execution          *string     `bson:"execution,omitempty" json:"execution,omitempty"`
+	MonitorOp          *string     `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	User               *string     `bson:"usr" json:"user,omitempty"`
+	Successful         bool        `bson:"successful,omitempty" json:"successful"`
+	Duration           APIDuration `bson:"duration,omitempty" json:"duration"`
 }
 
 func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
@@ -51,7 +80,7 @@ func (el *TaskEventData) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for TaskEventData")
 }
 
-func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
+func (el *TaskAPIEventLogEntry) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *event.EventLogEntry:
 		d, ok := v.Data.(*event.TaskEventData)
@@ -74,6 +103,60 @@ func (el *APIEventLogEntry) BuildFromService(t interface{}) error {
 }
 
 // ToService is not implemented for APITestStats.
-func (el *APIEventLogEntry) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APIEventLogEntry")
+func (el *TaskAPIEventLogEntry) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for TaskAPIEventLogEntry")
+}
+
+//HostEvent functions
+
+func (el *HostAPIEventData) BuildFromService(v *event.HostEventData) {
+
+	el.AgentRevision = ToStringPtr(v.AgentRevision)
+	el.AgentBuild = ToStringPtr(v.AgentBuild)
+	el.JasperRevision = ToStringPtr(v.JasperRevision)
+	el.OldStatus = ToStringPtr(v.OldStatus)
+	el.NewStatus = ToStringPtr(v.NewStatus)
+	el.Logs = ToStringPtr(v.Logs)
+	el.Hostname = ToStringPtr(v.Hostname)
+	el.ProvisioningMethod = ToStringPtr(v.ProvisioningMethod)
+	el.TaskId = ToStringPtr(v.TaskId)
+	el.TaskPid = ToStringPtr(v.TaskPid)
+	el.TaskStatus = ToStringPtr(v.TaskStatus)
+	el.Execution = ToStringPtr(v.Execution)
+	el.MonitorOp = ToStringPtr(v.MonitorOp)
+	el.User = ToStringPtr(v.User)
+	el.Successful = v.Successful
+	el.Duration = NewAPIDuration(v.Duration)
+}
+
+// ToService is not implemented for TaskEventData.
+func (el *HostAPIEventData) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for HostAPIEventData")
+}
+
+func (el *HostAPIEventLogEntry) BuildFromService(t interface{}) error {
+	switch v := t.(type) {
+	case *event.EventLogEntry:
+		d, ok := v.Data.(*event.HostEventData)
+		if ok == false {
+			return errors.New(fmt.Sprintf("Incorrect type for data field when unmarshalling EventLogEntry"))
+		}
+		hostAPIEventData := HostAPIEventData{}
+		hostAPIEventData.BuildFromService(d)
+		el.ID = ToStringPtr(v.ID)
+		el.ResourceType = ToStringPtr(v.ResourceType)
+		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
+		el.Timestamp = ToTimePtr(v.Timestamp)
+		el.ResourceId = ToStringPtr(v.ResourceId)
+		el.EventType = ToStringPtr(v.EventType)
+		el.Data = &hostAPIEventData
+	default:
+		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
+	}
+	return nil
+}
+
+// ToService is not implemented for APITestStats.
+func (el *HostAPIEventLogEntry) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for HostAPIEventLogEntry")
 }

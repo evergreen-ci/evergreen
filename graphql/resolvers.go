@@ -311,6 +311,33 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}, nil
 }
 
+func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
+	host, err := host.GetHostByIdWithTask(hostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
+	}
+
+	if host == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s: %s", hostID, err.Error()))
+	}
+
+	apiHost := &restModel.APIHost{}
+
+	err = apiHost.BuildFromService(host)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+	}
+
+	if host.RunningTask != "" {
+		// Add the task information to the host document.
+		if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
+		}
+	}
+
+	return apiHost, nil
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
@@ -818,9 +845,9 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	}
 
 	// populate eventlogs pointer arrays
-	apiEventLogPointers := []*restModel.APIEventLogEntry{}
+	apiEventLogPointers := []*restModel.TaskAPIEventLogEntry{}
 	for _, e := range filteredEvents {
-		apiEventLog := restModel.APIEventLogEntry{}
+		apiEventLog := restModel.TaskAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(&e)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
@@ -1034,6 +1061,27 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 		Theme: &bannerTheme,
 	}
 	return &banner, nil
+}
+
+func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
+	events, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
+	}
+	// populate eventlogs pointer arrays
+	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
+	for _, e := range events {
+		apiEventLog := restModel.HostAPIEventLogEntry{}
+		err = apiEventLog.BuildFromService(&e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
+	}
+	hostevents := HostEvents{
+		EventLogEntries: apiEventLogPointers,
+	}
+	return &hostevents, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
