@@ -670,13 +670,21 @@ func getGitConfigMetadata() (GitMetadata, error) {
 		return metadata, errors.Wrap(err, "can't get git version")
 	}
 	versionString = strings.TrimSpace(versionString)
-	matches := regexp.MustCompile(`^git version (\d+(\.\d+)+)$`).FindStringSubmatch(versionString)
-	if len(matches) < 2 {
-		return metadata, errors.Errorf("can't get git version number from version string '%s'", versionString)
+	metadata.GitVersion, err = parseGitVersion(versionString)
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git version")
 	}
-	metadata.GitVersion = matches[1]
 
 	return metadata, nil
+}
+
+func parseGitVersion(version string) (string, error) {
+	matches := regexp.MustCompile(`^git version (\d+(?:\.\d+)+)(?: \(Apple Git-\d+\))?$`).FindStringSubmatch(version)
+	if len(matches) != 2 {
+		return "", errors.Errorf("can't parse git version number from version string '%s'", version)
+	}
+
+	return matches[1], nil
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {
