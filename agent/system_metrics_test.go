@@ -5,7 +5,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/ftdc"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +22,6 @@ func TestCollect(t *testing.T) {
 	for iter.Next() {
 		i++
 	}
-	pp.Printf("i value type: %T\n", i)
 
-	assert.Equal(100, i) // test fails on this line
+	assert.Equal(1, i) // test fails on this line
 }

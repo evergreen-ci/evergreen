@@ -46,8 +46,8 @@ type ProcessCollector struct{}
 
 type DiskUsageWithTimestamp struct {
 	Timestamp time.Time `json:"ts"`
-	// DiskUsageStat *disk.UsageStat
 	*disk.UsageStat
+	// DiskUsageStat *disk.UsageStat
 }
 
 type UptimeWithTimestamp struct {
@@ -91,10 +91,20 @@ func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error
 	}
 
 	diskUsageWithTimestamp := DiskUsageWithTimestamp{time.Now(), metric}
-	// 	Timestamp:     time.Now(),
+
+	// diskUsageWithTimestamp := DiskUsageWithTimestamp{
+	// 	Timestamp: time.Now(),
+	// 	// UsageStat: metric,
 	// 	DiskUsageStat: metric,
 	// }
+	// fmt.Println(metric)
+	// fmt.Print("\n")
+	// fmt.Println(diskUsageWithTimestamp)
 
+	// x, err := convertJSONToFTDC(ctx, diskUsageWithTimestamp)
+	// fmt.Println("\nftdc output:", x)
+	//fmt.Println(x)
+	// return x, err
 	return convertJSONToFTDC(ctx, diskUsageWithTimestamp)
 }
 
@@ -118,6 +128,7 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
 	jsonMetrics, err := json.Marshal(metric)
+	// fmt.Println("\njsonMetrics:", string(jsonMetrics))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem converting metrics to JSON")
 	}
