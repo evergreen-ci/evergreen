@@ -1955,7 +1955,7 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	return out
 }
 
-// getNumContainersOnParents returns a slice of uphost parents and their respective
+// getNumContainersOnParents returns a slice of running parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
 func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
@@ -1982,10 +1982,10 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	return containersOnParents, nil
 }
 
-func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {
+func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
 	existingParents, err := findUphostParentsByContainerPool(pool.Id)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not find up and eventually running parents")
+		return 0, 0, errors.Wrap(err, "could not find uphost parents")
 	}
 
 	// find all child containers running on those parents
@@ -1998,11 +1998,14 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeed
 	parentsParams := newParentsNeededParams{
 		numExistingParents:    len(existingParents),
 		numExistingContainers: len(existingContainers),
-		numContainersNeeded:   newHostsNeeded,
+		numContainersNeeded:   newContainersNeeded,
 		maxContainers:         pool.MaxContainers,
 	}
 	// compute number of parents needed
 	numNewParentsToSpawn := numNewParentsNeeded(parentsParams)
+	if numNewParentsToSpawn == 0 {
+		return 0, 0, nil
+	}
 	// get parent distro from pool
 	parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
 	if err != nil {
