@@ -160,6 +160,7 @@ func (r *taskResolver) Ami(ctx context.Context, at *restModel.APITask) (*string,
 	}
 	return ami, nil
 }
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
