@@ -2019,8 +2019,8 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 	}
 
 	// only want to spawn amount of containers we can fit on running/uninitialized parents
-	newHostsNeeded = containerCapacity(len(existingParents)+numNewParentsToSpawn, len(existingContainers), newHostsNeeded, pool.MaxContainers)
-	return numNewParentsToSpawn, newHostsNeeded, nil
+	newContainersNeeded = containerCapacity(len(existingParents)+numNewParentsToSpawn, len(existingContainers), newContainersNeeded, pool.MaxContainers)
+	return numNewParentsToSpawn, newContainersNeeded, nil
 }
 
 // numNewParentsNeeded returns the number of additional parents needed to
