@@ -50,14 +50,12 @@ func TestHandleNotification(t *testing.T) {
 
 	// unknown host
 	aws.sc = &data.MockConnector{}
-	response := aws.handleNotification(ctx)
-	assert.Equal(t, http.StatusOK, response.Status())
+	assert.NoError(t, aws.handleNotification(ctx))
 	assert.Equal(t, aws.queue.Stats(ctx).Total, 0)
 
 	// known host
 	aws.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{CachedHosts: []host.Host{{Id: "i-0123456789"}}}}
-	response = aws.handleNotification(ctx)
-	assert.Equal(t, http.StatusOK, response.Status())
+	assert.NoError(t, aws.handleNotification(ctx))
 	require.Equal(t, 1, aws.queue.Stats(ctx).Total)
 	assert.True(t, strings.HasPrefix(aws.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
 }
