@@ -76,8 +76,13 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	usr := route.MustHaveUser(ctx)
 	publicKeys := []*restModel.APIPubKey{}
 	for _, item := range usr.PublicKeys() {
-		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &item.Name, Key: &item.Key})
+		currName := item.Name
+		currKey := item.Key
+		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &currName, Key: &currKey})
 	}
+	sort.SliceStable(publicKeys, func(i, j int) bool {
+		return *publicKeys[i].Name < *publicKeys[j].Name
+	})
 	return publicKeys, nil
 }
 
