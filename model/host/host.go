@@ -2478,6 +2478,45 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
+func GetHostByIdWithTask(hostID string) (*Host, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{IdKey: hostID},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           "task_full",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$task_full",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	hosts := []Host{}
+
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &hosts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &hosts[0], nil
+}
+
 func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{

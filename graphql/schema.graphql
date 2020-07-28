@@ -41,6 +41,7 @@ type Query {
   userConfig: UserConfig
   clientConfig: ClientConfig
   siteBanner: SiteBanner!
+  host(hostId: String!): Host
   hostEvents(
     hostId: String!
     hostTag: String = ""
@@ -179,6 +180,8 @@ type Host {
   uptime: Time # host creation time
   elapsed: Time # running task start time
   startedBy: String!
+  provider: String!
+  lastCommunicationTime: Time
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
