@@ -1,0 +1,30 @@
+{
+  hostEvents(hostId: "i-092593689871a50dc", hostTag: "") {
+    eventLogEntries {
+      id
+      resourceType
+      processedAt
+      timestamp
+      eventType
+      data {
+        agentRevision
+        agentBuild
+        agentBuild
+        oldStatus
+        newStatus
+        logs
+        hostname
+        provisioningMethod
+        taskId
+        taskPid
+        taskStatus
+        execution
+        monitorOp
+        user
+        successful
+        duration
+      }
+      resourceId
+    }
+  }
+}
