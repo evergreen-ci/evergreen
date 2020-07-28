@@ -53,6 +53,7 @@ type Query {
     limit: Int = 10
   ): HostsResponse!
   myHosts: [Host!]
+  myPublicKeys: [PublicKey!]!
 }
 
 type Mutation {
@@ -548,6 +549,12 @@ type UserConfig {
   api_server_host: String!
   ui_server_host: String!
 }
+
+type PublicKey {
+  name: String!
+  key: String!
+}
+
 type ClientConfig {
   clientBinaries: [ClientBinary!]
   latestRevision: String

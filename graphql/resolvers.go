@@ -72,6 +72,15 @@ func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (
 	return nil, nil
 }
 
+func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
+	usr := route.MustHaveUser(ctx)
+	publicKeys := []*restModel.APIPubKey{}
+	for _, item := range usr.PublicKeys() {
+		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &item.Name, Key: &item.Key})
+	}
+	return publicKeys, nil
+}
+
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {
