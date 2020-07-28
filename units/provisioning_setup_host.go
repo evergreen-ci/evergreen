@@ -561,7 +561,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	}
 
 	// If this is a spawn host
-	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.LoadCLI {
+	if j.host.ProvisionOptions != nil && j.host.UserHost {
 		grip.Infof("Uploading client binary to host %s", j.host.Id)
 		if err = j.setupSpawnHost(ctx, settings); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -607,7 +607,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, settings),
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx),
 				message.Fields{
 					"message":   "failed to fetch data onto host",
 					"task":      j.host.ProvisionOptions.TaskId,
@@ -615,6 +615,10 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 					"host_id":   j.host.Id,
 					"job":       j.ID(),
 				}))
+		}
+		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
+			// Don't wait on setup script to finish, particularly for hosts waiting on task data.
+			j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, 0)))
 		}
 	}
 
@@ -657,7 +661,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	defer cancel()
 	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
 	if err != nil {
-		return errors.Wrapf(err, "error running command to get evergreen binary on  spawn host: %s", output)
+		return errors.Wrapf(err, "error running command to get evergreen binary on spawn host: %s", output)
 	}
 	if curlCtx.Err() != nil {
 		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
@@ -672,7 +676,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 	return nil
 }
 
-func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergreen.Settings) error {
+func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	var cmd string
 	if j.host.ProvisionOptions.TaskSync {
 		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
@@ -692,6 +696,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, settings *evergr
 		// use the correct SSH key when using fetch instead of pull.
 		logs, err = j.host.RunJasperProcess(getTaskDataCtx, j.env, &options.Create{
 			Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
+			Tags: []string{evergreen.HostFetchTag},
 		})
 		output = strings.Join(logs, " ")
 	}

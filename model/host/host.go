@@ -275,22 +275,19 @@ func (opts *DockerOptions) Validate() error {
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
 type ProvisionOptions struct {
-	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
-	// be placed onto the host after startup.
-	LoadCLI bool `bson:"load_cli" json:"load_cli"`
-
 	// TaskId if non-empty will trigger the CLI tool to fetch source and
 	// artifacts for the given task.
-	// Ignored if LoadCLI is false.
 	TaskId string `bson:"task_id" json:"task_id"`
 
 	// TaskSync, if set along with TaskId, will fetch the task's sync data on
 	// the spawn host instead of fetching the source and artifacts. This is
-	// ignored if LoadCLI is false.
 	TaskSync bool `bson:"task_sync" json:"task_sync"`
 
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
+
+	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
+	SetupScript string `bson:"setup_script" json:"setup_script"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
@@ -1341,6 +1338,7 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		// caller will insert the zero value into the document
 		DNSKey:               h.Host,
 		UserKey:              h.User,
+		UserHostKey:          h.UserHost,
 		DistroKey:            h.Distro,
 		StartedByKey:         h.StartedBy,
 		ExpirationTimeKey:    h.ExpirationTime,
