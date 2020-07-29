@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "pubKey.graphql",
+      "result": {
+        "data": {
+          "myPublicKeys": [
+            { "name": "a", "key": "aKey" },
+            { "name": "z", "key": "zKey" }
+          ]
+        }
+      }
+    }
+  ]
+}

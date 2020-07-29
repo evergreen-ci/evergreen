@@ -72,6 +72,20 @@ func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (
 	return nil, nil
 }
 
+func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
+	usr := route.MustHaveUser(ctx)
+	publicKeys := []*restModel.APIPubKey{}
+	for _, item := range usr.PublicKeys() {
+		currName := item.Name
+		currKey := item.Key
+		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &currName, Key: &currKey})
+	}
+	sort.SliceStable(publicKeys, func(i, j int) bool {
+		return *publicKeys[i].Name < *publicKeys[j].Name
+	})
+	return publicKeys, nil
+}
+
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {
