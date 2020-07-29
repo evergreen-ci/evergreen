@@ -266,12 +266,11 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         baseSvc.getResource(resource, action, config, callbacks);
     };
 
-    service.getAllowedInstanceTypes = function (action, provider, originalType, params, callbacks) {
+    service.getAllowedInstanceTypes = function (action, hostId, params, callbacks) {
         var config = {
             params: params
         }
-        config.params['provider'] = provider
-        config.params['original_type'] = originalType,
+        config.params['host_id'] = hostId;
         baseSvc.getResource(resource, action, config, callbacks);
     }
 
