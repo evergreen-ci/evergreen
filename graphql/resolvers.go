@@ -145,7 +145,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 func (r *taskResolver) Ami(ctx context.Context, at *restModel.APITask) (*string, error) {
 	d, err := distro.FindByID(*at.DistroId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while searching for distro: '%s", *at.DistroId))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while searching for distro: '%s", err.Error()))
 	}
 	if d == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find distro with id: '%s", *at.DistroId))
