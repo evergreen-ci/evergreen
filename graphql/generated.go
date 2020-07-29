@@ -605,8 +605,6 @@ type TaskResolver interface {
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
-
-	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 }
 
 type executableSchema struct {
@@ -12819,13 +12817,13 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().Ami(rctx, obj)
+		return obj.Ami, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18490,16 +18488,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "estimatedStart":
 			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
 		case "ami":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_ami(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._Task_ami(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
