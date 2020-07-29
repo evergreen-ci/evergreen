@@ -436,6 +436,7 @@ type Task {
   canUnschedule: Boolean!
   canSetPriority: Boolean!
   estimatedStart: Duration
+  ami: String
 }
 
 type Projects {
