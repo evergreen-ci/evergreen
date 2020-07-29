@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	system_metrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/mongodb/ftdc/metrics"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/process"
@@ -20,8 +20,9 @@ import (
 
 type MetricCollector interface {
 	Name() string
-	Metadata() interface{}
-	Collect() (interface{}, error)
+	Format() DataFormat
+	//Format() interface{}
+	Collect() ([]byte, error)
 }
 
 type SystemMetricCollector struct {
@@ -45,20 +46,37 @@ type UptimeCollector struct{}
 
 type ProcessCollector struct{}
 
-type DiskUsageWithTimestamp struct {
-	Timestamp time.Time `json:"ts"`
-	*disk.UsageStat
+// DataFormat describes how the time series data is stored.
+type DataFormat int32
+
+// Valid DataFormat values.
+const (
+	DataFormatText DataFormat = 0
+	DataFormatFTDC DataFormat = 1
+	DataFormatBSON DataFormat = 2
+	DataFormatJSON DataFormat = 3
+	DataFormatCSV  DataFormat = 4
+)
+
+type UptimeWrapper struct {
+	Uptime uint64 `json:"uptime"`
 }
 
-type UptimeWithTimestamp struct {
-	Timestamp time.Time `json:"ts"`
-	Uptime    uint64    `json:"uptime"`
-	Hello     string    `json:"hello"`
+type ProcessesWrapper struct {
+	Processes []ProcessWrapper
 }
 
-type ProcessesWithTimestamp struct {
-	Timestamp time.Time `json:"ts"`
-	Processes []*process.Process
+type ProcessWrapper struct {
+	Pid           int32          `json:"pid"`
+	CPUPercent    float64        `json:"%cpu"`
+	MemoryPercent float64        `json:"%mem"`
+	VSZ           uint64         `json:"vsz"`
+	RSS           uint64         `json:"rss"`
+	TT            string         `json:"tt"`
+	Stat          string         `json:"stat"`
+	Started       int64          `json:"started"`
+	Time          *cpu.TimesStat `json:"time"`
+	Command       string         `json:"command"`
 }
 
 func (collector *DiskUsageCollector) Name() string {
@@ -73,53 +91,78 @@ func (collector *ProcessCollector) Name() string {
 	return "process"
 }
 
-func (collector *DiskUsageCollector) Metadata() interface{} {
-	return nil
+func (collector *DiskUsageCollector) Format() DataFormat {
+	return DataFormatFTDC
 }
 
-func (collector *UptimeCollector) Metadata() interface{} {
-	return nil
+func (collector *UptimeCollector) Format() DataFormat {
+	return DataFormatFTDC
 }
 
-func (collector *ProcessCollector) Metadata() interface{} {
-	return nil
+func (collector *ProcessCollector) Format() DataFormat {
+	return DataFormatJSON
 }
 
 func (collector *DiskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
-	metric, err := disk.Usage("/")
+	usage, err := disk.Usage("/")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	diskUsageWithTimestamp := DiskUsageWithTimestamp{time.Now(), metric}
-	return convertJSONToFTDC(ctx, diskUsageWithTimestamp)
+	return convertJSONToFTDC(ctx, usage)
 }
 
 func (collector *UptimeCollector) Collect(ctx context.Context) ([]byte, error) {
-	metric, err := host.Uptime()
+	uptime, err := host.Uptime()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	uptimeWithTimestamp := UptimeWithTimestamp{time.Now(), metric, "hello"}
-	fmt.Println(uptimeWithTimestamp)
-
-	return convertJSONToFTDC(ctx, uptimeWithTimestamp)
+	uptimeWrapper := UptimeWrapper{uptime}
+	return convertJSONToFTDC(ctx, uptimeWrapper)
 }
 
 func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) {
-	metric, err := process.Processes()
+	processes, err := process.Processes()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	processesWithTimestamp := ProcessesWithTimestamp{time.Now(), metric}
-	return convertJSONToFTDC(ctx, processesWithTimestamp)
+	//processesWithTimestamp := ProcessesWithTimestamp{time.Now(), metric}
+
+	processesPopulated := make([]ProcessWrapper, len(processes))
+	for i, process := range processes {
+		cpuPercent, _ := process.CPUPercent()
+		memoryPercent, _ := process.CPUPercent()
+		memInfo, _ := process.MemoryInfo()
+		terminal, _ := process.Terminal()
+		status, _ := process.Status()
+		createTime, _ := process.CreateTime()
+		times, _ := process.Times()
+		name, _ := process.Name()
+
+		processWrapper := ProcessWrapper{
+			Pid:           process.Pid,
+			CPUPercent:    cpuPercent,
+			MemoryPercent: memoryPercent,
+			VSZ:           memInfo.VMS,
+			RSS:           memInfo.RSS,
+			TT:            terminal,
+			Stat:          status,
+			Started:       createTime,
+			Time:          times,
+			Command:       name,
+		}
+		processesPopulated[i] = processWrapper
+	}
+	processesWrapper := ProcessesWrapper{processesPopulated}
+	return json.Marshal(processesWrapper)
+	// return json.Marshal(processes)
 }
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
 	jsonMetrics, err := json.Marshal(metric)
-	fmt.Println("\njsonMetrics:", string(jsonMetrics))
+	//fmt.Println("\njsonMetrics:", string(jsonMetrics))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem converting metrics to JSON")
 	}
