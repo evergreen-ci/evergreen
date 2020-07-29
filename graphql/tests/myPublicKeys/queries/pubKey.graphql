@@ -1,0 +1,6 @@
+{
+  myPublicKeys {
+    name
+    key
+  }
+}
