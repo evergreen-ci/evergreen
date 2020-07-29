@@ -197,6 +197,12 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 	}
+	if h == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
+		}))
+	}
 
 	if h.StartedBy == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
