@@ -598,6 +598,10 @@ func gitUncommittedChanges() (bool, error) {
 }
 
 func diffToMbox(diffData *localDiff, subject string) (string, error) {
+	if len(diffData.fullPatch) == 0 {
+		return "", nil
+	}
+
 	metadata, err := getGitConfigMetadata()
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting git metadata")
@@ -683,7 +687,7 @@ func parseGitVersion(version string) (string, error) {
 		// capture the version major.minor(.patch(.build(.etc...)))
 		`(\d+(?:\.\d+)+)` +
 		// match and discard Apple git's addition to the version string
-		`(?: \(Apple Git-\d+\))?$`,
+		`(?: \(Apple Git-[\d\.]+\))?$`,
 	).FindStringSubmatch(version)
 	if len(matches) != 2 {
 		return "", errors.Errorf("can't parse git version number from version string '%s'", version)
