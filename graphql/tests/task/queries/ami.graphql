@@ -1,5 +1,5 @@
 {
-  ami_exists: task(taskId: "taskity_task") {
+  ami_exists: task(taskId: "some_task_2") {
     ami
   }
   no_ami: task(taskId: "some_task") {
