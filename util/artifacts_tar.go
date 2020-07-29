@@ -108,7 +108,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 				return
 			}
 			if hdr.Size >= largeHeaderSize {
-				logger.Debugf("beginning copy for large file (header size %v)\n", hdr.Size)
+				logger.Debugf("beginning copy for large file '%s' (header size %v)\n", file.Path, hdr.Size)
 			}
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
