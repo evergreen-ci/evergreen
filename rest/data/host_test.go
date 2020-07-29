@@ -199,7 +199,7 @@ func (s *HostConnectorSuite) TestFindByIdLast() {
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
 	h, ok := s.ctx.FindHostById("nonexistent")
-	s.Error(ok)
+	s.NoError(ok)
 	s.Nil(h)
 }
 
