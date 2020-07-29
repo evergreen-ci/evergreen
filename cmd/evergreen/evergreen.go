@@ -5,16 +5,14 @@ import (
 	"path/filepath"
 	"runtime"
 
-	// this *must* be included in the binary so that the legacy
-	// plugins are built into the binary.
-	_ "github.com/evergreen-ci/evergreen/plugin"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/operations"
+	_ "github.com/evergreen-ci/evergreen/plugin" // included so that the legacy plugins are built into the binary
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -98,10 +96,23 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
+		conf := c.String("conf")
+		if conf != "" {
+			if err := checkConfPath(conf); err != nil {
+				return err
+			}
+		}
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
 	return app
+}
+
+func checkConfPath(conf string) error {
+	if _, err := os.Stat(conf); os.IsNotExist(err) {
+		return errors.Errorf("configuration file `%s` does not exist", conf)
+	}
+	return nil
 }
 
 func loggingSetup(name, l string) error {
