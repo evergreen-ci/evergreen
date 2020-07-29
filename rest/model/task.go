@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -68,6 +69,7 @@ type APITask struct {
 	Aborted            bool                `json:"aborted"`
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
+	Ami                *string             `json:ami`
 }
 
 type LogLinks struct {
@@ -218,6 +220,22 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		if v.HostId != "" {
 			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().Ui.Url, v.HostId)
 			at.HostLink = &hostLink
+		}
+
+		h, err := host.FindOneId(v.HostId)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Error while finding distro for host: %s", v.HostId))
+		}
+		if h != nil {
+			var ami *string = nil
+			for _, providerSetting := range h.Distro.ProviderSettingsList {
+				providerSettingAmi := providerSetting.Lookup("ami")
+				if providerSettingAmi != nil {
+					amiString := providerSettingAmi.StringValue()
+					ami = &amiString
+				}
+			}
+			at.Ami = ami
 		}
 
 		if len(v.ExecutionTasks) > 0 {
