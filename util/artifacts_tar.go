@@ -106,7 +106,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 				errChan <- errors.Wrapf(err, "Error opening %v", file.Path)
 				return
 			}
-
+			logger.Debugf("Beginning copy (header size %v)\n", hdr.Size)
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
 				logger.Debug(in.Close())
@@ -121,6 +121,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 					intarball, hdr.Size, amountWrote)
 				return
 			}
+			logger.Debugln("Finished adding to tarball")
 			logger.Debug(in.Close())
 			logger.Warning(tarWriter.Flush())
 		}

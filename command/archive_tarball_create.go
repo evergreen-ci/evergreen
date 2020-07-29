@@ -80,6 +80,8 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	go func() {
 		var err error
 		filesArchived, err = c.makeArchive(ctx, logger.Execution())
+		logger.Execution().Debugln("Finished making archive")
+
 		errChan <- errors.WithStack(err)
 	}()
 
