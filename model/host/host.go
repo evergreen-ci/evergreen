@@ -1955,11 +1955,11 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	return out
 }
 
-// getNumContainersOnParents returns a slice of uphost parents and their respective
+// getNumContainersOnParents returns a slice of running parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
 func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
-	allParents, err := findUphostParentsByContainerPool(d.ContainerPool)
+	allParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find running parent hosts")
 	}
@@ -1982,10 +1982,10 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	return containersOnParents, nil
 }
 
-func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {
+func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
 	existingParents, err := findUphostParentsByContainerPool(pool.Id)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not find running parents")
+		return 0, 0, errors.Wrap(err, "could not find uphost parents")
 	}
 
 	// find all child containers running on those parents
@@ -1998,11 +1998,14 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeed
 	parentsParams := newParentsNeededParams{
 		numExistingParents:    len(existingParents),
 		numExistingContainers: len(existingContainers),
-		numContainersNeeded:   newHostsNeeded,
+		numContainersNeeded:   newContainersNeeded,
 		maxContainers:         pool.MaxContainers,
 	}
 	// compute number of parents needed
 	numNewParentsToSpawn := numNewParentsNeeded(parentsParams)
+	if numNewParentsToSpawn == 0 {
+		return 0, 0, nil
+	}
 	// get parent distro from pool
 	parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
 	if err != nil {
@@ -2016,8 +2019,8 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeed
 	}
 
 	// only want to spawn amount of containers we can fit on running/uninitialized parents
-	newHostsNeeded = containerCapacity(len(existingParents)+numNewParentsToSpawn, len(existingContainers), newHostsNeeded, pool.MaxContainers)
-	return numNewParentsToSpawn, newHostsNeeded, nil
+	newContainersNeeded = containerCapacity(len(existingParents)+numNewParentsToSpawn, len(existingContainers), newContainersNeeded, pool.MaxContainers)
+	return numNewParentsToSpawn, newContainersNeeded, nil
 }
 
 // numNewParentsNeeded returns the number of additional parents needed to
@@ -2068,6 +2071,18 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 		numNewParents = parent.HostAllocatorSettings.MaximumHosts - numCurrentParents
 	}
 	return numNewParents, nil
+}
+
+// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
+// of the container pool specified by the given ID
+func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	query := db.Query(bson.M{
+		HasContainersKey:    true,
+		StatusKey:           evergreen.HostRunning,
+		hostContainerPoolId: poolId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
 }
 
 // findUphostParents returns the number of initializing parent host intent documents
