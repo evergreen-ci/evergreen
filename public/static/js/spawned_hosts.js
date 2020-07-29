@@ -395,7 +395,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
 
     $scope.fetchAllowedInstanceTypes = function () {
       mciSpawnRestService.getAllowedInstanceTypes(
-        'types', $scope.curHostData.host_type, $scope.curHostData.distro.provider_settings[0].instance_type,{}, {
+        'types', $scope.curHostData.id,{}, {
           success: function (resp) {
             $scope.allowedInstanceTypes = resp.data;
           },
