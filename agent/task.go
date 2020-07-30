@@ -91,13 +91,13 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	tc.systemMetricsCollector, err = NewSystemMetricsCollector(
-		ctx,
-		defaultStatsInterval,
-		tc.taskModel,
-		[]MetricCollector{},
-		a.comm,
-	)
+	var err error
+	tc.systemMetricsCollector, err = NewSystemMetricsCollector(ctx, &SystemMetricsCollectorOptions{
+		Task:       tc.taskModel,
+		Interval:   defaultStatsInterval,
+		Collectors: []MetricCollector{},
+		Comm:       a.comm,
+	})
 	if err != nil {
 		tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
 	} else {
@@ -112,7 +112,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	var err error
 	if tc.runGroupSetup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {

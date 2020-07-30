@@ -29,11 +29,13 @@ message SystemMetricsArtifactInfo {
 message SystemMetricsData {
   string id = 1;
   string type = 2;
-  bytes data = 3;
+  DataFormat format = 3;
+  bytes data = 4;
 }
 
 message SystemMetricsSeriesEnd {
   string id = 1;
+  bool success = 2;
 }
 
 message SystemMetricsResponse {
@@ -42,7 +44,7 @@ message SystemMetricsResponse {
 
 
 service CedarSystemMetrics {
-  rpc CreateSystemMetricRecord(SystemMetrics) returns (SystemMetricsResponse);
+  rpc CreateSystemMetricsRecord(SystemMetrics) returns (SystemMetricsResponse);
   rpc AddSystemMetrics(SystemMetricsData) returns (SystemMetricsResponse);
   rpc StreamSystemMetrics(stream SystemMetricsData) returns (SystemMetricsResponse);
   rpc CloseMetrics(SystemMetricsSeriesEnd) returns (SystemMetricsResponse);
