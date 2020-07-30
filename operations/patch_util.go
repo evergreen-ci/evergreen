@@ -598,10 +598,6 @@ func gitUncommittedChanges() (bool, error) {
 }
 
 func diffToMbox(diffData *localDiff, subject string) (string, error) {
-	if len(diffData.fullPatch) == 0 {
-		return "", nil
-	}
-
 	metadata, err := getGitConfigMetadata()
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting git metadata")
