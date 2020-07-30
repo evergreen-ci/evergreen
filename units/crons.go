@@ -754,6 +754,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		if err := env.Settings().HostInit.Get(env); err != nil {
 			return errors.Wrap(err, "problem getting global config")
 		}
+		throttleCount := 0
 		for _, h := range hosts {
 			if !h.IsSubjectToHostCreationThrottle() {
 				// pass:
@@ -772,6 +773,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 						// few hosts on every pass. Hostinit runs very
 						// frequently, lets not start too many all at
 						// once.
+						throttleCount++
 						continue
 					}
 				}
@@ -782,6 +784,13 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			}
 
 			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
+		}
+
+		if throttleCount > 0 {
+			grip.Info(message.Fields{
+				"message": "hosts were throttled",
+				"number":  throttleCount,
+			})
 		}
 
 		return catcher.Resolve()

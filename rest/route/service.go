@@ -87,7 +87,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(sc, env))
 
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
-	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeAwsSnsRoute(sc))
+	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeAwsSnsRoute(sc, env, opts.APIQueue))
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHostFilter(sc))
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartProcesses(sc, env))
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostGetProcesses(sc, env))
@@ -121,7 +121,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(checkUser, submitPatches).RouteHandler(makeChangePatchStatus(sc, env))
 	app.AddRoute("/patches/{patch_id}/abort").Version(2).Post().Wrap(checkUser, submitPatches).RouteHandler(makeAbortPatch(sc))
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(checkUser, submitPatches).RouteHandler(makeRestartPatch(sc))
-	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(checkUser, addProject, submitPatches, checkCommitQueueItemOwner).RouteHandler(makeMergePatch(sc))
 	app.AddRoute("/projects").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectAliasResultsHandler(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(checkUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID(sc))

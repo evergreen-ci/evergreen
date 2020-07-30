@@ -221,7 +221,6 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
-		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
 		RestartPatch               func(childComplexity int, patchID string, abort bool, taskIds []string) int
@@ -247,31 +246,30 @@ type ComplexityRoot struct {
 	}
 
 	Patch struct {
-		Activated               func(childComplexity int) int
-		Alias                   func(childComplexity int) int
-		Author                  func(childComplexity int) int
-		BaseTaskStatuses        func(childComplexity int) int
-		BaseVersionID           func(childComplexity int) int
-		Builds                  func(childComplexity int) int
-		CanEnqueueToCommitQueue func(childComplexity int) int
-		CommitQueuePosition     func(childComplexity int) int
-		CreateTime              func(childComplexity int) int
-		Description             func(childComplexity int) int
-		Duration                func(childComplexity int) int
-		Githash                 func(childComplexity int) int
-		Id                      func(childComplexity int) int
-		ModuleCodeChanges       func(childComplexity int) int
-		PatchNumber             func(childComplexity int) int
-		Project                 func(childComplexity int) int
-		ProjectId               func(childComplexity int) int
-		Status                  func(childComplexity int) int
-		TaskCount               func(childComplexity int) int
-		TaskStatuses            func(childComplexity int) int
-		Tasks                   func(childComplexity int) int
-		Time                    func(childComplexity int) int
-		Variants                func(childComplexity int) int
-		VariantsTasks           func(childComplexity int) int
-		Version                 func(childComplexity int) int
+		Activated           func(childComplexity int) int
+		Alias               func(childComplexity int) int
+		Author              func(childComplexity int) int
+		BaseTaskStatuses    func(childComplexity int) int
+		BaseVersionID       func(childComplexity int) int
+		Builds              func(childComplexity int) int
+		CommitQueuePosition func(childComplexity int) int
+		CreateTime          func(childComplexity int) int
+		Description         func(childComplexity int) int
+		Duration            func(childComplexity int) int
+		Githash             func(childComplexity int) int
+		Id                  func(childComplexity int) int
+		ModuleCodeChanges   func(childComplexity int) int
+		PatchNumber         func(childComplexity int) int
+		Project             func(childComplexity int) int
+		ProjectId           func(childComplexity int) int
+		Status              func(childComplexity int) int
+		TaskCount           func(childComplexity int) int
+		TaskStatuses        func(childComplexity int) int
+		Tasks               func(childComplexity int) int
+		Time                func(childComplexity int) int
+		Variants            func(childComplexity int) int
+		VariantsTasks       func(childComplexity int) int
+		Version             func(childComplexity int) int
 	}
 
 	PatchBuildVariant struct {
@@ -376,6 +374,7 @@ type ComplexityRoot struct {
 		Activated         func(childComplexity int) int
 		ActivatedBy       func(childComplexity int) int
 		ActivatedTime     func(childComplexity int) int
+		Ami               func(childComplexity int) int
 		BaseTaskMetadata  func(childComplexity int) int
 		BuildId           func(childComplexity int) int
 		BuildVariant      func(childComplexity int) int
@@ -549,7 +548,6 @@ type MutationResolver interface {
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
-	EnqueuePatch(ctx context.Context, patchID string) (*model.APIPatch, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -1380,18 +1378,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreatePublicKey(childComplexity, args["publicKeyInput"].(PublicKeyInput)), true
 
-	case "Mutation.enqueuePatch":
-		if e.complexity.Mutation.EnqueuePatch == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_enqueuePatch_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string)), true
-
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
 			break
@@ -1631,13 +1617,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Builds(childComplexity), true
-
-	case "Patch.canEnqueueToCommitQueue":
-		if e.complexity.Patch.CanEnqueueToCommitQueue == nil {
-			break
-		}
-
-		return e.complexity.Patch.CanEnqueueToCommitQueue(childComplexity), true
 
 	case "Patch.commitQueuePosition":
 		if e.complexity.Patch.CommitQueuePosition == nil {
@@ -2242,6 +2221,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.ActivatedTime(childComplexity), true
+
+	case "Task.ami":
+		if e.complexity.Task.Ami == nil {
+			break
+		}
+
+		return e.complexity.Task.Ami(childComplexity), true
 
 	case "Task.baseTaskMetadata":
 		if e.complexity.Task.BaseTaskMetadata == nil {
@@ -3128,7 +3114,6 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
-  enqueuePatch(patchId: String!): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -3346,7 +3331,6 @@ type Patch {
   commitQueuePosition: Int
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
-  canEnqueueToCommitQueue: Boolean!
 }
 
 type Build {
@@ -3495,6 +3479,7 @@ type Task {
   canUnschedule: Boolean!
   canSetPriority: Boolean!
   estimatedStart: Duration
+  ami: String
 }
 
 type Projects {
@@ -3732,20 +3717,6 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 		}
 	}
 	args["publicKeyInput"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["patchId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -8044,47 +8015,6 @@ func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_enqueuePatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_enqueuePatch_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().EnqueuePatch(rctx, args["patchId"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIPatch)
-	fc.Result = res
-	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Mutation_setPatchPriority(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -9468,40 +9398,6 @@ func (ec *executionContext) _Patch_baseTaskStatuses(ctx context.Context, field g
 	res := resTmp.([]string)
 	fc.Result = res
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Patch_canEnqueueToCommitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Patch",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CanEnqueueToCommitQueue, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchBuildVariant_variant(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariant) (ret graphql.Marshaler) {
@@ -13007,6 +12903,37 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 	res := resTmp.(model.APIDuration)
 	fc.Result = res
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ami, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -17422,11 +17349,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
-		case "enqueuePatch":
-			out.Values[i] = ec._Mutation_enqueuePatch(ctx, field)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "setPatchPriority":
 			out.Values[i] = ec._Mutation_setPatchPriority(ctx, field)
 		case "scheduleTask":
@@ -17707,11 +17629,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				}
 				return res
 			})
-		case "canEnqueueToCommitQueue":
-			out.Values[i] = ec._Patch_canEnqueueToCommitQueue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -18734,6 +18651,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			})
 		case "estimatedStart":
 			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
+		case "ami":
+			out.Values[i] = ec._Task_ami(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

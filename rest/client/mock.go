@@ -656,10 +656,6 @@ func (c *Mock) EnqueueItem(ctx context.Context, patchID string, force bool) (int
 	return 0, nil
 }
 
-func (c *Mock) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
-	return nil, nil
-}
-
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }

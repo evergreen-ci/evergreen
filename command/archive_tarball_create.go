@@ -11,6 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -78,8 +79,14 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	errChan := make(chan error)
 	filesArchived := -1
 	go func() {
+		defer func() {
+			errChan <- recovery.HandlePanicWithError(recover(), nil,
+				"making archive")
+		}()
 		var err error
 		filesArchived, err = c.makeArchive(ctx, logger.Execution())
+		logger.Execution().Debugln("Finished making archive")
+
 		errChan <- errors.WithStack(err)
 	}()
 
@@ -121,5 +128,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	// Build the archive
 	out, err := util.BuildArchive(ctx, tarWriter, c.SourceDir, c.Include,
 		c.ExcludeFiles, logger)
+	logger.Infof("finished building archive")
+
 	return out, errors.WithStack(err)
 }

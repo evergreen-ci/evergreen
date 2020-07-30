@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -19,16 +18,12 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
 			})),
-		Before: mergeBeforeFuncs(
-			requirePatchIDFlag,
-			requireModuleFlag,
-			mutuallyExclusiveArgs(false, uncommittedChangesFlag, preserveCommitsFlag),
-		),
+		Before: mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			module := c.String(moduleFlagName)
@@ -38,7 +33,6 @@ func PatchSetModule() cli.Command {
 			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
-			preserveCommits := c.Bool(preserveCommitsFlag)
 			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -48,19 +42,22 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
-			defer client.Close()
-			ac, rc, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
 
-			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
+			uncommittedChanges, err := gitUncommittedChanges()
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
-			if !keepGoing {
-				return nil
+
+			if (!uncommittedOk && !conf.UncommittedChanges) && uncommittedChanges {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
+			}
+
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			ac, rc, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
 			proj, err := rc.GetPatchedConfig(patchID)
@@ -88,21 +85,10 @@ func PatchSetModule() cli.Command {
 			}
 
 			// diff against the module branch.
-			diffData, err := loadGitData(moduleBranch, ref, "", preserveCommits, args...)
+			diffData, err := loadGitData(moduleBranch, ref, "", false, args...)
 			if err != nil {
 				return err
 			}
-			if !preserveCommits {
-				var existingPatch *patch.Patch
-				if existingPatch, err = ac.GetPatch(patchID); err != nil {
-					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
-				}
-				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
-				if err != nil {
-					return err
-				}
-			}
-
 			if err = validatePatchSize(diffData, large); err != nil {
 				return err
 			}

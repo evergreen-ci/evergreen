@@ -20,7 +20,7 @@ import (
 // Returns the number of files that were added to the archive
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
-
+	const largeHeaderSize = 1000000000.0 // for logging
 	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
 
 	numFilesArchived := 0
@@ -32,6 +32,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 				"building archive")
 		}()
 		processed := map[string]bool{}
+		logger.Infof("beginning to build archive")
 	FileChanLoop:
 		for file := range inputChan {
 			if ctx.Err() != nil {
@@ -106,14 +107,18 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 				errChan <- errors.Wrapf(err, "Error opening %v", file.Path)
 				return
 			}
-
+			if hdr.Size >= largeHeaderSize {
+				logger.Debugf("beginning copy for large file '%s' (header size %v)\n", file.Path, hdr.Size)
+			}
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
 				logger.Debug(in.Close())
 				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.Path)
 				return
 			}
-
+			if hdr.Size >= largeHeaderSize {
+				logger.Debugln("finished copy for large file")
+			}
 			if amountWrote != hdr.Size {
 				logger.Debug(in.Close())
 				errChan <- errors.Errorf(`Error writing to archive for %v:

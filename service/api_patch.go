@@ -91,24 +91,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:         dbUser.Id,
-		Project:      data.Project,
-		BaseGitHash:  data.Githash,
-		Module:       r.FormValue("module"),
-		PatchContent: patchString,
-		Description:  data.Description,
-		Finalize:     data.Finalize,
-		Variants:     data.Variants,
-		Tasks:        data.Tasks,
-		Alias:        data.Alias,
-		SyncParams: patch.SyncAtEndOptions{
-			BuildVariants: data.SyncBuildVariants,
-			Tasks:         data.SyncTasks,
-			Statuses:      data.SyncStatuses,
-			Timeout:       data.SyncTimeout,
-		},
-	})
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), patchString, data.Description, data.Finalize, data.Variants, data.Tasks, data.Alias, data.SyncBuildVariants, data.SyncTasks, data.SyncStatuses, data.SyncTimeout)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -184,11 +167,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
-		return
-	}
-
 	githubOauthToken, err := as.Settings.GetGithubOauthToken()
 	if err != nil {
 		gimlet.WriteJSONError(w, err)
@@ -199,6 +177,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
 		Githash    string `json:"githash"`
+		Message    string `json:"message"`
 	}{}
 	if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -212,7 +191,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	moduleName, githash := data.Module, data.Githash
+	moduleName, githash, message := data.Module, data.Githash, data.Message
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
@@ -236,10 +215,9 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var summaries []patch.Summary
-	var commitMessages []string
 	if patch.IsMailboxDiff(patchContent) {
 		reader := strings.NewReader(patchContent)
-		summaries, commitMessages, err = units.GetPatchSummariesByCommit(reader)
+		summaries, err = units.GetPatchSummariesByCommit(reader)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
 			return
@@ -273,24 +251,22 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
+		Message:    message,
 		Githash:    githash,
-		IsMbox:     len(patchContent) == 0 || patch.IsMailboxDiff(patchContent),
 		PatchSet: patch.PatchSet{
-			PatchFileId:    patchFileId,
-			Summary:        summaries,
-			CommitMessages: commitMessages,
+			PatchFileId: patchFileId,
+			Summary:     summaries,
 		},
 	}
-	if err = p.UpdateModulePatch(modulePatch); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
+
+	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
 		return
 	}
 
-	if p.Alias == evergreen.CommitQueueAlias {
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+	if err = p.UpdateModulePatch(modulePatch); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
 	gimlet.WriteJSON(w, "Patch module updated")

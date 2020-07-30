@@ -167,19 +167,6 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatchID)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't create new patch")
-	}
-
-	apiPatch := &restModel.APIPatch{}
-	if err = apiPatch.BuildFromService(*newPatch); err != nil {
-		return nil, errors.Wrap(err, "problem building API patch")
-	}
-	return apiPatch, nil
-}
-
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -262,8 +249,4 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 
 func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
 	return true, nil
-}
-
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
-	return nil, nil
 }

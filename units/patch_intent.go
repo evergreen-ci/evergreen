@@ -122,6 +122,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
+				"config_size":  len(patchDoc.PatchedConfig),
+				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
 		j.AddError(err)
@@ -291,10 +293,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
-	}
-
 	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		j.gitHubError = NoTasksOrVariants
@@ -423,12 +421,10 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	var summaries []patch.Summary
 	if patch.IsMailboxDiff(string(patchBytes)) {
 		reader := strings.NewReader(string(patchBytes))
-		var commitMessages []string
-		summaries, commitMessages, err = GetPatchSummariesByCommit(reader)
+		summaries, err = GetPatchSummariesByCommit(reader)
 		if err != nil {
 			return errors.Wrapf(err, "error getting summaries by commit")
 		}
-		patchDoc.Patches[0].PatchSet.CommitMessages = commitMessages
 	} else {
 		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
 		if err != nil {
@@ -436,35 +432,34 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}
 	}
 
-	patchDoc.Patches[0].IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
 	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
 	return nil
 }
 
 // if commit queue then mbox format, organize summaries by commit
-func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, []string, error) {
+func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, error) {
 	stream, err := mbox.CreateMboxStream(reader)
 	if err != nil {
 		if err == io.EOF {
-			return nil, nil, errors.Errorf("patch is empty")
+			return nil, errors.Errorf("patch is empty")
 		}
-		return nil, nil, errors.Wrap(err, "error creating stream")
+		return nil, errors.Wrap(err, "error creating stream")
 	}
 	if stream == nil {
-		return nil, nil, errors.New("mbox stream is nil")
+		return nil, errors.New("mbox stream is nil")
 	}
-	summaries := []patch.Summary{}
-	commitMessages := []string{}
+	result := []patch.Summary{}
+
 	// iterate through patches
 	for err == nil {
 		var buffer []byte
 		msg, err := stream.ReadMessage()
 		if err != nil {
 			if err == io.EOF { // no more patches
-				return summaries, commitMessages, nil
+				return result, nil
 			}
-			return nil, nil, errors.Wrap(err, "error reading message")
+			return nil, errors.Wrap(err, "error reading message")
 		}
 
 		var description string
@@ -479,25 +474,24 @@ func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, []string, err
 			n, err := reader.Read(curBytes)
 			if err != nil {
 				if err == io.EOF { // finished reading body of this patch
-					var patchSummaries []patch.Summary
-					patchSummaries, err = thirdparty.GetPatchSummaries(string(buffer))
+					var summaries []patch.Summary
+					summaries, err = thirdparty.GetPatchSummaries(string(buffer))
 					if err != nil {
-						return nil, nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
+						return nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
 					}
-					for i := range patchSummaries {
-						patchSummaries[i].Description = description
+					for i := range summaries {
+						summaries[i].Description = description
 					}
-					summaries = append(summaries, patchSummaries...)
-					commitMessages = append(commitMessages, description)
+					result = append(result, summaries...)
 					break
 				}
-				return nil, nil, errors.Wrap(err, "error reading body")
+				return nil, errors.Wrap(err, "error reading body")
 			}
 			buffer = append(buffer, curBytes[0:n]...)
 		}
 	}
 
-	return summaries, commitMessages, nil
+	return result, nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
