@@ -144,6 +144,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer os.Remove(tempFile.Name())
 
 	response, err := http.Get(url)
 	if err != nil {
