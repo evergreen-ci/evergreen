@@ -179,9 +179,8 @@ operations/patch_util.go           |  17 ---
 
 func (s *PatchUtilTestSuite) TestParseGitVersionString() {
 	versionStrings := map[string]string{
-		"git version 2.19.1":                   "2.19.1",
-		"git version 2.24.3 (Apple Git-128)":   "2.24.3",
-		"git version 2.21.1 (Apple Git-122.3)": "2.21.1",
+		"git version 2.19.1":                 "2.19.1",
+		"git version 2.24.3 (Apple Git-128)": "2.24.3",
 	}
 
 	for versionString, version := range versionStrings {
