@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/ftdc"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +50,7 @@ func TestCollectProcesses(t *testing.T) {
 	assert.NoError(err)
 
 	assert.NotEmpty(output)
-	//pp.Println(string(output))
+	pp.Println(string(output))
 
 	// iter := ftdc.ReadMetrics(ctx, bytes.NewReader(output))
 	// i := 0

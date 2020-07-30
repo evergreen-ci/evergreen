@@ -69,7 +69,7 @@ type ProcessesWrapper struct {
 type ProcessWrapper struct {
 	Pid           int32          `json:"pid"`
 	CPUPercent    float64        `json:"%cpu"`
-	MemoryPercent float64        `json:"%mem"`
+	MemoryPercent float32        `json:"%mem"`
 	VSZ           uint64         `json:"vsz"`
 	RSS           uint64         `json:"rss"`
 	TT            string         `json:"tt"`
@@ -128,25 +128,50 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	//processesWithTimestamp := ProcessesWithTimestamp{time.Now(), metric}
-
 	processesPopulated := make([]ProcessWrapper, len(processes))
+
 	for i, process := range processes {
-		cpuPercent, _ := process.CPUPercent()
-		memoryPercent, _ := process.CPUPercent()
-		memInfo, _ := process.MemoryInfo()
-		terminal, _ := process.Terminal()
-		status, _ := process.Status()
-		createTime, _ := process.CreateTime()
-		times, _ := process.Times()
-		name, _ := process.Name()
+		cpuPercent, err := process.CPUPercent()
+		if err != nil {
+			cpuPercent = 0
+		}
+		memoryPercent, err := process.MemoryPercent()
+		if err != nil {
+			memoryPercent = 0
+		}
+		memInfo, err := process.MemoryInfo()
+		var vms, rss uint64 = 0, 0
+		if err == nil {
+			vms = memInfo.VMS
+			rss = memInfo.RSS
+		}
+		terminal, err := process.Terminal()
+		if err != nil {
+			terminal = ""
+		}
+		status, err := process.Status()
+		if err != nil {
+			status = ""
+		}
+		createTime, err := process.CreateTime()
+		if err != nil {
+			createTime = 0
+		}
+		times, err := process.Times()
+		if err != nil {
+			times = nil
+		}
+		name, err := process.Name()
+		if err != nil {
+			name = ""
+		}
 
 		processWrapper := ProcessWrapper{
 			Pid:           process.Pid,
 			CPUPercent:    cpuPercent,
 			MemoryPercent: memoryPercent,
-			VSZ:           memInfo.VMS,
-			RSS:           memInfo.RSS,
+			VSZ:           vms,
+			RSS:           rss,
 			TT:            terminal,
 			Stat:          status,
 			Started:       createTime,
@@ -154,10 +179,10 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 			Command:       name,
 		}
 		processesPopulated[i] = processWrapper
+		//pp.Println(processWrapper)
 	}
 	processesWrapper := ProcessesWrapper{processesPopulated}
 	return json.Marshal(processesWrapper)
-	// return json.Marshal(processes)
 }
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
