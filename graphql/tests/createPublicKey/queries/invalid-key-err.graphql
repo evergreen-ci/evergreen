@@ -1,0 +1,8 @@
+mutation {
+  createPublicKey(
+    publicKeyInput: { name: "unique_name", key: "not a real key" }
+  ) {
+    name
+    key
+  }
+}
