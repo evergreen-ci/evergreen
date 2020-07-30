@@ -163,15 +163,14 @@ type ModulePatch struct {
 	ModuleName string   `bson:"name"`
 	Githash    string   `bson:"githash"`
 	PatchSet   PatchSet `bson:"patch_set"`
-	IsMbox     bool     `bson:"is_mbox"`
+	Message    string   `bson:"message"`
 }
 
 // PatchSet stores information about the actual patch
 type PatchSet struct {
-	Patch          string    `bson:"patch,omitempty"`
-	PatchFileId    string    `bson:"patch_file_id,omitempty"`
-	CommitMessages []string  `bson:"commit_messages,omitempty"`
-	Summary        []Summary `bson:"summary"`
+	Patch       string    `bson:"patch,omitempty"`
+	PatchFileId string    `bson:"patch_file_id,omitempty"`
+	Summary     []Summary `bson:"summary"`
 }
 
 // Summary stores summary patch information
@@ -516,6 +515,9 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	if !patchFound {
 		p.Patches = append(p.Patches, modulePatch)
 	}
+	if modulePatch.Message != "" {
+		p.Description = modulePatch.Message
+	}
 
 	// check that a patch for this module exists
 	query := bson.M{
@@ -523,10 +525,14 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{PatchesKey + ".$": modulePatch}
+	if modulePatch.Message != "" {
+		update[DescriptionKey] = modulePatch.Message
+	}
 	result, err := UpdateAll(query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
+
 	// The patch already existed in the array, and it's been updated.
 	if result.Updated > 0 {
 		return nil
@@ -536,6 +542,9 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	query = bson.M{IdKey: p.Id}
 	update = bson.M{
 		"$push": bson.M{PatchesKey: modulePatch},
+	}
+	if modulePatch.Message != "" {
+		update["$set"] = bson.M{DescriptionKey: modulePatch.Message}
 	}
 	return UpdateOne(query, update)
 }
@@ -588,16 +597,6 @@ func (p *Patch) GetRequester() string {
 		return evergreen.MergeTestRequester
 	}
 	return evergreen.PatchVersionRequester
-}
-
-func (p *Patch) CanEnqueueToCommitQueue() bool {
-	for _, modulePatch := range p.Patches {
-		if !modulePatch.IsMbox {
-			return false
-		}
-	}
-
-	return true
 }
 
 // IsMailbox checks if the first line of a patch file
@@ -671,7 +670,7 @@ func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
 	return result, nil
 }
 
-func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
+func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}

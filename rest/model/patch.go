@@ -14,28 +14,27 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id                      *string          `json:"patch_id"`
-	Description             *string          `json:"description"`
-	ProjectId               *string          `json:"project_id"`
-	Branch                  *string          `json:"branch"`
-	Githash                 *string          `json:"git_hash"`
-	PatchNumber             int              `json:"patch_number"`
-	Author                  *string          `json:"author"`
-	Version                 *string          `json:"version"`
-	Status                  *string          `json:"status"`
-	CreateTime              *time.Time       `json:"create_time"`
-	StartTime               *time.Time       `json:"start_time"`
-	FinishTime              *time.Time       `json:"finish_time"`
-	Variants                []*string        `json:"builds"`
-	Tasks                   []*string        `json:"tasks"`
-	VariantsTasks           []VariantTask    `json:"variants_tasks"`
-	Activated               bool             `json:"activated"`
-	Alias                   *string          `json:"alias,omitempty"`
-	GithubPatchData         githubPatch      `json:"github_patch_data,omitempty"`
-	ModuleCodeChanges       []APIModulePatch `json:"module_code_changes"`
-	PatchedConfig           *string          `json:"patched_config"`
-	Project                 *string          `json:"project"`
-	CanEnqueueToCommitQueue bool             `json:"can_enqueue_to_commit_queue"`
+	Id                *string          `json:"patch_id"`
+	Description       *string          `json:"description"`
+	ProjectId         *string          `json:"project_id"`
+	Branch            *string          `json:"branch"`
+	Githash           *string          `json:"git_hash"`
+	PatchNumber       int              `json:"patch_number"`
+	Author            *string          `json:"author"`
+	Version           *string          `json:"version"`
+	Status            *string          `json:"status"`
+	CreateTime        *time.Time       `json:"create_time"`
+	StartTime         *time.Time       `json:"start_time"`
+	FinishTime        *time.Time       `json:"finish_time"`
+	Variants          []*string        `json:"builds"`
+	Tasks             []*string        `json:"tasks"`
+	VariantsTasks     []VariantTask    `json:"variants_tasks"`
+	Activated         bool             `json:"activated"`
+	Alias             *string          `json:"alias,omitempty"`
+	GithubPatchData   githubPatch      `json:"github_patch_data,omitempty"`
+	ModuleCodeChanges []APIModulePatch `json:"module_code_changes"`
+	PatchedConfig     *string          `json:"patched_config"`
+	Project           *string          `json:"project"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -132,7 +131,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.ModuleCodeChanges = codeChanges
 	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = ToStringPtr(v.Project)
-	apiPatch.CanEnqueueToCommitQueue = v.CanEnqueueToCommitQueue()
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
