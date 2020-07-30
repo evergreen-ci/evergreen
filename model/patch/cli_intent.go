@@ -157,6 +157,7 @@ func (c *cliIntent) NewPatch() *Patch {
 			{
 				ModuleName: c.Module,
 				Githash:    c.BaseHash,
+				Message:    c.Description,
 				PatchSet: PatchSet{
 					PatchFileId: c.PatchFileID.Hex(),
 				},
@@ -165,47 +166,33 @@ func (c *cliIntent) NewPatch() *Patch {
 	}
 }
 
-type CLIIntentParams struct {
-	User         string
-	Project      string
-	BaseGitHash  string
-	Module       string
-	PatchContent string
-	Description  string
-	Finalize     bool
-	Variants     []string
-	Tasks        []string
-	Alias        string
-	SyncParams   SyncAtEndOptions
-}
-
-func NewCliIntent(params CLIIntentParams) (Intent, error) {
-	if params.User == "" {
+func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string, syncBVs, syncTasks, syncStatuses []string, syncTimeout time.Duration) (Intent, error) {
+	if user == "" {
 		return nil, errors.New("no user provided")
 	}
-	if params.Project == "" {
+	if project == "" {
 		return nil, errors.New("no project provided")
 	}
-	if params.BaseGitHash == "" {
+	if baseHash == "" {
 		return nil, errors.New("no base hash provided")
 	}
-	if params.Finalize {
-		if params.Alias == "" {
-			if len(params.Variants) == 0 {
+	if finalize {
+		if alias == "" {
+			if len(variants) == 0 {
 				return nil, errors.New("no variants provided")
 			}
-			if len(params.Tasks) == 0 {
+			if len(tasks) == 0 {
 				return nil, errors.New("no tasks provided")
 			}
 		}
 	}
-	if len(params.SyncParams.BuildVariants) != 0 && len(params.SyncParams.Tasks) == 0 {
-		return nil, errors.New("build variants provided for task sync but task names missing")
-	}
-	if len(params.SyncParams.Tasks) != 0 && len(params.SyncParams.BuildVariants) == 0 {
+	if len(syncBVs) != 0 && len(syncTasks) == 0 {
 		return nil, errors.New("task names provided for sync but build variants missing")
 	}
-	for _, status := range params.SyncParams.Statuses {
+	if len(syncTasks) != 0 && len(syncBVs) == 0 {
+		return nil, errors.New("build variants provided for task sync but task names missing")
+	}
+	for _, status := range syncStatuses {
 		catcher := grip.NewBasicCatcher()
 		if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
 			catcher.Errorf("invalid sync status '%s'", status)
@@ -218,17 +205,22 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	return &cliIntent{
 		DocumentID:    mgobson.NewObjectId().Hex(),
 		IntentType:    CliIntentType,
-		PatchContent:  params.PatchContent,
-		Description:   params.Description,
-		BuildVariants: params.Variants,
-		Tasks:         params.Tasks,
-		SyncAtEndOpts: params.SyncParams,
-		User:          params.User,
-		ProjectID:     params.Project,
-		BaseHash:      params.BaseGitHash,
-		Finalize:      params.Finalize,
-		Module:        params.Module,
-		Alias:         params.Alias,
+		PatchContent:  patchContent,
+		Description:   description,
+		BuildVariants: variants,
+		Tasks:         tasks,
+		SyncAtEndOpts: SyncAtEndOptions{
+			BuildVariants: syncBVs,
+			Tasks:         syncTasks,
+			Statuses:      syncStatuses,
+			Timeout:       syncTimeout,
+		},
+		User:      user,
+		ProjectID: project,
+		BaseHash:  baseHash,
+		Finalize:  finalize,
+		Module:    module,
+		Alias:     alias,
 	}, nil
 }
 
