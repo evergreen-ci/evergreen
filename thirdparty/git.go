@@ -38,7 +38,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 		}
 		// write a chunk
 		if _, err := handle.Write(buf[:n]); err != nil {
-			return nil, errors.New("Unable to read supplied patch file")
+			return nil, errors.New("Unable to write supplied patch file")
 		}
 	}
 
