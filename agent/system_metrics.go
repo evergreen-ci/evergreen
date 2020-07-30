@@ -18,10 +18,14 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
+// MetricCollector is an interface representing an object that can collect
+// a single system metric over a series of time steps.
 type MetricCollector interface {
+	// Name returns a string indicating the type of metric collected, such as "uptime".
 	Name() string
+	// Format returns the format of the collected data.
 	Format() DataFormat
-	//Format() interface{}
+	// Collect returns the value of the collected metric when the function is called.
 	Collect() ([]byte, error)
 }
 
@@ -179,7 +183,6 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 			Command:       name,
 		}
 		processesPopulated[i] = processWrapper
-		//pp.Println(processWrapper)
 	}
 	processesWrapper := ProcessesWrapper{processesPopulated}
 	return json.Marshal(processesWrapper)
@@ -187,7 +190,6 @@ func (collector *ProcessCollector) Collect(ctx context.Context) ([]byte, error) 
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
 	jsonMetrics, err := json.Marshal(metric)
-	//fmt.Println("\njsonMetrics:", string(jsonMetrics))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem converting metrics to JSON")
 	}
