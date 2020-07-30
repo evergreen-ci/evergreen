@@ -112,12 +112,30 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getAllowedInstanceTypes(w http.ResponseWriter, r *http.Request) {
-	provider := r.FormValue("provider")
-	if len(provider) > 0 {
-		if cloud.IsEc2Provider(provider) {
-			gimlet.WriteJSON(w, uis.Settings.Providers.AWS.AllowedInstanceTypes)
-			return
+	hostId := r.FormValue("host_id")
+	h, err := host.FindOneByIdOrTag(hostId)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "Error finding host '%s'", hostId))
+		return
+	}
+	if h == nil {
+		uis.LoggedError(w, r, http.StatusBadRequest,
+			errors.Errorf("Host '%s' not found", hostId))
+		return
+	}
+	if cloud.IsEc2Provider(h.Provider) {
+		allowedTypes := uis.Settings.Providers.AWS.AllowedInstanceTypes
+		// add the original instance type to the list if applicable
+		if len(h.Distro.ProviderSettingsList) > 0 {
+			originalInstanceType, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+			if ok && originalInstanceType != "" && !utility.StringSliceContains(allowedTypes, originalInstanceType) {
+				allowedTypes = append(allowedTypes, originalInstanceType)
+			}
 		}
+
+		gimlet.WriteJSON(w, allowedTypes)
+		return
 	}
 	gimlet.WriteJSON(w, []string{})
 }
