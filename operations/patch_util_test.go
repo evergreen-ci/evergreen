@@ -147,7 +147,7 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
 	s.Contains(pp.Tasks, "mytask2")
 }
 
-func (s *PatchUtilTestSuite) TestAddMetadataToDiff() {
+func (s *PatchUtilTestSuite) TestaddMetadataToDiff() {
 	metadata := GitMetadata{
 		Username:    "octocat",
 		Email:       "octocat@github.com",
@@ -175,19 +175,6 @@ operations/patch_util.go           |  17 ---
 --
 2.19.1
 `, mboxDiff)
-}
-
-func (s *PatchUtilTestSuite) TestParseGitVersionString() {
-	versionStrings := map[string]string{
-		"git version 2.19.1":                 "2.19.1",
-		"git version 2.24.3 (Apple Git-128)": "2.24.3",
-	}
-
-	for versionString, version := range versionStrings {
-		parsedVersion, err := parseGitVersion(versionString)
-		s.NoError(err)
-		s.Equal(version, parsedVersion)
-	}
 }
 
 func (s *PatchUtilTestSuite) TearDownSuite() {
