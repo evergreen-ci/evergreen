@@ -73,16 +73,7 @@ func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
-	usr := route.MustHaveUser(ctx)
-	publicKeys := []*restModel.APIPubKey{}
-	for _, item := range usr.PublicKeys() {
-		currName := item.Name
-		currKey := item.Key
-		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &currName, Key: &currKey})
-	}
-	sort.SliceStable(publicKeys, func(i, j int) bool {
-		return *publicKeys[i].Name < *publicKeys[j].Name
-	})
+	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
 }
 
@@ -1396,6 +1387,22 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
 	}
 	return true, nil
+}
+
+func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*restModel.APIPubKey, error) {
+	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
+	}
+	err := verifyPublicKey(ctx, publicKeyInput.Key)
+	if err != nil {
+		return nil, err
+	}
+	err = route.MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
+	}
+	myPublicKeys := getMyPublicKeys(ctx)
+	return myPublicKeys, nil
 }
 
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
