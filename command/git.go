@@ -688,7 +688,10 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer os.Remove(tempFile.Name())
+		defer func() {
+			grip.Error(tempFile.Close())
+			grip.Error(os.Remove(tempFile.Name()))
+		}()
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
 			return errors.WithStack(err)
