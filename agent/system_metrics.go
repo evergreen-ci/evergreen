@@ -16,67 +16,74 @@ import (
 	"google.golang.org/grpc"
 )
 
-// DataFormat describes how the time series data is stored.
-type DataFormat int32
+// dataFormat describes how the time series data is stored.
+type dataFormat int32
 
-// Valid DataFormat values.
+// Valid dataFormat values.
 const (
-	DataFormatText DataFormat = 0
-	DataFormatFTDC DataFormat = 1
-	DataFormatBSON DataFormat = 2
-	DataFormatJSON DataFormat = 3
-	DataFormatCSV  DataFormat = 4
+	dataFormatText dataFormat = 0
+	dataFormatFTDC dataFormat = 1
+	dataFormatBSON dataFormat = 2
+	dataFormatJSON dataFormat = 3
+	dataFormatCSV  dataFormat = 4
 )
 
-func (f DataFormat) validate() error {
+func (f dataFormat) validate() error {
 	switch f {
-	case DataFormatText, DataFormatFTDC, DataFormatBSON, DataFormatJSON, DataFormatCSV:
+	case dataFormatText, dataFormatFTDC, dataFormatBSON, dataFormatJSON, dataFormatCSV:
 		return nil
 	default:
 		return errors.New("invalid schema type specified")
 	}
 }
 
-// MetricCollector is an interface representing an object that can collect
+// metricCollector is an interface representing an object that can collect
 // a single system metric over a series of time steps.
-type MetricCollector interface {
+type metricCollector interface {
 	// Name returns a string indicating the type of metric collected, such as "uptime".
 	Name() string
 
 	// Format returns the format of the collected data.
-	Format() DataFormat
+	Format() dataFormat
 
 	// Collect returns the value of the collected metric when the function is called.
 	Collect() ([]byte, error)
 }
 
-// SystemMetricsCollector handles collecting an arbitrary set of system
+// systemMetricsCollector handles collecting an arbitrary set of system
 // metrics at a fixed interval and streaming them to cedar.
-type SystemMetricsCollector struct {
+type systemMetricsCollector struct {
 	mu              sync.Mutex
-	streamWg        sync.WaitGroup
-	closeWg         sync.WaitGroup
+	stream          sync.WaitGroup
+	close           sync.WaitGroup
 	streamingCancel context.CancelFunc
 	taskOpts        *metrics.SystemMetricsOptions
+	streamOpts      *metrics.StreamOpts
 	interval        time.Duration
-	collectors      []MetricCollector
+	collectors      []metricCollector
 	client          *metrics.SystemMetricsClient
 	catcher         grip.Catcher
 	id              string
 	closed          bool
 }
 
-// SystemMetricsCollectorOptions are the required values for creating a new
-// SystemMetricsCollector. Only one of Comm or Conn should be set.
-type SystemMetricsCollectorOptions struct {
+// systemMetricsCollectorOptions are the required values for creating a new
+// systemMetricsCollector. Only one of Comm or Conn should be set.
+type systemMetricsCollectorOptions struct {
 	Task       *task.Task
 	Interval   time.Duration
-	Collectors []MetricCollector
+	Collectors []metricCollector
 	Comm       client.Communicator
 	Conn       *grpc.ClientConn
+
+	// These options configure the timber stream buffer, and can be left empty
+	// to use the default settings.
+	MaxBufferSize            int
+	NoBufferTimedFlush       bool
+	BufferTimedFlushInterval time.Duration
 }
 
-func (s *SystemMetricsCollectorOptions) validate() error {
+func (s *systemMetricsCollectorOptions) validate() error {
 	if s.Task == nil {
 		return errors.New("must provide a valid task")
 	}
@@ -89,28 +96,42 @@ func (s *SystemMetricsCollectorOptions) validate() error {
 	}
 
 	if len(s.Collectors) == 0 {
-		return errors.New("must provide at least one MetricCollector")
+		return errors.New("must provide at least one metricCollector")
 	}
 
 	if (s.Comm == nil && s.Conn == nil) || (s.Comm != nil && s.Conn != nil) {
 		return errors.New("must provide either a communicator or an existing client connection")
 	}
+
+	if s.BufferTimedFlushInterval < 0 {
+		return errors.New("flush interval must not be negative")
+	}
+
+	if s.MaxBufferSize < 0 {
+		return errors.New("buffer size must not be negative")
+	}
+
 	return nil
 }
 
-// NewSystemMetricsCollector returns a SystemMetricsCollector ready to start
+// newSystemMetricsCollector returns a systemMetricsCollector ready to start
 // collecting from the provided set of MetricCollectors at the provided interval
 // and streaming to cedar.
-func NewSystemMetricsCollector(ctx context.Context, opts *SystemMetricsCollectorOptions) (*SystemMetricsCollector, error) {
+func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollectorOptions) (*systemMetricsCollector, error) {
 	err := opts.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid options")
 	}
-	s := &SystemMetricsCollector{
+	s := &systemMetricsCollector{
 		interval:   opts.Interval,
 		collectors: opts.Collectors,
 		taskOpts:   getSystemMetricsInfo(opts.Task),
-		catcher:    grip.NewBasicCatcher(),
+		streamOpts: &metrics.StreamOpts{
+			FlushInterval: opts.BufferTimedFlushInterval,
+			NoTimedFlush:  opts.NoBufferTimedFlush,
+			MaxBufferSize: opts.MaxBufferSize,
+		},
+		catcher: grip.NewBasicCatcher(),
 	}
 	if opts.Comm != nil {
 		s.client, err = setupCedarClient(ctx, opts.Comm)
@@ -128,7 +149,7 @@ func NewSystemMetricsCollector(ctx context.Context, opts *SystemMetricsCollector
 // to close any opened connections, set the exit code, and handle any returned
 // errors. This can also be handled by cancelling the provided context, but
 // any errors will only be logged to the global error logs in this case.
-func (s *SystemMetricsCollector) Start(ctx context.Context) error {
+func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	var err error
 	s.id, err = s.client.CreateSystemMetricsRecord(ctx, *s.taskOpts)
 	if err != nil {
@@ -143,29 +164,29 @@ func (s *SystemMetricsCollector) Start(ctx context.Context) error {
 			Id:         s.id,
 			MetricType: collector.Name(),
 			Format:     metrics.DataFormat(collector.Format()),
-		}, metrics.StreamOpts{})
+		}, *s.streamOpts)
 		if err != nil {
 			s.streamingCancel()
 			s.streamingCancel = nil
 			return errors.Wrap(err, fmt.Sprintf("problem creating system metrics stream for id %s and metricType %s", s.id, collector.Name()))
 		}
 
-		s.streamWg.Add(1)
+		s.stream.Add(1)
 		go s.timedCollect(streamingCtx, collector, stream)
 	}
-	s.closeWg.Add(1)
+	s.close.Add(1)
 	go s.closeOnCancel(ctx, streamingCtx)
 
 	return nil
 }
 
-func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricCollector, stream *metrics.SystemMetricsWriteCloser) {
+func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream *metrics.SystemMetricsWriteCloser) {
 	timer := time.NewTimer(0)
 	defer func() {
 		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name())), ""))
 		s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.Name())))
 		timer.Stop()
-		s.streamWg.Done()
+		s.stream.Done()
 	}()
 
 	for {
@@ -188,8 +209,8 @@ func (s *SystemMetricsCollector) timedCollect(ctx context.Context, mc MetricColl
 	}
 }
 
-func (s *SystemMetricsCollector) closeOnCancel(outerCtx, streamingCtx context.Context) {
-	defer s.closeWg.Done()
+func (s *systemMetricsCollector) closeOnCancel(outerCtx, streamingCtx context.Context) {
+	defer s.close.Done()
 	for {
 		select {
 		case <-outerCtx.Done():
@@ -204,8 +225,8 @@ func (s *SystemMetricsCollector) closeOnCancel(outerCtx, streamingCtx context.Co
 	}
 }
 
-func (s *SystemMetricsCollector) cleanup() {
-	s.streamWg.Wait()
+func (s *systemMetricsCollector) cleanup() {
+	s.stream.Wait()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -222,9 +243,8 @@ func (s *SystemMetricsCollector) cleanup() {
 
 // Close cleans up any remaining connections and closes out the cedar
 // metadata if one was created with the completed_at timestamp and an
-// exit code. Close needs to be called before the context provided to
-// Start is cancelled.
-func (s *SystemMetricsCollector) Close() error {
+// exit code.
+func (s *systemMetricsCollector) Close() error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -233,7 +253,7 @@ func (s *SystemMetricsCollector) Close() error {
 	s.mu.Unlock()
 
 	s.streamingCancel()
-	s.closeWg.Wait()
+	s.close.Wait()
 	return s.catcher.Resolve()
 }
 

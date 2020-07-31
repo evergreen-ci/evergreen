@@ -92,10 +92,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
 	var err error
-	tc.systemMetricsCollector, err = NewSystemMetricsCollector(ctx, &SystemMetricsCollectorOptions{
+	tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
 		Task:       tc.taskModel,
 		Interval:   defaultStatsInterval,
-		Collectors: []MetricCollector{},
+		Collectors: []metricCollector{},
 		Comm:       a.comm,
 	})
 	if err != nil {
