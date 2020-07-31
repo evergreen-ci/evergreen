@@ -44,7 +44,7 @@ type MetricCollector interface {
 	Name() string
 
 	// Format returns the format of the collected data.
-	Format() metrics.DataFormat
+	Format() DataFormat
 
 	// Collect returns the value of the collected metric when the function is called.
 	Collect() ([]byte, error)
@@ -142,7 +142,7 @@ func (s *SystemMetricsCollector) Start(ctx context.Context) error {
 		stream, err := s.client.StreamSystemMetrics(streamingCtx, metrics.MetricDataOpts{
 			Id:         s.id,
 			MetricType: collector.Name(),
-			Format:     collector.Format(),
+			Format:     metrics.DataFormat(collector.Format()),
 		}, metrics.StreamOpts{})
 		if err != nil {
 			s.streamingCancel()

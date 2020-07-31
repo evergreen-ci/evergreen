@@ -2,16 +2,12 @@ package systemmetrics
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/pkg/errors"
@@ -125,68 +121,21 @@ func (mc *mockClient) CloseMetrics(_ context.Context, in *internal.SystemMetrics
 	}, nil
 }
 
-type mockServer struct {
-	createErr bool
-	addErr    bool
-	closeErr  bool
-	info      bool
-	data      bool
-	close     bool
-}
-
-func (mc *mockServer) CreateSystemMetricsRecord(_ context.Context, in *internal.SystemMetrics) (*internal.SystemMetricsResponse, error) {
-	if mc.createErr {
-		return nil, errors.New("create error")
-	}
-	mc.info = true
-	return &internal.SystemMetricsResponse{
-		Id: "ID",
-	}, nil
-}
-
-func (mc *mockServer) AddSystemMetrics(_ context.Context, in *internal.SystemMetricsData) (*internal.SystemMetricsResponse, error) {
-	if mc.addErr {
-		return nil, errors.New("add error")
-	}
-	mc.data = true
-	return &internal.SystemMetricsResponse{
-		Id: "ID",
-	}, nil
-}
-
-func (mc *mockServer) StreamSystemMetrics(internal.CedarSystemMetrics_StreamSystemMetricsServer) error {
-	return nil
-}
-
-func (mc *mockServer) CloseMetrics(_ context.Context, in *internal.SystemMetricsSeriesEnd) (*internal.SystemMetricsResponse, error) {
-	if mc.closeErr {
-		return nil, errors.New("close error")
-	}
-	mc.close = true
-	return &internal.SystemMetricsResponse{
-		Id: "ID",
-	}, nil
-}
-
 func TestNewSystemMetricsClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv := &mockServer{}
-	port := testutil.GetPortNumber(3000)
-	require.NoError(t, startRPCService(ctx, srv, port))
+	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	require.NoError(t, err)
 	t.Run("ValidOptions", func(t *testing.T) {
 		connOpts := ConnectionOptions{
-			Client: http.Client{},
-			DialOpts: timber.DialCedarOptions{
-				BaseAddress: "localhost",
-				RPCPort:     strconv.Itoa(port),
-			},
+			Client:   http.Client{},
+			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.close)
+		assert.True(t, srv.Close)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
 		connOpts := ConnectionOptions{}
@@ -199,11 +148,9 @@ func TestNewSystemMetricsClient(t *testing.T) {
 func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv := &mockServer{}
-	port := testutil.GetPortNumber(3000)
-	require.NoError(t, startRPCService(ctx, srv, port))
-	addr := fmt.Sprintf("localhost:%d", port)
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	require.NoError(t, err)
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
 	require.NoError(t, err)
 
 	t.Run("ValidOptions", func(t *testing.T) {
@@ -211,7 +158,7 @@ func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.close)
+		assert.True(t, srv.Close)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
 		client, err := NewSystemMetricsClientWithExistingConnection(ctx, nil)
@@ -223,34 +170,29 @@ func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
 func TestCloseClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv := &mockServer{}
-	port := testutil.GetPortNumber(3000)
-	require.NoError(t, startRPCService(ctx, srv, port))
+	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	require.NoError(t, err)
 	t.Run("WithoutExistingConnection", func(t *testing.T) {
 		connOpts := ConnectionOptions{
-			Client: http.Client{},
-			DialOpts: timber.DialCedarOptions{
-				BaseAddress: "localhost",
-				RPCPort:     strconv.Itoa(port),
-			},
+			Client:   http.Client{},
+			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.close)
+		assert.True(t, srv.Close)
 
 		require.NoError(t, client.CloseClient())
 		require.Error(t, client.CloseSystemMetrics(ctx, "ID", true))
 	})
 	t.Run("WithExistingConnection", func(t *testing.T) {
-		addr := fmt.Sprintf("localhost:%d", port)
-		conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+		conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
 		require.NoError(t, err)
 		client, err := NewSystemMetricsClientWithExistingConnection(ctx, conn)
 		require.NoError(t, err)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.close)
+		assert.True(t, srv.Close)
 
 		require.NoError(t, client.CloseClient())
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
@@ -258,11 +200,8 @@ func TestCloseClient(t *testing.T) {
 	})
 	t.Run("AlreadyClosed", func(t *testing.T) {
 		connOpts := ConnectionOptions{
-			Client: http.Client{},
-			DialOpts: timber.DialCedarOptions{
-				BaseAddress: "localhost",
-				RPCPort:     strconv.Itoa(port),
-			},
+			Client:   http.Client{},
+			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
 		require.NoError(t, err)
@@ -893,24 +832,4 @@ func TestCloseSystemMetrics(t *testing.T) {
 		require.Error(t, s.CloseSystemMetrics(ctx, "ID", true))
 		assert.Nil(t, mc.data)
 	})
-}
-
-func startRPCService(ctx context.Context, service internal.CedarSystemMetricsServer, port int) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	s := grpc.NewServer()
-	internal.RegisterCedarSystemMetricsServer(s, service)
-
-	go func() {
-		_ = s.Serve(lis)
-	}()
-	go func() {
-		<-ctx.Done()
-		s.Stop()
-	}()
-
-	return nil
 }
