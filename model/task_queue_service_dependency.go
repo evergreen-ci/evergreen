@@ -90,17 +90,6 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 		return errors.Wrapf(err, "error defining the DirectedGraph for distro '%s'", d.distroID)
 	}
 
-	grip.Debug(message.Fields{
-		"dispatcher":                 DAGDispatcher,
-		"function":                   "Refresh",
-		"message":                    "refresh was successful",
-		"distro_id":                  d.distroID,
-		"num_task_groups":            len(d.taskGroups),
-		"initial_num_taskqueueitems": len(taskQueueItems),
-		"sorted_num_taskqueueitems":  len(d.sorted),
-		"refreshed_at:":              time.Now(),
-	})
-
 	return nil
 }
 
@@ -133,32 +122,21 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
+	// A Node for the "dependent" <to> task is not present in the DAG.
+	if toNode == nil {
+		grip.Warning(message.Fields{
+			"dispatcher":         DAGDispatcher,
+			"function":           "addEdge",
+			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
+			"depends_on_task_id": fromID,
+			"dependent_task_id":  toID,
+			"distro_id":          d.distroID,
+		})
+
+		return errors.Errorf("a Node for the dependent taskQueueItem '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
+	}
+
 	if fromNode == nil {
-		// Get the "dependent" <to> task from the database.
-		toTask, err := task.FindOneId(toID)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "problem finding task in db",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			}))
-
-			return errors.Wrapf(err, "error adding edge from '%s' to '%s' - database problem while finding task '%s'", fromID, toID, toID)
-		}
-		if toTask == nil {
-			grip.Warning(message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "task from db not found",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, toID)
-		}
-
 		// Get the "depends_on" <from> task to be satisfied from the database.
 		fromTask, err := task.FindOneId(fromID)
 		if err != nil {
@@ -184,21 +162,18 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, fromID)
 		}
 
+		if fromTask.Status == evergreen.TaskUndispatched && fromTask.Activated == true {
+			grip.Warning(message.Fields{
+				"dispatcher":  DAGDispatcher,
+				"function":    "addEdge",
+				"message":     "a Node for a depends_on taskQueueItem is not present but should be",
+				"task_id":     fromID,
+				"task_status": fromTask.Status,
+				"distro_id":   d.distroID,
+			})
+			return errors.Errorf("a node for the scheduled dependency '%s' is not present in the DAG for distro '%s'", fromID, d.distroID)
+		}
 		return nil
-	}
-
-	// A Node for the "dependent" <to> task is not present in the DAG.
-	if toNode == nil {
-		grip.Warning(message.Fields{
-			"dispatcher":         DAGDispatcher,
-			"function":           "addEdge",
-			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
-			"depends_on_task_id": fromID,
-			"dependent_task_id":  toID,
-			"distro_id":          d.distroID,
-		})
-
-		return errors.Errorf("a Node for the dependent taskQueueItem '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
 	}
 
 	// Cannot add a self edge within the DAG!
