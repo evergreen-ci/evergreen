@@ -37,6 +37,7 @@ func CommitQueue() cli.Command {
 			deleteItem(),
 			mergeCommand(),
 			setModuleCommand(),
+			enqueuePatch(),
 		},
 	}
 }
@@ -197,6 +198,83 @@ func setModuleCommand() cli.Command {
 	}
 }
 
+func enqueuePatch() cli.Command {
+	return cli.Command{
+		Name:  "enqueue-patch",
+		Usage: "enqueue an existing patch on the commit queue",
+		Flags: addPatchIDFlag(cli.BoolFlag{
+			Name:  forceFlagName,
+			Usage: "force item to front of queue",
+		}),
+		Before: mergeBeforeFuncs(
+			requirePatchIDFlag,
+			setPlainLogger,
+		),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			patchID := c.String(patchIDFlagName)
+			force := c.Bool(forceFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+
+			// verify the patch can be enqueued
+			existingPatch, err := ac.GetPatch(patchID)
+			if err != nil {
+				return errors.Wrapf(err, "can't get patch '%s'", patchID)
+			}
+			if !existingPatch.CanEnqueueToCommitQueue() {
+				return errors.Errorf("patch '%s' is not eligible to be enqueued", patchID)
+			}
+
+			// confirm multiple commits
+			multipleCommits := false
+			for _, p := range existingPatch.Patches {
+				if len(p.PatchSet.CommitMessages) > 1 {
+					multipleCommits = true
+				}
+			}
+			if multipleCommits {
+				if !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
+					return errors.New("enqueue aborted")
+				}
+			}
+
+			// create the new merge patch
+			mergePatch, err := client.CreatePatchForMerge(ctx, patchID)
+			if err != nil {
+				return errors.Wrap(err, "problem creating a commit queue patch")
+			}
+			patchDisp, err := getAPIPatchDisplay(mergePatch, false, conf.UIServerHost)
+			if err != nil {
+				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
+			}
+			grip.Info("Patch successfully created.")
+			grip.Info(patchDisp)
+
+			// enqueue the patch
+			position, err := client.EnqueueItem(ctx, restModel.FromStringPtr(mergePatch.Id), force)
+			if err != nil {
+				return errors.Wrap(err, "problem enqueueing new patch")
+			}
+			grip.Infof("Queue position is %d.", position)
+
+			return nil
+		},
+	}
+}
+
 func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
@@ -311,7 +389,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	if err != nil {
 		return err
 	}
-	grip.Infof("Queue position is %d", position)
+	grip.Infof("Queue position is %d.", position)
 
 	return nil
 }
