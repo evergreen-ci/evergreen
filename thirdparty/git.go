@@ -31,14 +31,22 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 		// read a chunk
 		n, err := buffer.Read(buf)
 		if err != nil && err != io.EOF {
-			return nil, errors.New("Unable to read supplied patch file")
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":  "problem reading patch file",
+				"num_read": n,
+			}))
+			return nil, errors.Wrap(err, "Unable to read supplied patch file")
 		}
 		if n == 0 {
 			break
 		}
 		// write a chunk
 		if _, err := handle.Write(buf[:n]); err != nil {
-			return nil, errors.New("Unable to write supplied patch file")
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":      "problem writing patch file",
+				"num_to_write": n,
+			}))
+			return nil, errors.Wrap(err, "Unable to write supplied patch file")
 		}
 	}
 
