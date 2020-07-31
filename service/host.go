@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,7 +17,6 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -239,7 +239,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
 			return
 		}
-		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		hostsUpdated, err = api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
 			_, modifyErr := modifyHostStatus(rq, h, opts, user)
 			return modifyErr
 		})
@@ -256,7 +256,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "unable to get user permissions")))
 			return
 		}
-		hostsUpdated, err = modifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		hostsUpdated, err = api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
 			modifyErr := h.SetNeedsJasperRestart(user.Username())
 			if adb.ResultsNotFound(modifyErr) {
 				return nil
@@ -275,23 +275,6 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
-}
-
-// modifyHostsWithPermissions performs an update on each of the given hosts
-// for which the permissions allow updates on that host.
-func modifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permissions, modifyHost func(h *host.Host) error) (updated int, err error) {
-	catcher := grip.NewBasicCatcher()
-	for _, h := range hosts {
-		if perm[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
-			continue
-		}
-		if err := modifyHost(&h); err != nil {
-			catcher.Wrapf(err, "could not modify host '%s'", h.Id)
-			continue
-		}
-		updated++
-	}
-	return updated, catcher.Resolve()
 }
 
 func (uis *UIServer) getHostDNS(r *http.Request) ([]string, error) {

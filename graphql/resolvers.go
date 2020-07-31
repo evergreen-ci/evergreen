@@ -22,9 +22,12 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -1396,6 +1399,48 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
 	}
 	return true, nil
+}
+
+func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
+	user := route.MustHaveUser(ctx)
+
+	if len(hostIds) == 0 {
+		InputValidationError.Send(ctx, "hostIds cannot be empty")
+	}
+
+	hosts, err := host.Find(host.ByIds(hostIds))
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts to update : %s", err.Error()))
+	}
+	if len(hosts) == 0 {
+		return 0, ResourceNotFound.Send(ctx, "No matching hosts found")
+	}
+
+	var permissions map[string]gimlet.Permissions
+
+	rm := evergreen.GetEnvironment().RoleManager()
+
+	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+	if err != nil {
+		InternalServerError.Send(ctx, "unable to get user permissions")
+	}
+
+	hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		modifyErr := h.SetNeedsJasperRestart(user.Username())
+		if adb.ResultsNotFound(modifyErr) {
+			return nil
+		}
+		if modifyErr != nil {
+			return modifyErr
+		}
+		return nil
+	})
+
+	if err != nil {
+		InternalServerError.Send(ctx, "error marking selected hosts as needing Jasper service restarted")
+	}
+
+	return hostsUpdated, nil
 }
 
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
