@@ -1,0 +1,6 @@
+mutation {
+  removePublicKey(keyName: "z") {
+    name
+    key
+  }
+}
