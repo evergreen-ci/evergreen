@@ -551,7 +551,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}
-	if len(supportingSubnets) == 0 {
+	if len(supportingSubnets) == 0 || (len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId) {
 		return nil, nil
 	}
 	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
