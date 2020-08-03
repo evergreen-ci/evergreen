@@ -122,6 +122,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
+				"config_size":  len(patchDoc.PatchedConfig),
+				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
 		j.AddError(err)

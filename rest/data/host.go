@@ -65,12 +65,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	if h == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with id %s not found", id),
-		}
-	}
+
 	return h, nil
 }
 
@@ -304,10 +299,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 			return &h, nil
 		}
 	}
-	return nil, gimlet.ErrorResponse{
-		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("host with id %s not found", id),
-	}
+	return nil, nil
 }
 
 func (hc *MockHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
@@ -483,14 +475,16 @@ func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) 
 
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
-	if host == nil {
-		return nil, err
-	}
-
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}
 	}
 
