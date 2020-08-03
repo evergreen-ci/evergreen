@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "myPublicKeys": [{ "name": "a", "key": "aKey" }]
+        }
+      }
+    },
+    {
+      "query_file": "error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Error deleting public key. Provided key name, non-existent-key, does not exist.",
+            "path": ["removePublicKey"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}
