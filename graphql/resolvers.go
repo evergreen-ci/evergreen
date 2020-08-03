@@ -1419,7 +1419,10 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. Provided key name, %s, does not exist.", targetKeyName))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
+	}
+	if updateInfo.Name != targetKeyName && doesPublicKeyNameAlreadyExist(ctx, updateInfo.Name) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The updated key name, %s, already exists.", targetKeyName))
 	}
 	err := verifyPublicKey(ctx, updateInfo)
 	if err != nil {
