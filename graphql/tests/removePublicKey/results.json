@@ -3,9 +3,7 @@
     {
       "query_file": "success.graphql",
       "result": {
-        "data": {
-          "myPublicKeys": [{ "name": "a", "key": "aKey" }]
-        }
+        "data": { "removePublicKey": [{ "name": "a", "key": "aKey" }] }
       }
     },
     {
