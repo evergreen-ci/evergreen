@@ -1393,7 +1393,7 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
 	}
-	err := verifyPublicKey(ctx, publicKeyInput.Key)
+	err := verifyPublicKey(ctx, publicKeyInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1412,6 +1412,26 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	err := route.MustHaveUser(ctx).DeletePublicKey(keyName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
+	}
+	myPublicKeys := getMyPublicKeys(ctx)
+	return myPublicKeys, nil
+}
+
+func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
+	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. Provided key name, %s, does not exist.", targetKeyName))
+	}
+	err := verifyPublicKey(ctx, updateInfo)
+	if err != nil {
+		return nil, err
+	}
+	err = route.MustHaveUser(ctx).DeletePublicKey(targetKeyName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing old public key, %s: %s", targetKeyName, err.Error()))
+	}
+	err = route.MustHaveUser(ctx).AddPublicKey(updateInfo.Name, updateInfo.Key)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error saving new public key: %s", err.Error()))
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil

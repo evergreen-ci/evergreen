@@ -603,8 +603,11 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 	return idType, id, nil
 }
 
-func verifyPublicKey(ctx context.Context, publicKey string) error {
-	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey))
+func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
+	if publicKey.Name == "" {
+		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key name cannot be empty."))
+	}
+	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Name))
 	if err != nil {
 		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key is invalid : %s", err.Error()))
 	}
