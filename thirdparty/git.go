@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -24,6 +25,10 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, errors.New("Unable to create local patch file")
 	}
+	defer func() {
+		grip.Error(handle.Close())
+		grip.Error(os.Remove(handle.Name()))
+	}()
 	// convert the patch to bytes
 	buf := []byte(patch)
 	buffer := bytes.NewBuffer(buf)
