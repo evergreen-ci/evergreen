@@ -547,11 +547,14 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 		return nil, errors.New("no AWS subnets were configured")
 	}
 
-	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, ec2Settings.InstanceType, ec2Settings.getRegion())
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}
+	if len(supportingSubnets) == 0 {
+		return nil, nil
+	}
+	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(subnets))
 	for _, subnet := range supportingSubnets {
 		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: aws.String(subnet.SubnetID)})
 	}
