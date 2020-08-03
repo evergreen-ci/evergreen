@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"golang.org/x/crypto/ssh"
 )
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -600,4 +601,36 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 		return "", "", InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
 	return idType, id, nil
+}
+
+func verifyPublicKey(ctx context.Context, publicKey string) error {
+	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey))
+	if err != nil {
+		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key is invalid : %s", err.Error()))
+	}
+	return nil
+}
+
+func doesPublicKeyNameAlreadyExist(ctx context.Context, publicKeyName string) bool {
+	publicKeys := route.MustHaveUser(ctx).PublicKeys()
+	for _, pubKey := range publicKeys {
+		if pubKey.Name == publicKeyName {
+			return true
+		}
+	}
+	return false
+}
+
+func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
+	usr := route.MustHaveUser(ctx)
+	publicKeys := []*restModel.APIPubKey{}
+	for _, item := range usr.PublicKeys() {
+		currName := item.Name
+		currKey := item.Key
+		publicKeys = append(publicKeys, &restModel.APIPubKey{Name: &currName, Key: &currKey})
+	}
+	sort.SliceStable(publicKeys, func(i, j int) bool {
+		return *publicKeys[i].Name < *publicKeys[j].Name
+	})
+	return publicKeys
 }

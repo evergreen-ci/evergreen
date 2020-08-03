@@ -105,6 +105,21 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, overrides, 1)
 			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
+
+			ec2Settings = &EC2ProviderSettings{
+				InstanceType: "not_supported",
+			}
+			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
+			assert.NoError(t, err)
+			assert.Nil(t, overrides)
+
+			ec2Settings = &EC2ProviderSettings{
+				InstanceType: "instanceType0",
+				SubnetId:     "subnet-654321",
+			}
+			overrides, err = m.makeOverrides(context.Background(), ec2Settings)
+			assert.NoError(t, err)
+			assert.Nil(t, overrides)
 		},
 		"SubnetMatchesAz": func(*testing.T) {
 			subnet := &ec2.Subnet{

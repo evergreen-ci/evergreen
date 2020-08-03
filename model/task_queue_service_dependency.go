@@ -184,20 +184,6 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, fromID)
 		}
 
-		grip.Debug(message.Fields{
-			"dispatcher":                            DAGDispatcher,
-			"function":                              "addEdge",
-			"message":                               "a Node for a depends_on taskQueueItem is not present in the DAG",
-			"dependent_task_id":                     toID,
-			"dependent_task_overrides_dependencies": toTask.OverrideDependencies,
-			"depends_on_task_id":                    fromID,
-			"depends_on_task_status":                fromTask.Status,
-			"distro_id":                             d.distroID,
-			"last_in_memory_queue_refresh":          d.lastUpdated,
-			"in_memory_queue_refresh_ttl":           d.ttl,
-			"num_taskqueueitems":                    len(d.itemNodeMap),
-		})
-
 		return nil
 	}
 
