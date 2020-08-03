@@ -67,11 +67,11 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 		SystemRoles: []string{"unrestrictedTaskAccess"},
 		PubKeys: []user.PubKey{
 			user.PubKey{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
+			user.PubKey{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
+			user.PubKey{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
 			user.PubKey{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 			user.PubKey{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "d", Key: "dKey", CreatedAt: time.Time{}}},
-	}
+		}}
 	require.NoError(t, testUser.Insert())
 	state.url = server.URL
 	state.apiKey = apiKey
