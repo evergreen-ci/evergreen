@@ -81,6 +81,7 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  removePublicKey(keyName: String!): [PublicKey!]!
 }
 
 enum TaskSortCategory {
