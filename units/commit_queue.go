@@ -241,7 +241,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier, evergreen.CommitQueueAlias)
+	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Identifier, evergreen.CommitQueueAlias)
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
@@ -359,7 +359,6 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
 		j.logError(err, "can't update patch in db", nextItem)
 		j.dequeue(cq, nextItem)
@@ -607,18 +606,15 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		Modules: modules,
 	}
 
-	// Merge task depends on all commit queue tasks matching the alias
-	// (protect against a user removing tasks from the patch)
-	execPairs, _, err := project.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
-	if err != nil {
-		return errors.Wrap(err, "can't get alias pairs")
-	}
-	dependencies := make([]model.TaskUnitDependency, 0, len(execPairs))
-	for _, pair := range execPairs {
-		dependencies = append(dependencies, model.TaskUnitDependency{
-			Name:    pair.TaskName,
-			Variant: pair.Variant,
-		})
+	// Merge task depends on all the tasks already in the patch
+	dependencies := []model.TaskUnitDependency{}
+	for _, vt := range patchDoc.VariantsTasks {
+		for _, t := range vt.Tasks {
+			dependencies = append(dependencies, model.TaskUnitDependency{
+				Name:    t,
+				Variant: vt.Variant,
+			})
+		}
 	}
 
 	mergeTask := model.ProjectTask{
@@ -673,6 +669,10 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	patchDoc.PatchedConfig = string(yamlBytes)
 	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
 	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
+	patchDoc.VariantsTasks = append(patchDoc.VariantsTasks, patch.VariantTasks{
+		Variant: evergreen.MergeTaskVariant,
+		Tasks:   []string{evergreen.MergeTaskName},
+	})
 
 	return nil
 }
@@ -750,10 +750,11 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
-	// reset patch build variants and tasks
+	// rebuild patch build variants and tasks
 	patchDoc.BuildVariants = []string{}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 	patchDoc.Tasks = []string{}
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
 	return project, nil
 }
