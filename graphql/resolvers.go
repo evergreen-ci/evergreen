@@ -1428,11 +1428,12 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	if err != nil {
 		return nil, err
 	}
-	err = route.MustHaveUser(ctx).DeletePublicKey(targetKeyName)
+	usr := route.MustHaveUser(ctx)
+	err = usr.DeletePublicKey(targetKeyName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing old public key, %s: %s", targetKeyName, err.Error()))
 	}
-	err = route.MustHaveUser(ctx).AddPublicKey(updateInfo.Name, updateInfo.Key)
+	err = usr.AddPublicKey(updateInfo.Name, updateInfo.Key)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error saving new public key: %s", err.Error()))
 	}
