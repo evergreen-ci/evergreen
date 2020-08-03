@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -687,7 +688,10 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer tempFile.Close() //nolint: evg-lint
+		defer func() { //nolint: evg-lint
+			grip.Error(tempFile.Close())
+			grip.Error(os.Remove(tempFile.Name()))
+		}()
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
 			return errors.WithStack(err)
