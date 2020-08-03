@@ -103,6 +103,11 @@ type Projects struct {
 	OtherProjects []*GroupedProjects       `json:"otherProjects"`
 }
 
+type PublicKeyInput struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
+}
+
 type RecentTaskLogs struct {
 	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
 	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`

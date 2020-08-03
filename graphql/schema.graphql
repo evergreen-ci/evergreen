@@ -80,6 +80,7 @@ type Mutation {
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
 }
 
 enum TaskSortCategory {
@@ -562,6 +563,11 @@ type UserConfig {
   api_key: String!
   api_server_host: String!
   ui_server_host: String!
+}
+
+input PublicKeyInput {
+  name: String!
+  key: String!
 }
 
 type PublicKey {
