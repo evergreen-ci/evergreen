@@ -121,7 +121,7 @@ imports:
   - name: github.com/Masterminds/glide
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
   - name: github.com/shirou/gopsutil
-    version: 6d64cd6d43e7927e70891507b795c176a60caf37
+    version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
 
     # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
