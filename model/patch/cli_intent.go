@@ -69,6 +69,9 @@ type cliIntent struct {
 
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
+
+	// Backport is the ID of a commit queue version to backport
+	Backport string `bson:"backport"`
 }
 
 // BSON fields for the patches
@@ -153,6 +156,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Alias:         c.Alias,
 		Tasks:         c.Tasks,
 		SyncAtEndOpts: c.SyncAtEndOpts,
+		Backport:      c.Backport,
 		Patches: []ModulePatch{
 			{
 				ModuleName: c.Module,
@@ -173,6 +177,7 @@ type CLIIntentParams struct {
 	PatchContent string
 	Description  string
 	Finalize     bool
+	Backport     string
 	Variants     []string
 	Tasks        []string
 	Alias        string

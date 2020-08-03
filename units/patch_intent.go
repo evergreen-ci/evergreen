@@ -227,6 +227,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
+	if patchDoc.IsBackport() && !pref.CommitQueue.Enabled {
+		return errors.New("commit queue is disabled for project")
+	}
+
 	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
 		j.gitHubError = PatchTaskSyncDisabled
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
@@ -283,6 +287,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	if patchDoc.IsBackport() {
+		if err = model.AddBackportTask(patchDoc); err != nil {
+			return errors.Wrap(err, "can't add backport task")
+		}
+	}
 
 	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
 		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
@@ -296,11 +305,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
+	if patchDoc.IsCommitQueuePatch() {
 		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
 	}
 
-	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
+	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
@@ -392,6 +401,11 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			"job":         j.ID(),
 		}))
 	}()
+
+	if patchDoc.IsBackport() {
+		return j.buildBackportPatchDoc(patchDoc)
+	}
+
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -444,6 +458,22 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	patchDoc.Patches[0].IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
 	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
+	return nil
+}
+
+func (j *patchIntentProcessor) buildBackportPatchDoc(patchDoc *patch.Patch) error {
+	existingMergePatch, err := patch.FindOneId(patchDoc.Backport)
+	if err != nil {
+		return errors.Wrap(err, "can't get existing merge patch")
+	}
+	if existingMergePatch == nil {
+		return errors.Errorf("patch '%s' does not exist", patchDoc.Backport)
+	}
+	if !existingMergePatch.IsCommitQueuePatch() {
+		return errors.Errorf("can only backport commit queue patches")
+	}
+
+	patchDoc.Patches = existingMergePatch.Patches
 	return nil
 }
 

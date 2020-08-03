@@ -79,7 +79,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Issue).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return
@@ -334,7 +334,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 }
 
 func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
+	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
 		j.dequeue(cq, nextItem)

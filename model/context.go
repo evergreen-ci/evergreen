@@ -150,7 +150,7 @@ func (ctx *Context) populatePatch(patchId string) error {
 		if !patch.IsValidId(patchId) {
 			return errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
-		ctx.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
+		ctx.Patch, err = patch.FindOne(patch.ByStringId(patchId).Project(patch.ExcludePatchDiff))
 	} else if ctx.Version != nil {
 		// patch isn't in URL but the version in context has one, get it
 		ctx.Patch, err = patch.FindOne(patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))

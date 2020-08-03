@@ -360,7 +360,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	// if variant tasks is still empty, then the patch is empty and we shouldn't add to commit queue
-	if p.Alias == evergreen.CommitQueueAlias && len(p.VariantsTasks) == 0 {
+	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("No builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
@@ -525,7 +525,7 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 }
 
 func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
-	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(existingPatchID)))
+	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
 	}
@@ -546,13 +546,7 @@ func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 	if projectRef == nil {
 		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
 	}
-	if !projectRef.Enabled {
-		return nil, errors.Errorf("project '%s' is disabled", existingPatch.Project)
-	}
-	if projectRef.PatchingDisabled {
-		return nil, errors.Errorf("patching is disabled for project '%s'", existingPatch.Project)
-	}
-	if !projectRef.CommitQueue.Enabled {
+	if !projectRef.CommitQueueIsOn() {
 		return nil, errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
 	}
 
@@ -595,6 +589,11 @@ func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 	}
 
 	return patchDoc, nil
+}
+
+func AddBackportTask(patchDoc *patch.Patch) error {
+
+	return nil
 }
 
 func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {

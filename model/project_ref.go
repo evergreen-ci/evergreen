@@ -1017,6 +1017,10 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	return db.Update(ProjectRefCollection, filter, update)
 }
 
+func (p *ProjectRef) CommitQueueIsOn() bool {
+	return p.Enabled && !p.PatchingDisabled && p.CommitQueue.Enabled
+}
+
 func (t TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindOneProjectRef(t.Project)
 	if err != nil {

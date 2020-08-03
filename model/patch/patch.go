@@ -136,6 +136,7 @@ type Patch struct {
 	Activated       bool             `bson:"activated"`
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
+	Backport        string           `bson:"backport"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
@@ -580,11 +581,19 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+func (p *Patch) IsCommitQueuePatch() bool {
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+}
+
+func (p *Patch) IsBackport() bool {
+	return len(p.Backport) > 0
+}
+
 func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
 	}
-	if p.IsPRMergePatch() {
+	if p.IsCommitQueuePatch() {
 		return evergreen.MergeTestRequester
 	}
 	return evergreen.PatchVersionRequester

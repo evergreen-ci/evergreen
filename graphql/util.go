@@ -159,7 +159,7 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 // success, it also returns a success message and a version ID.
 func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
 	var err error
-	p, err := patch.FindOne(patch.ById(patch.NewId(patchId)))
+	p, err := patch.FindOneId(patchId)
 	if err != nil {
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}

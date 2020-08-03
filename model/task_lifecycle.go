@@ -569,7 +569,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		return errors.Errorf("No patch for task")
 	}
 
-	if p.Alias != evergreen.CommitQueueAlias {
+	if !p.IsCommitQueuePatch() {
 		return nil
 	}
 

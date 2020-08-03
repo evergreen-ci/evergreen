@@ -14,7 +14,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -343,7 +342,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	}{
 		Patch:         p,
 		ShowSummary:   summarize,
-		ShowFinalized: p.Alias != evergreen.CommitQueueAlias,
+		ShowFinalized: p.IsCommitQueuePatch(),
 		Link:          p.GetURL(uiHost),
 	})
 	if err != nil {
