@@ -12,7 +12,7 @@ import (
 func TestCollectDiskUsage(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
-	diskUsageCollector := &DiskUsageCollector{}
+	diskUsageCollector := &diskUsageCollector{}
 	output, err := diskUsageCollector.Collect(ctx)
 	assert.NoError(err)
 
@@ -27,7 +27,7 @@ func TestCollectDiskUsage(t *testing.T) {
 func TestCollectUptime(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
-	uptimeCollector := &UptimeCollector{}
+	uptimeCollector := &uptimeCollector{}
 	output, err := uptimeCollector.Collect(ctx)
 	assert.NoError(err)
 
@@ -42,7 +42,7 @@ func TestCollectUptime(t *testing.T) {
 func TestCollectProcesses(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
-	processCollector := &ProcessCollector{}
+	processCollector := &processCollector{}
 	output, err := processCollector.Collect(ctx)
 
 	assert.NoError(err)
