@@ -81,6 +81,8 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  removePublicKey(keyName: String!): [PublicKey!]!
 }
 
 enum TaskSortCategory {
@@ -563,6 +565,11 @@ type UserConfig {
   api_key: String!
   api_server_host: String!
   ui_server_host: String!
+}
+
+input PublicKeyInput {
+  name: String!
+  key: String!
 }
 
 type PublicKey {

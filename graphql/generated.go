@@ -220,9 +220,11 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
+		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
+		RemovePublicKey            func(childComplexity int, keyName string) int
 		RestartJasper              func(childComplexity int, hostIds []string) int
 		RestartPatch               func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                func(childComplexity int, taskID string) int
@@ -561,6 +563,8 @@ type MutationResolver interface {
 	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
+	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
+	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1369,6 +1373,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
 
+	case "Mutation.createPublicKey":
+		if e.complexity.Mutation.CreatePublicKey == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createPublicKey_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreatePublicKey(childComplexity, args["publicKeyInput"].(PublicKeyInput)), true
+
 	case "Mutation.enqueuePatch":
 		if e.complexity.Mutation.EnqueuePatch == nil {
 			break
@@ -1404,6 +1420,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["patchId"].(string)), true
+
+	case "Mutation.removePublicKey":
+		if e.complexity.Mutation.RemovePublicKey == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePublicKey_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePublicKey(childComplexity, args["keyName"].(string)), true
 
 	case "Mutation.restartJasper":
 		if e.complexity.Mutation.RestartJasper == nil {
@@ -3147,6 +3175,8 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  removePublicKey(keyName: String!): [PublicKey!]!
 }
 
 enum TaskSortCategory {
@@ -3631,6 +3661,11 @@ type UserConfig {
   ui_server_host: String!
 }
 
+input PublicKeyInput {
+  name: String!
+  key: String!
+}
+
 type PublicKey {
   name: String!
   key: String!
@@ -3725,6 +3760,20 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 PublicKeyInput
+	if tmp, ok := rawArgs["publicKeyInput"]; ok {
+		arg0, err = ec.unmarshalNPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["publicKeyInput"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3772,6 +3821,20 @@ func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx c
 		}
 	}
 	args["patchId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removePublicKey_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["keyName"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["keyName"] = arg0
 	return args, nil
 }
 
@@ -8491,6 +8554,88 @@ func (ec *executionContext) _Mutation_restartJasper(ctx context.Context, field g
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_createPublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createPublicKey_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreatePublicKey(rctx, args["publicKeyInput"].(PublicKeyInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPubKey)
+	fc.Result = res
+	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_removePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_removePublicKey_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePublicKey(rctx, args["keyName"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPubKey)
+	fc.Result = res
+	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
@@ -16293,6 +16438,30 @@ func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPublicKeyInput(ctx context.Context, obj interface{}) (PublicKeyInput, error) {
+	var it PublicKeyInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "key":
+			var err error
+			it.Key, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSelectorInput(ctx context.Context, obj interface{}) (model.APISelector, error) {
 	var it model.APISelector
 	var asMap = obj.(map[string]interface{})
@@ -17479,6 +17648,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "restartJasper":
 			out.Values[i] = ec._Mutation_restartJasper(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createPublicKey":
+			out.Values[i] = ec._Mutation_createPublicKey(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removePublicKey":
+			out.Values[i] = ec._Mutation_removePublicKey(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -20514,6 +20693,10 @@ func (ec *executionContext) marshalNPublicKey2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PublicKey(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (PublicKeyInput, error) {
+	return ec.unmarshalInputPublicKeyInput(ctx, v)
 }
 
 func (ec *executionContext) marshalNRecentTaskLogs2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRecentTaskLogs(ctx context.Context, sel ast.SelectionSet, v RecentTaskLogs) graphql.Marshaler {

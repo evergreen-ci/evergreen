@@ -1,0 +1,6 @@
+mutation {
+  createPublicKey(publicKeyInput: { name: "z", key: "ssh-rsa" }) {
+    name
+    key
+  }
+}

@@ -144,6 +144,10 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer func() {
+		grip.Error(tempFile.Close())
+		grip.Error(os.Remove(tempFile.Name()))
+	}()
 
 	response, err := http.Get(url)
 	if err != nil {
