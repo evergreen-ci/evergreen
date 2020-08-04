@@ -1,0 +1,6 @@
+mutation {
+  removePublicKey(keyName: "non-existent-key") {
+    name
+    key
+  }
+}

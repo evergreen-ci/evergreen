@@ -166,7 +166,10 @@ func smokeStartEvergreen() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "error setting up monitor client directory")
 				}
-				defer os.Remove(clientFile.Name())
+				defer func() {
+					grip.Error(clientFile.Close())
+					grip.Error(os.Remove(clientFile.Name()))
+				}()
 
 				err = smokeRunBinary(
 					exit,

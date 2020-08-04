@@ -82,6 +82,7 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  removePublicKey(keyName: String!): [PublicKey!]!
 }
 
 enum TaskSortCategory {

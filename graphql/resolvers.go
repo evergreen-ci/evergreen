@@ -1448,6 +1448,18 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	return myPublicKeys, nil
 }
 
+func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) ([]*restModel.APIPubKey, error) {
+	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
+	}
+	err := route.MustHaveUser(ctx).DeletePublicKey(keyName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
+	}
+	myPublicKeys := getMyPublicKeys(ctx)
+	return myPublicKeys, nil
+}
+
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	var err error
