@@ -81,6 +81,7 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
 }
 
 enum TaskSortCategory {
@@ -172,6 +173,19 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+input SpawnHostInput {
+  distroId: String!
+  region: String!
+  savePublicKey: Boolean!
+  publicKey: PublicKeyInput!
+  userDataScript: String
+  expiration: Time 
+  noExpiration: Boolean!
+  setUpScript: String
+  isVirtualWorkStation: Boolean!
+  homeVolumeSize: Int 
+}
+
 type Host {
   id: ID!
   hostUrl: String!
@@ -206,6 +220,7 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
 }
+
 type TaskInfo {
   id: ID
   name: String
