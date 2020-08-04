@@ -66,14 +66,6 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 	return obj.RunningTask.StartTime, nil
 }
 
-func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
-	if !obj.NoExpiration {
-		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
-		return &expirationTime, nil
-	}
-	return nil, nil
-}
-
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
@@ -220,18 +212,22 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		DistroID:             spawnHostInput.DistroID,
 		Region:               spawnHostInput.Region,
 		KeyName:              spawnHostInput.PublicKey.Key,
-		TaskID:               "",
-		TaskSync:             false,
-		SetupScript:          *spawnHostInput.SetUpScript,
-		UserData:             *spawnHostInput.UserDataScript,
-		InstanceTags:         nil,
-		InstanceType:         "",
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
-		IsCluster:            false,
 		NoExpiration:         spawnHostInput.NoExpiration,
-		HomeVolumeSize:       *spawnHostInput.HomeVolumeSize,
-		HomeVolumeID:         "",
 	}
+	if spawnHostInput.SetUpScript != nil {
+		options.SetupScript = *spawnHostInput.SetUpScript
+	}
+	if spawnHostInput.UserDataScript != nil {
+		options.UserData = *spawnHostInput.UserDataScript
+	}
+	if spawnHostInput.HomeVolumeSize != nil {
+		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
+	}
+	if spawnHostInput.Expiration != nil {
+		options.Expiration = *spawnHostInput.Expiration
+	}
+
 	hc := &data.DBConnector{}
 	spawnHost, err := hc.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment().Settings())
 	if err != nil {

@@ -30,6 +30,7 @@ type APIHost struct {
 	LastCommunicationTime time.Time   `json:"last_communication"`
 	TotalIdleTime         APIDuration `json:"total_idle_time"`
 	CreationTime          *time.Time  `json:"creation_time"`
+	Expiration            *time.Time  `json:"expiration_time"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -50,6 +51,7 @@ type HostRequestOptions struct {
 	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
 	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
 	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
+	Expiration           time.Time  `json:"expiration" yaml:"expiration"`
 }
 
 type DistroInfo struct {
@@ -127,6 +129,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 	apiHost.LastCommunicationTime = v.LastCommunicationTime
+	apiHost.Expiration = ToTimePtr(v.ExpirationTime)
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
