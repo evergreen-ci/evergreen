@@ -788,8 +788,8 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 
 		if throttleCount > 0 {
 			grip.Info(message.Fields{
-				"message": "hosts were throttled",
-				"number":  throttleCount,
+				"message":           "host creation rate was throttled",
+				"hosts_not_created": throttleCount,
 			})
 		}
 
