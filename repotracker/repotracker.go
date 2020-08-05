@@ -768,6 +768,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	// create all builds for the version
 	buildsToCreate := []interface{}{}
 	tasksToCreate := task.Tasks{}
+	pairsToCreate := model.TVPairSet{}
+	// build all pairsToCreate before creating builds, to handle dependencies (if applicaable)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
@@ -788,11 +790,32 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			if !match {
 				continue
 			}
+			for _, t := range buildvariant.Tasks {
+				match, err := aliases.HasMatchingTask(buildvariant.Name, buildvariant.Tags, projectInfo.Project.FindProjectTask(t.Name))
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "error finding tasks with alias filter",
+						"task":    t.Name,
+						"project": projectInfo.Project.Identifier,
+						"alias":   aliases,
+					}))
+					continue
+				}
+				if match {
+					pairsToCreate = append(pairsToCreate, model.TVPair{Variant: buildvariant.Name, TaskName: t.Name})
+				}
+			}
+			pairsToCreate = model.IncludePatchDependencies(projectInfo.Project, pairsToCreate)
 		}
+	}
+
+	for _, buildvariant := range projectInfo.Project.BuildVariants {
+		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
 			Project:        *projectInfo.Project,
 			Version:        *v,
 			TaskIDs:        taskIds,
+			TaskNames:      taskNames,
 			BuildName:      buildvariant.Name,
 			Activated:      false,
 			SourceRev:      sourceRev,

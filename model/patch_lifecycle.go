@@ -311,6 +311,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if projectRef == nil {
+		return nil, errors.Errorf("project '%s' doesn't exist", p.Project)
+	}
 
 	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

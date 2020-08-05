@@ -757,7 +757,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection),
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection, ProjectAliasCollection),
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
@@ -809,6 +809,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 		So(pref.Insert(), ShouldBeNil)
 
+		alias := ProjectAlias{ProjectID: pref.Identifier, TaskTags: []string{"pull-requests"}, Alias: evergreen.GithubAlias,
+			Variant: ".*"}
+		So(alias.Upsert(), ShouldBeNil)
 		project := &Project{
 			Identifier: "projectName",
 			Tasks: []ProjectTask{
@@ -825,7 +828,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 				{
 					Name: "taskC",
-					Tags: []string{"tag1", "tag2"},
+					Tags: []string{"tag1", "tag2", "pull-requests"},
 					DependsOn: []TaskUnitDependency{
 						{Name: "taskA"},
 						{Name: "taskB"},
@@ -871,17 +874,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Activated:    false,
 				},
 			},
-			Config: `
-buildvariants:
-- name: "buildVar"
-  run_on:
-   - "arch"
-  tasks:
-   - name: "taskA"
-   - name: "taskB"
-   - name: "taskC"
-   - name: "taskD"
-`,
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -967,6 +959,23 @@ buildvariants:
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 2)
+		})
+
+		Convey("if an alias is passed in, dependencies are also created", func() {
+
+			args := BuildCreateArgs{
+				Project:   *project,
+				Version:   *v,
+				TaskIDs:   table,
+				BuildName: buildVar2.Name,
+				Activated: false,
+				Aliases:   []ProjectAlias{alias},
+				TaskNames: []string{"taskA", "taskB", "taskC"},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(tasks), ShouldEqual, 3)
 		})
 
 		Convey("ensure distro is populated to tasks", func() {

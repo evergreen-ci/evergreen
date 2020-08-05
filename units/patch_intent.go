@@ -213,6 +213,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
 	}
+	if pref == nil {
+		return errors.Errorf("patch project '%s' doesn't exist", patchDoc.Project)
+	}
 
 	if !pref.Enabled {
 		j.gitHubError = ProjectDisabled
