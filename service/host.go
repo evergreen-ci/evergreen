@@ -178,20 +178,20 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 		var msg flashMessage
 		switch modifyResult {
-		case fmt.Sprintf(HostTerminationQueueingSuccess, h.Id):
-			msg = NewSuccessFlash(fmt.Sprintf(HostTerminationQueueingSuccess, h.Id))
-		case fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status):
-			msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
+		case fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id):
+			msg = NewSuccessFlash(fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id))
+		case fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status):
+			msg = NewSuccessFlash(fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status))
 		}
 		PushFlash(uis.CookieStore, r, w, msg)
-		gimlet.WriteJSON(w, HostStatusWriteConfirm)
+		gimlet.WriteJSON(w, api.HostStatusWriteConfirm)
 	case "restartJasper":
 		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(HostRestartJasperConfirm))
-		gimlet.WriteJSON(w, HostRestartJasperConfirm)
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostRestartJasperConfirm))
+		gimlet.WriteJSON(w, api.HostRestartJasperConfirm)
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 	}
