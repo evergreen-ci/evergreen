@@ -235,6 +235,7 @@ type ComplexityRoot struct {
 		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
 		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
+		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
 		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
 	}
 
@@ -563,6 +564,7 @@ type MutationResolver interface {
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
+	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1550,6 +1552,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UnscheduleTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.updatePublicKey":
+		if e.complexity.Mutation.UpdatePublicKey == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updatePublicKey_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdatePublicKey(childComplexity, args["targetKeyName"].(string), args["updateInfo"].(PublicKeyInput)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -3162,6 +3176,10 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   removePublicKey(keyName: String!): [PublicKey!]!
+  updatePublicKey(
+    targetKeyName: String!
+    updateInfo: PublicKeyInput!
+  ): [PublicKey!]!
 }
 
 enum TaskSortCategory {
@@ -4008,6 +4026,28 @@ func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Conte
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["targetKeyName"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["targetKeyName"] = arg0
+	var arg1 PublicKeyInput
+	if tmp, ok := rawArgs["updateInfo"]; ok {
+		arg1, err = ec.unmarshalNPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["updateInfo"] = arg1
 	return args, nil
 }
 
@@ -8552,6 +8592,47 @@ func (ec *executionContext) _Mutation_removePublicKey(ctx context.Context, field
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().RemovePublicKey(rctx, args["keyName"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPubKey)
+	fc.Result = res
+	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updatePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updatePublicKey_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdatePublicKey(rctx, args["targetKeyName"].(string), args["updateInfo"].(PublicKeyInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17583,6 +17664,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removePublicKey":
 			out.Values[i] = ec._Mutation_removePublicKey(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updatePublicKey":
+			out.Values[i] = ec._Mutation_updatePublicKey(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
