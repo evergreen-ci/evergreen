@@ -180,6 +180,7 @@ input UseSpruceOptionsInput {
 type Host {
   id: ID!
   hostUrl: String!
+  tag: String!
   distroId: String
   status: String!
   runningTask: TaskInfo
