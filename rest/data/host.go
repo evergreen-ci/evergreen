@@ -119,6 +119,7 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		HomeVolumeSize:       options.HomeVolumeSize,
 		HomeVolumeID:         options.HomeVolumeID,
 		Region:               options.Region,
+		Expiration:           &options.Expiration,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
 			TaskSync:    options.TaskSync,

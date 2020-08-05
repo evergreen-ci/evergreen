@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -113,6 +114,19 @@ type RecentTaskLogs struct {
 	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
 	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
 	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
+}
+
+type SpawnHostInput struct {
+	DistroID             string          `json:"distroId"`
+	Region               string          `json:"region"`
+	SavePublicKey        bool            `json:"savePublicKey"`
+	PublicKey            *PublicKeyInput `json:"publicKey"`
+	UserDataScript       *string         `json:"userDataScript"`
+	Expiration           *time.Time      `json:"expiration"`
+	NoExpiration         bool            `json:"noExpiration"`
+	SetUpScript          *string         `json:"setUpScript"`
+	IsVirtualWorkStation bool            `json:"isVirtualWorkStation"`
+	HomeVolumeSize       *int            `json:"homeVolumeSize"`
 }
 
 type TaskFiles struct {

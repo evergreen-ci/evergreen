@@ -603,6 +603,21 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 	return idType, id, nil
 }
 
+func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
+	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
+		return InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
+	}
+	err := verifyPublicKey(ctx, publicKeyInput)
+	if err != nil {
+		return err
+	}
+	err = route.MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	if err != nil {
+		return InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
+	}
+	return nil
+}
+
 func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
 		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key name cannot be empty."))
