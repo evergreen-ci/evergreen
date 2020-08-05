@@ -7,7 +7,10 @@
       "tag": "evg-ubuntu1604-small-20200720144805-8687799505734220270",
       "distro": {
         "_id": "ubuntu1604-small",
-        "aliases": ["ubuntu1604", "ubuntu1604-test"],
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-test"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
@@ -22,13 +25,25 @@
       "priv_attempts": 1,
       "last_task": "",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T14:48:05.256Z" },
-      "start_time": { "$date": "2020-07-20T14:48:27Z" },
-      "agent_start_time": { "$date": "2020-07-20T14:49:20.449Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:48:27Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T14:49:20.449Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 1,
-      "last_task_completed_time": { "$date": "0001-01-01T00:00:00Z" },
-      "last_communication": { "$date": "2020-07-20T18:58:51.025Z" },
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T18:58:51.025Z"
+      },
       "status": "provisioning",
       "started_by": "testuser",
       "user_host": false,
@@ -36,7 +51,9 @@
       "needs_agent": false,
       "needs_agent_monitor": false,
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "90" },
+      "volume_total_size": {
+        "$numberLong": "90"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -47,8 +64,15 @@
       "running_task_project": "mongo-tools",
       "running_task_version": "5f15ad3c3627e07772ab2d01",
       "total_cost": 0.0011340309722222223,
-      "total_idle_time": { "$numberLong": "54073000000" },
-      "prov_time": { "$date": "2020-07-20T14:49:30.784Z" }
+      "total_idle_time": {
+        "$numberLong": "54073000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T14:49:30.784Z"
+      },
+      "expiration_time": {
+        "$date": "2020-07-21T10:48:05-04:00"
+      }
     },
     {
       "_id": "i-0f81a2d39744003dd",
@@ -57,14 +81,19 @@
       "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "distro": {
         "_id": "ubuntu1604-large",
-        "aliases": ["ubuntu1604", "ubuntu1604-build"],
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-build"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
         "provider_settings": [
           {
             "region": "us-east-1",
-            "security_group_ids": ["sg-1a636869"],
+            "security_group_ids": [
+              "sg-1a636869"
+            ],
             "key_name": "mci",
             "bid_price": 0.84,
             "instance_type": "c4.4xlarge",
@@ -128,13 +157,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -143,7 +184,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 120,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -164,13 +207,25 @@
       "priv_attempts": 1,
       "last_task": "mongodb_mongo_v3.6_ubuntu1604_debug_ubsan_rollback_fuzzer_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
       "no_expiration": true,
-      "creation_time": { "$date": "2020-07-20T18:01:08.213Z" },
-      "start_time": { "$date": "2020-07-20T18:02:02Z" },
-      "agent_start_time": { "$date": "2020-07-20T18:02:50.406Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T18:01:08.213Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:02:02Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T18:02:50.406Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 2,
-      "last_task_completed_time": { "$date": "2020-07-20T19:00:10.630Z" },
-      "last_communication": { "$date": "2020-07-20T19:08:41.928Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T19:00:10.630Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T19:08:41.928Z"
+      },
       "status": "running",
       "started_by": "testuser",
       "user_host": false,
@@ -179,7 +234,9 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "370" },
+      "volume_total_size": {
+        "$numberLong": "370"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -244,8 +301,12 @@
         }
       ],
       "total_cost": 0.3028389870061729,
-      "total_idle_time": { "$numberLong": "50424000000" },
-      "prov_time": { "$date": "2020-07-20T18:03:00.758Z" },
+      "total_idle_time": {
+        "$numberLong": "50424000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T18:03:00.758Z"
+      },
       "last_bv": "ubuntu1604-debug-ubsan",
       "last_group": "",
       "last_project": "mongodb-mongo-v3.6",
@@ -261,15 +322,22 @@
   "distro": [
     {
       "_id": "ubuntu1604-large",
-      "aliases": ["ubuntu1604", "ubuntu1604-build"],
+      "aliases": [
+        "ubuntu1604",
+        "ubuntu1604-build"
+      ],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
       "provider_settings": [
         {
           "hosts": [
-            { "name": "rhel71-ppc-1.pic.build.10gen.cc" },
-            { "name": "rhel71-ppc-4.pic.build.10gen.cc" }
+            {
+              "name": "rhel71-ppc-1.pic.build.10gen.cc"
+            },
+            {
+              "name": "rhel71-ppc-4.pic.build.10gen.cc"
+            }
           ]
         }
       ],
@@ -297,39 +365,71 @@
       ],
       "spawn_allowed": false,
       "expansions": [
-        { "key": "decompress", "value": "tar xzvf" },
-        { "key": "ps", "value": "ps aux" },
-        { "key": "kill_pid", "value": "kill -- -$(ps opgid= %v)" }
+        {
+          "key": "decompress",
+          "value": "tar xzvf"
+        },
+        {
+          "key": "ps",
+          "value": "ps aux"
+        },
+        {
+          "key": "kill_pid",
+          "value": "kill -- -$(ps opgid= %v)"
+        }
       ],
-      "finder_settings": { "version": "legacy" },
+      "finder_settings": {
+        "version": "legacy"
+      },
       "planner_settings": {
         "version": "tunable",
-        "target_time": { "$numberLong": "0" },
+        "target_time": {
+          "$numberLong": "0"
+        },
         "group_versions": false,
-        "patch_zipper_factor": { "$numberLong": "0" },
-        "patch_time_in_queue_factor": { "$numberLong": "0" },
-        "commit_queue_factor": { "$numberLong": "0" },
-        "mainline_time_in_queue_factor": { "$numberLong": "0" },
-        "expected_runtime_factor": { "$numberLong": "0" }
+        "patch_zipper_factor": {
+          "$numberLong": "0"
+        },
+        "patch_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "commit_queue_factor": {
+          "$numberLong": "0"
+        },
+        "mainline_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "expected_runtime_factor": {
+          "$numberLong": "0"
+        }
       },
-      "dispatcher_settings": { "version": "revised-with-dependencies" },
+      "dispatcher_settings": {
+        "version": "revised-with-dependencies"
+      },
       "host_allocator_settings": {
         "version": "utilization",
         "minimum_hosts": 0,
         "maximum_hosts": 0,
-        "acceptable_host_idle_time": { "$numberLong": "0" }
+        "acceptable_host_idle_time": {
+          "$numberLong": "0"
+        }
       },
       "disable_shallow_clone": false,
       "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": true,
       "is_cluster": false,
-      "home_volume_settings": { "format_command": "" },
+      "home_volume_settings": {
+        "format_command": ""
+      },
       "icecream_settings": {}
     },
     {
       "_id": "ubuntu1604-small",
-      "aliases": ["ubuntu1604", "ubuntu1604-test"],
+      "aliases": [
+        "ubuntu1604",
+        "ubuntu1604-test"
+      ],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -339,10 +439,16 @@
           "subnet_id": "subnet-50f3fe0a",
           "is_vpc": true,
           "instance_type": "c4.xlarge",
-          "security_group_ids": ["sg-1a636869"],
+          "security_group_ids": [
+            "sg-1a636869"
+          ],
           "ami": "ami-0fe75f64f45d15c4c",
           "mount_points": [
-            { "device_name": "/dev/xvdd", "size": 50, "virtual_name": "" }
+            {
+              "device_name": "/dev/xvdd",
+              "size": 50,
+              "virtual_name": ""
+            }
           ],
           "key_name": "mci",
           "vpc_name": "production_dynamic_vpc",
@@ -376,35 +482,67 @@
       ],
       "spawn_allowed": true,
       "expansions": [
-        { "key": "decompress", "value": "tar zxvf" },
-        { "key": "ps", "value": "ps aux" },
-        { "key": "kill_pid", "value": "kill -- -$(ps opgid= %v)" },
-        { "key": "scons_prune_ratio", "value": "0.8" }
+        {
+          "key": "decompress",
+          "value": "tar zxvf"
+        },
+        {
+          "key": "ps",
+          "value": "ps aux"
+        },
+        {
+          "key": "kill_pid",
+          "value": "kill -- -$(ps opgid= %v)"
+        },
+        {
+          "key": "scons_prune_ratio",
+          "value": "0.8"
+        }
       ],
-      "finder_settings": { "version": "legacy" },
+      "finder_settings": {
+        "version": "legacy"
+      },
       "planner_settings": {
         "version": "tunable",
-        "target_time": { "$numberLong": "0" },
+        "target_time": {
+          "$numberLong": "0"
+        },
         "group_versions": false,
-        "patch_zipper_factor": { "$numberLong": "0" },
-        "patch_time_in_queue_factor": { "$numberLong": "0" },
-        "commit_queue_factor": { "$numberLong": "0" },
-        "mainline_time_in_queue_factor": { "$numberLong": "0" },
-        "expected_runtime_factor": { "$numberLong": "0" }
+        "patch_zipper_factor": {
+          "$numberLong": "0"
+        },
+        "patch_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "commit_queue_factor": {
+          "$numberLong": "0"
+        },
+        "mainline_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "expected_runtime_factor": {
+          "$numberLong": "0"
+        }
       },
-      "dispatcher_settings": { "version": "revised-with-dependencies" },
+      "dispatcher_settings": {
+        "version": "revised-with-dependencies"
+      },
       "host_allocator_settings": {
         "version": "utilization",
         "minimum_hosts": 0,
         "maximum_hosts": 300,
-        "acceptable_host_idle_time": { "$numberLong": "0" }
+        "acceptable_host_idle_time": {
+          "$numberLong": "0"
+        }
       },
       "disable_shallow_clone": false,
       "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": false,
       "is_cluster": false,
-      "home_volume_settings": { "format_command": "" },
+      "home_volume_settings": {
+        "format_command": ""
+      },
       "icecream_settings": {}
     }
   ]
