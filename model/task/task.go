@@ -396,7 +396,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, true)
+			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -2249,22 +2249,14 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
-func (t *Task) BlockedState() (string, error) {
+func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
 	if t.Blocked() {
 		return evergreen.TaskStatusBlocked, nil
 	}
 
 	for _, dep := range t.DependsOn {
-		depTask, err := FindOne(ById(dep.TaskId).WithFields(StatusKey, DependsOnKey))
-		if err != nil {
-			return "", errors.Wrapf(err, "can't get dependent task '%s'", dep.TaskId)
-		}
-		if depTask == nil {
-			grip.Error(message.Fields{
-				"message":        "could not find dependent task",
-				"task":           t.Id,
-				"dependent_task": dep.TaskId,
-			})
+		depTask, ok := dependencies[dep.TaskId]
+		if !ok {
 			continue
 		}
 		if !t.SatisfiesDependency(depTask) {

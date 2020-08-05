@@ -1065,7 +1065,7 @@ func TestBlocked(t *testing.T) {
 					{TaskId: "t2", Status: evergreen.TaskSucceeded, Unattainable: true},
 				},
 			}
-			state, err := t1.BlockedState()
+			state, err := t1.BlockedState(map[string]*Task{})
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusBlocked, state)
 		},
@@ -1081,8 +1081,8 @@ func TestBlocked(t *testing.T) {
 				Status: evergreen.TaskDispatched,
 			}
 			require.NoError(t, t2.Insert())
-
-			state, err := t1.BlockedState()
+			dependencies := map[string]*Task{t2.Id: &t2}
+			state, err := t1.BlockedState(dependencies)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusPending, state)
 		},
@@ -1101,8 +1101,8 @@ func TestBlocked(t *testing.T) {
 				},
 			}
 			require.NoError(t, t2.Insert())
-
-			state, err := t1.BlockedState()
+			dependencies := map[string]*Task{t2.Id: &t2}
+			state, err := t1.BlockedState(dependencies)
 			assert.NoError(t, err)
 			assert.Equal(t, "", state)
 		},
@@ -1182,7 +1182,12 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert())
-	state, err := t1.BlockedState()
+	dependencies := map[string]*Task{
+		"t2": &t2,
+		"t3": &t3,
+		"t4": &t4,
+	}
+	state, err := t1.BlockedState(dependencies)
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskStatusPending, state)
 }
