@@ -1023,6 +1023,17 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	return task, err
 }
 
+// FindOneIdNewOrOld attempts to find a given task ID by first looking in the
+// tasks collection, then the old tasks collection
+func FindOneIdNewOrOld(id string) (*Task, error) {
+	task, err := FindOne(ById(id))
+	if task == nil || err != nil {
+		return FindOneOld(ById(id))
+	}
+
+	return task, err
+}
+
 // Find returns all tasks that satisfy the query.
 func Find(query db.Q) ([]Task, error) {
 	tasks := []Task{}

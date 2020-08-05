@@ -530,12 +530,12 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 }
 
 func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneId(*at.Id)
+	t, err := task.FindOneIdNewOrOld(*at.Id)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
 	}
 	isBlocked := t.Blocked()
 	return &isBlocked, nil

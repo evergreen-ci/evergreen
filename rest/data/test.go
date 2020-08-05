@@ -15,7 +15,7 @@ import (
 type DBTestConnector struct{}
 
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status string, limit, execution int) ([]testresult.TestResult, error) {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneIdNewOrOld(taskId)
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -59,7 +59,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status st
 	return res, nil
 }
 func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneIdNewOrOld(taskId)
 	if err != nil {
 		return 0, errors.Wrapf(err, fmt.Sprintf("error finding task %s", taskId))
 	}
@@ -80,7 +80,7 @@ func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName strin
 }
 
 func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, testName string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneIdNewOrOld(taskId)
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
