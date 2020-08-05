@@ -145,7 +145,7 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithDialOpts() {
 		BaseAddress: "localhost",
 		RPCPort:     "3000",
 	}
-	dialServer, err := testutil.NewMockMetricsServerWithAddress(ctx, dialOpts)
+	dialServer, err := testutil.NewMockMetricsServerWithDialOpts(ctx, dialOpts)
 	s.Require().NoError(err)
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
