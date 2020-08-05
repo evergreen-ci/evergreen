@@ -81,6 +81,7 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  updateStatus(hostIds: [String!]!, status: String!, notes: String!): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   removePublicKey(keyName: String!): [PublicKey!]!
 }

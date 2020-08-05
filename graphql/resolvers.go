@@ -1396,7 +1396,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 	user := route.MustHaveUser(ctx)
 
 	if len(hostIds) == 0 {
-		InputValidationError.Send(ctx, "hostIds cannot be empty")
+		return 0, InputValidationError.Send(ctx, "hostIds cannot be empty")
 	}
 
 	hosts, err := host.Find(host.ByIds(hostIds))
@@ -1413,7 +1413,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 
 	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
 	if err != nil {
-		InternalServerError.Send(ctx, "unable to get user permissions")
+		return 0, InternalServerError.Send(ctx, "unable to get user permissions")
 	}
 
 	hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
@@ -1428,7 +1428,44 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 	})
 
 	if err != nil {
-		InternalServerError.Send(ctx, "error marking selected hosts as needing Jasper service restarted")
+		return 0, InternalServerError.Send(ctx, "error marking selected hosts as needing Jasper service restarted")
+	}
+
+	return hostsUpdated, nil
+}
+
+func (r *mutationResolver) UpdateStatus(ctx context.Context, hostIds []string, status string, notes string) (int, error) {
+	user := route.MustHaveUser(ctx)
+
+	if len(hostIds) == 0 {
+		return 0, InputValidationError.Send(ctx, "hostIds cannot be empty")
+	}
+
+	hosts, err := host.Find(host.ByIds(hostIds))
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts to update : %s", err.Error()))
+	}
+	if len(hosts) == 0 {
+		return 0, ResourceNotFound.Send(ctx, "No matching hosts found")
+	}
+
+	var permissions map[string]gimlet.Permissions
+
+	env := evergreen.GetEnvironment()
+	rm := env.RoleManager()
+	rq := env.RemoteQueue()
+
+	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, "unable to get user permissions")
+	}
+
+	hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		_, modifyErr := api.ModifyHostStatus(rq, h, status, notes, user)
+		return modifyErr
+	})
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, "unable to get user permissions")
 	}
 
 	return hostsUpdated, nil
