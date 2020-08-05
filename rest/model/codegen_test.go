@@ -15,6 +15,10 @@ import (
 )
 
 func TestCodegen(t *testing.T) {
+	if os.Getenv("RACE_DETECTOR") != "" {
+		t.Skip()
+		return
+	}
 	configFile, err := ioutil.ReadFile("testdata/schema/config.yml")
 	require.NoError(t, err)
 	var gqlConfig config.Config
