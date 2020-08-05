@@ -272,14 +272,44 @@ func (s *SystemMetricsSuite) TestStartSystemMetricsCollector() {
 	s.Assert().Len(s.server.StreamData["first"], 2)
 	s.server.Mu.Unlock()
 	s.Assert().NoError(c.catcher.Resolve())
+
+	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		Task:               s.task,
+		Interval:           time.Second,
+		Collectors:         collectors,
+		Conn:               s.conn,
+		MaxBufferSize:      1,
+		NoBufferTimedFlush: true,
+	})
+	s.Require().NoError(err)
+	s.server.CreateErr = true
+	s.Require().Error(c.Start(ctx))
 }
 
 // TestSystemMetricsCollectorStream tests that an individual streaming process
-// properly is able to send data to the server, and properly handles any errors.
-func (s *SystemMetricsSuite) TestSystemMetricsCollectorStream() {
-	// check data is sending
+// properly handles any errors.
+func (s *SystemMetricsSuite) TestSystemMetricsCollectorStreamError() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	collectors := []metricCollector{&mockMetricCollector{
+		name: "first",
+	}, &mockMetricCollector{
+		name: "second",
+	}}
 
-	// check only a single process shuts down on an error
+	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		Task:               s.task,
+		Interval:           time.Second,
+		Collectors:         collectors,
+		Conn:               s.conn,
+		MaxBufferSize:      1,
+		NoBufferTimedFlush: true,
+	})
+	s.Require().NoError(err)
+	s.server.StreamErr = true
+	s.Require().NoError(c.Start(ctx))
+
+	s.Require().Error(c.Close())
 }
 
 // TestCloseSystemMetricsCollector tests that Close properly shuts
@@ -301,12 +331,22 @@ func (s *SystemMetricsSuite) TestCloseSystemMetricsCollector() {
 		Conn:       s.conn,
 	})
 	s.Require().NoError(err)
-	s.Require().NotNil(c)
-	s.Assert().Nil(s.server.Create)
 	s.Require().NoError(c.Start(ctx))
 
 	s.Require().NoError(c.Close())
 	s.server.Mu.Lock()
 	s.Assert().NotNil(s.server.Close)
 	s.server.Mu.Unlock()
+
+	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		Task:       s.task,
+		Interval:   time.Second,
+		Collectors: collectors,
+		Conn:       s.conn,
+	})
+	s.Require().NoError(err)
+	s.server.CloseErr = true
+	s.Require().NoError(c.Start(ctx))
+
+	s.Require().Error(c.Close())
 }
