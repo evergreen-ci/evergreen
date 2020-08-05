@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -35,6 +36,31 @@ var (
 		evergreen.HostTerminated,
 	}
 )
+
+func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
+	if len(hostIds) == 0 {
+		return nil, nil, http.StatusBadRequest, errors.Errorf("hostIds cannot be empty")
+	}
+
+	hosts, err := host.Find(host.ByIds(hostIds))
+	if err != nil {
+		return nil, nil, http.StatusInternalServerError, errors.Errorf("Error getting hosts to update")
+	}
+	if len(hosts) == 0 {
+		return nil, nil, http.StatusNotFound, errors.Errorf("No matching hosts found")
+	}
+
+	var permissions map[string]gimlet.Permissions
+
+	rm := evergreen.GetEnvironment().RoleManager()
+
+	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
+	if err != nil {
+		return nil, nil, http.StatusInternalServerError, errors.Errorf("unable to get user permissions")
+	}
+
+	return hosts, permissions, 0, nil
+}
 
 // ModifyHostsWithPermissions performs an update on each of the given hosts
 // for which the permissions allow updates on that host.

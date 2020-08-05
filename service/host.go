@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -208,55 +207,29 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hostIds := opts.HostIds
-	if len(hostIds) == 1 && strings.TrimSpace(hostIds[0]) == "" {
-		http.Error(w, "No host ID's found in request", http.StatusBadRequest)
-		return
-	}
-
-	// fetch all relevant hosts
-	hosts, err := host.Find(host.ByIds(hostIds))
-
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, opts.HostIds)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding hosts"))
-		return
-	}
-	if len(hosts) == 0 {
-		http.Error(w, "No matching hosts found.", http.StatusBadRequest)
+		http.Error(w, err.Error(), httpStatus)
 		return
 	}
 
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		var hostsUpdated int
-		var permissions map[string]gimlet.Permissions
 		env := evergreen.GetEnvironment()
-		rm := env.RoleManager()
 		rq := env.RemoteQueue()
-		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
-		if err != nil {
-			http.Error(w, "Unable to get permissions", http.StatusInternalServerError)
-			return
-		}
-		hostsUpdated, err = api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+
+		hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
 			_, modifyErr := modifyHostStatus(rq, h, opts, user)
 			return modifyErr
 		})
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error updating status on selected hosts")))
 		}
+
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) will be updated to '%s'", hostsUpdated, opts.Status)))
 	case "restartJasper":
-		var hostsUpdated int
-		var permissions map[string]gimlet.Permissions
-		rm := evergreen.GetEnvironment().RoleManager()
-		permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
-		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "unable to get user permissions")))
-			return
-		}
-		hostsUpdated, err = api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
+		hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
 			modifyErr := h.SetNeedsJasperRestart(user.Username())
 			if adb.ResultsNotFound(modifyErr) {
 				return nil
@@ -270,6 +243,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking selected hosts as needing Jasper service restarted")))
 			return
 		}
+
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
