@@ -44,12 +44,6 @@ type SystemMetricCollector struct {
 	closed      bool
 }
 
-type diskUsageCollector struct{}
-
-type uptimeCollector struct{}
-
-type processCollector struct{}
-
 // DataFormat describes how the time series data is stored.
 type DataFormat int32
 
@@ -62,47 +56,34 @@ const (
 	DataFormatCSV  DataFormat = 4
 )
 
-type UptimeWrapper struct {
-	Uptime uint64 `json:"uptime"`
-}
+type diskUsageCollector struct{}
 
-type ProcessesWrapper struct {
-	Processes []ProcessData `json:"processes"`
-}
-
-type ProcessData struct {
-	Pid           int32         `json:"pid"`
-	CPUPercent    float64       `json:"%cpu"`
-	MemoryPercent float32       `json:"%mem"`
-	VSZ           uint64        `json:"vsz"`
-	RSS           uint64        `json:"rss"`
-	TT            string        `json:"tt"`
-	Stat          string        `json:"stat"`
-	Started       int64         `json:"started"`
-	Time          cpu.TimesStat `json:"time"`
-	Command       string        `json:"command"`
+func NewDiskUsageCollector() *diskUsageCollector {
+	return new(diskUsageCollector)
 }
 
 func (collector *diskUsageCollector) Name() string { return "disk_usage" }
 
-func (collector *uptimeCollector) Name() string { return "uptime" }
-
-func (collector *processCollector) Name() string { return "process" }
-
 func (collector *diskUsageCollector) Format() DataFormat { return DataFormatFTDC }
 
-func (collector *uptimeCollector) Format() DataFormat { return DataFormatFTDC }
-
-func (collector *processCollector) Format() DataFormat { return DataFormatJSON }
-
-func (collector *diskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
-	usage, err := disk.Usage("/")
+func (collector *diskUsageCollector) Collect(ctx context.Context, dir string) ([]byte, error) {
+	usage, err := disk.Usage(dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
 	return convertJSONToFTDC(ctx, usage)
 }
+
+type uptimeCollector struct{}
+
+type UptimeWrapper struct {
+	Uptime uint64 `json:"uptime"`
+}
+
+func (collector *uptimeCollector) Name() string { return "uptime" }
+
+func (collector *uptimeCollector) Format() DataFormat { return DataFormatFTDC }
 
 func (collector *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
 	uptime, err := host.Uptime()
@@ -114,10 +95,33 @@ func (collector *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
 	return convertJSONToFTDC(ctx, uptimeWrapper)
 }
 
+type processCollector struct{}
+
+type ProcessesWrapper struct {
+	Processes []ProcessData `json:"processes"`
+}
+
+type ProcessData struct {
+	PID               int32          `json:"pid"`
+	CPUPercent        float64        `json:"%cpu"`
+	MemoryPercent     float32        `json:"%mem"`
+	VirtualMemorySize uint64         `json:"vsz"`
+	ResidentSetSize   uint64         `json:"rss"`
+	Terminal          string         `json:"tt"`
+	Stat              string         `json:"stat"`
+	Started           int64          `json:"started"`
+	Time              *cpu.TimesStat `json:"time"`
+	Command           string         `json:"command"`
+}
+
+func (collector *processCollector) Name() string { return "process" }
+
+func (collector *processCollector) Format() DataFormat { return DataFormatJSON }
+
 func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) {
 	procs, err := process.Processes()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil.")
 	}
 
 	procMetrics := make([]ProcessData, len(procs))
@@ -159,16 +163,16 @@ func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) 
 		}
 
 		processWrapper := ProcessData{
-			Pid:           process.Pid,
-			CPUPercent:    cpuPercent,
-			MemoryPercent: memoryPercent,
-			VSZ:           vms,
-			RSS:           rss,
-			TT:            terminal,
-			Stat:          status,
-			Started:       createTime,
-			Time:          *times,
-			Command:       name,
+			PID:               process.Pid,
+			CPUPercent:        cpuPercent,
+			MemoryPercent:     memoryPercent,
+			VirtualMemorySize: vms,
+			ResidentSetSize:   rss,
+			Terminal:          terminal,
+			Stat:              status,
+			Started:           createTime,
+			Time:              times,
+			Command:           name,
 		}
 		procMetrics[i] = processWrapper
 	}
