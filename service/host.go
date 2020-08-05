@@ -220,7 +220,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		rq := env.RemoteQueue()
 
 		hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			_, modifyErr := modifyHostStatus(rq, h, opts, user)
+			_, modifyErr := api.ModifyHostStatus(rq, h, opts.Status, opts.Notes, user)
 			return modifyErr
 		})
 		if err != nil {
