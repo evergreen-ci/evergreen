@@ -60,7 +60,7 @@ type taskContext struct {
 	jasper                 jasper.Manager
 	logs                   *apimodels.TaskLogs
 	statsCollector         *StatsCollector
-	systemMetricsCollector *SystemMetricsCollector
+	systemMetricsCollector *systemMetricsCollector
 	task                   client.TaskData
 	taskGroup              string
 	runGroupSetup          bool

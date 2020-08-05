@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"sync"
 
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/internal"
@@ -16,24 +17,28 @@ import (
 // MockMetricsServer sets up a mock cedar server for testing sending system
 // metrics data to cedar using grpc.
 type MockMetricsServer struct {
-	CreateErr bool
-	AddErr    bool
-	StreamErr bool
-	CloseErr  bool
-	Create    bool
-	Data      bool
-	Stream    bool
-	Close     bool
-	DialOpts  timber.DialCedarOptions
+	Mu         sync.Mutex
+	CreateErr  bool
+	AddErr     bool
+	StreamErr  bool
+	CloseErr   bool
+	Create     *internal.SystemMetrics
+	Data       *internal.SystemMetricsData
+	StreamData map[string][]*internal.SystemMetricsData
+	Close      *internal.SystemMetricsSeriesEnd
+	DialOpts   timber.DialCedarOptions
 }
 
 // CreateSystemMetricsRecord will return an error if CreateErr is true, and
 // otherwise set Create to true.
 func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *internal.SystemMetrics) (*internal.SystemMetricsResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
 	if ms.CreateErr {
 		return nil, errors.New("create error")
 	}
-	ms.Create = true
+	ms.Create = in
 	return &internal.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
@@ -42,10 +47,13 @@ func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *in
 // AddSystemMetrics will return an error if AddErr is true, and
 // otherwise set Data to true.
 func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.SystemMetricsData) (*internal.SystemMetricsResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
 	if ms.AddErr {
 		return nil, errors.New("add error")
 	}
-	ms.Data = true
+	ms.Data = in
 	return &internal.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
@@ -56,6 +64,12 @@ func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.Sy
 func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetrics_StreamSystemMetricsServer) error {
 	ctx := stream.Context()
 	id := ""
+
+	ms.Mu.Lock()
+	if ms.StreamData == nil {
+		ms.StreamData = map[string][]*internal.SystemMetricsData{}
+	}
+	ms.Mu.Unlock()
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -76,21 +90,26 @@ func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetr
 			return fmt.Errorf("chunk id %s doesn't match id %s", chunk.Id, id)
 		}
 
+		ms.Mu.Lock()
 		if ms.StreamErr {
+			ms.Mu.Unlock()
 			return errors.New("error in stream")
 		}
-		ms.Stream = true
-		return nil
+		ms.StreamData[chunk.Type] = append(ms.StreamData[chunk.Type], chunk)
+		ms.Mu.Unlock()
 	}
 }
 
 // CloseMetrics will return an error if CloseErr is true, and otherwise set
 // Close to true.
 func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *internal.SystemMetricsSeriesEnd) (*internal.SystemMetricsResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
 	if ms.CloseErr {
 		return nil, errors.New("close error")
 	}
-	ms.Close = true
+	ms.Close = in
 	return &internal.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
@@ -106,14 +125,38 @@ func (ms *MockMetricsServer) Address() string {
 func NewMockMetricsServer(ctx context.Context, basePort int) (*MockMetricsServer, error) {
 	srv := &MockMetricsServer{}
 	port := GetPortNumber(basePort)
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
 	srv.DialOpts = timber.DialCedarOptions{
 		BaseAddress: "localhost",
 		RPCPort:     strconv.Itoa(port),
+	}
+
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	s := grpc.NewServer()
+	internal.RegisterCedarSystemMetricsServer(s, srv)
+
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+	return srv, nil
+}
+
+// NewMockMetricsServerForDialOpts will return a new MockMetricsServer listening
+// on the port and url from the specified dial options
+func NewMockMetricsServerWithAddress(ctx context.Context, opts timber.DialCedarOptions) (*MockMetricsServer, error) {
+	srv := &MockMetricsServer{}
+	srv.DialOpts = opts
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	s := grpc.NewServer()

@@ -96,16 +96,13 @@ type ConnectionOptions struct {
 }
 
 func (opts ConnectionOptions) validate() error {
-	if (opts.DialOpts.APIKey == "" && opts.DialOpts.Username != "") ||
-		(opts.DialOpts.APIKey != "" && opts.DialOpts.Username == "") {
-		return errors.New("must provide both username and api key or neither")
-	}
+	hasAuth := opts.DialOpts.Username != "" && (opts.DialOpts.APIKey != "" || opts.DialOpts.Password != "")
 	if (opts.DialOpts.BaseAddress == "" && opts.DialOpts.RPCPort != "") ||
 		(opts.DialOpts.BaseAddress != "" && opts.DialOpts.RPCPort == "") {
 		return errors.New("must provide both base address and rpc port or neither")
 	}
-	if opts.DialOpts.APIKey == "" && opts.DialOpts.BaseAddress == "" {
-		return errors.New("must specify username and api key, or address and port for an insecure connection")
+	if !hasAuth && opts.DialOpts.BaseAddress == "" {
+		return errors.New("must specify username and api key/password, or address and port for an insecure connection")
 	}
 	return nil
 }

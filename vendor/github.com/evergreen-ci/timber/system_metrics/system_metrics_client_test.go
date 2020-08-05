@@ -135,7 +135,9 @@ func TestNewSystemMetricsClient(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.Close)
+		srv.Mu.Lock()
+		defer srv.Mu.Unlock()
+		assert.NotNil(t, srv.Close)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
 		connOpts := ConnectionOptions{}
@@ -158,7 +160,9 @@ func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.Close)
+		srv.Mu.Lock()
+		defer srv.Mu.Unlock()
+		assert.NotNil(t, srv.Close)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
 		client, err := NewSystemMetricsClientWithExistingConnection(ctx, nil)
@@ -181,7 +185,9 @@ func TestCloseClient(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.Close)
+		srv.Mu.Lock()
+		assert.NotNil(t, srv.Close)
+		srv.Mu.Unlock()
 
 		require.NoError(t, client.CloseClient())
 		require.Error(t, client.CloseSystemMetrics(ctx, "ID", true))
@@ -192,7 +198,9 @@ func TestCloseClient(t *testing.T) {
 		client, err := NewSystemMetricsClientWithExistingConnection(ctx, conn)
 		require.NoError(t, err)
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))
-		assert.True(t, srv.Close)
+		srv.Mu.Lock()
+		assert.NotNil(t, srv.Close)
+		srv.Mu.Unlock()
 
 		require.NoError(t, client.CloseClient())
 		require.NoError(t, client.CloseSystemMetrics(ctx, "ID", true))

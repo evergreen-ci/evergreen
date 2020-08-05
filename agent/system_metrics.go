@@ -68,12 +68,12 @@ type systemMetricsCollector struct {
 }
 
 // systemMetricsCollectorOptions are the required values for creating a new
-// systemMetricsCollector. Only one of Comm or Conn should be set.
+// systemMetricsCollector. Only one of DialOpts or Conn should be set.
 type systemMetricsCollectorOptions struct {
 	Task       *task.Task
 	Interval   time.Duration
 	Collectors []metricCollector
-	Comm       client.Communicator
+	DialOpts   *timber.DialCedarOptions
 	Conn       *grpc.ClientConn
 
 	// These options configure the timber stream buffer, and can be left empty
@@ -99,8 +99,8 @@ func (s *systemMetricsCollectorOptions) validate() error {
 		return errors.New("must provide at least one metricCollector")
 	}
 
-	if (s.Comm == nil && s.Conn == nil) || (s.Comm != nil && s.Conn != nil) {
-		return errors.New("must provide either a communicator or an existing client connection")
+	if (s.DialOpts == nil && s.Conn == nil) || (s.DialOpts != nil && s.Conn != nil) {
+		return errors.New("must provide either options to dial cedar or an existing client connection")
 	}
 
 	if s.BufferTimedFlushInterval < 0 {
@@ -133,8 +133,8 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	if opts.Comm != nil {
-		s.client, err = setupCedarClient(ctx, opts.Comm)
+	if opts.DialOpts != nil {
+		s.client, err = dialCedar(ctx, opts.DialOpts)
 	} else {
 		s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.Conn)
 	}
@@ -160,7 +160,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	streamingCtx, s.streamingCancel = context.WithCancel(ctx)
 
 	for _, collector := range s.collectors {
-		stream, err := s.client.StreamSystemMetrics(streamingCtx, metrics.MetricDataOpts{
+		stream, err := s.client.StreamSystemMetrics(ctx, metrics.MetricDataOpts{
 			Id:         s.id,
 			MetricType: collector.Name(),
 			Format:     metrics.DataFormat(collector.Format()),
@@ -214,7 +214,9 @@ func (s *systemMetricsCollector) closeOnCancel(outerCtx, streamingCtx context.Co
 	for {
 		select {
 		case <-outerCtx.Done():
-			s.streamingCancel()
+			if s.streamingCancel != nil {
+				s.streamingCancel()
+			}
 			s.cleanup()
 			grip.Error(s.catcher.Resolve())
 			return
@@ -252,7 +254,9 @@ func (s *systemMetricsCollector) Close() error {
 	}
 	s.mu.Unlock()
 
-	s.streamingCancel()
+	if s.streamingCancel != nil {
+		s.streamingCancel()
+	}
 	s.close.Wait()
 	return s.catcher.Resolve()
 }
@@ -271,7 +275,7 @@ func getSystemMetricsInfo(t *task.Task) *metrics.SystemMetricsOptions {
 	}
 }
 
-func setupCedarClient(ctx context.Context, c client.Communicator) (*metrics.SystemMetricsClient, error) {
+func getDialOpts(ctx context.Context, c client.Communicator) (*timber.DialCedarOptions, error) {
 	bi, err := c.GetBuildloggerInfo(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting cedar dial options")
@@ -284,8 +288,12 @@ func setupCedarClient(ctx context.Context, c client.Communicator) (*metrics.Syst
 		APIKey:      bi.APIKey,
 		Retries:     10,
 	}
+	return &dialOpts, nil
+}
+
+func dialCedar(ctx context.Context, dialOpts *timber.DialCedarOptions) (*metrics.SystemMetricsClient, error) {
 	connOpts := metrics.ConnectionOptions{
-		DialOpts: dialOpts,
+		DialOpts: *dialOpts,
 	}
 	mc, err := metrics.NewSystemMetricsClient(ctx, connOpts)
 	if err != nil {

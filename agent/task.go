@@ -91,19 +91,23 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	var err error
-	tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       tc.taskModel,
-		Interval:   defaultStatsInterval,
-		Collectors: []metricCollector{},
-		Comm:       a.comm,
-	})
+	dialOpts, err := getDialOpts(ctx, a.comm)
 	if err != nil {
-		tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
+		tc.logger.System().Error(errors.Wrap(err, "error getting dial options for cedar"))
 	} else {
-		err = tc.systemMetricsCollector.Start(ctx)
+		tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+			Task:       tc.taskModel,
+			Interval:   defaultStatsInterval,
+			Collectors: []metricCollector{},
+			DialOpts:   dialOpts,
+		})
 		if err != nil {
-			tc.logger.System().Error(errors.Wrap(err, "error starting system metrics collection"))
+			tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
+		} else {
+			err = tc.systemMetricsCollector.Start(ctx)
+			if err != nil {
+				tc.logger.System().Error(errors.Wrap(err, "error starting system metrics collection"))
+			}
 		}
 	}
 
