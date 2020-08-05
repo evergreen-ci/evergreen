@@ -75,6 +75,25 @@ func (collector *diskUsageCollector) Collect(ctx context.Context, dir string) ([
 	return convertJSONToFTDC(ctx, usage)
 }
 
+func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
+	jsonMetrics, err := json.Marshal(metric)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting metrics to JSON")
+	}
+
+	opts := metrics.CollectJSONOptions{
+		InputSource:   bytes.NewReader(jsonMetrics),
+		SampleCount:   1,
+		FlushInterval: 1 * time.Second,
+	}
+
+	output, err := metrics.CollectJSONStream(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting FTDC to JSON")
+	}
+	return output, nil
+}
+
 type uptimeCollector struct{}
 
 type UptimeWrapper struct {
@@ -186,23 +205,4 @@ func createProcMetrics(procs []*process.Process) []ProcessData {
 		procMetrics[i] = processWrapper
 	}
 	return procMetrics
-}
-
-func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
-	jsonMetrics, err := json.Marshal(metric)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem converting metrics to JSON")
-	}
-
-	opts := metrics.CollectJSONOptions{
-		InputSource:   bytes.NewReader(jsonMetrics),
-		SampleCount:   1,
-		FlushInterval: 1 * time.Second,
-	}
-
-	output, err := metrics.CollectJSONStream(ctx, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem converting FTDC to JSON")
-	}
-	return output, nil
 }

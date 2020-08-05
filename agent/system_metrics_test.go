@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"path/filepath"
+	"os"
 	"testing"
 
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/ftdc"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +15,7 @@ func TestCollectDiskUsage(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	diskUsageCollector := &diskUsageCollector{}
-	path, _ := filepath.Abs("/")
+	path, _ := os.UserHomeDir()
 	output, err := diskUsageCollector.Collect(ctx, path)
 	assert.NoError(err)
 
@@ -72,8 +71,6 @@ func TestCollectProcesses(t *testing.T) {
 
 	var processes ProcessesWrapper
 	json.Unmarshal(output, &processes)
-
-	pp.Println(processes)
 
 	assert.NoError(err)
 	assert.NotEmpty(output)
