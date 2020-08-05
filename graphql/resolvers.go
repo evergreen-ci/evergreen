@@ -26,7 +26,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -1399,19 +1398,9 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-		modifyErr := h.SetNeedsJasperRestart(user.Username())
-		if adb.ResultsNotFound(modifyErr) {
-			return nil
-		}
-		if modifyErr != nil {
-			return modifyErr
-		}
-		return nil
-	})
-
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, "error marking selected hosts as needing Jasper service restarted")
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error))
 	}
 
 	return hostsUpdated, nil
@@ -1425,15 +1414,11 @@ func (r *mutationResolver) UpdateStatus(ctx context.Context, hostIds []string, s
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	env := evergreen.GetEnvironment()
-	rq := env.RemoteQueue()
+	rq := evergreen.GetEnvironment().RemoteQueue()
 
-	hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-		_, modifyErr := api.ModifyHostStatus(rq, h, status, notes, user)
-		return modifyErr
-	})
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, status, notes, user))
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, "unable to get user permissions")
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
 	return hostsUpdated, nil

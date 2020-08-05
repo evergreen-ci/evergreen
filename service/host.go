@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 )
 
@@ -169,7 +168,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	case "updateStatus":
 		currentStatus := h.Status
 		var modifyResult string
-		modifyResult, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
+		modifyResult, _, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
 
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
@@ -219,28 +218,17 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		env := evergreen.GetEnvironment()
 		rq := env.RemoteQueue()
 
-		hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			_, modifyErr := api.ModifyHostStatus(rq, h, opts.Status, opts.Notes, user)
-			return modifyErr
-		})
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, opts.Status, opts.Notes, user))
 		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error updating status on selected hosts")))
+			http.Error(w, fmt.Sprintf("error updating status on selected hosts: %s", err.Error()), httpStatus)
+			return
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) will be updated to '%s'", hostsUpdated, opts.Status)))
 	case "restartJasper":
-		hostsUpdated, err := api.ModifyHostsWithPermissions(hosts, permissions, func(h *host.Host) error {
-			modifyErr := h.SetNeedsJasperRestart(user.Username())
-			if adb.ResultsNotFound(modifyErr) {
-				return nil
-			}
-			if modifyErr != nil {
-				return modifyErr
-			}
-			return nil
-		})
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
 		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking selected hosts as needing Jasper service restarted")))
+			http.Error(w, fmt.Sprintf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()), httpStatus)
 			return
 		}
 

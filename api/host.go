@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -64,22 +65,27 @@ func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Hos
 
 // ModifyHostsWithPermissions performs an update on each of the given hosts
 // for which the permissions allow updates on that host.
-func ModifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permissions, modifyHost func(h *host.Host) error) (updated int, err error) {
+func ModifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permissions, modifyHost func(h *host.Host) (int, error)) (updated int, httpStatus int, err error) {
 	catcher := grip.NewBasicCatcher()
+
+	httpStatus = 0
+
 	for _, h := range hosts {
 		if perm[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
 			continue
 		}
-		if err := modifyHost(&h); err != nil {
+		if hs, err := modifyHost(&h); err != nil {
+			httpStatus = hs
 			catcher.Wrapf(err, "could not modify host '%s'", h.Id)
 			continue
 		}
 		updated++
 	}
-	return updated, catcher.Resolve()
+
+	return updated, httpStatus, catcher.Resolve()
 }
 
-func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, error) {
+func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, int, error) {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -87,43 +93,48 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 	currentStatus := h.Status
 
 	if !utility.StringSliceContains(validUpdateToStatuses, newStatus) {
-		return "", gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf(InvalidStatusError, newStatus),
-		}
+		return "", http.StatusBadRequest, errors.Errorf(InvalidStatusError, newStatus)
 	}
 
 	if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-		return "", gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    DecommissionStaticHostError,
-		}
+		return "", http.StatusBadRequest, errors.Errorf(DecommissionStaticHostError)
 	}
 
 	if newStatus == evergreen.HostTerminated {
 		if !queue.Info().Started {
-			return "", gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    HostTerminationQueueingError,
-			}
+			return "", http.StatusInternalServerError, errors.Errorf(HostTerminationQueueingError)
 		}
 
 		if err := queue.Put(ctx, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
-			return "", gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    HostTerminationQueueingError,
-			}
+			return "", http.StatusInternalServerError, errors.Errorf(HostTerminationQueueingError)
 		}
-		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), nil
+		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), 0, nil
 	}
 
 	err := h.SetStatus(newStatus, u.Id, notes)
 	if err != nil {
-		return "", gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, HostUpdateError).Error(),
-		}
+		return "", http.StatusInternalServerError, errors.Errorf(HostUpdateError, err.Error)
 	}
 
-	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), nil
+	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), 0, nil
+}
+
+func GetRestartJasperCallback(username string) func(h *host.Host) (int, error) {
+	return func(h *host.Host) (int, error) {
+		modifyErr := h.SetNeedsJasperRestart(username)
+		if adb.ResultsNotFound(modifyErr) {
+			return 0, nil
+		}
+		if modifyErr != nil {
+			return http.StatusInternalServerError, modifyErr
+		}
+		return 0, nil
+	}
+}
+
+func GetUpdateHostStatusCallback(rq amboy.Queue, status string, notes string, user *user.DBUser) func(h *host.Host) (httpStatus int, err error) {
+	return func(h *host.Host) (httpStatus int, err error) {
+		_, httpStatus, modifyErr := ModifyHostStatus(rq, h, status, notes, user)
+		return httpStatus, modifyErr
+	}
 }
