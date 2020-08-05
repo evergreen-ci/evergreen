@@ -1455,6 +1455,26 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
+func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
+	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
+	}
+	if updateInfo.Name != targetKeyName && doesPublicKeyNameAlreadyExist(ctx, updateInfo.Name) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The updated key name, %s, already exists.", targetKeyName))
+	}
+	err := verifyPublicKey(ctx, updateInfo)
+	if err != nil {
+		return nil, err
+	}
+	usr := route.MustHaveUser(ctx)
+	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating public key, %s: %s", targetKeyName, err.Error()))
+	}
+	myPublicKeys := getMyPublicKeys(ctx)
+	return myPublicKeys, nil
+}
+
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
 	usr := route.MustHaveUser(ctx)
 	var err error

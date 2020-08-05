@@ -607,7 +607,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
 		return InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
 	}
-	err := verifyPublicKey(ctx, publicKeyInput.Key)
+	err := verifyPublicKey(ctx, publicKeyInput)
 	if err != nil {
 		return err
 	}
@@ -618,8 +618,11 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	return nil
 }
 
-func verifyPublicKey(ctx context.Context, publicKey string) error {
-	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey))
+func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
+	if publicKey.Name == "" {
+		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key name cannot be empty."))
+	}
+	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
 		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key is invalid : %s", err.Error()))
 	}

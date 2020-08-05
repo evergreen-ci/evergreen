@@ -180,6 +180,36 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 	return nil
 }
 
+func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) error {
+	newUser := DBUser{}
+	targetKeySelector := bson.M{
+		IdKey: u.Id,
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": targetKeyName},
+	}
+	updatedKey := PubKey{
+		Name:      newKeyName,
+		Key:       newKeyValue,
+		CreatedAt: time.Now(),
+	}
+	c := adb.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(PubKeysKey, "$"): updatedKey,
+			},
+		},
+		ReturnNew: true,
+	}
+	change, err := db.FindAndModify(Collection, targetKeySelector, nil, c, &newUser)
+	if err != nil {
+		return errors.Wrap(err, "couldn't update public key from user")
+	}
+	if change.Updated != 1 {
+		return errors.Errorf("public key update query succeeded but unexpected ChangeInfo: %+v", change)
+	}
+	u.PubKeys = newUser.PubKeys
+	return nil
+}
+
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
 	return db.Insert(Collection, u)

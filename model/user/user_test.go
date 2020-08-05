@@ -104,6 +104,17 @@ func (s *UserTestSuite) SetupTest() {
 				ReauthAttempts: 5,
 			},
 		},
+		&DBUser{
+			Id: "Test7",
+			PubKeys: []PubKey{
+				{
+					Name:      "key1",
+					Key:       "ssh-mock 12345",
+					CreatedAt: time.Now(),
+				},
+			},
+			APIKey: "67833",
+		},
 	}
 
 	for _, user := range s.users {
@@ -227,6 +238,39 @@ func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) {
 	s.Equal(fromDB.Id, expected.Id)
 	s.Equal(fromDB.APIKey, expected.APIKey)
+}
+
+func (s *UserTestSuite) TestUpdatePublicKey() {
+	s.NoError(s.users[6].UpdatePublicKey("key1", "key1", "this is an amazing key"))
+	s.Len(s.users[6].PubKeys, 1)
+	s.Contains(s.users[6].PubKeys[0].Name, "key1")
+	s.Contains(s.users[6].PubKeys[0].Key, "this is an amazing key")
+
+	u, err := FindOne(ById(s.users[6].Id))
+	s.NoError(err)
+	s.checkUserNotDestroyed(u, s.users[6])
+}
+
+func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
+	s.NoError(s.users[6].UpdatePublicKey("key1", "keyAmazing", "this is an amazing key"))
+	s.Len(s.users[6].PubKeys, 1)
+	s.Contains(s.users[6].PubKeys[0].Name, "keyAmazing")
+	s.Contains(s.users[6].PubKeys[0].Key, "this is an amazing key")
+
+	u, err := FindOne(ById(s.users[6].Id))
+	s.NoError(err)
+	s.checkUserNotDestroyed(u, s.users[6])
+}
+
+func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
+	s.Error(s.users[6].UpdatePublicKey("non-existent-key", "keyAmazing", "this is an amazing key"))
+	s.Len(s.users[6].PubKeys, 1)
+	s.Contains(s.users[6].PubKeys[0].Name, "key1")
+	s.Contains(s.users[6].PubKeys[0].Key, "ssh-mock 12345")
+
+	u, err := FindOne(ById(s.users[6].Id))
+	s.NoError(err)
+	s.checkUserNotDestroyed(u, s.users[6])
 }
 
 func (s *UserTestSuite) TestDeletePublicKey() {
