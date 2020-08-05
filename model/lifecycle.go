@@ -597,6 +597,10 @@ type BuildCreateArgs struct {
 // from the corresponding version and project and a list of tasks. Note that the caller
 // is responsible for inserting the created build and task documents
 func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Tasks, error) {
+	// avoid adding all tasks in the case of no tasks matching aliases
+	if len(args.Aliases) > 0 && len(args.TaskNames) == 0 {
+		return nil, nil, nil
+	}
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
@@ -653,10 +657,6 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
-	// no tasks available for build
-	if len(args.Aliases) > 0 && len(args.TaskNames) == 0 {
-		return b, nil, nil
-	}
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames,
 		args.DisplayNames, args.GeneratedBy, nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime)

@@ -794,7 +794,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				match, err := aliases.HasMatchingTask(buildvariant.Name, buildvariant.Tags, projectInfo.Project.FindProjectTask(t.Name))
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
-						"message": "error creating tasks with alias filter",
+						"message": "error finding tasks with alias filter",
 						"task":    t.Name,
 						"project": projectInfo.Project.Identifier,
 						"alias":   aliases,
@@ -811,10 +811,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
-		if len(aliases) > 0 && len(taskNames) == 0 {
-			// avoid adding all tasks in the case of no tasks matching aliases
-			continue
-		}
 		args := model.BuildCreateArgs{
 			Project:        *projectInfo.Project,
 			Version:        *v,
