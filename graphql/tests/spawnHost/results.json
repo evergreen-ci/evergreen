@@ -15,21 +15,6 @@
                     }
                 }
             }
-        },
-        {
-            "query_file": "spawn-host-no-expiration.graphql",
-            "result": {
-                "data": {
-                    "spawnHost": {
-                        "hostUrl": "",
-                        "id": "static",
-                        "noExpiration": true,
-                        "distro": {
-                            "id": "rhel71-power8-large"
-                        }
-                    }
-                }
-            }
         }
     ]
 }
