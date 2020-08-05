@@ -119,11 +119,20 @@ func (collector *processCollector) Name() string { return "process" }
 func (collector *processCollector) Format() DataFormat { return DataFormatJSON }
 
 func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) {
+	var err error
 	procs, err := process.Processes()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil.")
 	}
 
+	procMetrics := createProcMetrics(procs)
+	processesWrapper := ProcessesWrapper{procMetrics}
+
+	results, err := json.Marshal(processesWrapper)
+	return results, errors.Wrap(err, "problem marshaling processes into JSON")
+}
+
+func createProcMetrics(procs []*process.Process) []ProcessData {
 	procMetrics := make([]ProcessData, len(procs))
 
 	for i, process := range procs {
@@ -176,10 +185,7 @@ func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) 
 		}
 		procMetrics[i] = processWrapper
 	}
-	processesWrapper := ProcessesWrapper{procMetrics}
-
-	results, err := json.Marshal(processesWrapper)
-	return results, errors.Wrap(err, "problem marshaling processes into JSON")
+	return procMetrics
 }
 
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
@@ -190,8 +196,8 @@ func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) 
 
 	opts := metrics.CollectJSONOptions{
 		InputSource:   bytes.NewReader(jsonMetrics),
-		SampleCount:   100,
-		FlushInterval: 100 * time.Millisecond,
+		SampleCount:   1,
+		FlushInterval: 1 * time.Second,
 	}
 
 	output, err := metrics.CollectJSONStream(ctx, opts)
