@@ -1451,7 +1451,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 	return hostsUpdated, nil
 }
 
-func (r *mutationResolver) UpdateStatus(ctx context.Context, hostIds []string, status string, notes string) (int, error) {
+func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
 	user := route.MustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
@@ -1461,7 +1461,7 @@ func (r *mutationResolver) UpdateStatus(ctx context.Context, hostIds []string, s
 
 	rq := evergreen.GetEnvironment().RemoteQueue()
 
-	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, status, notes, user))
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, status, *notes, user))
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

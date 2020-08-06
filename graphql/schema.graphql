@@ -81,7 +81,11 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
-  updateStatus(hostIds: [String!]!, status: String!, notes: String!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
@@ -186,11 +190,11 @@ input SpawnHostInput {
   savePublicKey: Boolean!
   publicKey: PublicKeyInput!
   userDataScript: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean!
   setUpScript: String
   isVirtualWorkStation: Boolean!
-  homeVolumeSize: Int 
+  homeVolumeSize: Int
 }
 
 type Host {

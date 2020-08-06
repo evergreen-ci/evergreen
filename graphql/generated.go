@@ -237,8 +237,8 @@ type ComplexityRoot struct {
 		SpawnHost                  func(childComplexity int, spawnHostInput *SpawnHostInput) int
 		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
+		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateStatus               func(childComplexity int, hostIds []string, status string, notes string) int
 		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
 	}
 
@@ -564,7 +564,7 @@ type MutationResolver interface {
 	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
-	UpdateStatus(ctx context.Context, hostIds []string, status string, notes string) (int, error)
+	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
@@ -1581,6 +1581,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UnscheduleTask(childComplexity, args["taskId"].(string)), true
 
+	case "Mutation.updateHostStatus":
+		if e.complexity.Mutation.UpdateHostStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateHostStatus_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateHostStatus(childComplexity, args["hostIds"].([]string), args["status"].(string), args["notes"].(*string)), true
+
 	case "Mutation.updatePublicKey":
 		if e.complexity.Mutation.UpdatePublicKey == nil {
 			break
@@ -1592,18 +1604,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdatePublicKey(childComplexity, args["targetKeyName"].(string), args["updateInfo"].(PublicKeyInput)), true
-
-	case "Mutation.updateStatus":
-		if e.complexity.Mutation.UpdateStatus == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateStatus_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateStatus(childComplexity, args["hostIds"].([]string), args["status"].(string), args["notes"].(string)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -3215,7 +3215,11 @@ type Mutation {
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
-  updateStatus(hostIds: [String!]!, status: String!, notes: String!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
@@ -3320,11 +3324,11 @@ input SpawnHostInput {
   savePublicKey: Boolean!
   publicKey: PublicKeyInput!
   userDataScript: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean!
   setUpScript: String
   isVirtualWorkStation: Boolean!
-  homeVolumeSize: Int 
+  homeVolumeSize: Int
 }
 
 type Host {
@@ -4114,6 +4118,36 @@ func (ec *executionContext) field_Mutation_unscheduleTask_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateHostStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["hostIds"]; ok {
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostIds"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["status"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["status"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["notes"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["notes"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4133,36 +4167,6 @@ func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Cont
 		}
 	}
 	args["updateInfo"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_updateStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 []string
-	if tmp, ok := rawArgs["hostIds"]; ok {
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["hostIds"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["status"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["status"] = arg1
-	var arg2 string
-	if tmp, ok := rawArgs["notes"]; ok {
-		arg2, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["notes"] = arg2
 	return args, nil
 }
 
@@ -8682,7 +8686,7 @@ func (ec *executionContext) _Mutation_restartJasper(ctx context.Context, field g
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_updateStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_updateHostStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -8698,7 +8702,7 @@ func (ec *executionContext) _Mutation_updateStatus(ctx context.Context, field gr
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_updateStatus_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_updateHostStatus_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -8706,7 +8710,7 @@ func (ec *executionContext) _Mutation_updateStatus(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateStatus(rctx, args["hostIds"].([]string), args["status"].(string), args["notes"].(string))
+		return ec.resolvers.Mutation().UpdateHostStatus(rctx, args["hostIds"].([]string), args["status"].(string), args["notes"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17963,8 +17967,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "updateStatus":
-			out.Values[i] = ec._Mutation_updateStatus(ctx, field)
+		case "updateHostStatus":
+			out.Values[i] = ec._Mutation_updateHostStatus(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

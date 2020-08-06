@@ -1,0 +1,7 @@
+mutation {
+  updateHostStatus(
+    hostIds: ["i-06f80fa6e28f93b7d", "i-0f81a2d39744003dd"]
+    status: "running"
+    notes: ""
+  )
+}
