@@ -682,8 +682,8 @@ buildvariants:
       - windows-64-vs2017-compile
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/golang/go1.13/bin/go
-      goroot: c:/golang/go1.13
+      gobin: /cygdrive/c/golang/go1.11/bin/go
+      goroot: c:/golang/go1.11
       legacyGobin: /cygdrive/c/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
