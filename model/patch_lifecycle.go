@@ -591,11 +591,6 @@ func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 	return patchDoc, nil
 }
 
-func AddBackportTask(patchDoc *patch.Patch) error {
-
-	return nil
-}
-
 func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
 	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {

@@ -81,11 +81,8 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType:
-		return evergreen.SenderGithubMerge, nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		return evergreen.SenderCommitQueueDequeue, nil
+	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType:
+		return evergreen.SenderLambda, nil
 
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -95,7 +92,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 // Composer builds a grip/message.Composer for the notification. Composer is
 // guaranteed to be non-nil if error is nil, but the composer may not be
 // loggable
-func (n *Notification) Composer() (message.Composer, error) {
+func (n *Notification) Composer(env evergreen.Environment) (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
 		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
@@ -192,7 +189,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok {
 			return nil, errors.New("github-merge subscriber is invalid")
 		}
-		payload, ok := n.Payload.(*commitqueue.GithubMergePR)
+		payload, ok := n.Payload.(*commitqueue.GitHubMergeLambda)
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
@@ -200,15 +197,19 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.MergeMethod = sub.MergeMethod
 		payload.Item = sub.Item
 
-		return commitqueue.NewGithubMergePRMessage(level.Notice, *payload), nil
+		if err := payload.Initialize(env); err != nil {
+			return nil, errors.Wrap(err, "problem initializing GitHubMergeLambda")
+		}
+
+		return message.NewLambdaMessage(level.Notice, payload, payload.String()), nil
 
 	case event.CommitQueueDequeueSubscriberType:
-		payload, ok := n.Payload.(*commitqueue.DequeueItem)
+		payload, ok := n.Payload.(*commitqueue.DequeueLambda)
 		if !ok || payload == nil {
 			return nil, errors.New("commit-queue-dequeue payload is invalid")
 		}
 
-		return commitqueue.NewDequeueItemMessage(level.Notice, *payload), nil
+		return message.NewLambdaMessage(level.Notice, payload, payload.String()), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)

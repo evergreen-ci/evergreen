@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -18,7 +20,8 @@ import (
 type notificationSuite struct {
 	suite.Suite
 
-	n Notification
+	n   Notification
+	env evergreen.Environment
 }
 
 func TestNotifications(t *testing.T) {
@@ -44,8 +47,9 @@ func (s *notificationSuite) SetupTest() {
 			Description: "something failed",
 		},
 	}
-
 	s.Empty(s.n.ID)
+
+	s.env = &mock.Environment{}
 }
 
 func (s *notificationSuite) TestMarkSent() {
@@ -231,7 +235,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 
 	s.Equal(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -252,7 +256,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 
 	s.Equal("hi", *n.Payload.(*string))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
@@ -289,7 +293,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -318,7 +322,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 
@@ -345,7 +349,7 @@ func (s *notificationSuite) TestSlackPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -370,7 +374,7 @@ func (s *notificationSuite) TestGithubPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())

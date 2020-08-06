@@ -204,7 +204,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = commitqueue.Context
+		status.Context = commitqueue.GitHubContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 
@@ -215,7 +215,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		// Since there is no patch document, we return early.
 		return &status, nil
 	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
-		status.Context = commitqueue.Context
+		status.Context = commitqueue.GitHubContext
 		status.Description = "removed from queue"
 		status.State = message.GithubStateSuccess
 

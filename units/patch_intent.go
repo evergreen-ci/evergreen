@@ -287,11 +287,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
-	if patchDoc.IsBackport() {
-		if err = model.AddBackportTask(patchDoc); err != nil {
-			return errors.Wrap(err, "can't add backport task")
-		}
-	}
 
 	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
 		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
@@ -345,6 +340,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}
 	}
+	if patchDoc.IsBackport() {
+		// TODO: add subscriber
+	}
+
 	if catcher.HasErrors() {
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 			"message":     "failed to save subscription, patch will not notify",

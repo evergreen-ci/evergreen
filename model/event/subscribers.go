@@ -19,6 +19,7 @@ const (
 	SlackSubscriberType              = "slack"
 	GithubMergeSubscriberType        = "github-merge"
 	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
+	EnqueuePatchSubscriberType       = "enqueue-patch"
 	SubscriberTypeNone               = "none"
 )
 
@@ -31,6 +32,7 @@ var SubscriberTypes = []string{
 	SlackSubscriberType,
 	GithubMergeSubscriberType,
 	CommitQueueDequeueSubscriberType,
+	EnqueuePatchSubscriberType,
 }
 
 //nolint: deadcode, megacheck, unused
@@ -75,7 +77,7 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &str
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
-	case CommitQueueDequeueSubscriberType:
+	case CommitQueueDequeueSubscriberType, EnqueuePatchSubscriberType:
 		s.Target = nil
 		return nil
 	default:

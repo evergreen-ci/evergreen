@@ -118,7 +118,7 @@ func (j *eventSendJob) Run(_ context.Context) {
 }
 
 func (j *eventSendJob) send(n *notification.Notification) error {
-	c, err := n.Composer()
+	c, err := n.Composer(j.env)
 	if err != nil {
 		return err
 	}

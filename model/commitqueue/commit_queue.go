@@ -4,14 +4,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -168,47 +165,6 @@ func ClearAllCommitQueues() (int, error) {
 	}
 
 	return clearedCount, nil
-}
-
-func SetupEnv(env evergreen.Environment) error {
-	if env == nil {
-		return errors.New("no environment configured")
-	}
-
-	settings := env.Settings()
-	githubToken, err := settings.GetGithubOauthToken()
-	if err == nil && len(githubToken) > 0 {
-		ctx, _ := env.Context()
-		// Github PR Merge
-		githubStatusSender, err := env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			return errors.Wrap(err, "can't get github status sender")
-		}
-		sender, err := NewGithubPRLogger(ctx, "evergreen", githubToken, githubStatusSender)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup github merge logger")
-		}
-		if err = env.SetSender(evergreen.SenderGithubMerge, sender); err != nil {
-			return errors.WithStack(err)
-		}
-
-		// Dequeue
-		levelInfo := send.LevelInfo{
-			Default:   level.Notice,
-			Threshold: level.Notice,
-		}
-		sender, err = NewCommitQueueDequeueLogger("evergreen", levelInfo)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup commit queue dequeue logger")
-		}
-		if err = env.SetSender(evergreen.SenderCommitQueueDequeue, sender); err != nil {
-			return errors.WithStack(err)
-		}
-
-		evergreen.SetEnvironment(env)
-	}
-
-	return nil
 }
 
 func RemoveCommitQueueItemForVersion(projectId, patchType, version string, user string) (bool, error) {

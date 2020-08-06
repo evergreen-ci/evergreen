@@ -610,7 +610,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, t.Version)
 			}
 			status := message.GithubStatus{
-				Context:     commitqueue.Context,
+				Context:     commitqueue.GitHubContext,
 				Description: "merge test failed",
 				State:       message.GithubStateFailure,
 				Owner:       p.GithubPatchData.BaseOwner,
