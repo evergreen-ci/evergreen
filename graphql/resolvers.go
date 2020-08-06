@@ -1400,7 +1400,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil

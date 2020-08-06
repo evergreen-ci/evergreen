@@ -45,6 +45,14 @@
           "restartJasper": 1
         }
       }
+    },
+    {
+      "query_file": "user-has-no-permission-to-edit-host.graphql",
+      "result": {
+        "data": {
+          "restartJasper": 0
+        }
+      }
     }
   ]
 }
