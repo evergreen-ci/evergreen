@@ -147,6 +147,7 @@ type ComplexityRoot struct {
 		RunningTask           func(childComplexity int) int
 		StartedBy             func(childComplexity int) int
 		Status                func(childComplexity int) int
+		Tag                   func(childComplexity int) int
 		TotalIdleTime         func(childComplexity int) int
 		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
@@ -1040,6 +1041,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Status(childComplexity), true
+
+	case "Host.tag":
+		if e.complexity.Host.Tag == nil {
+			break
+		}
+
+		return e.complexity.Host.Tag(childComplexity), true
 
 	case "Host.totalIdleTime":
 		if e.complexity.Host.TotalIdleTime == nil {
@@ -3300,6 +3308,7 @@ input SpawnHostInput {
 type Host {
   id: ID!
   hostUrl: String!
+  tag: String!
   distroId: String
   status: String!
   runningTask: TaskInfo
@@ -6016,6 +6025,40 @@ func (ec *executionContext) _Host_hostUrl(ctx context.Context, field graphql.Col
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.HostURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_tag(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tag, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17293,6 +17336,11 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "hostUrl":
 			out.Values[i] = ec._Host_hostUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "tag":
+			out.Values[i] = ec._Host_tag(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

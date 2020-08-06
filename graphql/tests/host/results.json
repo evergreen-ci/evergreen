@@ -7,6 +7,7 @@
                     "host": {
                         "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                         "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+                        "tag": "",
                         "distroId": "ubuntu1604-power8-large",
                         "startedBy": "mci",
                         "provider": "static",
@@ -28,6 +29,7 @@
                     "host": {
                         "id": "rhel71-ppc-1.pic.build.10gen.cc",
                         "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
+                        "tag": "",
                         "distroId": "rhel71-power8-large",
                         "startedBy": "mci",
                         "provider": "static",
