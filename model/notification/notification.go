@@ -82,7 +82,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 		return evergreen.SenderGithubStatus, nil
 
 	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType:
-		return evergreen.SenderLambda, nil
+		return evergreen.SenderGeneric, nil
 
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -189,7 +189,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		if !ok {
 			return nil, errors.New("github-merge subscriber is invalid")
 		}
-		payload, ok := n.Payload.(*commitqueue.GitHubMergeLambda)
+		payload, ok := n.Payload.(*commitqueue.GitHubMergePR)
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
@@ -198,18 +198,18 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.Item = sub.Item
 
 		if err := payload.Initialize(env); err != nil {
-			return nil, errors.Wrap(err, "problem initializing GitHubMergeLambda")
+			return nil, errors.Wrap(err, "problem initializing GitHubMergePR")
 		}
 
-		return message.NewLambdaMessage(level.Notice, payload, payload.String()), nil
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
 	case event.CommitQueueDequeueSubscriberType:
-		payload, ok := n.Payload.(*commitqueue.DequeueLambda)
+		payload, ok := n.Payload.(*commitqueue.DequeueItem)
 		if !ok || payload == nil {
 			return nil, errors.New("commit-queue-dequeue payload is invalid")
 		}
 
-		return message.NewLambdaMessage(level.Notice, payload, payload.String()), nil
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)

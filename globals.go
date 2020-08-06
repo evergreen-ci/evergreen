@@ -372,13 +372,13 @@ const (
 	SenderJIRAIssue
 	SenderJIRAComment
 	SenderEmail
-	SenderLambda
+	SenderGeneric
 )
 
 func (k SenderKey) Validate() error {
 	switch k {
 	case SenderGithubStatus, SenderEvergreenWebhook, SenderSlack, SenderJIRAComment, SenderJIRAIssue,
-		SenderEmail, SenderLambda:
+		SenderEmail, SenderGeneric:
 		return nil
 	default:
 		return errors.New("invalid sender defined")
@@ -399,8 +399,8 @@ func (k SenderKey) String() string {
 		return "jira-comment"
 	case SenderJIRAIssue:
 		return "jira-issue"
-	case SenderLambda:
-		return "execute-function"
+	case SenderGeneric:
+		return "generic"
 	default:
 		return "<error:unknown>"
 	}

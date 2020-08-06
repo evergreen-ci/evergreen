@@ -588,11 +588,11 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
-	sender, err = send.NewLambdaLogger("evergreen", levelInfo)
+	sender, err = send.NewGenericLogger("evergreen", levelInfo)
 	if err != nil {
-		return errors.Wrap(err, "Failed to setup evergreen lambda logger")
+		return errors.Wrap(err, "Failed to setup evergreen generic logger")
 	}
-	e.senders[SenderLambda] = sender
+	e.senders[SenderGeneric] = sender
 
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
