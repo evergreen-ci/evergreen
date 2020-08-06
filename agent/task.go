@@ -91,12 +91,31 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
+	conn, err := a.comm.GetCedarGRPCConn(ctx)
+	if err != nil {
+		tc.logger.System().Error(errors.Wrap(err, "error getting cedar client connection"))
+	} else {
+		tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+			task:       tc.taskModel,
+			interval:   defaultStatsInterval,
+			collectors: []metricCollector{},
+			conn:       conn,
+		})
+		if err != nil {
+			tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
+		} else {
+			err = tc.systemMetricsCollector.Start(ctx)
+			if err != nil {
+				tc.logger.System().Error(errors.Wrap(err, "error starting system metrics collection"))
+			}
+		}
+	}
+
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("task canceled")
 		return
 	}
 
-	var err error
 	if tc.runGroupSetup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
