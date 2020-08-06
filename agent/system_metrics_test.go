@@ -87,13 +87,13 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:                     s.task,
-		Interval:                 time.Minute,
-		Collectors:               collectors,
-		Conn:                     s.conn,
-		BufferTimedFlushInterval: time.Minute,
-		NoBufferTimedFlush:       true,
-		MaxBufferSize:            1e7,
+		task:                     s.task,
+		interval:                 time.Minute,
+		collectors:               collectors,
+		conn:                     s.conn,
+		bufferTimedFlushInterval: time.Minute,
+		noBufferTimedFlush:       true,
+		maxBufferSize:            1e7,
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
@@ -134,57 +134,57 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithInvalidOpts() {
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       nil,
-		Interval:   time.Minute,
-		Collectors: collectors,
-		Conn:       s.conn,
+		task:       nil,
+		interval:   time.Minute,
+		collectors: collectors,
+		conn:       s.conn,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Interval:   -1 * time.Minute,
-		Collectors: collectors,
-		Conn:       s.conn,
+		task:       s.task,
+		interval:   -1 * time.Minute,
+		collectors: collectors,
+		conn:       s.conn,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Interval:   time.Minute,
-		Collectors: []metricCollector{},
-		Conn:       s.conn,
+		task:       s.task,
+		interval:   time.Minute,
+		collectors: []metricCollector{},
+		conn:       s.conn,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Interval:   time.Minute,
-		Collectors: collectors,
-		Conn:       nil,
+		task:       s.task,
+		interval:   time.Minute,
+		collectors: collectors,
+		conn:       nil,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:                     s.task,
-		Interval:                 time.Minute,
-		Collectors:               collectors,
-		Conn:                     s.conn,
-		BufferTimedFlushInterval: -1 * time.Minute,
+		task:                     s.task,
+		interval:                 time.Minute,
+		collectors:               collectors,
+		conn:                     s.conn,
+		bufferTimedFlushInterval: -1 * time.Minute,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:          s.task,
-		Interval:      time.Minute,
-		Collectors:    collectors,
-		Conn:          s.conn,
-		MaxBufferSize: -1,
+		task:          s.task,
+		interval:      time.Minute,
+		collectors:    collectors,
+		conn:          s.conn,
+		maxBufferSize: -1,
 	})
 	s.Assert().Error(err)
 	s.Assert().Nil(c)
@@ -202,12 +202,12 @@ func (s *SystemMetricsSuite) TestStartSystemMetricsCollector() {
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:               s.task,
-		Interval:           time.Second,
-		Collectors:         collectors,
-		Conn:               s.conn,
-		MaxBufferSize:      1,
-		NoBufferTimedFlush: true,
+		task:               s.task,
+		interval:           time.Second,
+		collectors:         collectors,
+		conn:               s.conn,
+		maxBufferSize:      1,
+		noBufferTimedFlush: true,
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
@@ -222,12 +222,12 @@ func (s *SystemMetricsSuite) TestStartSystemMetricsCollector() {
 	s.Assert().NoError(c.catcher.Resolve())
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:               s.task,
-		Interval:           time.Second,
-		Collectors:         collectors,
-		Conn:               s.conn,
-		MaxBufferSize:      1,
-		NoBufferTimedFlush: true,
+		task:               s.task,
+		interval:           time.Second,
+		collectors:         collectors,
+		conn:               s.conn,
+		maxBufferSize:      1,
+		noBufferTimedFlush: true,
 	})
 	s.Require().NoError(err)
 	s.server.CreateErr = true
@@ -246,12 +246,12 @@ func (s *SystemMetricsSuite) TestSystemMetricsCollectorStreamError() {
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:               s.task,
-		Interval:           time.Second,
-		Collectors:         collectors,
-		Conn:               s.conn,
-		MaxBufferSize:      1,
-		NoBufferTimedFlush: true,
+		task:               s.task,
+		interval:           time.Second,
+		collectors:         collectors,
+		conn:               s.conn,
+		maxBufferSize:      1,
+		noBufferTimedFlush: true,
 	})
 	s.Require().NoError(err)
 	s.server.StreamErr = true
@@ -273,10 +273,10 @@ func (s *SystemMetricsSuite) TestCloseSystemMetricsCollector() {
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Interval:   time.Second,
-		Collectors: collectors,
-		Conn:       s.conn,
+		task:       s.task,
+		interval:   time.Second,
+		collectors: collectors,
+		conn:       s.conn,
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(c.Start(ctx))
@@ -287,10 +287,10 @@ func (s *SystemMetricsSuite) TestCloseSystemMetricsCollector() {
 	s.server.Mu.Unlock()
 
 	c, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Interval:   time.Second,
-		Collectors: collectors,
-		Conn:       s.conn,
+		task:       s.task,
+		interval:   time.Second,
+		collectors: collectors,
+		conn:       s.conn,
 	})
 	s.Require().NoError(err)
 	s.server.CloseErr = true

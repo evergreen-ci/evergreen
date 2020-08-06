@@ -66,43 +66,43 @@ type systemMetricsCollector struct {
 // systemMetricsCollectorOptions are the required values for creating a new
 // systemMetricsCollector.
 type systemMetricsCollectorOptions struct {
-	Task       *task.Task
-	Interval   time.Duration
-	Collectors []metricCollector
-	Conn       *grpc.ClientConn
+	task       *task.Task
+	interval   time.Duration
+	collectors []metricCollector
+	conn       *grpc.ClientConn
 
 	// These options configure the timber stream buffer, and can be left empty
 	// to use the default settings.
-	MaxBufferSize            int
-	NoBufferTimedFlush       bool
-	BufferTimedFlushInterval time.Duration
+	maxBufferSize            int
+	noBufferTimedFlush       bool
+	bufferTimedFlushInterval time.Duration
 }
 
 func (s *systemMetricsCollectorOptions) validate() error {
-	if s.Task == nil {
+	if s.task == nil {
 		return errors.New("must provide a valid task")
 	}
 
-	if s.Interval < 0 {
+	if s.interval < 0 {
 		return errors.New("interval cannot be negative")
 	}
-	if s.Interval == 0 {
-		s.Interval = time.Minute
+	if s.interval == 0 {
+		s.interval = time.Minute
 	}
 
-	if len(s.Collectors) == 0 {
+	if len(s.collectors) == 0 {
 		return errors.New("must provide at least one metric collector")
 	}
 
-	if s.Conn == nil {
+	if s.conn == nil {
 		return errors.New("must provide an existing client connection to cedar")
 	}
 
-	if s.BufferTimedFlushInterval < 0 {
+	if s.bufferTimedFlushInterval < 0 {
 		return errors.New("flush interval must not be negative")
 	}
 
-	if s.MaxBufferSize < 0 {
+	if s.maxBufferSize < 0 {
 		return errors.New("buffer size must not be negative")
 	}
 
@@ -118,17 +118,17 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		return nil, errors.Wrap(err, "invalid options")
 	}
 	s := &systemMetricsCollector{
-		interval:   opts.Interval,
-		collectors: opts.Collectors,
-		taskOpts:   getSystemMetricsInfo(opts.Task),
+		interval:   opts.interval,
+		collectors: opts.collectors,
+		taskOpts:   getSystemMetricsInfo(opts.task),
 		streamOpts: &metrics.StreamOpts{
-			FlushInterval: opts.BufferTimedFlushInterval,
-			NoTimedFlush:  opts.NoBufferTimedFlush,
-			MaxBufferSize: opts.MaxBufferSize,
+			FlushInterval: opts.bufferTimedFlushInterval,
+			NoTimedFlush:  opts.noBufferTimedFlush,
+			MaxBufferSize: opts.maxBufferSize,
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.Conn)
+	s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}

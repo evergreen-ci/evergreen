@@ -96,10 +96,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		tc.logger.System().Error(errors.Wrap(err, "error getting cedar client connection"))
 	} else {
 		tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-			Task:       tc.taskModel,
-			Interval:   defaultStatsInterval,
-			Collectors: []metricCollector{},
-			Conn:       conn,
+			task:       tc.taskModel,
+			interval:   defaultStatsInterval,
+			collectors: []metricCollector{},
+			conn:       conn,
 		})
 		if err != nil {
 			tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))
