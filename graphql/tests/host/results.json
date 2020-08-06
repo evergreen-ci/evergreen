@@ -9,6 +9,7 @@
                         "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                         "distroId": "ubuntu1604-power8-large",
                         "startedBy": "mci",
+                        "provider": "static",
                         "user": "mci-exec",
                         "status": "running",
                         "runningTask": {
@@ -29,6 +30,7 @@
                         "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                         "distroId": "rhel71-power8-large",
                         "startedBy": "mci",
+                        "provider": "static",
                         "user": "mci-exec",
                         "status": "running",
                         "runningTask": {
