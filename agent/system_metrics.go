@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"time"
 
@@ -121,16 +122,17 @@ type ProcessesWrapper struct {
 }
 
 type ProcessData struct {
-	PID               int32          `json:"pid"`
-	CPUPercent        float64        `json:"%cpu"`
-	MemoryPercent     float32        `json:"%mem"`
-	VirtualMemorySize uint64         `json:"vsz"`
-	ResidentSetSize   uint64         `json:"rss"`
-	Terminal          string         `json:"tt"`
-	Stat              string         `json:"stat"`
-	Started           int64          `json:"started"`
-	Time              *cpu.TimesStat `json:"time"`
-	Command           string         `json:"command"`
+	PID               int32   `json:"pid"`
+	CPUPercent        float64 `json:"%cpu"`
+	MemoryPercent     float32 `json:"%mem"`
+	VirtualMemorySize uint64  `json:"vsz"`
+	ResidentSetSize   uint64  `json:"rss"`
+	Terminal          string  `json:"tt"`
+	Stat              string  `json:"stat"`
+	// TODO (EVG-12736): fix (*Process).CreateTime
+	// Started           int64          `json:"started"`
+	Time    *cpu.TimesStat `json:"time"`
+	Command string         `json:"command"`
 }
 
 func (collector *processCollector) Name() string { return "process" }
@@ -138,6 +140,11 @@ func (collector *processCollector) Name() string { return "process" }
 func (collector *processCollector) Format() DataFormat { return DataFormatJSON }
 
 func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) {
+	// TODO (EVG-12736): fix (*Process).CreateTime
+	if runtime.GOOS == "darwin" {
+		return []byte{}, nil
+	}
+
 	var err error
 	procs, err := process.Processes()
 	if err != nil {
@@ -177,10 +184,10 @@ func createProcMetrics(procs []*process.Process) []ProcessData {
 		if err != nil {
 			status = ""
 		}
-		createTime, err := process.CreateTime()
-		if err != nil {
-			createTime = 0
-		}
+		// createTime, err := process.CreateTime()
+		// if err != nil {
+		// 	createTime = 0
+		// }
 		times, err := process.Times()
 		if err != nil {
 			times = nil
@@ -198,9 +205,9 @@ func createProcMetrics(procs []*process.Process) []ProcessData {
 			ResidentSetSize:   rss,
 			Terminal:          terminal,
 			Stat:              status,
-			Started:           createTime,
-			Time:              times,
-			Command:           name,
+			// Started:           createTime,
+			Time:    times,
+			Command: name,
 		}
 		procMetrics[i] = processWrapper
 	}
