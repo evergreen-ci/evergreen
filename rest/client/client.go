@@ -314,25 +314,24 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 }
 
 func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
-	if c.cedarGRPCClient != nil {
-		return nil
-	}
-	bi, err := c.GetBuildloggerInfo(ctx)
-	if err != nil {
-		return errors.Wrap(err, "error setting up buildlogger sender")
-	}
+	if c.cedarGRPCClient == nil {
+		bi, err := c.GetBuildloggerInfo(ctx)
+		if err != nil {
+			return errors.Wrap(err, "error setting up buildlogger sender")
+		}
 
-	dialOpts := timber.DialCedarOptions{
-		BaseAddress: bi.BaseURL,
-		RPCPort:     bi.RPCPort,
-		Username:    bi.Username,
-		Password:    bi.Password,
-		APIKey:      bi.APIKey,
-		Retries:     10,
-	}
-	c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
-	if err != nil {
-		return errors.Wrap(err, "error creating cedar grpc client connection")
+		dialOpts := timber.DialCedarOptions{
+			BaseAddress: bi.BaseURL,
+			RPCPort:     bi.RPCPort,
+			Username:    bi.Username,
+			Password:    bi.Password,
+			APIKey:      bi.APIKey,
+			Retries:     10,
+		}
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
+		if err != nil {
+			return errors.Wrap(err, "error creating cedar grpc client connection")
+		}
 	}
 	return nil
 }
